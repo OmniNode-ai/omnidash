@@ -1,13 +1,11 @@
 import { Router } from 'express';
-import { intelligenceDb } from './storage';
-import { agentRoutingDecisions, agentActions } from '../shared/intelligence-schema';
-import { desc, gte, sql, count, eq, and } from 'drizzle-orm';
+import { eventConsumer } from './event-consumer';
 
 export const intelligenceRouter = Router();
 
 /**
  * GET /api/intelligence/agents/summary
- * Returns agent performance metrics for last 24 hours
+ * Returns agent performance metrics from in-memory event consumer
  *
  * Response format:
  * [
@@ -21,20 +19,7 @@ export const intelligenceRouter = Router();
  */
 intelligenceRouter.get('/agents/summary', async (req, res) => {
   try {
-    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    const metrics = await intelligenceDb
-      .select({
-        agent: agentRoutingDecisions.selectedAgent,
-        totalRequests: count(),
-        avgRoutingTime: sql<number>`AVG(${agentRoutingDecisions.routingTimeMs})`,
-        avgConfidence: sql<number>`AVG(${agentRoutingDecisions.confidenceScore})`,
-      })
-      .from(agentRoutingDecisions)
-      .where(gte(agentRoutingDecisions.createdAt, last24h))
-      .groupBy(agentRoutingDecisions.selectedAgent)
-      .orderBy(desc(count()));
-
+    const metrics = eventConsumer.getAgentMetrics();
     res.json(metrics);
   } catch (error) {
     console.error('Error fetching agent summary:', error);
@@ -47,7 +32,7 @@ intelligenceRouter.get('/agents/summary', async (req, res) => {
 
 /**
  * GET /api/intelligence/actions/recent?limit=100
- * Returns recent agent actions across all agents
+ * Returns recent agent actions from in-memory event consumer
  *
  * Query parameters:
  * - limit: number of actions to return (default: 100, max: 1000)
@@ -74,12 +59,7 @@ intelligenceRouter.get('/actions/recent', async (req, res) => {
       1000
     );
 
-    const actions = await intelligenceDb
-      .select()
-      .from(agentActions)
-      .orderBy(desc(agentActions.createdAt))
-      .limit(limit);
-
+    const actions = eventConsumer.getRecentActions().slice(0, limit);
     res.json(actions);
   } catch (error) {
     console.error('Error fetching recent actions:', error);
@@ -92,7 +72,7 @@ intelligenceRouter.get('/actions/recent', async (req, res) => {
 
 /**
  * GET /api/intelligence/agents/:agent/actions
- * Returns action timeline for specific agent
+ * Returns action timeline for specific agent from in-memory event consumer
  *
  * URL parameters:
  * - agent: agent name (e.g., "agent-api-architect")
@@ -112,36 +92,7 @@ intelligenceRouter.get('/agents/:agent/actions', async (req, res) => {
       1000
     );
 
-    // Parse time window
-    let windowMs: number;
-    switch (timeWindow) {
-      case '1h':
-        windowMs = 60 * 60 * 1000;
-        break;
-      case '24h':
-        windowMs = 24 * 60 * 60 * 1000;
-        break;
-      case '7d':
-        windowMs = 7 * 24 * 60 * 60 * 1000;
-        break;
-      default:
-        windowMs = 60 * 60 * 1000; // Default to 1h
-    }
-
-    const since = new Date(Date.now() - windowMs);
-
-    const actions = await intelligenceDb
-      .select()
-      .from(agentActions)
-      .where(
-        and(
-          eq(agentActions.agentName, agent),
-          gte(agentActions.createdAt, since)
-        )
-      )
-      .orderBy(desc(agentActions.createdAt))
-      .limit(limit);
-
+    const actions = eventConsumer.getActionsByAgent(agent, timeWindow).slice(0, limit);
     res.json(actions);
   } catch (error) {
     console.error('Error fetching agent actions:', error);
@@ -154,7 +105,7 @@ intelligenceRouter.get('/agents/:agent/actions', async (req, res) => {
 
 /**
  * GET /api/intelligence/routing/decisions?limit=100
- * Returns recent routing decisions across all agents
+ * Returns recent routing decisions from in-memory event consumer
  *
  * Query parameters:
  * - limit: number of decisions to return (default: 100, max: 1000)
@@ -188,23 +139,10 @@ intelligenceRouter.get('/routing/decisions', async (req, res) => {
       ? parseFloat(req.query.minConfidence as string)
       : undefined;
 
-    // Build where conditions
-    const conditions = [];
-    if (agentFilter) {
-      conditions.push(eq(agentRoutingDecisions.selectedAgent, agentFilter));
-    }
-    if (minConfidence !== undefined) {
-      conditions.push(
-        sql`${agentRoutingDecisions.confidenceScore} >= ${minConfidence}`
-      );
-    }
-
-    const decisions = await intelligenceDb
-      .select()
-      .from(agentRoutingDecisions)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(agentRoutingDecisions.createdAt))
-      .limit(limit);
+    const decisions = eventConsumer.getRoutingDecisions({
+      agent: agentFilter,
+      minConfidence,
+    }).slice(0, limit);
 
     res.json(decisions);
   } catch (error) {
@@ -218,35 +156,26 @@ intelligenceRouter.get('/routing/decisions', async (req, res) => {
 
 /**
  * GET /api/intelligence/health
- * Health check endpoint for intelligence infrastructure
+ * Health check endpoint using event consumer status
  *
  * Response format:
  * {
  *   status: "healthy" | "unhealthy",
- *   database: "connected" | "error",
+ *   eventsProcessed: 52,
+ *   recentActionsCount: 100,
  *   timestamp: "2025-10-27T12:00:00Z"
  * }
  */
 intelligenceRouter.get('/health', async (req, res) => {
   try {
-    // Simple query to check database connectivity
-    await intelligenceDb
-      .select({ count: count() })
-      .from(agentRoutingDecisions)
-      .limit(1);
-
-    res.json({
-      status: 'healthy',
-      database: 'connected',
-      timestamp: new Date().toISOString()
-    });
+    const health = eventConsumer.getHealthStatus();
+    res.json(health);
   } catch (error) {
     console.error('Health check failed:', error);
     res.status(503).json({
       status: 'unhealthy',
-      database: 'error',
-      timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
     });
   }
 });
