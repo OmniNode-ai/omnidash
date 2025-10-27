@@ -1,0 +1,341 @@
+# OmniNode Code Intelligence Platform - Observability Dashboards Implementation Prompt
+
+## Project Overview
+
+You are building comprehensive observability dashboards for the **OmniNode Code Intelligence Platform** - a sophisticated AI-powered development platform that goes far beyond basic monitoring to showcase the full intelligence and capabilities of the system.
+
+### What OmniNode Does
+OmniNode is a **code intelligence platform** that:
+- **Analyzes code patterns** using AI to identify and catalog 25,000+ development patterns
+- **Provides semantic search** across codebases using advanced AI capabilities
+- **Manages development metadata** and tracks code evolution across projects
+- **Enables intelligent code discovery** through pattern recognition and metadata analysis
+- **Orchestrates AI agents** to work together on complex development tasks
+- **Offers universal search** capabilities across the entire development ecosystem
+
+### Current Platform Capabilities
+- **52 specialized AI agents** for different development tasks
+- **25,000+ code patterns** being discovered and learned
+- **168+ AI operations** for code analysis and optimization
+- **23 automated quality gates** and 33 performance thresholds
+- **Real-time event processing** via Kafka/Redpanda (1000+ events/sec)
+- **Knowledge graph** with code relationships and dependencies
+- **Semantic search** across codebases using AI
+- **Production-ready services** with 44+ hours uptime
+
+---
+
+## Dashboard Requirements
+
+Build **8 specialized dashboards** that showcase the platform's intelligence in real-time:
+
+### 1. AI Agent Operations Dashboard
+**Purpose**: Real-time visualization of 52 specialized AI agents working across the platform
+
+**Key Features**:
+- **Agent Status Grid**: Live status of all 52 AI agents with health indicators
+- **Execution Timeline**: Real-time timeline of agent executions and coordination
+- **Task Queue Visualization**: Visual representation of pending, running, and completed tasks
+- **Agent Performance Metrics**: Response times, success rates, and throughput per agent
+- **Multi-Agent Workflows**: Visualization of agents working together on complex tasks
+- **Error Tracking**: Real-time error detection and resolution tracking
+- **Resource Utilization**: CPU, memory, and network usage per agent
+
+**Visualizations**:
+- Agent Grid: 52 agent cards with real-time status, current task, and performance metrics
+- Execution Flow: Sankey diagram showing task flow between agents
+- Timeline View: Gantt-style timeline of agent executions
+- Performance Charts: Line charts for response times, success rates, throughput
+- Heat Maps: Agent activity patterns over time
+- Alert Panel: Real-time alerts for agent failures or performance issues
+
+### 2. Pattern Learning Dashboard
+**Purpose**: Visualize the discovery, learning, and evolution of 25,000+ code patterns
+
+**Key Features**:
+- **Pattern Discovery Timeline**: Real-time visualization of new pattern discoveries
+- **Pattern Evolution**: How patterns change and improve over time
+- **Pattern Utilization**: Which patterns are being used most effectively
+- **Learning Progress**: AI learning progress and knowledge building
+- **Pattern Relationships**: How patterns relate to each other and build upon each other
+- **Quality Metrics**: Pattern quality scores and validation results
+- **Usage Analytics**: Which patterns are most valuable and why
+
+**Visualizations**:
+- Pattern Network Graph: Interactive network showing pattern relationships
+- Discovery Timeline: Real-time stream of new pattern discoveries
+- Evolution Charts: Line charts showing pattern improvement over time
+- Utilization Heat Map: Heat map showing pattern usage across codebases
+- Learning Progress Bars: Progress indicators for AI learning milestones
+- Quality Score Distribution: Histogram of pattern quality scores
+- Top Patterns Table: Ranked list of most valuable patterns
+
+### 3. Intelligence Operations Dashboard
+**Purpose**: Showcase 168+ AI operations and their impact on code analysis and optimization
+
+**Key Features**:
+- **Operation Execution Map**: Visual map of all 168+ AI operations
+- **Real-Time Analysis**: Live code analysis operations and their results
+- **Quality Assessment**: Visual representation of code quality improvements
+- **Performance Optimization**: AI-powered performance recommendations
+- **Semantic Analysis**: Real-time semantic analysis of code and documentation
+- **Knowledge Graph Updates**: Live updates to the knowledge graph
+- **Intelligence Metrics**: Success rates, accuracy, and impact metrics
+
+**Visualizations**:
+- Operation Flow Diagram: Flow chart of AI operations and their dependencies
+- Analysis Results: Real-time display of code analysis results
+- Quality Improvement Charts: Before/after quality score comparisons
+- Performance Optimization Timeline: Timeline of performance improvements
+- Semantic Analysis Results: Visual representation of semantic analysis
+- Knowledge Graph Updates: Live updates to the knowledge graph visualization
+- Intelligence Metrics Dashboard: Key performance indicators for AI operations
+
+### 4. Code Intelligence Dashboard
+**Purpose**: Visualize semantic search, code analysis, and intelligent code discovery
+
+**Key Features**:
+- **Semantic Search Visualization**: Real-time semantic search queries and results
+- **Code Analysis Pipeline**: Visual pipeline of code analysis processes
+- **Quality Gate Status**: Real-time status of 23 automated quality gates
+- **Performance Thresholds**: Monitoring of 33 performance thresholds
+- **Code Generation Workflows**: AI-powered code generation processes
+- **Intelligent Recommendations**: AI recommendations and their adoption
+- **Code Evolution Tracking**: How code improves over time with AI assistance
+
+**Visualizations**:
+- Search Query Flow: Visual flow of semantic search queries and results
+- Analysis Pipeline: Step-by-step visualization of code analysis
+- Quality Gate Dashboard: Status of all quality gates with pass/fail indicators
+- Performance Monitoring: Real-time performance threshold monitoring
+- Code Generation Timeline: Timeline of AI-powered code generation
+- Recommendation Adoption: Tracking of AI recommendation adoption
+- Code Evolution Charts: Charts showing code improvement over time
+
+### 5. Event Flow Dashboard
+**Purpose**: Real-time visualization of Kafka/Redpanda event processing and system communication
+
+**Key Features**:
+- **Event Flow Visualization**: Real-time flow of events through the system
+- **Topic Performance**: Performance metrics for each Kafka topic
+- **Consumer Group Status**: Status and performance of consumer groups
+- **Event Processing Pipeline**: Visual pipeline of event processing
+- **Backpressure Monitoring**: Real-time backpressure detection and resolution
+- **Event Correlation**: Tracking events across the entire system
+- **Throughput Analytics**: Event processing throughput and capacity
+
+**Visualizations**:
+- Event Flow Diagram: Real-time diagram of event flow through the system
+- Topic Performance Charts: Performance metrics for each Kafka topic
+- Consumer Group Grid: Status grid of all consumer groups
+- Processing Pipeline: Visual pipeline of event processing steps
+- Backpressure Indicators: Real-time backpressure detection and alerts
+- Event Correlation Timeline: Timeline showing event correlations
+- Throughput Charts: Real-time throughput and capacity charts
+
+### 6. Knowledge Graph Dashboard
+**Purpose**: Interactive exploration of code relationships, dependencies, and knowledge building
+
+**Key Features**:
+- **Interactive Graph Explorer**: 3D/2D interactive exploration of the knowledge graph
+- **Relationship Visualization**: Visual representation of code relationships
+- **Dependency Mapping**: Code dependency mapping and analysis
+- **Knowledge Building**: Real-time visualization of knowledge building
+- **Graph Analytics**: Analytics on graph structure and evolution
+- **Search Integration**: Integration with semantic search capabilities
+- **Graph Health Metrics**: Health and performance metrics for the knowledge graph
+
+**Visualizations**:
+- 3D Graph Explorer: Interactive 3D visualization of the knowledge graph
+- Relationship Network: Network diagram of code relationships
+- Dependency Tree: Tree visualization of code dependencies
+- Knowledge Building Timeline: Timeline of knowledge building progress
+- Graph Analytics Charts: Analytics on graph structure and evolution
+- Search Integration Panel: Integrated semantic search interface
+- Health Metrics Dashboard: Health and performance metrics for the graph
+
+### 7. Platform Health Dashboard
+**Purpose**: Comprehensive system health monitoring and operational metrics
+
+**Key Features**:
+- **System Health Overview**: High-level system health indicators
+- **Service Status Grid**: Status of all platform services
+- **Performance Metrics**: System-wide performance metrics
+- **Resource Utilization**: CPU, memory, storage, and network utilization
+- **Error Tracking**: System-wide error tracking and resolution
+- **Capacity Planning**: Resource capacity and scaling recommendations
+- **Alert Management**: Centralized alert management and resolution
+
+**Visualizations**:
+- Health Status Grid: Grid showing health status of all services
+- Performance Metrics Charts: System-wide performance metrics
+- Resource Utilization Charts: CPU, memory, storage, network utilization
+- Error Tracking Timeline: Timeline of errors and resolutions
+- Capacity Planning Charts: Resource capacity and scaling recommendations
+- Alert Management Panel: Centralized alert management interface
+- System Architecture Diagram: Visual representation of system architecture
+
+### 8. Developer Experience Dashboard
+**Purpose**: Visualize the developer experience and workflow improvements
+
+**Key Features**:
+- **Code Generation Workflows**: AI-powered code generation processes
+- **Quality Gate Status**: Real-time status of quality gates and enforcement
+- **Development Velocity**: Tracking of development velocity improvements
+- **Code Reuse Analytics**: Analytics on code reuse and pattern adoption
+- **Developer Productivity**: Metrics on developer productivity improvements
+- **Workflow Optimization**: AI-powered workflow optimization recommendations
+- **Learning Progress**: Developer learning and skill improvement tracking
+
+**Visualizations**:
+- Code Generation Timeline: Timeline of AI-powered code generation
+- Quality Gate Dashboard: Status dashboard of all quality gates
+- Velocity Improvement Charts: Charts showing development velocity improvements
+- Code Reuse Analytics: Analytics on code reuse and pattern adoption
+- Productivity Metrics: Developer productivity improvement metrics
+- Workflow Optimization Panel: AI-powered workflow optimization recommendations
+- Learning Progress Tracking: Developer learning and skill improvement tracking
+
+---
+
+## Technical Requirements
+
+### Technology Stack
+- **Frontend**: React 18+ with TypeScript
+- **Visualizations**: D3.js, Three.js, Observable Plot, Cytoscape.js, Chart.js, React Flow
+- **Real-Time**: WebSocket connections, Server-Sent Events, GraphQL Subscriptions
+- **Backend**: FastAPI, WebSocket server, GraphQL API
+- **Data**: Redis for real-time caching, PostgreSQL for historical data
+- **Styling**: Tailwind CSS for responsive design
+
+### Performance Requirements
+- **Real-Time Performance**: <100ms data latency, 1-second update intervals
+- **Visualization Performance**: Smooth 60 FPS animations, <200ms rendering time
+- **Scalability**: Support 50+ concurrent users, 10,000+ events/second
+- **Load Time**: <3 seconds for initial dashboard load
+- **Memory Usage**: <500MB per dashboard session
+
+### Data Sources (Mock Data)
+Since this is a demo implementation, create realistic mock data that simulates:
+- **Agent Execution Data**: Agent status, task queues, performance metrics
+- **Pattern Learning Data**: Pattern discoveries, evolution, quality scores
+- **Intelligence Operations**: AI operation results, quality improvements
+- **Event Processing**: Kafka topic performance, consumer group status
+- **Knowledge Graph**: Code relationships, dependencies, graph structure
+- **System Health**: Service status, resource utilization, error tracking
+
+---
+
+## Implementation Guidelines
+
+### 1. Start with Core Infrastructure
+- Set up React app with TypeScript
+- Implement WebSocket client for real-time data
+- Create mock data generators for each dashboard
+- Set up routing and navigation between dashboards
+
+### 2. Build Dashboard Components
+- Create reusable visualization components
+- Implement real-time data updates
+- Add interactive features and drill-down capabilities
+- Ensure responsive design for different screen sizes
+
+### 3. Focus on Visual Impact
+- Use animations and transitions to show system activity
+- Implement smooth real-time updates
+- Create compelling visualizations that showcase AI intelligence
+- Add interactive elements for exploration
+
+### 4. Mock Data Realism
+- Generate realistic patterns in the data
+- Show gradual improvements over time
+- Include occasional errors and recovery scenarios
+- Demonstrate the intelligence and learning capabilities
+
+### 5. User Experience
+- Intuitive navigation between dashboards
+- Clear visual hierarchy and information architecture
+- Responsive design for different devices
+- Loading states and error handling
+
+---
+
+## Success Criteria
+
+The implementation should demonstrate:
+- **Real-time intelligence visualization** that goes beyond basic metrics
+- **Compelling visualizations** that showcase AI capabilities
+- **Interactive exploration** of system behavior and intelligence
+- **Professional presentation** suitable for stakeholder demos
+- **Technical excellence** with smooth performance and responsive design
+
+---
+
+## Sample Data Patterns
+
+### Agent Execution Data
+```javascript
+{
+  agentId: "code-quality-analyzer",
+  status: "running",
+  currentTask: "analyzing-python-module",
+  startTime: "2025-10-24T10:30:00Z",
+  performance: {
+    responseTime: 150,
+    successRate: 0.95,
+    throughput: 25
+  },
+  resourceUsage: {
+    cpu: 45,
+    memory: 128,
+    network: 5
+  }
+}
+```
+
+### Pattern Discovery Data
+```javascript
+{
+  patternId: "error-handling-retry-pattern",
+  discoveredAt: "2025-10-24T10:25:00Z",
+  qualityScore: 0.87,
+  usageCount: 156,
+  evolution: [
+    { timestamp: "2025-10-20T00:00:00Z", score: 0.72 },
+    { timestamp: "2025-10-22T00:00:00Z", score: 0.81 },
+    { timestamp: "2025-10-24T00:00:00Z", score: 0.87 }
+  ]
+}
+```
+
+### Intelligence Operation Data
+```javascript
+{
+  operationId: "semantic-code-analysis",
+  type: "quality-assessment",
+  input: "python-module.py",
+  result: {
+    qualityScore: 0.89,
+    improvements: ["add-error-handling", "optimize-performance"],
+    confidence: 0.92
+  },
+  processingTime: 250,
+  timestamp: "2025-10-24T10:30:00Z"
+}
+```
+
+---
+
+## Final Notes
+
+This is not just a monitoring dashboard - it's an **intelligence showcase**. The goal is to make the invisible AI capabilities visible and compelling. Focus on:
+
+1. **Showing AI in action** - not just metrics, but intelligence at work
+2. **Real-time learning** - patterns evolving, knowledge building
+3. **Interactive exploration** - let users dive deep into the intelligence
+4. **Compelling visuals** - animations and transitions that engage
+5. **Professional presentation** - suitable for stakeholder demos
+
+The dashboards should make people say "Wow, this is incredible AI!" not "Here are some charts and graphs."
+
+Build something that showcases the future of AI-powered development platforms! 🚀
