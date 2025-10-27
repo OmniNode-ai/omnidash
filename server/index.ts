@@ -6,6 +6,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupWebSocket } from './websocket';
+import { eventConsumer } from './event-consumer';
 
 const app = express();
 
@@ -54,6 +55,15 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Start Kafka event consumer
+  try {
+    await eventConsumer.start();
+    log('Event consumer started successfully');
+  } catch (error) {
+    console.error('Failed to start event consumer:', error);
+    console.error('Intelligence endpoints will not receive real-time data');
+  }
+
   // Setup WebSocket for real-time events
   if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
     setupWebSocket(server);
@@ -83,5 +93,24 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || '5000', 10);
   server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    log('SIGTERM received, shutting down gracefully');
+    await eventConsumer.stop();
+    server.close(() => {
+      log('Server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', async () => {
+    log('SIGINT received, shutting down gracefully');
+    await eventConsumer.stop();
+    server.close(() => {
+      log('Server closed');
+      process.exit(0);
+    });
   });
 })();
