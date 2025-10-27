@@ -37,37 +37,37 @@ export default function KnowledgeGraph() {
         <p className="text-muted-foreground">Interactive exploration of code relationships and dependencies</p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        <div className="xl:col-span-3 space-y-6">
-          <div className="grid grid-cols-4 gap-6">
-            <MetricCard 
-              label="Total Nodes"
-              value="15,847"
-              trend={{ value: 5.2, isPositive: true }}
-              icon={Database}
-              status="healthy"
-            />
-            <MetricCard 
-              label="Relationships"
-              value="42,391"
-              trend={{ value: 8.1, isPositive: true }}
-              icon={Network}
-              status="healthy"
-            />
-            <MetricCard 
-              label="Connected Components"
-              value="324"
-              icon={Link}
-              status="healthy"
-            />
-            <MetricCard 
-              label="Graph Density"
-              value="0.67"
-              icon={TrendingUp}
-              status="healthy"
-            />
-          </div>
+      <div className="grid grid-cols-4 gap-6">
+        <MetricCard 
+          label="Total Nodes"
+          value="15,847"
+          trend={{ value: 5.2, isPositive: true }}
+          icon={Database}
+          status="healthy"
+        />
+        <MetricCard 
+          label="Relationships"
+          value="42,391"
+          trend={{ value: 8.1, isPositive: true }}
+          icon={Network}
+          status="healthy"
+        />
+        <MetricCard 
+          label="Connected Components"
+          value="324"
+          icon={Link}
+          status="healthy"
+        />
+        <MetricCard 
+          label="Graph Density"
+          value="0.67"
+          icon={TrendingUp}
+          status="healthy"
+        />
+      </div>
 
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <div className="xl:col-span-3">
           <PatternNetwork patterns={nodes} height={600} onPatternClick={handleNodeClick} />
         </div>
 

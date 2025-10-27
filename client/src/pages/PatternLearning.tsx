@@ -44,57 +44,56 @@ export default function PatternLearning() {
         <p className="text-muted-foreground">Discovery and evolution of 25,000+ code patterns</p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 space-y-6">
-          <div className="grid grid-cols-4 gap-6">
-            <MetricCard 
-              label="Total Patterns"
-              value="25,847"
-              trend={{ value: 8.5, isPositive: true }}
-              icon={Database}
-              status="healthy"
-            />
-            <MetricCard 
-              label="New Today"
-              value="342"
-              trend={{ value: 15, isPositive: true }}
-              icon={TrendingUp}
-              status="healthy"
-            />
-            <MetricCard 
-              label="Avg Quality"
-              value="87%"
-              trend={{ value: 2.1, isPositive: true }}
-              icon={Award}
-              status="healthy"
-            />
-            <MetricCard 
-              label="Active Learning"
-              value="156"
-              icon={Database}
-              status="healthy"
-            />
-          </div>
+      <div className="grid grid-cols-4 gap-6">
+        <MetricCard 
+          label="Total Patterns"
+          value="25,847"
+          trend={{ value: 8.5, isPositive: true }}
+          icon={Database}
+          status="healthy"
+        />
+        <MetricCard 
+          label="New Today"
+          value="342"
+          trend={{ value: 15, isPositive: true }}
+          icon={TrendingUp}
+          status="healthy"
+        />
+        <MetricCard 
+          label="Avg Quality"
+          value="87%"
+          trend={{ value: 2.1, isPositive: true }}
+          icon={Award}
+          status="healthy"
+        />
+        <MetricCard 
+          label="Active Learning"
+          value="156"
+          icon={Database}
+          status="healthy"
+        />
+      </div>
 
+      <div className="grid grid-cols-2 gap-6">
+        <RealtimeChart 
+          title="Pattern Discovery Rate"
+          data={discoveryData}
+          color="hsl(var(--chart-2))"
+          showArea
+        />
+        <RealtimeChart 
+          title="Average Quality Score"
+          data={qualityData}
+          color="hsl(var(--chart-3))"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2">
           <PatternNetwork patterns={patterns} height={500} onPatternClick={handlePatternClick} />
         </div>
         
-        <div className="space-y-6">
-          <RealtimeChart 
-            title="Pattern Discovery Rate"
-            data={discoveryData}
-            color="hsl(var(--chart-2))"
-            showArea
-            height={240}
-          />
-          <RealtimeChart 
-            title="Average Quality Score"
-            data={qualityData}
-            color="hsl(var(--chart-3))"
-            height={240}
-          />
-          <TopPatternsList patterns={patterns} limit={6} />
-        </div>
+        <TopPatternsList patterns={patterns} limit={10} />
       </div>
 
       <DrillDownPanel

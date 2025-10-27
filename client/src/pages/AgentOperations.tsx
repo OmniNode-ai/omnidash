@@ -75,59 +75,58 @@ export default function AgentOperations() {
         <p className="text-muted-foreground">Real-time monitoring of 52 specialized AI agents</p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 space-y-6">
-          <div className="grid grid-cols-4 gap-6">
-            <MetricCard 
-              label="Active Agents"
-              value={activeAgents}
-              trend={{ value: 12, isPositive: true }}
-              icon={Activity}
-              status="healthy"
-            />
-            <MetricCard 
-              label="Total Agents"
-              value="52"
-              icon={Activity}
-              status="healthy"
-            />
-            <MetricCard 
-              label="Avg Response Time"
-              value={`${avgResponseTime}ms`}
-              icon={Clock}
-              status={avgResponseTime < 100 ? "healthy" : "warning"}
-            />
-            <MetricCard 
-              label="Success Rate"
-              value={`${avgSuccessRate}%`}
-              trend={{ value: 3.2, isPositive: true }}
-              icon={CheckCircle}
-              status="healthy"
-            />
-          </div>
+      <div className="grid grid-cols-4 gap-6">
+        <MetricCard 
+          label="Active Agents"
+          value={activeAgents}
+          trend={{ value: 12, isPositive: true }}
+          icon={Activity}
+          status="healthy"
+        />
+        <MetricCard 
+          label="Total Agents"
+          value="52"
+          icon={Activity}
+          status="healthy"
+        />
+        <MetricCard 
+          label="Avg Response Time"
+          value={`${avgResponseTime}ms`}
+          icon={Clock}
+          status={avgResponseTime < 100 ? "healthy" : "warning"}
+        />
+        <MetricCard 
+          label="Success Rate"
+          value={`${avgSuccessRate}%`}
+          trend={{ value: 3.2, isPositive: true }}
+          icon={CheckCircle}
+          status="healthy"
+        />
+      </div>
 
+      <div className="grid grid-cols-2 gap-6">
+        <RealtimeChart 
+          title="Agent Response Times"
+          data={chartData}
+          color="hsl(var(--chart-1))"
+        />
+        <RealtimeChart 
+          title="Task Completion Rate"
+          data={chartData}
+          color="hsl(var(--chart-2))"
+          showArea
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2">
           <AgentStatusGrid 
             agents={agents}
             onAgentClick={handleAgentClick}
           />
         </div>
         
-        <div className="space-y-6">
-          <RealtimeChart 
-            title="Agent Response Times"
-            data={chartData}
-            color="hsl(var(--chart-1))"
-            height={240}
-          />
-          <RealtimeChart 
-            title="Task Completion Rate"
-            data={chartData}
-            color="hsl(var(--chart-2))"
-            showArea
-            height={240}
-          />
-          <EventFeed events={events} maxHeight={300} />
-        </div>
+        <EventFeed events={events} maxHeight={400} />
       </div>
 
       <DrillDownPanel

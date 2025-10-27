@@ -48,56 +48,55 @@ export default function PlatformHealth() {
         <p className="text-muted-foreground">Comprehensive system health monitoring and operational metrics</p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 space-y-6">
-          <div className="grid grid-cols-4 gap-6">
-            <MetricCard 
-              label="Services Online"
-              value={`${healthyServices}/${services.length}`}
-              icon={Server}
-              status="healthy"
-            />
-            <MetricCard 
-              label="Avg Uptime"
-              value={`${avgUptime}%`}
-              trend={{ value: 0.2, isPositive: true }}
-              icon={Activity}
-              status="healthy"
-            />
-            <MetricCard 
-              label="Active Alerts"
-              value="2"
-              icon={AlertTriangle}
-              status="warning"
-            />
-            <MetricCard 
-              label="System Uptime"
-              value="44h 23m"
-              icon={Clock}
-              status="healthy"
-            />
-          </div>
+      <div className="grid grid-cols-4 gap-6">
+        <MetricCard 
+          label="Services Online"
+          value={`${healthyServices}/${services.length}`}
+          icon={Server}
+          status="healthy"
+        />
+        <MetricCard 
+          label="Avg Uptime"
+          value={`${avgUptime}%`}
+          trend={{ value: 0.2, isPositive: true }}
+          icon={Activity}
+          status="healthy"
+        />
+        <MetricCard 
+          label="Active Alerts"
+          value="2"
+          icon={AlertTriangle}
+          status="warning"
+        />
+        <MetricCard 
+          label="System Uptime"
+          value="44h 23m"
+          icon={Clock}
+          status="healthy"
+        />
+      </div>
 
+      <div className="grid grid-cols-2 gap-6">
+        <RealtimeChart 
+          title="CPU Usage"
+          data={cpuData}
+          color="hsl(var(--chart-4))"
+          showArea
+        />
+        <RealtimeChart 
+          title="Memory Usage"
+          data={memoryData}
+          color="hsl(var(--chart-5))"
+          showArea
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2">
           <ServiceStatusGrid services={services} />
         </div>
         
-        <div className="space-y-6">
-          <RealtimeChart 
-            title="CPU Usage"
-            data={cpuData}
-            color="hsl(var(--chart-4))"
-            showArea
-            height={240}
-          />
-          <RealtimeChart 
-            title="Memory Usage"
-            data={memoryData}
-            color="hsl(var(--chart-5))"
-            showArea
-            height={240}
-          />
-          <EventFeed events={events} maxHeight={300} />
-        </div>
+        <EventFeed events={events} maxHeight={400} />
       </div>
 
       <DrillDownPanel
