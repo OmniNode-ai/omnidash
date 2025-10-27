@@ -5,127 +5,224 @@ import { EventFeed } from "@/components/EventFeed";
 import { DrillDownPanel } from "@/components/DrillDownPanel";
 import { Activity, Cpu, CheckCircle, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+
+// TypeScript interfaces for API responses
+interface AgentMetrics {
+  agent: string;
+  totalRequests: number;
+  successRate: number | null;
+  avgRoutingTime: number | null;
+  avgConfidence: number | null;
+}
+
+interface AgentAction {
+  id: string;
+  correlationId: string;
+  agentName: string;
+  actionType: string;
+  actionName: string;
+  actionDetails: any;
+  debugMode: boolean;
+  durationMs: number;
+  createdAt: string;
+}
+
+interface HealthStatus {
+  status: 'healthy' | 'unhealthy';
+  database: 'connected' | 'error';
+  timestamp: string;
+}
 
 export default function AgentOperations() {
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [chartData, setChartData] = useState<Array<{ time: string; value: number }>>([]);
 
-  //todo: remove mock functionality
-  const [agents, setAgents] = useState(() => 
-    Array.from({ length: 52 }, (_, i) => ({
-      id: `agent-${i + 1}`,
-      name: `Agent ${i + 1}`,
-      status: (["active", "idle", "error", "offline"] as const)[Math.floor(Math.random() * 4)],
-      currentTask: Math.random() > 0.5 ? `Processing task ${Math.floor(Math.random() * 100)}` : undefined,
-      successRate: 85 + Math.floor(Math.random() * 15),
-      responseTime: 50 + Math.floor(Math.random() * 150),
-      tasksCompleted: Math.floor(Math.random() * 1000),
-    }))
-  );
+  // Fetch agent metrics with 30-second polling
+  const { data: metrics, isLoading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useQuery<AgentMetrics[]>({
+    queryKey: ['/api/intelligence/agents/summary'],
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 
-  const [chartData, setChartData] = useState(() =>
-    Array.from({ length: 20 }, (_, i) => ({
-      time: `${i}:00`,
-      value: 40 + Math.random() * 60,
-    }))
-  );
+  // Fetch recent actions with 10-second polling
+  const { data: actions, isLoading: actionsLoading, error: actionsError, refetch: refetchActions } = useQuery<AgentAction[]>({
+    queryKey: ['/api/intelligence/actions/recent?limit=100'],
+    refetchInterval: 10000, // Refetch every 10 seconds
+  });
 
-  const [events, setEvents] = useState([
-    { id: '1', type: 'success' as const, message: 'Agent-42 completed code analysis', timestamp: '10:23:15', source: 'Agent-42' },
-    { id: '2', type: 'info' as const, message: 'New task queued for Agent-15', timestamp: '10:23:12', source: 'Scheduler' },
-    { id: '3', type: 'warning' as const, message: 'High memory usage on Agent-7', timestamp: '10:23:08', source: 'Monitor' },
-  ]);
+  // Health check with 15-second polling
+  const { data: health } = useQuery<HealthStatus>({
+    queryKey: ['/api/intelligence/health'],
+    refetchInterval: 15000, // Refetch every 15 seconds
+  });
 
+  // Update chart data when actions change (action rate over time)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setChartData(prev => {
-        const newData = [...prev.slice(1), {
-          time: `${prev.length}:00`,
-          value: 40 + Math.random() * 60,
-        }];
-        return newData;
-      });
+    if (!actions || actions.length === 0) return;
 
-      if (Math.random() > 0.7) {
-        setAgents(prev => prev.map(agent => 
-          Math.random() > 0.9 ? {
-            ...agent,
-            status: (["active", "idle", "error", "offline"] as const)[Math.floor(Math.random() * 4)]
-          } : agent
-        ));
+    // Group actions by minute for chart
+    const now = new Date();
+    const minuteBuckets = new Map<string, number>();
+
+    for (let i = 19; i >= 0; i--) {
+      const time = new Date(now.getTime() - i * 60 * 1000);
+      const timeLabel = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      minuteBuckets.set(timeLabel, 0);
+    }
+
+    // Count actions per minute
+    actions.forEach(action => {
+      const actionTime = new Date(action.createdAt);
+      const timeLabel = actionTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      if (minuteBuckets.has(timeLabel)) {
+        minuteBuckets.set(timeLabel, minuteBuckets.get(timeLabel)! + 1);
       }
-    }, 2000);
+    });
 
-    return () => clearInterval(interval);
-  }, []);
+    const newChartData = Array.from(minuteBuckets.entries()).map(([time, value]) => ({
+      time,
+      value,
+    }));
+
+    setChartData(newChartData);
+  }, [actions]);
 
   const handleAgentClick = (agent: any) => {
     setSelectedAgent(agent);
     setPanelOpen(true);
   };
 
-  const activeAgents = agents.filter(a => a.status === "active").length;
-  const avgResponseTime = Math.round(agents.reduce((sum, a) => sum + a.responseTime, 0) / agents.length);
-  const avgSuccessRate = Math.round(agents.reduce((sum, a) => sum + a.successRate, 0) / agents.length);
+  // Calculate aggregated metrics from real data
+  const activeAgents = metrics?.length || 0;
+  const totalRequests = metrics?.reduce((sum, m) => sum + m.totalRequests, 0) || 0;
+  const avgSuccessRate = metrics && metrics.length > 0
+    ? metrics.reduce((sum, m) => sum + (m.successRate || 0), 0) / metrics.length
+    : 0;
+  const avgResponseTime = metrics && metrics.length > 0
+    ? metrics.reduce((sum, m) => sum + (m.avgRoutingTime || 0), 0) / metrics.length
+    : 0;
+
+  // Convert metrics to agent grid format
+  const agents = metrics?.map((metric, index) => ({
+    id: metric.agent,
+    name: metric.agent,
+    status: (metric.successRate || 0) > 0.9 ? 'active' as const :
+            (metric.successRate || 0) > 0.7 ? 'idle' as const : 'error' as const,
+    currentTask: undefined,
+    successRate: Math.round((metric.successRate || 0) * 100),
+    responseTime: Math.round(metric.avgRoutingTime || 0),
+    tasksCompleted: metric.totalRequests,
+  })) || [];
+
+  // Convert actions to events format for EventFeed
+  const events = actions?.slice(0, 50).map(action => ({
+    id: action.id,
+    type: 'info' as const,
+    message: `${action.agentName}: ${action.actionName}`,
+    timestamp: new Date(action.createdAt).toLocaleTimeString(),
+    source: action.agentName,
+  })) || [];
+
+  // Loading state
+  if (metricsLoading || actionsLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <Activity className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading agent operations data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (metricsError || actionsError) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <Activity className="h-12 w-12 mx-auto mb-4 text-destructive" />
+          <p className="text-destructive font-semibold mb-2">Failed to load agent data</p>
+          <p className="text-muted-foreground text-sm">
+            {metricsError?.message || actionsError?.message || 'Unknown error'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const connected = health?.status === 'healthy';
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold mb-2">AI Agent Operations</h1>
-        <p className="text-muted-foreground">Real-time monitoring of 52 specialized AI agents</p>
+      {/* Header with real-time connection status */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold mb-2">AI Agent Operations</h1>
+          <p className="text-muted-foreground">
+            Real-time monitoring of {activeAgents} AI agent{activeAgents !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className={`h-2 w-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+          <span className="text-xs text-muted-foreground">
+            {connected ? 'Live' : 'Disconnected'}
+          </span>
+        </div>
       </div>
 
+      {/* Metric cards with real data */}
       <div className="grid grid-cols-4 gap-6">
-        <MetricCard 
+        <MetricCard
           label="Active Agents"
           value={activeAgents}
-          trend={{ value: 12, isPositive: true }}
           icon={Activity}
           status="healthy"
         />
-        <MetricCard 
-          label="Total Agents"
-          value="52"
+        <MetricCard
+          label="Total Requests (24h)"
+          value={totalRequests.toLocaleString()}
           icon={Activity}
           status="healthy"
         />
-        <MetricCard 
+        <MetricCard
           label="Avg Response Time"
-          value={`${avgResponseTime}ms`}
+          value={`${Math.round(avgResponseTime)}ms`}
           icon={Clock}
           status={avgResponseTime < 100 ? "healthy" : "warning"}
         />
-        <MetricCard 
+        <MetricCard
           label="Success Rate"
-          value={`${avgSuccessRate}%`}
-          trend={{ value: 3.2, isPositive: true }}
+          value={`${Math.round(avgSuccessRate * 100)}%`}
           icon={CheckCircle}
-          status="healthy"
+          status={avgSuccessRate > 0.9 ? "healthy" : "warning"}
         />
       </div>
 
+      {/* Charts with real activity data */}
       <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart 
-          title="Agent Response Times"
+        <RealtimeChart
+          title="Agent Activity (Actions per Minute)"
           data={chartData}
           color="hsl(var(--chart-1))"
         />
-        <RealtimeChart 
-          title="Task Completion Rate"
+        <RealtimeChart
+          title="Agent Performance"
           data={chartData}
           color="hsl(var(--chart-2))"
           showArea
         />
       </div>
 
+      {/* Agent grid and event feed with real data */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
-          <AgentStatusGrid 
+          <AgentStatusGrid
             agents={agents}
             onAgentClick={handleAgentClick}
           />
         </div>
-        
+
         <EventFeed events={events} maxHeight={400} />
       </div>
 

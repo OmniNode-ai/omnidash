@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { intelligenceRouter } from "./intelligence-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -8,6 +9,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // use storage to perform CRUD operations on the storage interface
   // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+
+  // Mount intelligence routes for agent observability and metrics
+  app.use("/api/intelligence", intelligenceRouter);
 
   const httpServer = createServer(app);
 
