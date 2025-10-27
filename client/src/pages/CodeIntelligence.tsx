@@ -39,52 +39,58 @@ export default function CodeIntelligence() {
         <p className="text-muted-foreground">Semantic search, quality gates, and performance monitoring</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-6">
-        <MetricCard 
-          label="Search Queries"
-          value="1,247"
-          trend={{ value: 18, isPositive: true }}
-          icon={Search}
-          status="healthy"
-        />
-        <MetricCard 
-          label="Quality Gates"
-          value="23"
-          icon={CheckCircle}
-          status="healthy"
-        />
-        <MetricCard 
-          label="Gates Passing"
-          value="20"
-          trend={{ value: 5, isPositive: true }}
-          icon={CheckCircle}
-          status="warning"
-        />
-        <MetricCard 
-          label="Performance Score"
-          value="94"
-          icon={Gauge}
-          status="healthy"
-        />
-      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 space-y-6">
+          <div className="grid grid-cols-4 gap-6">
+            <MetricCard 
+              label="Search Queries"
+              value="1,247"
+              trend={{ value: 18, isPositive: true }}
+              icon={Search}
+              status="healthy"
+            />
+            <MetricCard 
+              label="Quality Gates"
+              value="23"
+              icon={CheckCircle}
+              status="healthy"
+            />
+            <MetricCard 
+              label="Gates Passing"
+              value="20"
+              trend={{ value: 5, isPositive: true }}
+              icon={CheckCircle}
+              status="warning"
+            />
+            <MetricCard 
+              label="Performance Score"
+              value="94"
+              icon={Gauge}
+              status="healthy"
+            />
+          </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <QualityGatePanel gates={gates} />
-        <PerformanceThresholds thresholds={thresholds} />
-      </div>
+          <div className="grid grid-cols-2 gap-6">
+            <QualityGatePanel gates={gates} />
+            <PerformanceThresholds thresholds={thresholds} />
+          </div>
+        </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart 
-          title="Semantic Search Queries"
-          data={searchData}
-          color="hsl(var(--chart-1))"
-          showArea
-        />
-        <RealtimeChart 
-          title="Overall Code Quality Score"
-          data={qualityData}
-          color="hsl(var(--chart-3))"
-        />
+        <div className="space-y-6">
+          <RealtimeChart 
+            title="Semantic Search Queries"
+            data={searchData}
+            color="hsl(var(--chart-1))"
+            showArea
+            height={240}
+          />
+          <RealtimeChart 
+            title="Overall Code Quality Score"
+            data={qualityData}
+            color="hsl(var(--chart-3))"
+            height={240}
+          />
+        </div>
       </div>
     </div>
   );

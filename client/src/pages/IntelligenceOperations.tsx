@@ -21,6 +21,11 @@ export default function IntelligenceOperations() {
     value: 120 + Math.random() * 50,
   }));
 
+  const qualityData = Array.from({ length: 20 }, (_, i) => ({
+    time: `${i}:00`,
+    value: 75 + Math.random() * 15,
+  }));
+
   const events = [
     { id: '1', type: 'success' as const, message: 'Code analysis completed for Repository-42', timestamp: '10:23:15', source: 'Analysis Engine' },
     { id: '2', type: 'info' as const, message: 'Quality score improved by 12% for Project-A', timestamp: '10:23:12', source: 'Quality Assessor' },
@@ -35,37 +40,37 @@ export default function IntelligenceOperations() {
         <p className="text-muted-foreground">168+ AI operations for code analysis and optimization</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-6">
-        <MetricCard 
-          label="Active Operations"
-          value="168"
-          trend={{ value: 5, isPositive: true }}
-          icon={Zap}
-          status="healthy"
-        />
-        <MetricCard 
-          label="Running Now"
-          value="42"
-          icon={Zap}
-          status="healthy"
-        />
-        <MetricCard 
-          label="Success Rate"
-          value="96.8%"
-          trend={{ value: 1.2, isPositive: true }}
-          icon={CheckCircle}
-          status="healthy"
-        />
-        <MetricCard 
-          label="Avg Processing"
-          value="1.8s"
-          icon={TrendingUp}
-          status="healthy"
-        />
-      </div>
-
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
+        <div className="xl:col-span-2 space-y-6">
+          <div className="grid grid-cols-4 gap-6">
+            <MetricCard 
+              label="Active Operations"
+              value="168"
+              trend={{ value: 5, isPositive: true }}
+              icon={Zap}
+              status="healthy"
+            />
+            <MetricCard 
+              label="Running Now"
+              value="42"
+              icon={Zap}
+              status="healthy"
+            />
+            <MetricCard 
+              label="Success Rate"
+              value="96.8%"
+              trend={{ value: 1.2, isPositive: true }}
+              icon={CheckCircle}
+              status="healthy"
+            />
+            <MetricCard 
+              label="Avg Processing"
+              value="1.8s"
+              icon={TrendingUp}
+              status="healthy"
+            />
+          </div>
+
           <Card className="p-6">
             <h3 className="text-base font-semibold mb-4">Operation Status</h3>
             <div className="grid grid-cols-2 gap-4">
@@ -90,21 +95,22 @@ export default function IntelligenceOperations() {
           </Card>
         </div>
         
-        <EventFeed events={events} maxHeight={400} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart 
-          title="Operations per Minute"
-          data={chartData}
-          color="hsl(var(--chart-4))"
-          showArea
-        />
-        <RealtimeChart 
-          title="Quality Improvement Impact"
-          data={chartData}
-          color="hsl(var(--chart-3))"
-        />
+        <div className="space-y-6">
+          <RealtimeChart 
+            title="Operations per Minute"
+            data={chartData}
+            color="hsl(var(--chart-4))"
+            showArea
+            height={240}
+          />
+          <RealtimeChart 
+            title="Quality Improvement Impact"
+            data={qualityData}
+            color="hsl(var(--chart-3))"
+            height={240}
+          />
+          <EventFeed events={events} maxHeight={280} />
+        </div>
       </div>
     </div>
   );

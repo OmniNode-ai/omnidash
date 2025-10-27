@@ -30,78 +30,84 @@ export default function DeveloperExperience() {
         <p className="text-muted-foreground">Workflow improvements and productivity metrics</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-6">
-        <MetricCard 
-          label="Active Developers"
-          value="247"
-          trend={{ value: 12, isPositive: true }}
-          icon={Users}
-          status="healthy"
-        />
-        <MetricCard 
-          label="Code Generated"
-          value="12.4k"
-          trend={{ value: 28, isPositive: true }}
-          icon={Code}
-          status="healthy"
-        />
-        <MetricCard 
-          label="Productivity Gain"
-          value="42%"
-          trend={{ value: 5, isPositive: true }}
-          icon={TrendingUp}
-          status="healthy"
-        />
-        <MetricCard 
-          label="Pattern Reuse"
-          value="87%"
-          trend={{ value: 8, isPositive: true }}
-          icon={Award}
-          status="healthy"
-        />
-      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 space-y-6">
+          <div className="grid grid-cols-4 gap-6">
+            <MetricCard 
+              label="Active Developers"
+              value="247"
+              trend={{ value: 12, isPositive: true }}
+              icon={Users}
+              status="healthy"
+            />
+            <MetricCard 
+              label="Code Generated"
+              value="12.4k"
+              trend={{ value: 28, isPositive: true }}
+              icon={Code}
+              status="healthy"
+            />
+            <MetricCard 
+              label="Productivity Gain"
+              value="42%"
+              trend={{ value: 5, isPositive: true }}
+              icon={TrendingUp}
+              status="healthy"
+            />
+            <MetricCard 
+              label="Pattern Reuse"
+              value="87%"
+              trend={{ value: 8, isPositive: true }}
+              icon={Award}
+              status="healthy"
+            />
+          </div>
 
-      <Card className="p-6">
-        <h3 className="text-base font-semibold mb-4">AI-Powered Workflows</h3>
-        <div className="grid grid-cols-2 gap-4">
-          {workflows.map((workflow) => (
-            <div 
-              key={workflow.id}
-              className="p-4 rounded-lg border border-card-border hover-elevate"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h4 className="font-medium text-sm mb-1">{workflow.name}</h4>
-                  <div className="text-xs text-muted-foreground">
-                    {workflow.completions} completions today
+          <Card className="p-6">
+            <h3 className="text-base font-semibold mb-4">AI-Powered Workflows</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {workflows.map((workflow) => (
+                <div 
+                  key={workflow.id}
+                  className="p-4 rounded-lg border border-card-border hover-elevate"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h4 className="font-medium text-sm mb-1">{workflow.name}</h4>
+                      <div className="text-xs text-muted-foreground">
+                        {workflow.completions} completions today
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-status-healthy border-status-healthy/30">
+                      +{workflow.improvement}%
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Avg Time:</span>
+                    <span className="font-mono">{workflow.avgTime}</span>
                   </div>
                 </div>
-                <Badge variant="outline" className="text-status-healthy border-status-healthy/30">
-                  +{workflow.improvement}%
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Avg Time:</span>
-                <span className="font-mono">{workflow.avgTime}</span>
-              </div>
+              ))}
             </div>
-          ))}
+          </Card>
         </div>
-      </Card>
 
-      <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart 
-          title="Development Velocity"
-          data={velocityData}
-          color="hsl(var(--chart-1))"
-          showArea
-        />
-        <RealtimeChart 
-          title="Developer Productivity Score"
-          data={productivityData}
-          color="hsl(var(--chart-2))"
-        />
+        <div className="space-y-6">
+          <RealtimeChart 
+            title="Development Velocity"
+            data={velocityData}
+            color="hsl(var(--chart-1))"
+            showArea
+            height={240}
+          />
+          <RealtimeChart 
+            title="Developer Productivity Score"
+            data={productivityData}
+            color="hsl(var(--chart-2))"
+            height={240}
+          />
+        </div>
       </div>
     </div>
   );

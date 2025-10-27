@@ -1,4 +1,4 @@
-import { Bot, Network, Zap, Code, Activity, Database, Server, Users, ChevronRight } from "lucide-react";
+import { Bot, Network, Zap, Code, Activity, Database, Server, Users, ChevronRight, MessageSquare } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -55,6 +55,14 @@ const dashboards = [
   },
 ];
 
+const tools = [
+  {
+    title: "AI Query Assistant",
+    url: "/chat",
+    icon: MessageSquare,
+  },
+];
+
 export function AppSidebar() {
   const [location] = useLocation();
 
@@ -68,6 +76,39 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {dashboards.map((item) => {
+                const isActive = location === item.url;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      asChild 
+                      className={cn(
+                        "group",
+                        isActive && "bg-sidebar-accent"
+                      )}
+                      data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.title}</span>
+                        {isActive && (
+                          <ChevronRight className="w-4 h-4 ml-auto text-sidebar-accent-foreground" />
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-xs uppercase tracking-wider px-3 mb-2">
+            Tools
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {tools.map((item) => {
                 const isActive = location === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>

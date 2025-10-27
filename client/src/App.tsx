@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Activity } from "lucide-react";
 
 import AgentOperations from "@/pages/AgentOperations";
@@ -15,6 +17,7 @@ import EventFlow from "@/pages/EventFlow";
 import KnowledgeGraph from "@/pages/KnowledgeGraph";
 import PlatformHealth from "@/pages/PlatformHealth";
 import DeveloperExperience from "@/pages/DeveloperExperience";
+import Chat from "@/pages/Chat";
 
 function Router() {
   return (
@@ -27,6 +30,7 @@ function Router() {
       <Route path="/knowledge" component={KnowledgeGraph} />
       <Route path="/health" component={PlatformHealth} />
       <Route path="/developer" component={DeveloperExperience} />
+      <Route path="/chat" component={Chat} />
     </Switch>
   );
 }
@@ -39,39 +43,44 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <SidebarProvider style={style as React.CSSProperties}>
-          <div className="flex h-screen w-full">
-            <AppSidebar />
-            <div className="flex flex-col flex-1 overflow-hidden">
-              <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-                <div className="flex items-center gap-4">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Activity className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h1 className="text-lg font-semibold">OmniNode</h1>
-                      <p className="text-xs text-muted-foreground">Code Intelligence Platform</p>
+      <ThemeProvider defaultTheme="dark">
+        <TooltipProvider>
+          <SidebarProvider style={style as React.CSSProperties}>
+            <div className="flex h-screen w-full">
+              <AppSidebar />
+              <div className="flex flex-col flex-1 overflow-hidden">
+                <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+                  <div className="flex items-center gap-4">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Activity className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <h1 className="text-lg font-semibold">OmniNode</h1>
+                        <p className="text-xs text-muted-foreground">Code Intelligence Platform</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-status-healthy animate-pulse" />
+                      <span className="text-xs text-muted-foreground">System Operational</span>
+                    </div>
+                    <ThemeToggle />
+                  </div>
+                </header>
                 
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-status-healthy animate-pulse" />
-                  <span className="text-xs text-muted-foreground">System Operational</span>
-                </div>
-              </header>
-              
-              <main className="flex-1 overflow-auto p-8">
-                <Router />
-              </main>
+                <main className="flex-1 overflow-auto p-8">
+                  <Router />
+                </main>
+              </div>
             </div>
-          </div>
-        </SidebarProvider>
-        <Toaster />
-      </TooltipProvider>
+          </SidebarProvider>
+          <Toaster />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
