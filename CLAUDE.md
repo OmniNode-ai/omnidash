@@ -2,14 +2,29 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ CRITICAL: Configuration Management
+
+**ALWAYS check `.env` file for actual configuration values before making assumptions!**
+
+Key configuration values (see `.env` for full details):
+- **Port**: 3000 (set in package.json: `PORT=3000 npm run dev`)
+- **Database Password**: `omninode_remote_2024_secure` (NOT `omninode-bridge-postgres-dev-2024`)
+- **Database URL**: `postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge`
+- **Kafka Brokers**: `192.168.86.200:9092`
+
+**Before running any commands that require configuration:**
+1. Read `.env` file to get actual values
+2. Use those exact values (don't guess or use old defaults)
+3. Server runs on port **3000**, not 5000!
+
 ## Common Commands
 
 **Development**:
 ```bash
-npm run dev         # Start development server with HMR (Vite + Express)
-npm run check       # TypeScript type checking across client/server/shared
-npm run build       # Build frontend (Vite) and backend (esbuild) for production
-npm start           # Run production build
+PORT=3000 npm run dev  # Start development server (port 3000)
+npm run check          # TypeScript type checking across client/server/shared
+npm run build          # Build frontend (Vite) and backend (esbuild) for production
+PORT=3000 npm start    # Run production build on port 3000
 ```
 
 **Database**:
@@ -17,9 +32,30 @@ npm start           # Run production build
 npm run db:push     # Push Drizzle schema changes to PostgreSQL
 ```
 
+**Testing APIs**:
+```bash
+# Use port 3000, not 5000!
+curl http://localhost:3000/api/intelligence/patterns/summary
+curl http://localhost:3000/api/intelligence/agents/summary
+```
+
+**Dashboard URLs** (always port 3000):
+- Agent Operations: http://localhost:3000/
+- Pattern Learning: http://localhost:3000/patterns
+- Intelligence Operations: http://localhost:3000/intelligence
+- Event Flow: http://localhost:3000/events
+- Code Intelligence: http://localhost:3000/code
+- Knowledge Graph: http://localhost:3000/knowledge
+- Platform Health: http://localhost:3000/health
+- Developer Experience: http://localhost:3000/developer
+- Chat: http://localhost:3000/chat
+
 **Environment**:
-- Requires `DATABASE_URL` environment variable for PostgreSQL connection
-- Runs on `PORT` env var (defaults to 5000) - other ports are firewalled
+- **ALWAYS CHECK `.env` FILE FIRST** for actual configuration values
+- Runs on `PORT=3000` (configured in package.json dev script, NOT 5000!)
+- Database: `postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge`
+- Kafka: `192.168.86.200:9092`
+- All configuration values in `.env` file - never assume defaults
 
 ## Project Architecture
 
