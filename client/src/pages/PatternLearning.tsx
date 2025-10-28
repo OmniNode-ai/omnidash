@@ -4,9 +4,12 @@ import { TopPatternsList } from "@/components/TopPatternsList";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { DrillDownPanel } from "@/components/DrillDownPanel";
 import { StatusLegend } from "@/components/StatusLegend";
+import { PatternFilters } from "@/components/PatternFilters";
+import { ExportButton } from "@/components/ExportButton";
+import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Database, TrendingUp, Award, AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 // TypeScript interfaces for API responses
@@ -56,29 +59,79 @@ export default function PatternLearning() {
   const [selectedPattern, setSelectedPattern] = useState<any>(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [patternType, setPatternType] = useState('all');
+  const [minQuality, setMinQuality] = useState(0);
+  const [minUsage, setMinUsage] = useState(0);
+
+  // Time range state
+  const [timeRange, setTimeRange] = useState(() => {
+    return localStorage.getItem('dashboard-timerange') || '24h';
+  });
+
+  const handleTimeRangeChange = (value: string) => {
+    setTimeRange(value);
+    localStorage.setItem('dashboard-timerange', value);
+  };
+
   // Fetch pattern summary metrics with 30-second polling
   const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery<PatternSummary>({
-    queryKey: ['/api/intelligence/patterns/summary'],
+    queryKey: [`http://localhost:3000/api/intelligence/patterns/summary?timeWindow=${timeRange}`],
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Fetch pattern discovery trends with 60-second polling
   const { data: discoveryData, isLoading: discoveryLoading } = useQuery<PatternTrend[]>({
-    queryKey: ['/api/intelligence/patterns/trends?timeWindow=24h'],
+    queryKey: [`http://localhost:3000/api/intelligence/patterns/trends?timeWindow=${timeRange}`],
     refetchInterval: 60000, // Refetch every 60 seconds
   });
 
   // Fetch pattern quality trends with 60-second polling
   const { data: qualityData, isLoading: qualityLoading } = useQuery<QualityTrend[]>({
-    queryKey: ['/api/intelligence/patterns/quality-trends?timeWindow=24h'],
+    queryKey: [`http://localhost:3000/api/intelligence/patterns/quality-trends?timeWindow=${timeRange}`],
     refetchInterval: 60000, // Refetch every 60 seconds
   });
 
   // Fetch pattern list with 30-second polling
   const { data: patterns, isLoading: patternsLoading, error: patternsError } = useQuery<Pattern[]>({
-    queryKey: ['/api/intelligence/patterns/list?limit=50'],
+    queryKey: [`http://localhost:3000/api/intelligence/patterns/list?limit=50&timeWindow=${timeRange}`],
     refetchInterval: 30000, // Refetch every 30 seconds
   });
+
+  // Filter patterns client-side based on filter criteria
+  const filteredPatterns = useMemo(() => {
+    if (!patterns) return [];
+
+    return patterns.filter(pattern => {
+      // Search filter - check name and description
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesName = pattern.name.toLowerCase().includes(query);
+        const matchesDescription = pattern.description?.toLowerCase().includes(query);
+        if (!matchesName && !matchesDescription) {
+          return false;
+        }
+      }
+
+      // Type filter
+      if (patternType !== 'all' && pattern.category !== patternType) {
+        return false;
+      }
+
+      // Quality filter (convert 0-1 to 0-100 percentage)
+      if (pattern.quality * 100 < minQuality) {
+        return false;
+      }
+
+      // Usage filter
+      if (pattern.usage && pattern.usage < minUsage) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [patterns, searchQuery, patternType, minQuality, minUsage]);
 
   const handlePatternClick = (pattern: any) => {
     setSelectedPattern(pattern);
@@ -114,11 +167,21 @@ export default function PatternLearning() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold mb-2">Pattern Learning</h1>
-        <p className="text-muted-foreground">
-          Discovery and evolution of {summary?.totalPatterns.toLocaleString() || '0'} code patterns
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold mb-2">Pattern Learning</h1>
+          <p className="text-muted-foreground">
+            Discovery and evolution of {summary?.totalPatterns.toLocaleString() || '0'} code patterns
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
+          <ExportButton
+            data={{ patterns: filteredPatterns, summary, discoveryData, qualityData }}
+            filename={`pattern-learning-${timeRange}-${new Date().toISOString().split('T')[0]}`}
+            disabled={!patterns}
+          />
+        </div>
       </div>
 
       {/* Status legend */}
@@ -163,13 +226,24 @@ export default function PatternLearning() {
         />
         <div className="space-y-4">
           {(() => {
+            // Check if quality data is empty or missing
+            const hasNoData = !qualityData || qualityData.length === 0;
+
             // Check if quality data is flat (all values close to 0.85)
             const isFlat = qualityData && qualityData.length > 0 &&
               qualityData.every(d => Math.abs(d.avgQuality - 0.85) < 0.01);
 
             return (
               <>
-                {isFlat && (
+                {hasNoData && !qualityLoading && (
+                  <Alert className="border-status-warning/50 bg-status-warning/10">
+                    <AlertTriangle className="h-4 w-4 text-status-warning" />
+                    <AlertDescription className="text-status-warning">
+                      No quality score data available yet. Quality tracking service may not be configured or has no historical data.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {isFlat && !hasNoData && (
                   <Alert className="border-status-warning/50 bg-status-warning/10">
                     <AlertTriangle className="h-4 w-4 text-status-warning" />
                     <AlertDescription className="text-status-warning">
@@ -192,13 +266,25 @@ export default function PatternLearning() {
         </div>
       </div>
 
+      {/* Pattern Filters */}
+      <PatternFilters
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        patternType={patternType}
+        onTypeChange={setPatternType}
+        minQuality={minQuality}
+        onQualityChange={setMinQuality}
+        minUsage={minUsage}
+        onUsageChange={setMinUsage}
+      />
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
-          <PatternNetwork patterns={patterns || []} height={500} onPatternClick={handlePatternClick} />
+          <PatternNetwork patterns={filteredPatterns} height={500} onPatternClick={handlePatternClick} />
         </div>
 
         <TopPatternsList
-          patterns={(patterns || []).map(p => ({
+          patterns={filteredPatterns.map(p => ({
             ...p,
             usageCount: p.usage,
             trend: p.trendPercentage // Use actual percentage from API

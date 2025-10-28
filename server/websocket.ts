@@ -1,4 +1,4 @@
-import WebSocket from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 import { Server as HTTPServer } from 'http';
 import type { IncomingMessage } from 'http';
 import { eventConsumer } from './event-consumer';
@@ -8,12 +8,13 @@ interface ClientData {
   subscriptions: Set<string>;
   lastPing: Date;
   isAlive: boolean;
+  missedPings: number;
 }
 
 export function setupWebSocket(httpServer: HTTPServer) {
   console.log('Initializing WebSocket server...');
 
-  const wss = new WebSocket.Server({
+  const wss = new WebSocketServer({
     server: httpServer,
     path: '/ws'
   });
@@ -21,19 +22,31 @@ export function setupWebSocket(httpServer: HTTPServer) {
   // Track connected clients with their preferences
   const clients = new Map<WebSocket, ClientData>();
 
-  // Heartbeat interval (30 seconds)
+  // Heartbeat interval (30 seconds) with tolerance for missed pings
+  const HEARTBEAT_INTERVAL_MS = 30000;
+  const MAX_MISSED_PINGS = 2; // Allow 2 missed pings before terminating (60s total)
+
   const heartbeatInterval = setInterval(() => {
     clients.forEach((clientData, ws) => {
       if (!clientData.isAlive) {
-        console.log('Client failed heartbeat, terminating connection');
-        clients.delete(ws);
-        return ws.terminate();
+        clientData.missedPings++;
+        console.log(`Client missed heartbeat (${clientData.missedPings}/${MAX_MISSED_PINGS})`);
+
+        // Only terminate after multiple missed pings
+        if (clientData.missedPings >= MAX_MISSED_PINGS) {
+          console.log('Client failed multiple heartbeats, terminating connection');
+          clients.delete(ws);
+          return ws.terminate();
+        }
+      } else {
+        // Reset missed pings if client responded
+        clientData.missedPings = 0;
       }
 
       clientData.isAlive = false;
       ws.ping();
     });
-  }, 30000);
+  }, HEARTBEAT_INTERVAL_MS);
 
   // Broadcast helper function with filtering
   const broadcast = (type: string, data: any, eventType?: string) => {
@@ -97,7 +110,8 @@ export function setupWebSocket(httpServer: HTTPServer) {
       ws,
       subscriptions: new Set(['all']), // Subscribe to all by default
       lastPing: new Date(),
-      isAlive: true
+      isAlive: true,
+      missedPings: 0
     };
 
     clients.set(ws, clientData);

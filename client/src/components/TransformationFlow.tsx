@@ -93,13 +93,28 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
   const sourceNodes = new Set(sankey.links.map(l => l.source));
   const targetNodes = new Set(sankey.links.map(l => l.target));
 
-  // Separate into left (sources) and right (targets) columns
-  const leftNodes = Array.from(sourceNodes);
-  const rightNodes = Array.from(targetNodes).filter(n => !sourceNodes.has(n));
+  // Calculate transformation counts for sorting
+  const targetCounts: Record<string, number> = {};
+  const sourceCounts: Record<string, number> = {};
+
+  sankey.links.forEach(link => {
+    targetCounts[link.target] = (targetCounts[link.target] || 0) + link.value;
+    sourceCounts[link.source] = (sourceCounts[link.source] || 0) + link.value;
+  });
+
+  // Separate into left (sources) and right (targets) columns, sorted by count (descending)
+  const leftNodes = Array.from(sourceNodes).sort((a, b) =>
+    (sourceCounts[b] || 0) - (sourceCounts[a] || 0)
+  );
+  const rightNodes = Array.from(targetNodes).filter(n => !sourceNodes.has(n)).sort((a, b) =>
+    (targetCounts[b] || 0) - (targetCounts[a] || 0)
+  );
 
   // If a node is both source and target, it appears on both sides
   const allLeftNodes = leftNodes;
-  const allRightNodes = [...leftNodes.filter(n => targetNodes.has(n)), ...rightNodes];
+  const allRightNodes = [...leftNodes.filter(n => targetNodes.has(n)), ...rightNodes].sort((a, b) =>
+    (targetCounts[b] || 0) - (targetCounts[a] || 0)
+  );
 
   const nodeHeight = 40;
   const nodeSpacing = 16;

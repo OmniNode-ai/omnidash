@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, Clock, CheckCircle, AlertCircle, Code, Database, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ExportButton } from "@/components/ExportButton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -161,6 +162,13 @@ export default function CorrelationTrace() {
       {/* Summary Section */}
       {traceData && traceData.events.length > 0 && (
         <>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Trace Results</h2>
+            <ExportButton
+              data={traceData}
+              filename={`correlation-trace-${searchId}-${new Date().toISOString().split('T')[0]}`}
+            />
+          </div>
           <div className="grid gap-4 md:grid-cols-5">
             <Card>
               <CardHeader className="pb-3">

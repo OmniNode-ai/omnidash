@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, AlertTriangle, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
+import { AlertPill } from "@/components/AlertPill";
 
 interface Alert {
   level: "critical" | "warning";
@@ -36,10 +35,6 @@ export function AlertBanner() {
     (alert) => !dismissedAlerts.has(`${alert.level}:${alert.message}`)
   ) || [];
 
-  // Separate by level
-  const criticalAlerts = activeAlerts.filter((a) => a.level === "critical");
-  const warningAlerts = activeAlerts.filter((a) => a.level === "warning");
-
   // Don't render if no active alerts
   if (isLoading || activeAlerts.length === 0) {
     return null;
@@ -55,63 +50,14 @@ export function AlertBanner() {
   };
 
   return (
-    <div className="space-y-2 px-6 py-4 border-b border-border bg-background">
-      {/* Critical Alerts */}
-      {criticalAlerts.map((alert, index) => (
-        <div
-          key={`critical-${index}`}
-          className={cn(
-            "flex items-center justify-between gap-4 px-4 py-3 rounded-lg",
-            "bg-status-error/10 border border-status-error/20"
-          )}
-          data-testid="alert-critical"
-        >
-          <div className="flex items-center gap-3 flex-1">
-            <div className="p-2 rounded-lg bg-status-error/20">
-              <AlertCircle className="w-5 h-5 text-status-error" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-status-error">Critical Alert</div>
-              <div className="text-sm text-foreground">{alert.message}</div>
-            </div>
-          </div>
-          <button
-            onClick={() => handleDismiss(alert)}
-            className="p-1 rounded-lg hover:bg-status-error/20 transition-colors"
-            aria-label="Dismiss alert"
-          >
-            <X className="w-4 h-4 text-status-error" />
-          </button>
-        </div>
-      ))}
-
-      {/* Warning Alerts */}
-      {warningAlerts.map((alert, index) => (
-        <div
-          key={`warning-${index}`}
-          className={cn(
-            "flex items-center justify-between gap-4 px-4 py-3 rounded-lg",
-            "bg-status-warning/10 border border-status-warning/20"
-          )}
-          data-testid="alert-warning"
-        >
-          <div className="flex items-center gap-3 flex-1">
-            <div className="p-2 rounded-lg bg-status-warning/20">
-              <AlertTriangle className="w-5 h-5 text-status-warning" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-status-warning">Warning</div>
-              <div className="text-sm text-foreground">{alert.message}</div>
-            </div>
-          </div>
-          <button
-            onClick={() => handleDismiss(alert)}
-            className="p-1 rounded-lg hover:bg-status-warning/20 transition-colors"
-            aria-label="Dismiss alert"
-          >
-            <X className="w-4 h-4 text-status-warning" />
-          </button>
-        </div>
+    <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {activeAlerts.map((alert, index) => (
+        <AlertPill
+          key={`${alert.level}-${index}`}
+          level={alert.level}
+          message={alert.message}
+          onDismiss={() => handleDismiss(alert)}
+        />
       ))}
     </div>
   );

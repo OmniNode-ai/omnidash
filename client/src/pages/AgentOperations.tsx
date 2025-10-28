@@ -4,9 +4,12 @@ import { RealtimeChart } from "@/components/RealtimeChart";
 import { EventFeed } from "@/components/EventFeed";
 import { DrillDownPanel } from "@/components/DrillDownPanel";
 import { StatusLegend } from "@/components/StatusLegend";
+import { TimeRangeSelector } from "@/components/TimeRangeSelector";
+import { ExportButton } from "@/components/ExportButton";
 import { Activity, Cpu, CheckCircle, Clock } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 // TypeScript interfaces for API responses
 interface AgentMetrics {
@@ -36,26 +39,75 @@ interface HealthStatus {
 }
 
 export default function AgentOperations() {
+  const queryClient = useQueryClient();
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [chartData, setChartData] = useState<Array<{ time: string; value: number }>>([]);
+  const [timeRange, setTimeRange] = useState(() => {
+    return localStorage.getItem('dashboard-timerange') || '24h';
+  });
 
-  // Fetch agent metrics with 30-second polling
+  // Throttle query invalidations to prevent excessive re-renders
+  const lastInvalidationRef = useRef<{ [key: string]: number }>({});
+  const INVALIDATION_THROTTLE_MS = 1000; // Wait 1 second between invalidations
+
+  const throttledInvalidate = useCallback((queryKey: string[]) => {
+    const key = queryKey.join(':');
+    const now = Date.now();
+    const lastTime = lastInvalidationRef.current[key] || 0;
+
+    if (now - lastTime > INVALIDATION_THROTTLE_MS) {
+      lastInvalidationRef.current[key] = now;
+      queryClient.invalidateQueries({ queryKey });
+    }
+  }, [queryClient]);
+
+  const handleTimeRangeChange = useCallback((value: string) => {
+    setTimeRange(value);
+    localStorage.setItem('dashboard-timerange', value);
+  }, []);
+
+  // WebSocket for real-time updates with throttled invalidations
+  const { isConnected, connectionStatus } = useWebSocket({
+    onMessage: useCallback((message: { type: string; data?: any; message?: string; timestamp: string }) => {
+      // Throttled query invalidations to prevent excessive re-renders
+      switch (message.type) {
+        case 'AGENT_METRIC_UPDATE':
+          throttledInvalidate([`/api/intelligence/agents/summary`]);
+          break;
+        case 'AGENT_ACTION':
+          throttledInvalidate([`/api/intelligence/actions/recent`]);
+          break;
+        case 'ROUTING_DECISION':
+          // Routing decisions affect metrics
+          throttledInvalidate([`/api/intelligence/agents/summary`]);
+          break;
+        case 'INITIAL_STATE':
+          // Refresh all data on initial state (no throttle for initial state)
+          queryClient.invalidateQueries();
+          break;
+        case 'CONSUMER_STATUS':
+          // Only invalidate health if status actually changed (reduce noise)
+          throttledInvalidate(['/api/intelligence/health']);
+          break;
+      }
+    }, [throttledInvalidate, queryClient]),
+    debug: false,
+  });
+
+  // Fetch agent metrics (updated via WebSocket)
   const { data: metrics, isLoading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useQuery<AgentMetrics[]>({
-    queryKey: ['/api/intelligence/agents/summary'],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    queryKey: [`/api/intelligence/agents/summary?timeWindow=${timeRange}`],
   });
 
-  // Fetch recent actions with 10-second polling
+  // Fetch recent actions (updated via WebSocket)
   const { data: actions, isLoading: actionsLoading, error: actionsError, refetch: refetchActions } = useQuery<AgentAction[]>({
-    queryKey: ['/api/intelligence/actions/recent?limit=100'],
-    refetchInterval: 10000, // Refetch every 10 seconds
+    queryKey: [`/api/intelligence/actions/recent?limit=100&timeWindow=${timeRange}`],
   });
 
-  // Health check with 15-second polling
+  // Health check (updated via WebSocket)
   const { data: health } = useQuery<HealthStatus>({
     queryKey: ['/api/intelligence/health'],
-    refetchInterval: 15000, // Refetch every 15 seconds
   });
 
   // Update chart data when actions change (action rate over time)
@@ -89,48 +141,56 @@ export default function AgentOperations() {
     setChartData(newChartData);
   }, [actions]);
 
-  const handleAgentClick = (agent: any) => {
+  const handleAgentClick = useCallback((agent: any) => {
     setSelectedAgent(agent);
     setPanelOpen(true);
-  };
+  }, []);
 
-  // Calculate aggregated metrics from real data
-  const activeAgents = metrics?.length || 0;
-  const totalRequests = metrics?.reduce((sum, m) => sum + m.totalRequests, 0) || 0;
-  const avgSuccessRate = metrics && metrics.length > 0
-    ? metrics.reduce((sum, m) => sum + (m.successRate || 0), 0) / metrics.length
-    : 0;
-  const avgResponseTime = metrics && metrics.length > 0
-    ? metrics.reduce((sum, m) => sum + (m.avgRoutingTime || 0), 0) / metrics.length
-    : 0;
+  // Memoize aggregated metrics to prevent recalculation on every render
+  const aggregatedMetrics = useMemo(() => {
+    const activeAgents = metrics?.length || 0;
+    const totalRequests = metrics?.reduce((sum, m) => sum + m.totalRequests, 0) || 0;
+    const avgSuccessRate = metrics && metrics.length > 0
+      ? metrics.reduce((sum, m) => sum + (m.successRate || 0), 0) / metrics.length
+      : 0;
+    const avgResponseTime = metrics && metrics.length > 0
+      ? metrics.reduce((sum, m) => sum + (m.avgRoutingTime || 0), 0) / metrics.length
+      : 0;
 
-  // Convert metrics to agent grid format
-  const agents = metrics?.map((metric, index) => {
-    // Use confidence score as quality proxy (displayed in agent grid bottom boxes)
-    const quality = Math.round((metric.avgConfidence || 0) * 100);
-    const successRate = Math.round((metric.successRate || 0) * 100);
+    return { activeAgents, totalRequests, avgSuccessRate, avgResponseTime };
+  }, [metrics]);
 
-    return {
-      id: metric.agent,
-      name: metric.agent,
-      status: successRate > 90 ? 'active' as const :
-              successRate > 70 ? 'idle' as const : 'error' as const,
-      currentTask: undefined,
-      successRate,
-      quality, // Add quality based on confidence score
-      responseTime: Math.round(metric.avgRoutingTime || 0),
-      tasksCompleted: metric.totalRequests,
-    };
-  }) || [];
+  // Memoize agent grid data to prevent recalculation
+  const agents = useMemo(() => {
+    return metrics?.map((metric) => {
+      // Use confidence score as quality proxy (displayed in agent grid bottom boxes)
+      const quality = Math.round((metric.avgConfidence || 0) * 100);
+      const successRate = Math.round((metric.successRate || 0) * 100);
 
-  // Convert actions to events format for EventFeed
-  const events = actions?.slice(0, 50).map(action => ({
-    id: action.id,
-    type: 'info' as const,
-    message: `${action.agentName}: ${action.actionName}`,
-    timestamp: new Date(action.createdAt).toLocaleTimeString(),
-    source: action.agentName,
-  })) || [];
+      return {
+        id: metric.agent,
+        name: metric.agent,
+        status: successRate > 90 ? 'active' as const :
+                successRate > 70 ? 'idle' as const : 'error' as const,
+        currentTask: undefined,
+        successRate,
+        quality,
+        responseTime: Math.round(metric.avgRoutingTime || 0),
+        tasksCompleted: metric.totalRequests,
+      };
+    }) || [];
+  }, [metrics]);
+
+  // Memoize events to prevent recalculation
+  const events = useMemo(() => {
+    return actions?.slice(0, 50).map(action => ({
+      id: action.id,
+      type: 'info' as const,
+      message: `${action.agentName}: ${action.actionName}`,
+      timestamp: new Date(action.createdAt).toLocaleTimeString(),
+      source: action.agentName,
+    })) || [];
+  }, [actions]);
 
   // Loading state
   if (metricsLoading || actionsLoading) {
@@ -159,23 +219,23 @@ export default function AgentOperations() {
     );
   }
 
-  const connected = health?.status === 'healthy';
-
   return (
     <div className="space-y-6">
-      {/* Header with real-time connection status */}
+      {/* Header with controls */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold mb-2">AI Agent Operations</h1>
           <p className="text-muted-foreground">
-            Real-time monitoring of {activeAgents} AI agent{activeAgents !== 1 ? 's' : ''}
+            Real-time monitoring of {aggregatedMetrics.activeAgents} AI agent{aggregatedMetrics.activeAgents !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className={`h-2 w-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
-          <span className="text-xs text-muted-foreground">
-            {connected ? 'Live' : 'Disconnected'}
-          </span>
+        <div className="flex items-center gap-4">
+          <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
+          <ExportButton
+            data={{ metrics, actions, summary: aggregatedMetrics }}
+            filename={`agent-operations-${timeRange}-${new Date().toISOString().split('T')[0]}`}
+            disabled={!metrics || !actions}
+          />
         </div>
       </div>
 
@@ -185,29 +245,29 @@ export default function AgentOperations() {
       {/* Metric cards with real data */}
       <div className="grid grid-cols-4 gap-6">
         <MetricCard
-          label="Active Agents (24h)"
-          value={activeAgents}
+          label={`Active Agents (${timeRange})`}
+          value={aggregatedMetrics.activeAgents}
           icon={Activity}
           status="healthy"
         />
         <MetricCard
-          label="Total Requests (24h)"
-          value={totalRequests.toLocaleString()}
+          label={`Total Requests (${timeRange})`}
+          value={aggregatedMetrics.totalRequests.toLocaleString()}
           icon={Activity}
           status="healthy"
         />
         <MetricCard
           label="Avg Response Time"
-          value={`${Math.round(avgResponseTime)}ms`}
+          value={`${Math.round(aggregatedMetrics.avgResponseTime)}ms`}
           icon={Clock}
-          status={avgResponseTime < 100 ? "healthy" : "warning"}
+          status={aggregatedMetrics.avgResponseTime < 100 ? "healthy" : "warning"}
           tooltip="Target: < 100ms"
         />
         <MetricCard
           label="Success Rate"
-          value={`${Math.round(avgSuccessRate * 100)}%`}
+          value={`${Math.round(aggregatedMetrics.avgSuccessRate * 100)}%`}
           icon={CheckCircle}
-          status={avgSuccessRate > 0.9 ? "healthy" : "warning"}
+          status={aggregatedMetrics.avgSuccessRate > 0.9 ? "healthy" : "warning"}
           tooltip="Target: > 90%"
         />
       </div>

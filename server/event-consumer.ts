@@ -35,6 +35,17 @@ export interface RoutingDecision {
   createdAt: Date;
 }
 
+export interface TransformationEvent {
+  id: string;
+  correlationId: string;
+  sourceAgent: string;
+  targetAgent: string;
+  transformationDurationMs: number;
+  success: boolean;
+  confidenceScore: number;
+  createdAt: Date;
+}
+
 /**
  * EventConsumer class for aggregating Kafka events and emitting updates
  *
@@ -42,6 +53,8 @@ export interface RoutingDecision {
  * - 'metricUpdate': When agent metrics are updated (AgentMetrics[])
  * - 'actionUpdate': When new agent action arrives (AgentAction)
  * - 'routingUpdate': When new routing decision arrives (RoutingDecision)
+ * - 'transformationUpdate': When new transformation event arrives (TransformationEvent)
+ * - 'performanceUpdate': When new performance metric arrives (metric, stats)
  * - 'error': When error occurs during processing (Error)
  * - 'connected': When consumer successfully connects
  * - 'disconnected': When consumer disconnects
@@ -66,6 +79,29 @@ class EventConsumer extends EventEmitter {
 
   private routingDecisions: RoutingDecision[] = [];
   private maxDecisions = 100;
+
+  private recentTransformations: TransformationEvent[] = [];
+  private maxTransformations = 100;
+
+  // Performance metrics storage
+  private performanceMetrics: Array<{
+    id: string;
+    correlationId: string;
+    queryText: string;
+    routingDurationMs: number;
+    cacheHit: boolean;
+    candidatesEvaluated: number;
+    triggerMatchStrategy: string;
+    createdAt: Date;
+  }> = [];
+
+  // Aggregated stats for quick access
+  private performanceStats = {
+    totalQueries: 0,
+    cacheHitCount: 0,
+    avgRoutingDuration: 0,
+    totalRoutingDuration: 0,
+  };
 
   constructor() {
     super(); // Initialize EventEmitter
@@ -117,12 +153,12 @@ class EventConsumer extends EventEmitter {
                 this.handleAgentAction(event);
                 break;
               case 'agent-transformation-events':
-                console.log('[EventConsumer] Received transformation event (not yet implemented)');
-                // Future: handle transformation events
+                console.log(`[EventConsumer] Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`);
+                this.handleTransformationEvent(event);
                 break;
               case 'router-performance-metrics':
-                console.log('[EventConsumer] Received performance metric (not yet implemented)');
-                // Future: handle performance metrics
+                console.log(`[EventConsumer] Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`);
+                this.handlePerformanceMetric(event);
                 break;
             }
           } catch (error) {
@@ -247,6 +283,72 @@ class EventConsumer extends EventEmitter {
     this.emit('actionUpdate', action);
   }
 
+  private handleTransformationEvent(event: any) {
+    const transformation: TransformationEvent = {
+      id: event.id || crypto.randomUUID(),
+      correlationId: event.correlation_id || event.correlationId,
+      sourceAgent: event.source_agent || event.sourceAgent,
+      targetAgent: event.target_agent || event.targetAgent,
+      transformationDurationMs: event.transformation_duration_ms || event.transformationDurationMs || 0,
+      success: event.success ?? true,
+      confidenceScore: event.confidence_score || event.confidenceScore || 0,
+      createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
+    };
+
+    this.recentTransformations.unshift(transformation);
+    console.log(`[EventConsumer] Added transformation to queue: ${transformation.sourceAgent} → ${transformation.targetAgent}, queue size: ${this.recentTransformations.length}`);
+
+    // Keep only last N transformations
+    if (this.recentTransformations.length > this.maxTransformations) {
+      this.recentTransformations = this.recentTransformations.slice(0, this.maxTransformations);
+    }
+
+    // Emit update event for WebSocket broadcast
+    this.emit('transformationUpdate', transformation);
+  }
+
+  private handlePerformanceMetric(event: any): void {
+    try {
+      const metric = {
+        id: event.id || crypto.randomUUID(),
+        correlationId: event.correlation_id || event.correlationId,
+        queryText: event.query_text || event.queryText || '',
+        routingDurationMs: event.routing_duration_ms || event.routingDurationMs || 0,
+        cacheHit: event.cache_hit ?? event.cacheHit ?? false,
+        candidatesEvaluated: event.candidates_evaluated || event.candidatesEvaluated || 0,
+        triggerMatchStrategy: event.trigger_match_strategy || event.triggerMatchStrategy || 'unknown',
+        createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
+      };
+
+      // Store in memory (limit to 200 recent)
+      this.performanceMetrics.unshift(metric);
+      if (this.performanceMetrics.length > 200) {
+        this.performanceMetrics = this.performanceMetrics.slice(0, 200);
+      }
+
+      // Update aggregated stats
+      this.performanceStats.totalQueries++;
+      if (metric.cacheHit) {
+        this.performanceStats.cacheHitCount++;
+      }
+      this.performanceStats.totalRoutingDuration += metric.routingDurationMs;
+      this.performanceStats.avgRoutingDuration =
+        this.performanceStats.totalRoutingDuration / this.performanceStats.totalQueries;
+
+      // Emit for WebSocket broadcast
+      this.emit('performanceUpdate', {
+        metric,
+        stats: { ...this.performanceStats },
+      });
+
+      console.log(
+        `[EventConsumer] Processed performance metric: ${metric.routingDurationMs}ms, cache hit: ${metric.cacheHit}, strategy: ${metric.triggerMatchStrategy}`
+      );
+    } catch (error) {
+      console.error('[EventConsumer] Error processing performance metric:', error);
+    }
+  }
+
   private cleanupOldMetrics() {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const entries = Array.from(this.agentMetrics.entries());
@@ -338,6 +440,24 @@ class EventConsumer extends EventEmitter {
     }
 
     return decisions;
+  }
+
+  getRecentTransformations(limit: number = 50): TransformationEvent[] {
+    return this.recentTransformations.slice(0, limit);
+  }
+
+  getPerformanceMetrics(limit: number = 100): Array<any> {
+    return this.performanceMetrics.slice(0, limit);
+  }
+
+  getPerformanceStats() {
+    return {
+      ...this.performanceStats,
+      cacheHitRate:
+        this.performanceStats.totalQueries > 0
+          ? (this.performanceStats.cacheHitCount / this.performanceStats.totalQueries) * 100
+          : 0,
+    };
   }
 
   getHealthStatus() {

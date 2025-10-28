@@ -115,7 +115,7 @@ export async function getSuccessRate(timeWindow: string): Promise<number> {
         totalDecisions: sql<number>`COUNT(*)::int`,
         successfulDecisions: sql<number>`
           COUNT(*) FILTER (
-            WHERE ${agentRoutingDecisions.actualSuccess} = TRUE
+            WHERE ${agentRoutingDecisions.executionSucceeded} = TRUE
           )::int
         `,
       })

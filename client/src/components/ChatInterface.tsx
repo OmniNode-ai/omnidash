@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, Search, MessageSquare } from "lucide-react";
+import { Send, Search, MessageSquare, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -21,28 +22,42 @@ interface Conversation {
   timestamp: Date;
 }
 
+interface ChatHistoryMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+interface ChatHistoryResponse {
+  messages: ChatHistoryMessage[];
+}
+
 export function ChatInterface() {
-  //todo: remove mock functionality
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: '1',
-      title: 'Show me all agents with errors',
-      messages: [
-        { id: '1', role: 'user', content: 'Show me all agents with errors', timestamp: new Date(Date.now() - 3600000) },
-        { id: '2', role: 'assistant', content: 'I found 3 agents with errors: Agent-7, Agent-15, and Agent-23. Would you like detailed information about any of them?', timestamp: new Date(Date.now() - 3590000) },
-      ],
-      timestamp: new Date(Date.now() - 3600000),
-    },
-    {
-      id: '2',
-      title: 'What patterns were discovered today?',
-      messages: [
-        { id: '1', role: 'user', content: 'What patterns were discovered today?', timestamp: new Date(Date.now() - 7200000) },
-        { id: '2', role: 'assistant', content: 'Today we discovered 342 new patterns. The top categories are: React Hooks (87), API Optimization (64), State Management (52), and Error Handling (43).', timestamp: new Date(Date.now() - 7190000) },
-      ],
-      timestamp: new Date(Date.now() - 7200000),
-    },
-  ]);
+  // Fetch chat history from omniarchon
+  const { data: chatHistory, isLoading, error } = useQuery<ChatHistoryResponse>({
+    queryKey: ['http://localhost:8053/api/intelligence/chat/history'],
+    refetchInterval: 60000, // Refetch every minute
+  });
+
+  // Transform API response to conversations format
+  const conversations: Conversation[] = chatHistory?.messages
+    ? chatHistory.messages.reduce<Conversation[]>((acc, msg) => {
+        // Group messages by conversation (simple approach: one message per conversation for now)
+        const conversation: Conversation = {
+          id: msg.id,
+          title: msg.role === 'user' ? msg.content.slice(0, 50) + (msg.content.length > 50 ? '...' : '') : 'Response',
+          messages: [{
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+            timestamp: new Date(msg.timestamp),
+          }],
+          timestamp: new Date(msg.timestamp),
+        };
+        return [...acc, conversation];
+      }, [])
+    : [];
 
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -52,53 +67,49 @@ export function ChatInterface() {
 
   const handleSend = () => {
     if (!input.trim()) return;
-
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input,
-      timestamp: new Date(),
-    };
-
-    if (activeConversation) {
-      setConversations(prev => prev.map(conv => 
-        conv.id === activeConversation 
-          ? { ...conv, messages: [...conv.messages, newMessage] }
-          : conv
-      ));
-    } else {
-      const newConv: Conversation = {
-        id: Date.now().toString(),
-        title: input.slice(0, 50) + (input.length > 50 ? '...' : ''),
-        messages: [newMessage],
-        timestamp: new Date(),
-      };
-      setConversations(prev => [newConv, ...prev]);
-      setActiveConversation(newConv.id);
-    }
-
+    // TODO: Implement sending new messages to omniarchon API
+    // For now, just clear the input as we're displaying read-only history
     setInput("");
-
-    // Simulate response
-    setTimeout(() => {
-      const response: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "I've analyzed your query. Here's what I found based on the current platform state...",
-        timestamp: new Date(),
-      };
-
-      setConversations(prev => prev.map(conv => 
-        conv.id === (activeConversation || Date.now().toString())
-          ? { ...conv, messages: [...conv.messages, response] }
-          : conv
-      ));
-    }, 1000);
   };
 
   const filteredConversations = conversations.filter(c =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
+        <Card className="p-8 flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="text-center">
+            <h3 className="text-lg font-semibold mb-2">Loading Chat History</h3>
+            <p className="text-sm text-muted-foreground">Fetching conversations from omniarchon...</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
+        <Card className="p-8 flex flex-col items-center gap-4 max-w-md">
+          <AlertCircle className="w-8 h-8 text-destructive" />
+          <div className="text-center">
+            <h3 className="text-lg font-semibold mb-2">Failed to Load Chat History</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              {error instanceof Error ? error.message : 'Could not connect to omniarchon service at http://localhost:8053'}
+            </p>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-[calc(100vh-12rem)]">

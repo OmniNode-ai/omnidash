@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AlertBanner } from "@/components/AlertBanner";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { Activity } from "lucide-react";
 
 import AgentOperations from "@/pages/AgentOperations";
@@ -44,6 +45,11 @@ function App() {
     "--sidebar-width-icon": "3rem",
   };
 
+  // WebSocket connection for global status indicator
+  const { isConnected, connectionStatus } = useWebSocket({
+    debug: false,
+  });
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark">
@@ -65,11 +71,17 @@ function App() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-status-healthy animate-pulse" />
-                      <span className="text-xs text-muted-foreground">System Operational</span>
+                      <div className={`h-2 w-2 rounded-full transition-colors duration-300 ${
+                        isConnected ? 'bg-green-500 animate-pulse' :
+                        connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                        'bg-red-500'
+                      }`} />
+                      <span className="text-xs text-muted-foreground">
+                        {isConnected ? 'Connected' : connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+                      </span>
                     </div>
                     <ThemeToggle />
                   </div>

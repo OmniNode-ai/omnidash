@@ -1,12 +1,18 @@
 import { MetricCard } from "@/components/MetricCard";
 import { RealtimeChart } from "@/components/RealtimeChart";
-import { EventFeed } from "@/components/EventFeed";
+import { DataTable, Column } from "@/components/DataTable";
 import { TransformationFlow } from "@/components/TransformationFlow";
+import { AlertPill } from "@/components/AlertPill";
+import { ExportButton } from "@/components/ExportButton";
 import { Card } from "@/components/ui/card";
+import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { Badge } from "@/components/ui/badge";
 import { Zap, CheckCircle, AlertTriangle, TrendingUp, Activity, Database, Server, Clock } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 interface ManifestInjectionHealth {
   successRate: number;
@@ -33,73 +39,264 @@ interface ManifestInjectionHealth {
   };
 }
 
+interface OperationsPerMinute {
+  period: string;
+  operationsPerMinute: number;
+  actionType: string;
+}
+
+interface QualityImpact {
+  period: string;
+  avgQualityImprovement: number;
+  manifestsImproved: number;
+}
+
+interface AgentAction {
+  id: string;
+  correlationId: string;
+  agentName: string;
+  actionType: string;
+  actionName: string;
+  actionDetails?: any;
+  debugMode?: boolean;
+  durationMs: number;
+  createdAt: string;
+}
+
+type EventType = 'success' | 'info' | 'warning' | 'error';
+
+interface LiveEvent {
+  id: string;
+  type: EventType;
+  message: string;
+  timestamp: string;
+  source: string;
+}
+
 export default function IntelligenceOperations() {
-  // Fetch manifest injection health data
-  const { data: healthData, isLoading: healthLoading } = useQuery<ManifestInjectionHealth>({
-    queryKey: ['/api/intelligence/health/manifest-injection'],
-    refetchInterval: 30000, // Refresh every 30 seconds
+  const [timeRange, setTimeRange] = useState(() => {
+    return localStorage.getItem('dashboard-timerange') || '24h';
+  });
+  const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
+
+  const handleTimeRangeChange = (value: string) => {
+    setTimeRange(value);
+    localStorage.setItem('dashboard-timerange', value);
+  };
+
+  const queryClient = useQueryClient();
+
+  // Helper function to convert AgentAction to LiveEvent
+  const transformActionToEvent = (action: AgentAction): LiveEvent => {
+    // Determine event type based on action type and details
+    let type: EventType = 'info';
+    let message = '';
+
+    switch (action.actionType) {
+      case 'tool_call':
+        type = 'info';
+        message = `${action.actionName} executed by ${action.agentName}`;
+        break;
+      case 'decision':
+        type = 'info';
+        message = `Decision made: ${action.actionName} by ${action.agentName}`;
+        break;
+      case 'success':
+        type = 'success';
+        message = `${action.actionName} completed successfully by ${action.agentName}`;
+        break;
+      case 'error':
+        type = 'error';
+        message = `Error in ${action.actionName}: ${action.agentName}`;
+        break;
+      default:
+        type = 'info';
+        message = `${action.actionName} by ${action.agentName}`;
+    }
+
+    // Format timestamp
+    const timestamp = new Date(action.createdAt).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+
+    return {
+      id: action.id,
+      type,
+      message,
+      timestamp,
+      source: action.agentName,
+    };
+  };
+
+  // WebSocket for real-time updates
+  const { isConnected, connectionStatus } = useWebSocket({
+    onMessage: (message) => {
+      // Process different message types
+      switch (message.type) {
+        case 'AGENT_ACTION':
+          // Add new action to live events (prepend to show newest first)
+          const newEvent = transformActionToEvent(message.data);
+          setLiveEvents(prev => [newEvent, ...prev].slice(0, 50)); // Keep last 50 events
+          break;
+
+        case 'INITIAL_STATE':
+          // Populate live events from initial state
+          if (message.data?.recentActions) {
+            const initialEvents = message.data.recentActions
+              .map(transformActionToEvent)
+              .slice(0, 50);
+            setLiveEvents(initialEvents);
+          }
+          // Refresh all data on initial state
+          queryClient.invalidateQueries();
+          break;
+
+        case 'AGENT_METRIC_UPDATE':
+        case 'ROUTING_DECISION':
+          // Invalidate all intelligence queries when events occur
+          queryClient.invalidateQueries({ queryKey: ['http://localhost:3000/api/intelligence/health/manifest-injection', timeRange] });
+          queryClient.invalidateQueries({ queryKey: ['http://localhost:3000/api/intelligence/metrics/operations-per-minute', timeRange] });
+          queryClient.invalidateQueries({ queryKey: ['http://localhost:3000/api/intelligence/metrics/quality-impact', timeRange] });
+          break;
+      }
+    },
+    debug: false,
   });
 
-  //todo: remove mock functionality
-  const operations = [
-    { id: '1', name: 'Code Analysis', status: 'running', count: 42, avgTime: '1.2s' },
-    { id: '2', name: 'Pattern Recognition', status: 'running', count: 38, avgTime: '0.8s' },
-    { id: '3', name: 'Quality Assessment', status: 'running', count: 25, avgTime: '2.1s' },
-    { id: '4', name: 'Performance Optimization', status: 'idle', count: 15, avgTime: '3.4s' },
-    { id: '5', name: 'Semantic Analysis', status: 'running', count: 31, avgTime: '1.5s' },
-    { id: '6', name: 'Dependency Mapping', status: 'running', count: 18, avgTime: '2.8s' },
-  ];
+  // Fetch manifest injection health data (updated via WebSocket)
+  const { data: healthData, isLoading: healthLoading } = useQuery<ManifestInjectionHealth>({
+    queryKey: [`http://localhost:3000/api/intelligence/health/manifest-injection?timeWindow=${timeRange}`],
+    refetchInterval: 60000, // Refetch every 60 seconds
+  });
 
-  const chartData = Array.from({ length: 20 }, (_, i) => ({
-    time: `${i}:00`,
-    value: 120 + Math.random() * 50,
-  }));
+  // Fetch operations per minute data (updated via WebSocket)
+  const { data: operationsData, isLoading: operationsLoading } = useQuery<OperationsPerMinute[]>({
+    queryKey: [`http://localhost:3000/api/intelligence/metrics/operations-per-minute?timeWindow=${timeRange}`],
+    refetchInterval: 60000, // Refetch every 60 seconds
+  });
 
-  const qualityData = Array.from({ length: 20 }, (_, i) => ({
-    time: `${i}:00`,
-    value: 75 + Math.random() * 15,
-  }));
+  // Fetch quality impact data (updated via WebSocket)
+  const { data: qualityImpactData, isLoading: qualityLoading } = useQuery<QualityImpact[]>({
+    queryKey: [`http://localhost:3000/api/intelligence/metrics/quality-impact?timeWindow=${timeRange}`],
+    refetchInterval: 60000, // Refetch every 60 seconds
+  });
 
-  const events = [
-    { id: '1', type: 'success' as const, message: 'Code analysis completed for Repository-42', timestamp: '10:23:15', source: 'Analysis Engine' },
-    { id: '2', type: 'info' as const, message: 'Quality score improved by 12% for Project-A', timestamp: '10:23:12', source: 'Quality Assessor' },
-    { id: '3', type: 'success' as const, message: 'Performance optimization recommendations generated', timestamp: '10:23:08', source: 'Optimizer' },
-    { id: '4', type: 'warning' as const, message: 'High complexity detected in Module-X', timestamp: '10:22:55', source: 'Analyzer' },
-  ];
+  // Fetch recent actions as fallback if WebSocket hasn't provided data yet
+  const { data: recentActionsData } = useQuery<AgentAction[]>({
+    queryKey: [`http://localhost:3000/api/intelligence/actions/recent?limit=50`],
+    refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: liveEvents.length === 0 && !isConnected, // Only fetch if no live events and not connected
+  });
+
+  // Populate live events from API fallback
+  useEffect(() => {
+    if (recentActionsData && liveEvents.length === 0) {
+      const events = recentActionsData.map(transformActionToEvent);
+      setLiveEvents(events);
+    }
+  }, [recentActionsData]);
+
+  // Transform operations data for chart (aggregate by time period)
+  const chartData = operationsData
+    ? Array.from(
+        operationsData.reduce((acc, item) => {
+          const time = new Date(item.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          const existing = acc.get(time) || 0;
+          acc.set(time, existing + item.operationsPerMinute);
+          return acc;
+        }, new Map<string, number>())
+      )
+        .map(([time, value]) => ({ time, value }))
+        .reverse()
+    : [];
+
+  // Transform quality data for chart
+  const qualityData = qualityImpactData
+    ? qualityImpactData.map(item => ({
+        time: new Date(item.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        value: item.avgQualityImprovement * 100, // Convert to percentage
+      })).reverse()
+    : [];
+
+  // Derive operations status from operationsData (group by action type)
+  const operations = operationsData
+    ? Array.from(
+        operationsData.reduce((acc, item) => {
+          const name = item.actionType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          const existing = acc.get(item.actionType) || { name, count: 0, totalOps: 0 };
+          existing.count += 1;
+          existing.totalOps += item.operationsPerMinute;
+          acc.set(item.actionType, existing);
+          return acc;
+        }, new Map<string, { name: string; count: number; totalOps: number }>())
+      )
+        .map(([id, data], index) => ({
+          id,
+          name: data.name,
+          status: data.totalOps > 0 ? 'running' : 'idle',
+          count: Math.round(data.totalOps),
+          avgTime: 'N/A', // Not available from this endpoint
+        }))
+    : [];
+
+  // Calculate aggregated metrics from real data
+  const totalOperations = operations.length;
+  const runningOperations = operations.filter(op => op.status === 'running').length;
+  const totalOpsPerMinute = operationsData
+    ? operationsData.reduce((sum, item) => sum + item.operationsPerMinute, 0)
+    : 0;
+  const avgQualityImprovement = qualityImpactData && qualityImpactData.length > 0
+    ? qualityImpactData.reduce((sum, item) => sum + item.avgQualityImprovement, 0) / qualityImpactData.length
+    : 0;
+
+  // Loading state
+  const isLoading = operationsLoading || qualityLoading;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold mb-2">Intelligence Operations</h1>
-        <p className="text-muted-foreground">168+ AI operations for code analysis and optimization</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold mb-2">Intelligence Operations</h1>
+          <p className="text-muted-foreground">
+            {isLoading ? 'Loading...' : `${totalOperations} AI operations for code analysis and optimization`}
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
+          <ExportButton
+            data={{ operations, operationsData, qualityImpactData, healthData, chartData, qualityData, liveEvents }}
+            filename={`intelligence-operations-${new Date().toISOString().split('T')[0]}`}
+            disabled={!operationsData && !qualityImpactData && !healthData}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-4 gap-6">
-        <MetricCard 
+        <MetricCard
           label="Active Operations"
-          value="168"
-          trend={{ value: 5, isPositive: true }}
+          value={isLoading ? '...' : totalOperations.toString()}
           icon={Zap}
           status="healthy"
         />
-        <MetricCard 
+        <MetricCard
           label="Running Now"
-          value="42"
+          value={isLoading ? '...' : runningOperations.toString()}
           icon={Zap}
           status="healthy"
         />
-        <MetricCard 
-          label="Success Rate"
-          value="96.8%"
-          trend={{ value: 1.2, isPositive: true }}
-          icon={CheckCircle}
+        <MetricCard
+          label="Operations/Min"
+          value={isLoading ? '...' : totalOpsPerMinute.toFixed(1)}
+          icon={Activity}
           status="healthy"
         />
-        <MetricCard 
-          label="Avg Processing"
-          value="1.8s"
+        <MetricCard
+          label="Avg Quality Impact"
+          value={isLoading ? '...' : `${(avgQualityImprovement * 100).toFixed(1)}%`}
           icon={TrendingUp}
-          status="healthy"
+          status={avgQualityImprovement > 0 ? "healthy" : "warning"}
         />
       </div>
 
@@ -117,33 +314,116 @@ export default function IntelligenceOperations() {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
+      <div className="space-y-6">
           <Card className="p-6">
             <h3 className="text-base font-semibold mb-4">Operation Status</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {operations.map((op) => (
-                <div
-                  key={op.id}
-                  className="flex items-center gap-3 p-4 rounded-lg border border-card-border hover-elevate"
-                >
-                  <div className={`h-3 w-3 rounded-full ${op.status === 'running' ? 'bg-status-healthy animate-pulse' : 'bg-status-idle'}`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium">{op.name}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {op.count} operations • {op.avgTime} avg
+            {operationsLoading ? (
+              <div className="flex items-center justify-center h-48">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              </div>
+            ) : operations.length === 0 ? (
+              <div className="flex items-center justify-center h-48 text-muted-foreground">
+                No operations data available for selected time range
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {operations.map((op) => (
+                  <div
+                    key={op.id}
+                    className="flex items-center gap-3 p-4 rounded-lg border border-card-border hover-elevate"
+                  >
+                    <div className={`h-3 w-3 rounded-full ${op.status === 'running' ? 'bg-status-healthy animate-pulse' : 'bg-status-idle'}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium">{op.name}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {op.count} operations • {op.avgTime} avg
+                      </div>
                     </div>
+                    <Badge variant={op.status === 'running' ? 'default' : 'secondary'}>
+                      {op.status}
+                    </Badge>
                   </div>
-                  <Badge variant={op.status === 'running' ? 'default' : 'secondary'}>
-                    {op.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
-        </div>
 
-        <EventFeed events={events} maxHeight={400} />
+        <DataTable<LiveEvent>
+          title="Live Event Stream"
+          data={liveEvents}
+          columns={[
+            {
+              key: 'timestamp',
+              header: 'Time',
+              sortable: true,
+              className: 'font-mono text-xs w-[120px]',
+            },
+            {
+              key: 'type',
+              header: 'Type',
+              sortable: true,
+              className: 'w-[100px]',
+              render: (event) => (
+                <Badge
+                  variant={
+                    event.type === 'success' ? 'default' :
+                    event.type === 'error' ? 'destructive' :
+                    event.type === 'warning' ? 'outline' :
+                    'secondary'
+                  }
+                  className={cn(
+                    event.type === 'success' && 'bg-status-healthy/10 text-status-healthy border-status-healthy/20',
+                    event.type === 'error' && 'bg-status-error/10 text-status-error border-status-error/20',
+                    event.type === 'warning' && 'bg-status-warning/10 text-status-warning border-status-warning/20',
+                    event.type === 'info' && 'bg-primary/10 text-primary border-primary/20'
+                  )}
+                >
+                  {event.type}
+                </Badge>
+              ),
+            },
+            {
+              key: 'source',
+              header: 'Agent',
+              sortable: true,
+              className: 'w-[200px]',
+              render: (event) => (
+                <Badge variant="outline" className="font-mono text-xs">
+                  {event.source}
+                </Badge>
+              ),
+            },
+            {
+              key: 'message',
+              header: 'Message',
+              sortable: true,
+              className: 'text-sm',
+            },
+          ]}
+          columnFilters={[
+            {
+              key: 'type',
+              label: 'Event Type',
+              options: [
+                { value: 'success', label: 'Success' },
+                { value: 'info', label: 'Info' },
+                { value: 'warning', label: 'Warning' },
+                { value: 'error', label: 'Error' },
+              ],
+            },
+            {
+              key: 'source',
+              label: 'Agent',
+              options: Array.from(new Set(liveEvents.map(e => e.source)))
+                .sort()
+                .map(source => ({ value: source, label: source })),
+            },
+          ]}
+          searchKeys={['message', 'source']}
+          searchPlaceholder="Search events or agents..."
+          defaultPageSize={50}
+          maxHeight="500px"
+        />
       </div>
 
       {/* Intelligence Health Monitoring */}
@@ -256,22 +536,20 @@ export default function IntelligenceOperations() {
 
             {/* Alert Warnings */}
             {(healthData.successRate < 0.95 || healthData.avgLatencyMs > 500) && (
-              <Card className="p-4 border-l-4 border-l-yellow-500 bg-yellow-500/10">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold text-sm mb-1">Intelligence System Warnings</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      {healthData.successRate < 0.95 && (
-                        <li>• Success rate below 95% threshold ({(healthData.successRate * 100).toFixed(1)}%)</li>
-                      )}
-                      {healthData.avgLatencyMs > 500 && (
-                        <li>• Average latency exceeds 500ms ({healthData.avgLatencyMs.toFixed(0)}ms)</li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-              </Card>
+              <div className="flex items-center gap-2 flex-wrap">
+                {healthData.successRate < 0.95 && (
+                  <AlertPill
+                    level="warning"
+                    message={`Success rate below 95% threshold (${(healthData.successRate * 100).toFixed(1)}%)`}
+                  />
+                )}
+                {healthData.avgLatencyMs > 500 && (
+                  <AlertPill
+                    level="warning"
+                    message={`Average latency exceeds 500ms (${healthData.avgLatencyMs.toFixed(0)}ms)`}
+                  />
+                )}
+              </div>
             )}
           </>
         ) : null}

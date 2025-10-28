@@ -25,7 +25,8 @@ export const agentRoutingDecisions = pgTable('agent_routing_decisions', {
   routingTimeMs: integer('routing_time_ms').notNull(),
   cacheHit: boolean('cache_hit').default(false),
   selectionValidated: boolean('selection_validated').default(false),
-  actualSuccess: boolean('actual_success'),
+  actualSuccess: boolean('actual_success'), // @deprecated Use executionSucceeded instead
+  executionSucceeded: boolean('execution_succeeded'),
   actualQualityScore: numeric('actual_quality_score', { precision: 5, scale: 4 }),
   createdAt: timestamp('created_at').defaultNow(),
 });
