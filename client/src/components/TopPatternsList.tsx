@@ -52,7 +52,7 @@ export function TopPatternsList({ patterns, limit = 10 }: TopPatternsListProps) 
               <div className="flex items-center gap-4 text-xs">
                 <div className="flex items-center gap-1">
                   <span className="text-muted-foreground">Quality:</span>
-                  <span className="font-mono text-status-healthy">{pattern.quality}%</span>
+                  <span className="font-mono text-status-healthy">{(pattern.quality * 100).toFixed(1)}%</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-muted-foreground">Usage:</span>

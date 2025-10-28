@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AlertBanner } from "@/components/AlertBanner";
 import { Activity } from "lucide-react";
 
 import AgentOperations from "@/pages/AgentOperations";
@@ -18,6 +19,7 @@ import KnowledgeGraph from "@/pages/KnowledgeGraph";
 import PlatformHealth from "@/pages/PlatformHealth";
 import DeveloperExperience from "@/pages/DeveloperExperience";
 import Chat from "@/pages/Chat";
+import CorrelationTrace from "@/pages/CorrelationTrace";
 
 function Router() {
   return (
@@ -31,6 +33,7 @@ function Router() {
       <Route path="/health" component={PlatformHealth} />
       <Route path="/developer" component={DeveloperExperience} />
       <Route path="/chat" component={Chat} />
+      <Route path="/trace" component={CorrelationTrace} />
     </Switch>
   );
 }
@@ -71,7 +74,9 @@ function App() {
                     <ThemeToggle />
                   </div>
                 </header>
-                
+
+                <AlertBanner />
+
                 <main className="flex-1 overflow-auto p-8">
                   <Router />
                 </main>

@@ -9,6 +9,7 @@ interface Agent {
   status: "active" | "idle" | "error" | "offline";
   currentTask?: string;
   successRate: number;
+  quality?: number; // Quality score (0-100) based on confidence
   responseTime: number;
 }
 
@@ -56,10 +57,21 @@ export function AgentStatusGrid({ agents, onAgentClick }: AgentStatusGridProps) 
             </div>
           )}
           
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-mono text-status-healthy">{agent.successRate}%</span>
-            <span className="text-muted-foreground">•</span>
-            <span className="font-mono text-muted-foreground">{agent.responseTime}ms</span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground text-[10px]">Success:</span>
+              <span className="font-mono text-status-healthy">{agent.successRate}%</span>
+            </div>
+            {agent.quality !== undefined && (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground text-[10px]">Quality:</span>
+                <span className="font-mono text-chart-1">{agent.quality}%</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground text-[10px]">Response:</span>
+              <span className="font-mono text-muted-foreground">{agent.responseTime}ms</span>
+            </div>
           </div>
         </Card>
       ))}

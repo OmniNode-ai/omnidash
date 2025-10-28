@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 export interface AgentMetrics {
   agent: string;
   totalRequests: number;
+  successRate: number | null;
   avgRoutingTime: number;
   avgConfidence: number;
   lastSeen: Date;
@@ -55,6 +56,8 @@ class EventConsumer extends EventEmitter {
     count: number;
     totalRoutingTime: number;
     totalConfidence: number;
+    successCount: number;
+    errorCount: number;
     lastSeen: Date;
   }>();
 
@@ -73,7 +76,7 @@ class EventConsumer extends EventEmitter {
     });
 
     this.consumer = this.kafka.consumer({
-      groupId: 'omnidash-consumers',
+      groupId: 'omnidash-consumers-v2', // Changed to force reading from beginning
     });
   }
 
@@ -95,7 +98,7 @@ class EventConsumer extends EventEmitter {
           'router-performance-metrics',
           'agent-actions'
         ],
-        fromBeginning: false, // Only new events
+        fromBeginning: true, // Reprocess historical events to populate metrics
       });
 
       await this.consumer.run({
@@ -149,6 +152,8 @@ class EventConsumer extends EventEmitter {
       count: 0,
       totalRoutingTime: 0,
       totalConfidence: 0,
+      successCount: 0,
+      errorCount: 0,
       lastSeen: new Date(),
     };
 
@@ -207,6 +212,32 @@ class EventConsumer extends EventEmitter {
     this.recentActions.unshift(action);
     console.log(`[EventConsumer] Added action to queue: ${action.actionName} (${action.agentName}), queue size: ${this.recentActions.length}`);
 
+    // Track success/error rates per agent
+    if (action.agentName && (action.actionType === 'success' || action.actionType === 'error')) {
+      const existing = this.agentMetrics.get(action.agentName) || {
+        count: 0,
+        totalRoutingTime: 0,
+        totalConfidence: 0,
+        successCount: 0,
+        errorCount: 0,
+        lastSeen: new Date(),
+      };
+
+      if (action.actionType === 'success') {
+        existing.successCount++;
+      } else if (action.actionType === 'error') {
+        existing.errorCount++;
+      }
+
+      existing.lastSeen = new Date();
+      this.agentMetrics.set(action.agentName, existing);
+
+      console.log(`[EventConsumer] Updated ${action.agentName} success/error: ${existing.successCount}/${existing.errorCount}`);
+
+      // Emit metric update since success rate changed
+      this.emit('metricUpdate', this.getAgentMetrics());
+    }
+
     // Keep only last N actions
     if (this.recentActions.length > this.maxActions) {
       this.recentActions = this.recentActions.slice(0, this.maxActions);
@@ -228,13 +259,37 @@ class EventConsumer extends EventEmitter {
 
   // Public getters for API endpoints
   getAgentMetrics(): AgentMetrics[] {
-    return Array.from(this.agentMetrics.entries()).map(([agent, data]) => ({
-      agent,
-      totalRequests: data.count,
-      avgRoutingTime: data.totalRoutingTime / data.count,
-      avgConfidence: data.totalConfidence / data.count,
-      lastSeen: data.lastSeen,
-    }));
+    const now = new Date();
+    // Extended window to show historical data (was 5 minutes, now 24 hours)
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    return Array.from(this.agentMetrics.entries())
+      // Filter to only agents active in last 24 hours
+      .filter(([_, data]) => data.lastSeen >= twentyFourHoursAgo)
+      .map(([agent, data]) => {
+        // Calculate success rate if we have success/error events
+        const totalOutcomes = data.successCount + data.errorCount;
+        let successRate: number | null = null;
+
+        if (totalOutcomes > 0) {
+          // Use actual success/error tracking if available
+          successRate = data.successCount / totalOutcomes;
+        } else {
+          // Fallback: Use confidence score as proxy for success rate
+          // High confidence (>0.85) = likely successful routing
+          const avgConfidence = data.totalConfidence / data.count;
+          successRate = avgConfidence; // Direct mapping: 0.85 confidence = 85% success rate
+        }
+
+        return {
+          agent,
+          totalRequests: data.count,
+          successRate,
+          avgRoutingTime: data.totalRoutingTime / data.count,
+          avgConfidence: data.totalConfidence / data.count,
+          lastSeen: data.lastSeen,
+        };
+      });
   }
 
   getRecentActions(limit?: number): AgentAction[] {

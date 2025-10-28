@@ -1,4 +1,4 @@
-import { Bot, Network, Zap, Code, Activity, Database, Server, Users, ChevronRight, MessageSquare } from "lucide-react";
+import { Bot, Network, Zap, Code, Activity, Database, Server, Users, ChevronRight, MessageSquare, Search } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -60,6 +60,11 @@ const tools = [
     title: "AI Query Assistant",
     url: "/chat",
     icon: MessageSquare,
+  },
+  {
+    title: "Correlation Trace",
+    url: "/trace",
+    icon: Search,
   },
 ];
 

@@ -3,6 +3,7 @@ import { AgentStatusGrid } from "@/components/AgentStatusGrid";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { EventFeed } from "@/components/EventFeed";
 import { DrillDownPanel } from "@/components/DrillDownPanel";
+import { StatusLegend } from "@/components/StatusLegend";
 import { Activity, Cpu, CheckCircle, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -104,16 +105,23 @@ export default function AgentOperations() {
     : 0;
 
   // Convert metrics to agent grid format
-  const agents = metrics?.map((metric, index) => ({
-    id: metric.agent,
-    name: metric.agent,
-    status: (metric.successRate || 0) > 0.9 ? 'active' as const :
-            (metric.successRate || 0) > 0.7 ? 'idle' as const : 'error' as const,
-    currentTask: undefined,
-    successRate: Math.round((metric.successRate || 0) * 100),
-    responseTime: Math.round(metric.avgRoutingTime || 0),
-    tasksCompleted: metric.totalRequests,
-  })) || [];
+  const agents = metrics?.map((metric, index) => {
+    // Use confidence score as quality proxy (displayed in agent grid bottom boxes)
+    const quality = Math.round((metric.avgConfidence || 0) * 100);
+    const successRate = Math.round((metric.successRate || 0) * 100);
+
+    return {
+      id: metric.agent,
+      name: metric.agent,
+      status: successRate > 90 ? 'active' as const :
+              successRate > 70 ? 'idle' as const : 'error' as const,
+      currentTask: undefined,
+      successRate,
+      quality, // Add quality based on confidence score
+      responseTime: Math.round(metric.avgRoutingTime || 0),
+      tasksCompleted: metric.totalRequests,
+    };
+  }) || [];
 
   // Convert actions to events format for EventFeed
   const events = actions?.slice(0, 50).map(action => ({
@@ -171,10 +179,13 @@ export default function AgentOperations() {
         </div>
       </div>
 
+      {/* Status legend */}
+      <StatusLegend />
+
       {/* Metric cards with real data */}
       <div className="grid grid-cols-4 gap-6">
         <MetricCard
-          label="Active Agents"
+          label="Active Agents (24h)"
           value={activeAgents}
           icon={Activity}
           status="healthy"
@@ -190,12 +201,14 @@ export default function AgentOperations() {
           value={`${Math.round(avgResponseTime)}ms`}
           icon={Clock}
           status={avgResponseTime < 100 ? "healthy" : "warning"}
+          tooltip="Target: < 100ms"
         />
         <MetricCard
           label="Success Rate"
           value={`${Math.round(avgSuccessRate * 100)}%`}
           icon={CheckCircle}
           status={avgSuccessRate > 0.9 ? "healthy" : "warning"}
+          tooltip="Target: > 90%"
         />
       </div>
 
