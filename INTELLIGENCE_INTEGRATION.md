@@ -32,7 +32,6 @@ This guide documents how to integrate OmniClaude's comprehensive intelligence in
 - **Event Bus Architecture**: Kafka/Redpanda for real-time event streaming
 - **PostgreSQL Database**: 30+ tables tracking agent execution, routing, patterns, and performance
 - **Vector Database**: Qdrant with 120+ code/execution patterns
-- **Intelligence Service**: archon-intelligence MCP service for pattern discovery and schema discovery
 - **Complete Traceability**: Full correlation ID tracking from user request → routing → manifest → execution
 
 ### Current Omnidash State
@@ -145,7 +144,7 @@ Latency: <200ms
 - `code_patterns` (~100 patterns)
 - `workflow_events` (streaming)
 
-**Access**: Via archon-intelligence MCP service (http://192.168.86.101:8151/mcp)
+**Note**: Direct Qdrant integration is planned for future implementation.
 
 ---
 
@@ -169,19 +168,15 @@ KAFKA_BROKERS=192.168.86.200:9092
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers
 
-# Qdrant Connection (via MCP)
-ARCHON_MCP_URL=http://192.168.86.101:8151/mcp
-
 # Feature Flags
 ENABLE_REAL_TIME_EVENTS=true
-ENABLE_VECTOR_SEARCH=true
 ```
 
 ### Network Access
 
 **Requirements**:
 - Dashboard server must have network access to `192.168.86.0/24` subnet
-- Ports required: 5436 (PostgreSQL), 9092 (Kafka), 6333 (Qdrant), 8151 (MCP)
+- Ports required: 5436 (PostgreSQL), 9092 (Kafka), 6333 (Qdrant)
 - No authentication required for local development (production: add auth)
 
 ---

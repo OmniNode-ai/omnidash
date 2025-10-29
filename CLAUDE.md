@@ -189,11 +189,6 @@ export const insertUserSchema = createInsertSchema(users); // Zod schema
 - **Consumer Group**: `omnidash-consumers` (suggested)
 - **Retention**: 3-7 days depending on topic
 
-**Qdrant Vector Database** (via MCP at `http://192.168.86.101:8151/mcp`):
-- **Collections**: `execution_patterns` (~50), `code_patterns` (~100), `workflow_events`
-- **Purpose**: Pattern similarity search, semantic code search
-- **Access**: Via archon-intelligence MCP service
-
 ### Environment Variables
 
 Add to `.env.local` for intelligence integration:
@@ -210,12 +205,8 @@ KAFKA_BROKERS=192.168.86.200:9092
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers
 
-# Qdrant Vector Search (via MCP)
-ARCHON_MCP_URL=http://192.168.86.101:8151/mcp
-
 # Feature Flags
 ENABLE_REAL_TIME_EVENTS=true
-ENABLE_VECTOR_SEARCH=true
 ```
 
 ### Integration Patterns
@@ -290,10 +281,10 @@ export const agentActions = pgTable('agent_actions', {
 ### Dashboard-Specific Data Mappings
 
 **AgentOperations** → `agent_routing_decisions`, `agent_actions`, topic: `agent-actions`
-**PatternLearning** → `agent_manifest_injections`, Qdrant patterns
+**PatternLearning** → `agent_manifest_injections`, pattern data
 **IntelligenceOperations** → `agent_manifest_injections`, `llm_calls`
 **EventFlow** → Kafka consumer lag metrics, direct topic monitoring
-**CodeIntelligence** → Qdrant semantic search, `workflow_steps`
+**CodeIntelligence** → semantic search, `workflow_steps`
 **PlatformHealth** → `error_events`, database connection pool stats
 **DeveloperExperience** → `agent_routing_decisions`, `workflow_steps`
 
