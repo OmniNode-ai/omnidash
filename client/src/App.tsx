@@ -22,6 +22,12 @@ import DeveloperExperience from "@/pages/DeveloperExperience";
 import Chat from "@/pages/Chat";
 import CorrelationTrace from "@/pages/CorrelationTrace";
 
+// Preview pages
+import EnhancedAnalytics from "@/pages/preview/EnhancedAnalytics";
+import SystemHealth from "@/pages/preview/SystemHealth";
+import AdvancedSettings from "@/pages/preview/AdvancedSettings";
+import FeatureShowcase from "@/pages/preview/FeatureShowcase";
+
 function Router() {
   return (
     <Switch>
@@ -35,6 +41,12 @@ function Router() {
       <Route path="/developer" component={DeveloperExperience} />
       <Route path="/chat" component={Chat} />
       <Route path="/trace" component={CorrelationTrace} />
+      
+      {/* Preview routes */}
+      <Route path="/preview/analytics" component={EnhancedAnalytics} />
+      <Route path="/preview/health" component={SystemHealth} />
+      <Route path="/preview/settings" component={AdvancedSettings} />
+      <Route path="/preview/showcase" component={FeatureShowcase} />
     </Switch>
   );
 }

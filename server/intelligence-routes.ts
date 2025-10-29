@@ -1259,9 +1259,8 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
       console.warn('Omniarchon health check failed:', omniarchonError instanceof Error ? omniarchonError.message : 'Unknown error');
     }
 
-    // Qdrant health check (via MCP or direct)
+    // Qdrant health check
     // Note: We don't have a direct Qdrant connection, so this is a placeholder
-    // In production, you'd check via Archon MCP service
     serviceHealth.qdrant = { status: 'up', latencyMs: 0 }; // Assume up for now
 
     const healthResponse: ManifestInjectionHealth = {
