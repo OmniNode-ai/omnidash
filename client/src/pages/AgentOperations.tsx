@@ -48,6 +48,7 @@ export default function AgentOperations() {
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [chartData, setChartData] = useState<Array<{ time: string; value: number }>>([]);
+  const [performanceChartData, setPerformanceChartData] = useState<Array<{ time: string; value: number }>>([]);
   const [showRunningOnly, setShowRunningOnly] = useState(true);
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
@@ -150,6 +151,39 @@ export default function AgentOperations() {
     }));
 
     setChartData(newChartData);
+  }, [actions]);
+
+  // Update performance chart (avg duration per minute)
+  useEffect(() => {
+    if (!actions || actions.length === 0) return;
+
+    const now = new Date();
+    const minuteSums = new Map<string, { sum: number; count: number }>();
+
+    for (let i = 19; i >= 0; i--) {
+      const time = new Date(now.getTime() - i * 60 * 1000);
+      const timeLabel = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      minuteSums.set(timeLabel, { sum: 0, count: 0 });
+    }
+
+    actions.forEach(action => {
+      const actionTime = new Date(action.createdAt);
+      const timeLabel = actionTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      if (minuteSums.has(timeLabel)) {
+        const entry = minuteSums.get(timeLabel)!;
+        const duration = typeof action.durationMs === 'number' ? action.durationMs : undefined;
+        if (duration && duration >= 0) {
+          minuteSums.set(timeLabel, { sum: entry.sum + duration, count: entry.count + 1 });
+        }
+      }
+    });
+
+    const perfData = Array.from(minuteSums.entries()).map(([time, { sum, count }]) => ({
+      time,
+      value: count > 0 ? Math.round(sum / count) : 0,
+    }));
+
+    setPerformanceChartData(perfData);
   }, [actions]);
 
   const handleAgentClick = useCallback((agent: any) => {
@@ -328,8 +362,8 @@ export default function AgentOperations() {
           color="hsl(var(--chart-1))"
         />
         <RealtimeChart
-          title="Agent Performance"
-          data={chartData}
+          title="Agent Performance (Avg Duration per Minute)"
+          data={performanceChartData}
           color="hsl(var(--chart-2))"
           showArea
         />
