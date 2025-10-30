@@ -147,6 +147,26 @@ export const patternLineageEdges = pgTable('pattern_lineage_edges', {
 export const insertPatternLineageNodeSchema = createInsertSchema(patternLineageNodes);
 export const insertPatternLineageEdgeSchema = createInsertSchema(patternLineageEdges);
 
+/**
+ * ONEX Compliance Stamps Table
+ * Tracks ONEX architectural compliance status for files
+ */
+export const onexComplianceStamps = pgTable('onex_compliance_stamps', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  filePath: text('file_path').notNull(),
+  complianceStatus: text('compliance_status').notNull(), // 'compliant', 'non_compliant', 'pending'
+  complianceScore: numeric('compliance_score', { precision: 5, scale: 4 }),
+  nodeType: text('node_type'), // 'effect', 'compute', 'reducer', 'orchestrator'
+  violations: jsonb('violations').default([]),
+  metadata: jsonb('metadata').default({}),
+  correlationId: uuid('correlation_id'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Export Zod schemas for validation
+export const insertOnexComplianceStampSchema = createInsertSchema(onexComplianceStamps);
+
 // Export TypeScript types
 export type AgentRoutingDecision = typeof agentRoutingDecisions.$inferSelect;
 export type InsertAgentRoutingDecision = typeof agentRoutingDecisions.$inferInsert;
@@ -160,3 +180,98 @@ export type PatternLineageNode = typeof patternLineageNodes.$inferSelect;
 export type InsertPatternLineageNode = typeof patternLineageNodes.$inferInsert;
 export type PatternLineageEdge = typeof patternLineageEdges.$inferSelect;
 export type InsertPatternLineageEdge = typeof patternLineageEdges.$inferInsert;
+export type OnexComplianceStamp = typeof onexComplianceStamps.$inferSelect;
+export type InsertOnexComplianceStamp = typeof onexComplianceStamps.$inferInsert;
+
+/**
+ * Document Metadata Table
+ * Tracks documents in the knowledge base with access statistics
+ */
+export const documentMetadata = pgTable('document_metadata', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  repository: text('repository').notNull(),
+  filePath: text('file_path').notNull(),
+  status: text('status').notNull().default('active'),
+  contentHash: text('content_hash'),
+  sizeBytes: integer('size_bytes'),
+  mimeType: text('mime_type'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+  accessCount: integer('access_count').notNull().default(0),
+  lastAccessedAt: timestamp('last_accessed_at'),
+  vectorId: text('vector_id'),
+  graphId: text('graph_id'),
+  metadata: jsonb('metadata').notNull().default({}),
+});
+
+/**
+ * Document Access Log Table
+ * Tracks document access events for analytics
+ */
+export const documentAccessLog = pgTable('document_access_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  documentId: uuid('document_id').notNull(),
+  accessedAt: timestamp('accessed_at').defaultNow(),
+  accessType: text('access_type').notNull(),
+  correlationId: uuid('correlation_id'),
+  sessionId: uuid('session_id'),
+  queryText: text('query_text'),
+  relevanceScore: numeric('relevance_score', { precision: 10, scale: 6 }),
+  responseTimeMs: integer('response_time_ms'),
+  metadata: jsonb('metadata').notNull().default({}),
+});
+
+// Export Zod schemas for validation
+export const insertDocumentMetadataSchema = createInsertSchema(documentMetadata);
+export const insertDocumentAccessLogSchema = createInsertSchema(documentAccessLog);
+
+/**
+ * Node Service Registry Table
+ * Tracks service discovery and health status for platform monitoring
+ */
+export const nodeServiceRegistry = pgTable('node_service_registry', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  serviceName: text('service_name').notNull().unique(),
+  serviceUrl: text('service_url').notNull(),
+  serviceType: text('service_type'), // e.g., 'api', 'database', 'cache', 'queue'
+  healthStatus: text('health_status').notNull().default('unknown'), // 'healthy', 'degraded', 'unhealthy'
+  lastHealthCheck: timestamp('last_health_check'),
+  healthCheckIntervalSeconds: integer('health_check_interval_seconds').default(60),
+  metadata: jsonb('metadata').default({}),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Export Zod schema for validation
+export const insertNodeServiceRegistrySchema = createInsertSchema(nodeServiceRegistry);
+
+/**
+ * Task Completion Metrics Table
+ * Tracks task completion statistics for developer productivity analysis
+ */
+export const taskCompletionMetrics = pgTable('task_completion_metrics', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  createdAt: timestamp('created_at').defaultNow(),
+  correlationId: uuid('correlation_id'),
+  taskType: text('task_type'),
+  taskDescription: text('task_description'),
+  completionTimeMs: integer('completion_time_ms').notNull(),
+  success: boolean('success').default(true),
+  agentName: text('agent_name'),
+  metadata: jsonb('metadata').default({}),
+});
+
+// Export Zod schema for validation
+export const insertTaskCompletionMetricsSchema = createInsertSchema(taskCompletionMetrics);
+
+// Export TypeScript types
+export type TaskCompletionMetric = typeof taskCompletionMetrics.$inferSelect;
+export type InsertTaskCompletionMetric = typeof taskCompletionMetrics.$inferInsert;
+export type DocumentMetadata = typeof documentMetadata.$inferSelect;
+export type InsertDocumentMetadata = typeof documentMetadata.$inferInsert;
+export type DocumentAccessLog = typeof documentAccessLog.$inferSelect;
+export type InsertDocumentAccessLog = typeof documentAccessLog.$inferInsert;
+export type NodeServiceRegistry = typeof nodeServiceRegistry.$inferSelect;
+export type InsertNodeServiceRegistry = typeof nodeServiceRegistry.$inferInsert;

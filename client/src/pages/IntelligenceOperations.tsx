@@ -7,6 +7,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { Card } from "@/components/ui/card";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Zap, CheckCircle, AlertTriangle, TrendingUp, Activity, Database, Server, Clock } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -61,6 +62,16 @@ interface AgentAction {
   debugMode?: boolean;
   durationMs: number;
   createdAt: string;
+}
+
+interface TopAccessedDocument {
+  id: string;
+  repository: string;
+  filePath: string;
+  accessCount: number;
+  lastAccessedAt: string | null;
+  trend: 'up' | 'down' | 'stable';
+  trendPercentage: number;
 }
 
 type EventType = 'success' | 'info' | 'warning' | 'error';
@@ -190,6 +201,12 @@ export default function IntelligenceOperations() {
     enabled: liveEvents.length === 0 && !isConnected, // Only fetch if no live events and not connected
   });
 
+  // Fetch top accessed documents
+  const { data: topDocumentsData, isLoading: documentsLoading } = useQuery<TopAccessedDocument[]>({
+    queryKey: [`http://localhost:3000/api/intelligence/documents/top-accessed?timeWindow=${timeRange}&limit=10`],
+    refetchInterval: 60000, // Refetch every 60 seconds
+  });
+
   // Populate live events from API fallback
   useEffect(() => {
     if (recentActionsData && liveEvents.length === 0) {
@@ -301,17 +318,40 @@ export default function IntelligenceOperations() {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart 
+        <RealtimeChart
           title="Operations per Minute"
           data={chartData}
           color="hsl(var(--chart-4))"
           showArea
         />
-        <RealtimeChart 
-          title="Quality Improvement Impact"
-          data={qualityData}
-          color="hsl(var(--chart-3))"
-        />
+        <div className="space-y-4">
+          {(() => {
+            // Check if quality impact data is empty or all zeros
+            const hasNoData = !qualityImpactData || qualityImpactData.length === 0;
+            const allZeros = qualityImpactData && qualityImpactData.length > 0 &&
+              qualityImpactData.every(d => Math.abs(d.avgQualityImprovement) < 0.001);
+
+            return (
+              <>
+                {(hasNoData || allZeros) && !qualityLoading && (
+                  <Alert className="border-status-warning/50 bg-status-warning/10">
+                    <AlertTriangle className="h-4 w-4 text-status-warning" />
+                    <AlertDescription className="text-status-warning">
+                      {hasNoData
+                        ? 'No quality impact data available yet. Quality improvement tracking may not be configured.'
+                        : 'No quality improvements detected in selected time range. Quality gates and optimizations may not be active.'}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <RealtimeChart
+                  title="Quality Improvement Impact"
+                  data={qualityData}
+                  color="hsl(var(--chart-3))"
+                />
+              </>
+            );
+          })()}
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -553,6 +593,117 @@ export default function IntelligenceOperations() {
             )}
           </>
         ) : null}
+      </div>
+
+      {/* Document Access Ranking */}
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-semibold mb-2">Document Access Ranking</h2>
+          <p className="text-muted-foreground">Most accessed documents in knowledge base</p>
+        </div>
+
+        <DataTable<TopAccessedDocument>
+          title="Top Accessed Documents"
+          data={topDocumentsData || []}
+          columns={[
+            {
+              key: 'filePath',
+              header: 'Document',
+              sortable: true,
+              className: 'max-w-[400px]',
+              render: (doc) => (
+                <div className="flex flex-col gap-1">
+                  <a
+                    href={doc.filePath}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-primary hover:underline truncate"
+                  >
+                    {doc.filePath.replace(/^https?:\/\//, '')}
+                  </a>
+                  <Badge variant="outline" className="w-fit text-xs">
+                    {doc.repository}
+                  </Badge>
+                </div>
+              ),
+            },
+            {
+              key: 'accessCount',
+              header: 'Accesses',
+              sortable: true,
+              className: 'text-right w-[100px]',
+              render: (doc) => (
+                <span className="font-mono font-semibold">
+                  {doc.accessCount.toLocaleString()}
+                </span>
+              ),
+            },
+            {
+              key: 'trend',
+              header: 'Trend',
+              sortable: true,
+              className: 'w-[150px]',
+              render: (doc) => (
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={
+                      doc.trend === 'up' ? 'default' :
+                      doc.trend === 'down' ? 'destructive' :
+                      'secondary'
+                    }
+                    className={cn(
+                      doc.trend === 'up' && 'bg-status-healthy/10 text-status-healthy border-status-healthy/20',
+                      doc.trend === 'down' && 'bg-status-error/10 text-status-error border-status-error/20',
+                      doc.trend === 'stable' && 'bg-muted/10 text-muted-foreground border-muted/20'
+                    )}
+                  >
+                    {doc.trend === 'up' ? '↑' : doc.trend === 'down' ? '↓' : '→'} {Math.abs(doc.trendPercentage)}%
+                  </Badge>
+                </div>
+              ),
+            },
+            {
+              key: 'lastAccessedAt',
+              header: 'Last Accessed',
+              sortable: true,
+              className: 'w-[180px]',
+              render: (doc) => (
+                <span className="text-xs text-muted-foreground">
+                  {doc.lastAccessedAt
+                    ? new Date(doc.lastAccessedAt).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : 'Never'}
+                </span>
+              ),
+            },
+          ]}
+          columnFilters={[
+            {
+              key: 'repository',
+              label: 'Repository',
+              options: Array.from(new Set((topDocumentsData || []).map(d => d.repository)))
+                .sort()
+                .map(repo => ({ value: repo, label: repo })),
+            },
+            {
+              key: 'trend',
+              label: 'Trend',
+              options: [
+                { value: 'up', label: 'Trending Up' },
+                { value: 'stable', label: 'Stable' },
+                { value: 'down', label: 'Trending Down' },
+              ],
+            },
+          ]}
+          searchKeys={['filePath', 'repository']}
+          searchPlaceholder="Search documents..."
+          defaultPageSize={10}
+          maxHeight="500px"
+        />
       </div>
 
       {/* Polymorphic Transformation Viewer */}

@@ -49,6 +49,14 @@ interface DeveloperMetricsResponse {
   };
 }
 
+// Task velocity response from local API
+interface TaskVelocityDataPoint {
+  date: string;
+  tasksCompleted: number;
+  avgDurationMs: number;
+  tasksPerDay: number;
+}
+
 export default function DeveloperExperience() {
   const queryClient = useQueryClient();
 
@@ -86,6 +94,12 @@ export default function DeveloperExperience() {
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
+  // Fetch task completion velocity from local API
+  const { data: taskVelocityData, isLoading: velocityLoading } = useQuery<TaskVelocityDataPoint[]>({
+    queryKey: [`/api/intelligence/developer/task-velocity?timeWindow=${timeRange}`],
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
   // Extract data from unified response
   const workflowsData = metricsData?.workflows;
   const velocityResponse = metricsData?.velocity;
@@ -101,6 +115,28 @@ export default function DeveloperExperience() {
     time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     value: d.productivity_score,
   }));
+
+  // Transform task velocity data for charts
+  const taskVelocityChartData = (taskVelocityData || []).map(d => ({
+    time: d.date.split(' ')[1] || d.date, // Use time portion if available, otherwise date
+    value: d.tasksCompleted,
+  }));
+
+  const avgDurationChartData = (taskVelocityData || []).map(d => ({
+    time: d.date.split(' ')[1] || d.date,
+    value: Math.round(d.avgDurationMs / 1000), // Convert to seconds for better readability
+  }));
+
+  // Calculate summary metrics from task velocity data
+  const totalTasksCompleted = (taskVelocityData || []).reduce((sum, d) => sum + d.tasksCompleted, 0);
+  const avgTasksPerDay = taskVelocityData && taskVelocityData.length > 0
+    ? Math.round(totalTasksCompleted / taskVelocityData.length)
+    : 0;
+  const avgCompletionTime = taskVelocityData && taskVelocityData.length > 0
+    ? Math.round(
+        (taskVelocityData.reduce((sum, d) => sum + d.avgDurationMs, 0) / taskVelocityData.length) / 1000
+      )
+    : 0;
 
   // Calculate metrics from real data
   const activeDevelopers = workflowsData?.total_developers || 0;
@@ -214,6 +250,74 @@ export default function DeveloperExperience() {
           data={productivityData}
           color="hsl(var(--chart-2))"
         />
+      </div>
+
+      {/* Task Completion Velocity Charts */}
+      <div className="grid grid-cols-2 gap-6">
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold">
+              Task Completion Velocity ({timeRange})
+            </h3>
+            <Badge variant="outline" className="text-xs">
+              {totalTasksCompleted} total tasks
+            </Badge>
+          </div>
+          {velocityLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <TrendingUp className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : taskVelocityData && taskVelocityData.length > 0 ? (
+            <>
+              <RealtimeChart
+                title=""
+                data={taskVelocityChartData}
+                color="hsl(var(--chart-3))"
+                showArea
+              />
+              <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-card-border">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Avg Tasks/Day</div>
+                  <div className="text-2xl font-semibold">{avgTasksPerDay}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Avg Duration</div>
+                  <div className="text-2xl font-semibold">{avgCompletionTime}s</div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-64 text-muted-foreground">
+              No task velocity data available for {timeRange}
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold">
+              Average Completion Time ({timeRange})
+            </h3>
+            <Badge variant="outline" className="text-xs">
+              seconds
+            </Badge>
+          </div>
+          {velocityLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <TrendingUp className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : taskVelocityData && taskVelocityData.length > 0 ? (
+            <RealtimeChart
+              title=""
+              data={avgDurationChartData}
+              color="hsl(var(--chart-4))"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-64 text-muted-foreground">
+              No duration data available for {timeRange}
+            </div>
+          )}
+        </Card>
       </div>
 
       {/* Workflow grid with real data */}

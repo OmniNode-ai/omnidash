@@ -27,6 +27,20 @@ import EnhancedAnalytics from "@/pages/preview/EnhancedAnalytics";
 import SystemHealth from "@/pages/preview/SystemHealth";
 import AdvancedSettings from "@/pages/preview/AdvancedSettings";
 import FeatureShowcase from "@/pages/preview/FeatureShowcase";
+import ContractBuilder from "@/pages/preview/ContractBuilder";
+import TechDebtAnalysis from "@/pages/preview/TechDebtAnalysis";
+import PatternLineage from "@/pages/preview/PatternLineage";
+import DuplicateDetection from "@/pages/preview/DuplicateDetection";
+import NodeNetworkComposer from "@/pages/preview/NodeNetworkComposer";
+import IntelligenceSavings from "@/pages/preview/IntelligenceSavings";
+import AgentRegistry from "@/pages/preview/AgentRegistry";
+import AgentNetwork from "@/pages/preview/AgentNetwork";
+import IntelligenceAnalytics from "@/pages/preview/IntelligenceAnalytics";
+import PlatformMonitoring from "@/pages/preview/PlatformMonitoring";
+import AgentManagement from "@/pages/preview/AgentManagement";
+import CodeIntelligenceSuite from "@/pages/preview/CodeIntelligenceSuite";
+import ArchitectureNetworks from "@/pages/preview/ArchitectureNetworks";
+import DeveloperTools from "@/pages/preview/DeveloperTools";
 
 function Router() {
   return (
@@ -42,11 +56,25 @@ function Router() {
       <Route path="/chat" component={Chat} />
       <Route path="/trace" component={CorrelationTrace} />
       
-      {/* Preview routes */}
-      <Route path="/preview/analytics" component={EnhancedAnalytics} />
-      <Route path="/preview/health" component={SystemHealth} />
-      <Route path="/preview/settings" component={AdvancedSettings} />
-      <Route path="/preview/showcase" component={FeatureShowcase} />
+          {/* Preview routes */}
+          <Route path="/preview/analytics" component={EnhancedAnalytics} />
+          <Route path="/preview/health" component={SystemHealth} />
+          <Route path="/preview/settings" component={AdvancedSettings} />
+          <Route path="/preview/showcase" component={FeatureShowcase} />
+          <Route path="/preview/contracts" component={ContractBuilder} />
+          <Route path="/preview/tech-debt" component={TechDebtAnalysis} />
+          <Route path="/preview/pattern-lineage" component={PatternLineage} />
+          <Route path="/preview/duplicate-detection" component={DuplicateDetection} />
+          <Route path="/preview/composer" component={NodeNetworkComposer} />
+          <Route path="/preview/savings" component={IntelligenceSavings} />
+          <Route path="/preview/agent-registry" component={AgentRegistry} />
+          <Route path="/preview/agent-network" component={AgentNetwork} />
+          <Route path="/preview/intelligence-analytics" component={IntelligenceAnalytics} />
+          <Route path="/preview/platform-monitoring" component={PlatformMonitoring} />
+          <Route path="/preview/agent-management" component={AgentManagement} />
+          <Route path="/preview/code-intelligence-suite" component={CodeIntelligenceSuite} />
+          <Route path="/preview/architecture-networks" component={ArchitectureNetworks} />
+          <Route path="/preview/developer-tools" component={DeveloperTools} />
     </Switch>
   );
 }

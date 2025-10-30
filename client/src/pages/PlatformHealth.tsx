@@ -2,7 +2,7 @@ import { MetricCard } from "@/components/MetricCard";
 import { ServiceStatusGrid } from "@/components/ServiceStatusGrid";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { EventFeed } from "@/components/EventFeed";
-import { DrillDownPanel } from "@/components/DrillDownPanel";
+import { DrillDownModal } from "@/components/DrillDownModal";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
 import { Server, Activity, AlertTriangle, Clock } from "lucide-react";
@@ -21,6 +21,16 @@ interface PlatformHealthResponse {
   database: ServiceHealth;
   kafka: ServiceHealth;
   services: ServiceHealth[];
+}
+
+// TypeScript interface for service registry
+interface ServiceRegistryEntry {
+  id: string;
+  serviceName: string;
+  serviceUrl: string;
+  serviceType: string;
+  healthStatus: 'healthy' | 'degraded' | 'unhealthy';
+  lastHealthCheck: string | null;
 }
 
 export default function PlatformHealth() {
@@ -43,6 +53,21 @@ export default function PlatformHealth() {
       const response = await fetch(`${omniarchonUrl}/api/intelligence/platform/health?timeWindow=${timeRange}`);
       if (!response.ok) {
         throw new Error(`Health check failed: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    refetchInterval: 15000, // Poll every 15 seconds
+    refetchOnWindowFocus: true,
+    staleTime: 10000, // Consider data stale after 10 seconds
+  });
+
+  // Fetch service registry from local API with 15 second polling
+  const { data: serviceRegistry, isLoading: servicesLoading } = useQuery<ServiceRegistryEntry[]>({
+    queryKey: ['/api/intelligence/platform/services'],
+    queryFn: async () => {
+      const response = await fetch('http://localhost:3000/api/intelligence/platform/services');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch services: ${response.statusText}`);
       }
       return response.json();
     },
@@ -251,15 +276,74 @@ export default function PlatformHealth() {
 
             <EventFeed events={events} maxHeight={400} />
           </div>
+
+          {/* Service Registry Grid */}
+          {serviceRegistry && serviceRegistry.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-2xl font-semibold mb-4">Service Registry</h2>
+              <div className="bg-card rounded-lg border p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {serviceRegistry.map((service) => {
+                    // Map health status to color
+                    const statusColor = service.healthStatus === 'healthy'
+                      ? 'text-green-500'
+                      : service.healthStatus === 'degraded'
+                      ? 'text-yellow-500'
+                      : 'text-red-500';
+
+                    const statusBg = service.healthStatus === 'healthy'
+                      ? 'bg-green-500/10'
+                      : service.healthStatus === 'degraded'
+                      ? 'bg-yellow-500/10'
+                      : 'bg-red-500/10';
+
+                    // Format last health check time
+                    const lastCheck = service.lastHealthCheck
+                      ? new Date(service.lastHealthCheck).toLocaleString()
+                      : 'Never';
+
+                    return (
+                      <div
+                        key={service.id}
+                        className="bg-muted/50 rounded-lg p-4 border border-border hover:border-primary/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-medium text-sm">{service.serviceName}</h3>
+                          <div className={`px-2 py-1 rounded-full text-xs font-medium ${statusBg} ${statusColor}`}>
+                            {service.healthStatus}
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">Type:</span>
+                            <span>{service.serviceType}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">URL:</span>
+                            <span className="truncate">{service.serviceUrl}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">Last Check:</span>
+                            <span>{lastCheck}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
-      <DrillDownPanel
+      <DrillDownModal
         open={panelOpen}
         onOpenChange={setPanelOpen}
         title={selectedService?.name || "Service Details"}
         data={selectedService || {}}
         type="service"
+        variant="modal"
       />
     </div>
   );

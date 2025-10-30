@@ -4,9 +4,11 @@ import { PerformanceThresholds } from "@/components/PerformanceThresholds";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
-import { Code, Search, CheckCircle, Gauge, AlertTriangle, FileCode } from "lucide-react";
+import { Code, Search, CheckCircle, Gauge, AlertTriangle, FileCode, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 interface CodeAnalysisData {
   files_analyzed: number;
@@ -23,6 +25,33 @@ interface CodeAnalysisData {
   }>;
 }
 
+interface ComplianceData {
+  summary: {
+    totalFiles: number;
+    compliantFiles: number;
+    nonCompliantFiles: number;
+    pendingFiles: number;
+    compliancePercentage: number;
+    avgComplianceScore: number;
+  };
+  statusBreakdown: Array<{
+    status: string;
+    count: number;
+    percentage: number;
+  }>;
+  nodeTypeBreakdown: Array<{
+    nodeType: string;
+    compliantCount: number;
+    totalCount: number;
+    percentage: number;
+  }>;
+  trend: Array<{
+    period: string;
+    compliancePercentage: number;
+    totalFiles: number;
+  }>;
+}
+
 export default function CodeIntelligence() {
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
@@ -36,6 +65,12 @@ export default function CodeIntelligence() {
   // Fetch code analysis data from omniarchon
   const { data: codeAnalysis, isLoading } = useQuery<CodeAnalysisData>({
     queryKey: [`http://localhost:8053/api/intelligence/code/analysis?timeWindow=${timeRange}`],
+    refetchInterval: 60000, // Refetch every 60 seconds
+  });
+
+  // Fetch ONEX compliance data
+  const { data: complianceData, isLoading: isLoadingCompliance } = useQuery<ComplianceData>({
+    queryKey: [`/api/intelligence/code/compliance?timeWindow=${timeRange}`],
     refetchInterval: 60000, // Refetch every 60 seconds
   });
 
@@ -125,18 +160,141 @@ export default function CodeIntelligence() {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart 
+        <RealtimeChart
           title="Semantic Search Queries"
           data={searchData}
           color="hsl(var(--chart-1))"
           showArea
         />
-        <RealtimeChart 
+        <RealtimeChart
           title="Overall Code Quality Score"
           data={qualityData}
           color="hsl(var(--chart-3))"
         />
       </div>
+
+      {/* ONEX Compliance Coverage Widget */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Shield className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">ONEX Compliance Coverage</h3>
+              <p className="text-sm text-muted-foreground">
+                {isLoadingCompliance ? 'Loading...' : `${complianceData?.summary.totalFiles || 0} files tracked`}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className={`text-3xl font-bold ${
+              (complianceData?.summary.compliancePercentage || 0) >= 80
+                ? 'text-green-500'
+                : (complianceData?.summary.compliancePercentage || 0) >= 60
+                ? 'text-yellow-500'
+                : 'text-red-500'
+            }`}>
+              {isLoadingCompliance ? '...' : `${complianceData?.summary.compliancePercentage.toFixed(1) || '0'}%`}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">Compliance Rate</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Compliant</span>
+              <span className="font-medium text-green-500">
+                {isLoadingCompliance ? '...' : complianceData?.summary.compliantFiles || 0}
+              </span>
+            </div>
+            <Progress
+              value={
+                complianceData?.summary.totalFiles
+                  ? (complianceData.summary.compliantFiles / complianceData.summary.totalFiles) * 100
+                  : 0
+              }
+              className="h-2 bg-green-500/20"
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Non-Compliant</span>
+              <span className="font-medium text-red-500">
+                {isLoadingCompliance ? '...' : complianceData?.summary.nonCompliantFiles || 0}
+              </span>
+            </div>
+            <Progress
+              value={
+                complianceData?.summary.totalFiles
+                  ? (complianceData.summary.nonCompliantFiles / complianceData.summary.totalFiles) * 100
+                  : 0
+              }
+              className="h-2 bg-red-500/20"
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Pending</span>
+              <span className="font-medium text-yellow-500">
+                {isLoadingCompliance ? '...' : complianceData?.summary.pendingFiles || 0}
+              </span>
+            </div>
+            <Progress
+              value={
+                complianceData?.summary.totalFiles
+                  ? (complianceData.summary.pendingFiles / complianceData.summary.totalFiles) * 100
+                  : 0
+              }
+              className="h-2 bg-yellow-500/20"
+            />
+          </div>
+        </div>
+
+        {/* Node Type Breakdown */}
+        {complianceData?.nodeTypeBreakdown && complianceData.nodeTypeBreakdown.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-muted-foreground">Node Type Breakdown</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {complianceData.nodeTypeBreakdown.map((nodeType) => (
+                <div key={nodeType.nodeType} className="p-3 rounded-lg bg-muted/50">
+                  <div className="text-xs text-muted-foreground capitalize mb-1">
+                    {nodeType.nodeType}
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-lg font-bold">
+                      {nodeType.percentage.toFixed(0)}%
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {nodeType.compliantCount}/{nodeType.totalCount}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Compliance Trend Chart */}
+        {complianceData?.trend && complianceData.trend.length > 0 && (
+          <div className="mt-6">
+            <RealtimeChart
+              title="Compliance Trend"
+              data={complianceData.trend.map(t => ({
+                time: new Date(t.period).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: timeRange === '24h' ? '2-digit' : undefined
+                }),
+                value: t.compliancePercentage,
+              }))}
+              color="hsl(var(--chart-2))"
+              showArea
+            />
+          </div>
+        )}
+      </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <QualityGatePanel gates={gates} />

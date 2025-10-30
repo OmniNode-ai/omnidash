@@ -2,7 +2,7 @@ import { MetricCard } from "@/components/MetricCard";
 import { PatternNetwork } from "@/components/PatternNetwork";
 import { TopPatternsList } from "@/components/TopPatternsList";
 import { RealtimeChart } from "@/components/RealtimeChart";
-import { DrillDownPanel } from "@/components/DrillDownPanel";
+import { DrillDownModal } from "@/components/DrillDownModal";
 import { StatusLegend } from "@/components/StatusLegend";
 import { PatternFilters } from "@/components/PatternFilters";
 import { ExportButton } from "@/components/ExportButton";
@@ -41,6 +41,12 @@ interface QualityTrend {
   period: string;
   avgQuality: number;
   manifestCount: number;
+}
+
+interface LanguageBreakdown {
+  language: string;
+  count: number;
+  percentage: number;
 }
 
 interface Pattern {
@@ -97,6 +103,12 @@ export default function PatternLearning() {
   const { data: patterns, isLoading: patternsLoading, error: patternsError } = useQuery<Pattern[]>({
     queryKey: [`http://localhost:3000/api/intelligence/patterns/list?limit=50&timeWindow=${timeRange}`],
     refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Fetch language breakdown with 60-second polling
+  const { data: languageData, isLoading: languageLoading } = useQuery<LanguageBreakdown[]>({
+    queryKey: [`http://localhost:3000/api/intelligence/patterns/by-language?timeWindow=${timeRange}`],
+    refetchInterval: 60000, // Refetch every 60 seconds
   });
 
   // Filter patterns client-side based on filter criteria
@@ -266,6 +278,61 @@ export default function PatternLearning() {
         </div>
       </div>
 
+      {/* Language Breakdown */}
+      <div className="bg-card border rounded-lg p-6">
+        <h3 className="text-lg font-semibold mb-4">Pattern Language Distribution</h3>
+        {languageLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">Loading language data...</p>
+          </div>
+        ) : !languageData || languageData.length === 0 ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">No language data available</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {languageData.map((lang, index) => {
+              // Color palette for languages
+              const colors = [
+                'hsl(var(--chart-1))',
+                'hsl(var(--chart-2))',
+                'hsl(var(--chart-3))',
+                'hsl(var(--chart-4))',
+                'hsl(var(--chart-5))',
+              ];
+              const color = colors[index % colors.length];
+
+              return (
+                <div key={lang.language} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="font-medium capitalize">{lang.language}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-muted-foreground">{lang.count.toLocaleString()} patterns</span>
+                      <span className="font-semibold">{lang.percentage}%</span>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${lang.percentage}%`,
+                        backgroundColor: color,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Pattern Filters */}
       <PatternFilters
         searchQuery={searchQuery}
@@ -293,12 +360,13 @@ export default function PatternLearning() {
         />
       </div>
 
-      <DrillDownPanel
+      <DrillDownModal
         open={panelOpen}
         onOpenChange={setPanelOpen}
         title={selectedPattern?.name || "Pattern Details"}
         data={selectedPattern || {}}
         type="pattern"
+        variant="modal"
       />
     </div>
   );

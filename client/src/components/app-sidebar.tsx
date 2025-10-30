@@ -1,4 +1,4 @@
-import { Bot, Network, Zap, Code, Activity, Database, Server, Users, ChevronRight, MessageSquare, Search, Eye, BarChart3, Settings, Shield } from "lucide-react";
+import { Bot, Network, Zap, Code, Activity, Database, Server, Users, ChevronRight, MessageSquare, Search, Eye, BarChart3, Settings, Shield, FileText, TrendingUp, Layers, Target, Calculator, BookOpen } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -68,28 +68,56 @@ const tools = [
   },
 ];
 
-const previews = [
-  {
-    title: "Enhanced Analytics",
-    url: "/preview/analytics",
-    icon: BarChart3,
-  },
-  {
-    title: "System Health",
-    url: "/preview/health",
-    icon: Shield,
-  },
-  {
-    title: "Advanced Settings",
-    url: "/preview/settings",
-    icon: Settings,
-  },
-  {
-    title: "Feature Showcase",
-    url: "/preview/showcase",
-    icon: Eye,
-  },
-];
+  const previews = [
+    {
+      title: "Intelligence Analytics",
+      url: "/preview/intelligence-analytics",
+      icon: BarChart3,
+      description: "Comprehensive analytics for intelligence operations, agent performance, and cost optimization"
+    },
+    {
+      title: "Platform Monitoring",
+      url: "/preview/platform-monitoring",
+      icon: Shield,
+      description: "System health, service status, and developer metrics monitoring"
+    },
+    {
+      title: "Agent Management",
+      url: "/preview/agent-management",
+      icon: Bot,
+      description: "Complete agent ecosystem management, registry, and network visualization"
+    },
+    {
+      title: "Code Intelligence Suite",
+      url: "/preview/code-intelligence-suite",
+      icon: Code,
+      description: "Comprehensive code analysis, pattern discovery, and tech debt tracking"
+    },
+    {
+      title: "Architecture & Networks",
+      url: "/preview/architecture-networks",
+      icon: Network,
+      description: "System architecture, node networks, and knowledge graph management"
+    },
+    {
+      title: "Developer Tools",
+      url: "/preview/developer-tools",
+      icon: Settings,
+      description: "Integrated development tools, query assistant, and utilities"
+    },
+    {
+      title: "Contract Builder",
+      url: "/preview/contracts",
+      icon: FileText,
+      description: "YAML contract generation and management"
+    },
+    {
+      title: "Feature Showcase",
+      url: "/preview/showcase",
+      icon: Eye,
+      description: "Feature demos and interactive previews"
+    },
+  ];
 
 export function AppSidebar() {
   const [location] = useLocation();
