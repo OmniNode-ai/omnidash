@@ -18,40 +18,41 @@ const dashboards = [
     url: "/",
     icon: Bot,
   },
+  // Moved from Preview Features (ordered by importance)
   {
-    title: "Pattern Learning",
-    url: "/patterns",
-    icon: Network,
+    title: "Intelligence Analytics",
+    url: "/preview/intelligence-analytics",
+    icon: BarChart3,
   },
   {
-    title: "Intelligence Operations",
-    url: "/intelligence",
-    icon: Zap,
+    title: "Platform Monitoring",
+    url: "/preview/platform-monitoring",
+    icon: Shield,
   },
   {
-    title: "Code Intelligence",
-    url: "/code",
+    title: "Agent Management",
+    url: "/preview/agent-management",
+    icon: Bot,
+  },
+  {
+    title: "Code Intelligence Suite",
+    url: "/preview/code-intelligence-suite",
     icon: Code,
   },
   {
-    title: "Event Flow",
-    url: "/events",
-    icon: Activity,
+    title: "Architecture & Networks",
+    url: "/preview/architecture-networks",
+    icon: Network,
   },
   {
-    title: "Knowledge Graph",
-    url: "/knowledge",
-    icon: Database,
+    title: "Developer Tools",
+    url: "/preview/developer-tools",
+    icon: Settings,
   },
   {
-    title: "Platform Health",
-    url: "/health",
-    icon: Server,
-  },
-  {
-    title: "Developer Experience",
-    url: "/developer",
-    icon: Users,
+    title: "Contract Builder",
+    url: "/preview/contracts",
+    icon: FileText,
   },
 ];
 
@@ -69,48 +70,6 @@ const tools = [
 ];
 
   const previews = [
-    {
-      title: "Intelligence Analytics",
-      url: "/preview/intelligence-analytics",
-      icon: BarChart3,
-      description: "Comprehensive analytics for intelligence operations, agent performance, and cost optimization"
-    },
-    {
-      title: "Platform Monitoring",
-      url: "/preview/platform-monitoring",
-      icon: Shield,
-      description: "System health, service status, and developer metrics monitoring"
-    },
-    {
-      title: "Agent Management",
-      url: "/preview/agent-management",
-      icon: Bot,
-      description: "Complete agent ecosystem management, registry, and network visualization"
-    },
-    {
-      title: "Code Intelligence Suite",
-      url: "/preview/code-intelligence-suite",
-      icon: Code,
-      description: "Comprehensive code analysis, pattern discovery, and tech debt tracking"
-    },
-    {
-      title: "Architecture & Networks",
-      url: "/preview/architecture-networks",
-      icon: Network,
-      description: "System architecture, node networks, and knowledge graph management"
-    },
-    {
-      title: "Developer Tools",
-      url: "/preview/developer-tools",
-      icon: Settings,
-      description: "Integrated development tools, query assistant, and utilities"
-    },
-    {
-      title: "Contract Builder",
-      url: "/preview/contracts",
-      icon: FileText,
-      description: "YAML contract generation and management"
-    },
     {
       title: "Feature Showcase",
       url: "/preview/showcase",
