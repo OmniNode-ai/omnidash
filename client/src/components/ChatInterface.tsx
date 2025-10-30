@@ -34,9 +34,40 @@ interface ChatHistoryResponse {
 }
 
 export function ChatInterface() {
-  // Fetch chat history from omniarchon
+  // Mock chat history for now - replace with real API when available
   const { data: chatHistory, isLoading, error } = useQuery<ChatHistoryResponse>({
-    queryKey: ['http://localhost:8053/api/intelligence/chat/history'],
+    queryKey: ['chat-history'],
+    queryFn: async () => {
+      // Mock data for demonstration
+      return {
+        messages: [
+          {
+            id: '1',
+            role: 'user',
+            content: 'How can I improve the performance of my API endpoints?',
+            timestamp: '2024-01-20T10:30:00Z'
+          },
+          {
+            id: '2',
+            role: 'assistant',
+            content: 'Based on your current system metrics, I can see several optimization opportunities:\n\n1. **Database Query Optimization**: Your query response times are averaging 150ms. Consider adding indexes on frequently queried columns.\n\n2. **Caching Strategy**: Implement Redis caching for frequently accessed data.\n\n3. **Connection Pooling**: Your database connection pool utilization is at 85%. Consider increasing the pool size.\n\n4. **API Response Compression**: Enable gzip compression to reduce payload size.\n\nWould you like me to generate specific optimization recommendations for your codebase?',
+            timestamp: '2024-01-20T10:30:15Z'
+          },
+          {
+            id: '3',
+            role: 'user',
+            content: 'What patterns should I use for error handling in my microservices?',
+            timestamp: '2024-01-20T11:15:00Z'
+          },
+          {
+            id: '4',
+            role: 'assistant',
+            content: 'For microservices error handling, I recommend implementing these patterns:\n\n1. **Circuit Breaker Pattern**: Prevent cascade failures by breaking the circuit when downstream services fail.\n\n2. **Retry with Exponential Backoff**: Implement intelligent retry logic with increasing delays.\n\n3. **Dead Letter Queue**: Route failed messages to a DLQ for later processing.\n\n4. **Centralized Error Logging**: Use structured logging with correlation IDs for traceability.\n\n5. **Graceful Degradation**: Provide fallback responses when non-critical services are unavailable.\n\nI can help you implement these patterns in your current architecture. Which service would you like to start with?',
+            timestamp: '2024-01-20T11:15:30Z'
+          }
+        ]
+      };
+    },
     refetchInterval: 60000, // Refetch every minute
   });
 

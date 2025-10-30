@@ -1,6 +1,6 @@
 import { MetricCard } from "@/components/MetricCard";
 import { PatternNetwork } from "@/components/PatternNetwork";
-import { DrillDownPanel } from "@/components/DrillDownPanel";
+import { DrillDownModal } from "@/components/DrillDownModal";
 import { Card } from "@/components/ui/card";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
@@ -236,12 +236,13 @@ export default function KnowledgeGraph() {
         </Card>
       </div>
 
-      <DrillDownPanel
+      <DrillDownModal
         open={panelOpen}
         onOpenChange={setPanelOpen}
         title={selectedNode?.name || "Node Details"}
         data={selectedNode || {}}
         type="pattern"
+        variant="modal"
       />
     </div>
   );

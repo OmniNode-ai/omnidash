@@ -8,8 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Key configuration values (see `.env` for full details):
 - **Port**: 3000 (set in package.json: `PORT=3000 npm run dev`)
-- **Database Password**: `REDACTED_PASSWORD_1` (NOT `REDACTED_PASSWORD_2`)
-- **Database URL**: `postgresql://postgres:REDACTED_PASSWORD_1@192.168.86.200:5436/omninode_bridge`
+- **Database**: All connection details in `.env` file (never hardcode passwords!)
 - **Kafka Brokers**: `192.168.86.200:9092`
 
 **Before running any commands that require configuration:**
@@ -37,6 +36,20 @@ npm run db:push     # Push Drizzle schema changes to PostgreSQL
 # Use port 3000, not 5000!
 curl http://localhost:3000/api/intelligence/patterns/summary
 curl http://localhost:3000/api/intelligence/agents/summary
+curl http://localhost:3000/api/intelligence/events/recent
+curl http://localhost:3000/api/intelligence/routing/metrics
+curl http://localhost:3000/api/intelligence/quality/summary
+```
+
+**Observability & Testing**:
+```bash
+# Event generation and testing
+npm run seed-events              # Seed test events once
+npm run seed-events:continuous   # Continuous event seeding for testing
+npm run check-topics             # Check Kafka topic health and consumer lag
+
+# Manual event testing
+node scripts/seed-events.ts      # Direct script execution
 ```
 
 **Dashboard URLs** (always port 3000):
@@ -53,7 +66,7 @@ curl http://localhost:3000/api/intelligence/agents/summary
 **Environment**:
 - **ALWAYS CHECK `.env` FILE FIRST** for actual configuration values
 - Runs on `PORT=3000` (configured in package.json dev script, NOT 5000!)
-- Database: `postgresql://postgres:REDACTED_PASSWORD_1@192.168.86.200:5436/omninode_bridge`
+- Database: All connection details in `.env` file (host, port, credentials)
 - Kafka: `192.168.86.200:9092`
 - All configuration values in `.env` file - never assume defaults
 
@@ -156,7 +169,7 @@ export const insertUserSchema = createInsertSchema(users); // Zod schema
 
 ## Important Constraints
 
-**Port Binding**: Application MUST run on the port specified in `PORT` environment variable (default 5000). Other ports are firewalled in deployment environment.
+**Port Binding**: Application MUST run on the port specified in `PORT` environment variable (default 3000). Other ports are firewalled in deployment environment.
 
 **Database Requirement**: Application expects `DATABASE_URL` environment variable. Server will fail to start if not provided (validated in `drizzle.config.ts`).
 
@@ -191,11 +204,12 @@ export const insertUserSchema = createInsertSchema(users); // Zod schema
 
 ### Environment Variables
 
-Add to `.env.local` for intelligence integration:
+Add to `.env` for intelligence integration (see `.env.example` for template):
 
 ```bash
 # PostgreSQL Intelligence Database
-DATABASE_URL="postgresql://postgres:REDACTED_PASSWORD_2@192.168.86.200:5436/omninode_bridge"
+# See .env file for actual credentials - NEVER commit passwords to git!
+DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge"
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge

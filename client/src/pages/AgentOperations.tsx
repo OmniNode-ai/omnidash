@@ -2,11 +2,14 @@ import { MetricCard } from "@/components/MetricCard";
 import { AgentStatusGrid } from "@/components/AgentStatusGrid";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { EventFeed } from "@/components/EventFeed";
-import { DrillDownPanel } from "@/components/DrillDownPanel";
+import { DrillDownModal } from "@/components/DrillDownModal";
 import { StatusLegend } from "@/components/StatusLegend";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
 import { Activity, Cpu, CheckCircle, Clock } from "lucide-react";
+import { Module, ModuleHeader, ModuleBody } from "@/components/Module";
+import { Pager } from "@/components/Pager";
+import { DateRangeFilter, DateRangeValue } from "@/components/DateRangeFilter";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -38,14 +41,20 @@ interface HealthStatus {
   timestamp: string;
 }
 
+// Routing insights are shown in the Routing tab; keep operations focused on live activity
+
 export default function AgentOperations() {
   const queryClient = useQueryClient();
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [chartData, setChartData] = useState<Array<{ time: string; value: number }>>([]);
+  const [showRunningOnly, setShowRunningOnly] = useState(true);
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
+  const [eventsPage, setEventsPage] = useState(1);
+  const [eventsPageSize, setEventsPageSize] = useState(10);
+  const [eventsRange, setEventsRange] = useState<DateRangeValue>({ preset: '24h' });
 
   // Throttle query invalidations to prevent excessive re-renders
   const lastInvalidationRef = useRef<{ [key: string]: number }>({});
@@ -109,6 +118,8 @@ export default function AgentOperations() {
   const { data: health } = useQuery<HealthStatus>({
     queryKey: ['/api/intelligence/health'],
   });
+
+  // (removed) Routing strategy breakdown to avoid duplication with Routing tab
 
   // Update chart data when actions change (action rate over time)
   useEffect(() => {
@@ -181,9 +192,29 @@ export default function AgentOperations() {
     }) || [];
   }, [metrics]);
 
+  // Identify "running" agents as those with recent actions in the last 2 minutes
+  const runningAgentIds = useMemo(() => {
+    if (!actions) return new Set<string>();
+    const cutoff = Date.now() - 2 * 60 * 1000;
+    const set = new Set<string>();
+    for (const a of actions) {
+      const t = new Date(a.createdAt).getTime();
+      if (!Number.isNaN(t) && t >= cutoff) {
+        set.add(a.agentName);
+      }
+    }
+    return set;
+  }, [actions]);
+
+  const visibleAgents = useMemo(() => {
+    if (!showRunningOnly) return agents;
+    if (!agents?.length) return agents;
+    return agents.filter(a => runningAgentIds.has(a.name));
+  }, [agents, runningAgentIds, showRunningOnly]);
+
   // Memoize events to prevent recalculation
-  const events = useMemo(() => {
-    return actions?.slice(0, 50).map(action => ({
+  const eventsAll = useMemo(() => {
+    return actions?.map(action => ({
       id: action.id,
       type: 'info' as const,
       message: `${action.agentName}: ${action.actionName}`,
@@ -191,6 +222,40 @@ export default function AgentOperations() {
       source: action.agentName,
     })) || [];
   }, [actions]);
+
+  const eventsFiltered = useMemo(() => {
+    if (!eventsAll.length) return eventsAll;
+    // rudimentary filter by days based on preset
+    const now = Date.now();
+    let cutoff = 0;
+    if (eventsRange.preset === '24h') cutoff = now - 24 * 60 * 60 * 1000;
+    else if (eventsRange.preset === '7d') cutoff = now - 7 * 24 * 60 * 60 * 1000;
+    else if (eventsRange.preset === '30d') cutoff = now - 30 * 24 * 60 * 60 * 1000;
+    else if (eventsRange.preset === 'custom' && eventsRange.start && eventsRange.end) {
+      // keep within custom range
+      const startMs = new Date(eventsRange.start).getTime();
+      const endMs = new Date(eventsRange.end).getTime() + 24 * 60 * 60 * 1000;
+      return eventsAll.filter(e => {
+        const t = new Date(`1970-01-01T${e.timestamp}`).getTime(); // fallback: treat as today
+        const nowDay = new Date().toDateString();
+        const full = new Date(`${nowDay} ${e.timestamp}`).getTime();
+        return full >= startMs && full <= endMs;
+      });
+    }
+    if (cutoff > 0) {
+      return eventsAll.filter(e => {
+        const nowDay = new Date().toDateString();
+        const full = new Date(`${nowDay} ${e.timestamp}`).getTime();
+        return full >= cutoff;
+      });
+    }
+    return eventsAll;
+  }, [eventsAll, eventsRange]);
+
+  const eventsPaged = useMemo(() => {
+    const start = (eventsPage - 1) * eventsPageSize;
+    return eventsFiltered.slice(start, start + eventsPageSize);
+  }, [eventsFiltered, eventsPage, eventsPageSize]);
 
   // Loading state
   if (metricsLoading || actionsLoading) {
@@ -221,23 +286,6 @@ export default function AgentOperations() {
 
   return (
     <div className="space-y-6">
-      {/* Header with controls */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold mb-2">AI Agent Operations</h1>
-          <p className="text-muted-foreground">
-            Real-time monitoring of {aggregatedMetrics.activeAgents} AI agent{aggregatedMetrics.activeAgents !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
-          <ExportButton
-            data={{ metrics, actions, summary: aggregatedMetrics }}
-            filename={`agent-operations-${timeRange}-${new Date().toISOString().split('T')[0]}`}
-            disabled={!metrics || !actions}
-          />
-        </div>
-      </div>
 
       {/* Status legend */}
       <StatusLegend />
@@ -287,24 +335,74 @@ export default function AgentOperations() {
         />
       </div>
 
+      {/* (removed) Routing Strategy Breakdown to keep this tab focused on operations */}
+
       {/* Agent grid and event feed with real data */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
-          <AgentStatusGrid
-            agents={agents}
-            onAgentClick={handleAgentClick}
-          />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
+        <div className="xl:col-span-2 h-full">
+          <Module className="h-full">
+            <ModuleHeader
+              left={<span className="ty-title">Agents</span>}
+              right={
+                <>
+                  <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Show:</span>
+                    <button
+                      className={`px-3 py-1 rounded border ${showRunningOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                      onClick={() => setShowRunningOnly(true)}
+                    >
+                      Running
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded border ${!showRunningOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                      onClick={() => setShowRunningOnly(false)}
+                    >
+                      All
+                    </button>
+                  </div>
+                </>
+              }
+            />
+            <ModuleBody>
+              <AgentStatusGrid
+                agents={visibleAgents}
+                onAgentClick={handleAgentClick}
+                cardBackgroundClass="bg-transparent"
+              />
+            </ModuleBody>
+          </Module>
         </div>
 
-        <EventFeed events={events} maxHeight={400} />
+        <Module className="h-full">
+          <ModuleHeader
+            left={<span className="ty-title">Live Event Stream</span>}
+            right={
+              <>
+                <DateRangeFilter value={eventsRange} onChange={(v) => { setEventsRange(v); setEventsPage(1); }} />
+                <Pager
+                  page={eventsPage}
+                  pageSize={eventsPageSize}
+                  totalItems={eventsFiltered.length}
+                  onPageChange={setEventsPage}
+                  onPageSizeChange={(n) => { setEventsPageSize(n); setEventsPage(1); }}
+                />
+              </>
+            }
+          />
+          <ModuleBody>
+            <EventFeed events={eventsPaged} maxHeight={9999} bare />
+          </ModuleBody>
+        </Module>
       </div>
 
-      <DrillDownPanel
+      <DrillDownModal
         open={panelOpen}
         onOpenChange={setPanelOpen}
         title={selectedAgent?.name || "Agent Details"}
         data={selectedAgent || {}}
         type="agent"
+        variant="modal"
       />
     </div>
   );
