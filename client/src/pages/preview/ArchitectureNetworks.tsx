@@ -156,7 +156,7 @@ export default function ArchitectureNetworks() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Architecture & Networks</h1>
-          <p className="text-muted-foreground">
+          <p className="ty-subtitle">
             System architecture, node networks, knowledge graph, and event flow management
           </p>
         </div>

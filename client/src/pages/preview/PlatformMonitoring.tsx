@@ -153,7 +153,7 @@ export default function PlatformMonitoring() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Platform Monitoring</h1>
-          <p className="text-muted-foreground">
+          <p className="ty-subtitle">
             Comprehensive monitoring of system health, service status, and developer productivity
           </p>
         </div>

@@ -269,7 +269,7 @@ const TechDebtAnalysis: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Tech Debt Analysis</h1>
-          <p className="text-muted-foreground">
+          <p className="ty-subtitle">
             Monitor technical debt trends and identify optimization opportunities
           </p>
         </div>

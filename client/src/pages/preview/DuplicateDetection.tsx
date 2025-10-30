@@ -372,7 +372,7 @@ const DuplicateDetection: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Duplicate Detection & Pattern Replacement</h1>
-          <p className="text-muted-foreground">
+          <p className="ty-subtitle">
             Identify duplicate code and upgrade to better patterns from your library
           </p>
         </div>

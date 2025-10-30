@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 const dashboards = [
   {
-    title: "AI Agent Operations",
+    title: "Agent Management",
     url: "/",
     icon: Bot,
   },
@@ -28,11 +28,6 @@ const dashboards = [
     title: "Platform Monitoring",
     url: "/preview/platform-monitoring",
     icon: Shield,
-  },
-  {
-    title: "Agent Management",
-    url: "/preview/agent-management",
-    icon: Bot,
   },
   {
     title: "Code Intelligence Suite",

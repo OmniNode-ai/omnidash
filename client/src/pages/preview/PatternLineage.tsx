@@ -258,7 +258,7 @@ const PatternLineage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Pattern Lineage</h1>
-          <p className="text-muted-foreground">
+          <p className="ty-subtitle">
             Visualize pattern dependencies, evolution, and relationships
           </p>
         </div>

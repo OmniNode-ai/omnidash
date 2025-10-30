@@ -262,7 +262,7 @@ export default function AgentRegistry() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Agent Registry</h1>
-          <p className="text-muted-foreground">
+          <p className="ty-subtitle">
             Discover and manage AI agents with their capabilities, performance metrics, and routing intelligence
           </p>
         </div>

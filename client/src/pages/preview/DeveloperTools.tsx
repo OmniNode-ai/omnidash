@@ -124,7 +124,7 @@ export default function DeveloperTools() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Developer Tools</h1>
-          <p className="text-muted-foreground">
+          <p className="ty-subtitle">
             Integrated development tools, query assistant, event tracing, and utilities
           </p>
         </div>

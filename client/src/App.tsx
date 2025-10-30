@@ -45,7 +45,7 @@ import DeveloperTools from "@/pages/preview/DeveloperTools";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={AgentOperations} />
+      <Route path="/" component={AgentManagement} />
       <Route path="/patterns" component={PatternLearning} />
       <Route path="/intelligence" component={IntelligenceOperations} />
       <Route path="/code" component={CodeIntelligence} />

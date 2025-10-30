@@ -185,7 +185,7 @@ export default function IntelligenceAnalytics() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Intelligence Analytics</h1>
-          <p className="text-muted-foreground">
+          <p className="ty-subtitle">
             Comprehensive analytics for intelligence operations, agent performance, and cost optimization
           </p>
         </div>

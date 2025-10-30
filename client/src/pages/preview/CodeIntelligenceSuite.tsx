@@ -127,7 +127,7 @@ export default function CodeIntelligenceSuite() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Code Intelligence Suite</h1>
-          <p className="text-muted-foreground">
+          <p className="ty-subtitle">
             Comprehensive code analysis, pattern discovery, lineage tracking, and technical debt management
           </p>
         </div>
