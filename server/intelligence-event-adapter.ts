@@ -43,8 +43,12 @@ export class IntelligenceEventAdapter {
         try {
           const value = message.value?.toString();
           if (!value) return;
-          const payload = JSON.parse(value);
-          const correlationId = payload?.correlation_id || payload?.correlationId;
+          const event = JSON.parse(value);
+          
+          // Extract correlation_id (may be top-level or in payload)
+          const correlationId = event?.correlation_id || event?.correlationId || 
+                                event?.payload?.correlation_id || 
+                                message.key?.toString();
           if (!correlationId) return;
 
           const pending = this.pending.get(correlationId);
@@ -52,13 +56,21 @@ export class IntelligenceEventAdapter {
           clearTimeout(pending.timeout);
           this.pending.delete(correlationId);
 
-          if (topic === this.TOPIC_COMPLETED) {
-            pending.resolve(payload);
-          } else {
-            pending.reject(new Error(payload?.error || 'Intelligence request failed'));
+          if (topic === this.TOPIC_COMPLETED || event?.event_type === 'CODE_ANALYSIS_COMPLETED') {
+            // Extract payload from ONEX envelope format
+            const result = event?.payload || event;
+            pending.resolve(result);
+          } else if (topic === this.TOPIC_FAILED || event?.event_type === 'CODE_ANALYSIS_FAILED') {
+            // Extract error details from payload
+            const errorPayload = event?.payload || event;
+            const errorMsg = errorPayload?.error_message || errorPayload?.error || 'Intelligence request failed';
+            const error = new Error(errorMsg);
+            (error as any).error_code = errorPayload?.error_code;
+            pending.reject(error);
           }
         } catch (err) {
           // Swallow to avoid consumer crash; the caller gets timeout fallback
+          console.error('[IntelligenceAdapter] Error processing response:', err);
         }
       }
     });
@@ -79,17 +91,31 @@ export class IntelligenceEventAdapter {
   }
 
   /**
-   * Generic request method
+   * Generic request method - matches OmniClaude/OmniArchon ONEX event format
    */
   async request(requestType: string, payload: Record<string, any>, timeoutMs: number = 5000): Promise<any> {
     if (!this.started || !this.producer) throw new Error('IntelligenceEventAdapter not started');
 
     const correlationId = (payload?.correlation_id || payload?.correlationId || randomUUID()).toUpperCase();
+    
+    // Format matches OmniClaude's _create_request_payload format
+    // Handler expects: event_type, correlation_id, payload (with source_path, language, etc.)
     const envelope = {
+      event_id: randomUUID(),
+      event_type: 'CODE_ANALYSIS_REQUESTED',
       correlation_id: correlationId,
-      request_type: requestType,
       timestamp: new Date().toISOString(),
-      payload,
+      service: 'omnidash',
+      payload: {
+        source_path: payload.sourcePath || payload.source_path || '',
+        content: payload.content || null,
+        language: payload.language || 'python',
+        operation_type: payload.operation_type || payload.operationType || 'PATTERN_EXTRACTION',
+        options: payload.options || {},
+        project_id: payload.projectId || payload.project_id || 'omnidash',
+        user_id: payload.userId || payload.user_id || 'system',
+        ...payload, // Allow override of any fields
+      },
     };
 
     // Promise with timeout tracking
@@ -110,10 +136,15 @@ export class IntelligenceEventAdapter {
   }
 
   /**
-   * Example higher-level operation
+   * Request pattern discovery (higher-level wrapper)
    */
-  async requestPatternDiscovery(params: { sourcePath: string; language?: string; project?: string }, timeoutMs?: number) {
-    return this.request('code_analysis', params, timeoutMs);
+  async requestPatternDiscovery(params: { sourcePath: string; language?: string; project?: string; operationType?: string }, timeoutMs?: number) {
+    return this.request('code_analysis', {
+      sourcePath: params.sourcePath,
+      language: params.language,
+      project_id: params.project,
+      operation_type: params.operationType || 'PATTERN_EXTRACTION',
+    }, timeoutMs);
   }
 }
 

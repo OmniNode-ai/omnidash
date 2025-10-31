@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { intelligenceEvents } from './intelligence-event-adapter';
 import { eventConsumer } from './event-consumer';
 import { intelligenceDb } from './storage';
 import { agentManifestInjections, patternLineageNodes, patternLineageEdges, agentTransformationEvents, agentRoutingDecisions, agentActions, onexComplianceStamps, documentMetadata, nodeServiceRegistry, taskCompletionMetrics } from '../shared/intelligence-schema';
@@ -9,6 +10,37 @@ export const intelligenceRouter = Router();
 // ============================================================================
 // Type Definitions for Pattern Discovery Responses
 // ============================================================================
+
+// ---------------------------------------------------------------------------
+// Adapters Smoke Tests (temporary endpoints)
+// ---------------------------------------------------------------------------
+
+// Test Intelligence Event Adapter (Kafka request/response)
+intelligenceRouter.get('/events/test/patterns', async (req, res) => {
+  try {
+    const sourcePath = (req.query.path as string) || 'node_*_effect.py';
+    const language = (req.query.lang as string) || 'python';
+    if ((intelligenceEvents as any).started !== true) {
+      await intelligenceEvents.start();
+    }
+    const result = await intelligenceEvents.requestPatternDiscovery({ sourcePath, language }, 4000);
+    return res.json({ ok: true, result });
+  } catch (err: any) {
+    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+// Test DB Adapter (simple count)
+import { dbAdapter } from './db-adapter';
+intelligenceRouter.get('/db/test/count', async (req, res) => {
+  try {
+    const table = (req.query.table as string) || 'agent_actions';
+    const count = await dbAdapter.count(table);
+    return res.json({ ok: true, table, count });
+  } catch (err: any) {
+    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
 
 interface PatternSummary {
   totalPatterns: number;
