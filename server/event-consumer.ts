@@ -1,5 +1,7 @@
 import { Kafka, Consumer } from 'kafkajs';
 import { EventEmitter } from 'events';
+import { intelligenceDb } from './storage';
+import { sql } from 'drizzle-orm';
 
 export interface AgentMetrics {
   agent: string;
@@ -127,6 +129,16 @@ class EventConsumer extends EventEmitter {
       console.log('Kafka consumer connected');
       this.emit('connected'); // Emit connected event
 
+      // Preload historical data from PostgreSQL to populate dashboards on startup
+      if (process.env.ENABLE_EVENT_PRELOAD !== 'false') {
+        try {
+          await this.preloadFromDatabase();
+          console.log('[EventConsumer] Preloaded historical data from PostgreSQL');
+        } catch (e) {
+          console.warn('[EventConsumer] Preload skipped due to error:', e);
+        }
+      }
+
       await this.consumer.subscribe({
         topics: [
           'agent-routing-decisions',
@@ -175,6 +187,68 @@ class EventConsumer extends EventEmitter {
       this.emit('error', error); // Emit error event
       throw error;
     }
+  }
+
+  private async preloadFromDatabase() {
+    // Load recent actions
+    const actionsRows = await intelligenceDb.execute(sql.raw(`
+      SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
+      FROM agent_actions
+      ORDER BY created_at DESC
+      LIMIT 200;
+    `));
+
+    (actionsRows as any[]).forEach(r => {
+      const action = {
+        id: r.id,
+        correlationId: r.correlation_id,
+        agentName: r.agent_name,
+        actionType: r.action_type,
+        actionName: r.action_name,
+        actionDetails: r.action_details,
+        debugMode: !!r.debug_mode,
+        durationMs: Number(r.duration_ms || 0),
+        createdAt: new Date(r.created_at),
+      } as AgentAction;
+      this.recentActions.push(action);
+      if (this.recentActions.length > this.maxActions) {
+        this.recentActions = this.recentActions.slice(-this.maxActions);
+      }
+    });
+
+    // Seed agent metrics using routing decisions + actions
+    const metricsRows = await intelligenceDb.execute(sql.raw(`
+      SELECT COALESCE(ard.agent_name, aa.agent_name) AS agent,
+             COUNT(aa.id) AS total_requests,
+             AVG(COALESCE(ard.routing_duration_ms, aa.duration_ms, 0)) AS avg_routing_time,
+             AVG(COALESCE(ard.confidence, ard.confidence_score, 0)) AS avg_confidence
+      FROM agent_actions aa
+      FULL OUTER JOIN agent_routing_decisions ard
+        ON aa.correlation_id = ard.correlation_id
+      WHERE (aa.created_at IS NULL OR aa.created_at >= NOW() - INTERVAL '24 hours')
+         OR (ard.created_at IS NULL OR ard.created_at >= NOW() - INTERVAL '24 hours')
+      GROUP BY COALESCE(ard.agent_name, aa.agent_name)
+      ORDER BY total_requests DESC
+      LIMIT 100;
+    `));
+
+    (metricsRows as any[]).forEach(r => {
+      const agent = r.agent || 'unknown';
+      this.agentMetrics.set(agent, {
+        count: Number(r.total_requests || 0),
+        totalRoutingTime: Number(r.avg_routing_time || 0) * Number(r.total_requests || 0),
+        totalConfidence: Number(r.avg_confidence || 0) * Number(r.total_requests || 0),
+        successCount: 0,
+        errorCount: 0,
+        lastSeen: new Date(),
+      });
+    });
+
+    // Emit initial metric snapshot
+    this.emit('metricUpdate', this.getAgentMetrics());
+    // Emit initial actions snapshot (emit last one to trigger UI refresh)
+    const last = this.recentActions[this.recentActions.length - 1];
+    if (last) this.emit('actionUpdate', last);
   }
 
   private handleRoutingDecision(event: any) {
