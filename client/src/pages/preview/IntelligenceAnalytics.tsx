@@ -94,8 +94,29 @@ export default function IntelligenceAnalytics() {
   const { data: agentPerformance, isLoading: agentsLoading } = useQuery<AgentPerformance[]>({
     queryKey: ['agent-performance', timeRange],
     queryFn: async () => {
-      // For now, use mock data since the API returns a different structure
-      // In production, we would transform the API response to match this interface
+      // Try live endpoint first; transform if needed; fallback to mock
+      try {
+        const res = await fetch(`/api/agents/performance?timeRange=${timeRange}`);
+        if (res.ok) {
+          const json = await res.json();
+          // Accept either array of agents or overview object
+          const items = Array.isArray(json) ? json : (json?.agents || json?.topAgents || []);
+          if (Array.isArray(items) && items.length) {
+            return items.map((a: any) => ({
+              agentId: a.agentId || a.id || a.name || 'unknown',
+              agentName: a.agentName || a.name || a.id || 'Unknown Agent',
+              totalRuns: a.totalRuns ?? a.runCount ?? a.executions ?? 0,
+              successRate: a.successRate ?? a.success_rate ?? a.successRatio ?? 0,
+              avgExecutionTime: a.avgExecutionTime ?? a.avg_latency_ms ? (a.avg_latency_ms / 1000) : 0,
+              avgQualityScore: a.avgQualityScore ?? a.quality ?? 0,
+              efficiency: a.efficiency ?? a.successRate ?? 0,
+              popularity: a.popularity ?? a.usage ?? 0,
+              lastUsed: a.lastUsed || a.last_seen || new Date().toISOString(),
+            })) as AgentPerformance[];
+          }
+        }
+      } catch (_) {}
+
       return [
         {
           agentId: "polymorphic-agent",
