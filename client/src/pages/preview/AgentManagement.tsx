@@ -286,78 +286,10 @@ export default function AgentManagement() {
             </Card>
           </div>
 
-          {/* AI Agent Operations (full section moved above historical lists) */}
+          {/* Agent Operations lives here in Overview as the primary section */}
           <AgentOperations />
 
-          {/* Recent Activity and Top Agents */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="ty-title">Recent Executions</CardTitle>
-                <CardDescription className="ty-subtitle">Latest agent executions and their status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentExecutions
-                    ?.filter((e) => e.status === 'completed' || e.status === 'failed')
-                    .map((execution) => (
-                    <div key={execution.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Bot className="w-4 h-4 text-primary" />
-                        <div>
-                          <div className="font-medium text-sm">{execution.agentName}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {execution.query.substring(0, 50)}...
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="text-sm font-medium">
-                            {execution.duration ? `${execution.duration}s` : 'Running...'}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(execution.startedAt).toLocaleTimeString()}
-                          </div>
-                        </div>
-                        <Badge variant="outline" className={getStatusColor(execution.status)}>
-                          {execution.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="ty-title">Top Performing Agents</CardTitle>
-                <CardDescription className="ty-subtitle">Agents with highest usage and success rates</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {routingStats?.topAgents?.slice(0, 5).map((agent, index) => (
-                    <div key={agent.agentId} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <div className="font-medium text-sm">{agent.agentName}</div>
-                          <div className="text-xs text-muted-foreground">{agent.usage} executions</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">{agent.successRate.toFixed(1)}%</div>
-                        <div className="text-xs text-muted-foreground">Success Rate</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Removed duplicate Recent Executions and Top Performing Agents to avoid duplication */}
         </TabsContent>
 
         <TabsContent value="registry" className="space-y-4">
@@ -368,9 +300,7 @@ export default function AgentManagement() {
           <AgentNetwork />
         </TabsContent>
 
-        <TabsContent value="operations" className="space-y-4" forceMount>
-          <AgentOperations />
-        </TabsContent>
+        {/* Removed Operations tab content to avoid any chance of duplicate rendering */}
 
         <TabsContent value="routing" className="space-y-4">
           <Card>
