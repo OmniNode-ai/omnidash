@@ -2,33 +2,105 @@
 
 This guide summarizes live data sources (PostgreSQL, Kafka, Memgraph, Qdrant), required environment settings, and how to query them from Omnidash.
 
+## Running Services (from Docker)
+
+- **PostgreSQL** (`omninode-bridge-postgres`)
+  - Container: `pgvector/pgvector:pg15`
+  - Port: `0.0.0.0:5436->5432/tcp` (external:5436)
+  - Status: ✅ Healthy
+
+- **Qdrant** (`archon-qdrant`)
+  - Container: `qdrant/qdrant:v1.7.4`
+  - Port: `0.0.0.0:6333-6334->6333-6334/tcp` (HTTP:6333, gRPC:6334)
+  - Status: ✅ Healthy
+  - Collections: `quality_vectors`, `workflow_events`, `test_patterns`, `code_patterns`, `file_locations`, `archon_vectors`, `execution_patterns`
+
+- **Omniarchon Intelligence** (`archon-intelligence`)
+  - Port: `0.0.0.0:8053->8053/tcp`
+  - Status: ⚠️ Degraded (Memgraph disconnected, Ollama/Freshness DB connected)
+  - Health: `http://localhost:8053/health`
+
+- **Redpanda** (`omninode-bridge-redpanda-dev`)
+  - Container: `redpandadata/redpanda:latest`
+  - Port: `0.0.0.0:19092->19092/tcp` (Kafka protocol)
+  - Status: ✅ Healthy
+
 ## Services Overview
 
-- PostgreSQL (Intelligence DB)
-  - Host: 192.168.86.200
-  - Port: 5436
-  - Database: omninode_bridge
-  - User: postgres
-  - Env keys:
-    - `DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge"`
-    - `POSTGRES_HOST=192.168.86.200`
-    - `POSTGRES_PORT=5436`
-    - `POSTGRES_DATABASE=omninode_bridge`
-    - `POSTGRES_USER=postgres`
-    - `POSTGRES_PASSWORD=<password>`
-  - Notes: Used via Drizzle ORM in `server/intelligence-routes.ts` and `shared/intelligence-schema.ts`.
+### PostgreSQL (Intelligence DB)
 
-- Kafka (Event Bus)
-  - Topics: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
-  - Used by: `server/event-consumer.ts` (in-memory stream) and metrics aggregation.
+**Connection Details:**
+- Host: `192.168.86.200` (from host) or `omninode-bridge-postgres` (from Docker network)
+- Port: `5436` (external) → `5432` (container)
+- Database: `omninode_bridge`
+- User: `postgres`
+- Password: `omninode_remote_2024_secure` (from `.env`)
 
-- Qdrant (Vector DB)
-  - Host: `archon-qdrant` (Docker network) or `192.168.86.101:6333`
-  - Port: 6333 (HTTP)
-  - Status: Placeholder in Omnidash (see comments in `server/intelligence-routes.ts`). Live integration available via Omniarchon APIs.
+**Environment Variables in `.env`:**
+```bash
+DATABASE_URL=postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge
+POSTGRES_HOST=192.168.86.200
+POSTGRES_PORT=5436
+POSTGRES_DATABASE=omninode_bridge
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=omninode_remote_2024_secure
+TRACEABILITY_DB_URL=postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge
+PG_DSN=postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge
+```
 
-- Memgraph (Knowledge Graph)
-  - Accessed via Omniarchon intelligence service (HTTP API); direct Bolt connection is not configured in Omnidash.
+**Usage:** Used via Drizzle ORM in `server/intelligence-routes.ts` and `shared/intelligence-schema.ts`.
+
+### Qdrant (Vector DB)
+
+**Connection Details:**
+- Host: `localhost` (from host) or `archon-qdrant` (from Docker network)
+- Port: `6333` (HTTP API), `6334` (gRPC)
+- URL: `http://localhost:6333`
+
+**Available Collections:**
+- `quality_vectors` - Code quality embeddings
+- `workflow_events` - Workflow pattern vectors
+- `test_patterns` - Test pattern embeddings
+- `code_patterns` - Code pattern embeddings
+- `file_locations` - File location vectors
+- `archon_vectors` - Archon service vectors
+- `execution_patterns` - Execution pattern vectors
+
+**Status:** ✅ Accessible. Direct integration not yet implemented in Omnidash (placeholder in `server/intelligence-routes.ts`). Can be accessed via:
+- Direct HTTP API: `http://localhost:6333/collections/{collection_name}/points/search`
+- Via Omniarchon APIs (recommended for pattern similarity)
+
+### Memgraph (Knowledge Graph)
+
+**Connection Details:**
+- Access via Omniarchon Intelligence service (HTTP API)
+- Direct Bolt connection: `bolt://memgraph:7687` (internal Docker network only)
+- Service URL: `http://localhost:8053`
+
+**Status:** ⚠️ Degraded - Memgraph connection currently down (Ollama and Freshness DB connected)
+
+**Usage:** Access via Omniarchon Intelligence API endpoints. Direct Bolt connection not configured in Omnidash (use Omniarchon HTTP APIs instead).
+
+### Kafka/Redpanda (Event Bus)
+
+**Connection Details:**
+- Host: `192.168.86.200`
+- Port: `19092` (external), `9092` (internal Docker network)
+- Broker: `192.168.86.200:9092`
+
+**Environment Variables:**
+```bash
+KAFKA_BROKERS=192.168.86.200:9092
+KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:9092
+```
+
+**Active Topics:**
+- `agent-routing-decisions` - Routing decision events
+- `agent-transformation-events` - Agent transformation events
+- `router-performance-metrics` - Router performance metrics
+- `agent-actions` - Agent action events
+
+**Usage:** Consumed via `server/event-consumer.ts` (in-memory stream) and metrics aggregation.
 
 ## Where Omnidash Uses Live Data
 
@@ -77,11 +149,98 @@ This guide summarizes live data sources (PostgreSQL, Kafka, Memgraph, Qdrant), r
 - Omniarchon:
   - Check service at `http://localhost:8053`
 
-## Next Steps to Replace Mocks
+## Available Data & Replacing Mock Data
 
-- Intelligence Analytics: swap mock `agentPerformance` with `/api/agents/performance` once backend returns array shape or add transform.
-- Node Network/Pattern Lineage: connect to PostgreSQL tables (`pattern_lineage_nodes`, `pattern_lineage_edges`) via existing routes.
-- Feature Showcase demos: where possible, fetch from Omniarchon/Qdrant instead of local mocks.
+### PostgreSQL Tables (39 tables available)
+
+**Agent Execution & Routing:**
+- `agent_routing_decisions` - Routing decision history
+- `agent_actions` - Agent action events
+- `agent_manifest_injections` - Pattern injection events
+- `agent_transformation_events` - Transformation events
+- `v_agent_execution_trace` - View of execution traces
+
+**Pattern & Code Intelligence:**
+- `pattern_lineage_nodes` - Pattern node metadata
+- `pattern_lineage_edges` - Pattern relationships
+- `code_patterns` - Discovered code patterns
+- `pattern_quality_scores` - Quality metrics
+
+**Performance & Metrics:**
+- `router_performance_metrics` - Router performance data
+- `agent_performance_summary` - Aggregated agent metrics
+
+### Quick Wins: Replace Mock Data
+
+1. **Intelligence Analytics (`IntelligenceAnalytics.tsx`)**
+   - **Issue:** `/api/agents/performance` returns object `{ overview: {...} }` but component expects array
+   - **Fix:** Transform response in backend or add adapter in component:
+     ```typescript
+     // In intelligence-routes.ts or component
+     const performanceArray = Object.entries(overview).map(([agentId, metrics]) => ({
+       agentId,
+       ...metrics
+     }));
+     ```
+
+2. **Pattern Lineage (`PatternLineage.tsx`)**
+   - **Source:** PostgreSQL `pattern_lineage_nodes` + `pattern_lineage_edges`
+   - **Route:** Already exists at `/api/intelligence/patterns/lineage`
+   - **Action:** Replace mock `patternNodes` with live query
+
+3. **Node Network Visualization (`AgentNetwork.tsx`, `NodeNetworkComposer.tsx`)**
+   - **Source:** Consul service registry + PostgreSQL agent metadata
+   - **Route:** Query Consul at `http://192.168.86.200:28500/v1/agent/services` or use Omniarchon bridge
+   - **Action:** Add API endpoint to aggregate service/node data
+
+4. **Qdrant Pattern Search**
+   - **Source:** Qdrant collections (`code_patterns`, `execution_patterns`)
+   - **Action:** Add endpoint to query Qdrant directly:
+     ```typescript
+     // POST /api/intelligence/patterns/search
+     // Body: { query: string, collection: 'code_patterns', limit: 10 }
+     // Use: http://localhost:6333/collections/{collection}/points/search
+     ```
+
+5. **Feature Showcase Demos**
+   - Use Omniarchon Intelligence API (`http://localhost:8053`) for:
+     - Pattern similarity searches
+     - Knowledge graph queries
+     - Quality trend data
+
+### Example: Querying PostgreSQL Directly
+
+```typescript
+// server/intelligence-routes.ts
+import { db } from './storage';
+import { agentActions } from '../shared/intelligence-schema';
+
+// Get recent agent actions
+const recentActions = await db
+  .select()
+  .from(agentActions)
+  .orderBy(desc(agentActions.createdAt))
+  .limit(100);
+```
+
+### Example: Querying Qdrant
+
+```typescript
+// server/intelligence-routes.ts
+import fetch from 'node-fetch';
+
+// Search code patterns
+const response = await fetch('http://localhost:6333/collections/code_patterns/points/search', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    vector: embeddingVector, // 768-dim from embedding model
+    limit: 10,
+    with_payload: true
+  })
+});
+const results = await response.json();
+```
 
 ## Appendix: References
 
