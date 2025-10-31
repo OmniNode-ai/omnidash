@@ -7,6 +7,8 @@ import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
 import { Server, Activity, AlertTriangle, Clock } from "lucide-react";
 import { useState } from "react";
+import { MockBadge } from "@/components/MockBadge";
+import { ensureTimeSeries } from "@/components/mockUtils";
 import { useQuery } from "@tanstack/react-query";
 
 // TypeScript interfaces for platform health endpoint
@@ -130,15 +132,8 @@ export default function PlatformHealth() {
   ] : [];
 
   // Generate mock CPU/Memory data for now (can be replaced with real metrics later)
-  const cpuData = Array.from({ length: 20 }, (_, i) => ({
-    time: `${i}:00`,
-    value: 50 + Math.random() * 30,
-  }));
-
-  const memoryData = Array.from({ length: 20 }, (_, i) => ({
-    time: `${i}:00`,
-    value: 60 + Math.random() * 20,
-  }));
+  const cpuDataEnsured = ensureTimeSeries(undefined, 55, 15);
+  const memoryDataEnsured = ensureTimeSeries(undefined, 65, 12);
 
   // Generate events based on health status changes
   const events: Array<{ id: string; type: 'info' | 'warning' | 'error' | 'success'; message: string; timestamp: string; source: string }> = [];
@@ -255,18 +250,24 @@ export default function PlatformHealth() {
           </div>
 
           <div className="grid grid-cols-2 gap-6">
-            <RealtimeChart
-              title="CPU Usage"
-              data={cpuData}
-              color="hsl(var(--chart-4))"
-              showArea
-            />
-            <RealtimeChart
-              title="Memory Usage"
-              data={memoryData}
-              color="hsl(var(--chart-5))"
-              showArea
-            />
+            <div>
+              {cpuDataEnsured.isMock && <MockBadge label="MOCK DATA: CPU Usage" />}
+              <RealtimeChart
+                title="CPU Usage"
+                data={cpuDataEnsured.data}
+                color="hsl(var(--chart-4))"
+                showArea
+              />
+            </div>
+            <div>
+              {memoryDataEnsured.isMock && <MockBadge label="MOCK DATA: Memory Usage" />}
+              <RealtimeChart
+                title="Memory Usage"
+                data={memoryDataEnsured.data}
+                color="hsl(var(--chart-5))"
+                showArea
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

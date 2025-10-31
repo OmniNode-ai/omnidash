@@ -6,6 +6,8 @@ import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
 import { Users, Code, TrendingUp, Award } from "lucide-react";
 import { useState } from "react";
+import { MockBadge } from "@/components/MockBadge";
+import { ensureTimeSeries } from "@/components/mockUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
@@ -106,15 +108,17 @@ export default function DeveloperExperience() {
   const productivityResponse = metricsData?.productivity;
 
   // Transform API data for chart components
-  const velocityData = (velocityResponse?.data || []).map(d => ({
+  const velocityDataRaw = (velocityResponse?.data || []).map(d => ({
     time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     value: d.workflows_completed,
   }));
+  const { data: velocityData, isMock: isVelocityMock } = ensureTimeSeries(velocityDataRaw, 12, 6);
 
-  const productivityData = (productivityResponse?.data || []).map(d => ({
+  const productivityDataRaw = (productivityResponse?.data || []).map(d => ({
     time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     value: d.productivity_score,
   }));
+  const { data: productivityData, isMock: isProductivityMock } = ensureTimeSeries(productivityDataRaw, 75, 10);
 
   // Transform task velocity data for charts
   const taskVelocityChartData = (taskVelocityData || []).map(d => ({
@@ -239,17 +243,23 @@ export default function DeveloperExperience() {
 
       {/* Charts with real data */}
       <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart
-          title={`Development Velocity (${timeRange})`}
-          data={velocityData}
-          color="hsl(var(--chart-1))"
-          showArea
-        />
-        <RealtimeChart
-          title={`Developer Productivity Score (${timeRange})`}
-          data={productivityData}
-          color="hsl(var(--chart-2))"
-        />
+        <div>
+          {isVelocityMock && <MockBadge label="MOCK DATA: Development Velocity" />}
+          <RealtimeChart
+            title={`Development Velocity (${timeRange})`}
+            data={velocityData}
+            color="hsl(var(--chart-1))"
+            showArea
+          />
+        </div>
+        <div>
+          {isProductivityMock && <MockBadge label="MOCK DATA: Productivity Score" />}
+          <RealtimeChart
+            title={`Developer Productivity Score (${timeRange})`}
+            data={productivityData}
+            color="hsl(var(--chart-2))"
+          />
+        </div>
       </div>
 
       {/* Task Completion Velocity Charts */}

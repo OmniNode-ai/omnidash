@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { agentManagementSource } from "@/lib/data-sources";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,89 +40,29 @@ import AgentRegistry from "./AgentRegistry";
 import AgentNetwork from "./AgentNetwork";
 import AgentOperations from "../AgentOperations";
 
-// Mock data interfaces
-interface AgentSummary {
-  totalAgents: number;
-  activeAgents: number;
-  totalRuns: number;
-  successRate: number;
-  avgExecutionTime: number;
-  totalSavings: number;
-}
-
-interface AgentExecution {
-  id: string;
-  agentId: string;
-  agentName: string;
-  query: string;
-  status: "pending" | "executing" | "completed" | "failed";
-  startedAt: string;
-  completedAt?: string;
-  duration?: number;
-  result?: {
-    success: boolean;
-    output?: string;
-    qualityScore?: number;
-  };
-}
-
-interface RoutingStats {
-  totalDecisions: number;
-  avgConfidence: number;
-  avgRoutingTime: number;
-  accuracy: number;
-  strategyBreakdown: Record<string, number>;
-  topAgents: Array<{
-    agentId: string;
-    agentName: string;
-    usage: number;
-    successRate: number;
-  }>;
-}
+// Types imported from data source
+type AgentSummary = import('@/lib/data-sources/agent-management-source').AgentSummary;
+type AgentExecution = import('@/lib/data-sources/agent-management-source').AgentExecution;
+type RoutingStats = import('@/lib/data-sources/agent-management-source').RoutingStats;
 
 export default function AgentManagement() {
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("24h");
 
-  // API calls
-  const { data: agentSummary, isLoading: summaryLoading } = useQuery<AgentSummary>({
-    queryKey: ['agent-summary', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/agents/summary?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch agent summary');
-      return response.json();
-    },
+  // Use centralized data source
+  const { data: managementData, isLoading } = useQuery({
+    queryKey: ['agent-management', timeRange],
+    queryFn: () => agentManagementSource.fetchAll(timeRange),
     refetchInterval: 60000,
     refetchIntervalInBackground: true,
-    keepPreviousData: true,
   });
 
-  const { data: recentExecutions, isLoading: executionsLoading } = useQuery<AgentExecution[]>({
-    queryKey: ['agent-executions', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/agents/executions?timeRange=${timeRange}&limit=10`);
-      if (!response.ok) throw new Error('Failed to fetch recent executions');
-      return response.json();
-    },
-    refetchInterval: 30000,
-    refetchIntervalInBackground: true,
-    keepPreviousData: true,
-  });
-
-  const { data: routingStats, isLoading: routingLoading } = useQuery<RoutingStats>({
-    queryKey: ['routing-stats', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/agents/routing/stats?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch routing stats');
-      return response.json();
-    },
-    refetchInterval: 60000,
-    refetchIntervalInBackground: true,
-    keepPreviousData: true,
-  });
-
-  const isLoading = summaryLoading || executionsLoading || routingLoading;
-  const initialLoading = !agentSummary && !recentExecutions && !routingStats;
+  const agentSummary = managementData?.summary;
+  const routingStats = managementData?.routingStats;
+  const recentExecutions = managementData?.recentExecutions;
+  const usingMockData = managementData?.isMock || false;
+  
+  const initialLoading = isLoading && !managementData;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -154,6 +96,7 @@ export default function AgentManagement() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {usingMockData && <MockDataBadge />}
           <Button variant="outline" size="sm">
             <Settings className="w-4 h-4 mr-2" />
             Configure
@@ -300,7 +243,10 @@ export default function AgentManagement() {
           <AgentNetwork />
         </TabsContent>
 
-        {/* Removed Operations tab content to avoid any chance of duplicate rendering */}
+        <TabsContent value="operations" className="space-y-4">
+          {/* Operations tab shows live agent activity - AgentOperations component handles this */}
+          <AgentOperations />
+        </TabsContent>
 
         <TabsContent value="routing" className="space-y-4">
           <Card>

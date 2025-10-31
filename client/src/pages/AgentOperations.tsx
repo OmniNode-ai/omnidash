@@ -1,6 +1,8 @@
 import { MetricCard } from "@/components/MetricCard";
 import { AgentStatusGrid } from "@/components/AgentStatusGrid";
 import { RealtimeChart } from "@/components/RealtimeChart";
+import { MockBadge } from "@/components/MockBadge";
+import { ensureTimeSeries } from "@/components/mockUtils";
 import { EventFeed } from "@/components/EventFeed";
 import { DrillDownModal } from "@/components/DrillDownModal";
 import { StatusLegend } from "@/components/StatusLegend";
@@ -365,17 +367,33 @@ export default function AgentOperations() {
 
       {/* Charts with real activity data */}
       <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart
-          title="Agent Activity (Actions per Minute)"
-          data={chartData}
-          color="hsl(var(--chart-1))"
-        />
-        <RealtimeChart
-          title="Agent Performance (Avg Duration per Minute)"
-          data={performanceChartData}
-          color="hsl(var(--chart-2))"
-          showArea
-        />
+        {(() => {
+          const ensured = ensureTimeSeries(chartData, 5, 2);
+          return (
+            <div>
+              {ensured.isMock && <MockBadge label="MOCK DATA: Agent Activity" />}
+              <RealtimeChart
+                title="Agent Activity (Actions per Minute)"
+                data={ensured.data}
+                color="hsl(var(--chart-1))"
+              />
+            </div>
+          );
+        })()}
+        {(() => {
+          const ensured = ensureTimeSeries(performanceChartData, 150, 60);
+          return (
+            <div>
+              {ensured.isMock && <MockBadge label="MOCK DATA: Agent Performance" />}
+              <RealtimeChart
+                title="Agent Performance (Avg Duration per Minute)"
+                data={ensured.data}
+                color="hsl(var(--chart-2))"
+                showArea
+              />
+            </div>
+          );
+        })()}
       </div>
 
       {/* (removed) Routing Strategy Breakdown to keep this tab focused on operations */}

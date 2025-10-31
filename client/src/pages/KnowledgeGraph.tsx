@@ -6,6 +6,7 @@ import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
 import { Database, Network, Link, TrendingUp } from "lucide-react";
 import { useState } from "react";
+import { MockBadge } from "@/components/MockBadge";
 import { useQuery } from "@tanstack/react-query";
 
 // Graph data interfaces from omniarchon endpoint
@@ -174,11 +175,18 @@ export default function KnowledgeGraph() {
               </div>
             </Card>
           ) : patterns.length === 0 ? (
-            <Card className="p-6">
-              <div className="flex items-center justify-center h-[600px] text-muted-foreground">
-                No graph data available from omniarchon endpoint.
-              </div>
-            </Card>
+            <div className="p-6">
+              <MockBadge label="MOCK DATA: Knowledge Graph" />
+              <PatternNetwork
+                patterns={[
+                  { id: 'p1', name: 'Event Bus Producer', quality: 0.92, usage: 12, category: 'effect', language: 'python' },
+                  { id: 'p2', name: 'Semantic Cache Reducer', quality: 0.88, usage: 9, category: 'reducer', language: 'python' },
+                  { id: 'p3', name: 'Pattern Similarity Scorer', quality: 0.9, usage: 14, category: 'compute', language: 'python' },
+                ]}
+                height={600}
+                onPatternClick={handleNodeClick}
+              />
+            </div>
           ) : (
             <PatternNetwork patterns={patterns} height={600} onPatternClick={handleNodeClick} />
           )}
@@ -191,7 +199,23 @@ export default function KnowledgeGraph() {
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
             </div>
           ) : relationshipTypes.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No relationships found</div>
+            <div>
+              <MockBadge label="MOCK DATA: Relationship Types" />
+              <div className="space-y-3">
+                {[
+                  { id: 'rel_depends_on', type: 'depends_on', count: 12 },
+                  { id: 'rel_uses', type: 'uses', count: 7 },
+                  { id: 'rel_related_to', type: 'related_to', count: 4 },
+                ].map((rel) => (
+                  <div key={rel.id} className="p-3 rounded-lg border border-card-border">
+                    <div className="text-sm font-medium font-mono mb-1">
+                      {rel.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                    </div>
+                    <div className="text-2xl font-bold font-mono">{rel.count.toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="space-y-3">
               {relationshipTypes.slice(0, 6).map((rel) => (

@@ -37,6 +37,7 @@ import PatternLearning from "../PatternLearning";
 import PatternLineage from "./PatternLineage";
 import DuplicateDetection from "./DuplicateDetection";
 import TechDebtAnalysis from "./TechDebtAnalysis";
+import { MockDataBadge } from "@/components/MockDataBadge";
 
 // Mock data interfaces
 interface CodeMetrics {
@@ -78,40 +79,116 @@ export default function CodeIntelligenceSuite() {
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("30d");
 
-  // API calls
+  // API calls with fallback to mock data
   const { data: codeMetrics, isLoading: metricsLoading } = useQuery<CodeMetrics>({
     queryKey: ['code-metrics', timeRange],
     queryFn: async () => {
-      const response = await fetch(`/api/code/metrics?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch code metrics');
-      return response.json();
+      try {
+        const response = await fetch(`/api/intelligence/code/compliance?timeWindow=${timeRange}`);
+        if (response.ok) {
+          const data = await response.json();
+          // Transform compliance data to code metrics format
+          return {
+            totalFiles: data.summary?.totalFiles || 0,
+            totalLines: 0, // Not available from compliance endpoint
+            codeQualityScore: (data.summary?.avgComplianceScore || 0) * 10,
+            testCoverage: 0, // Not available
+            technicalDebt: 0, // Not available
+            duplicateCode: 0, // Not available
+            patterns: 0, // Not available
+            vulnerabilities: data.summary?.nonCompliantFiles || 0,
+          };
+        }
+      } catch (err) {}
+      throw new Error('Failed to fetch code metrics');
     },
+    retry: false,
     refetchInterval: 60000,
   });
 
   const { data: patternSummary, isLoading: patternsLoading } = useQuery<PatternSummary>({
     queryKey: ['pattern-summary', timeRange],
     queryFn: async () => {
-      const response = await fetch(`/api/patterns/summary?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch pattern summary');
-      return response.json();
+      try {
+        const response = await fetch(`/api/intelligence/patterns/summary`);
+        if (response.ok) {
+          const data = await response.json();
+          return {
+            totalPatterns: data.totalPatterns || 0,
+            activePatterns: data.activeLearningCount || 0,
+            qualityScore: (data.avgQualityScore || 0) * 10,
+            usageCount: 0, // Not available
+            recentDiscoveries: data.newPatternsToday || 0,
+            topPatterns: [], // Not available from summary endpoint
+          };
+        }
+      } catch (err) {}
+      throw new Error('Failed to fetch pattern summary');
     },
+    retry: false,
     refetchInterval: 60000,
   });
 
   const { data: techDebtSummary, isLoading: debtLoading } = useQuery<TechDebtSummary>({
     queryKey: ['tech-debt-summary', timeRange],
     queryFn: async () => {
-      const response = await fetch(`/api/tech-debt/summary?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch tech debt summary');
-      return response.json();
+      // Tech debt endpoint doesn't exist yet - return mock data
+      throw new Error('Tech debt endpoint not available');
     },
+    retry: false,
     refetchInterval: 60000,
   });
+  
+  // Determine which data sources are using mock data
+  const usingMockCodeMetrics = !codeMetrics || codeMetrics.totalFiles === 0;
+  const usingMockPatternSummary = !patternSummary || patternSummary.totalPatterns === 0;
+  const usingMockTechDebt = !techDebtSummary;
+  
+  // Fallback mock data
+  const mockCodeMetrics: CodeMetrics = {
+    totalFiles: 1250,
+    totalLines: 125000,
+    codeQualityScore: 8.5,
+    testCoverage: 78,
+    technicalDebt: 250,
+    duplicateCode: 8,
+    patterns: 125,
+    vulnerabilities: 3,
+  };
+  
+  const mockPatternSummary: PatternSummary = {
+    totalPatterns: 125,
+    activePatterns: 98,
+    qualityScore: 8.5,
+    usageCount: 456,
+    recentDiscoveries: 5,
+    topPatterns: [
+      { name: 'API Error Handling', category: 'Error Management', quality: 9.1, usage: 45, lastUsed: new Date().toISOString() },
+      { name: 'Database Connection Pool', category: 'Performance', quality: 8.8, usage: 38, lastUsed: new Date().toISOString() },
+      { name: 'Caching Strategy', category: 'Performance', quality: 8.5, usage: 32, lastUsed: new Date().toISOString() },
+    ],
+  };
+  
+  const mockTechDebt: TechDebtSummary = {
+    totalDebt: 250,
+    criticalIssues: 8,
+    refactoringOpportunities: 23,
+    duplicateFiles: 15,
+    outdatedPatterns: 5,
+    estimatedSavings: 45000,
+  };
+  
+  // Use live data if available, otherwise use mock
+  const finalCodeMetrics = usingMockCodeMetrics ? mockCodeMetrics : codeMetrics!;
+  const finalPatternSummary = usingMockPatternSummary ? mockPatternSummary : patternSummary!;
+  const finalTechDebt = usingMockTechDebt ? mockTechDebt : techDebtSummary!;
 
-  const isLoading = metricsLoading || patternsLoading || debtLoading;
+  // Don't show loading state if we're using mock data
+  const isLoading = (metricsLoading && !usingMockCodeMetrics) || 
+                    (patternsLoading && !usingMockPatternSummary) || 
+                    (debtLoading && !usingMockTechDebt);
 
-  if (isLoading) {
+  if (isLoading && !usingMockCodeMetrics && !usingMockPatternSummary && !usingMockTechDebt) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -132,6 +209,7 @@ export default function CodeIntelligenceSuite() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {(usingMockCodeMetrics || usingMockPatternSummary || usingMockTechDebt) && <MockDataBadge />}
           <Button variant="outline" size="sm">
             <Settings className="w-4 h-4 mr-2" />
             Configure
@@ -163,10 +241,10 @@ export default function CodeIntelligenceSuite() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {codeMetrics?.totalFiles?.toLocaleString() || "0"}
+                  {finalCodeMetrics?.totalFiles?.toLocaleString() || "0"}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {codeMetrics?.totalLines?.toLocaleString() || "0"} lines of code
+                  {finalCodeMetrics?.totalLines?.toLocaleString() || "0"} lines of code
                 </p>
               </CardContent>
             </Card>
@@ -178,10 +256,10 @@ export default function CodeIntelligenceSuite() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {codeMetrics?.codeQualityScore?.toFixed(1) || "0"}/10
+                  {finalCodeMetrics?.codeQualityScore?.toFixed(1) || "0"}/10
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+0.3</span> from last week
+                  {usingMockCodeMetrics ? "" : <span className="text-green-600">+0.3</span>} from last week
                 </p>
               </CardContent>
             </Card>
@@ -193,10 +271,10 @@ export default function CodeIntelligenceSuite() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {codeMetrics?.testCoverage?.toFixed(1) || "0"}%
+                  {finalCodeMetrics?.testCoverage?.toFixed(1) || "0"}%
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+2.1%</span> from last week
+                  {usingMockCodeMetrics ? "" : <span className="text-green-600">+2.1%</span>} from last week
                 </p>
               </CardContent>
             </Card>
@@ -208,10 +286,10 @@ export default function CodeIntelligenceSuite() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {patternSummary?.totalPatterns || "0"}
+                  {finalPatternSummary?.totalPatterns || "0"}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {patternSummary?.activePatterns || "0"} active patterns
+                  {finalPatternSummary?.activePatterns || "0"} active patterns
                 </p>
               </CardContent>
             </Card>
@@ -229,25 +307,25 @@ export default function CodeIntelligenceSuite() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Total Debt</span>
                     <span className="text-lg font-bold text-orange-600">
-                      {techDebtSummary?.totalDebt || 0} hours
+                      {finalTechDebt?.totalDebt || 0} hours
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Critical Issues</span>
                     <span className="text-lg font-bold text-red-600">
-                      {techDebtSummary?.criticalIssues || 0}
+                      {finalTechDebt?.criticalIssues || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Refactoring Opportunities</span>
                     <span className="text-lg font-bold text-blue-600">
-                      {techDebtSummary?.refactoringOpportunities || 0}
+                      {finalTechDebt?.refactoringOpportunities || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Estimated Savings</span>
                     <span className="text-lg font-bold text-green-600">
-                      ${techDebtSummary?.estimatedSavings?.toLocaleString() || "0"}
+                      ${finalTechDebt?.estimatedSavings?.toLocaleString() || "0"}
                     </span>
                   </div>
                 </div>
@@ -264,30 +342,30 @@ export default function CodeIntelligenceSuite() {
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span>Code Quality Score</span>
-                      <span>{codeMetrics?.codeQualityScore?.toFixed(1) || "0"}/10</span>
+                      <span>{finalCodeMetrics?.codeQualityScore?.toFixed(1) || "0"}/10</span>
                     </div>
-                    <Progress value={codeMetrics?.codeQualityScore * 10 || 0} className="h-2" />
+                    <Progress value={finalCodeMetrics?.codeQualityScore * 10 || 0} className="h-2" />
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span>Test Coverage</span>
-                      <span>{codeMetrics?.testCoverage?.toFixed(1) || "0"}%</span>
+                      <span>{finalCodeMetrics?.testCoverage?.toFixed(1) || "0"}%</span>
                     </div>
-                    <Progress value={codeMetrics?.testCoverage || 0} className="h-2" />
+                    <Progress value={finalCodeMetrics?.testCoverage || 0} className="h-2" />
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span>Duplicate Code</span>
-                      <span>{codeMetrics?.duplicateCode?.toFixed(1) || "0"}%</span>
+                      <span>{finalCodeMetrics?.duplicateCode?.toFixed(1) || "0"}%</span>
                     </div>
-                    <Progress value={codeMetrics?.duplicateCode || 0} className="h-2" />
+                    <Progress value={finalCodeMetrics?.duplicateCode || 0} className="h-2" />
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span>Vulnerabilities</span>
-                      <span>{codeMetrics?.vulnerabilities || 0}</span>
+                      <span>{finalCodeMetrics?.vulnerabilities || 0}</span>
                     </div>
-                    <Progress value={Math.min((codeMetrics?.vulnerabilities || 0) * 10, 100)} className="h-2" />
+                    <Progress value={Math.min((finalCodeMetrics?.vulnerabilities || 0) * 10, 100)} className="h-2" />
                   </div>
                 </div>
               </CardContent>
@@ -303,7 +381,7 @@ export default function CodeIntelligenceSuite() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {patternSummary?.topPatterns?.slice(0, 5).map((pattern, index) => (
+                  {finalPatternSummary?.topPatterns?.slice(0, 5).map((pattern, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">

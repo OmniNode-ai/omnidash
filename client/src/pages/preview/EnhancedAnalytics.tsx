@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,7 @@ export default function EnhancedAnalytics() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <MockDataBadge />
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
