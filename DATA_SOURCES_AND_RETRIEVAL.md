@@ -242,11 +242,40 @@ const response = await fetch('http://localhost:6333/collections/code_patterns/po
 const results = await response.json();
 ```
 
+## PostgreSQL CRUD Adapter
+
+Omnidash now includes a full CRUD adapter (`server/db-adapter.ts`) for direct database operations:
+
+```typescript
+import { dbAdapter } from './server/db-adapter';
+
+// Query with filters, ordering, pagination
+const actions = await dbAdapter.query('agent_actions', {
+  where: { agent_name: 'test-agent' },
+  limit: 100,
+  orderBy: { column: 'created_at', direction: 'desc' }
+});
+
+// Insert, Update, Delete, Upsert
+await dbAdapter.insert('agent_actions', { ... });
+await dbAdapter.update('agent_actions', { id: '123' }, { status: 'completed' });
+await dbAdapter.delete('agent_actions', { id: '123' });
+await dbAdapter.upsert('agent_actions', { ... }, ['id']);
+```
+
+See `EVENT_BUS_AND_DB_ADAPTER.md` for complete usage guide.
+
+## Event Bus Integration
+
+Omnidash consumes Kafka events via `server/event-consumer.ts` for real-time updates. Future enhancement: Event bus publisher for async writes (see `EVENT_BUS_AND_DB_ADAPTER.md`).
+
 ## Appendix: References
 
 - `INTELLIGENCE_INTEGRATION.md`
 - `DASHBOARD_DATA_INTEGRATION_AUDIT.md`
+- `EVENT_BUS_AND_DB_ADAPTER.md` - Event bus and CRUD adapter guide
 - `server/intelligence-routes.ts`
+- `server/db-adapter.ts` - PostgreSQL CRUD adapter
 - `shared/intelligence-schema.ts`
 - Scripts: `scripts/test-db-query.ts`, `scripts/test-routing-decisions.ts`
 
