@@ -149,6 +149,40 @@ KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:9092
 - Omniarchon:
   - Check service at `http://localhost:8053`
 
+## Current Integration Status (2025-10-31)
+
+### ✅ Fully Integrated (Live Data)
+1. **Intelligence Event Adapter**
+   - Kafka-based request/response pattern for code analysis
+   - Endpoint: `/api/intelligence/analysis/patterns`
+   - Status: ✅ Working end-to-end with OmniArchon consumer
+   - Test: `curl "http://localhost:3000/api/intelligence/events/test/patterns?path=node_*_effect.py&lang=python&timeout=15000"`
+
+2. **PatternLearning Page**
+   - Live pattern discovery via `/api/intelligence/analysis/patterns`
+   - Shows real-time discovered patterns from intelligence service
+   - Status: ✅ Integrated with live endpoint
+
+3. **AgentOperations Page**
+   - Live agent metrics via `/api/intelligence/agents/summary`
+   - Live actions via `/api/intelligence/actions/recent`
+   - Health checks via `/api/intelligence/health`
+   - WebSocket integration for real-time updates
+   - Status: ✅ Fully wired with explicit queryFn + error handling
+
+4. **IntelligenceAnalytics Page**
+   - Attempts live `/api/agents/performance` with transformation
+   - Falls back to mock data if endpoint unavailable
+   - Status: ✅ Partial (live with fallback)
+
+### ⚠️ Partially Integrated
+- **Intelligence Analytics**: Live endpoint attempted but may need backend transformation
+- **Pattern Lineage**: Backend route exists, frontend may need wiring update
+
+### 📋 Still Using Mock Data (Next Steps)
+- Feature Showcase demos (using interactive mockups)
+- Some intelligence metrics endpoints (fallbacks in place)
+
 ## Available Data & Replacing Mock Data
 
 ### PostgreSQL Tables (39 tables available)

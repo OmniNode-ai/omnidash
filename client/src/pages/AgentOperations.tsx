@@ -107,17 +107,40 @@ export default function AgentOperations() {
 
   // Fetch agent metrics (updated via WebSocket)
   const { data: metrics, isLoading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useQuery<AgentMetrics[]>({
-    queryKey: [`/api/intelligence/agents/summary?timeWindow=${timeRange}`],
+    queryKey: [`/api/intelligence/agents/summary`, timeRange],
+    queryFn: async () => {
+      const res = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
+      if (!res.ok) throw new Error(`Failed to fetch agent metrics (${res.status})`);
+      const json = await res.json();
+      return Array.isArray(json) ? json : [];
+    },
+    refetchInterval: 30000,
+    staleTime: 15000,
   });
 
   // Fetch recent actions (updated via WebSocket)
   const { data: actions, isLoading: actionsLoading, error: actionsError, refetch: refetchActions } = useQuery<AgentAction[]>({
-    queryKey: [`/api/intelligence/actions/recent?limit=100&timeWindow=${timeRange}`],
+    queryKey: [`/api/intelligence/actions/recent`, timeRange],
+    queryFn: async () => {
+      const res = await fetch(`/api/intelligence/actions/recent?limit=100&timeWindow=${timeRange}`);
+      if (!res.ok) throw new Error(`Failed to fetch recent actions (${res.status})`);
+      const json = await res.json();
+      return Array.isArray(json) ? json : [];
+    },
+    refetchInterval: 30000,
+    staleTime: 15000,
   });
 
   // Health check (updated via WebSocket)
   const { data: health } = useQuery<HealthStatus>({
     queryKey: ['/api/intelligence/health'],
+    queryFn: async () => {
+      const res = await fetch('/api/intelligence/health');
+      if (!res.ok) throw new Error(`Health check failed (${res.status})`);
+      return res.json();
+    },
+    refetchInterval: 60000,
+    staleTime: 30000,
   });
 
   // (removed) Routing strategy breakdown to avoid duplication with Routing tab
