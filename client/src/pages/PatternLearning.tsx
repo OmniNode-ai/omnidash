@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Database, TrendingUp, Award, AlertTriangle } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { fetchPatterns, type DiscoveredPattern } from "@/lib/api";
 
 // TypeScript interfaces for API responses
 interface PatternSummary {
@@ -103,6 +104,13 @@ export default function PatternLearning() {
   const { data: patterns, isLoading: patternsLoading, error: patternsError } = useQuery<Pattern[]>({
     queryKey: [`http://localhost:3000/api/intelligence/patterns/list?limit=50&timeWindow=${timeRange}`],
     refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Live pattern discovery via Intelligence adapter (non-blocking)
+  const { data: liveDiscoveredPatterns, isLoading: liveDiscoverLoading, error: liveDiscoverError } = useQuery<DiscoveredPattern[]>({
+    queryKey: ["intelligence", "analysis", "patterns", { path: "node_*_effect.py", lang: "python", timeout: 8000 }],
+    queryFn: () => fetchPatterns({ path: "node_*_effect.py", lang: "python", timeout: 8000 }),
+    refetchInterval: 60000,
   });
 
   // Fetch language breakdown with 60-second polling
@@ -237,6 +245,31 @@ export default function PatternLearning() {
           showArea
         />
         <div className="space-y-4">
+          {/* Live Pattern Discovery (from intelligence service) */}
+          <div className="bg-card border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold">Live Pattern Discovery</h3>
+              {liveDiscoverLoading && (
+                <span className="text-xs text-muted-foreground">Loading…</span>
+              )}
+            </div>
+            {liveDiscoverError ? (
+              <p className="text-xs text-destructive">Failed to load live patterns</p>
+            ) : (
+              <ul className="space-y-2 max-h-48 overflow-auto">
+                {(liveDiscoveredPatterns || []).slice(0, 8).map((p) => (
+                  <li key={`${p.file_path}-${p.name}`} className="text-sm">
+                    <div className="font-medium">{p.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{p.file_path}</div>
+                  </li>
+                ))}
+                {!liveDiscoverLoading && (!liveDiscoveredPatterns || liveDiscoveredPatterns.length === 0) && (
+                  <li className="text-xs text-muted-foreground">No patterns discovered yet</li>
+                )}
+              </ul>
+            )}
+          </div>
+
           {(() => {
             // Check if quality data is empty or missing
             const hasNoData = !qualityData || qualityData.length === 0;
