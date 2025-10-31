@@ -49,7 +49,7 @@ export default function AgentOperations() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [chartData, setChartData] = useState<Array<{ time: string; value: number }>>([]);
   const [performanceChartData, setPerformanceChartData] = useState<Array<{ time: string; value: number }>>([]);
-  const [showRunningOnly, setShowRunningOnly] = useState(true);
+  const [showActiveOnly, setShowActiveOnly] = useState(true);
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
@@ -226,25 +226,11 @@ export default function AgentOperations() {
     }) || [];
   }, [metrics]);
 
-  // Identify "running" agents as those with recent actions in the last 2 minutes
-  const runningAgentIds = useMemo(() => {
-    if (!actions) return new Set<string>();
-    const cutoff = Date.now() - 2 * 60 * 1000;
-    const set = new Set<string>();
-    for (const a of actions) {
-      const t = new Date(a.createdAt).getTime();
-      if (!Number.isNaN(t) && t >= cutoff) {
-        set.add(a.agentName);
-      }
-    }
-    return set;
-  }, [actions]);
-
+  // Visible agents: Active only vs All
   const visibleAgents = useMemo(() => {
-    if (!showRunningOnly) return agents;
-    if (!agents?.length) return agents;
-    return agents.filter(a => runningAgentIds.has(a.name));
-  }, [agents, runningAgentIds, showRunningOnly]);
+    if (!agents?.length) return agents || [];
+    return showActiveOnly ? agents.filter(a => a.status === 'active') : agents;
+  }, [agents, showActiveOnly]);
 
   // Memoize events to prevent recalculation
   const eventsAll = useMemo(() => {
@@ -383,14 +369,14 @@ export default function AgentOperations() {
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Show:</span>
                     <button
-                      className={`px-3 py-1 rounded border ${showRunningOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
-                      onClick={() => setShowRunningOnly(true)}
+                      className={`px-3 py-1 rounded border ${showActiveOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                      onClick={() => setShowActiveOnly(true)}
                     >
-                      Running
+                      Active
                     </button>
                     <button
-                      className={`px-3 py-1 rounded border ${!showRunningOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
-                      onClick={() => setShowRunningOnly(false)}
+                      className={`px-3 py-1 rounded border ${!showActiveOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                      onClick={() => setShowActiveOnly(false)}
                     >
                       All
                     </button>
@@ -399,11 +385,23 @@ export default function AgentOperations() {
               }
             />
             <ModuleBody>
-              <AgentStatusGrid
-                agents={visibleAgents}
-                onAgentClick={handleAgentClick}
-                cardBackgroundClass="bg-transparent"
-              />
+              {showActiveOnly && visibleAgents.length === 0 ? (
+                <div className="p-6 text-sm text-muted-foreground flex items-center justify-between border rounded">
+                  <span>No active agents right now.</span>
+                  <button
+                    className="px-3 py-1 rounded border"
+                    onClick={() => setShowActiveOnly(false)}
+                  >
+                    Show All
+                  </button>
+                </div>
+              ) : (
+                <AgentStatusGrid
+                  agents={visibleAgents}
+                  onAgentClick={handleAgentClick}
+                  cardBackgroundClass="bg-transparent"
+                />
+              )}
             </ModuleBody>
           </Module>
         </div>

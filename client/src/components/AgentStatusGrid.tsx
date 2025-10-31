@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface Agent {
   id: string;
@@ -18,9 +19,12 @@ interface AgentStatusGridProps {
   onAgentClick?: (agent: Agent) => void;
   cardBackgroundClass?: string; // allow overriding card background (e.g., bg-muted)
   compact?: boolean;
+  // When provided, the grid will render inside a scroll container of this height and only
+  // mount visible rows (simple virtualization). If not provided, renders all cards.
+  virtualHeightPx?: number;
 }
 
-export function AgentStatusGrid({ agents, onAgentClick, cardBackgroundClass, compact }: AgentStatusGridProps) {
+export function AgentStatusGrid({ agents, onAgentClick, cardBackgroundClass, compact, virtualHeightPx }: AgentStatusGridProps) {
   const getStatusColor = (status: Agent["status"]) => {
     switch (status) {
       case "active": return "bg-status-healthy";
@@ -30,9 +34,69 @@ export function AgentStatusGrid({ agents, onAgentClick, cardBackgroundClass, com
     }
   };
 
-  return (
-    <div className="grid grid-cols-3 md:grid-cols-5 xl:grid-cols-6 gap-3">
-      {agents.map((agent) => (
+  // Lightweight virtualization: measure columns and row height, render only visible rows
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [columns, setColumns] = useState(3);
+  const [rowHeight, setRowHeight] = useState<number>(0);
+  const rowGap = 12; // Tailwind gap-3 = 0.75rem = 12px
+
+  useEffect(() => {
+    if (!gridRef.current) return;
+    const computeColumns = () => {
+      const style = window.getComputedStyle(gridRef.current!);
+      const template = style.getPropertyValue('grid-template-columns');
+      const count = template ? template.split(' ').length : 3;
+      setColumns(Math.max(1, count));
+    };
+    computeColumns();
+    const resizeObserver = new ResizeObserver(() => computeColumns());
+    resizeObserver.observe(gridRef.current);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!gridRef.current) return;
+    // Measure first card for row height
+    const firstCard = gridRef.current.querySelector('[data-agent-card]') as HTMLElement | null;
+    if (firstCard) {
+      const h = firstCard.offsetHeight;
+      if (h) setRowHeight(h + rowGap);
+    }
+  }, [agents, compact]);
+
+  const totalRows = useMemo(() => {
+    return columns > 0 ? Math.ceil(agents.length / columns) : 0;
+  }, [agents.length, columns]);
+
+  const { startIndex, endIndex, topSpacer, bottomSpacer } = useMemo(() => {
+    if (!virtualHeightPx || !rowHeight || columns <= 0) {
+      return { startIndex: 0, endIndex: agents.length - 1, topSpacer: 0, bottomSpacer: 0 };
+    }
+    const visibleRows = Math.ceil(virtualHeightPx / rowHeight);
+    const bufferRows = 3;
+    const startRow = Math.max(0, Math.floor(scrollTop / rowHeight) - bufferRows);
+    const endRow = Math.min(totalRows - 1, Math.floor((scrollTop + virtualHeightPx) / rowHeight) + bufferRows);
+    const startIdx = startRow * columns;
+    const endIdx = Math.min(agents.length - 1, (endRow + 1) * columns - 1);
+    const top = startRow * rowHeight;
+    const bottom = Math.max(0, (totalRows - endRow - 1) * rowHeight);
+    return { startIndex: startIdx, endIndex: endIdx, topSpacer: top, bottomSpacer: bottom };
+  }, [virtualHeightPx, rowHeight, columns, scrollTop, totalRows, agents.length]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop((e.target as HTMLDivElement).scrollTop);
+  };
+
+  const itemsToRender = useMemo(() => {
+    if (startIndex === 0 && endIndex === agents.length - 1) return agents;
+    return agents.slice(startIndex, endIndex + 1);
+  }, [agents, startIndex, endIndex]);
+
+  const GridContent = (
+    <div ref={gridRef} className="grid grid-cols-3 md:grid-cols-5 xl:grid-cols-6 gap-3">
+      {itemsToRender.map((agent) => (
         <Card 
           key={agent.id} 
           className={cn(
@@ -43,6 +107,7 @@ export function AgentStatusGrid({ agents, onAgentClick, cardBackgroundClass, com
           )}
           onClick={() => onAgentClick?.(agent)}
           data-testid={`card-agent-${agent.id}`}
+          data-agent-card
         >
           <div className={cn("flex items-start justify-between", compact ? "mb-2" : "mb-3") }>
             <div className={cn("rounded-md bg-primary/10", compact ? "p-1.5" : "p-2") }>
@@ -79,6 +144,18 @@ export function AgentStatusGrid({ agents, onAgentClick, cardBackgroundClass, com
           </div>
         </Card>
       ))}
+    </div>
+  );
+
+  if (!virtualHeightPx) {
+    return GridContent;
+  }
+
+  return (
+    <div ref={containerRef} style={{ maxHeight: virtualHeightPx, height: virtualHeightPx, overflowY: 'auto' }} onScroll={handleScroll}>
+      <div style={{ height: topSpacer }} />
+      {GridContent}
+      <div style={{ height: bottomSpacer }} />
     </div>
   );
 }
