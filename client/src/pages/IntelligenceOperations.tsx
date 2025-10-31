@@ -14,6 +14,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { MockDataBadge } from "@/components/MockDataBadge";
+import { ensureTimeSeries, ensureArray } from "@/components/mockUtils";
 
 interface ManifestInjectionHealth {
   successRate: number;
@@ -216,7 +218,7 @@ export default function IntelligenceOperations() {
   }, [recentActionsData]);
 
   // Transform operations data for chart (aggregate by time period)
-  const chartData = operationsData
+  const chartDataRaw = operationsData
     ? Array.from(
         operationsData.reduce((acc, item) => {
           const time = new Date(item.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -228,14 +230,16 @@ export default function IntelligenceOperations() {
         .map(([time, value]) => ({ time, value }))
         .reverse()
     : [];
+  const { data: chartData, isMock: isChartMock } = ensureTimeSeries(chartDataRaw, 20, 10);
 
   // Transform quality data for chart
-  const qualityData = qualityImpactData
+  const qualityDataRaw = qualityImpactData
     ? qualityImpactData.map(item => ({
         time: new Date(item.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        value: item.avgQualityImprovement * 100, // Convert to percentage
+        value: item.avgQualityImprovement * 100,
       })).reverse()
     : [];
+  const { data: qualityData, isMock: isQualityMock } = ensureTimeSeries(qualityDataRaw, 2, 1.5);
 
   // Derive operations status from operationsData (group by action type)
   const operations = operationsData
@@ -318,12 +322,15 @@ export default function IntelligenceOperations() {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart
-          title="Operations per Minute"
-          data={chartData}
-          color="hsl(var(--chart-4))"
-          showArea
-        />
+        <div>
+          {isChartMock && <MockDataBadge className="mb-2" />}
+          <RealtimeChart
+            title="Operations per Minute"
+            data={chartData}
+            color="hsl(var(--chart-4))"
+            showArea
+          />
+        </div>
         <div className="space-y-4">
           {(() => {
             // Check if quality impact data is empty or all zeros
@@ -343,11 +350,14 @@ export default function IntelligenceOperations() {
                     </AlertDescription>
                   </Alert>
                 )}
-                <RealtimeChart
-                  title="Quality Improvement Impact"
-                  data={qualityData}
-                  color="hsl(var(--chart-3))"
-                />
+                <div>
+                  {isQualityMock && <MockDataBadge className="mb-2" />}
+                  <RealtimeChart
+                    title="Quality Improvement Impact"
+                    data={qualityData}
+                    color="hsl(var(--chart-3))"
+                  />
+                </div>
               </>
             );
           })()}
@@ -602,9 +612,14 @@ export default function IntelligenceOperations() {
           <p className="text-muted-foreground">Most accessed documents in knowledge base</p>
         </div>
 
+        {(!topDocumentsData || topDocumentsData.length === 0) && <MockDataBadge className="mb-2" />}
         <DataTable<TopAccessedDocument>
           title="Top Accessed Documents"
-          data={topDocumentsData || []}
+          data={(topDocumentsData && topDocumentsData.length > 0 ? topDocumentsData : [
+            { id: 'm1', repository: 'omniarchon', filePath: 'https://repo/docs/INTRO.md', accessCount: 128, lastAccessedAt: new Date().toISOString(), trend: 'up', trendPercentage: 18 },
+            { id: 'm2', repository: 'omniarchon', filePath: 'https://repo/docs/API.md', accessCount: 64, lastAccessedAt: new Date(Date.now() - 86400000).toISOString(), trend: 'stable', trendPercentage: 0 },
+            { id: 'm3', repository: 'omniarchon', filePath: 'https://repo/docs/SETUP.md', accessCount: 29, lastAccessedAt: null, trend: 'down', trendPercentage: 7 },
+          ])}
           columns={[
             {
               key: 'filePath',
@@ -708,6 +723,7 @@ export default function IntelligenceOperations() {
 
       {/* Polymorphic Transformation Viewer */}
       <div>
+        <MockDataBadge className="mb-2" />
         <TransformationFlow timeWindow="30d" />
       </div>
     </div>

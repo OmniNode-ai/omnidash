@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -274,6 +275,7 @@ const TechDebtAnalysis: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <MockDataBadge />
           <Button variant="outline" size="sm">
             <Download className="w-4 h-4 mr-2" />
             Export Report

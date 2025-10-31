@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +54,10 @@ export default function FeatureShowcase() {
   const [demoProgress, setDemoProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+
+  // Header
+  // (Badge indicates mock/preview content)
+  // Rendered below before the features grid
 
   const features = [
     {

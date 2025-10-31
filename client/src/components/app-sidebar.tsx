@@ -18,6 +18,11 @@ const dashboards = [
     url: "/",
     icon: Bot,
   },
+  {
+    title: "Code Intelligence Suite",
+    url: "/preview/code-intelligence-suite",
+    icon: Code,
+  },
   // Moved from Preview Features (ordered by importance)
   {
     title: "Intelligence Analytics",
@@ -28,11 +33,6 @@ const dashboards = [
     title: "Platform Monitoring",
     url: "/preview/platform-monitoring",
     icon: Shield,
-  },
-  {
-    title: "Code Intelligence Suite",
-    url: "/preview/code-intelligence-suite",
-    icon: Code,
   },
   {
     title: "Architecture & Networks",

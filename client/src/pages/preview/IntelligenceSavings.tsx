@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { useQuery } from "@tanstack/react-query";
+import { intelligenceSavingsSource } from "@/lib/data-sources";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,36 +92,21 @@ export default function IntelligenceSavings() {
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("30d");
 
-  // API calls
-  const { data: savingsMetrics, isLoading: metricsLoading } = useQuery<SavingsMetrics>({
-    queryKey: ['savings-metrics', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/savings/metrics?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch savings metrics');
-      return response.json();
-    },
-    refetchInterval: 60000, // Refetch every minute
-  });
-
-  const { data: agentComparisons, isLoading: agentsLoading } = useQuery<AgentComparison[]>({
-    queryKey: ['agent-comparisons', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/savings/agents?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch agent comparisons');
-      return response.json();
-    },
+  // Use centralized data source
+  const { data: savingsData, isLoading } = useQuery({
+    queryKey: ['savings-all', timeRange],
+    queryFn: () => intelligenceSavingsSource.fetchAll(timeRange),
     refetchInterval: 60000,
   });
 
-  const { data: timeSeriesData, isLoading: timeseriesLoading } = useQuery<TimeSeriesData[]>({
-    queryKey: ['savings-timeseries', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/savings/timeseries?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch time series data');
-      return response.json();
-    },
-    refetchInterval: 60000,
-  });
+  const savingsMetrics = savingsData?.metrics;
+  const agentComparisons = savingsData?.agentComparisons || [];
+  const timeSeriesData = savingsData?.timeSeriesData || [];
+  const usingMockData = savingsData?.isMock || false;
+  
+  const metricsLoading = isLoading && !savingsMetrics;
+  const agentsLoading = isLoading && agentComparisons.length === 0;
+  const timeseriesLoading = isLoading && timeSeriesData.length === 0;
 
   // Data is now managed by TanStack Query, no need for local state
 
@@ -149,6 +136,7 @@ export default function IntelligenceSavings() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {usingMockData && <MockDataBadge />}
           <Button
             variant={timeRange === "7d" ? "default" : "outline"}
             size="sm"

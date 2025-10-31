@@ -1,5 +1,6 @@
 import { MetricCard } from "@/components/MetricCard";
 import { PatternNetwork } from "@/components/PatternNetwork";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { TopPatternsList } from "@/components/TopPatternsList";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { DrillDownModal } from "@/components/DrillDownModal";
@@ -235,15 +236,24 @@ export default function PatternLearning() {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart
-          title="Pattern Discovery Rate"
-          data={(discoveryData || []).map(d => ({
-            time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-            value: d.avgPatternsPerManifest
-          }))}
-          color="hsl(var(--chart-2))"
-          showArea
-        />
+        <div>
+          {(!discoveryData || discoveryData.length === 0) && !discoveryLoading && (
+            <MockDataBadge className="mb-2" />
+          )}
+          <RealtimeChart
+            title="Pattern Discovery Rate"
+            data={(discoveryData && discoveryData.length > 0 ? discoveryData : [
+              { period: new Date().toISOString(), avgPatternsPerManifest: 1.2 },
+              { period: new Date(Date.now() - 3600000).toISOString(), avgPatternsPerManifest: 0.8 },
+              { period: new Date(Date.now() - 2*3600000).toISOString(), avgPatternsPerManifest: 1.6 },
+            ]).map(d => ({
+              time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              value: d.avgPatternsPerManifest
+            }))}
+            color="hsl(var(--chart-2))"
+            showArea
+          />
+        </div>
         <div className="space-y-4">
           {/* Live Pattern Discovery (from intelligence service) */}
           <div className="bg-card border rounded-lg p-4">
@@ -297,14 +307,23 @@ export default function PatternLearning() {
                     </AlertDescription>
                   </Alert>
                 )}
-                <RealtimeChart
-                  title="Average Quality Score"
-                  data={(qualityData || []).map(d => ({
-                    time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                    value: d.avgQuality * 100  // Convert 0.85 to 85%
-                  }))}
-                  color="hsl(var(--chart-3))"
-                />
+                <div>
+                  {(!qualityData || qualityData.length === 0) && !qualityLoading && (
+                    <MockDataBadge className="mb-2" />
+                  )}
+                  <RealtimeChart
+                    title="Average Quality Score"
+                    data={(qualityData && qualityData.length > 0 ? qualityData : [
+                      { period: new Date().toISOString(), avgQuality: 0.86 },
+                      { period: new Date(Date.now() - 3600000).toISOString(), avgQuality: 0.84 },
+                      { period: new Date(Date.now() - 2*3600000).toISOString(), avgQuality: 0.85 },
+                    ]).map(d => ({
+                      time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                      value: d.avgQuality * 100
+                    }))}
+                    color="hsl(var(--chart-3))"
+                  />
+                </div>
               </>
             );
           })()}
@@ -318,13 +337,13 @@ export default function PatternLearning() {
           <div className="flex items-center justify-center h-64">
             <p className="text-muted-foreground">Loading language data...</p>
           </div>
-        ) : !languageData || languageData.length === 0 ? (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-muted-foreground">No language data available</p>
-          </div>
         ) : (
           <div className="space-y-4">
-            {languageData.map((lang, index) => {
+            {((languageData && languageData.length > 0) ? languageData : [
+              { language: 'python', count: 686, percentage: 66.5 },
+              { language: 'typescript', count: 287, percentage: 27.8 },
+              { language: 'rust', count: 58, percentage: 5.7 },
+            ]).map((lang, index) => {
               // Color palette for languages
               const colors = [
                 'hsl(var(--chart-1))',
@@ -335,8 +354,12 @@ export default function PatternLearning() {
               ];
               const color = colors[index % colors.length];
 
+              const isMock = !languageData || languageData.length === 0;
               return (
                 <div key={lang.language} className="space-y-2">
+                  {isMock && index === 0 && (
+                    <MockDataBadge className="mb-2" />
+                  )}
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <div

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { 
   Network, 
   ZoomIn, 
@@ -54,9 +56,42 @@ export default function AgentNetwork() {
   const [isLoading, setIsLoading] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Mock data - replace with real API calls
+  // Fetch agent registry data
+  const { data: agentsData, isLoading: agentsLoading } = useQuery({
+    queryKey: ['agents', 'all'],
+    queryFn: async () => {
+      const response = await fetch('/api/agents/agents');
+      if (!response.ok) throw new Error('Failed to fetch agents');
+      return response.json();
+    },
+    refetchInterval: 60000,
+  });
+
+  // Fetch routing relationships
+  const { data: routingData, isLoading: routingLoading } = useQuery({
+    queryKey: ['agent-routing'],
+    queryFn: async () => {
+      const response = await fetch('/api/agents/routing');
+      if (!response.ok) throw new Error('Failed to fetch routing data');
+      return response.json();
+    },
+    refetchInterval: 60000,
+  });
+
+  // Build network graph from live data
   useEffect(() => {
-    const mockNodes: AgentNode[] = [
+    if (agentsLoading || routingLoading) {
+      setIsLoading(true);
+      return;
+    }
+
+    // Use live data if available, otherwise fall back to mock
+    const agents = agentsData || [];
+    const usingMockData = agents.length === 0;
+
+    if (usingMockData) {
+      // Mock data fallback
+      const mockNodes: AgentNode[] = [
       {
         id: "agent-polymorphic-agent",
         name: "agent-polymorphic-agent",
@@ -145,10 +180,100 @@ export default function AgentNetwork() {
       { from: "agent-frontend-developer", to: "agent-performance", strength: 0.6, type: "collaboration" }
     ];
 
-    setNodes(mockNodes);
-    setConnections(mockConnections);
+      setNodes(mockNodes);
+      setConnections(mockConnections);
+      setIsLoading(false);
+      return;
+    }
+
+    // Transform live agent data to nodes
+    const nodes: AgentNode[] = agents.map((agent: any, index: number) => {
+      const totalAgents = agents.length;
+      const angle = (index / totalAgents) * 2 * Math.PI;
+      const radius = 200;
+      const centerX = 400;
+      const centerY = 300;
+      
+      return {
+        id: agent.id || agent.name,
+        name: agent.name || agent.id,
+        title: agent.title || agent.name,
+        category: agent.category || 'general',
+        color: agent.color || 'blue',
+        x: centerX + radius * Math.cos(angle),
+        y: centerY + radius * Math.sin(angle),
+        size: Math.max(40, Math.min(80, (agent.performance?.totalRuns || 0) / 50)),
+        connections: [], // Will be populated from routing data
+        performance: {
+          successRate: (agent.performance?.successRate || 0) * 100,
+          efficiency: (agent.performance?.efficiency || 0) * 100,
+          totalRuns: agent.performance?.totalRuns || 0,
+        },
+      };
+    });
+
+    // Build connections from routing data
+    const connections: AgentConnection[] = [];
+    
+    // Add routing connections from routing decisions
+    if (routingData?.recentDecisions) {
+      routingData.recentDecisions.forEach((decision: any) => {
+        // Find polymorphic agent (usually the main coordinator)
+        const polyAgent = nodes.find(n => n.name.includes('polymorphic') || n.name.includes('polly'));
+        const targetAgent = nodes.find(n => n.id === decision.agent || n.name === decision.agent);
+        
+        if (polyAgent && targetAgent && polyAgent.id !== targetAgent.id) {
+          // Check if connection already exists
+          const existing = connections.find(
+            c => c.from === polyAgent.id && c.to === targetAgent.id
+          );
+          
+          if (!existing) {
+            connections.push({
+              from: polyAgent.id,
+              to: targetAgent.id,
+              strength: decision.confidence / 100 || 0.7,
+              type: "routing",
+            });
+          }
+        }
+      });
+    }
+
+    // Add collaboration connections based on similar categories
+    nodes.forEach(node => {
+      nodes.forEach(otherNode => {
+        if (node.id !== otherNode.id && node.category === otherNode.category) {
+          const existing = connections.find(
+            c => (c.from === node.id && c.to === otherNode.id) || 
+                 (c.from === otherNode.id && c.to === node.id)
+          );
+          
+          if (!existing) {
+            connections.push({
+              from: node.id,
+              to: otherNode.id,
+              strength: 0.5,
+              type: "collaboration",
+            });
+          }
+        }
+      });
+    });
+
+    // Update node connections list
+    nodes.forEach(node => {
+      node.connections = connections
+        .filter(c => c.from === node.id || c.to === node.id)
+        .map(c => c.from === node.id ? c.to : c.from);
+    });
+
+    setNodes(nodes);
+    setConnections(connections);
     setIsLoading(false);
-  }, []);
+  }, [agentsData, routingData, agentsLoading, routingLoading]);
+
+  const usingMockData = !agentsData || agentsData.length === 0;
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -309,10 +434,14 @@ export default function AgentNetwork() {
         <div>
           <h1 className="text-3xl font-bold">Agent Network</h1>
           <p className="text-muted-foreground">
-            Visualize agent relationships, dependencies, and collaboration patterns
+            Visualize agent relationships, routing patterns, and collaboration networks. 
+            The graph shows how agents connect: <strong>purple dashed lines</strong> indicate routing decisions 
+            (which agent handles which requests), <strong>green lines</strong> show collaboration 
+            (agents working together), and <strong>orange dashed lines</strong> show dependencies.
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {usingMockData && <MockDataBadge />}
           <Button variant="outline" size="sm" onClick={handleZoomOut}>
             <ZoomOut className="w-4 h-4" />
           </Button>

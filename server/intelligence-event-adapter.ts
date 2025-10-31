@@ -35,8 +35,8 @@ export class IntelligenceEventAdapter {
 
     this.consumer = this.kafka.consumer({ groupId: `omnidash-intel-${randomUUID().slice(0, 8)}` });
     await this.consumer.connect();
-    await this.consumer.subscribe({ topic: this.TOPIC_COMPLETED, fromBeginning: true });
-    await this.consumer.subscribe({ topic: this.TOPIC_FAILED, fromBeginning: true });
+    await this.consumer.subscribe({ topic: this.TOPIC_COMPLETED, fromBeginning: false });
+    await this.consumer.subscribe({ topic: this.TOPIC_FAILED, fromBeginning: false });
 
     await this.consumer.run({
       eachMessage: async ({ topic, message }) => {
@@ -46,9 +46,10 @@ export class IntelligenceEventAdapter {
           const event = JSON.parse(value);
           
           // Extract correlation_id (may be top-level or in payload)
-          const correlationId = event?.correlation_id || event?.correlationId || 
-                                event?.payload?.correlation_id || 
-                                message.key?.toString();
+          const correlationIdRaw = event?.correlation_id || event?.correlationId || 
+                                   event?.payload?.correlation_id || 
+                                   message.key?.toString();
+          const correlationId = correlationIdRaw ? String(correlationIdRaw).toLowerCase() : undefined;
           if (!correlationId) return;
 
           const pending = this.pending.get(correlationId);
@@ -96,7 +97,9 @@ export class IntelligenceEventAdapter {
   async request(requestType: string, payload: Record<string, any>, timeoutMs: number = 5000): Promise<any> {
     if (!this.started || !this.producer) throw new Error('IntelligenceEventAdapter not started');
 
-    const correlationId = (payload?.correlation_id || payload?.correlationId || randomUUID()).toUpperCase();
+    const rawCorrelationId = (payload?.correlation_id || payload?.correlationId || randomUUID());
+    const correlationId = String(rawCorrelationId);
+    const correlationKey = correlationId.toLowerCase();
     
     // Format matches OmniClaude's _create_request_payload format
     // Handler expects: event_type, correlation_id, payload (with source_path, language, etc.)
@@ -121,15 +124,15 @@ export class IntelligenceEventAdapter {
     // Promise with timeout tracking
     const promise = new Promise<any>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        this.pending.delete(correlationId);
+        this.pending.delete(correlationKey);
         reject(new Error('Intelligence request timed out'));
       }, timeoutMs);
-      this.pending.set(correlationId, { resolve, reject, timeout });
+      this.pending.set(correlationKey, { resolve, reject, timeout });
     });
 
     await this.producer.send({
       topic: this.TOPIC_REQUEST,
-      messages: [{ key: correlationId, value: JSON.stringify(envelope) }],
+      messages: [{ key: correlationKey, value: JSON.stringify(envelope) }],
     });
 
     return promise;

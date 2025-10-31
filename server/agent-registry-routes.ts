@@ -285,6 +285,42 @@ router.get("/performance", (req, res) => {
   }
 });
 
+// High-level agent summary for dashboards
+router.get("/summary", (req, res) => {
+  try {
+    const registry = loadAgentRegistry();
+    if (!registry || !registry.agents) {
+      return res.status(500).json({ error: "Failed to load agent registry" });
+    }
+
+    const agents = Object.entries(registry.agents).map(([key, agentData]: [string, any]) => {
+      return transformAgentToAPI(agentData, key);
+    });
+
+    const totalAgents = agents.length;
+    const activeAgents = agents.filter(a => a.status === 'active').length;
+    const totalRuns = agents.reduce((sum, a) => sum + (a.performance?.totalRuns || 0), 0);
+    const avgExecutionTime = (() => {
+      const times = agents.map(a => a.performance?.avgExecutionTime).filter((v: any) => typeof v === 'number');
+      return times.length ? times.reduce((s: number, v: number) => s + v, 0) / times.length : 0;
+    })();
+    const successRates = agents.map(a => a.performance?.successRate).filter((v: any) => typeof v === 'number');
+    const successRate = successRates.length ? (successRates.reduce((s: number, v: number) => s + v, 0) / successRates.length) : 0;
+
+    res.json({
+      totalAgents,
+      activeAgents,
+      totalRuns,
+      successRate,
+      avgExecutionTime,
+      totalSavings: 0,
+    });
+  } catch (error) {
+    console.error("Error fetching agent summary:", error);
+    res.status(500).json({ error: "Failed to fetch agent summary" });
+  }
+});
+
 // Get routing intelligence data
 router.get("/routing", (req, res) => {
   try {

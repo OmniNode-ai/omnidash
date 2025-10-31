@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { intelligenceAnalyticsSource } from "@/lib/data-sources";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ import {
 import EnhancedAnalytics from "./EnhancedAnalytics";
 import IntelligenceSavings from "./IntelligenceSavings";
 import { AgentDetailModal } from "@/components/AgentDetailModal";
+import { MockDataBadge } from "@/components/MockDataBadge";
 
 // Mock data interfaces
 interface IntelligenceMetrics {
@@ -79,17 +81,17 @@ export default function IntelligenceAnalytics() {
   const [timeRange, setTimeRange] = useState("30d");
   const [selectedAgent, setSelectedAgent] = useState<AgentPerformance | null>(null);
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
+  const [usingMockAgents, setUsingMockAgents] = useState(false);
 
-  // API calls for intelligence metrics
-  const { data: intelligenceMetrics, isLoading: metricsLoading } = useQuery<IntelligenceMetrics>({
+  // Use centralized data source for metrics
+  const { data: metricsResult, isLoading: metricsLoading } = useQuery({
     queryKey: ['intelligence-metrics', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/intelligence/metrics?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch intelligence metrics');
-      return response.json();
-    },
+    queryFn: () => intelligenceAnalyticsSource.fetchMetrics(timeRange),
     refetchInterval: 60000,
   });
+  
+  const intelligenceMetrics = metricsResult?.data;
+  const usingMockMetrics = metricsResult?.isMock || false;
 
   const { data: agentPerformance, isLoading: agentsLoading } = useQuery<AgentPerformance[]>({
     queryKey: ['agent-performance', timeRange],
@@ -102,6 +104,7 @@ export default function IntelligenceAnalytics() {
           // Accept either array of agents or overview object
           const items = Array.isArray(json) ? json : (json?.agents || json?.topAgents || []);
           if (Array.isArray(items) && items.length) {
+            setUsingMockAgents(false);
             return items.map((a: any) => ({
               agentId: a.agentId || a.id || a.name || 'unknown',
               agentName: a.agentName || a.name || a.id || 'Unknown Agent',
@@ -116,7 +119,7 @@ export default function IntelligenceAnalytics() {
           }
         }
       } catch (_) {}
-
+      setUsingMockAgents(true);
       return [
         {
           agentId: "polymorphic-agent",
@@ -178,6 +181,16 @@ export default function IntelligenceAnalytics() {
     refetchInterval: 60000,
   });
 
+  // Recent activity from data source
+  const { data: activityResult, isLoading: activityLoading } = useQuery({
+    queryKey: ['recent-activity'],
+    queryFn: () => intelligenceAnalyticsSource.fetchRecentActivity(5),
+    refetchInterval: 30000,
+  });
+  
+  const recentActivity = activityResult?.data || [];
+  const usingMockActivity = activityResult?.isMock || false;
+
   const { data: savingsMetrics, isLoading: savingsLoading } = useQuery<SavingsMetrics>({
     queryKey: ['savings-metrics', timeRange],
     queryFn: async () => {
@@ -185,8 +198,11 @@ export default function IntelligenceAnalytics() {
       if (!response.ok) throw new Error('Failed to fetch savings metrics');
       return response.json();
     },
+    retry: false,
     refetchInterval: 60000,
   });
+  
+  const usingMockSavings = !savingsMetrics;
 
   const isLoading = metricsLoading || agentsLoading || savingsLoading;
 
@@ -210,7 +226,8 @@ export default function IntelligenceAnalytics() {
             Comprehensive analytics for intelligence operations, agent performance, and cost optimization
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {(usingMockAgents || usingMockMetrics || usingMockSavings || usingMockActivity) && <MockDataBadge />}
           <Button variant="outline" size="sm">
             <Settings className="w-4 h-4 mr-2" />
             Configure
@@ -303,14 +320,9 @@ export default function IntelligenceAnalytics() {
                 <CardDescription>Latest intelligence operations and agent executions</CardDescription>
               </CardHeader>
               <CardContent>
+                {usingMockActivity && <MockDataBadge className="mb-3" />}
                 <div className="space-y-4">
-                  {[
-                    { action: "API optimization query", agent: "agent-performance", time: "2m ago", status: "completed" },
-                    { action: "Debug database connection", agent: "agent-debug-intelligence", time: "5m ago", status: "completed" },
-                    { action: "Create React component", agent: "agent-frontend-developer", time: "8m ago", status: "executing" },
-                    { action: "Write unit tests", agent: "agent-testing", time: "12m ago", status: "completed" },
-                    { action: "Design microservices", agent: "agent-api-architect", time: "15m ago", status: "completed" }
-                  ].map((item, index) => (
+                  {recentActivity.map((item, index) => (
                     <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className={`w-2 h-2 rounded-full ${

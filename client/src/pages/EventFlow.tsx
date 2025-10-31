@@ -6,6 +6,8 @@ import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
 import { Activity, Zap, Database, TrendingUp, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { MockBadge } from "@/components/MockBadge";
+import { ensureTimeSeries } from "@/components/mockUtils";
 import { useState, useMemo } from "react";
 
 // Event stream interface matching omniarchon endpoint
@@ -91,8 +93,8 @@ export default function EventFlow() {
   }, [data]);
 
   // Generate chart data from events
-  const throughputData = useMemo(() => {
-    if (!data?.events) return [];
+  const throughputDataRaw = useMemo(() => {
+    if (!data?.events) return [] as Array<{ time: string; value: number }>;
 
     // Group events by minute
     const minuteCounts = new Map<string, number>();
@@ -106,10 +108,11 @@ export default function EventFlow() {
       .slice(-20)
       .map(([time, value]) => ({ time, value }));
   }, [data]);
+  const { data: throughputData, isMock: isThroughputMock } = ensureTimeSeries(throughputDataRaw, 10, 6);
 
   // Calculate average lag from event timestamps
-  const lagData = useMemo(() => {
-    if (!data?.events) return [];
+  const lagDataRaw = useMemo(() => {
+    if (!data?.events) return [] as Array<{ time: string; value: number }>;
 
     const now = Date.now();
     return data.events
@@ -123,6 +126,7 @@ export default function EventFlow() {
         };
       });
   }, [data]);
+  const { data: lagData, isMock: isLagMock } = ensureTimeSeries(lagDataRaw, 3, 1.2);
 
   // Convert topic counts to array for display
   const topics = useMemo(() => {
@@ -205,17 +209,23 @@ export default function EventFlow() {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart
-          title="Event Throughput (by minute)"
-          data={throughputData}
-          color="hsl(var(--chart-4))"
-          showArea
-        />
-        <RealtimeChart
-          title="Event Lag (seconds)"
-          data={lagData}
-          color="hsl(var(--chart-5))"
-        />
+        <div>
+          {isThroughputMock && <MockBadge label="MOCK DATA: Event Throughput" />}
+          <RealtimeChart
+            title="Event Throughput (by minute)"
+            data={throughputData}
+            color="hsl(var(--chart-4))"
+            showArea
+          />
+        </div>
+        <div>
+          {isLagMock && <MockBadge label="MOCK DATA: Event Lag" />}
+          <RealtimeChart
+            title="Event Lag (seconds)"
+            data={lagData}
+            color="hsl(var(--chart-5))"
+          />
+        </div>
       </div>
 
       {!isLoading && topics.length > 0 && (
