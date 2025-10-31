@@ -189,8 +189,40 @@ interface LanguageBreakdown {
  */
 intelligenceRouter.get('/agents/summary', async (req, res) => {
   try {
+    const timeWindow = (req.query.timeWindow as string) || '24h';
     const metrics = eventConsumer.getAgentMetrics();
-    res.json(metrics);
+    if (Array.isArray(metrics) && metrics.length > 0) {
+      return res.json(metrics);
+    }
+
+    // Fallback: query PostgreSQL directly when event stream is empty
+    const interval = timeWindow === '7d' ? "7 days" : timeWindow === '30d' ? "30 days" : "24 hours";
+    const rows = await intelligenceDb.execute(sql.raw(
+      `
+      SELECT
+        COALESCE(ard.agent_name, aa.agent_name) AS agent,
+        COALESCE(COUNT(aa.id), 0) AS total_requests,
+        AVG(COALESCE(ard.routing_duration_ms, aa.duration_ms, 0)) AS avg_routing_time,
+        AVG(COALESCE(ard.confidence, ard.confidence_score, 0)) AS avg_confidence
+      FROM agent_actions aa
+      FULL OUTER JOIN agent_routing_decisions ard
+        ON aa.correlation_id = ard.correlation_id
+      WHERE (aa.created_at IS NULL OR aa.created_at >= NOW() - INTERVAL '${interval}')
+         OR (ard.created_at IS NULL OR ard.created_at >= NOW() - INTERVAL '${interval}')
+      GROUP BY COALESCE(ard.agent_name, aa.agent_name)
+      ORDER BY total_requests DESC
+      LIMIT 50;
+      `
+    ));
+
+    const transformed = (rows as any[]).map(r => ({
+      agent: r.agent || 'unknown',
+      totalRequests: Number(r.total_requests || 0),
+      avgRoutingTime: Number(r.avg_routing_time || 0),
+      avgConfidence: Number(r.avg_confidence || 0),
+    }));
+
+    return res.json(transformed);
   } catch (error) {
     console.error('Error fetching agent summary:', error);
     res.status(500).json({
@@ -229,8 +261,33 @@ intelligenceRouter.get('/actions/recent', async (req, res) => {
       1000
     );
 
-    const actions = eventConsumer.getRecentActions().slice(0, limit);
-    res.json(actions);
+    const actionsMem = eventConsumer.getRecentActions();
+    if (Array.isArray(actionsMem) && actionsMem.length > 0) {
+      return res.json(actionsMem.slice(0, limit));
+    }
+
+    // Fallback: pull most recent actions from PostgreSQL
+    const rows = await intelligenceDb.execute(sql.raw(
+      `
+      SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
+      FROM agent_actions
+      ORDER BY created_at DESC
+      LIMIT ${limit};
+      `
+    ));
+
+    const transformed = (rows as any[]).map(r => ({
+      id: r.id,
+      correlationId: r.correlation_id,
+      agentName: r.agent_name,
+      actionType: r.action_type,
+      actionName: r.action_name,
+      actionDetails: r.action_details,
+      debugMode: !!r.debug_mode,
+      durationMs: Number(r.duration_ms || 0),
+      createdAt: r.created_at,
+    }));
+    return res.json(transformed);
   } catch (error) {
     console.error('Error fetching recent actions:', error);
     res.status(500).json({
