@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { toast } from "@/hooks/use-toast";
 
 interface ExportButtonProps {
   data: any;
@@ -30,31 +31,45 @@ interface ExportButtonProps {
  */
 export const ExportButton = memo(function ExportButton({ data, filename, disabled = false }: ExportButtonProps) {
   const exportAsJSON = () => {
+    let url: string | null = null;
     try {
       const jsonString = JSON.stringify(data, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `${filename}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to export JSON:', error);
-      alert('Failed to export data as JSON. Please check console for details.');
+      toast({
+        title: "Export Failed",
+        description: "Failed to export data as JSON. Please check console for details.",
+        variant: "destructive",
+      });
+    } finally {
+      // Always cleanup to prevent memory leak
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
     }
   };
 
   const exportAsCSV = () => {
+    let url: string | null = null;
     try {
       let csv = '';
 
       // Handle array data (most common for CSV)
       if (Array.isArray(data)) {
         if (data.length === 0) {
-          alert('No data available to export as CSV.');
+          toast({
+            title: "No Data",
+            description: "No data available to export as CSV.",
+            variant: "destructive",
+          });
           return;
         }
 
@@ -129,22 +144,34 @@ export const ExportButton = memo(function ExportButton({ data, filename, disable
           return `"${stringValue}"`;
         }).join(',') + '\n';
       } else {
-        alert('Data format not suitable for CSV export. Use JSON export instead.');
+        toast({
+          title: "Invalid Format",
+          description: "Data format not suitable for CSV export. Use JSON export instead.",
+          variant: "destructive",
+        });
         return;
       }
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
+      url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `${filename}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to export CSV:', error);
-      alert('Failed to export data as CSV. Please try JSON export or check console for details.');
+      toast({
+        title: "Export Failed",
+        description: "Failed to export data as CSV. Please try JSON export or check console for details.",
+        variant: "destructive",
+      });
+    } finally {
+      // Always cleanup to prevent memory leak
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
     }
   };
 

@@ -191,7 +191,7 @@ export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegist
                 <Progress
                   value={
                     agent.performance?.avgExecutionTime != null || agent.performance?.avgResponseTime != null
-                      ? Math.min(100, (2000 - (agent.performance.avgExecutionTime || agent.performance.avgResponseTime || 0)) / 20)
+                      ? Math.max(0, Math.min(100, (2000 - (agent.performance.avgExecutionTime || agent.performance.avgResponseTime || 0)) / 20))
                       : 0
                   }
                   className="h-2"
