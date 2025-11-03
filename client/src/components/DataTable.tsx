@@ -14,7 +14,7 @@ export interface Column<T> {
   className?: string;
 }
 
-export interface DataTableProps<T> {
+export interface DataTableProps<T extends { id: string | number }> {
   data: T[];
   columns: Column<T>[];
   title?: string;
@@ -36,7 +36,7 @@ interface SortState {
   direction: SortDirection;
 }
 
-export function DataTable<T extends Record<string, any>>({
+export function DataTable<T extends Record<string, any> & { id: string | number }>({
   data,
   columns,
   title,
@@ -109,6 +109,11 @@ export function DataTable<T extends Record<string, any>>({
       result.sort((a, b) => {
         const aValue = a[sort.key!];
         const bValue = b[sort.key!];
+
+        // Handle null/undefined values - sort them last
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return 1;
+        if (bValue == null) return -1;
 
         if (aValue === bValue) return 0;
 
@@ -204,10 +209,10 @@ export function DataTable<T extends Record<string, any>>({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedData.map((item, index) => (
-                    <TableRow key={index}>
+                  {paginatedData.map((item) => (
+                    <TableRow key={item.id}>
                       {columns.map((column) => (
-                        <TableCell key={column.key} className={column.className}>
+                        <TableCell key={`${item.id}-${column.key}`} className={column.className}>
                           {column.render
                             ? column.render(item)
                             : String(item[column.key] ?? "")}
