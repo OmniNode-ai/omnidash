@@ -15,6 +15,8 @@ import { DateRangeFilter, DateRangeValue } from "@/components/DateRangeFilter";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { agentOperationsSource } from "@/lib/data-sources";
+import type { HealthStatus } from "@/lib/data-sources/agent-operations-source";
 
 // TypeScript interfaces for API responses
 interface AgentMetrics {
@@ -107,43 +109,33 @@ export default function AgentOperations() {
     debug: false,
   });
 
-  // Fetch agent metrics (updated via WebSocket)
-  const { data: metrics, isLoading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useQuery<AgentMetrics[]>({
-    queryKey: [`/api/intelligence/agents/summary`, timeRange],
-    queryFn: async () => {
-      const res = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
-      if (!res.ok) throw new Error(`Failed to fetch agent metrics (${res.status})`);
-      const json = await res.json();
-      return Array.isArray(json) ? json : [];
-    },
+  // Use centralized data source
+  const { data: operationsData, isLoading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useQuery({
+    queryKey: ['agent-operations', timeRange],
+    queryFn: () => agentOperationsSource.fetchAll(timeRange),
     refetchInterval: 30000,
     staleTime: 15000,
   });
 
-  // Fetch recent actions (updated via WebSocket)
-  const { data: actions, isLoading: actionsLoading, error: actionsError, refetch: refetchActions } = useQuery<AgentAction[]>({
-    queryKey: [`/api/intelligence/actions/recent`, timeRange],
-    queryFn: async () => {
-      const res = await fetch(`/api/intelligence/actions/recent?limit=100&timeWindow=${timeRange}`);
-      if (!res.ok) throw new Error(`Failed to fetch recent actions (${res.status})`);
-      const json = await res.json();
-      return Array.isArray(json) ? json : [];
-    },
-    refetchInterval: 30000,
-    staleTime: 15000,
-  });
+  // Transform data source response to expected format
+  // Memoize to prevent creating new array references on every render (which would trigger infinite useEffect loops)
+  const metrics: AgentMetrics[] = useMemo(() => {
+    return operationsData?.summary ? [{
+      agent: 'all',
+      totalRequests: operationsData.summary.totalRuns,
+      successRate: operationsData.summary.successRate,
+      avgRoutingTime: operationsData.summary.avgExecutionTime,
+      avgConfidence: null,
+    }] : [];
+  }, [operationsData?.summary]);
 
-  // Health check (updated via WebSocket)
-  const { data: health } = useQuery<HealthStatus>({
-    queryKey: ['/api/intelligence/health'],
-    queryFn: async () => {
-      const res = await fetch('/api/intelligence/health');
-      if (!res.ok) throw new Error(`Health check failed (${res.status})`);
-      return res.json();
-    },
-    refetchInterval: 60000,
-    staleTime: 30000,
-  });
+  const actions: AgentAction[] = useMemo(() => {
+    return operationsData?.recentActions || [];
+  }, [operationsData?.recentActions]);
+
+  const health = operationsData?.health;
+  const actionsLoading = metricsLoading;
+  const actionsError = metricsError;
 
   // (removed) Routing strategy breakdown to avoid duplication with Routing tab
 
@@ -178,34 +170,42 @@ export default function AgentOperations() {
     setChartData(newChartData);
   }, [actions]);
 
-  // Update performance chart (avg duration per minute)
+  // Update performance chart - use success rate variation or fallback to request rate
+  // Since durationMs is not available in actions, we'll show success/error rate variation
   useEffect(() => {
-    if (!actions || actions.length === 0) return;
+    if (!actions || actions.length === 0) {
+      setPerformanceChartData([]);
+      return;
+    }
 
     const now = new Date();
-    const minuteSums = new Map<string, { sum: number; count: number }>();
+    const minuteBuckets = new Map<string, { total: number; success: number }>();
 
+    // Initialize buckets for last 20 minutes
     for (let i = 19; i >= 0; i--) {
       const time = new Date(now.getTime() - i * 60 * 1000);
       const timeLabel = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      minuteSums.set(timeLabel, { sum: 0, count: 0 });
+      minuteBuckets.set(timeLabel, { total: 0, success: 0 });
     }
 
+    // Count actions and track success/error by action type
     actions.forEach(action => {
       const actionTime = new Date(action.createdAt);
       const timeLabel = actionTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      if (minuteSums.has(timeLabel)) {
-        const entry = minuteSums.get(timeLabel)!;
-        const duration = typeof action.durationMs === 'number' ? action.durationMs : undefined;
-        if (duration && duration >= 0) {
-          minuteSums.set(timeLabel, { sum: entry.sum + duration, count: entry.count + 1 });
+      if (minuteBuckets.has(timeLabel)) {
+        const entry = minuteBuckets.get(timeLabel)!;
+        entry.total += 1;
+        // Consider 'success' or 'tool_call' as successful, 'error' as failure
+        if (action.actionType === 'success' || action.actionType === 'tool_call') {
+          entry.success += 1;
         }
       }
     });
 
-    const perfData = Array.from(minuteSums.entries()).map(([time, { sum, count }]) => ({
+    // Calculate success rate per minute (as percentage)
+    const perfData = Array.from(minuteBuckets.entries()).map(([time, { total, success }]) => ({
       time,
-      value: count > 0 ? Math.round(sum / count) : 0,
+      value: total > 0 ? Math.round((success / total) * 100) : 0,
     }));
 
     setPerformanceChartData(perfData);
@@ -216,26 +216,25 @@ export default function AgentOperations() {
     setPanelOpen(true);
   }, []);
 
-  // Memoize aggregated metrics to prevent recalculation on every render
+  // Use summary from data source instead of calculating here
   const aggregatedMetrics = useMemo(() => {
-    const activeAgents = metrics?.length || 0;
-    const totalRequests = metrics?.reduce((sum, m) => sum + m.totalRequests, 0) || 0;
-    const avgSuccessRate = metrics && metrics.length > 0
-      ? metrics.reduce((sum, m) => sum + (m.successRate || 0), 0) / metrics.length
-      : 0;
-    const avgResponseTime = metrics && metrics.length > 0
-      ? metrics.reduce((sum, m) => sum + (m.avgRoutingTime || 0), 0) / metrics.length
-      : 0;
-
-    return { activeAgents, totalRequests, avgSuccessRate, avgResponseTime };
-  }, [metrics]);
+    return {
+      activeAgents: operationsData?.summary?.activeAgents || 0,
+      totalRequests: operationsData?.summary?.totalRuns || 0,
+      avgSuccessRate: operationsData?.summary?.successRate || 0,
+      avgResponseTime: (operationsData?.summary?.avgExecutionTime || 0) * 1000, // Convert seconds to ms for display
+    };
+  }, [operationsData]);
 
   // Memoize agent grid data to prevent recalculation
   const agents = useMemo(() => {
     return metrics?.map((metric) => {
       // Use confidence score as quality proxy (displayed in agent grid bottom boxes)
-      const quality = Math.round((metric.avgConfidence || 0) * 100);
-      const successRate = Math.round((metric.successRate || 0) * 100);
+      // Clamp quality to 0-100%
+      const quality = Math.max(0, Math.min(100, Math.round((metric.avgConfidence || 0) * 100)));
+      // Clamp success rate to 0-100%
+      const rawRate = (metric.successRate || 0);
+      const successRate = Math.max(0, Math.min(100, Math.round(rawRate <= 1 ? rawRate * 100 : rawRate)));
 
       return {
         id: metric.agent,
@@ -358,7 +357,7 @@ export default function AgentOperations() {
         />
         <MetricCard
           label="Success Rate"
-          value={`${Math.round(aggregatedMetrics.avgSuccessRate * 100)}%`}
+          value={`${Math.max(0, Math.min(100, Math.round(aggregatedMetrics.avgSuccessRate <= 1 ? aggregatedMetrics.avgSuccessRate * 100 : aggregatedMetrics.avgSuccessRate)))}%`}
           icon={CheckCircle}
           status={aggregatedMetrics.avgSuccessRate > 0.9 ? "healthy" : "warning"}
           tooltip="Target: > 90%"
@@ -386,7 +385,7 @@ export default function AgentOperations() {
             <div>
               {ensured.isMock && <MockBadge label="MOCK DATA: Agent Performance" />}
               <RealtimeChart
-                title="Agent Performance (Avg Duration per Minute)"
+                title="Agent Performance (Success Rate % per Minute)"
                 data={ensured.data}
                 color="hsl(var(--chart-2))"
                 showArea

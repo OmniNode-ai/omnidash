@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { agentRegistrySource } from "@/lib/data-sources";
+import type { AgentDefinition } from "@/lib/data-sources/agent-registry-source";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -147,47 +149,17 @@ export default function AgentRegistry() {
     }
   ];
 
-  // API calls
-  const { data: agentsData, isLoading: agentsLoading } = useQuery<AgentDefinition[]>({
-    queryKey: ['agents', selectedCategory, searchQuery],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedCategory !== 'all') params.append('category', selectedCategory);
-      if (searchQuery) params.append('search', searchQuery);
-      
-      const response = await fetch(`/api/agents/agents?${params.toString()}`);
-      if (!response.ok) throw new Error('Failed to fetch agents');
-      return response.json();
-    },
-    refetchInterval: 60000, // Refetch every minute
+  // Use centralized data source
+  const { data: registryData, isLoading: agentsLoading, error: registryError } = useQuery({
+    queryKey: ['agent-registry', selectedCategory, searchQuery],
+    queryFn: () => agentRegistrySource.fetchAll({ category: selectedCategory, search: searchQuery }),
+    refetchInterval: 60000,
   });
 
-  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
-    queryKey: ['agent-categories'],
-    queryFn: async () => {
-      const response = await fetch('/api/agents/categories');
-      if (!response.ok) throw new Error('Failed to fetch categories');
-      return response.json();
-    },
-  });
-
-  const { data: performanceData, isLoading: performanceLoading } = useQuery({
-    queryKey: ['agent-performance'],
-    queryFn: async () => {
-      const response = await fetch('/api/agents/performance');
-      if (!response.ok) throw new Error('Failed to fetch performance data');
-      return response.json();
-    },
-  });
-
-  const { data: routingData, isLoading: routingLoading } = useQuery({
-    queryKey: ['agent-routing'],
-    queryFn: async () => {
-      const response = await fetch('/api/agents/routing');
-      if (!response.ok) throw new Error('Failed to fetch routing data');
-      return response.json();
-    },
-  });
+  const agentsData = registryData?.agents;
+  const categoriesData = registryData?.categories;
+  const performanceData = registryData?.performance;
+  const routingData = registryData?.routing;
 
   // Update state when data changes
   useEffect(() => {
@@ -197,14 +169,20 @@ export default function AgentRegistry() {
   }, [agentsData]);
 
   useEffect(() => {
-    setIsLoading(agentsLoading || categoriesLoading || performanceLoading || routingLoading);
-  }, [agentsLoading, categoriesLoading, performanceLoading, routingLoading]);
+    setIsLoading(agentsLoading);
+  }, [agentsLoading]);
 
   const filteredAgents = agents.filter(agent => {
-    const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         agent.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         agent.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         agent.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const name = agent.name?.toLowerCase?.() || "";
+    const title = agent.title?.toLowerCase?.() || "";
+    const description = agent.description?.toLowerCase?.() || "";
+    const tags: string[] = Array.isArray(agent.tags) ? agent.tags : [];
+
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = name.includes(q) ||
+                         title.includes(q) ||
+                         description.includes(q) ||
+                         tags.some(tag => (tag || "").toLowerCase().includes(q));
     
     const matchesCategory = selectedCategory === "all" || agent.category === selectedCategory;
     
@@ -223,6 +201,18 @@ export default function AgentRegistry() {
       case "medium": return "bg-yellow-100 text-yellow-800";
       case "low": return "bg-gray-100 text-gray-800";
       default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getColorHex = (color: string) => {
+    switch (color) {
+      case "blue": return "#3B82F6";
+      case "purple": return "#8B5CF6";
+      case "green": return "#10B981";
+      case "orange": return "#F59E0B";
+      case "cyan": return "#06B6D4";
+      case "gray": return "#6B7280";
+      default: return "#6B7280";
     }
   };
 
@@ -246,6 +236,17 @@ export default function AgentRegistry() {
     });
   };
 
+  if (registryError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-2">Failed to load agent registry.</p>
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -258,26 +259,7 @@ export default function AgentRegistry() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Agent Registry</h1>
-          <p className="ty-subtitle">
-            Discover and manage AI agents with their capabilities, performance metrics, and routing intelligence
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Settings className="w-4 h-4 mr-2" />
-            Configure
-          </Button>
-          <Button size="sm">
-            <Bot className="w-4 h-4 mr-2" />
-            Add Agent
-          </Button>
-        </div>
-      </div>
-
+    <div className="space-y-6 min-h-screen bg-background">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -336,7 +318,7 @@ export default function AgentRegistry() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Icon className={`w-5 h-5 text-${category.color}-600`} />
+                        <Icon className="w-5 h-5" style={{ color: getColorHex(category.color) }} />
                         <CardTitle className="text-lg capitalize">{category.name}</CardTitle>
                       </div>
                       <Badge variant="secondary">{category.count}</Badge>
@@ -372,13 +354,13 @@ export default function AgentRegistry() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {agents
+                {(agents || [])
                   .sort((a, b) => new Date(b.performance.lastUsed).getTime() - new Date(a.performance.lastUsed).getTime())
                   .slice(0, 5)
                   .map((agent) => (
                     <div key={agent.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full bg-${agent.color}-500`}></div>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getColorHex(agent.color) }}></div>
                         <div>
                           <div className="font-medium">{agent.title}</div>
                           <div className="text-sm text-muted-foreground">
@@ -388,7 +370,7 @@ export default function AgentRegistry() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <div className="text-sm font-medium">{agent.performance.successRate.toFixed(1)}%</div>
+                          <div className="text-sm font-medium">{Math.max(0, Math.min(100, agent.performance.successRate)).toFixed(1)}%</div>
                           <div className="text-xs text-muted-foreground">Success Rate</div>
                         </div>
                         <Button variant="ghost" size="sm" onClick={() => setSelectedAgent(agent)}>
@@ -411,7 +393,7 @@ export default function AgentRegistry() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
-                        <Icon className={`w-5 h-5 text-${agent.color}-600`} />
+                        <Icon className="w-5 h-5" style={{ color: getColorHex(agent.color) }} />
                         <div>
                           <CardTitle className="text-lg">{agent.title}</CardTitle>
                           <CardDescription className="text-sm">{agent.name}</CardDescription>
@@ -430,26 +412,28 @@ export default function AgentRegistry() {
                   <CardContent className="space-y-4">
                     <p className="text-sm text-muted-foreground">{agent.description}</p>
                     
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Capabilities</div>
-                      <div className="flex flex-wrap gap-1">
-                        {agent.capabilities.slice(0, 3).map((capability, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {capability.name}
-                          </Badge>
-                        ))}
-                        {agent.capabilities.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{agent.capabilities.length - 3} more
-                          </Badge>
-                        )}
+                    {agent.capabilities && agent.capabilities.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium">Capabilities</div>
+                        <div className="flex flex-wrap gap-1">
+                          {agent.capabilities.slice(0, 3).map((capability, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {capability.name}
+                            </Badge>
+                          ))}
+                          {agent.capabilities.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{agent.capabilities.length - 3} more
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <div className="text-muted-foreground">Success Rate</div>
-                        <div className="font-medium">{agent.performance.successRate.toFixed(1)}%</div>
+                        <div className="font-medium">{Math.max(0, Math.min(100, agent.performance.successRate)).toFixed(1)}%</div>
                       </div>
                       <div>
                         <div className="text-muted-foreground">Total Runs</div>
@@ -484,22 +468,22 @@ export default function AgentRegistry() {
               <div className="space-y-6">
                 {categories.map((category) => {
                   const categoryAgents = agents.filter(agent => agent.category === category.name);
-                  const allCapabilities = categoryAgents.flatMap(agent => agent.capabilities);
+                  const allCapabilities = categoryAgents.flatMap(agent => agent.capabilities || []);
                   const uniqueCapabilities = Array.from(new Set(allCapabilities.map(cap => cap.name)))
                     .map(name => allCapabilities.find(cap => cap.name === name)!);
 
                   return (
                     <div key={category.name} className="space-y-4">
                       <div className="flex items-center gap-2">
-                        <category.icon className={`w-5 h-5 text-${category.color}-600`} />
+                        <category.icon className="w-5 h-5" style={{ color: getColorHex(category.color) }} />
                         <h3 className="text-lg font-semibold capitalize">{category.name}</h3>
                         <Badge variant="outline">{categoryAgents.length} agents</Badge>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {uniqueCapabilities.map((capability, index) => {
-                          const agentsWithCapability = categoryAgents.filter(agent => 
-                            agent.capabilities.some(cap => cap.name === capability.name)
+                          const agentsWithCapability = categoryAgents.filter(agent =>
+                            agent.capabilities?.some(cap => cap.name === capability.name)
                           );
                           
                           return (
@@ -558,7 +542,7 @@ export default function AgentRegistry() {
                             <div className="text-xs text-muted-foreground">Efficiency</div>
                           </div>
                           <div className="text-right">
-                            <div className="text-sm font-medium">{agent.performance.successRate.toFixed(1)}%</div>
+                            <div className="text-sm font-medium">{Math.max(0, Math.min(100, agent.performance.successRate)).toFixed(1)}%</div>
                             <div className="text-xs text-muted-foreground">Success</div>
                           </div>
                         </div>

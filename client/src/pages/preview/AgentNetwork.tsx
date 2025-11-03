@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { agentNetworkSource } from "@/lib/data-sources";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +46,7 @@ interface AgentConnection {
   from: string;
   to: string;
   strength: number;
-  type: "dependency" | "collaboration" | "routing";
+  type: "routing"; // Only routing connections exist in reality
 }
 
 export default function AgentNetwork() {
@@ -56,38 +57,26 @@ export default function AgentNetwork() {
   const [isLoading, setIsLoading] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Fetch agent registry data
-  const { data: agentsData, isLoading: agentsLoading } = useQuery({
-    queryKey: ['agents', 'all'],
-    queryFn: async () => {
-      const response = await fetch('/api/agents/agents');
-      if (!response.ok) throw new Error('Failed to fetch agents');
-      return response.json();
-    },
+  // Use centralized data source
+  const { data: networkData, isLoading: queryLoading } = useQuery({
+    queryKey: ['agent-network'],
+    queryFn: () => agentNetworkSource.fetchAll(),
     refetchInterval: 60000,
   });
 
-  // Fetch routing relationships
-  const { data: routingData, isLoading: routingLoading } = useQuery({
-    queryKey: ['agent-routing'],
-    queryFn: async () => {
-      const response = await fetch('/api/agents/routing');
-      if (!response.ok) throw new Error('Failed to fetch routing data');
-      return response.json();
-    },
-    refetchInterval: 60000,
-  });
+  const agentsData = networkData?.agents;
+  const routingData = networkData?.routingDecisions;
 
   // Build network graph from live data
   useEffect(() => {
-    if (agentsLoading || routingLoading) {
+    if (queryLoading) {
       setIsLoading(true);
       return;
     }
 
     // Use live data if available, otherwise fall back to mock
     const agents = agentsData || [];
-    const usingMockData = agents.length === 0;
+    const usingMockData = agents.length === 0 || networkData?.isMock;
 
     if (usingMockData) {
       // Mock data fallback
@@ -166,33 +155,52 @@ export default function AgentNetwork() {
       }
     ];
 
+    // Only routing connections: Polly → Selected Agents (the truth!)
     const mockConnections: AgentConnection[] = [
       { from: "agent-polymorphic-agent", to: "agent-api-architect", strength: 0.9, type: "routing" },
       { from: "agent-polymorphic-agent", to: "agent-debug-intelligence", strength: 0.8, type: "routing" },
       { from: "agent-polymorphic-agent", to: "agent-frontend-developer", strength: 0.7, type: "routing" },
       { from: "agent-polymorphic-agent", to: "agent-performance", strength: 0.6, type: "routing" },
-      { from: "agent-polymorphic-agent", to: "agent-testing", strength: 0.5, type: "routing" },
-      { from: "agent-api-architect", to: "agent-debug-intelligence", strength: 0.8, type: "collaboration" },
-      { from: "agent-api-architect", to: "agent-performance", strength: 0.7, type: "collaboration" },
-      { from: "agent-debug-intelligence", to: "agent-performance", strength: 0.9, type: "collaboration" },
-      { from: "agent-debug-intelligence", to: "agent-testing", strength: 0.8, type: "collaboration" },
-      { from: "agent-frontend-developer", to: "agent-testing", strength: 0.9, type: "collaboration" },
-      { from: "agent-frontend-developer", to: "agent-performance", strength: 0.6, type: "collaboration" }
+      { from: "agent-polymorphic-agent", to: "agent-testing", strength: 0.5, type: "routing" }
     ];
+      // Re-layout mock nodes in radial pattern: Polly in center, agents around it
+      const cw = canvasRef.current?.offsetWidth || 800;
+      const ch = canvasRef.current?.offsetHeight || 384;
+      const centerX = cw / 2;
+      const centerY = ch / 2;
+      const radius = Math.min(cw, ch) * 0.35;
 
-      setNodes(mockNodes);
+      const adjustedNodes = mockNodes.map((n, i) => {
+        // Polly in center
+        if (n.id === "agent-polymorphic-agent") {
+          return { ...n, x: centerX, y: centerY };
+        }
+        // Other agents in circle around Polly
+        const agentIndex = i - 1;
+        const totalAgents = mockNodes.length - 1;
+        const angle = (agentIndex / totalAgents) * 2 * Math.PI - Math.PI / 2;
+        return {
+          ...n,
+          x: Math.round(centerX + radius * Math.cos(angle)),
+          y: Math.round(centerY + radius * Math.sin(angle)),
+        };
+      });
+
+      setNodes(adjustedNodes);
       setConnections(mockConnections);
       setIsLoading(false);
       return;
     }
 
     // Transform live agent data to nodes
-    const nodes: AgentNode[] = agents.map((agent: any, index: number) => {
+    let nodes: AgentNode[] = agents.map((agent: any, index: number) => {
       const totalAgents = agents.length;
-      const angle = (index / totalAgents) * 2 * Math.PI;
-      const radius = 200;
-      const centerX = 400;
-      const centerY = 300;
+      const cw = canvasRef.current?.offsetWidth || 800;
+      const ch = canvasRef.current?.offsetHeight || 384;
+      const centerX = cw / 2;
+      const centerY = ch / 2;
+      const radius = Math.min(cw, ch) * 0.35;
+      const angle = (index / Math.max(1, totalAgents)) * 2 * Math.PI;
       
       return {
         id: agent.id || agent.name,
@@ -205,12 +213,37 @@ export default function AgentNetwork() {
         size: Math.max(40, Math.min(80, (agent.performance?.totalRuns || 0) / 50)),
         connections: [], // Will be populated from routing data
         performance: {
-          successRate: (agent.performance?.successRate || 0) * 100,
-          efficiency: (agent.performance?.efficiency || 0) * 100,
+          successRate: Math.max(0, Math.min(100, ((agent.performance?.successRate || 0) <= 1 
+            ? (agent.performance?.successRate || 0) * 100 
+            : (agent.performance?.successRate || 0)))),
+          efficiency: Math.max(0, Math.min(100, ((agent.performance?.efficiency || 0) <= 1 
+            ? (agent.performance?.efficiency || 0) * 100 
+            : (agent.performance?.efficiency || 0)))),
           totalRuns: agent.performance?.totalRuns || 0,
         },
       };
     });
+
+    // Normalize layout to spread horizontally
+    if (nodes.length > 0) {
+      const pad = 40;
+      const cw = canvasRef.current?.offsetWidth || 800;
+      const ch = canvasRef.current?.offsetHeight || 384;
+      const minX = Math.min(...nodes.map(n => n.x));
+      const maxX = Math.max(...nodes.map(n => n.x));
+      const minY = Math.min(...nodes.map(n => n.y));
+      const maxY = Math.max(...nodes.map(n => n.y));
+      const rangeX = Math.max(1, maxX - minX);
+      const rangeY = Math.max(1, maxY - minY);
+      const scale = Math.min((cw - pad * 2) / rangeX, (ch - pad * 2) / rangeY);
+      const offsetX = (cw - (rangeX * scale)) / 2;
+      const offsetY = (ch - (rangeY * scale)) / 2;
+      nodes = nodes.map(n => ({
+        ...n,
+        x: Math.round((n.x - minX) * scale + offsetX),
+        y: Math.round((n.y - minY) * scale + offsetY),
+      }));
+    }
 
     // Build connections from routing data
     const connections: AgentConnection[] = [];
@@ -240,28 +273,7 @@ export default function AgentNetwork() {
       });
     }
 
-    // Add collaboration connections based on similar categories
-    nodes.forEach(node => {
-      nodes.forEach(otherNode => {
-        if (node.id !== otherNode.id && node.category === otherNode.category) {
-          const existing = connections.find(
-            c => (c.from === node.id && c.to === otherNode.id) || 
-                 (c.from === otherNode.id && c.to === node.id)
-          );
-          
-          if (!existing) {
-            connections.push({
-              from: node.id,
-              to: otherNode.id,
-              strength: 0.5,
-              type: "collaboration",
-            });
-          }
-        }
-      });
-    });
-
-    // Update node connections list
+    // Update node connections list (only routing connections exist)
     nodes.forEach(node => {
       node.connections = connections
         .filter(c => c.from === node.id || c.to === node.id)
@@ -271,9 +283,9 @@ export default function AgentNetwork() {
     setNodes(nodes);
     setConnections(connections);
     setIsLoading(false);
-  }, [agentsData, routingData, agentsLoading, routingLoading]);
+  }, [agentsData, routingData, queryLoading]);
 
-  const usingMockData = !agentsData || agentsData.length === 0;
+  const usingMockData = networkData?.isMock || !agentsData || agentsData.length === 0;
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -317,6 +329,23 @@ export default function AgentNetwork() {
     ctx.save();
     ctx.scale(zoomLevel / 100, zoomLevel / 100);
 
+    // Compute normalized positions based on current canvas size so layout fills width
+    const pad = 40;
+    const minX = Math.min(...nodes.map(n => n.x));
+    const maxX = Math.max(...nodes.map(n => n.x));
+    const minY = Math.min(...nodes.map(n => n.y));
+    const maxY = Math.max(...nodes.map(n => n.y));
+    const rangeX = Math.max(1, maxX - minX);
+    const rangeY = Math.max(1, maxY - minY);
+    const scale = Math.min((canvas.width - pad * 2) / rangeX, (canvas.height - pad * 2) / rangeY);
+    const offsetX = (canvas.width - (rangeX * scale)) / 2;
+    const offsetY = (canvas.height - (rangeY * scale)) / 2;
+
+    const pos = (n: AgentNode) => ({
+      x: (n.x - minX) * scale + offsetX,
+      y: (n.y - minY) * scale + offsetY,
+    });
+
     // Draw connections
     connections.forEach(connection => {
       const fromNode = nodes.find(n => n.id === connection.from);
@@ -325,28 +354,16 @@ export default function AgentNetwork() {
       if (!fromNode || !toNode) return;
 
       ctx.beginPath();
-      ctx.moveTo(fromNode.x, fromNode.y);
-      ctx.lineTo(toNode.x, toNode.y);
-      
-      // Set line style based on connection type
-      switch (connection.type) {
-        case "routing":
-          ctx.strokeStyle = "#8B5CF6";
-          ctx.lineWidth = 3;
-          ctx.setLineDash([5, 5]);
-          break;
-        case "collaboration":
-          ctx.strokeStyle = "#10B981";
-          ctx.lineWidth = 2;
-          ctx.setLineDash([]);
-          break;
-        case "dependency":
-          ctx.strokeStyle = "#F59E0B";
-          ctx.lineWidth = 2;
-          ctx.setLineDash([10, 5]);
-          break;
-      }
-      
+      const f = pos(fromNode);
+      const t = pos(toNode);
+      ctx.moveTo(f.x, f.y);
+      ctx.lineTo(t.x, t.y);
+
+      // Routing connection style (only type that exists)
+      ctx.strokeStyle = "#8B5CF6";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([5, 5]);
+
       ctx.stroke();
       ctx.setLineDash([]);
     });
@@ -355,28 +372,29 @@ export default function AgentNetwork() {
     nodes.forEach(node => {
       const isSelected = selectedNode?.id === node.id;
       const color = getCategoryColor(node.category);
+      const p = pos(node);
       
       // Node circle
       ctx.beginPath();
-      ctx.arc(node.x, node.y, node.size / 2, 0, 2 * Math.PI);
+      ctx.arc(p.x, p.y, node.size / 2, 0, 2 * Math.PI);
       ctx.fillStyle = isSelected ? "#FEF3C7" : color + "20";
       ctx.fill();
       ctx.strokeStyle = isSelected ? "#F59E0B" : color;
       ctx.lineWidth = isSelected ? 3 : 2;
       ctx.stroke();
 
-      // Node label
-      ctx.fillStyle = "#1F2937";
+      // Node label (white for dark backgrounds)
+      ctx.fillStyle = "#FFFFFF";
       ctx.font = "12px Inter, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(node.title, node.x, node.y + 4);
+      ctx.fillText(node.title, p.x, p.y + 4);
 
       // Performance indicator
       const performanceColor = node.performance.efficiency > 90 ? "#10B981" : 
                               node.performance.efficiency > 80 ? "#F59E0B" : "#EF4444";
       ctx.fillStyle = performanceColor;
       ctx.beginPath();
-      ctx.arc(node.x + node.size/2 - 8, node.y - node.size/2 + 8, 4, 0, 2 * Math.PI);
+      ctx.arc(p.x + node.size/2 - 8, p.y - node.size/2 + 8, 4, 0, 2 * Math.PI);
       ctx.fill();
     });
 
@@ -385,6 +403,15 @@ export default function AgentNetwork() {
 
   useEffect(() => {
     drawNetwork();
+  }, [nodes, connections, selectedNode, zoomLevel]);
+
+  // Redraw on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      drawNetwork();
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [nodes, connections, selectedNode, zoomLevel]);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -434,10 +461,9 @@ export default function AgentNetwork() {
         <div>
           <h1 className="text-3xl font-bold">Agent Network</h1>
           <p className="text-muted-foreground">
-            Visualize agent relationships, routing patterns, and collaboration networks. 
-            The graph shows how agents connect: <strong>purple dashed lines</strong> indicate routing decisions 
-            (which agent handles which requests), <strong>green lines</strong> show collaboration 
-            (agents working together), and <strong>orange dashed lines</strong> show dependencies.
+            Visualize agent routing patterns. The graph shows the simple routing architecture:
+            <strong>Polly (polymorphic-agent)</strong> receives user requests and routes them to specialized agents.
+            <strong>Purple dashed lines</strong> show routing decisions (which agent handles which requests).
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -477,15 +503,7 @@ export default function AgentNetwork() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-0.5 bg-purple-500" style={{borderTop: "2px dashed #8B5CF6"}}></div>
-                      <span>Routing</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-0.5 bg-green-500"></div>
-                      <span>Collaboration</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-0.5 bg-orange-500" style={{borderTop: "2px dashed #F59E0B"}}></div>
-                      <span>Dependency</span>
+                      <span>Routing (Polly → Agent)</span>
                     </div>
                   </div>
                 </div>
@@ -531,11 +549,11 @@ export default function AgentNetwork() {
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div className="border rounded p-2">
                           <div className="text-xs text-muted-foreground">Success</div>
-                          <div className="text-sm font-medium">{n.performance.successRate.toFixed(1)}%</div>
+                          <div className="text-sm font-medium">{Math.max(0, Math.min(100, n.performance.successRate)).toFixed(1)}%</div>
                         </div>
                         <div className="border rounded p-2">
                           <div className="text-xs text-muted-foreground">Efficiency</div>
-                          <div className="text-sm font-medium">{n.performance.efficiency.toFixed(1)}%</div>
+                          <div className="text-sm font-medium">{Math.max(0, Math.min(100, n.performance.efficiency)).toFixed(1)}%</div>
                         </div>
                         <div className="border rounded p-2">
                           <div className="text-xs text-muted-foreground">Runs</div>
@@ -574,11 +592,11 @@ export default function AgentNetwork() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Success Rate</span>
-                      <span className="font-medium">{selectedNode.performance.successRate.toFixed(1)}%</span>
+                      <span className="font-medium">{Math.max(0, Math.min(100, selectedNode.performance.successRate)).toFixed(1)}%</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Efficiency</span>
-                      <span className="font-medium">{selectedNode.performance.efficiency.toFixed(1)}%</span>
+                      <span className="font-medium">{Math.max(0, Math.min(100, selectedNode.performance.efficiency)).toFixed(1)}%</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Total Runs</span>

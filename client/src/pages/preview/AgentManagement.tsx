@@ -44,6 +44,7 @@ import AgentOperations from "../AgentOperations";
 type AgentSummary = import('@/lib/data-sources/agent-management-source').AgentSummary;
 type AgentExecution = import('@/lib/data-sources/agent-management-source').AgentExecution;
 type RoutingStats = import('@/lib/data-sources/agent-management-source').RoutingStats;
+type RoutingDecision = import('@/lib/data-sources/agent-management-source').RoutingDecision;
 
 export default function AgentManagement() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -60,6 +61,7 @@ export default function AgentManagement() {
   const agentSummary = managementData?.summary;
   const routingStats = managementData?.routingStats;
   const recentExecutions = managementData?.recentExecutions;
+  const recentDecisions = managementData?.recentDecisions || [];
   const usingMockData = managementData?.isMock || false;
   
   const initialLoading = isLoading && !managementData;
@@ -109,11 +111,10 @@ export default function AgentManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="registry">Agent Registry</TabsTrigger>
           <TabsTrigger value="network">Network View</TabsTrigger>
-          <TabsTrigger value="operations">Operations</TabsTrigger>
           <TabsTrigger value="routing">Routing Intelligence</TabsTrigger>
         </TabsList>
 
@@ -145,7 +146,7 @@ export default function AgentManagement() {
                   {agentSummary?.totalRuns?.toLocaleString() || "0"}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+12.5%</span> from last week
+                  {agentSummary?.totalRuns ? `${agentSummary.totalRuns.toLocaleString()} total executions` : "No executions yet"}
                 </p>
               </CardContent>
             </Card>
@@ -157,10 +158,10 @@ export default function AgentManagement() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {agentSummary?.successRate?.toFixed(1) || "0"}%
+                  {Math.max(0, Math.min(100, agentSummary?.successRate || 0)).toFixed(1)}%
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+2.1%</span> from last week
+                  {agentSummary?.totalRuns ? `Based on ${agentSummary.totalRuns.toLocaleString()} runs` : "No data available"}
                 </p>
               </CardContent>
             </Card>
@@ -172,10 +173,10 @@ export default function AgentManagement() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {agentSummary?.avgExecutionTime?.toFixed(0) || "0"}s
+                  {agentSummary?.avgExecutionTime ? `${agentSummary.avgExecutionTime.toFixed(1)}s` : "0s"}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-red-600">-15s</span> from last week
+                  {agentSummary?.avgExecutionTime ? `Weighted average across all agents` : "No execution data"}
                 </p>
               </CardContent>
             </Card>
@@ -208,22 +209,14 @@ export default function AgentManagement() {
               </CardContent>
             </Card>
 
-            {/* Total Requests (standardized, one decision per run) */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {agentSummary?.totalRuns?.toLocaleString() || "0"}
-                </div>
-                <p className="text-xs text-muted-foreground">In {timeRange}</p>
-              </CardContent>
-            </Card>
-
             {/* Spacer Card to fill empty grid slot(s) on wider layouts */}
             <Card className="hidden md:block" aria-hidden="true">
+              <CardHeader className="p-4" />
+              <CardContent className="p-4" />
+            </Card>
+
+            {/* Additional spacer for the removed Total Requests card */}
+            <Card className="hidden lg:block" aria-hidden="true">
               <CardHeader className="p-4" />
               <CardContent className="p-4" />
             </Card>
@@ -241,11 +234,6 @@ export default function AgentManagement() {
 
         <TabsContent value="network" className="space-y-4">
           <AgentNetwork />
-        </TabsContent>
-
-        <TabsContent value="operations" className="space-y-4">
-          {/* Operations tab shows live agent activity - AgentOperations component handles this */}
-          <AgentOperations />
         </TabsContent>
 
         <TabsContent value="routing" className="space-y-4">
@@ -323,34 +311,42 @@ export default function AgentManagement() {
                 {/* Recent Routing Decisions */}
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Recent Routing Decisions</h3>
-                  <div className="space-y-2">
-                    {[
-                      { query: "optimize my API performance", agent: "agent-performance", confidence: 92, time: "45ms" },
-                      { query: "debug database connection issues", agent: "agent-debug-intelligence", confidence: 89, time: "38ms" },
-                      { query: "create a React component", agent: "agent-frontend-developer", confidence: 95, time: "42ms" },
-                      { query: "write unit tests", agent: "agent-testing", confidence: 87, time: "51ms" },
-                      { query: "design microservices architecture", agent: "agent-api-architect", confidence: 91, time: "39ms" }
-                    ].map((decision, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium">{decision.query}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Routed to {decision.agent} with {decision.confidence}% confidence
+                  {recentDecisions.length === 0 ? (
+                    <div className="text-center py-8 border rounded-lg bg-muted/10">
+                      <p className="text-muted-foreground">No routing decisions available yet</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Decisions will appear here as agents are invoked
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {recentDecisions.map((decision) => (
+                        <div key={decision.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-medium">{decision.userRequest}</div>
+                            <div className="text-sm text-muted-foreground">
+                              Routed to {decision.selectedAgent} with {(decision.confidenceScore * 100).toFixed(1)}% confidence
+                            </div>
+                            {decision.createdAt && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {new Date(decision.createdAt).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <div className="text-sm font-medium">{(decision.confidenceScore * 100).toFixed(1)}%</div>
+                              <div className="text-xs text-muted-foreground">Confidence</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-medium">{decision.routingTimeMs}ms</div>
+                              <div className="text-xs text-muted-foreground">Time</div>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="text-sm font-medium">{decision.confidence}%</div>
-                            <div className="text-xs text-muted-foreground">Confidence</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-medium">{decision.time}</div>
-                            <div className="text-xs text-muted-foreground">Time</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
