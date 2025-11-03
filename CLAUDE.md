@@ -28,6 +28,13 @@ npm run build          # Build frontend (Vite) and backend (esbuild) for product
 PORT=3000 npm start    # Run production build on port 3000
 ```
 
+**Testing**:
+```bash
+npm run test              # Run vitest tests
+npm run test:ui           # Run tests with interactive UI
+npm run test:coverage     # Generate test coverage report
+```
+
 **Database**:
 ```bash
 npm run db:push     # Push Drizzle schema changes to PostgreSQL
@@ -120,7 +127,7 @@ Three-directory monorepo with TypeScript path aliases:
 
 ### Backend Architecture
 
-**Minimal API Design**: Express server currently serves mostly as static file host. Dashboards use client-side mock data with `setTimeout`-based updates to simulate real-time behavior.
+**API-Driven Design**: Express server provides comprehensive API endpoints for intelligence data with real-time WebSocket updates.
 
 **Development vs Production**:
 - **Dev**: Vite middleware integrated into Express for HMR (`setupVite()` in `server/vite.ts`)
@@ -130,13 +137,27 @@ Three-directory monorepo with TypeScript path aliases:
 1. Frontend: Vite bundles to `dist/public/`
 2. Backend: esbuild bundles server to `dist/` (ESM format, platform: node, externalized packages)
 
+**Backend Components**:
+- `server/index.ts` - Main Express server with middleware setup
+- `server/routes.ts` - Route registration and HTTP server creation
+- `server/intelligence-routes.ts` - Intelligence API endpoints (100+ routes)
+- `server/savings-routes.ts` - Compute/token savings tracking
+- `server/agent-registry-routes.ts` - Agent discovery and management
+- `server/alert-routes.ts` - Alert management system
+- `server/websocket.ts` - WebSocket server with subscription management
+- `server/event-consumer.ts` - Kafka consumer with event aggregation
+- `server/db-adapter.ts` - PostgreSQL connection pooling and queries
+- `server/service-health.ts` - Service health monitoring
+
 **Database Layer**:
 - **ORM**: Drizzle with Neon serverless PostgreSQL driver
-- **Schema**: Defined in `shared/schema.ts` (currently minimal: users table only)
+- **Schemas**:
+  - `shared/schema.ts` - User authentication tables
+  - `shared/intelligence-schema.ts` - 30+ intelligence tracking tables
 - **Type Safety**: Zod schemas auto-generated from Drizzle via `drizzle-zod`
-- **Migrations**: Managed by Drizzle Kit, stored in `./migrations/`
+- **Connection**: Two databases - app DB and intelligence DB (`omninode_bridge`)
 
-**Request Logging**: Custom middleware logs API requests (`/api` paths only) with duration and truncated JSON responses (80 char limit).
+**Request Logging**: Custom middleware logs API requests (`/api` paths only) with duration and truncated JSON responses (80 char limit). WebSocket connections logged separately.
 
 ### Key Architectural Patterns
 
@@ -145,12 +166,12 @@ Three-directory monorepo with TypeScript path aliases:
 - Actual API endpoints in `server/routes.ts`
 - Backend data aggregation for metrics
 
-**Path Alias Resolution**: Three import aliases configured in both `tsconfig.json` and `vite.config.ts`:
+**Path Alias Resolution**: Two import aliases configured in `tsconfig.json`, `vite.config.ts`, and `vitest.config.ts`:
 ```typescript
 @/          → client/src/
 @shared/    → shared/
-@assets/    → attached_assets/
 ```
+Note: The `@assets/` alias exists in vite.config but is not widely used.
 
 **Type Flow**: Database schema → Drizzle inferred types → Zod schemas → Runtime validation
 ```typescript
@@ -169,21 +190,86 @@ export const insertUserSchema = createInsertSchema(users); // Zod schema
 
 **Theme Implementation**: CSS custom properties defined in `client/src/index.css` with separate tokens for light/dark modes. ThemeProvider switches between `.light` and `.dark` class on document root.
 
+### Real-Time Event System
+
+**WebSocket Architecture** (`server/websocket.ts`):
+- WebSocket server mounted at `/ws` endpoint
+- Client subscription model: clients subscribe to specific event types
+- Heartbeat monitoring with 30-second intervals and missed ping tolerance
+- Graceful connection management and cleanup
+
+**Event Consumer** (`server/event-consumer.ts`):
+- Kafka consumer using `kafkajs` library
+- Connects to `192.168.86.200:9092` (configured via `KAFKA_BOOTSTRAP_SERVERS`)
+- Consumes from multiple topics: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
+- In-memory event aggregation and caching
+- Provides aggregated metrics via `getAggregatedMetrics()` method
+- EventEmitter-based pub/sub for internal event distribution
+
+**Client Integration Pattern**:
+```typescript
+// Connect to WebSocket
+const ws = new WebSocket('ws://localhost:3000/ws');
+
+// Subscribe to events
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  topics: ['agent-actions', 'routing-decisions']
+}));
+
+// Receive events
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  // Handle real-time updates
+};
+```
+
 ## Important Constraints
 
 **Port Binding**: Application MUST run on the port specified in `PORT` environment variable (default 3000). Other ports are firewalled in deployment environment.
 
 **Database Requirement**: Application expects `DATABASE_URL` environment variable. Server will fail to start if not provided (validated in `drizzle.config.ts`).
 
-**No Test Framework**: Project currently has no test files or test runner configured.
+**Test Framework**: Vitest is configured with 20+ test files covering components and data sources.
+
+**Test Configuration** (`vitest.config.ts`):
+- Environment: jsdom (for DOM testing)
+- Setup file: `client/src/tests/setup.ts`
+- Coverage: v8 provider with text/json/html reporters
+- Path aliases: Same as main tsconfig (`@/` and `@shared/`)
+
+**Test Structure**:
+- Component tests: `client/src/components/__tests__/` (12+ files)
+  - MetricCard, DataTable, EventFeed, StatusLegend, etc.
+- Data source tests: `client/src/lib/data-sources/__tests__/` (8+ files)
+  - Tests for each dashboard's data fetching logic
+- Testing tools: @testing-library/react, @testing-library/user-event, vitest
+
+**Running Tests**:
+```bash
+npm run test              # Run all tests
+npm run test:ui           # Interactive test UI
+npm run test:coverage     # Generate coverage report
+```
 
 **Replit-Specific Plugins**: Development build includes Replit-specific Vite plugins (`@replit/vite-plugin-*`) only when `REPL_ID` environment variable is present. These are skipped in non-Replit environments.
 
 ## Intelligence Infrastructure Integration
 
-**Current State**: Dashboards use client-side mock data with `setTimeout`-based updates.
+**Current State**: Hybrid implementation with real-time capabilities already in place.
 
-**Production Target**: Replace mock data with real intelligence infrastructure providing comprehensive observability data about AI agent operations, pattern discovery, routing decisions, and execution performance.
+**Already Implemented**:
+- **WebSocket Server**: `server/websocket.ts` provides real-time event streaming to clients
+- **Kafka Consumer**: `server/event-consumer.ts` consumes events from Kafka topics
+- **Database Adapter**: `server/db-adapter.ts` reads from PostgreSQL intelligence database
+- **Intelligence Schema**: `shared/intelligence-schema.ts` defines 30+ tables for agent observability
+- **API Routes**: Multiple route files serve intelligence data:
+  - `server/intelligence-routes.ts` - Main intelligence API endpoints
+  - `server/savings-routes.ts` - Compute/token savings tracking
+  - `server/agent-registry-routes.ts` - Agent discovery and management
+  - `server/alert-routes.ts` - Alert management
+
+**In Progress**: Converting dashboard components from mock data to real API endpoints and WebSocket subscriptions.
 
 ### Available Data Sources
 
@@ -227,68 +313,61 @@ ENABLE_REAL_TIME_EVENTS=true
 
 ### Integration Patterns
 
-**Pattern 1: Database-Backed API Endpoints** (Recommended for Phase 1)
-- Create Express API endpoints in `server/routes.ts` that query PostgreSQL
-- Use existing Drizzle ORM patterns
+**Pattern 1: Database-Backed API Endpoints** (✅ Implemented)
+- Express API endpoints in `server/intelligence-routes.ts`, `server/savings-routes.ts`, `server/agent-registry-routes.ts`
+- Uses Drizzle ORM with PostgreSQL at `192.168.86.200:5436`
+- Backend aggregation and caching for performance
 - Integrate with TanStack Query in dashboard components
-- Advantages: Simple, cacheable, no WebSocket complexity
 
-**Pattern 2: WebSocket for Real-Time Updates** (Phase 2)
-- Add WebSocket server (`server/websocket.ts`) that consumes Kafka
-- Broadcast events to connected clients (<100ms latency)
-- Use for high-frequency dashboard updates
-- Dependencies: `ws`, `kafkajs` packages
+**Pattern 2: WebSocket for Real-Time Updates** (✅ Implemented)
+- WebSocket server at `/ws` in `server/websocket.ts`
+- Consumes Kafka topics via `server/event-consumer.ts`
+- Broadcasts events to subscribed clients (<100ms latency)
+- Client subscription model for targeted updates
 
-**Pattern 3: Server-Sent Events (SSE)** (Alternative to WebSocket)
+**Pattern 3: Server-Sent Events (SSE)** (Alternative Option)
 - Simpler than WebSocket for one-way real-time updates
 - Built-in browser reconnection
-- Implement as Express route streaming Kafka events
+- Can be implemented as Express route streaming Kafka events
 
 ### Database Schema for Intelligence
 
-Add to `shared/intelligence-schema.ts`:
+Intelligence schema is defined in `shared/intelligence-schema.ts` with 30+ tables including:
 
-```typescript
-// Core tables for agent observability
-export const agentRoutingDecisions = pgTable('agent_routing_decisions', {
-  id: uuid('id').primaryKey(),
-  correlationId: uuid('correlation_id').notNull(),
-  userRequest: text('user_request').notNull(),
-  selectedAgent: text('selected_agent').notNull(),
-  confidenceScore: numeric('confidence_score', { precision: 5, scale: 4 }).notNull(),
-  routingStrategy: text('routing_strategy').notNull(),
-  routingTimeMs: integer('routing_time_ms').notNull(),
-  actualSuccess: boolean('actual_success'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
+**Core Tables** (already implemented):
+- `agent_routing_decisions` - Agent selection with confidence scoring
+- `agent_actions` - Tool calls, decisions, errors, successes
+- `agent_transformation_events` - Polymorphic agent transformations
+- `agent_manifest_injections` - Manifest generation and pattern discovery
+- `workflow_steps` - Multi-step workflow execution tracking
+- `llm_calls` - LLM API calls with token usage and costs
+- `error_events` / `success_events` - Execution outcomes
+- `debug_intelligence_entries` - Debug information capture
+- `performance_metrics` - System performance tracking
 
-export const agentActions = pgTable('agent_actions', {
-  id: uuid('id').primaryKey(),
-  correlationId: uuid('correlation_id').notNull(),
-  agentName: text('agent_name').notNull(),
-  actionType: text('action_type').notNull(), // tool_call, decision, error, success
-  actionName: text('action_name').notNull(),
-  actionDetails: jsonb('action_details'),
-  durationMs: integer('duration_ms'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-```
+All tables use Drizzle ORM with Zod validation schemas auto-generated via `createInsertSchema()`.
 
-### Phased Implementation Approach
+### Implementation Status
 
-**Phase 1: Database API Integration** (Week 1)
-1. Add intelligence schema tables to `shared/intelligence-schema.ts`
-2. Create aggregation endpoints in `server/routes.ts` for each dashboard
-3. Replace mock data with `useQuery` hooks calling real APIs
-4. Test with historical data (last 24 hours)
+**✅ Phase 1: Infrastructure (Completed)**
+- Intelligence schema with 30+ tables in `shared/intelligence-schema.ts`
+- Database adapter in `server/db-adapter.ts` with connection pooling
+- API endpoints in `server/intelligence-routes.ts` and related route files
+- KafkaJS consumer in `server/event-consumer.ts` with event aggregation
 
-**Phase 2: Real-Time Event Streaming** (Week 2)
-1. Install dependencies: `npm install kafkajs ws`
-2. Create WebSocket server in `server/websocket.ts` consuming Kafka topics
-3. Add `useWebSocket` hook in dashboard components
-4. Implement live metric updates with smooth animations
+**✅ Phase 2: Real-Time Streaming (Completed)**
+- WebSocket server in `server/websocket.ts` with heartbeat monitoring
+- Client subscription model for targeted event delivery
+- Event bus integration with <100ms latency
+- Automatic reconnection and error recovery
 
-**Phase 3: Advanced Features** (Week 3+)
+**🚧 Phase 3: Dashboard Integration (In Progress)**
+1. Convert dashboard components from mock data to real API calls
+2. Add `useWebSocket` hooks for real-time updates
+3. Implement live metric updates with smooth animations
+4. Add error boundaries and fallback states
+
+**📋 Phase 4: Advanced Features (Planned)**
 1. Qdrant integration for pattern similarity search
 2. Redis caching layer for expensive queries
 3. Materialized views for dashboard aggregations
@@ -325,11 +404,21 @@ See `design_guidelines.md` for comprehensive Carbon Design System implementation
 - Real-time data update animations
 - Accessibility requirements
 
-## Database Schema Extensions
+## Database Schema
 
-Current schema is minimal (users table only). For intelligence infrastructure integration:
-- See **Intelligence Infrastructure Integration** section above for complete schema details
-- Intelligence tables should be added to `shared/intelligence-schema.ts` (separate from user auth schema)
-- Use `createInsertSchema()` from `drizzle-zod` for runtime validation of insert operations
-- The intelligence database is separate from the app database (different DATABASE_URL)
-- Follow the phased implementation approach documented in `INTELLIGENCE_INTEGRATION.md`
+**Application Schema**: `shared/schema.ts` contains basic user authentication tables.
+
+**Intelligence Schema**: `shared/intelligence-schema.ts` (✅ already implemented) contains 30+ tables for agent observability:
+- Agent routing and decision tracking
+- Workflow execution and performance metrics
+- Pattern learning and manifest generation
+- LLM API calls with cost tracking
+- Error and success event logging
+- Debug intelligence capture
+
+Both schemas use:
+- Drizzle ORM for type-safe database access
+- `createInsertSchema()` from `drizzle-zod` for runtime validation
+- PostgreSQL with connection pooling via `@neondatabase/serverless`
+
+The intelligence database (`omninode_bridge`) is on a separate PostgreSQL instance at `192.168.86.200:5436`.
