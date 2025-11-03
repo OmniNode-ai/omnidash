@@ -10,11 +10,26 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+interface Activity {
+  id?: string;
+  timestamp: string | number | Date;
+  description: string;
+}
+
+interface UsageExample {
+  id?: string;
+  project: string;
+  module: string;
+}
+
 interface DrillDownPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  data: Record<string, any>;
+  data: Record<string, any> & {
+    recentActivity?: Activity[];
+    usageExamples?: UsageExample[];
+  };
   type?: "agent" | "pattern" | "service" | "gate" | "generic";
 }
 
@@ -61,14 +76,18 @@ export function DrillDownPanel({ open, onOpenChange, title, data, type = "generi
               <h4 className="text-sm font-semibold mb-3">Recent Activity</h4>
               <ScrollArea className="h-48">
                 <div className="space-y-2">
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <div key={i} className="text-xs p-2 rounded-md bg-secondary/50">
-                      <div className="font-mono text-muted-foreground">
-                        {new Date(Date.now() - i * 60000).toLocaleTimeString()}
+                  {(data.recentActivity && data.recentActivity.length > 0) ? (
+                    data.recentActivity.map((activity, i) => (
+                      <div key={activity.id || i} className="text-xs p-2 rounded-md bg-secondary/50">
+                        <div className="font-mono text-muted-foreground">
+                          {new Date(activity.timestamp).toLocaleTimeString()}
+                        </div>
+                        <div className="mt-1">{activity.description}</div>
                       </div>
-                      <div className="mt-1">Completed analysis task #{100 - i}</div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-xs text-muted-foreground p-2">No recent activity</div>
+                  )}
                 </div>
               </ScrollArea>
             </div>
@@ -119,14 +138,18 @@ export function DrillDownPanel({ open, onOpenChange, title, data, type = "generi
               <h4 className="text-sm font-semibold mb-3">Usage Examples</h4>
               <ScrollArea className="h-48">
                 <div className="space-y-2">
-                  {Array.from({ length: 3 }, (_, i) => (
-                    <div key={i} className="text-xs p-3 rounded-md bg-secondary/50">
-                      <div className="font-mono mb-1">Project {i + 1}</div>
-                      <div className="text-muted-foreground">
-                        Used in module: /src/components/Example{i + 1}.tsx
+                  {(data.usageExamples && data.usageExamples.length > 0) ? (
+                    data.usageExamples.map((example, i) => (
+                      <div key={example.id || i} className="text-xs p-3 rounded-md bg-secondary/50">
+                        <div className="font-mono mb-1">{example.project}</div>
+                        <div className="text-muted-foreground">
+                          Used in module: {example.module}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-xs text-muted-foreground p-2">No usage examples available</div>
+                  )}
                 </div>
               </ScrollArea>
             </div>

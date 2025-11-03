@@ -13,11 +13,22 @@ interface AlertsResponse {
   alerts: Alert[];
 }
 
+// Helper function to generate stable unique key for alerts
+const getAlertKey = (alert: Alert): string => {
+  // Use timestamp as primary identifier combined with level and message substring
+  // This ensures uniqueness even with duplicate messages at different times
+  return `${alert.timestamp}-${alert.level}-${alert.message.substring(0, 50)}`;
+};
+
 export function AlertBanner() {
   const { isDemoMode } = useDemoMode();
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(() => {
     const stored = localStorage.getItem("dismissedAlerts");
-    return stored ? new Set(JSON.parse(stored)) : new Set();
+    try {
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
   });
 
   // In demo mode, don't fetch real alerts
@@ -38,9 +49,9 @@ export function AlertBanner() {
     return null;
   }
 
-  // Filter out dismissed alerts
+  // Filter out dismissed alerts using stable keys
   const activeAlerts = data?.alerts?.filter(
-    (alert) => !dismissedAlerts.has(`${alert.level}:${alert.message}`)
+    (alert) => !dismissedAlerts.has(getAlertKey(alert))
   ) || [];
 
   // Don't render if no active alerts
@@ -49,7 +60,7 @@ export function AlertBanner() {
   }
 
   const handleDismiss = (alert: Alert) => {
-    const key = `${alert.level}:${alert.message}`;
+    const key = getAlertKey(alert);
     setDismissedAlerts((prev) => {
       const newSet = new Set(prev);
       newSet.add(key);
@@ -59,9 +70,9 @@ export function AlertBanner() {
 
   return (
     <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      {activeAlerts.map((alert, index) => (
+      {activeAlerts.map((alert) => (
         <AlertPill
-          key={`${alert.level}-${index}`}
+          key={getAlertKey(alert)}
           level={alert.level}
           message={alert.message}
           onDismiss={() => handleDismiss(alert)}
