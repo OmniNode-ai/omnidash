@@ -4,3 +4,12 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz**/test/
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# Claude settings with credentials
+.claude/
+.local/
