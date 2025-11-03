@@ -22,8 +22,10 @@ import {
   Calculator,
   Cpu,
   Database,
-  Network
+  Network,
+  Info
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SavingsMetrics {
   totalSavings: number;
@@ -175,12 +177,24 @@ export default function IntelligenceSavings() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      <p className="text-xs">
+                        <strong>Methodology:</strong> Savings calculated by comparing agent performance with intelligence (pattern injection, optimized routing) vs baseline (standard AI agents). Includes token reduction (34%), local compute offload (12%), and avoided API calls (8%).
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.totalSavings || 0)}</div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+12.5%</span> from last month
+                  <span className="text-green-600">+12.5%</span> from last 7 days
                 </p>
               </CardContent>
             </Card>
@@ -193,7 +207,7 @@ export default function IntelligenceSavings() {
               <CardContent>
                 <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.monthlySavings || 0)}</div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+8.2%</span> from last week
+                  <span className="text-green-600">+8.2%</span> from last 7 days
                 </p>
               </CardContent>
             </Card>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { architectureNetworksSource } from "@/lib/data-sources";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,48 +88,30 @@ export default function ArchitectureNetworks() {
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("24h");
 
-  // API calls
-  const { data: architectureSummary, isLoading: summaryLoading } = useQuery<ArchitectureSummary>({
-    queryKey: ['architecture-summary', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/architecture/summary?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch architecture summary');
-      return response.json();
-    },
+  // Use centralized data source
+  const { data: architectureData, isLoading } = useQuery({
+    queryKey: ['architecture-networks', timeRange],
+    queryFn: () => architectureNetworksSource.fetchAll(timeRange),
     refetchInterval: 60000,
   });
 
-  const { data: nodeGroups, isLoading: nodesLoading } = useQuery<NodeGroup[]>({
-    queryKey: ['node-groups', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/architecture/nodes?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch node groups');
-      return response.json();
-    },
-    refetchInterval: 60000,
-  });
+  // Transform to expected formats
+  const architectureSummary: ArchitectureSummary = architectureData?.summary || {
+    totalNodes: 0,
+    totalEdges: 0,
+    services: 0,
+    patterns: 0,
+  };
+  
+  const nodeGroups: NodeGroup[] = architectureData?.nodes?.map(n => ({
+    id: n.id,
+    name: n.name,
+    type: n.type,
+    status: 'active',
+  })) || [];
 
-  const { data: knowledgeEntities, isLoading: knowledgeLoading } = useQuery<KnowledgeEntity[]>({
-    queryKey: ['knowledge-entities', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/knowledge/entities?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch knowledge entities');
-      return response.json();
-    },
-    refetchInterval: 60000,
-  });
-
-  const { data: eventFlowData, isLoading: eventsLoading } = useQuery<EventFlowData>({
-    queryKey: ['event-flow', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/events/flow?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch event flow data');
-      return response.json();
-    },
-    refetchInterval: 30000,
-  });
-
-  const isLoading = summaryLoading || nodesLoading || knowledgeLoading || eventsLoading;
+  const knowledgeEntities: KnowledgeEntity[] = architectureData?.knowledgeEntities || [];
+  const eventFlowData: EventFlowData = architectureData?.eventFlow || { events: [] };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -362,7 +345,7 @@ export default function ArchitectureNetworks() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-medium">{eventType.percentage.toFixed(1)}%</div>
+                        <div className="text-sm font-medium">{Math.max(0, Math.min(100, eventType.percentage)).toFixed(1)}%</div>
                         <div className="text-xs text-muted-foreground">of total</div>
                       </div>
                     </div>

@@ -192,7 +192,7 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
               <TrendingUp className="h-5 w-5 text-status-healthy" />
             </div>
             <div>
-              <div className="text-2xl font-semibold">{(summary.successRate * 100).toFixed(1)}%</div>
+              <div className="text-2xl font-semibold">{Math.max(0, Math.min(100, (summary.successRate <= 1 ? summary.successRate * 100 : summary.successRate))).toFixed(1)}%</div>
               <div className="text-xs text-muted-foreground">Success Rate</div>
             </div>
           </div>

@@ -8,6 +8,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AlertBanner } from "@/components/AlertBanner";
+import { DemoModeProvider } from "@/contexts/DemoModeContext";
+import { DemoModeToggle } from "@/components/DemoModeToggle";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { Activity } from "lucide-react";
 
@@ -92,9 +94,10 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <SidebarProvider style={style as React.CSSProperties}>
+      <DemoModeProvider>
+        <ThemeProvider defaultTheme="dark">
+          <TooltipProvider>
+            <SidebarProvider style={style as React.CSSProperties}>
             <div className="flex h-screen w-full">
               <AppSidebar />
               <div className="flex flex-col flex-1 overflow-hidden">
@@ -113,6 +116,7 @@ function App() {
                   </div>
 
                   <div className="flex items-center gap-4">
+                    <DemoModeToggle />
                     <div className="flex items-center gap-2">
                       <div className={`h-2 w-2 rounded-full transition-colors duration-300 ${
                         isConnected ? 'bg-green-500 animate-pulse' :
@@ -134,10 +138,11 @@ function App() {
                 </main>
               </div>
             </div>
-          </SidebarProvider>
+            </SidebarProvider>
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>
+      </DemoModeProvider>
     </QueryClientProvider>
   );
 }

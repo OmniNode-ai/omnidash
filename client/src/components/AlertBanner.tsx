@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { AlertPill } from "@/components/AlertPill";
+import { useDemoMode } from "@/contexts/DemoModeContext";
 
 interface Alert {
   level: "critical" | "warning";
@@ -13,22 +14,29 @@ interface AlertsResponse {
 }
 
 export function AlertBanner() {
+  const { isDemoMode } = useDemoMode();
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(() => {
     const stored = localStorage.getItem("dismissedAlerts");
     return stored ? new Set(JSON.parse(stored)) : new Set();
   });
 
-  // Fetch alerts every 30 seconds
+  // In demo mode, don't fetch real alerts
   const { data, isLoading } = useQuery<AlertsResponse>({
     queryKey: ["/api/intelligence/alerts/active"],
-    refetchInterval: 30000, // 30 seconds
+    refetchInterval: isDemoMode ? false : 30000, // 30 seconds
     staleTime: 25000, // Consider stale after 25 seconds
+    enabled: !isDemoMode, // Disable in demo mode
   });
 
   // Save dismissed alerts to localStorage
   useEffect(() => {
     localStorage.setItem("dismissedAlerts", JSON.stringify(Array.from(dismissedAlerts)));
   }, [dismissedAlerts]);
+
+  // In demo mode, show no alerts (or seed benign ones if needed)
+  if (isDemoMode) {
+    return null;
+  }
 
   // Filter out dismissed alerts
   const activeAlerts = data?.alerts?.filter(

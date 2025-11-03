@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { sql } from 'drizzle-orm';
 import { intelligenceDb } from './storage';
-import { agentActions } from '../shared/intelligence-schema';
+import { patternLineageNodes } from '../shared/intelligence-schema';
 import {
   getErrorRate,
   getManifestInjectionSuccessRate,
@@ -71,10 +71,11 @@ alertRouter.get('/active', async (req, res) => {
     }
 
     // Check database connection (critical if failed)
+    // Query pattern_lineage_nodes table (exists in omninode_bridge database)
     try {
       await intelligenceDb
         .select({ check: sql<number>`1::int` })
-        .from(agentActions)
+        .from(patternLineageNodes)
         .limit(1);
     } catch (dbError) {
       alerts.push({

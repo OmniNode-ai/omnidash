@@ -169,7 +169,7 @@ export default function CodeIntelligence() {
                 ? 'text-yellow-500'
                 : 'text-red-500'
             }`}>
-              {isLoadingCompliance ? '...' : `${complianceData?.summary.compliancePercentage.toFixed(1) || '0'}%`}
+              {isLoadingCompliance ? '...' : `${Math.max(0, Math.min(100, complianceData?.summary.compliancePercentage || 0)).toFixed(1)}%`}
             </div>
             <div className="text-xs text-muted-foreground mt-1">Compliance Rate</div>
           </div>
@@ -238,7 +238,7 @@ export default function CodeIntelligence() {
                   </div>
                   <div className="flex items-baseline gap-2">
                     <div className="text-lg font-bold">
-                      {nodeType.percentage.toFixed(0)}%
+                      {Math.max(0, Math.min(100, nodeType.percentage)).toFixed(0)}%
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {nodeType.compliantCount}/{nodeType.totalCount}

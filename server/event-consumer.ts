@@ -190,65 +190,84 @@ class EventConsumer extends EventEmitter {
   }
 
   private async preloadFromDatabase() {
-    // Load recent actions
-    const actionsRows = await intelligenceDb.execute(sql.raw(`
-      SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
-      FROM agent_actions
-      ORDER BY created_at DESC
-      LIMIT 200;
-    `));
+    try {
+      // Load recent actions
+      const actionsResult = await intelligenceDb.execute(sql.raw(`
+        SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
+        FROM agent_actions
+        ORDER BY created_at DESC
+        LIMIT 200;
+      `));
 
-    (actionsRows as any[]).forEach(r => {
-      const action = {
-        id: r.id,
-        correlationId: r.correlation_id,
-        agentName: r.agent_name,
-        actionType: r.action_type,
-        actionName: r.action_name,
-        actionDetails: r.action_details,
-        debugMode: !!r.debug_mode,
-        durationMs: Number(r.duration_ms || 0),
-        createdAt: new Date(r.created_at),
-      } as AgentAction;
-      this.recentActions.push(action);
-      if (this.recentActions.length > this.maxActions) {
-        this.recentActions = this.recentActions.slice(-this.maxActions);
+      // Handle different return types from Drizzle
+      const actionsRows = Array.isArray(actionsResult) 
+        ? actionsResult 
+        : (actionsResult?.rows || actionsResult || []);
+
+      if (Array.isArray(actionsRows)) {
+        actionsRows.forEach((r: any) => {
+          const action = {
+            id: r.id,
+            correlationId: r.correlation_id,
+            agentName: r.agent_name,
+            actionType: r.action_type,
+            actionName: r.action_name,
+            actionDetails: r.action_details,
+            debugMode: !!r.debug_mode,
+            durationMs: Number(r.duration_ms || 0),
+            createdAt: new Date(r.created_at),
+          } as AgentAction;
+          this.recentActions.push(action);
+          if (this.recentActions.length > this.maxActions) {
+            this.recentActions = this.recentActions.slice(-this.maxActions);
+          }
+        });
       }
-    });
 
-    // Seed agent metrics using routing decisions + actions
-    const metricsRows = await intelligenceDb.execute(sql.raw(`
-      SELECT COALESCE(ard.agent_name, aa.agent_name) AS agent,
-             COUNT(aa.id) AS total_requests,
-             AVG(COALESCE(ard.routing_duration_ms, aa.duration_ms, 0)) AS avg_routing_time,
-             AVG(COALESCE(ard.confidence, ard.confidence_score, 0)) AS avg_confidence
-      FROM agent_actions aa
-      FULL OUTER JOIN agent_routing_decisions ard
-        ON aa.correlation_id = ard.correlation_id
-      WHERE (aa.created_at IS NULL OR aa.created_at >= NOW() - INTERVAL '24 hours')
-         OR (ard.created_at IS NULL OR ard.created_at >= NOW() - INTERVAL '24 hours')
-      GROUP BY COALESCE(ard.agent_name, aa.agent_name)
-      ORDER BY total_requests DESC
-      LIMIT 100;
-    `));
+      // Seed agent metrics using routing decisions + actions
+      const metricsResult = await intelligenceDb.execute(sql.raw(`
+        SELECT COALESCE(ard.selected_agent, aa.agent_name) AS agent,
+               COUNT(aa.id) AS total_requests,
+               AVG(COALESCE(ard.routing_time_ms, aa.duration_ms, 0)) AS avg_routing_time,
+               AVG(COALESCE(ard.confidence_score, 0)) AS avg_confidence
+        FROM agent_actions aa
+        FULL OUTER JOIN agent_routing_decisions ard
+          ON aa.correlation_id = ard.correlation_id
+        WHERE (aa.created_at IS NULL OR aa.created_at >= NOW() - INTERVAL '24 hours')
+           OR (ard.created_at IS NULL OR ard.created_at >= NOW() - INTERVAL '24 hours')
+        GROUP BY COALESCE(ard.selected_agent, aa.agent_name)
+        ORDER BY total_requests DESC
+        LIMIT 100;
+      `));
 
-    (metricsRows as any[]).forEach(r => {
-      const agent = r.agent || 'unknown';
-      this.agentMetrics.set(agent, {
-        count: Number(r.total_requests || 0),
-        totalRoutingTime: Number(r.avg_routing_time || 0) * Number(r.total_requests || 0),
-        totalConfidence: Number(r.avg_confidence || 0) * Number(r.total_requests || 0),
-        successCount: 0,
-        errorCount: 0,
-        lastSeen: new Date(),
-      });
-    });
+      // Handle different return types from Drizzle
+      const metricsRows = Array.isArray(metricsResult)
+        ? metricsResult
+        : (metricsResult?.rows || metricsResult || []);
 
-    // Emit initial metric snapshot
-    this.emit('metricUpdate', this.getAgentMetrics());
-    // Emit initial actions snapshot (emit last one to trigger UI refresh)
-    const last = this.recentActions[this.recentActions.length - 1];
-    if (last) this.emit('actionUpdate', last);
+      if (Array.isArray(metricsRows)) {
+        metricsRows.forEach((r: any) => {
+          const agent = r.agent || 'unknown';
+          this.agentMetrics.set(agent, {
+            count: Number(r.total_requests || 0),
+            totalRoutingTime: Number(r.avg_routing_time || 0) * Number(r.total_requests || 0),
+            totalConfidence: Number(r.avg_confidence || 0) * Number(r.total_requests || 0),
+            successCount: 0,
+            errorCount: 0,
+            lastSeen: new Date(),
+          });
+        });
+      }
+
+      // Emit initial metric snapshot
+      this.emit('metricUpdate', this.getAgentMetrics());
+      // Emit initial actions snapshot (emit last one to trigger UI refresh)
+      const last = this.recentActions[this.recentActions.length - 1];
+      if (last) this.emit('actionUpdate', last);
+    } catch (error) {
+      console.error('[EventConsumer] Error during preloadFromDatabase:', error);
+      // Don't throw - allow server to continue even if preload fails
+    }
   }
 
   private handleRoutingDecision(event: any) {

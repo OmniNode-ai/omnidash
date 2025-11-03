@@ -2,6 +2,11 @@
 import { config } from 'dotenv';
 config();
 
+// Suppress KafkaJS partitioner warning
+if (!process.env.KAFKAJS_NO_PARTITIONER_WARNING) {
+  process.env.KAFKAJS_NO_PARTITIONER_WARNING = '1';
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -21,6 +26,20 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+
+// Disable caching for all API routes to ensure fresh data
+app.use('/api', (req, res, next) => {
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+  // Remove any existing ETag headers to prevent 304 responses
+  res.removeHeader('ETag');
+  // Disable Express ETag generation
+  res.setHeader('ETag', '');
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

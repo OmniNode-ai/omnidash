@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDemoMode } from "@/contexts/DemoModeContext";
 import { MockDataBadge } from "@/components/MockDataBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,10 +51,48 @@ import {
 } from "lucide-react";
 
 export default function FeatureShowcase() {
+  const { isDemoMode } = useDemoMode();
   const [activeDemo, setActiveDemo] = useState<string | null>(null);
   const [demoProgress, setDemoProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  
+  // Mock tickets for Intelligent Ticketing System demo
+  const mockTickets = [
+    {
+      id: 'TICK-001',
+      title: 'Fix Authentication Bug',
+      priority: 142,
+      dependencyScore: 85,
+      failureImpact: 72,
+      timeDecay: 45,
+      agentRequests: 12,
+      status: 'In Progress',
+      assignee: 'Agent Alpha'
+    },
+    {
+      id: 'TICK-002',
+      title: 'Optimize Database Queries',
+      priority: 98,
+      dependencyScore: 62,
+      failureImpact: 55,
+      timeDecay: 38,
+      agentRequests: 8,
+      status: 'Open',
+      assignee: 'Unassigned'
+    },
+    {
+      id: 'TICK-003',
+      title: 'Add Rate Limiting to API',
+      priority: 76,
+      dependencyScore: 48,
+      failureImpact: 82,
+      timeDecay: 52,
+      agentRequests: 5,
+      status: 'Review',
+      assignee: 'Agent Beta'
+    }
+  ];
 
   // Header
   // (Badge indicates mock/preview content)
@@ -548,37 +587,47 @@ export default function FeatureShowcase() {
                           <h5 className="font-semibold">RSD Priority Engine</h5>
                           <Badge variant="default">Calculating</Badge>
                         </div>
-                        <div className="bg-card rounded p-4 shadow">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="font-medium">Fix Authentication Bug</span>
-                            <Badge variant="destructive">Priority: 142</Badge>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-muted-foreground">Dependency Score:</span>
-                              <span className="ml-2 font-semibold text-red-600">85/100</span>
+                        <div className="space-y-3">
+                          {mockTickets.map((ticket, index) => (
+                            <div key={ticket.id} className="bg-card rounded p-4 shadow border">
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="font-medium">{ticket.title}</span>
+                                <Badge variant={ticket.priority > 100 ? "destructive" : ticket.priority > 70 ? "default" : "secondary"}>
+                                  Priority: {ticket.priority}
+                                </Badge>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <span className="text-muted-foreground">Dependency Score:</span>
+                                  <span className="ml-2 font-semibold text-red-600">{ticket.dependencyScore}/100</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Failure Impact:</span>
+                                  <span className="ml-2 font-semibold text-orange-600">{ticket.failureImpact}/100</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Time Decay:</span>
+                                  <span className="ml-2 font-semibold text-yellow-600">{ticket.timeDecay}/100</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Agent Requests:</span>
+                                  <span className="ml-2 font-semibold text-blue-600">{ticket.agentRequests}</span>
+                                </div>
+                              </div>
+                              <div className="mt-3 pt-3 border-t">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    ticket.status === 'In Progress' ? 'bg-green-500' :
+                                    ticket.status === 'Review' ? 'bg-yellow-500' : 'bg-gray-400'
+                                  }`}></div>
+                                  <span className="text-sm text-muted-foreground">
+                                    {ticket.status} {ticket.assignee !== 'Unassigned' && `• ${ticket.assignee}`}
+                                  </span>
+                                  <Badge variant="outline" className="ml-auto text-xs">{ticket.status}</Badge>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-muted-foreground">Failure Impact:</span>
-                              <span className="ml-2 font-semibold text-orange-600">72/100</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Time Decay:</span>
-                              <span className="ml-2 font-semibold text-yellow-600">45/100</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Agent Requests:</span>
-                              <span className="ml-2 font-semibold text-blue-600">12</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="bg-card rounded p-3 shadow">
-                          <div className="text-sm text-muted-foreground mb-2">Workflow Status</div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span className="text-sm">Assigned to Agent Alpha</span>
-                            <Badge variant="outline" className="ml-auto">In Progress</Badge>
-                          </div>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -1047,14 +1096,18 @@ export default function FeatureShowcase() {
                   <Progress value={demoProgress} className="w-32" />
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={stopDemo}>
-                    <Pause className="w-4 h-4 mr-2" />
-                    Pause
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={stopDemo}>
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Stop Demo
-                  </Button>
+                  {!isDemoMode && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={stopDemo}>
+                        <Pause className="w-4 h-4 mr-2" />
+                        Pause
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={stopDemo}>
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Stop Demo
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -1137,6 +1190,7 @@ export default function FeatureShowcase() {
                         <>
                           <Pause className="w-4 h-4 mr-2" />
                           Running Demo...
+                          {isDemoMode && <Badge variant="secondary" className="ml-2">Demo Mode</Badge>}
                         </>
                       ) : (
                         <>

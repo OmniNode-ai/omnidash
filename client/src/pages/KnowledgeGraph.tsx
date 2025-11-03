@@ -8,6 +8,7 @@ import { Database, Network, Link, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { MockBadge } from "@/components/MockBadge";
 import { useQuery } from "@tanstack/react-query";
+import { knowledgeGraphSource } from "@/lib/data-sources";
 
 // Graph data interfaces from omniarchon endpoint
 interface GraphNode {
@@ -56,16 +57,18 @@ export default function KnowledgeGraph() {
     localStorage.setItem('dashboard-timerange', value);
   };
 
-  // Fetch knowledge graph from omniarchon endpoint
-  const { data: graphData, isLoading } = useQuery<KnowledgeGraphResponse>({
-    queryKey: [`http://localhost:8053/api/intelligence/knowledge/graph?limit=1000&timeWindow=${timeRange}`],
-    queryFn: async () => {
-      const response = await fetch(`http://localhost:8053/api/intelligence/knowledge/graph?limit=1000&timeWindow=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch knowledge graph');
-      return response.json();
-    },
-    refetchInterval: 120000, // Refetch every 2 minutes
+  // Use centralized data source
+  const { data: graphDataResult, isLoading } = useQuery({
+    queryKey: ['knowledge-graph', timeRange],
+    queryFn: () => knowledgeGraphSource.fetchGraph(timeRange, 1000),
+    refetchInterval: 120000,
   });
+
+  // Transform to expected format
+  const graphData: KnowledgeGraphResponse = graphDataResult ? {
+    nodes: graphDataResult.nodes,
+    edges: graphDataResult.edges.map(e => ({ ...e, relationship: e.type || 'related' })),
+  } : { nodes: [], edges: [] };
 
   // Map GraphNode data to Pattern format for PatternNetwork component
   const patterns: Pattern[] = (graphData?.nodes || []).map((node) => ({

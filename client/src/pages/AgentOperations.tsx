@@ -170,8 +170,7 @@ export default function AgentOperations() {
     setChartData(newChartData);
   }, [actions]);
 
-  // Update performance chart - use success rate variation or fallback to request rate
-  // Since durationMs is not available in actions, we'll show success/error rate variation
+  // Update performance chart - show average execution time per minute
   useEffect(() => {
     if (!actions || actions.length === 0) {
       setPerformanceChartData([]);
@@ -179,33 +178,30 @@ export default function AgentOperations() {
     }
 
     const now = new Date();
-    const minuteBuckets = new Map<string, { total: number; success: number }>();
+    const minuteBuckets = new Map<string, { total: number; totalDurationMs: number }>();
 
     // Initialize buckets for last 20 minutes
     for (let i = 19; i >= 0; i--) {
       const time = new Date(now.getTime() - i * 60 * 1000);
       const timeLabel = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      minuteBuckets.set(timeLabel, { total: 0, success: 0 });
+      minuteBuckets.set(timeLabel, { total: 0, totalDurationMs: 0 });
     }
 
-    // Count actions and track success/error by action type
+    // Sum execution times per minute
     actions.forEach(action => {
       const actionTime = new Date(action.createdAt);
       const timeLabel = actionTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       if (minuteBuckets.has(timeLabel)) {
         const entry = minuteBuckets.get(timeLabel)!;
         entry.total += 1;
-        // Consider 'success' or 'tool_call' as successful, 'error' as failure
-        if (action.actionType === 'success' || action.actionType === 'tool_call') {
-          entry.success += 1;
-        }
+        entry.totalDurationMs += (action.durationMs || 0);
       }
     });
 
-    // Calculate success rate per minute (as percentage)
-    const perfData = Array.from(minuteBuckets.entries()).map(([time, { total, success }]) => ({
+    // Calculate average execution time per minute (in milliseconds)
+    const perfData = Array.from(minuteBuckets.entries()).map(([time, { total, totalDurationMs }]) => ({
       time,
-      value: total > 0 ? Math.round((success / total) * 100) : 0,
+      value: total > 0 ? Math.round(totalDurationMs / total) : 0,
     }));
 
     setPerformanceChartData(perfData);
@@ -385,7 +381,7 @@ export default function AgentOperations() {
             <div>
               {ensured.isMock && <MockBadge label="MOCK DATA: Agent Performance" />}
               <RealtimeChart
-                title="Agent Performance (Success Rate % per Minute)"
+                title="Agent Performance (Avg Execution Time ms)"
                 data={ensured.data}
                 color="hsl(var(--chart-2))"
                 showArea

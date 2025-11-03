@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { developerToolsSource } from "@/lib/data-sources";
+import type { DeveloperActivity, ToolUsage, QueryHistory } from "@/lib/data-sources/developer-tools-source";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,72 +43,22 @@ import { ChatInterface } from "../../components/ChatInterface";
 import CorrelationTrace from "../CorrelationTrace";
 import AdvancedSettings from "./AdvancedSettings";
 
-// Mock data interfaces
-interface DeveloperActivity {
-  totalQueries: number;
-  activeSessions: number;
-  avgResponseTime: number;
-  satisfactionScore: number;
-  topTools: Array<{
-    name: string;
-    usage: number;
-    satisfaction: number;
-  }>;
-}
-
-interface ToolUsage {
-  toolName: string;
-  usageCount: number;
-  avgRating: number;
-  lastUsed: string;
-  category: string;
-}
-
-interface QueryHistory {
-  id: string;
-  query: string;
-  response: string;
-  timestamp: string;
-  rating?: number;
-  tool: string;
-}
+// Types imported from data source
 
 export default function DeveloperTools() {
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("24h");
 
-  // API calls
-  const { data: developerActivity, isLoading: activityLoading } = useQuery<DeveloperActivity>({
-    queryKey: ['developer-activity', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/developer/activity?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch developer activity');
-      return response.json();
-    },
+  // Use centralized data source
+  const { data: toolsData, isLoading } = useQuery({
+    queryKey: ['developer-tools', timeRange],
+    queryFn: () => developerToolsSource.fetchAll(timeRange),
     refetchInterval: 60000,
   });
 
-  const { data: toolUsage, isLoading: toolsLoading } = useQuery<ToolUsage[]>({
-    queryKey: ['tool-usage', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/tools/usage?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch tool usage');
-      return response.json();
-    },
-    refetchInterval: 60000,
-  });
-
-  const { data: queryHistory, isLoading: queriesLoading } = useQuery<QueryHistory[]>({
-    queryKey: ['query-history', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/developer/queries?timeRange=${timeRange}&limit=10`);
-      if (!response.ok) throw new Error('Failed to fetch query history');
-      return response.json();
-    },
-    refetchInterval: 30000,
-  });
-
-  const isLoading = activityLoading || toolsLoading || queriesLoading;
+  const developerActivity = toolsData?.activity;
+  const toolUsage = toolsData?.toolUsage;
+  const queryHistory = toolsData?.queryHistory;
 
   if (isLoading) {
     return (

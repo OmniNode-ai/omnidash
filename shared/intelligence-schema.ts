@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, numeric, boolean, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, varchar, integer, numeric, boolean, jsonb, timestamp } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 
 /**
@@ -107,23 +107,17 @@ export const insertAgentManifestInjectionSchema = createInsertSchema(agentManife
  */
 export const patternLineageNodes = pgTable('pattern_lineage_nodes', {
   id: uuid('id').primaryKey(),
-  patternId: text('pattern_id').notNull(),
-  patternName: text('pattern_name').notNull(),
-  patternType: text('pattern_type').notNull(),
-  patternVersion: text('pattern_version'),
-  lineageId: uuid('lineage_id'),
-  generation: integer('generation'),
-  sourceSystem: text('source_system'),
-  sourceUser: text('source_user'),
-  sourceEventId: uuid('source_event_id'),
-  patternData: jsonb('pattern_data'),
+  patternId: varchar('pattern_id', { length: 255 }).notNull(),
+  patternName: varchar('pattern_name', { length: 255 }).notNull(),
+  patternType: varchar('pattern_type', { length: 100 }).notNull(),
+  patternVersion: varchar('pattern_version', { length: 50 }).notNull(),
+  lineageId: uuid('lineage_id').notNull(),
+  generation: integer('generation').notNull(),
+  patternData: jsonb('pattern_data').notNull(),
   metadata: jsonb('metadata'),
-  correlationId: uuid('correlation_id'),
-  createdAt: timestamp('created_at').defaultNow(),
-  eventType: text('event_type'),
-  toolName: text('tool_name'),
-  filePath: text('file_path'),
-  language: text('language'),
+  correlationId: uuid('correlation_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }),
+  language: varchar('language', { length: 50 }),
 });
 
 /**
@@ -146,6 +140,24 @@ export const patternLineageEdges = pgTable('pattern_lineage_edges', {
 // Export Zod schemas for validation
 export const insertPatternLineageNodeSchema = createInsertSchema(patternLineageNodes);
 export const insertPatternLineageEdgeSchema = createInsertSchema(patternLineageEdges);
+
+/**
+ * Pattern Quality Metrics Table
+ * Tracks quality scores and confidence metrics for patterns
+ */
+export const patternQualityMetrics = pgTable('pattern_quality_metrics', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  patternId: uuid('pattern_id').notNull().unique(),
+  qualityScore: numeric('quality_score', { precision: 10, scale: 6 }).notNull(),
+  confidence: numeric('confidence', { precision: 10, scale: 6 }).notNull(),
+  measurementTimestamp: timestamp('measurement_timestamp', { withTimezone: true }).notNull().defaultNow(),
+  version: text('version').default('1.0.0'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+export const insertPatternQualityMetricsSchema = createInsertSchema(patternQualityMetrics);
 
 /**
  * ONEX Compliance Stamps Table
@@ -275,3 +287,38 @@ export type DocumentAccessLog = typeof documentAccessLog.$inferSelect;
 export type InsertDocumentAccessLog = typeof documentAccessLog.$inferInsert;
 export type NodeServiceRegistry = typeof nodeServiceRegistry.$inferSelect;
 export type InsertNodeServiceRegistry = typeof nodeServiceRegistry.$inferInsert;
+
+/**
+ * API Response Interfaces for Pattern Lineage
+ */
+
+/**
+ * Pattern Summary
+ * Overview metrics for pattern discovery and analysis
+ */
+export interface PatternSummary {
+  total_patterns: number;
+  languages: number;
+  unique_executions: number;
+}
+
+/**
+ * Recent Pattern
+ * Individual pattern record with execution context
+ */
+export interface RecentPattern {
+  pattern_name: string;
+  pattern_version: string;
+  language: string | null;
+  created_at: Date;
+  correlation_id: string;
+}
+
+/**
+ * Language Breakdown
+ * Pattern distribution by programming language
+ */
+export interface LanguageBreakdown {
+  language: string;
+  pattern_count: number;
+}

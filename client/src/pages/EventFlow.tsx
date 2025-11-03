@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { MockBadge } from "@/components/MockBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useState, useMemo } from "react";
+import { eventFlowSource } from "@/lib/data-sources";
 
 // Event stream interface matching omniarchon endpoint
 interface EventStreamItem {
@@ -23,15 +24,6 @@ interface EventStreamResponse {
   total: number;
 }
 
-// Fetch events from omniarchon
-async function fetchEvents(limit: number = 100): Promise<EventStreamResponse> {
-  const response = await fetch(`http://localhost:8053/api/intelligence/events/stream?limit=${limit}`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch events: ${response.statusText}`);
-  }
-  return response.json();
-}
-
 export default function EventFlow() {
   const [pollingInterval] = useState(30000); // 30 seconds
   const [timeRange, setTimeRange] = useState(() => {
@@ -43,17 +35,28 @@ export default function EventFlow() {
     localStorage.setItem('dashboard-timerange', value);
   };
 
-  // Fetch events with TanStack Query and polling
-  const { data, isLoading, isError, error, dataUpdatedAt } = useQuery({
+  // Fetch events with TanStack Query and polling using data source
+  const { data: eventFlowData, isLoading, isError, error, dataUpdatedAt } = useQuery({
     queryKey: ['events', 'stream'],
-    queryFn: () => fetchEvents(100),
+    queryFn: () => eventFlowSource.fetchEvents(100),
     refetchInterval: pollingInterval,
     refetchOnWindowFocus: true,
   });
 
-  // Calculate metrics from real event data
+  // Transform to expected format
+  const data: EventStreamResponse = eventFlowData ? {
+    events: eventFlowData.events.map(e => ({
+      id: e.id,
+      type: e.type,
+      timestamp: e.timestamp,
+      data: e.data,
+    })),
+    total: eventFlowData.events.length,
+  } : { events: [], total: 0 };
+
+  // Use metrics and chart data from data source
   const metrics = useMemo(() => {
-    if (!data?.events) {
+    if (!eventFlowData?.metrics) {
       return {
         totalEvents: 0,
         uniqueTypes: 0,
@@ -62,70 +65,14 @@ export default function EventFlow() {
         topicCounts: new Map<string, number>(),
       };
     }
+    return eventFlowData.metrics;
+  }, [eventFlowData]);
 
-    const events = data.events;
-    const typeCount = new Map<string, number>();
-    let totalProcessingTime = 0;
-    let processingTimeCount = 0;
-
-    events.forEach(event => {
-      typeCount.set(event.type, (typeCount.get(event.type) || 0) + 1);
-      if (event.data?.durationMs) {
-        totalProcessingTime += event.data.durationMs;
-        processingTimeCount++;
-      }
-    });
-
-    // Calculate events per minute from last 100 events
-    const now = Date.now();
-    const recentEvents = events.filter(e => {
-      const eventTime = new Date(e.timestamp).getTime();
-      return (now - eventTime) < 60000; // Last minute
-    });
-
-    return {
-      totalEvents: events.length,
-      uniqueTypes: typeCount.size,
-      eventsPerMinute: recentEvents.length,
-      avgProcessingTime: processingTimeCount > 0 ? Math.round(totalProcessingTime / processingTimeCount) : 0,
-      topicCounts: typeCount,
-    };
-  }, [data]);
-
-  // Generate chart data from events
-  const throughputDataRaw = useMemo(() => {
-    if (!data?.events) return [] as Array<{ time: string; value: number }>;
-
-    // Group events by minute
-    const minuteCounts = new Map<string, number>();
-    data.events.forEach(event => {
-      const time = new Date(event.timestamp);
-      const minute = `${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')}`;
-      minuteCounts.set(minute, (minuteCounts.get(minute) || 0) + 1);
-    });
-
-    return Array.from(minuteCounts.entries())
-      .slice(-20)
-      .map(([time, value]) => ({ time, value }));
-  }, [data]);
+  // Use chart data from data source
+  const throughputDataRaw = eventFlowData?.chartData?.throughput || [];
   const { data: throughputData, isMock: isThroughputMock } = ensureTimeSeries(throughputDataRaw, 10, 6);
 
-  // Calculate average lag from event timestamps
-  const lagDataRaw = useMemo(() => {
-    if (!data?.events) return [] as Array<{ time: string; value: number }>;
-
-    const now = Date.now();
-    return data.events
-      .slice(-20)
-      .map(event => {
-        const eventTime = new Date(event.timestamp).getTime();
-        const lag = Math.max(0, (now - eventTime) / 1000); // seconds
-        return {
-          time: new Date(event.timestamp).toLocaleTimeString(),
-          value: lag,
-        };
-      });
-  }, [data]);
+  const lagDataRaw = eventFlowData?.chartData?.lag || [];
   const { data: lagData, isMock: isLagMock } = ensureTimeSeries(lagDataRaw, 3, 1.2);
 
   // Convert topic counts to array for display

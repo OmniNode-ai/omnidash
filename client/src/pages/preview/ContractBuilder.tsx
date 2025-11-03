@@ -262,8 +262,29 @@ export default function ContractBuilder() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"prompt" | "form" | "yaml" | "validation" | "history" | "suggestions">("prompt");
   const [formData, setFormData] = useState<any>({});
-  const [contractHistory, setContractHistory] = useState<any[]>([]);
-  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  // Seed contract history with 1-2 prior contracts for demo
+  const [contractHistory, setContractHistory] = useState<any[]>([
+    {
+      id: Date.now() - 86400000,
+      type: 'workflow',
+      prompt: 'Create a code generation workflow with validation stages',
+      contract: EXAMPLE_CONTRACTS.workflow,
+      yaml: EXAMPLE_CONTRACTS.workflow.yaml,
+      timestamp: new Date(Date.now() - 86400000).toISOString()
+    },
+    {
+      id: Date.now() - 172800000,
+      type: 'effect',
+      prompt: 'Build a deployment sender effect for Docker containers',
+      contract: EXAMPLE_CONTRACTS.effect,
+      yaml: EXAMPLE_CONTRACTS.effect.yaml,
+      timestamp: new Date(Date.now() - 172800000).toISOString()
+    }
+  ]);
+  // Preload with single strong AI suggestion
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([
+    "Create a data processing workflow with validation, transformation, and storage stages. This pattern has been proven in 45 similar implementations and shows 92% success rate."
+  ]);
   const [isValidating, setIsValidating] = useState<boolean>(false);
 
   // Generate AI suggestions based on contract type

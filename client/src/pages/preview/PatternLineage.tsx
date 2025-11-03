@@ -181,21 +181,84 @@ const PatternLineage: React.FC = () => {
       files: ["cache-manager.ts", "cache-strategies.ts", "cache-invalidator.ts"],
       description: "Multi-layer caching with intelligent invalidation",
       category: "Performance"
+    },
+    {
+      id: "logging-pattern",
+      name: "Logging Pattern",
+      type: 'pattern',
+      version: "1.3.0",
+      status: 'stable',
+      usage: 28,
+      performance: 82,
+      complexity: 3,
+      lastUpdated: "2024-01-08",
+      author: "Team Beta",
+      dependencies: [],
+      dependents: ["error-handling", "api-pattern"],
+      files: ["logger.ts", "log-formatter.ts", "log-levels.ts"],
+      description: "Structured logging with context propagation",
+      category: "Observability"
+    },
+    {
+      id: "type-definitions",
+      name: "Type Definitions",
+      type: 'dependency',
+      version: "4.2.0",
+      status: 'stable',
+      usage: 45,
+      performance: 100,
+      complexity: 2,
+      lastUpdated: "2024-01-05",
+      author: "Team Gamma",
+      dependencies: [],
+      dependents: ["data-validation", "api-pattern"],
+      files: ["types.ts", "interfaces.ts"],
+      description: "Shared TypeScript type definitions",
+      category: "Type Safety"
+    },
+    {
+      id: "data-fetcher",
+      name: "Data Fetcher",
+      type: 'implementation',
+      version: "1.0.0",
+      status: 'stable',
+      usage: 14,
+      performance: 89,
+      complexity: 5,
+      lastUpdated: "2024-01-11",
+      author: "Team Epsilon",
+      dependencies: ["caching-pattern"],
+      dependents: [],
+      files: ["data-fetcher.ts", "fetch-strategies.ts"],
+      description: "Optimized data fetching with caching layer",
+      category: "Data Management"
     }
   ];
 
-  // Mock data for pattern connections
+  // Mock data for pattern connections - ensuring 2-3 hop lineage is visible
+  // Example: auth-pattern -> error-handling -> logging-pattern (3 hops)
+  // Example: api-pattern -> data-validation -> type-definitions (3 hops)
   const patternConnections: PatternConnection[] = [
+    // Direct dependencies (hop 1)
     { from: "auth-pattern", to: "error-handling", type: 'dependency', strength: 0.8, bidirectional: false },
     { from: "auth-pattern", to: "session-management", type: 'dependency', strength: 0.9, bidirectional: false },
-    { from: "error-handling", to: "logging-pattern", type: 'dependency', strength: 0.7, bidirectional: false },
     { from: "data-validation", to: "error-handling", type: 'dependency', strength: 0.6, bidirectional: false },
+    { from: "data-validation", to: "type-definitions", type: 'dependency', strength: 0.7, bidirectional: false },
     { from: "api-pattern", to: "error-handling", type: 'dependency', strength: 0.8, bidirectional: false },
     { from: "api-pattern", to: "data-validation", type: 'dependency', strength: 0.7, bidirectional: false },
     { from: "session-management", to: "data-validation", type: 'dependency', strength: 0.5, bidirectional: false },
     { from: "session-management", to: "caching-pattern", type: 'dependency', strength: 0.8, bidirectional: false },
+    
+    // Second hop dependencies (hop 2)
+    { from: "error-handling", to: "logging-pattern", type: 'dependency', strength: 0.7, bidirectional: false },
+    { from: "api-pattern", to: "logging-pattern", type: 'usage', strength: 0.6, bidirectional: false },
+    
+    // Third hop dependencies (hop 3)
     { from: "caching-pattern", to: "data-fetcher", type: 'usage', strength: 0.6, bidirectional: true },
-    { from: "caching-pattern", to: "api-pattern", type: 'usage', strength: 0.5, bidirectional: true }
+    { from: "caching-pattern", to: "api-pattern", type: 'usage', strength: 0.5, bidirectional: true },
+    
+    // Additional connections for clear lineage visualization
+    { from: "type-definitions", to: "api-pattern", type: 'usage', strength: 0.4, bidirectional: false }
   ];
 
   // Mock data for pattern versions

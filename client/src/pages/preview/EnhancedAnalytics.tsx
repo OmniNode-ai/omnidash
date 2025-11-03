@@ -266,6 +266,14 @@ export default function EnhancedAnalytics() {
             <Lightbulb className="w-4 h-4 mr-2" />
             Optimization
           </Button>
+          <Button 
+            variant={activeSection === "routing" ? "default" : "outline"} 
+            size="sm"
+            onClick={() => setActiveSection("routing")}
+          >
+            <Zap className="w-4 h-4 mr-2" />
+            Routing & Patterns
+          </Button>
         </div>
 
         {/* Performance Section */}
@@ -608,6 +616,99 @@ export default function EnhancedAnalytics() {
                 </CardContent>
               </Card>
             </div>
+          </div>
+        )}
+
+        {/* Routing & Patterns Section */}
+        {activeSection === "routing" && (
+          <div className="space-y-4">
+            {/* Routing Accuracy & Cache Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Routing Accuracy</CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{routingMetrics.accuracy.toFixed(1)}%</div>
+                  <p className="text-xs text-muted-foreground">
+                    Fallback rate: {routingMetrics.fallbackRate.toFixed(1)}%
+                  </p>
+                  <Progress value={routingMetrics.accuracy} className="mt-2" />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Cache Hit Rate</CardTitle>
+                  <Database className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{routingMetrics.cacheHitRate.toFixed(1)}%</div>
+                  <p className="text-xs text-muted-foreground">
+                    Target: 80%+
+                  </p>
+                  <Progress value={routingMetrics.cacheHitRate} className="mt-2" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg Routing Time</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{routingMetrics.avgRoutingTime}ms</div>
+                  <p className="text-xs text-muted-foreground">
+                    p95: {routingMetrics.avgRoutingTime * 2}ms
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Pattern Injection Uplift Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Pattern Injection Uplift</CardTitle>
+                <CardDescription>Impact of pattern injection on agent performance</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">{routingMetrics.patternInjectionUplift}%</div>
+                      <div className="text-sm text-muted-foreground">Token Reduction</div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">{patternUplift.avgResponseTimeImprovement}%</div>
+                      <div className="text-sm text-muted-foreground">Response Time Improvement</div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-purple-600">{patternUplift.avgSuccessRateIncrease}%</div>
+                      <div className="text-sm text-muted-foreground">Success Rate Increase</div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600">{patternUplift.totalPatternsInjected.toLocaleString()}</div>
+                      <div className="text-sm text-muted-foreground">Total Injections</div>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium mb-2">Top Impacted Agents</h4>
+                    <div className="space-y-2">
+                      {patternUplift.topImpactedAgents.map((agent, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 border rounded">
+                          <span className="text-sm">{agent.agent}</span>
+                          <div className="flex items-center gap-2">
+                            <Progress value={agent.uplift * 10} className="w-24" />
+                            <span className="text-sm font-medium">+{agent.uplift}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 

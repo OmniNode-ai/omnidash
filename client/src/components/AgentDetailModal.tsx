@@ -215,8 +215,8 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
                 <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{agent.successRate.toFixed(1)}%</div>
-                <Progress value={agent.successRate} className="mt-2" />
+                <div className="text-3xl font-bold">{Math.max(0, Math.min(100, agent.successRate)).toFixed(1)}%</div>
+                <Progress value={Math.max(0, Math.min(100, agent.successRate))} className="mt-2" />
               </CardContent>
             </Card>
 
@@ -248,7 +248,7 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{agent.avgQualityScore.toFixed(1)}/10</div>
-                <Progress value={agent.avgQualityScore * 10} className="mt-2" />
+                <Progress value={Math.max(0, Math.min(100, agent.avgQualityScore * 10))} className="mt-2" />
               </CardContent>
             </Card>
           </div>
@@ -262,16 +262,16 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span>Efficiency</span>
-                  <span className="font-medium">{agent.efficiency.toFixed(1)}%</span>
+                  <span className="font-medium">{Math.max(0, Math.min(100, agent.efficiency)).toFixed(1)}%</span>
                 </div>
-                <Progress value={agent.efficiency} />
+                <Progress value={Math.max(0, Math.min(100, agent.efficiency))} />
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span>Popularity</span>
-                  <span className="font-medium">{agent.popularity.toFixed(1)}%</span>
+                  <span className="font-medium">{Math.max(0, Math.min(100, agent.popularity)).toFixed(1)}%</span>
                 </div>
-                <Progress value={agent.popularity} />
+                <Progress value={Math.max(0, Math.min(100, agent.popularity))} />
               </div>
             </CardContent>
           </Card>

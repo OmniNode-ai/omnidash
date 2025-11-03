@@ -37,7 +37,6 @@ import {
 
 // Import existing components
 import AgentRegistry from "./AgentRegistry";
-import AgentNetwork from "./AgentNetwork";
 import AgentOperations from "../AgentOperations";
 
 // Types imported from data source
@@ -94,7 +93,7 @@ export default function AgentManagement() {
         <div>
           <h1 className="text-3xl font-bold">Agent Management</h1>
           <p className="text-muted-foreground">
-            Complete agent ecosystem management, registry, network visualization, and operations
+            Complete agent ecosystem management, registry, routing intelligence, and operations
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -111,10 +110,9 @@ export default function AgentManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="registry">Agent Registry</TabsTrigger>
-          <TabsTrigger value="network">Network View</TabsTrigger>
           <TabsTrigger value="routing">Routing Intelligence</TabsTrigger>
         </TabsList>
 
@@ -230,10 +228,6 @@ export default function AgentManagement() {
 
         <TabsContent value="registry" className="space-y-4">
           <AgentRegistry />
-        </TabsContent>
-
-        <TabsContent value="network" className="space-y-4">
-          <AgentNetwork />
         </TabsContent>
 
         <TabsContent value="routing" className="space-y-4">

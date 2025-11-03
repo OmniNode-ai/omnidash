@@ -61,7 +61,7 @@ export function DrillDownModal({
                 </Card>
                 <Card className="p-4">
                   <div className="text-xs text-muted-foreground mb-1">Success Rate</div>
-                  <div className="text-2xl font-bold font-mono">{data.successRate}%</div>
+                  <div className="text-2xl font-bold font-mono">{Math.max(0, Math.min(100, data.successRate))}%</div>
                 </Card>
               </div>
 
@@ -101,7 +101,7 @@ export function DrillDownModal({
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Success Rate</span>
-                    <span className="font-mono text-sm">{data.successRate}%</span>
+                    <span className="font-mono text-sm">{Math.max(0, Math.min(100, data.successRate))}%</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Uptime</span>
@@ -147,7 +147,7 @@ export function DrillDownModal({
               <div className="grid grid-cols-2 gap-4">
                 <Card className="p-4">
                   <div className="text-xs text-muted-foreground mb-1">Quality Score</div>
-                  <div className="text-2xl font-bold font-mono">{Math.round(data.quality)}%</div>
+                  <div className="text-2xl font-bold font-mono">{Math.max(0, Math.min(100, (data.quality || 0) <= 1 ? (data.quality || 0) * 100 : (data.quality || 0))).toFixed(1)}%</div>
                 </Card>
                 <Card className="p-4">
                   <div className="text-xs text-muted-foreground mb-1">Usage Count</div>

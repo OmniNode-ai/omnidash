@@ -73,10 +73,10 @@ class IntelligenceSavingsDataSource {
       console.warn('Failed to fetch savings metrics, using mock data', err);
     }
 
-    // Mock data fallback
+    // Mock data fallback - aligned with YC demo script ($45K savings, 34% token reduction)
     return {
       data: {
-        totalSavings: 45000,
+        totalSavings: 45000, // $45K from demo script
         monthlySavings: 15000,
         weeklySavings: 3750,
         dailySavings: 536,
@@ -86,7 +86,7 @@ class IntelligenceSavingsDataSource {
         avgComputePerRun: 1.2,
         costPerToken: 0.000002,
         costPerCompute: 0.05,
-        efficiencyGain: 34.4,
+        efficiencyGain: 34.0, // 34% token reduction from script
         timeSaved: 128,
       },
       isMock: true,

@@ -1,6 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { TrendingUp, Star, Rocket, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TopPattern {
@@ -61,17 +63,39 @@ export function TopPatternsList({ patterns, limit = 10 }: TopPatternsListProps) 
               </div>
             </div>
 
-            <div className="flex items-center gap-1 text-sm">
-              <TrendingUp className={cn(
-                "w-4 h-4",
-                pattern.trend > 0 ? "text-status-healthy" : "text-status-error"
-              )} />
-              <span className={cn(
-                "font-mono",
-                pattern.trend > 0 ? "text-status-healthy" : "text-status-error"
-              )}>
-                {pattern.trend > 0 ? "+" : ""}{pattern.trend}%
-              </span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-sm">
+                <TrendingUp className={cn(
+                  "w-4 h-4",
+                  pattern.trend > 0 ? "text-status-healthy" : "text-status-error"
+                )} />
+                <span className={cn(
+                  "font-mono",
+                  pattern.trend > 0 ? "text-status-healthy" : "text-status-error"
+                )}>
+                  {pattern.trend > 0 ? "+" : ""}{pattern.trend}%
+                </span>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7">
+                    <Rocket className="w-3 h-3 mr-1" />
+                    Inject
+                    <ChevronDown className="w-3 h-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => console.log(`Inject to Cursor: ${pattern.name}`)}>
+                    Inject to Cursor
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => console.log(`Inject to Claude: ${pattern.name}`)}>
+                    Inject to Claude
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => console.log(`Inject to Copilot: ${pattern.name}`)}>
+                    Inject to Copilot
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         ))}

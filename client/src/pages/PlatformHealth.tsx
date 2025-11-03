@@ -10,6 +10,7 @@ import { useState } from "react";
 import { MockBadge } from "@/components/MockBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useQuery } from "@tanstack/react-query";
+import { platformHealthSource } from "@/lib/data-sources";
 
 // TypeScript interfaces for platform health endpoint
 interface ServiceHealth {
@@ -47,36 +48,23 @@ export default function PlatformHealth() {
     localStorage.setItem('dashboard-timerange', value);
   };
 
-  // Fetch platform health from omniarchon with 15 second polling
-  const { data: healthData, isLoading, error } = useQuery<PlatformHealthResponse>({
-    queryKey: [`/api/intelligence/platform/health?timeWindow=${timeRange}`],
-    queryFn: async () => {
-      const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
-      const response = await fetch(`${omniarchonUrl}/api/intelligence/platform/health?timeWindow=${timeRange}`);
-      if (!response.ok) {
-        throw new Error(`Health check failed: ${response.statusText}`);
-      }
-      return response.json();
-    },
-    refetchInterval: 15000, // Poll every 15 seconds
+  // Use centralized data source
+  const { data: healthDataResult, isLoading, error } = useQuery({
+    queryKey: ['platform-health', timeRange],
+    queryFn: () => platformHealthSource.fetchAll(timeRange),
+    refetchInterval: 15000,
     refetchOnWindowFocus: true,
-    staleTime: 10000, // Consider data stale after 10 seconds
+    staleTime: 10000,
   });
 
-  // Fetch service registry from local API with 15 second polling
-  const { data: serviceRegistry, isLoading: servicesLoading } = useQuery<ServiceRegistryEntry[]>({
-    queryKey: ['/api/intelligence/platform/services'],
-    queryFn: async () => {
-      const response = await fetch('http://localhost:3000/api/intelligence/platform/services');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch services: ${response.statusText}`);
-      }
-      return response.json();
-    },
-    refetchInterval: 15000, // Poll every 15 seconds
-    refetchOnWindowFocus: true,
-    staleTime: 10000, // Consider data stale after 10 seconds
-  });
+  // Transform to expected format
+  const healthData: PlatformHealthResponse = healthDataResult?.health ? {
+    status: healthDataResult.health.status,
+    uptime: healthDataResult.health.uptime,
+    services: healthDataResult.health.services,
+  } : { status: 'unknown', uptime: 0, services: [] };
+
+  const serviceRegistry: ServiceRegistryEntry[] = healthDataResult?.services?.services || [];
 
   // Map health data to service status format for display
   const getIconForService = (serviceName: string): "server" | "database" | "api" | "web" => {

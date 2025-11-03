@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **📚 Shared Infrastructure**: For common OmniNode infrastructure (PostgreSQL, Kafka/Redpanda, remote server topology, Docker networking, environment variables), see **`~/.claude/CLAUDE.md`**. This file contains Omnidash-specific frontend architecture and development only.
+
 ## ⚠️ CRITICAL: Configuration Management
 
 **ALWAYS check `.env` file for actual configuration values before making assumptions!**
@@ -9,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Key configuration values (see `.env` for full details):
 - **Port**: 3000 (set in package.json: `PORT=3000 npm run dev`)
 - **Database**: All connection details in `.env` file (never hardcode passwords!)
-- **Kafka Brokers**: `192.168.86.200:9092`
+- **Kafka Brokers**: `192.168.86.200:9092` (see `~/.claude/CLAUDE.md` for connection patterns)
 
 **Before running any commands that require configuration:**
 1. Read `.env` file to get actual values

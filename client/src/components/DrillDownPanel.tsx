@@ -33,7 +33,7 @@ export function DrillDownPanel({ open, onOpenChange, title, data, type = "generi
               </Card>
               <Card className="p-4">
                 <div className="text-xs text-muted-foreground mb-1">Success Rate</div>
-                <div className="text-2xl font-bold font-mono">{data.successRate}%</div>
+                <div className="text-2xl font-bold font-mono">{Math.max(0, Math.min(100, data.successRate))}%</div>
               </Card>
             </div>
 

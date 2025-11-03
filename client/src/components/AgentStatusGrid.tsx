@@ -129,12 +129,12 @@ export function AgentStatusGrid({ agents, onAgentClick, cardBackgroundClass, com
           <div className="flex flex-col gap-1">
             <div className={cn("flex items-center gap-2", compact ? "text-[11px]" : "text-xs") }>
               <span className="text-muted-foreground text-[10px]">Success:</span>
-              <span className="font-mono text-status-healthy">{agent.successRate}%</span>
+              <span className="font-mono text-status-healthy">{Math.max(0, Math.min(100, agent.successRate))}%</span>
             </div>
             {agent.quality !== undefined && (
               <div className={cn("flex items-center gap-2", compact ? "text-[11px]" : "text-xs") }>
                 <span className="text-muted-foreground text-[10px]">Quality:</span>
-                <span className="font-mono text-chart-1">{agent.quality}%</span>
+                <span className="font-mono text-chart-1">{Math.max(0, Math.min(100, agent.quality))}%</span>
               </div>
             )}
             <div className={cn("flex items-center gap-2", compact ? "text-[11px]" : "text-xs") }>

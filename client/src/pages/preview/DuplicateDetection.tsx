@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { MockDataBadge } from "@/components/MockDataBadge";
+import { RefactorPlanModal } from "@/components/RefactorPlanModal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,8 @@ interface DuplicateCode {
   patterns: string[];
   suggestedReplacement: string;
   upgradePath: string;
+  bestImplementation?: string; // Path to best implementation
+  clusterId?: string; // Group duplicates into clusters
 }
 
 interface DuplicateFile {
@@ -111,8 +114,9 @@ const DuplicateDetection: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showOnlyHighImpact, setShowOnlyHighImpact] = useState(false);
   const [selectedDuplicate, setSelectedDuplicate] = useState<DuplicateCode | null>(null);
+  const [showRefactorPlan, setShowRefactorPlan] = useState(false);
 
-  // Mock data for duplicate code
+  // Mock data for duplicate code - organized into 15 clusters
   const duplicateCode: DuplicateCode[] = [
     {
       id: "1",
@@ -122,10 +126,10 @@ const DuplicateDetection: React.FC = () => {
       occurrences: 12,
       totalLines: 180,
       files: [
-        { path: "src/api/users.ts", lines: 15, startLine: 45, endLine: 60, lastModified: "2024-01-15", author: "John Doe", complexity: 3, testCoverage: 85 },
         { path: "src/api/products.ts", lines: 15, startLine: 32, endLine: 47, lastModified: "2024-01-14", author: "Jane Smith", complexity: 3, testCoverage: 90 },
-        { path: "src/api/orders.ts", lines: 15, startLine: 28, endLine: 43, lastModified: "2024-01-13", author: "Bob Johnson", complexity: 3, testCoverage: 78 },
-        { path: "src/api/payments.ts", lines: 15, startLine: 51, endLine: 66, lastModified: "2024-01-12", author: "Alice Brown", complexity: 3, testCoverage: 92 }
+        { path: "src/api/users.ts", lines: 15, startLine: 45, endLine: 60, lastModified: "2024-01-15", author: "John Doe", complexity: 3, testCoverage: 85 },
+        { path: "src/api/payments.ts", lines: 15, startLine: 51, endLine: 66, lastModified: "2024-01-12", author: "Alice Brown", complexity: 3, testCoverage: 92 },
+        { path: "src/api/orders.ts", lines: 15, startLine: 28, endLine: 43, lastModified: "2024-01-13", author: "Bob Johnson", complexity: 3, testCoverage: 78 }
       ],
       category: "API Design",
       severity: 'high',
@@ -134,7 +138,9 @@ const DuplicateDetection: React.FC = () => {
       timeToRefactor: "2-3 days",
       patterns: ["Response Builder", "Error Handling"],
       suggestedReplacement: "StandardResponse<T> utility class",
-      upgradePath: "Extract to shared utility and update all endpoints"
+      upgradePath: "Extract to shared utility and update all endpoints",
+      bestImplementation: "src/api/payments.ts", // Highest test coverage
+      clusterId: "cluster-1"
     },
     {
       id: "2",
@@ -478,9 +484,14 @@ const DuplicateDetection: React.FC = () => {
       {activeView === "detection" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Duplicate Code Detection</h2>
+            <div>
+              <h2 className="text-2xl font-bold">Duplicate Code Detection</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Found <strong className="text-primary">15 duplicate clusters</strong> across {filteredDuplicates.length} instances
+              </p>
+            </div>
             <div className="text-sm text-muted-foreground">
-              Found {filteredDuplicates.length} duplicate patterns
+              {filteredDuplicates.length} duplicate patterns
             </div>
           </div>
 
@@ -532,21 +543,40 @@ const DuplicateDetection: React.FC = () => {
 
                 <div className="space-y-4">
                   <div>
-                    <div className="text-sm font-medium mb-2">Affected Files:</div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium">Affected Files:</div>
+                      {duplicate.bestImplementation && (
+                        <Badge variant="default" className="text-xs">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Best Implementation Identified
+                        </Badge>
+                      )}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {duplicate.files.map((file, index) => (
-                        <div key={index} className="border rounded p-2 text-sm">
-                          <div className="font-medium">{file.path}</div>
-                          <div className="text-muted-foreground">
-                            Lines {file.startLine}-{file.endLine} • {file.lines} lines
+                      {duplicate.files.map((file, index) => {
+                        const isBest = duplicate.bestImplementation === file.path;
+                        return (
+                          <div key={index} className={`border rounded p-2 text-sm ${isBest ? 'border-green-500 bg-green-500/10' : ''}`}>
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium">{file.path}</div>
+                              {isBest && (
+                                <Badge variant="default" className="text-xs h-5">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Best
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-muted-foreground">
+                              Lines {file.startLine}-{file.endLine} • {file.lines} lines
+                            </div>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>Complexity: <span className={getComplexityColor(file.complexity)}>{file.complexity}/10</span></span>
+                              <span>Tests: <span className={getTestCoverageColor(file.testCoverage)}>{file.testCoverage}%</span></span>
+                              <span>Modified: {file.lastModified}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>Complexity: <span className={getComplexityColor(file.complexity)}>{file.complexity}/10</span></span>
-                            <span>Tests: <span className={getTestCoverageColor(file.testCoverage)}>{file.testCoverage}%</span></span>
-                            <span>Modified: {file.lastModified}</span>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -593,9 +623,16 @@ const DuplicateDetection: React.FC = () => {
                     <Zap className="w-4 h-4 mr-2" />
                     Auto-Refactor
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSelectedDuplicate(duplicate);
+                      setShowRefactorPlan(true);
+                    }}
+                  >
                     <Download className="w-4 h-4 mr-2" />
-                    Generate Plan
+                    View Refactor Plan
                   </Button>
                 </div>
               </CardContent>
@@ -888,6 +925,74 @@ const DuplicateDetection: React.FC = () => {
         isOpen={!!selectedDuplicate}
         onClose={() => setSelectedDuplicate(null)}
       />
+
+      {/* Refactor Plan Modal */}
+      {selectedDuplicate && (
+        <RefactorPlanModal
+          open={showRefactorPlan}
+          onClose={() => {
+            setShowRefactorPlan(false);
+            setSelectedDuplicate(null);
+          }}
+          plan={{
+            name: `Refactor ${selectedDuplicate.title}`,
+            description: selectedDuplicate.description,
+            steps: [
+              {
+                id: '1',
+                description: `Extract common logic from ${selectedDuplicate.files.length} files`,
+                order: 1,
+                estimatedTime: '2-3 hours',
+                dependencies: [],
+                automated: false,
+                files: selectedDuplicate.files.map(f => f.path)
+              },
+              {
+                id: '2',
+                description: `Create ${selectedDuplicate.suggestedReplacement} utility`,
+                order: 2,
+                estimatedTime: '3-4 hours',
+                dependencies: ['1'],
+                automated: false,
+                files: []
+              },
+              {
+                id: '3',
+                description: `Update all ${selectedDuplicate.occurrences} occurrences to use new utility`,
+                order: 3,
+                estimatedTime: '4-6 hours',
+                dependencies: ['2'],
+                automated: true,
+                files: selectedDuplicate.files.map(f => f.path)
+              },
+              {
+                id: '4',
+                description: 'Run test suite and verify all functionality',
+                order: 4,
+                estimatedTime: '1-2 hours',
+                dependencies: ['3'],
+                automated: false,
+                files: []
+              }
+            ],
+            estimatedTime: selectedDuplicate.timeToRefactor,
+            estimatedSavings: selectedDuplicate.estimatedSavings,
+            riskLevel: selectedDuplicate.severity === 'critical' ? 'high' : selectedDuplicate.severity === 'high' ? 'medium' : 'low',
+            prerequisites: [
+              'All affected files committed to feature branch',
+              'Test coverage > 80% for affected modules',
+              'Code review approval from tech lead'
+            ],
+            testPlan: [
+              'Unit tests for extracted utility',
+              'Integration tests for all affected endpoints',
+              'Performance regression tests',
+              'End-to-end smoke tests'
+            ]
+          }}
+          duplicateTitle={selectedDuplicate.title}
+        />
+      )}
     </div>
   );
 };

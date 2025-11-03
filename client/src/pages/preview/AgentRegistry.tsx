@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { agentRegistrySource } from "@/lib/data-sources";
-import type { AgentDefinition } from "@/lib/data-sources/agent-registry-source";
+import type { AgentDefinition as ImportedAgentDefinition } from "@/lib/data-sources/agent-registry-source";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,14 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { AgentRegistryDetailModal } from "@/components/AgentRegistryDetailModal";
-import { 
-  Search, 
-  Filter, 
-  Bot, 
-  Zap, 
-  Code, 
-  Database, 
-  Shield, 
+import { AgentExecutionTraceModal } from "@/components/AgentExecutionTraceModal";
+import {
+  Search,
+  Filter,
+  Bot,
+  Zap,
+  Code,
+  Database,
+  Shield,
   Settings,
   Activity,
   TrendingUp,
@@ -95,8 +96,11 @@ export default function AgentRegistry() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedAgent, setSelectedAgent] = useState<AgentDefinition | null>(null);
+  const [selectedExecution, setSelectedExecution] = useState<{correlationId: string, agentName: string} | null>(null);
   const [agents, setAgents] = useState<AgentDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // performance metric mode: 'success' shows success percentage, 'time' shows avg execution time in ms
+  const [performanceMetricMode, setPerformanceMetricMode] = useState<'success' | 'time'>('time');
 
   const categories: AgentCategory[] = [
     {
@@ -161,10 +165,21 @@ export default function AgentRegistry() {
   const performanceData = registryData?.performance;
   const routingData = registryData?.routing;
 
+  // Fetch recent actions for Recent Activity section
+  const { data: recentActions } = useQuery({
+    queryKey: ['recent-actions'],
+    queryFn: async () => {
+      const response = await fetch('/api/intelligence/actions/recent?limit=5');
+      if (!response.ok) return [];
+      return response.json();
+    },
+    refetchInterval: 10000, // Refresh every 10 seconds
+  });
+
   // Update state when data changes
   useEffect(() => {
     if (agentsData) {
-      setAgents(agentsData);
+      setAgents(agentsData as any); // Type conversion between imported and local AgentDefinition
     }
   }, [agentsData]);
 
@@ -266,7 +281,6 @@ export default function AgentRegistry() {
           <TabsTrigger value="agents">All Agents</TabsTrigger>
           <TabsTrigger value="capabilities">Capabilities</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="routing">Routing Intelligence</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -313,8 +327,13 @@ export default function AgentRegistry() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {categories.map((category) => {
               const Icon = category.icon;
+              const isSelected = selectedCategory === category.name;
               return (
-                <Card key={category.name} className="cursor-pointer hover:shadow-md transition-shadow">
+                <Card
+                  key={category.name}
+                  className={`cursor-pointer hover:shadow-md transition-all ${isSelected ? 'ring-2 ring-primary shadow-md' : ''}`}
+                  onClick={() => setSelectedCategory(category.name)}
+                >
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -346,39 +365,143 @@ export default function AgentRegistry() {
             })}
           </div>
 
+          {/* Filtered Agents Section */}
+          {selectedCategory !== "all" && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Filtered Agents: {selectedCategory}</CardTitle>
+                    <CardDescription>
+                      {filteredAgents.length} {filteredAgents.length === 1 ? 'agent' : 'agents'} in this category
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedCategory("all")}
+                  >
+                    Clear Filter
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredAgents.map((agent) => {
+                    const Icon = getCategoryIcon(agent.category);
+                    return (
+                      <Card
+                        key={agent.id}
+                        className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => setSelectedAgent(agent)}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2">
+                              <Icon className="w-5 h-5" style={{ color: getColorHex(agent.color) }} />
+                              <div>
+                                <CardTitle className="text-base">{agent.title}</CardTitle>
+                                <CardDescription className="text-xs">{agent.name}</CardDescription>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className={getStatusColor(agent.status)}>
+                              {agent.status}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <p className="text-sm text-muted-foreground line-clamp-2">{agent.description}</p>
+
+                          <div className="grid grid-cols-3 gap-2 text-sm">
+                            <div className="text-center p-2 bg-muted rounded">
+                              <div className="font-medium text-green-600">
+                                {Math.max(0, Math.min(100, agent.performance.successRate)).toFixed(1)}%
+                              </div>
+                              <div className="text-xs text-muted-foreground">Success</div>
+                            </div>
+                            <div className="text-center p-2 bg-muted rounded">
+                              <div className="font-medium text-blue-600">
+                                {agent.performance.efficiency}%
+                              </div>
+                              <div className="text-xs text-muted-foreground">Efficiency</div>
+                            </div>
+                            <div className="text-center p-2 bg-muted rounded">
+                              <div className="font-medium text-purple-600">
+                                {agent.performance.totalRuns.toLocaleString()}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Runs</div>
+                            </div>
+                          </div>
+
+                          {agent.tags && agent.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {agent.tags.slice(0, 3).map((tag, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {agent.tags.length > 3 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{agent.tags.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Recent Activity */}
           <Card>
             <CardHeader>
               <CardTitle>Recent Agent Activity</CardTitle>
-              <CardDescription>Latest agent executions and performance updates</CardDescription>
+              <CardDescription>Latest agent executions and performance updates (click to view execution trace)</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {(agents || [])
-                  .sort((a, b) => new Date(b.performance.lastUsed).getTime() - new Date(a.performance.lastUsed).getTime())
-                  .slice(0, 5)
-                  .map((agent) => (
-                    <div key={agent.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getColorHex(agent.color) }}></div>
-                        <div>
-                          <div className="font-medium">{agent.title}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {agent.category} • {formatDate(agent.performance.lastUsed)}
+              <div className="space-y-3">
+                {recentActions && recentActions.length > 0 ? (
+                  recentActions.slice(0, 5).map((action: any) => {
+                    const agentTitle = action.agentName?.replace('agent-', '').replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown Agent';
+                    return (
+                      <div
+                        key={action.id}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                        onClick={() => {
+                          setSelectedExecution({
+                            correlationId: action.correlationId,
+                            agentName: action.agentName || 'Unknown Agent'
+                          });
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                          <div>
+                            <div className="font-medium">{agentTitle}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {action.actionType} • {action.actionName} • {new Date(action.createdAt).toLocaleTimeString()}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="text-sm font-medium">{Math.max(0, Math.min(100, agent.performance.successRate)).toFixed(1)}%</div>
-                          <div className="text-xs text-muted-foreground">Success Rate</div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <div className="text-sm font-medium">{action.durationMs ? `${action.durationMs}ms` : 'N/A'}</div>
+                            <div className="text-xs text-muted-foreground">Duration</div>
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-muted-foreground" />
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedAgent(agent)}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No recent activity available
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -517,13 +640,40 @@ export default function AgentRegistry() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle>Performance Overview</CardTitle>
-                <CardDescription>Agent performance metrics and rankings</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Performance Overview</CardTitle>
+                  <CardDescription>Agent performance metrics and rankings</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={performanceMetricMode === 'time' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPerformanceMetricMode('time')}
+                  >
+                    Completion Time (ms)
+                  </Button>
+                  <Button
+                    variant={performanceMetricMode === 'success' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPerformanceMetricMode('success')}
+                  >
+                    Success %
+                  </Button>
+                </div>
+              </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {agents
-                    .sort((a, b) => b.performance.efficiency - a.performance.efficiency)
+                    .sort((a, b) => {
+                      if (performanceMetricMode === 'time') {
+                        return (a.performance.avgExecutionTime || 0) - (b.performance.avgExecutionTime || 0); // ascending time better
+                      }
+                      const sa = Math.max(0, Math.min(100, a.performance.successRate || 0));
+                      const sb = Math.max(0, Math.min(100, b.performance.successRate || 0));
+                      return sb - sa; // descending success%
+                    })
                     .slice(0, 10)
                     .map((agent, index) => (
                       <div key={agent.id} className="flex items-center justify-between p-3 border rounded-lg">
@@ -537,14 +687,29 @@ export default function AgentRegistry() {
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="text-sm font-medium">{agent.performance.efficiency}%</div>
-                            <div className="text-xs text-muted-foreground">Efficiency</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-medium">{Math.max(0, Math.min(100, agent.performance.successRate)).toFixed(1)}%</div>
-                            <div className="text-xs text-muted-foreground">Success</div>
-                          </div>
+                          {performanceMetricMode === 'time' ? (
+                            <>
+                              <div className="text-right">
+                                <div className="text-sm font-medium">{Math.max(0, agent.performance.avgExecutionTime || 0)}ms</div>
+                                <div className="text-xs text-muted-foreground">Avg Time</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm font-medium">{Math.max(0, Math.min(100, agent.performance.successRate || 0)).toFixed(1)}%</div>
+                                <div className="text-xs text-muted-foreground">Success</div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-right">
+                                <div className="text-sm font-medium">{Math.max(0, Math.min(100, agent.performance.successRate || 0)).toFixed(1)}%</div>
+                                <div className="text-xs text-muted-foreground">Success</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm font-medium">{Math.max(0, agent.performance.avgExecutionTime || 0)}ms</div>
+                                <div className="text-xs text-muted-foreground">Avg Time</div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -554,16 +719,40 @@ export default function AgentRegistry() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Performance Trends</CardTitle>
-                <CardDescription>Agent performance over time</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Performance Trends</CardTitle>
+                  <CardDescription>Agent performance over time</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={performanceMetricMode === 'time' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPerformanceMetricMode('time')}
+                  >
+                    Completion Time (ms)
+                  </Button>
+                  <Button
+                    variant={performanceMetricMode === 'success' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPerformanceMetricMode('success')}
+                  >
+                    Success %
+                  </Button>
+                </div>
+              </div>
               </CardHeader>
               <CardContent>
                 <div className="h-64 bg-muted rounded-lg flex items-center justify-center">
                   <div className="text-center">
                     <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-muted-foreground">Performance trends chart would go here</p>
+                    <p className="text-muted-foreground">
+                      {performanceMetricMode === 'time' ? 'Completion time (ms)' : 'Success percentage (0–100%)'} trends chart would go here
+                    </p>
                     <p className="text-sm text-muted-foreground">
-                      Showing efficiency and success rate trends over time
+                      {performanceMetricMode === 'time'
+                        ? 'Showing average completion time over time'
+                        : 'Showing success rate (0–100%) over time'}
                     </p>
                   </div>
                 </div>
@@ -572,64 +761,6 @@ export default function AgentRegistry() {
           </div>
         </TabsContent>
 
-        <TabsContent value="routing" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Routing Intelligence</CardTitle>
-              <CardDescription>Agent routing decisions, confidence scores, and optimization opportunities</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">94.2%</div>
-                    <div className="text-sm text-muted-foreground">Routing Accuracy</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">45ms</div>
-                    <div className="text-sm text-muted-foreground">Avg Routing Time</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">3.2</div>
-                    <div className="text-sm text-muted-foreground">Avg Alternatives</div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Recent Routing Decisions</h3>
-                  <div className="space-y-2">
-                    {[
-                      { query: "optimize my API performance", agent: "agent-performance", confidence: 92, time: "45ms" },
-                      { query: "debug database connection issues", agent: "agent-debug-intelligence", confidence: 89, time: "38ms" },
-                      { query: "create a React component", agent: "agent-frontend-developer", confidence: 95, time: "42ms" },
-                      { query: "write unit tests", agent: "agent-testing", confidence: 87, time: "51ms" },
-                      { query: "design microservices architecture", agent: "agent-api-architect", confidence: 91, time: "39ms" }
-                    ].map((decision, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium">{decision.query}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Routed to {decision.agent} with {decision.confidence}% confidence
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="text-sm font-medium">{decision.confidence}%</div>
-                            <div className="text-xs text-muted-foreground">Confidence</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-medium">{decision.time}</div>
-                            <div className="text-xs text-muted-foreground">Time</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* Agent Detail Modal */}
@@ -637,6 +768,13 @@ export default function AgentRegistry() {
         agent={selectedAgent}
         isOpen={!!selectedAgent}
         onClose={() => setSelectedAgent(null)}
+      />
+
+      <AgentExecutionTraceModal
+        isOpen={!!selectedExecution}
+        onClose={() => setSelectedExecution(null)}
+        correlationId={selectedExecution?.correlationId || ''}
+        agentName={selectedExecution?.agentName || ''}
       />
     </div>
   );

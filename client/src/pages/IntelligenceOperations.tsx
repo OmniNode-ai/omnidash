@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils";
 import { MockDataBadge } from "@/components/MockDataBadge";
 import { ensureTimeSeries, ensureArray } from "@/components/mockUtils";
+import { agentOperationsSource } from "@/lib/data-sources";
 
 interface ManifestInjectionHealth {
   successRate: number;
@@ -184,17 +185,16 @@ export default function IntelligenceOperations() {
     refetchInterval: 60000, // Refetch every 60 seconds
   });
 
-  // Fetch operations per minute data (updated via WebSocket)
-  const { data: operationsData, isLoading: operationsLoading } = useQuery<OperationsPerMinute[]>({
-    queryKey: [`http://localhost:3000/api/intelligence/metrics/operations-per-minute?timeWindow=${timeRange}`],
-    refetchInterval: 60000, // Refetch every 60 seconds
+  // Use data source for all operations data (includes transformations)
+  const { data: operationsSourceData, isLoading: operationsSourceLoading } = useQuery({
+    queryKey: ['agent-operations-full', timeRange],
+    queryFn: () => agentOperationsSource.fetchAll(timeRange),
+    refetchInterval: 60000,
   });
 
-  // Fetch quality impact data (updated via WebSocket)
-  const { data: qualityImpactData, isLoading: qualityLoading } = useQuery<QualityImpact[]>({
-    queryKey: [`http://localhost:3000/api/intelligence/metrics/quality-impact?timeWindow=${timeRange}`],
-    refetchInterval: 60000, // Refetch every 60 seconds
-  });
+  // Keep old queries for now but they're replaced by operationsSourceData
+  const operationsData = null; // Deprecated - use operationsSourceData
+  const qualityImpactData = null; // Deprecated - use operationsSourceData
 
   // Fetch recent actions as fallback if WebSocket hasn't provided data yet
   const { data: recentActionsData } = useQuery<AgentAction[]>({
@@ -217,63 +217,21 @@ export default function IntelligenceOperations() {
     }
   }, [recentActionsData]);
 
-  // Transform operations data for chart (aggregate by time period)
-  const chartDataRaw = operationsData
-    ? Array.from(
-        operationsData.reduce((acc, item) => {
-          const time = new Date(item.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-          const existing = acc.get(time) || 0;
-          acc.set(time, existing + item.operationsPerMinute);
-          return acc;
-        }, new Map<string, number>())
-      )
-        .map(([time, value]) => ({ time, value }))
-        .reverse()
-    : [];
+  // Extract transformed data from source
+  const chartDataRaw = operationsSourceData?.chartData || [];
   const { data: chartData, isMock: isChartMock } = ensureTimeSeries(chartDataRaw, 20, 10);
 
-  // Transform quality data for chart
-  const qualityDataRaw = qualityImpactData
-    ? qualityImpactData.map(item => ({
-        time: new Date(item.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        value: item.avgQualityImprovement * 100,
-      })).reverse()
-    : [];
+  const qualityDataRaw = operationsSourceData?.qualityChartData || [];
   const { data: qualityData, isMock: isQualityMock } = ensureTimeSeries(qualityDataRaw, 2, 1.5);
 
-  // Derive operations status from operationsData (group by action type)
-  const operations = operationsData
-    ? Array.from(
-        operationsData.reduce((acc, item) => {
-          const name = item.actionType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-          const existing = acc.get(item.actionType) || { name, count: 0, totalOps: 0 };
-          existing.count += 1;
-          existing.totalOps += item.operationsPerMinute;
-          acc.set(item.actionType, existing);
-          return acc;
-        }, new Map<string, { name: string; count: number; totalOps: number }>())
-      )
-        .map(([id, data], index) => ({
-          id,
-          name: data.name,
-          status: data.totalOps > 0 ? 'running' : 'idle',
-          count: Math.round(data.totalOps),
-          avgTime: 'N/A', // Not available from this endpoint
-        }))
-    : [];
-
-  // Calculate aggregated metrics from real data
-  const totalOperations = operations.length;
-  const runningOperations = operations.filter(op => op.status === 'running').length;
-  const totalOpsPerMinute = operationsData
-    ? operationsData.reduce((sum, item) => sum + item.operationsPerMinute, 0)
-    : 0;
-  const avgQualityImprovement = qualityImpactData && qualityImpactData.length > 0
-    ? qualityImpactData.reduce((sum, item) => sum + item.avgQualityImprovement, 0) / qualityImpactData.length
-    : 0;
+  const operations = operationsSourceData?.operations || [];
+  const totalOperations = operationsSourceData?.totalOperations || 0;
+  const runningOperations = operationsSourceData?.runningOperations || 0;
+  const totalOpsPerMinute = operationsSourceData?.totalOpsPerMinute || 0;
+  const avgQualityImprovement = operationsSourceData?.avgQualityImprovement || 0;
 
   // Loading state
-  const isLoading = operationsLoading || qualityLoading;
+  const isLoading = operationsSourceLoading;
 
   return (
     <div className="space-y-6">

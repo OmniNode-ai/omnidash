@@ -34,10 +34,65 @@ export default function CorrelationTrace() {
   const [correlationId, setCorrelationId] = useState("");
   const [searchId, setSearchId] = useState<string | null>(null);
 
-  // Fetch trace data when searchId changes
+  // Fetch trace data when searchId changes, or show sample trace when no search ID
   const { data: traceData, isLoading, error } = useQuery<TraceResponse>({
-    queryKey: [`/api/intelligence/trace/${searchId}`],
-    enabled: !!searchId && searchId.length > 0,
+    queryKey: [`/api/intelligence/trace/${searchId || 'sample'}`],
+    queryFn: async () => {
+      if (!searchId || searchId.length === 0) {
+        // Return preloaded 4-hop sample trace
+        const now = Date.now();
+        return {
+          correlationId: '550e8400-e29b-41d4-a716-446655440000',
+          events: [
+            {
+              id: '1',
+              eventType: 'routing',
+              timestamp: new Date(now - 4000).toISOString(),
+              agentName: 'Router',
+              details: { decision: 'polymorphic-agent', confidence: 0.94 },
+              durationMs: 45
+            },
+            {
+              id: '2',
+              eventType: 'manifest',
+              timestamp: new Date(now - 3950).toISOString(),
+              agentName: 'Polymorphic Agent',
+              details: { patternId: 'auth-pattern', injected: true },
+              durationMs: 12
+            },
+            {
+              id: '3',
+              eventType: 'action',
+              timestamp: new Date(now - 3900).toISOString(),
+              agentName: 'Polymorphic Agent',
+              details: { action: 'code-generation', status: 'success' },
+              durationMs: 1200
+            },
+            {
+              id: '4',
+              eventType: 'action',
+              timestamp: new Date(now - 2700).toISOString(),
+              agentName: 'Code Reviewer',
+              details: { action: 'code-review', status: 'success' },
+              durationMs: 800
+            }
+          ],
+          summary: {
+            totalEvents: 4,
+            routingDecisions: 1,
+            actions: 2,
+            errors: 0,
+            totalDurationMs: 2057
+          }
+        };
+      }
+      // Try to fetch real trace
+      const response = await fetch(`/api/intelligence/trace/${searchId}`);
+      if (response.ok) {
+        return response.json();
+      }
+      throw new Error('Failed to fetch trace');
+    },
   });
 
   const handleSearch = () => {

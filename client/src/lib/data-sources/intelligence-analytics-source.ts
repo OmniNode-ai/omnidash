@@ -26,19 +26,41 @@ class IntelligenceAnalyticsDataSource {
         const agents = await response.json();
         if (Array.isArray(agents) && agents.length > 0) {
           const totalRequests = agents.reduce((sum, a) => sum + (a.totalRequests || 0), 0);
-          const avgRoutingTime = agents.reduce((sum, a) => sum + (a.avgRoutingTime || 0), 0) / agents.length;
-          const avgConfidence = agents.reduce((sum, a) => sum + (a.avgConfidence || 0), 0) / agents.length;
+          // Use weighted average for routing time based on request volume (more accurate)
+          const totalRequestsForAvg = agents.reduce((sum, a) => sum + (a.totalRequests || 0), 0);
+          const avgRoutingTime = totalRequestsForAvg > 0
+            ? agents.reduce((sum, a) => {
+                const weight = (a.totalRequests || 0) / totalRequestsForAvg;
+                return sum + ((a.avgRoutingTime || 0) * weight);
+              }, 0)
+            : 0;
+          // Calculate weighted average success rate (based on request volume, not simple average)
+          // Detect format: if any value > 1, assume percentage format, else decimal (0-1)
+          // Check both successRate and avgConfidence for format detection
+          const sampleRate = agents.find(a => (a.successRate != null) || (a.avgConfidence != null));
+          const sampleValue = sampleRate?.successRate ?? sampleRate?.avgConfidence;
+          const isDecimalFormat = sampleValue != null && sampleValue <= 1;
+          
+          const avgSuccessRate = totalRequestsForAvg > 0
+            ? Math.max(0, Math.min(100, agents.reduce((sum, a) => {
+                const weight = (a.totalRequests || 0) / totalRequestsForAvg;
+                const rate = (a.successRate != null) ? a.successRate : (a.avgConfidence || 0);
+                // Convert decimal to percentage if needed
+                const rateAsPercentage = isDecimalFormat ? rate * 100 : rate;
+                return sum + (rateAsPercentage * weight);
+              }, 0)))
+            : 0;
           
           return {
             data: {
               totalQueries: totalRequests,
               avgResponseTime: avgRoutingTime,
-              successRate: avgConfidence * 100,
-              fallbackRate: (1 - avgConfidence) * 100,
+              successRate: avgSuccessRate, // Clamped to 0-100
+              fallbackRate: Math.max(0, 100 - avgSuccessRate), // Ensure non-negative
               costPerQuery: 0.001,
               totalCost: totalRequests * 0.001,
-              qualityScore: avgConfidence * 10,
-              userSatisfaction: avgConfidence * 10,
+              qualityScore: (avgSuccessRate / 100) * 10, // Convert back to 0-10 scale
+              userSatisfaction: (avgSuccessRate / 100) * 10, // Convert back to 0-10 scale
             },
             isMock: false,
           };
@@ -48,13 +70,13 @@ class IntelligenceAnalyticsDataSource {
       console.warn('Failed to fetch intelligence metrics, using mock data', err);
     }
 
-    // Mock data fallback
+    // Mock data fallback - aligned with YC demo script
     return {
       data: {
         totalQueries: 15420,
-        avgResponseTime: 245,
-        successRate: 94.2,
-        fallbackRate: 5.8,
+        avgResponseTime: 1200, // 1.2s = 1200ms from script
+        successRate: 94.0, // 94% from script
+        fallbackRate: 6.0,
         costPerQuery: 0.0012,
         totalCost: 18.50,
         qualityScore: 8.7,
@@ -119,6 +141,121 @@ class IntelligenceAnalyticsDataSource {
     };
   }
 
+  async fetchAgentPerformance(timeRange: string): Promise<{ data: AgentPerformance[]; isMock: boolean }> {
+    try {
+      const response = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
+      if (response.ok) {
+        const agents = await response.json();
+        if (Array.isArray(agents) && agents.length > 0) {
+          // Detect format for success rate
+          const sampleAgent = agents.find((a: any) => (a.successRate != null) || (a.avgConfidence != null));
+          const sampleValue = sampleAgent?.successRate ?? sampleAgent?.avgConfidence;
+          const isDecimalFormat = sampleValue != null && sampleValue <= 1;
+
+          const performance: AgentPerformance[] = agents.map((agent: any) => {
+            const rawSuccessRate = agent.successRate ?? agent.avgConfidence ?? 0;
+            const successRate = isDecimalFormat ? rawSuccessRate * 100 : rawSuccessRate;
+            const clampedSuccessRate = Math.max(0, Math.min(100, successRate));
+            
+            return {
+              agentId: agent.agent || 'unknown',
+              agentName: agent.agent?.replace('agent-', '').replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown Agent',
+              totalRuns: agent.totalRequests || 0,
+              avgResponseTime: agent.avgRoutingTime || 0,
+              successRate: clampedSuccessRate,
+              efficiency: clampedSuccessRate, // Use success rate as efficiency proxy
+              avgQualityScore: (agent.avgConfidence || 0) * 10,
+              popularity: agent.totalRequests || 0,
+              costPerSuccess: 0.001 * (agent.avgTokens || 1000) / 1000, // Estimate
+              p95Latency: (agent.avgRoutingTime || 0) * 1.5, // Estimate p95 as 1.5x avg
+            };
+          });
+
+          return { data: performance, isMock: false };
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch agent performance, using mock data', err);
+    }
+
+    // Mock data fallback
+    return {
+      data: [
+        {
+          agentId: 'polymorphic-agent',
+          agentName: 'Polymorphic Agent',
+          totalRuns: 456,
+          avgResponseTime: 1200,
+          successRate: 95.2,
+          efficiency: 95.2,
+          avgQualityScore: 8.9,
+          popularity: 456,
+          costPerSuccess: 0.045,
+          p95Latency: 1450,
+        },
+        {
+          agentId: 'code-reviewer',
+          agentName: 'Code Reviewer',
+          totalRuns: 234,
+          avgResponseTime: 1800,
+          successRate: 92.5,
+          efficiency: 92.5,
+          avgQualityScore: 8.5,
+          popularity: 234,
+          costPerSuccess: 0.062,
+          p95Latency: 2100,
+        },
+        {
+          agentId: 'test-generator',
+          agentName: 'Test Generator',
+          totalRuns: 189,
+          avgResponseTime: 3200,
+          successRate: 89.0,
+          efficiency: 89.0,
+          avgQualityScore: 8.2,
+          popularity: 189,
+          costPerSuccess: 0.051,
+          p95Latency: 3800,
+        },
+      ],
+      isMock: true,
+    };
+  }
+
+  async fetchSavingsMetrics(timeRange: string): Promise<{ data: SavingsMetrics; isMock: boolean }> {
+    // Try to fetch from API first
+    try {
+      const response = await fetch(`/api/savings/metrics?timeRange=${timeRange}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && typeof data === 'object') {
+          return { data, isMock: false };
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch savings metrics, using mock data', err);
+    }
+
+    // Mock data fallback
+    return {
+      data: {
+        totalSavings: 45000,
+        monthlySavings: 15000,
+        weeklySavings: 3750,
+        dailySavings: 536,
+        intelligenceRuns: 15420,
+        baselineRuns: 23500,
+        avgTokensPerRun: 3200,
+        avgComputePerRun: 1.2,
+        costPerToken: 0.000002,
+        costPerCompute: 0.05,
+        efficiencyGain: 34.0,
+        timeSaved: 128,
+      },
+      isMock: true,
+    };
+  }
+
   private formatTimeAgo(timestamp: string): string {
     const now = Date.now();
     const then = new Date(timestamp).getTime();
@@ -133,6 +270,21 @@ class IntelligenceAnalyticsDataSource {
     return `${diffDays}d ago`;
   }
 }
+
+export interface AgentPerformance {
+  agentId: string;
+  agentName: string;
+  totalRuns: number;
+  avgResponseTime: number;
+  successRate: number;
+  efficiency: number;
+  avgQualityScore: number;
+  popularity: number;
+  costPerSuccess?: number;
+  p95Latency?: number;
+}
+
+export type { SavingsMetrics } from './intelligence-savings-source';
 
 export const intelligenceAnalyticsSource = new IntelligenceAnalyticsDataSource();
 

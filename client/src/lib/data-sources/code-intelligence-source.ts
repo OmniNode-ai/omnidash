@@ -111,6 +111,44 @@ class CodeIntelligenceDataSource {
     };
   }
 
+  async fetchPatternSummary(): Promise<{ data: PatternSummary; isMock: boolean }> {
+    try {
+      const response = await fetch(`/api/intelligence/patterns/summary`);
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          data: {
+            totalPatterns: data.totalPatterns || 0,
+            activePatterns: data.activeLearningCount || 0,
+            qualityScore: (data.avgQualityScore || 0) * 10,
+            usageCount: 0,
+            recentDiscoveries: data.newPatternsToday || 0,
+            topPatterns: [],
+          },
+          isMock: false,
+        };
+      }
+    } catch (err) {
+      console.warn('Failed to fetch pattern summary, using mock data', err);
+    }
+
+    return {
+      data: {
+        totalPatterns: 125,
+        activePatterns: 98,
+        qualityScore: 8.5,
+        usageCount: 1247,
+        recentDiscoveries: 3,
+        topPatterns: [
+          { id: '1', name: 'OAuth Authentication', category: 'Security', quality: 0.95, usage: 45 },
+          { id: '2', name: 'Database Connection Pool', category: 'Data', quality: 0.92, usage: 32 },
+          { id: '3', name: 'Error Handling Middleware', category: 'Error', quality: 0.89, usage: 28 },
+        ],
+      },
+      isMock: true,
+    };
+  }
+
   async fetchAll(timeRange: string): Promise<CodeIntelligenceData> {
     const [codeAnalysis, compliance] = await Promise.all([
       this.fetchCodeAnalysis(timeRange),
@@ -123,6 +161,21 @@ class CodeIntelligenceDataSource {
       isMock: codeAnalysis.isMock || compliance.isMock,
     };
   }
+}
+
+export interface PatternSummary {
+  totalPatterns: number;
+  activePatterns: number;
+  qualityScore: number;
+  usageCount: number;
+  recentDiscoveries: number;
+  topPatterns: Array<{
+    id: string;
+    name: string;
+    category: string;
+    quality: number;
+    usage: number;
+  }>;
 }
 
 export const codeIntelligenceSource = new CodeIntelligenceDataSource();

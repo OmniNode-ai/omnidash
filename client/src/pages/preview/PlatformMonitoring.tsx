@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { platformMonitoringSource } from "@/lib/data-sources";
+import type { SystemStatus, DeveloperMetrics, Incident } from "@/lib/data-sources/platform-monitoring-source";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,84 +40,23 @@ import SystemHealth from "./SystemHealth";
 import PlatformHealth from "../PlatformHealth";
 import DeveloperExperience from "../DeveloperExperience";
 
-// Mock data interfaces
-interface SystemStatus {
-  overall: "healthy" | "degraded" | "critical";
-  services: ServiceStatus[];
-  uptime: number;
-  lastIncident: string;
-  responseTime: number;
-}
-
-interface ServiceStatus {
-  name: string;
-  status: "healthy" | "degraded" | "critical" | "maintenance";
-  uptime: number;
-  responseTime: number;
-  lastCheck: string;
-  dependencies: string[];
-}
-
-interface DeveloperMetrics {
-  totalDevelopers: number;
-  activeDevelopers: number;
-  avgCommitsPerDay: number;
-  avgPullRequestsPerDay: number;
-  avgCodeReviewTime: number;
-  avgDeploymentTime: number;
-  codeQualityScore: number;
-  testCoverage: number;
-  bugResolutionTime: number;
-}
-
-interface Incident {
-  id: string;
-  title: string;
-  severity: "low" | "medium" | "high" | "critical";
-  status: "open" | "investigating" | "resolved" | "closed";
-  affectedServices: string[];
-  startTime: string;
-  endTime?: string;
-  description: string;
-  assignee?: string;
-}
+// Types imported from data source
+import type { ServiceStatus } from "@/lib/data-sources/platform-monitoring-source";
 
 export default function PlatformMonitoring() {
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("24h");
 
-  // API calls for system status
-  const { data: systemStatus, isLoading: statusLoading } = useQuery<SystemStatus>({
-    queryKey: ['system-status', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/health/status?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch system status');
-      return response.json();
-    },
-    refetchInterval: 30000, // Refetch every 30 seconds
-  });
-
-  const { data: developerMetrics, isLoading: devLoading } = useQuery<DeveloperMetrics>({
-    queryKey: ['developer-metrics', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/developer/metrics?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch developer metrics');
-      return response.json();
-    },
-    refetchInterval: 60000,
-  });
-
-  const { data: incidents, isLoading: incidentsLoading } = useQuery<Incident[]>({
-    queryKey: ['incidents', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/incidents?timeRange=${timeRange}`);
-      if (!response.ok) throw new Error('Failed to fetch incidents');
-      return response.json();
-    },
+  // Use centralized data source
+  const { data: monitoringData, isLoading } = useQuery({
+    queryKey: ['platform-monitoring', timeRange],
+    queryFn: () => platformMonitoringSource.fetchAll(timeRange),
     refetchInterval: 30000,
   });
 
-  const isLoading = statusLoading || devLoading || incidentsLoading;
+  const systemStatus = monitoringData?.systemStatus;
+  const developerMetrics = monitoringData?.developerMetrics;
+  const incidents = monitoringData?.incidents;
 
   const getStatusColor = (status: string) => {
     switch (status) {

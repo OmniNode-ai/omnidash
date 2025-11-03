@@ -12,56 +12,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Database, TrendingUp, Award, AlertTriangle } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchPatterns, type DiscoveredPattern } from "@/lib/api";
-
-// TypeScript interfaces for API responses
-interface PatternSummary {
-  totalPatterns: number;
-  newPatternsToday: number;
-  avgQualityScore: number;
-  activeLearningCount: number;
-}
-
-interface PatternTrend {
-  period: string;
-  manifestsGenerated: number;
-  avgPatternsPerManifest: number;
-  avgQueryTimeMs: number;
-}
-
-interface PatternPerformance {
-  generationSource: string;
-  totalManifests: number;
-  avgTotalMs: number;
-  avgPatterns: number;
-  fallbackCount: number;
-  avgPatternQueryMs: number;
-  avgInfraQueryMs: number;
-}
-
-interface QualityTrend {
-  period: string;
-  avgQuality: number;
-  manifestCount: number;
-}
-
-interface LanguageBreakdown {
-  language: string;
-  count: number;
-  percentage: number;
-}
-
-interface Pattern {
-  id: string;
-  name: string;
-  description: string;
-  quality: number;
-  usage: number;
-  trend: 'up' | 'down' | 'stable';
-  trendPercentage: number; // Actual percentage change (e.g., +15, -5)
-  category: string;
-  language?: string | null;
-}
+import { patternLearningSource } from "@/lib/data-sources";
+import type {
+  DiscoveredPattern,
+  PatternSummary,
+  PatternTrend,
+  QualityTrend,
+  Pattern,
+  LanguageBreakdown,
+} from "@/lib/data-sources/pattern-learning-source";
 
 export default function PatternLearning() {
   const [selectedPattern, setSelectedPattern] = useState<any>(null);
@@ -85,38 +44,44 @@ export default function PatternLearning() {
 
   // Fetch pattern summary metrics with 30-second polling
   const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery<PatternSummary>({
-    queryKey: [`http://localhost:3000/api/intelligence/patterns/summary?timeWindow=${timeRange}`],
+    queryKey: ['patterns', 'summary', timeRange],
+    queryFn: () => patternLearningSource.fetchSummary(timeRange),
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Fetch pattern discovery trends with 60-second polling
   const { data: discoveryData, isLoading: discoveryLoading } = useQuery<PatternTrend[]>({
-    queryKey: [`http://localhost:3000/api/intelligence/patterns/trends?timeWindow=${timeRange}`],
+    queryKey: ['patterns', 'trends', timeRange],
+    queryFn: () => patternLearningSource.fetchTrends(timeRange),
     refetchInterval: 60000, // Refetch every 60 seconds
   });
 
   // Fetch pattern quality trends with 60-second polling
   const { data: qualityData, isLoading: qualityLoading } = useQuery<QualityTrend[]>({
-    queryKey: [`http://localhost:3000/api/intelligence/patterns/quality-trends?timeWindow=${timeRange}`],
+    queryKey: ['patterns', 'quality-trends', timeRange],
+    queryFn: () => patternLearningSource.fetchQualityTrends(timeRange),
     refetchInterval: 60000, // Refetch every 60 seconds
   });
 
   // Fetch pattern list with 30-second polling
   const { data: patterns, isLoading: patternsLoading, error: patternsError } = useQuery<Pattern[]>({
-    queryKey: [`http://localhost:3000/api/intelligence/patterns/list?limit=50&timeWindow=${timeRange}`],
+    queryKey: ['patterns', 'list', timeRange],
+    queryFn: () => patternLearningSource.fetchPatternList(50, timeRange),
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  // Live pattern discovery via Intelligence adapter (non-blocking)
-  const { data: liveDiscoveredPatterns, isLoading: liveDiscoverLoading, error: liveDiscoverError } = useQuery<DiscoveredPattern[]>({
-    queryKey: ["intelligence", "analysis", "patterns", { path: "node_*_effect.py", lang: "python", timeout: 8000 }],
-    queryFn: () => fetchPatterns({ path: "node_*_effect.py", lang: "python", timeout: 8000 }),
+  // Live pattern discovery via data source
+  const { data: discoveryResult, isLoading: liveDiscoverLoading, error: liveDiscoverError } = useQuery({
+    queryKey: ['patterns', 'discovery'],
+    queryFn: () => patternLearningSource.fetchDiscovery(8),
     refetchInterval: 60000,
   });
+  const liveDiscoveredPatterns = discoveryResult?.data;
 
   // Fetch language breakdown with 60-second polling
   const { data: languageData, isLoading: languageLoading } = useQuery<LanguageBreakdown[]>({
-    queryKey: [`http://localhost:3000/api/intelligence/patterns/by-language?timeWindow=${timeRange}`],
+    queryKey: ['patterns', 'language-breakdown', timeRange],
+    queryFn: () => patternLearningSource.fetchLanguageBreakdown(timeRange),
     refetchInterval: 60000, // Refetch every 60 seconds
   });
 
@@ -237,16 +202,9 @@ export default function PatternLearning() {
 
       <div className="grid grid-cols-2 gap-6">
         <div>
-          {(!discoveryData || discoveryData.length === 0) && !discoveryLoading && (
-            <MockDataBadge className="mb-2" />
-          )}
           <RealtimeChart
             title="Pattern Discovery Rate"
-            data={(discoveryData && discoveryData.length > 0 ? discoveryData : [
-              { period: new Date().toISOString(), avgPatternsPerManifest: 1.2 },
-              { period: new Date(Date.now() - 3600000).toISOString(), avgPatternsPerManifest: 0.8 },
-              { period: new Date(Date.now() - 2*3600000).toISOString(), avgPatternsPerManifest: 1.6 },
-            ]).map(d => ({
+            data={(discoveryData || []).map(d => ({
               time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
               value: d.avgPatternsPerManifest
             }))}
@@ -280,53 +238,16 @@ export default function PatternLearning() {
             )}
           </div>
 
-          {(() => {
-            // Check if quality data is empty or missing
-            const hasNoData = !qualityData || qualityData.length === 0;
-
-            // Check if quality data is flat (all values close to 0.85)
-            const isFlat = qualityData && qualityData.length > 0 &&
-              qualityData.every(d => Math.abs(d.avgQuality - 0.85) < 0.01);
-
-            return (
-              <>
-                {hasNoData && !qualityLoading && (
-                  <Alert className="border-status-warning/50 bg-status-warning/10">
-                    <AlertTriangle className="h-4 w-4 text-status-warning" />
-                    <AlertDescription className="text-status-warning">
-                      No quality score data available yet. Quality tracking service may not be configured or has no historical data.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                {isFlat && !hasNoData && (
-                  <Alert className="border-status-warning/50 bg-status-warning/10">
-                    <AlertTriangle className="h-4 w-4 text-status-warning" />
-                    <AlertDescription className="text-status-warning">
-                      Quality tracking not yet enabled. Scores shown are defaults (0.85).
-                      Backend update in progress to provide real quality metrics.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <div>
-                  {(!qualityData || qualityData.length === 0) && !qualityLoading && (
-                    <MockDataBadge className="mb-2" />
-                  )}
-                  <RealtimeChart
-                    title="Average Quality Score"
-                    data={(qualityData && qualityData.length > 0 ? qualityData : [
-                      { period: new Date().toISOString(), avgQuality: 0.86 },
-                      { period: new Date(Date.now() - 3600000).toISOString(), avgQuality: 0.84 },
-                      { period: new Date(Date.now() - 2*3600000).toISOString(), avgQuality: 0.85 },
-                    ]).map(d => ({
-                      time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                      value: d.avgQuality * 100
-                    }))}
-                    color="hsl(var(--chart-3))"
-                  />
-                </div>
-              </>
-            );
-          })()}
+          <div>
+            <RealtimeChart
+              title="Average Quality Score"
+              data={(qualityData || []).map(d => ({
+                time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                value: d.avgQuality * 100
+              }))}
+              color="hsl(var(--chart-3))"
+            />
+          </div>
         </div>
       </div>
 
@@ -339,11 +260,7 @@ export default function PatternLearning() {
           </div>
         ) : (
           <div className="space-y-4">
-            {((languageData && languageData.length > 0) ? languageData : [
-              { language: 'python', count: 686, percentage: 66.5 },
-              { language: 'typescript', count: 287, percentage: 27.8 },
-              { language: 'rust', count: 58, percentage: 5.7 },
-            ]).map((lang, index) => {
+            {(languageData || []).map((lang, index) => {
               // Color palette for languages
               const colors = [
                 'hsl(var(--chart-1))',
@@ -354,12 +271,8 @@ export default function PatternLearning() {
               ];
               const color = colors[index % colors.length];
 
-              const isMock = !languageData || languageData.length === 0;
               return (
                 <div key={lang.language} className="space-y-2">
-                  {isMock && index === 0 && (
-                    <MockDataBadge className="mb-2" />
-                  )}
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <div
