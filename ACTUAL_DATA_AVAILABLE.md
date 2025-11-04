@@ -1,14 +1,16 @@
 # Actual Data Available in PostgreSQL
 
-**Generated**: 2025-11-03
-**Database**: `omninode_bridge` at `192.168.86.200:5436`
-**Note**: MCP functionality is no longer available.
+**Generated**: 2025-11-03 (Historical Snapshot)
+**Database**: `omninode_bridge` at `<POSTGRES_HOST>:<POSTGRES_PORT>`
+**Configuration**: See `.env` file for actual database connection details
+
+> **⚠️ HISTORICAL DOCUMENT**: This is a snapshot from 2025-11-03. Database schema and data have evolved. Check current schema with `\dt` in psql or review `shared/intelligence-schema.ts` for latest table definitions.
 
 ---
 
 ## ⚠️ Reality Check
 
-The previous research reports described aspirational schemas. This document shows **what actually exists** in the database right now.
+This document captures what existed in the database at the time of audit (2025-11-03). The previous research reports described aspirational schemas. This shows **what actually existed** at that time.
 
 ---
 

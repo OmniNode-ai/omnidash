@@ -252,7 +252,8 @@
 
 **Database Access**:
 ```bash
-PGPASSWORD='omninode_remote_2024_secure' \
+# Replace <your_password> with actual password from .env file
+PGPASSWORD='<your_password>' \
   psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge
 ```
 

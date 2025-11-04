@@ -54,7 +54,7 @@ export function AlertPill({ level, message, onDismiss, className }: AlertPillPro
       aria-live="polite"
     >
       <Icon className={cn("w-4 h-4 flex-shrink-0", style.icon)} aria-hidden="true" />
-      <span className="truncate max-w-[400px]">{message}</span>
+      <span className="truncate max-w-[400px]" title={message}>{message}</span>
       {onDismiss && (
         <button
           onClick={onDismiss}

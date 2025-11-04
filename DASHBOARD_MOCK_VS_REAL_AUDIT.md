@@ -1,14 +1,16 @@
 # Dashboard Mock vs Real Data Audit
 
-**Generated**: 2025-11-03
+**Generated**: 2025-11-03 (Historical Documentation)
 **Database**: PostgreSQL at 192.168.86.200:5436 (omninode_bridge)
 **Server**: Running on PORT 3000
+
+> **⚠️ HISTORICAL DOCUMENT**: This audit was conducted on 2025-11-03. Some issues described here may have been resolved. For current configuration, always check `.env` file and recent commit history.
 
 ---
 
 ## Executive Summary
 
-**CRITICAL FINDING**: Database connection is failing due to environment variable mismatch.
+**NOTE**: The database connection issue described below was identified on 2025-11-03 and addressed in subsequent commits.
 
 **Root Cause**:
 - `.env` file uses `TRACEABILITY_DB_*` prefix for database configuration
@@ -33,15 +35,15 @@ TRACEABILITY_DB_HOST=192.168.86.200
 TRACEABILITY_DB_PORT=5436
 TRACEABILITY_DB_NAME=omninode_bridge
 TRACEABILITY_DB_USER=postgres
-TRACEABILITY_DB_PASSWORD=omninode_remote_2024_secure
-TRACEABILITY_DB_URL=postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge
+TRACEABILITY_DB_PASSWORD=<your_secure_password>
+TRACEABILITY_DB_URL=postgresql://postgres:<your_secure_password>@192.168.86.200:5436/omninode_bridge
 ```
 
 **Expected by code** (`server/storage.ts:49-51`):
 ```typescript
 const intelligenceConnectionString =
   process.env.DATABASE_URL ||
-  `postgresql://${process.env.POSTGRES_USER || 'postgres'}:${process.env.POSTGRES_PASSWORD || 'omninode-bridge-postgres-dev-2024'}@${process.env.POSTGRES_HOST || '192.168.86.200'}:${process.env.POSTGRES_PORT || '5436'}/${process.env.POSTGRES_DATABASE || 'omninode_bridge'}`;
+  `postgresql://${process.env.POSTGRES_USER || 'postgres'}:${process.env.POSTGRES_PASSWORD || '<default_password>'}@${process.env.POSTGRES_HOST || '192.168.86.200'}:${process.env.POSTGRES_PORT || '5436'}/${process.env.POSTGRES_DATABASE || 'omninode_bridge'}`;
 ```
 
 **Alert Check** (`server/alert-routes.ts:73-85`):
@@ -70,7 +72,7 @@ POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=omninode_remote_2024_secure
+POSTGRES_PASSWORD=<your_secure_password>
 ```
 
 **Option 2: Update server/storage.ts to use TRACEABILITY_DB_* variables**
@@ -512,10 +514,10 @@ POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=omninode_remote_2024_secure
+POSTGRES_PASSWORD=<your_secure_password>
 
 # Option 2: Use DATABASE_URL (takes precedence)
-DATABASE_URL=postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge
+DATABASE_URL=postgresql://postgres:<your_secure_password>@192.168.86.200:5436/omninode_bridge
 ```
 
 ### Optional Features

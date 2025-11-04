@@ -152,16 +152,17 @@ Latency: <200ms
 
 ### Environment Variables
 
-Create `.env.local` in omnidash root:
+Create `.env` file in omnidash root (copy from `.env.example` and update values):
 
 ```bash
 # PostgreSQL Connection
-DATABASE_URL="postgresql://postgres:omninode-bridge-postgres-dev-2024@192.168.86.200:5436/omninode_bridge"
+# IMPORTANT: Replace <your_password> with actual password - never commit real passwords to git!
+DATABASE_URL="postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge"
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=omninode-bridge-postgres-dev-2024
+POSTGRES_PASSWORD=<your_password>
 
 # Kafka Connection
 KAFKA_BROKERS=192.168.86.200:9092
@@ -1177,7 +1178,7 @@ interface WebSocketMessage {
   timestamp: string;
 }
 
-export function useWebSocket(url: string = 'ws://localhost:5000/ws') {
+export function useWebSocket(url: string = 'ws://localhost:3000/ws') {
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
   const [connected, setConnected] = useState(false);
 
@@ -1604,7 +1605,7 @@ import { setupWebSocket } from './websocket';
     serveStatic(app);
   }
 
-  const port = parseInt(process.env.PORT || '5000', 10);
+  const port = parseInt(process.env.PORT || '3000', 10);
   server.listen({ port, host: "0.0.0.0" }, () => {
     log(`serving on port ${port}`);
   });
@@ -1617,7 +1618,7 @@ Add WebSocket hook to dashboard:
 // client/src/lib/useWebSocket.ts
 import { useEffect, useState } from 'react';
 
-export function useWebSocket(url: string = 'ws://localhost:5000/ws') {
+export function useWebSocket(url: string = 'ws://localhost:3000/ws') {
   const [lastMessage, setLastMessage] = useState<any>(null);
 
   useEffect(() => {

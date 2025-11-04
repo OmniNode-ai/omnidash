@@ -150,10 +150,12 @@ All endpoints include comprehensive error handling:
 
 1. **Environment Variables** (`.env` file):
 ```bash
-DATABASE_URL="postgresql://postgres:omninode-bridge-postgres-dev-2024@192.168.86.200:5436/omninode_bridge"
+# IMPORTANT: Replace <your_password> with actual password from .env file
+DATABASE_URL="postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge"
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge
+POSTGRES_PASSWORD=<your_password>
 ```
 
 2. **Network Access**: Server must be able to connect to 192.168.86.200:5436
@@ -171,16 +173,16 @@ Test endpoints with curl:
 
 ```bash
 # 1. Pattern Summary
-curl http://localhost:5000/api/intelligence/patterns/summary | jq
+curl http://localhost:3000/api/intelligence/patterns/summary | jq
 
 # 2. Pattern Trends (last 7 days)
-curl http://localhost:5000/api/intelligence/patterns/trends?timeWindow=7d | jq
+curl http://localhost:3000/api/intelligence/patterns/trends?timeWindow=7d | jq
 
 # 3. Pattern List
-curl http://localhost:5000/api/intelligence/patterns/list?limit=10 | jq
+curl http://localhost:3000/api/intelligence/patterns/list?limit=10 | jq
 
 # 4. Pattern Performance
-curl http://localhost:5000/api/intelligence/patterns/performance | jq
+curl http://localhost:3000/api/intelligence/patterns/performance | jq
 ```
 
 ### Expected Behavior

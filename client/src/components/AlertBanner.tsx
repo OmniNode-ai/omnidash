@@ -4,6 +4,7 @@ import { AlertPill } from "@/components/AlertPill";
 import { useDemoMode } from "@/contexts/DemoModeContext";
 
 interface Alert {
+  id: string;
   level: "critical" | "warning";
   message: string;
   timestamp: string;
@@ -12,13 +13,6 @@ interface Alert {
 interface AlertsResponse {
   alerts: Alert[];
 }
-
-// Helper function to generate stable unique key for alerts
-const getAlertKey = (alert: Alert): string => {
-  // Use timestamp as primary identifier combined with level and message substring
-  // This ensures uniqueness even with duplicate messages at different times
-  return `${alert.timestamp}-${alert.level}-${alert.message.substring(0, 50)}`;
-};
 
 export function AlertBanner() {
   const { isDemoMode } = useDemoMode();
@@ -35,7 +29,7 @@ export function AlertBanner() {
   const { data, isLoading } = useQuery<AlertsResponse>({
     queryKey: ["/api/intelligence/alerts/active"],
     refetchInterval: isDemoMode ? false : 30000, // 30 seconds
-    staleTime: 25000, // Consider stale after 25 seconds
+    staleTime: 30000, // Consider stale after 30 seconds
     enabled: !isDemoMode, // Disable in demo mode
   });
 
@@ -49,9 +43,9 @@ export function AlertBanner() {
     return null;
   }
 
-  // Filter out dismissed alerts using stable keys
+  // Filter out dismissed alerts using unique IDs
   const activeAlerts = data?.alerts?.filter(
-    (alert) => !dismissedAlerts.has(getAlertKey(alert))
+    (alert) => !dismissedAlerts.has(alert.id)
   ) || [];
 
   // Don't render if no active alerts
@@ -60,10 +54,9 @@ export function AlertBanner() {
   }
 
   const handleDismiss = (alert: Alert) => {
-    const key = getAlertKey(alert);
     setDismissedAlerts((prev) => {
       const newSet = new Set(prev);
-      newSet.add(key);
+      newSet.add(alert.id);
       return newSet;
     });
   };
@@ -72,7 +65,7 @@ export function AlertBanner() {
     <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       {activeAlerts.map((alert) => (
         <AlertPill
-          key={getAlertKey(alert)}
+          key={alert.id}
           level={alert.level}
           message={alert.message}
           onDismiss={() => handleDismiss(alert)}

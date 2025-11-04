@@ -273,20 +273,20 @@ export function useRoutingStrategies(timeWindow: string = '24h') {
 ### Verify Data Exists
 ```bash
 # Check routing strategies
-PGPASSWORD='omninode_remote_2024_secure' psql -h 192.168.86.200 -p 5436 \
+PGPASSWORD='<your_password>' psql -h 192.168.86.200 -p 5436 \
   -U postgres -d omninode_bridge \
   -c "SELECT routing_strategy, COUNT(*) FROM agent_routing_decisions \
       WHERE created_at > NOW() - INTERVAL '24 hours' \
       GROUP BY routing_strategy"
 
 # Check pattern languages
-PGPASSWORD='omninode_remote_2024_secure' psql -h 192.168.86.200 -p 5436 \
+PGPASSWORD='<your_password>' psql -h 192.168.86.200 -p 5436 \
   -U postgres -d omninode_bridge \
   -c "SELECT language, COUNT(*) FROM pattern_lineage_nodes \
       GROUP BY language ORDER BY count DESC"
 
 # Check document access
-PGPASSWORD='omninode_remote_2024_secure' psql -h 192.168.86.200 -p 5436 \
+PGPASSWORD='<your_password>' psql -h 192.168.86.200 -p 5436 \
   -U postgres -d omninode_bridge \
   -c "SELECT repository, COUNT(*) FROM document_metadata \
       GROUP BY repository"

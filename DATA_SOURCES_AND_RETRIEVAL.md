@@ -34,18 +34,19 @@ This guide summarizes live data sources (PostgreSQL, Kafka, Memgraph, Qdrant), r
 - Port: `5436` (external) → `5432` (container)
 - Database: `omninode_bridge`
 - User: `postgres`
-- Password: `omninode_remote_2024_secure` (from `.env`)
+- Password: See `.env` file (never commit passwords to git)
 
 **Environment Variables in `.env`:**
 ```bash
-DATABASE_URL=postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge
+# IMPORTANT: Replace <your_password> with actual password from .env file
+DATABASE_URL=postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=omninode_remote_2024_secure
-TRACEABILITY_DB_URL=postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge
-PG_DSN=postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge
+POSTGRES_PASSWORD=<your_password>
+TRACEABILITY_DB_URL=postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge
+PG_DSN=postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge
 ```
 
 **Usage:** Used via Drizzle ORM in `server/intelligence-routes.ts` and `shared/intelligence-schema.ts`.

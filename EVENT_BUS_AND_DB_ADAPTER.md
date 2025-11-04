@@ -201,7 +201,7 @@ POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=omninode_remote_2024_secure
+POSTGRES_PASSWORD=<your_password>  # Get from .env file - never commit passwords!
 
 # Feature Flags
 USE_EVENT_BUS_FOR_WRITES=false  # Enable when publisher is ready
