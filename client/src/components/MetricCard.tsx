@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,16 +13,34 @@ interface MetricCardProps {
   icon?: LucideIcon;
   className?: string;
   status?: "healthy" | "warning" | "error" | "offline";
+  tooltip?: string;
 }
 
-export function MetricCard({ label, value, trend, icon: Icon, className, status }: MetricCardProps) {
+export function MetricCard({ label, value, trend, icon: Icon, className, status, tooltip }: MetricCardProps) {
+  const labelContent = (
+    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+      {label}
+    </div>
+  );
+
   return (
     <Card className={cn("p-6", className)} data-testid={`card-metric-${label.toLowerCase().replace(/\s/g, '-')}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-            {label}
-          </div>
+          {tooltip ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {labelContent}
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            labelContent
+          )}
           <div className="text-4xl font-bold font-mono">
             {value}
           </div>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Tight viewBox with minimal padding -->
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="46" fill="none" stroke="url(#g)" stroke-width="8"/>
+  <!-- inner ring -->
+  <circle cx="50" cy="50" r="26" fill="none" stroke="url(#g)" stroke-width="4"/>
+  <!-- nodes/dots around the ring -->
+  <g fill="#e2f7f5">
+    <circle cx="50" cy="12" r="2.6"/>
+    <circle cx="78" cy="22" r="2.6"/>
+    <circle cx="88" cy="50" r="2.6"/>
+    <circle cx="78" cy="78" r="2.6"/>
+    <circle cx="50" cy="88" r="2.6"/>
+    <circle cx="22" cy="78" r="2.6"/>
+    <circle cx="12" cy="50" r="2.6"/>
+    <circle cx="22" cy="22" r="2.6"/>
+  </g>
+</svg>
+

@@ -17,16 +17,16 @@ interface RealtimeChartProps {
   height?: number;
 }
 
-export function RealtimeChart({ 
-  title, 
-  data, 
-  dataKey = "value", 
+export function RealtimeChart({
+  title,
+  data,
+  dataKey = "value",
   color = "hsl(var(--chart-1))",
   showArea = false,
   height = 320
 }: RealtimeChartProps) {
   const ChartComponent = showArea ? AreaChart : LineChart;
-  const DataComponent = showArea ? Area : Line;
+  const DataComponent = (showArea ? Area : Line) as React.ComponentType<any>;
 
   return (
     <Card className="p-6" data-testid={`chart-${title.toLowerCase().replace(/\s/g, '-')}`}>
