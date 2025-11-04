@@ -5,19 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Code, 
-  Zap, 
-  Download, 
-  Eye, 
-  FileText, 
-  Clock, 
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  TrendingUp,
-  Target,
-  Layers
+import {
+  Code,
+  Zap,
+  Download
 } from "lucide-react";
 
 interface DuplicateFile {
@@ -57,16 +48,6 @@ interface DuplicateDetailModalProps {
 
 export function DuplicateDetailModal({ duplicate, isOpen, onClose }: DuplicateDetailModalProps) {
   if (!duplicate) return null;
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "low": return "text-green-500";
-      case "medium": return "text-yellow-500";
-      case "high": return "text-red-500";
-      case "critical": return "text-red-600";
-      default: return "text-gray-500";
-    }
-  };
 
   const getSeverityBadgeVariant = (severity: string) => {
     switch (severity) {

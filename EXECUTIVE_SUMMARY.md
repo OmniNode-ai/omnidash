@@ -252,7 +252,8 @@
 
 **Database Access**:
 ```bash
-PGPASSWORD='REDACTED_PASSWORD_1' \
+# Replace <your_password> with actual password from .env file
+PGPASSWORD='<your_password>' \
   psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge
 ```
 

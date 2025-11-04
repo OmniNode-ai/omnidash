@@ -3159,6 +3159,244 @@ intelligenceRouter.get('/services/health', async (req, res) => {
   }
 });
 
+// ============================================================================
+// Drill-Down Detail Endpoints
+// ============================================================================
+
+/**
+ * GET /api/intelligence/agents/:agentName/details
+ * Returns detailed information about a specific agent
+ *
+ * Response format:
+ * {
+ *   name: string,
+ *   status: "active" | "idle" | "error",
+ *   successRate: number,
+ *   responseTime: number,
+ *   tasksCompleted: number,
+ *   currentTask: string | null,
+ *   recentActivity: Array<{timestamp, description}>
+ * }
+ */
+intelligenceRouter.get('/agents/:agentName/details', async (req, res) => {
+  try {
+    const { agentName } = req.params;
+    const timeWindow = (req.query.timeWindow as string) || '24h';
+
+    // Get agent metrics
+    const metrics = eventConsumer.getAgentMetrics();
+    const agentMetric = metrics.find(m => m.agent === agentName);
+
+    if (!agentMetric) {
+      return res.status(404).json({
+        error: 'Agent not found',
+        message: `No data found for agent: ${agentName}`
+      });
+    }
+
+    // Get recent actions for this agent
+    const actions = eventConsumer.getActionsByAgent(agentName, timeWindow);
+
+    // Calculate metrics
+    const totalActions = actions.length;
+    const successfulActions = actions.filter(a => a.status === 'success').length;
+    const successRate = totalActions > 0 ? (successfulActions / totalActions) * 100 : 0;
+
+    // Get average response time
+    const actionDurations = actions.filter(a => a.duration).map(a => a.duration!);
+    const avgResponseTime = actionDurations.length > 0
+      ? actionDurations.reduce((sum, d) => sum + d, 0) / actionDurations.length
+      : 0;
+
+    // Determine current status
+    const recentActions = actions.slice(0, 5);
+    const hasRecentErrors = recentActions.some(a => a.status === 'error');
+    const status = hasRecentErrors ? 'error' : (totalActions > 0 ? 'active' : 'idle');
+
+    // Get current task (most recent action)
+    const currentAction = actions[0];
+    const currentTask = currentAction?.actionType || null;
+
+    // Format recent activity
+    const recentActivity = recentActions.map(action => ({
+      id: action.id,
+      timestamp: action.timestamp,
+      description: `${action.actionType}: ${action.actionName || 'Unknown'}${action.status === 'error' ? ' (failed)' : ''}`
+    }));
+
+    const response = {
+      name: agentName,
+      status,
+      successRate: Math.round(successRate * 100) / 100,
+      responseTime: Math.round(avgResponseTime),
+      tasksCompleted: totalActions,
+      currentTask,
+      recentActivity,
+      metrics: {
+        totalRequests: agentMetric.totalRequests,
+        avgConfidence: agentMetric.avgConfidence,
+        avgRoutingTime: agentMetric.avgRoutingTime,
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching agent details:', error);
+    res.status(500).json({
+      error: 'Failed to fetch agent details',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/intelligence/patterns/:patternId/details
+ * Returns detailed information about a specific pattern
+ *
+ * Response format:
+ * {
+ *   id: string,
+ *   name: string,
+ *   quality: number,
+ *   usage: number,
+ *   category: string,
+ *   description: string,
+ *   trend: number,
+ *   usageExamples: Array<{project, module}>
+ * }
+ */
+intelligenceRouter.get('/patterns/:patternId/details', async (req, res) => {
+  try {
+    const { patternId } = req.params;
+
+    // Query pattern from database
+    const pattern = await intelligenceDb
+      .select()
+      .from(patternLineageNodes)
+      .where(eq(patternLineageNodes.id, patternId))
+      .limit(1);
+
+    if (!pattern || pattern.length === 0) {
+      return res.status(404).json({
+        error: 'Pattern not found',
+        message: `No pattern found with ID: ${patternId}`
+      });
+    }
+
+    const patternData = pattern[0];
+
+    // Get quality metrics for this pattern
+    const qualityMetrics = await intelligenceDb
+      .select()
+      .from(patternQualityMetrics)
+      .where(eq(patternQualityMetrics.patternId, patternId))
+      .orderBy(desc(patternQualityMetrics.createdAt))
+      .limit(10);
+
+    // Calculate quality score
+    const qualityScore = qualityMetrics.length > 0
+      ? qualityMetrics[0].qualityScore
+      : 0;
+
+    // Calculate trend (compare recent vs older quality)
+    let trend = 0;
+    if (qualityMetrics.length >= 2) {
+      const recentAvg = qualityMetrics.slice(0, 5).reduce((sum, m) => sum + (m.qualityScore || 0), 0) / Math.min(5, qualityMetrics.length);
+      const olderAvg = qualityMetrics.slice(5).reduce((sum, m) => sum + (m.qualityScore || 0), 0) / Math.max(1, qualityMetrics.length - 5);
+      trend = recentAvg - olderAvg;
+    }
+
+    // Get usage examples from manifests
+    const usageExamples = await intelligenceDb
+      .select({
+        project: agentManifestInjections.contextHash,
+        module: agentManifestInjections.injectionPoint,
+      })
+      .from(agentManifestInjections)
+      .where(sql`${agentManifestInjections.discoveredPatterns}::text LIKE '%${sql.raw(patternId)}%'`)
+      .limit(10);
+
+    const response = {
+      id: patternData.id,
+      name: patternData.patternName || 'Unknown Pattern',
+      quality: qualityScore || 0,
+      usage: patternData.usageCount || 0,
+      category: patternData.patternCategory || 'uncategorized',
+      description: patternData.description || '',
+      trend: Math.round(trend * 100) / 100,
+      usageExamples: usageExamples.map(ex => ({
+        id: ex.project,
+        project: ex.project?.substring(0, 8) || 'Unknown',
+        module: ex.module || 'Unknown'
+      }))
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching pattern details:', error);
+    res.status(500).json({
+      error: 'Failed to fetch pattern details',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/intelligence/services/:serviceName/details
+ * Returns detailed health information about a specific service
+ *
+ * Response format:
+ * {
+ *   name: string,
+ *   status: "healthy" | "degraded" | "down",
+ *   uptime: number,
+ *   responseTime: number,
+ *   lastCheck: string
+ * }
+ */
+intelligenceRouter.get('/services/:serviceName/details', async (req, res) => {
+  try {
+    const { serviceName } = req.params;
+
+    // Get health check for specific service
+    const healthChecks = await checkAllServices();
+    const serviceHealth = healthChecks.find(check =>
+      check.service.toLowerCase() === serviceName.toLowerCase()
+    );
+
+    if (!serviceHealth) {
+      return res.status(404).json({
+        error: 'Service not found',
+        message: `No service found with name: ${serviceName}`
+      });
+    }
+
+    // Map status to drill-down format
+    const statusMap = {
+      'up': 'healthy',
+      'down': 'down',
+      'warning': 'degraded'
+    };
+
+    const response = {
+      name: serviceHealth.service,
+      status: statusMap[serviceHealth.status as keyof typeof statusMap] || 'down',
+      uptime: serviceHealth.status === 'up' ? 99.9 : 0, // Placeholder - would need historical data
+      responseTime: serviceHealth.responseTime || 0,
+      lastCheck: new Date().toISOString(),
+      details: serviceHealth.details
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching service details:', error);
+    res.status(500).json({
+      error: 'Failed to fetch service details',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Mount alert routes
 import { alertRouter } from './alert-routes';
 intelligenceRouter.use('/alerts', alertRouter);

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { sql } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
 import { intelligenceDb } from './storage';
 import { patternLineageNodes } from '../shared/intelligence-schema';
 import {
@@ -33,6 +34,7 @@ export const alertRouter = Router();
  * {
  *   alerts: [
  *     {
+ *       id: "unique-uuid",
  *       level: "critical" | "warning",
  *       message: "Description of the alert",
  *       timestamp: "2025-10-28T12:00:00Z"
@@ -43,6 +45,7 @@ export const alertRouter = Router();
 alertRouter.get('/active', async (req, res) => {
   try {
     const alerts: Array<{
+      id: string;
       level: 'critical' | 'warning';
       message: string;
       timestamp: string;
@@ -57,6 +60,7 @@ alertRouter.get('/active', async (req, res) => {
 
       if (!healthResponse.ok) {
         alerts.push({
+          id: randomUUID(),
           level: 'critical',
           message: `Omniarchon intelligence service returned ${healthResponse.status}`,
           timestamp: new Date().toISOString()
@@ -64,6 +68,7 @@ alertRouter.get('/active', async (req, res) => {
       }
     } catch (omniarchonError) {
       alerts.push({
+        id: randomUUID(),
         level: 'critical',
         message: 'Omniarchon intelligence service unreachable',
         timestamp: new Date().toISOString()
@@ -79,6 +84,7 @@ alertRouter.get('/active', async (req, res) => {
         .limit(1);
     } catch (dbError) {
       alerts.push({
+        id: randomUUID(),
         level: 'critical',
         message: 'Database connection failed',
         timestamp: new Date().toISOString()
@@ -89,12 +95,14 @@ alertRouter.get('/active', async (req, res) => {
     const errorRate = await getErrorRate('10 minutes');
     if (errorRate > 0.10) {
       alerts.push({
+        id: randomUUID(),
         level: 'critical',
         message: `Error rate at ${(errorRate * 100).toFixed(1)}% (threshold: 10%)`,
         timestamp: new Date().toISOString()
       });
     } else if (errorRate > 0.05) {
       alerts.push({
+        id: randomUUID(),
         level: 'warning',
         message: `Error rate at ${(errorRate * 100).toFixed(1)}% (threshold: 5%)`,
         timestamp: new Date().toISOString()
@@ -105,12 +113,14 @@ alertRouter.get('/active', async (req, res) => {
     const injectionSuccessRate = await getManifestInjectionSuccessRate('1 hour');
     if (injectionSuccessRate < 0.90) {
       alerts.push({
+        id: randomUUID(),
         level: 'critical',
         message: `Manifest injection success rate at ${(injectionSuccessRate * 100).toFixed(1)}%`,
         timestamp: new Date().toISOString()
       });
     } else if (injectionSuccessRate < 0.95) {
       alerts.push({
+        id: randomUUID(),
         level: 'warning',
         message: `Manifest injection success rate at ${(injectionSuccessRate * 100).toFixed(1)}%`,
         timestamp: new Date().toISOString()
@@ -121,6 +131,7 @@ alertRouter.get('/active', async (req, res) => {
     const avgResponseTime = await getAvgResponseTime('10 minutes');
     if (avgResponseTime > 2000) {
       alerts.push({
+        id: randomUUID(),
         level: 'warning',
         message: `High response time: ${avgResponseTime}ms (threshold: 2000ms)`,
         timestamp: new Date().toISOString()
@@ -131,6 +142,7 @@ alertRouter.get('/active', async (req, res) => {
     const successRate = await getSuccessRate('1 hour');
     if (successRate < 0.85) {
       alerts.push({
+        id: randomUUID(),
         level: 'warning',
         message: `Low success rate: ${(successRate * 100).toFixed(1)}% (threshold: 85%)`,
         timestamp: new Date().toISOString()

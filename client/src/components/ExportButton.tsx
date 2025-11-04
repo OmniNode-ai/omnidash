@@ -10,7 +10,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 
 interface ExportButtonProps {
-  data: any;
+  data: Record<string, unknown> | Array<Record<string, unknown>> | null;
   filename: string;
   disabled?: boolean;
 }

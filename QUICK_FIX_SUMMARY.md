@@ -31,7 +31,7 @@ POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=REDACTED_PASSWORD_1
+POSTGRES_PASSWORD=<your_password>  # Get from .env file - never commit passwords!
 ```
 
 ## Steps to Fix
@@ -116,7 +116,8 @@ If the fix doesn't work:
 
 2. **Verify password is correct**
    ```bash
-   psql "postgresql://postgres:REDACTED_PASSWORD_1@192.168.86.200:5436/omninode_bridge" -c "SELECT 1"
+   # Replace <your_password> with actual password from .env file
+   psql "postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge" -c "SELECT 1"
    ```
 
 3. **Check server logs for detailed error messages**
