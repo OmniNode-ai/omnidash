@@ -2,109 +2,337 @@ import { MetricCard } from "@/components/MetricCard";
 import { ServiceStatusGrid } from "@/components/ServiceStatusGrid";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { EventFeed } from "@/components/EventFeed";
-import { DrillDownPanel } from "@/components/DrillDownPanel";
+import { DrillDownModal } from "@/components/DrillDownModal";
+import { TimeRangeSelector } from "@/components/TimeRangeSelector";
+import { ExportButton } from "@/components/ExportButton";
 import { Server, Activity, AlertTriangle, Clock } from "lucide-react";
 import { useState } from "react";
+import { MockBadge } from "@/components/MockBadge";
+import { ensureTimeSeries } from "@/components/mockUtils";
+import { useQuery } from "@tanstack/react-query";
+import { platformHealthSource } from "@/lib/data-sources";
+
+// TypeScript interfaces for platform health endpoint
+interface ServiceHealth {
+  name: string;
+  status: 'healthy' | 'degraded' | 'down';
+  uptime?: string;
+  latency_ms?: number;
+}
+
+interface PlatformHealthResponse {
+  database: ServiceHealth;
+  kafka: ServiceHealth;
+  services: ServiceHealth[];
+}
+
+// TypeScript interface for service registry
+interface ServiceRegistryEntry {
+  id: string;
+  serviceName: string;
+  serviceUrl: string;
+  serviceType: string;
+  healthStatus: 'healthy' | 'degraded' | 'unhealthy';
+  lastHealthCheck: string | null;
+}
 
 export default function PlatformHealth() {
   const [selectedService, setSelectedService] = useState<any>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [timeRange, setTimeRange] = useState(() => {
+    return localStorage.getItem('dashboard-timerange') || '24h';
+  });
 
-  //todo: remove mock functionality
-  const services = [
-    { id: '1', name: 'API Gateway', status: 'healthy' as const, uptime: 99.9, responseTime: 45, icon: 'api' as const },
-    { id: '2', name: 'PostgreSQL', status: 'healthy' as const, uptime: 99.8, responseTime: 12, icon: 'database' as const },
-    { id: '3', name: 'Redis Cache', status: 'degraded' as const, uptime: 98.5, responseTime: 89, icon: 'database' as const },
-    { id: '4', name: 'Web Server', status: 'healthy' as const, uptime: 99.7, responseTime: 23, icon: 'web' as const },
-    { id: '5', name: 'Kafka Cluster', status: 'healthy' as const, uptime: 99.6, responseTime: 34, icon: 'server' as const },
-    { id: '6', name: 'AI Agent Pool', status: 'healthy' as const, uptime: 99.4, responseTime: 67, icon: 'server' as const },
-    { id: '7', name: 'WebSocket Server', status: 'healthy' as const, uptime: 99.5, responseTime: 18, icon: 'web' as const },
-    { id: '8', name: 'Message Queue', status: 'healthy' as const, uptime: 99.7, responseTime: 28, icon: 'server' as const },
-  ];
+  const handleTimeRangeChange = (value: string) => {
+    setTimeRange(value);
+    localStorage.setItem('dashboard-timerange', value);
+  };
 
-  const cpuData = Array.from({ length: 20 }, (_, i) => ({
-    time: `${i}:00`,
-    value: 50 + Math.random() * 30,
-  }));
+  // Use centralized data source
+  const { data: healthDataResult, isLoading, error } = useQuery({
+    queryKey: ['platform-health', timeRange],
+    queryFn: () => platformHealthSource.fetchAll(timeRange),
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+    staleTime: 10000,
+  });
 
-  const memoryData = Array.from({ length: 20 }, (_, i) => ({
-    time: `${i}:00`,
-    value: 60 + Math.random() * 20,
-  }));
+  // Transform to expected format
+  const healthData: PlatformHealthResponse = healthDataResult?.health ? {
+    status: healthDataResult.health.status,
+    uptime: healthDataResult.health.uptime,
+    services: healthDataResult.health.services,
+  } : { status: 'unknown', uptime: 0, services: [] };
 
-  const events = [
-    { id: '1', type: 'warning' as const, message: 'High CPU usage on Web Server', timestamp: '10:23:15', source: 'Monitor' },
-    { id: '2', type: 'success' as const, message: 'Redis Cache recovered to normal state', timestamp: '10:23:12', source: 'Health Check' },
-    { id: '3', type: 'info' as const, message: 'Scheduled maintenance completed', timestamp: '10:23:08', source: 'System' },
-  ];
+  const serviceRegistry: ServiceRegistryEntry[] = healthDataResult?.services?.services || [];
+
+  // Map health data to service status format for display
+  const getIconForService = (serviceName: string): "server" | "database" | "api" | "web" => {
+    if (serviceName.toLowerCase().includes('database') || serviceName.toLowerCase().includes('postgres')) {
+      return 'database';
+    }
+    if (serviceName.toLowerCase().includes('kafka')) {
+      return 'api';
+    }
+    return 'server';
+  };
+
+  const parseUptime = (uptimeStr?: string): number => {
+    if (!uptimeStr) return 0;
+    // Parse uptime strings like "99.9%" or "100%"
+    const match = uptimeStr.match(/(\d+\.?\d*)/);
+    return match ? parseFloat(match[1]) : 0;
+  };
+
+  // Combine all services from health response
+  const services: Array<{
+    id: string;
+    name: string;
+    status: "healthy" | "degraded" | "down";
+    uptime: number;
+    responseTime: number;
+    icon: "server" | "database" | "api" | "web";
+  }> = healthData ? [
+    {
+      id: 'database',
+      name: healthData.database.name,
+      status: healthData.database.status,
+      uptime: parseUptime(healthData.database.uptime),
+      responseTime: healthData.database.latency_ms || 0,
+      icon: 'database',
+    },
+    {
+      id: 'kafka',
+      name: healthData.kafka.name,
+      status: healthData.kafka.status,
+      uptime: parseUptime(healthData.kafka.uptime),
+      responseTime: healthData.kafka.latency_ms || 0,
+      icon: 'api',
+    },
+    ...healthData.services.map((service, idx) => ({
+      id: `service-${idx}`,
+      name: service.name,
+      status: service.status,
+      uptime: parseUptime(service.uptime),
+      responseTime: service.latency_ms || 0,
+      icon: getIconForService(service.name),
+    })),
+  ] : [];
+
+  // Generate mock CPU/Memory data for now (can be replaced with real metrics later)
+  const cpuDataEnsured = ensureTimeSeries(undefined, 55, 15);
+  const memoryDataEnsured = ensureTimeSeries(undefined, 65, 12);
+
+  // Generate events based on health status changes
+  const events: Array<{ id: string; type: 'info' | 'warning' | 'error' | 'success'; message: string; timestamp: string; source: string }> = [];
+  if (healthData) {
+    const allServicesHealthy = services.every(s => s.status === 'healthy');
+    const degradedServices = services.filter(s => s.status === 'degraded');
+    const downServices = services.filter(s => s.status === 'down');
+
+    if (downServices.length > 0) {
+      downServices.forEach((service, idx) => {
+        events.push({
+          id: `error-${idx}`,
+          type: 'error',
+          message: `${service.name} is down`,
+          timestamp: new Date().toLocaleTimeString(),
+          source: 'Health Check',
+        });
+      });
+    }
+
+    if (degradedServices.length > 0) {
+      degradedServices.forEach((service, idx) => {
+        events.push({
+          id: `warning-${idx}`,
+          type: 'warning',
+          message: `${service.name} is degraded`,
+          timestamp: new Date().toLocaleTimeString(),
+          source: 'Health Check',
+        });
+      });
+    }
+
+    if (allServicesHealthy) {
+      events.push({
+        id: 'success',
+        type: 'success',
+        message: 'All services operational',
+        timestamp: new Date().toLocaleTimeString(),
+        source: 'Health Check',
+      });
+    }
+  }
 
   const healthyServices = services.filter(s => s.status === 'healthy').length;
-  const avgUptime = (services.reduce((sum, s) => sum + s.uptime, 0) / services.length).toFixed(1);
+  const avgUptime = services.length > 0 ? (services.reduce((sum, s) => sum + s.uptime, 0) / services.length).toFixed(1) : '0.0';
+
+  // Calculate average latency across all services
+  const avgLatency = services.length > 0
+    ? Math.round(services.reduce((sum, s) => sum + s.responseTime, 0) / services.length)
+    : 0;
+
+  // Count active alerts (services that are down or degraded)
+  const activeAlerts = services.filter(s => s.status === 'down' || s.status === 'degraded').length;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold mb-2">Platform Health</h1>
-        <p className="text-muted-foreground">Comprehensive system health monitoring and operational metrics</p>
-      </div>
-
-      <div className="grid grid-cols-4 gap-6">
-        <MetricCard 
-          label="Services Online"
-          value={`${healthyServices}/${services.length}`}
-          icon={Server}
-          status="healthy"
-        />
-        <MetricCard 
-          label="Avg Uptime"
-          value={`${avgUptime}%`}
-          trend={{ value: 0.2, isPositive: true }}
-          icon={Activity}
-          status="healthy"
-        />
-        <MetricCard 
-          label="Active Alerts"
-          value="2"
-          icon={AlertTriangle}
-          status="warning"
-        />
-        <MetricCard 
-          label="System Uptime"
-          value="44h 23m"
-          icon={Clock}
-          status="healthy"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart 
-          title="CPU Usage"
-          data={cpuData}
-          color="hsl(var(--chart-4))"
-          showArea
-        />
-        <RealtimeChart 
-          title="Memory Usage"
-          data={memoryData}
-          color="hsl(var(--chart-5))"
-          showArea
-        />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
-          <ServiceStatusGrid services={services} />
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold mb-2">Platform Health</h1>
+          <p className="text-muted-foreground">
+            Comprehensive system health monitoring and operational metrics
+            {healthData && ` · ${services.length} services monitored`}
+          </p>
         </div>
-        
-        <EventFeed events={events} maxHeight={400} />
+        <div className="flex items-center gap-4">
+          <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
+          <ExportButton
+            data={{ services, healthData, cpuData, memoryData, events, metrics: { healthyServices, avgUptime, avgLatency, activeAlerts } }}
+            filename={`platform-health-${timeRange}-${new Date().toISOString().split('T')[0]}`}
+            disabled={isLoading || !!error}
+          />
+        </div>
       </div>
 
-      <DrillDownPanel
+      {isLoading && (
+        <div className="text-center text-muted-foreground py-8">
+          Loading platform health data...
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-destructive/10 border border-destructive rounded-lg p-4 text-destructive">
+          <strong>Error loading health data:</strong> {error instanceof Error ? error.message : 'Unknown error'}
+        </div>
+      )}
+
+      {healthData && (
+        <>
+          <div className="grid grid-cols-4 gap-6">
+            <MetricCard
+              label="Services Online"
+              value={`${healthyServices}/${services.length}`}
+              icon={Server}
+              status={healthyServices === services.length ? "healthy" : healthyServices > 0 ? "warning" : "error"}
+            />
+            <MetricCard
+              label="Avg Uptime"
+              value={`${avgUptime}%`}
+              icon={Activity}
+              status={parseFloat(avgUptime) >= 99 ? "healthy" : parseFloat(avgUptime) >= 95 ? "warning" : "error"}
+            />
+            <MetricCard
+              label="Active Alerts"
+              value={activeAlerts.toString()}
+              icon={AlertTriangle}
+              status={activeAlerts === 0 ? "healthy" : activeAlerts <= 2 ? "warning" : "error"}
+            />
+            <MetricCard
+              label="Avg Latency"
+              value={`${avgLatency}ms`}
+              icon={Clock}
+              status={avgLatency < 100 ? "healthy" : avgLatency < 500 ? "warning" : "error"}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              {cpuDataEnsured.isMock && <MockBadge label="MOCK DATA: CPU Usage" />}
+              <RealtimeChart
+                title="CPU Usage"
+                data={cpuDataEnsured.data}
+                color="hsl(var(--chart-4))"
+                showArea
+              />
+            </div>
+            <div>
+              {memoryDataEnsured.isMock && <MockBadge label="MOCK DATA: Memory Usage" />}
+              <RealtimeChart
+                title="Memory Usage"
+                data={memoryDataEnsured.data}
+                color="hsl(var(--chart-5))"
+                showArea
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2">
+              <ServiceStatusGrid services={services} />
+            </div>
+
+            <EventFeed events={events} maxHeight={400} />
+          </div>
+
+          {/* Service Registry Grid */}
+          {serviceRegistry && serviceRegistry.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-2xl font-semibold mb-4">Service Registry</h2>
+              <div className="bg-card rounded-lg border p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {serviceRegistry.map((service) => {
+                    // Map health status to color
+                    const statusColor = service.healthStatus === 'healthy'
+                      ? 'text-green-500'
+                      : service.healthStatus === 'degraded'
+                      ? 'text-yellow-500'
+                      : 'text-red-500';
+
+                    const statusBg = service.healthStatus === 'healthy'
+                      ? 'bg-green-500/10'
+                      : service.healthStatus === 'degraded'
+                      ? 'bg-yellow-500/10'
+                      : 'bg-red-500/10';
+
+                    // Format last health check time
+                    const lastCheck = service.lastHealthCheck
+                      ? new Date(service.lastHealthCheck).toLocaleString()
+                      : 'Never';
+
+                    return (
+                      <div
+                        key={service.id}
+                        className="bg-muted/50 rounded-lg p-4 border border-border hover:border-primary/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-medium text-sm">{service.serviceName}</h3>
+                          <div className={`px-2 py-1 rounded-full text-xs font-medium ${statusBg} ${statusColor}`}>
+                            {service.healthStatus}
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">Type:</span>
+                            <span>{service.serviceType}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">URL:</span>
+                            <span className="truncate">{service.serviceUrl}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">Last Check:</span>
+                            <span>{lastCheck}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      <DrillDownModal
         open={panelOpen}
         onOpenChange={setPanelOpen}
         title={selectedService?.name || "Service Details"}
         data={selectedService || {}}
         type="service"
+        variant="modal"
       />
     </div>
   );
