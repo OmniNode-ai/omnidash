@@ -1,5 +1,12 @@
+// Load environment variables FIRST before any other imports
+import { config } from 'dotenv';
+config();
+
 import { type User, type InsertUser } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pkg from "pg";
+const { Pool } = pkg;
 
 // modify the interface with any CRUD methods
 // you might need
@@ -36,3 +43,15 @@ export class MemStorage implements IStorage {
 }
 
 export const storage = new MemStorage();
+
+// Intelligence Database Connection
+// Connects to PostgreSQL database at 192.168.86.200:5436 (omninode_bridge)
+const intelligenceConnectionString =
+  process.env.DATABASE_URL ||
+  `postgresql://${process.env.POSTGRES_USER || 'postgres'}:${process.env.POSTGRES_PASSWORD || 'REDACTED_PASSWORD_2'}@${process.env.POSTGRES_HOST || '192.168.86.200'}:${process.env.POSTGRES_PORT || '5436'}/${process.env.POSTGRES_DATABASE || 'omninode_bridge'}`;
+
+const pool = new Pool({
+  connectionString: intelligenceConnectionString,
+});
+
+export const intelligenceDb = drizzle(pool);

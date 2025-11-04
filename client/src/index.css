@@ -266,6 +266,13 @@
  */
 @layer utilities {
 
+  /* Typography scale */
+  .ty-title { @apply text-sm font-semibold; }
+  .ty-subtitle { @apply text-xs font-medium text-muted-foreground; }
+  .ty-body { @apply text-sm; }
+  .ty-meta { @apply text-xs text-muted-foreground; }
+  .ty-code { @apply font-mono text-xs; }
+
   /* Hide ugly search cancel button in Chrome until we can style it properly */
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
@@ -284,6 +291,34 @@
   .no-default-hover-elevate {}
 
   .no-default-active-elevate {}
+
+  /* Global click affordances - ensure all clickable elements have proper cursor and focus styles */
+  [role="button"],
+  button:not(:disabled),
+  a[href],
+  [onclick],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  label[for],
+  select,
+  .clickable {
+    cursor: pointer;
+  }
+
+  /* Focus outlines for accessibility */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  [role="button"]:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Hover states for interactive cards/rows */
+  [data-clickable="true"]:hover {
+    @apply bg-muted/50 transition-colors;
+  }
 
 
   /**

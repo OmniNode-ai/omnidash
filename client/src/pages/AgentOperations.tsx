@@ -1,140 +1,476 @@
 import { MetricCard } from "@/components/MetricCard";
 import { AgentStatusGrid } from "@/components/AgentStatusGrid";
 import { RealtimeChart } from "@/components/RealtimeChart";
+import { MockBadge } from "@/components/MockBadge";
+import { ensureTimeSeries } from "@/components/mockUtils";
 import { EventFeed } from "@/components/EventFeed";
-import { DrillDownPanel } from "@/components/DrillDownPanel";
+import { DrillDownModal } from "@/components/DrillDownModal";
+import { StatusLegend } from "@/components/StatusLegend";
+import { TimeRangeSelector } from "@/components/TimeRangeSelector";
+import { ExportButton } from "@/components/ExportButton";
 import { Activity, Cpu, CheckCircle, Clock } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Module, ModuleHeader, ModuleBody } from "@/components/Module";
+import { Pager } from "@/components/Pager";
+import { DateRangeFilter, DateRangeValue } from "@/components/DateRangeFilter";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { agentOperationsSource } from "@/lib/data-sources";
+import type { HealthStatus } from "@/lib/data-sources/agent-operations-source";
+
+// TypeScript interfaces for API responses
+interface AgentMetrics {
+  agent: string;
+  totalRequests: number;
+  successRate: number | null;
+  avgRoutingTime: number | null;
+  avgConfidence: number | null;
+}
+
+interface AgentAction {
+  id: string;
+  correlationId: string;
+  agentName: string;
+  actionType: string;
+  actionName: string;
+  actionDetails: any;
+  debugMode: boolean;
+  durationMs: number;
+  createdAt: string;
+}
+
+interface HealthStatus {
+  status: 'healthy' | 'unhealthy';
+  database: 'connected' | 'error';
+  timestamp: string;
+}
+
+// Routing insights are shown in the Routing tab; keep operations focused on live activity
 
 export default function AgentOperations() {
+  const queryClient = useQueryClient();
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [chartData, setChartData] = useState<Array<{ time: string; value: number }>>([]);
+  const [performanceChartData, setPerformanceChartData] = useState<Array<{ time: string; value: number }>>([]);
+  const [showActiveOnly, setShowActiveOnly] = useState(true);
+  const [timeRange, setTimeRange] = useState(() => {
+    return localStorage.getItem('dashboard-timerange') || '24h';
+  });
+  const [eventsPage, setEventsPage] = useState(1);
+  const [eventsPageSize, setEventsPageSize] = useState(10);
+  const [eventsRange, setEventsRange] = useState<DateRangeValue>({ preset: '24h' });
 
-  //todo: remove mock functionality
-  const [agents, setAgents] = useState(() => 
-    Array.from({ length: 52 }, (_, i) => ({
-      id: `agent-${i + 1}`,
-      name: `Agent ${i + 1}`,
-      status: (["active", "idle", "error", "offline"] as const)[Math.floor(Math.random() * 4)],
-      currentTask: Math.random() > 0.5 ? `Processing task ${Math.floor(Math.random() * 100)}` : undefined,
-      successRate: 85 + Math.floor(Math.random() * 15),
-      responseTime: 50 + Math.floor(Math.random() * 150),
-      tasksCompleted: Math.floor(Math.random() * 1000),
-    }))
-  );
+  // Throttle query invalidations to prevent excessive re-renders
+  const lastInvalidationRef = useRef<{ [key: string]: number }>({});
+  const INVALIDATION_THROTTLE_MS = 1000; // Wait 1 second between invalidations
 
-  const [chartData, setChartData] = useState(() =>
-    Array.from({ length: 20 }, (_, i) => ({
-      time: `${i}:00`,
-      value: 40 + Math.random() * 60,
-    }))
-  );
+  const throttledInvalidate = useCallback((queryKey: string[]) => {
+    const key = queryKey.join(':');
+    const now = Date.now();
+    const lastTime = lastInvalidationRef.current[key] || 0;
 
-  const [events, setEvents] = useState([
-    { id: '1', type: 'success' as const, message: 'Agent-42 completed code analysis', timestamp: '10:23:15', source: 'Agent-42' },
-    { id: '2', type: 'info' as const, message: 'New task queued for Agent-15', timestamp: '10:23:12', source: 'Scheduler' },
-    { id: '3', type: 'warning' as const, message: 'High memory usage on Agent-7', timestamp: '10:23:08', source: 'Monitor' },
-  ]);
+    if (now - lastTime > INVALIDATION_THROTTLE_MS) {
+      lastInvalidationRef.current[key] = now;
+      queryClient.invalidateQueries({ queryKey });
+    }
+  }, [queryClient]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setChartData(prev => {
-        const newData = [...prev.slice(1), {
-          time: `${prev.length}:00`,
-          value: 40 + Math.random() * 60,
-        }];
-        return newData;
-      });
-
-      if (Math.random() > 0.7) {
-        setAgents(prev => prev.map(agent => 
-          Math.random() > 0.9 ? {
-            ...agent,
-            status: (["active", "idle", "error", "offline"] as const)[Math.floor(Math.random() * 4)]
-          } : agent
-        ));
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
+  const handleTimeRangeChange = useCallback((value: string) => {
+    setTimeRange(value);
+    localStorage.setItem('dashboard-timerange', value);
   }, []);
 
-  const handleAgentClick = (agent: any) => {
+  // WebSocket for real-time updates with throttled invalidations
+  const { isConnected, connectionStatus } = useWebSocket({
+    onMessage: useCallback((message: { type: string; data?: any; message?: string; timestamp: string }) => {
+      // Throttled query invalidations to prevent excessive re-renders
+      switch (message.type) {
+        case 'AGENT_METRIC_UPDATE':
+          throttledInvalidate([`/api/intelligence/agents/summary`]);
+          break;
+        case 'AGENT_ACTION':
+          throttledInvalidate([`/api/intelligence/actions/recent`]);
+          break;
+        case 'ROUTING_DECISION':
+          // Routing decisions affect metrics
+          throttledInvalidate([`/api/intelligence/agents/summary`]);
+          break;
+        case 'INITIAL_STATE':
+          // Refresh all data on initial state (no throttle for initial state)
+          queryClient.invalidateQueries();
+          break;
+        case 'CONSUMER_STATUS':
+          // Only invalidate health if status actually changed (reduce noise)
+          throttledInvalidate(['/api/intelligence/health']);
+          break;
+      }
+    }, [throttledInvalidate, queryClient]),
+    debug: false,
+  });
+
+  // Use centralized data source
+  const { data: operationsData, isLoading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useQuery({
+    queryKey: ['agent-operations', timeRange],
+    queryFn: () => agentOperationsSource.fetchAll(timeRange),
+    refetchInterval: 30000,
+    staleTime: 15000,
+  });
+
+  // Transform data source response to expected format
+  // Memoize to prevent creating new array references on every render (which would trigger infinite useEffect loops)
+  const metrics: AgentMetrics[] = useMemo(() => {
+    return operationsData?.summary ? [{
+      agent: 'all',
+      totalRequests: operationsData.summary.totalRuns,
+      successRate: operationsData.summary.successRate,
+      avgRoutingTime: operationsData.summary.avgExecutionTime,
+      avgConfidence: null,
+    }] : [];
+  }, [operationsData?.summary]);
+
+  const actions: AgentAction[] = useMemo(() => {
+    return operationsData?.recentActions || [];
+  }, [operationsData?.recentActions]);
+
+  const health = operationsData?.health;
+  const actionsLoading = metricsLoading;
+  const actionsError = metricsError;
+
+  // (removed) Routing strategy breakdown to avoid duplication with Routing tab
+
+  // Update chart data when actions change (action rate over time)
+  useEffect(() => {
+    if (!actions || actions.length === 0) return;
+
+    // Group actions by minute for chart
+    const now = new Date();
+    const minuteBuckets = new Map<string, number>();
+
+    for (let i = 19; i >= 0; i--) {
+      const time = new Date(now.getTime() - i * 60 * 1000);
+      const timeLabel = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      minuteBuckets.set(timeLabel, 0);
+    }
+
+    // Count actions per minute
+    actions.forEach(action => {
+      const actionTime = new Date(action.createdAt);
+      const timeLabel = actionTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      if (minuteBuckets.has(timeLabel)) {
+        minuteBuckets.set(timeLabel, minuteBuckets.get(timeLabel)! + 1);
+      }
+    });
+
+    const newChartData = Array.from(minuteBuckets.entries()).map(([time, value]) => ({
+      time,
+      value,
+    }));
+
+    setChartData(newChartData);
+  }, [actions]);
+
+  // Update performance chart - show average execution time per minute
+  useEffect(() => {
+    if (!actions || actions.length === 0) {
+      setPerformanceChartData([]);
+      return;
+    }
+
+    const now = new Date();
+    const minuteBuckets = new Map<string, { total: number; totalDurationMs: number }>();
+
+    // Initialize buckets for last 20 minutes
+    for (let i = 19; i >= 0; i--) {
+      const time = new Date(now.getTime() - i * 60 * 1000);
+      const timeLabel = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      minuteBuckets.set(timeLabel, { total: 0, totalDurationMs: 0 });
+    }
+
+    // Sum execution times per minute
+    actions.forEach(action => {
+      const actionTime = new Date(action.createdAt);
+      const timeLabel = actionTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      if (minuteBuckets.has(timeLabel)) {
+        const entry = minuteBuckets.get(timeLabel)!;
+        entry.total += 1;
+        entry.totalDurationMs += (action.durationMs || 0);
+      }
+    });
+
+    // Calculate average execution time per minute (in milliseconds)
+    const perfData = Array.from(minuteBuckets.entries()).map(([time, { total, totalDurationMs }]) => ({
+      time,
+      value: total > 0 ? Math.round(totalDurationMs / total) : 0,
+    }));
+
+    setPerformanceChartData(perfData);
+  }, [actions]);
+
+  const handleAgentClick = useCallback((agent: any) => {
     setSelectedAgent(agent);
     setPanelOpen(true);
-  };
+  }, []);
 
-  const activeAgents = agents.filter(a => a.status === "active").length;
-  const avgResponseTime = Math.round(agents.reduce((sum, a) => sum + a.responseTime, 0) / agents.length);
-  const avgSuccessRate = Math.round(agents.reduce((sum, a) => sum + a.successRate, 0) / agents.length);
+  // Use summary from data source instead of calculating here
+  const aggregatedMetrics = useMemo(() => {
+    return {
+      activeAgents: operationsData?.summary?.activeAgents || 0,
+      totalRequests: operationsData?.summary?.totalRuns || 0,
+      avgSuccessRate: operationsData?.summary?.successRate || 0,
+      avgResponseTime: (operationsData?.summary?.avgExecutionTime || 0) * 1000, // Convert seconds to ms for display
+    };
+  }, [operationsData]);
+
+  // Memoize agent grid data to prevent recalculation
+  const agents = useMemo(() => {
+    return metrics?.map((metric) => {
+      // Use confidence score as quality proxy (displayed in agent grid bottom boxes)
+      // Clamp quality to 0-100%
+      const quality = Math.max(0, Math.min(100, Math.round((metric.avgConfidence || 0) * 100)));
+      // Clamp success rate to 0-100%
+      const rawRate = (metric.successRate || 0);
+      const successRate = Math.max(0, Math.min(100, Math.round(rawRate <= 1 ? rawRate * 100 : rawRate)));
+
+      return {
+        id: metric.agent,
+        name: metric.agent,
+        status: successRate > 90 ? 'active' as const :
+                successRate > 70 ? 'idle' as const : 'error' as const,
+        currentTask: undefined,
+        successRate,
+        quality,
+        responseTime: Math.round(metric.avgRoutingTime || 0),
+        tasksCompleted: metric.totalRequests,
+      };
+    }) || [];
+  }, [metrics]);
+
+  // Visible agents: Active only vs All
+  const visibleAgents = useMemo(() => {
+    if (!agents?.length) return agents || [];
+    return showActiveOnly ? agents.filter(a => a.status === 'active') : agents;
+  }, [agents, showActiveOnly]);
+
+  // Memoize events to prevent recalculation
+  const eventsAll = useMemo(() => {
+    return actions?.map(action => ({
+      id: action.id,
+      type: 'info' as const,
+      message: `${action.agentName}: ${action.actionName}`,
+      timestamp: new Date(action.createdAt).toLocaleTimeString(),
+      source: action.agentName,
+    })) || [];
+  }, [actions]);
+
+  const eventsFiltered = useMemo(() => {
+    if (!eventsAll.length) return eventsAll;
+    // rudimentary filter by days based on preset
+    const now = Date.now();
+    let cutoff = 0;
+    if (eventsRange.preset === '24h') cutoff = now - 24 * 60 * 60 * 1000;
+    else if (eventsRange.preset === '7d') cutoff = now - 7 * 24 * 60 * 60 * 1000;
+    else if (eventsRange.preset === '30d') cutoff = now - 30 * 24 * 60 * 60 * 1000;
+    else if (eventsRange.preset === 'custom' && eventsRange.start && eventsRange.end) {
+      // keep within custom range
+      const startMs = new Date(eventsRange.start).getTime();
+      const endMs = new Date(eventsRange.end).getTime() + 24 * 60 * 60 * 1000;
+      return eventsAll.filter(e => {
+        const t = new Date(`1970-01-01T${e.timestamp}`).getTime(); // fallback: treat as today
+        const nowDay = new Date().toDateString();
+        const full = new Date(`${nowDay} ${e.timestamp}`).getTime();
+        return full >= startMs && full <= endMs;
+      });
+    }
+    if (cutoff > 0) {
+      return eventsAll.filter(e => {
+        const nowDay = new Date().toDateString();
+        const full = new Date(`${nowDay} ${e.timestamp}`).getTime();
+        return full >= cutoff;
+      });
+    }
+    return eventsAll;
+  }, [eventsAll, eventsRange]);
+
+  const eventsPaged = useMemo(() => {
+    const start = (eventsPage - 1) * eventsPageSize;
+    return eventsFiltered.slice(start, start + eventsPageSize);
+  }, [eventsFiltered, eventsPage, eventsPageSize]);
+
+  // Loading state
+  if (metricsLoading || actionsLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <Activity className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading agent operations data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (metricsError || actionsError) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <Activity className="h-12 w-12 mx-auto mb-4 text-destructive" />
+          <p className="text-destructive font-semibold mb-2">Failed to load agent data</p>
+          <p className="text-muted-foreground text-sm">
+            {metricsError?.message || actionsError?.message || 'Unknown error'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold mb-2">AI Agent Operations</h1>
-        <p className="text-muted-foreground">Real-time monitoring of 52 specialized AI agents</p>
-      </div>
 
+      {/* Status legend */}
+      <StatusLegend />
+
+      {/* Metric cards with real data */}
       <div className="grid grid-cols-4 gap-6">
-        <MetricCard 
-          label="Active Agents"
-          value={activeAgents}
-          trend={{ value: 12, isPositive: true }}
+        <MetricCard
+          label={`Active Agents (${timeRange})`}
+          value={aggregatedMetrics.activeAgents}
           icon={Activity}
           status="healthy"
         />
-        <MetricCard 
-          label="Total Agents"
-          value="52"
+        <MetricCard
+          label={`Total Requests (${timeRange})`}
+          value={aggregatedMetrics.totalRequests.toLocaleString()}
           icon={Activity}
           status="healthy"
         />
-        <MetricCard 
+        <MetricCard
           label="Avg Response Time"
-          value={`${avgResponseTime}ms`}
+          value={`${Math.round(aggregatedMetrics.avgResponseTime)}ms`}
           icon={Clock}
-          status={avgResponseTime < 100 ? "healthy" : "warning"}
+          status={aggregatedMetrics.avgResponseTime < 100 ? "healthy" : "warning"}
+          tooltip="Target: < 100ms"
         />
-        <MetricCard 
+        <MetricCard
           label="Success Rate"
-          value={`${avgSuccessRate}%`}
-          trend={{ value: 3.2, isPositive: true }}
+          value={`${Math.max(0, Math.min(100, Math.round(aggregatedMetrics.avgSuccessRate <= 1 ? aggregatedMetrics.avgSuccessRate * 100 : aggregatedMetrics.avgSuccessRate)))}%`}
           icon={CheckCircle}
-          status="healthy"
+          status={aggregatedMetrics.avgSuccessRate > 0.9 ? "healthy" : "warning"}
+          tooltip="Target: > 90%"
         />
       </div>
 
+      {/* Charts with real activity data */}
       <div className="grid grid-cols-2 gap-6">
-        <RealtimeChart 
-          title="Agent Response Times"
-          data={chartData}
-          color="hsl(var(--chart-1))"
-        />
-        <RealtimeChart 
-          title="Task Completion Rate"
-          data={chartData}
-          color="hsl(var(--chart-2))"
-          showArea
-        />
+        {(() => {
+          const ensured = ensureTimeSeries(chartData, 5, 2);
+          return (
+            <div>
+              {ensured.isMock && <MockBadge label="MOCK DATA: Agent Activity" />}
+              <RealtimeChart
+                title="Agent Activity (Actions per Minute)"
+                data={ensured.data}
+                color="hsl(var(--chart-1))"
+              />
+            </div>
+          );
+        })()}
+        {(() => {
+          const ensured = ensureTimeSeries(performanceChartData, 150, 60);
+          return (
+            <div>
+              {ensured.isMock && <MockBadge label="MOCK DATA: Agent Performance" />}
+              <RealtimeChart
+                title="Agent Performance (Avg Execution Time ms)"
+                data={ensured.data}
+                color="hsl(var(--chart-2))"
+                showArea
+              />
+            </div>
+          );
+        })()}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
-          <AgentStatusGrid 
-            agents={agents}
-            onAgentClick={handleAgentClick}
-          />
+      {/* (removed) Routing Strategy Breakdown to keep this tab focused on operations */}
+
+      {/* Agent grid and event feed with real data */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
+        <div className="xl:col-span-2 h-full">
+          <Module className="h-full">
+            <ModuleHeader
+              left={<span className="ty-title">Agents</span>}
+              right={
+                <>
+                  <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Show:</span>
+                    <button
+                      className={`px-3 py-1 rounded border ${showActiveOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                      onClick={() => setShowActiveOnly(true)}
+                    >
+                      Active
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded border ${!showActiveOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                      onClick={() => setShowActiveOnly(false)}
+                    >
+                      All
+                    </button>
+                  </div>
+                </>
+              }
+            />
+            <ModuleBody>
+              {showActiveOnly && visibleAgents.length === 0 ? (
+                <div className="p-6 text-sm text-muted-foreground flex items-center justify-between border rounded">
+                  <span>No active agents right now.</span>
+                  <button
+                    className="px-3 py-1 rounded border"
+                    onClick={() => setShowActiveOnly(false)}
+                  >
+                    Show All
+                  </button>
+                </div>
+              ) : (
+                <AgentStatusGrid
+                  agents={visibleAgents}
+                  onAgentClick={handleAgentClick}
+                  cardBackgroundClass="bg-transparent"
+                />
+              )}
+            </ModuleBody>
+          </Module>
         </div>
-        
-        <EventFeed events={events} maxHeight={400} />
+
+        <Module className="h-full">
+          <ModuleHeader
+            left={<span className="ty-title">Live Event Stream</span>}
+            right={
+              <>
+                <DateRangeFilter value={eventsRange} onChange={(v) => { setEventsRange(v); setEventsPage(1); }} />
+                <Pager
+                  page={eventsPage}
+                  pageSize={eventsPageSize}
+                  totalItems={eventsFiltered.length}
+                  onPageChange={setEventsPage}
+                  onPageSizeChange={(n) => { setEventsPageSize(n); setEventsPage(1); }}
+                />
+              </>
+            }
+          />
+          <ModuleBody>
+            <EventFeed events={eventsPaged} maxHeight={9999} bare />
+          </ModuleBody>
+        </Module>
       </div>
 
-      <DrillDownPanel
+      <DrillDownModal
         open={panelOpen}
         onOpenChange={setPanelOpen}
         title={selectedAgent?.name || "Agent Details"}
         data={selectedAgent || {}}
         type="agent"
+        variant="modal"
       />
     </div>
   );
