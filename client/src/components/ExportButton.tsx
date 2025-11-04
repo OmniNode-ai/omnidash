@@ -44,9 +44,11 @@ export const ExportButton = memo(function ExportButton({ data, filename, disable
       document.body.removeChild(a);
     } catch (error) {
       console.error('Failed to export JSON:', error);
+      const errorMessage = "Failed to export data as JSON. Please check console for details.";
+      window.alert(errorMessage);
       toast({
         title: "Export Failed",
-        description: "Failed to export data as JSON. Please check console for details.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -65,9 +67,11 @@ export const ExportButton = memo(function ExportButton({ data, filename, disable
       // Handle array data (most common for CSV)
       if (Array.isArray(data)) {
         if (data.length === 0) {
+          const errorMessage = "No data available to export as CSV.";
+          window.alert(errorMessage);
           toast({
             title: "No Data",
-            description: "No data available to export as CSV.",
+            description: errorMessage,
             variant: "destructive",
           });
           return;
