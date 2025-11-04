@@ -330,12 +330,25 @@ describe('AgentManagementDataSource', () => {
           startedAt: '2024-01-01T00:00:00Z',
         },
       ];
+      const mockDecisions = [
+        {
+          id: 'dec-1',
+          correlationId: 'corr-1',
+          userRequest: 'test request',
+          selectedAgent: 'agent-1',
+          confidenceScore: 0.92,
+          routingStrategy: 'enhanced_fuzzy_matching',
+          routingTimeMs: 45,
+          createdAt: '2024-01-01T00:00:00Z',
+        },
+      ];
 
       setupFetchMock(
         new Map([
           ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
           ['/api/agents/routing/stats', createMockResponse(mockStats)],
           ['/api/agents/executions', createMockResponse(mockExecutions)],
+          ['/api/intelligence/routing/decisions', createMockResponse(mockDecisions)],
         ])
       );
 
