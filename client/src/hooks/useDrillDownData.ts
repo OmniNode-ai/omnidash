@@ -107,7 +107,6 @@ export function useAgentDetails(
     enabled: enabled && !!agentName,
     staleTime: 30_000, // 30 seconds
     refetchInterval: 30_000, // Refetch every 30 seconds for real-time updates
-    retry: 2,
   });
 }
 
@@ -125,7 +124,6 @@ export function usePatternDetails(
     queryFn: () => fetchPatternDetails(patternId!),
     enabled: enabled && !!patternId,
     staleTime: 60_000, // 1 minute
-    retry: 2,
   });
 }
 
@@ -144,6 +142,5 @@ export function useServiceDetails(
     enabled: enabled && !!serviceName,
     staleTime: 15_000, // 15 seconds
     refetchInterval: 15_000, // Refetch every 15 seconds for health monitoring
-    retry: 2,
   });
 }
