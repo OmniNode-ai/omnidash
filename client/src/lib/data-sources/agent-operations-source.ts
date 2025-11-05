@@ -1,4 +1,6 @@
 // Agent Operations Data Source
+import { USE_MOCK_DATA, AgentOperationsMockData } from '../mock-data';
+
 export interface AgentSummary {
   totalAgents: number;
   activeAgents: number;
@@ -55,6 +57,11 @@ interface AgentOperationsData {
 
 class AgentOperationsSource {
   async fetchSummary(timeRange: string): Promise<{ data: AgentSummary; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return { data: AgentOperationsMockData.generateSummary(), isMock: true };
+    }
+
     try {
       const res = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
       if (res.ok) {
@@ -117,6 +124,11 @@ class AgentOperationsSource {
   }
 
   async fetchRecentActions(timeRange: string, limit: number = 100): Promise<{ data: RecentAction[]; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return { data: AgentOperationsMockData.generateRecentActions(limit), isMock: true };
+    }
+
     try {
       const res = await fetch(`/api/intelligence/actions/recent?limit=${limit}&timeWindow=${timeRange}`);
       if (res.ok) {
@@ -134,6 +146,11 @@ class AgentOperationsSource {
   }
 
   async fetchHealth(): Promise<{ data: HealthStatus; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return { data: AgentOperationsMockData.generateHealth(), isMock: true };
+    }
+
     try {
       const res = await fetch('/api/intelligence/health');
       if (res.ok) {
@@ -158,6 +175,20 @@ class AgentOperationsSource {
   }
 
   async fetchOperationsData(timeRange: string): Promise<{ data: any[]; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      // Generate mock operations data in the format expected by the chart
+      const mockOperations = AgentOperationsMockData.generateOperations(8);
+      return {
+        data: mockOperations.map(op => ({
+          actionType: op.id,
+          operationsPerMinute: op.count / 60,
+          period: new Date().toISOString(),
+        })),
+        isMock: true
+      };
+    }
+
     try {
       const res = await fetch(`/api/intelligence/metrics/operations-per-minute?timeWindow=${timeRange}`);
       if (res.ok) {
@@ -171,6 +202,18 @@ class AgentOperationsSource {
   }
 
   async fetchQualityImpactData(timeRange: string): Promise<{ data: any[]; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      const chartData = AgentOperationsMockData.generateQualityChart(20);
+      return {
+        data: chartData.map(point => ({
+          period: new Date().toISOString(),
+          avgQualityImprovement: point.value / 100,
+        })),
+        isMock: true
+      };
+    }
+
     try {
       const res = await fetch(`/api/intelligence/metrics/quality-impact?timeWindow=${timeRange}`);
       if (res.ok) {

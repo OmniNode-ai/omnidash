@@ -1,4 +1,6 @@
 // Platform Health Data Source
+import { USE_MOCK_DATA, PlatformHealthMockData } from '../mock-data';
+
 export interface PlatformHealth {
   status: string;
   uptime: number;
@@ -25,6 +27,11 @@ interface PlatformHealthData {
 
 class PlatformHealthSource {
   async fetchHealth(timeRange: string): Promise<{ data: PlatformHealth; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return { data: PlatformHealthMockData.generateHealth(), isMock: true };
+    }
+
     try {
       const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
       const response = await fetch(`${omniarchonUrl}/api/intelligence/platform/health?timeWindow=${timeRange}`);
@@ -51,6 +58,11 @@ class PlatformHealthSource {
   }
 
   async fetchServices(): Promise<{ data: PlatformServices; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return { data: PlatformHealthMockData.generateServices(), isMock: true };
+    }
+
     try {
       const response = await fetch('http://localhost:3000/api/intelligence/platform/services');
       if (response.ok) {
