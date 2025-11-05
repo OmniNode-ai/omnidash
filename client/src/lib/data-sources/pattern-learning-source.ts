@@ -1,4 +1,5 @@
 // Pattern Learning Data Source
+import { USE_MOCK_DATA, PatternLearningMockData } from '../mock-data';
 
 export interface DiscoveredPattern {
   name: string;
@@ -52,6 +53,11 @@ class PatternLearningSource {
    * Fetch pattern summary metrics
    */
   async fetchSummary(timeWindow: string = '24h'): Promise<PatternSummary> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return PatternLearningMockData.generateSummary();
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/summary?timeWindow=${timeWindow}`);
       if (response.ok) {
@@ -81,6 +87,11 @@ class PatternLearningSource {
    * Fetch pattern discovery trends over time
    */
   async fetchTrends(timeWindow: string = '24h'): Promise<PatternTrend[]> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return PatternLearningMockData.generateTrends(20);
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/trends?timeWindow=${timeWindow}`);
       if (response.ok) {
@@ -111,6 +122,11 @@ class PatternLearningSource {
    * Fetch pattern quality trends over time
    */
   async fetchQualityTrends(timeWindow: string = '24h'): Promise<QualityTrend[]> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return PatternLearningMockData.generateQualityTrends(20);
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/quality-trends?timeWindow=${timeWindow}`);
       if (response.ok) {
@@ -140,7 +156,12 @@ class PatternLearningSource {
    * Fetch list of patterns with filtering
    */
   async fetchPatternList(limit: number = 50, timeWindow: string = '24h'): Promise<Pattern[]> {
-    try {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return PatternLearningMockData.generatePatternList(limit);
+    }
+
+    try{
       const response = await fetch(`/api/intelligence/patterns/list?limit=${limit}&timeWindow=${timeWindow}`);
       if (response.ok) {
         const data = await response.json();
@@ -174,6 +195,11 @@ class PatternLearningSource {
    * Fetch language breakdown statistics
    */
   async fetchLanguageBreakdown(timeWindow: string = '24h'): Promise<LanguageBreakdown[]> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return PatternLearningMockData.generateLanguageBreakdown();
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/by-language?timeWindow=${timeWindow}`);
       if (response.ok) {
@@ -211,6 +237,11 @@ class PatternLearningSource {
    * Fetch recently discovered patterns
    */
   async fetchDiscovery(limit: number = 8): Promise<{ data: DiscoveredPattern[]; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return { data: PatternLearningMockData.generateDiscoveredPatterns(limit), isMock: true };
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/discovery?limit=${limit}`);
       if (response.ok) {

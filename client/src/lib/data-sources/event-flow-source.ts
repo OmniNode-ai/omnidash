@@ -1,4 +1,6 @@
 // Event Flow Data Source
+import { USE_MOCK_DATA, EventFlowMockData } from '../mock-data';
+
 export interface Event {
   id: string;
   timestamp: string;
@@ -86,6 +88,11 @@ class EventFlowSource {
   }
 
   async fetchEvents(limit: number = 100): Promise<EventFlowData> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return EventFlowMockData.generateAll(limit);
+    }
+
     try {
       const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
       const response = await fetch(`${omniarchonUrl}/api/intelligence/events/stream?limit=${limit}`);
