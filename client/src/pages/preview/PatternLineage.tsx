@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { MockDataBadge } from "@/components/MockDataBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +77,11 @@ const PatternLineage: React.FC = () => {
   const [zoomLevel, setZoomLevel] = useState(100);
   const [showDependencies, setShowDependencies] = useState(true);
   const [showVersions, setShowVersions] = useState(false);
+
+  // Refs for dynamic line calculation
+  const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>({});
 
   // Mock data for pattern nodes
   const patternNodes: PatternNode[] = [
@@ -317,6 +322,42 @@ const PatternLineage: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
+  // Calculate dynamic node positions for accurate line drawing
+  useEffect(() => {
+    const updateNodePositions = () => {
+      if (!svgRef.current || !containerRef.current) return;
+
+      const svgRect = svgRef.current.getBoundingClientRect();
+      const nodes = containerRef.current.querySelectorAll('[data-pattern-node]');
+      const positions: Record<string, { x: number; y: number }> = {};
+
+      nodes.forEach((node) => {
+        const rect = node.getBoundingClientRect();
+        const nodeId = node.getAttribute('data-pattern-node');
+        if (nodeId) {
+          // Calculate center of the node relative to SVG
+          positions[nodeId] = {
+            x: rect.left - svgRect.left + rect.width / 2,
+            y: rect.top - svgRect.top + rect.height / 2,
+          };
+        }
+      });
+
+      setNodePositions(positions);
+    };
+
+    // Update positions after render and when zoom changes
+    const timeoutId = setTimeout(updateNodePositions, 100);
+
+    // Add resize listener
+    window.addEventListener('resize', updateNodePositions);
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', updateNodePositions);
+    };
+  }, [zoomLevel, selectedPattern, activeView]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -455,9 +496,10 @@ const PatternLineage: React.FC = () => {
           <CardContent>
               <div className="h-[calc(100vh-24rem)] bg-muted rounded-lg relative overflow-hidden">
               {/* Interactive graph visualization */}
-              <div 
+              <div
+                ref={containerRef}
                 className="absolute inset-0 p-6"
-                style={{ 
+                style={{
                   transform: `scale(${zoomLevel / 100})`,
                   transformOrigin: 'center center'
                 }}
@@ -465,7 +507,8 @@ const PatternLineage: React.FC = () => {
                 <div className="grid grid-cols-4 gap-12 h-full min-h-[600px]">
                   {/* Top row - Auth Pattern */}
                   <div className="col-span-1 flex justify-center items-start pt-8">
-                    <div 
+                    <div
+                      data-pattern-node="auth-pattern"
                       className="bg-card border-2 border-blue-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
                       onClick={() => setSelectedPattern(patternNodes[0])}
                     >
@@ -480,7 +523,8 @@ const PatternLineage: React.FC = () => {
                   
                   {/* Middle row - Error Handling and Data Validation */}
                   <div className="col-span-1 flex justify-center items-center">
-                    <div 
+                    <div
+                      data-pattern-node="error-handling"
                       className="bg-card border-2 border-green-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
                       onClick={() => setSelectedPattern(patternNodes[1])}
                     >
@@ -494,7 +538,8 @@ const PatternLineage: React.FC = () => {
                   </div>
                   
                   <div className="col-span-1 flex justify-center items-center">
-                    <div 
+                    <div
+                      data-pattern-node="data-validation"
                       className="bg-card border-2 border-purple-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
                       onClick={() => setSelectedPattern(patternNodes[2])}
                     >
@@ -509,7 +554,8 @@ const PatternLineage: React.FC = () => {
                   
                   {/* Bottom row - API Pattern, Session Mgmt, Caching */}
                   <div className="col-span-1 flex justify-center items-end pb-8">
-                    <div 
+                    <div
+                      data-pattern-node="api-pattern"
                       className="bg-card border-2 border-orange-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
                       onClick={() => setSelectedPattern(patternNodes[3])}
                     >
@@ -523,7 +569,8 @@ const PatternLineage: React.FC = () => {
                   </div>
                   
                   <div className="col-span-1 flex justify-center items-end pb-8">
-                    <div 
+                    <div
+                      data-pattern-node="session-management"
                       className="bg-card border-2 border-red-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
                       onClick={() => setSelectedPattern(patternNodes[4])}
                     >
@@ -537,7 +584,8 @@ const PatternLineage: React.FC = () => {
                   </div>
                   
                   <div className="col-span-1 flex justify-center items-end pb-8">
-                    <div 
+                    <div
+                      data-pattern-node="caching-pattern"
                       className="bg-card border-2 border-teal-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
                       onClick={() => setSelectedPattern(patternNodes[5])}
                     >
@@ -551,39 +599,59 @@ const PatternLineage: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Connection lines with better visibility */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
-                  {/* Auth to Error Handling */}
-                  <line x1="12.5%" y1="25%" x2="37.5%" y2="50%" stroke="#3b82f6" strokeWidth="3" strokeDasharray="8,4" />
-                  <circle cx="25%" cy="37.5%" r="3" fill="#3b82f6" />
-                  
-                  {/* Auth to Data Validation */}
-                  <line x1="12.5%" y1="25%" x2="62.5%" y2="50%" stroke="#3b82f6" strokeWidth="3" strokeDasharray="8,4" />
-                  <circle cx="37.5%" cy="37.5%" r="3" fill="#3b82f6" />
-                  
-                  {/* Error Handling to Data Validation */}
-                  <line x1="37.5%" y1="50%" x2="62.5%" y2="50%" stroke="#10b981" strokeWidth="3" strokeDasharray="8,4" />
-                  <circle cx="50%" cy="50%" r="3" fill="#10b981" />
-                  
-                  {/* Error Handling to API Pattern */}
-                  <line x1="37.5%" y1="50%" x2="12.5%" y2="75%" stroke="#8b5cf6" strokeWidth="3" strokeDasharray="8,4" />
-                  <circle cx="25%" cy="62.5%" r="3" fill="#8b5cf6" />
-                  
-                  {/* Data Validation to API Pattern */}
-                  <line x1="62.5%" y1="50%" x2="37.5%" y2="75%" stroke="#8b5cf6" strokeWidth="3" strokeDasharray="8,4" />
-                  <circle cx="50%" cy="62.5%" r="3" fill="#8b5cf6" />
-                  
-                  {/* Data Validation to Session Mgmt */}
-                  <line x1="62.5%" y1="50%" x2="62.5%" y2="75%" stroke="#f59e0b" strokeWidth="3" strokeDasharray="8,4" />
-                  <circle cx="62.5%" cy="62.5%" r="3" fill="#f59e0b" />
-                  
-                  {/* API Pattern to Session Mgmt */}
-                  <line x1="37.5%" y1="75%" x2="62.5%" y2="75%" stroke="#ef4444" strokeWidth="3" strokeDasharray="8,4" />
-                  <circle cx="50%" cy="75%" r="3" fill="#ef4444" />
-                  
-                  {/* Session Mgmt to Caching */}
-                  <line x1="62.5%" y1="75%" x2="87.5%" y2="75%" stroke="#14b8a6" strokeWidth="3" strokeDasharray="8,4" />
-                  <circle cx="75%" cy="75%" r="3" fill="#14b8a6" />
+                {/* Connection lines with dynamic positioning */}
+                <svg ref={svgRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
+                  {/* Only render lines when positions are calculated */}
+                  {Object.keys(nodePositions).length > 0 && patternConnections.map((conn, idx) => {
+                    const fromPos = nodePositions[conn.from];
+                    const toPos = nodePositions[conn.to];
+
+                    if (!fromPos || !toPos) return null;
+
+                    // Color mapping based on connection type
+                    const colorMap: Record<string, string> = {
+                      'dependency': '#3b82f6',
+                      'inheritance': '#10b981',
+                      'composition': '#8b5cf6',
+                      'usage': '#f59e0b',
+                    };
+                    const strokeColor = colorMap[conn.type] || '#94a3b8';
+
+                    // Calculate midpoint for marker
+                    const midX = (fromPos.x + toPos.x) / 2;
+                    const midY = (fromPos.y + toPos.y) / 2;
+
+                    return (
+                      <g key={`connection-${idx}`}>
+                        <line
+                          x1={fromPos.x}
+                          y1={fromPos.y}
+                          x2={toPos.x}
+                          y2={toPos.y}
+                          stroke={strokeColor}
+                          strokeWidth={2 + conn.strength * 2}
+                          strokeDasharray="8,4"
+                          opacity={0.6 + conn.strength * 0.3}
+                        />
+                        <circle
+                          cx={midX}
+                          cy={midY}
+                          r="3"
+                          fill={strokeColor}
+                          opacity={0.8}
+                        />
+                        {/* Arrow indicator */}
+                        {!conn.bidirectional && (
+                          <polygon
+                            points={`${toPos.x - 8},${toPos.y - 5} ${toPos.x},${toPos.y} ${toPos.x - 8},${toPos.y + 5}`}
+                            fill={strokeColor}
+                            opacity={0.8}
+                            transform={`rotate(${Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x) * 180 / Math.PI}, ${toPos.x}, ${toPos.y})`}
+                          />
+                        )}
+                      </g>
+                    );
+                  })}
                 </svg>
               </div>
               
