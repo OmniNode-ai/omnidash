@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import { MockDataBadge } from "@/components/MockDataBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { PatternDetailModal } from "@/components/PatternDetailModal";
+import { UnifiedGraph, type GraphNode, type GraphEdge } from "@/components/UnifiedGraph";
 import { 
   Network, 
   Search, 
@@ -77,11 +78,6 @@ const PatternLineage: React.FC = () => {
   const [zoomLevel, setZoomLevel] = useState(100);
   const [showDependencies, setShowDependencies] = useState(true);
   const [showVersions, setShowVersions] = useState(false);
-
-  // Refs for dynamic line calculation
-  const svgRef = useRef<SVGSVGElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>({});
 
   // Mock data for pattern nodes
   const patternNodes: PatternNode[] = [
@@ -322,41 +318,38 @@ const PatternLineage: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // Calculate dynamic node positions for accurate line drawing
-  useEffect(() => {
-    const updateNodePositions = () => {
-      if (!svgRef.current || !containerRef.current) return;
+  // Convert pattern nodes to UnifiedGraph format
+  const graphNodes: GraphNode[] = filteredNodes.map(node => ({
+    id: node.id,
+    label: node.name,
+    type: node.type,
+    color: node.status === 'stable' ? '#10b981' : node.status === 'experimental' ? '#f59e0b' : '#6b7280',
+    size: node.usage,
+    metadata: {
+      version: node.version,
+      status: node.status,
+      performance: node.performance,
+      complexity: node.complexity,
+      usage: node.usage,
+      description: node.description,
+      category: node.category
+    }
+  }));
 
-      const svgRect = svgRef.current.getBoundingClientRect();
-      const nodes = containerRef.current.querySelectorAll('[data-pattern-node]');
-      const positions: Record<string, { x: number; y: number }> = {};
+  // Convert pattern connections to UnifiedGraph format
+  const graphEdges: GraphEdge[] = patternConnections
+    .filter(conn =>
+      filteredNodes.some(n => n.id === conn.from) &&
+      filteredNodes.some(n => n.id === conn.to)
+    )
+    .map(conn => ({
+      source: conn.from,
+      target: conn.to,
+      weight: conn.strength,
+      type: conn.type,
+      bidirectional: conn.bidirectional
+    }));
 
-      nodes.forEach((node) => {
-        const rect = node.getBoundingClientRect();
-        const nodeId = node.getAttribute('data-pattern-node');
-        if (nodeId) {
-          // Calculate center of the node relative to SVG
-          positions[nodeId] = {
-            x: rect.left - svgRect.left + rect.width / 2,
-            y: rect.top - svgRect.top + rect.height / 2,
-          };
-        }
-      });
-
-      setNodePositions(positions);
-    };
-
-    // Update positions after render and when zoom changes
-    const timeoutId = setTimeout(updateNodePositions, 100);
-
-    // Add resize listener
-    window.addEventListener('resize', updateNodePositions);
-
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener('resize', updateNodePositions);
-    };
-  }, [zoomLevel, selectedPattern, activeView]);
 
   return (
     <div className="space-y-6">
@@ -494,180 +487,25 @@ const PatternLineage: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-              <div className="h-[calc(100vh-24rem)] bg-muted rounded-lg relative overflow-hidden">
-              {/* Interactive graph visualization */}
-              <div
-                ref={containerRef}
-                className="absolute inset-0 p-6"
-                style={{
-                  transform: `scale(${zoomLevel / 100})`,
-                  transformOrigin: 'center center'
-                }}
-              >
-                <div className="grid grid-cols-4 gap-12 h-full min-h-[600px]">
-                  {/* Top row - Auth Pattern */}
-                  <div className="col-span-1 flex justify-center items-start pt-8">
-                    <div
-                      data-pattern-node="auth-pattern"
-                      className="bg-card border-2 border-blue-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
-                      onClick={() => setSelectedPattern(patternNodes[0])}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Layers className="w-5 h-5 text-blue-500" />
-                        <span className="font-semibold text-lg">Auth Pattern</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground mb-2">v2.1.0</div>
-                      <div className="text-xs text-blue-600">15 uses • 95% perf</div>
-                    </div>
-                  </div>
-                  
-                  {/* Middle row - Error Handling and Data Validation */}
-                  <div className="col-span-1 flex justify-center items-center">
-                    <div
-                      data-pattern-node="error-handling"
-                      className="bg-card border-2 border-green-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
-                      onClick={() => setSelectedPattern(patternNodes[1])}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Layers className="w-5 h-5 text-green-500" />
-                        <span className="font-semibold text-lg">Error Handling</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground mb-2">v1.8.2</div>
-                      <div className="text-xs text-green-600">23 uses • 88% perf</div>
-                    </div>
-                  </div>
-                  
-                  <div className="col-span-1 flex justify-center items-center">
-                    <div
-                      data-pattern-node="data-validation"
-                      className="bg-card border-2 border-purple-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
-                      onClick={() => setSelectedPattern(patternNodes[2])}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Layers className="w-5 h-5 text-purple-500" />
-                        <span className="font-semibold text-lg">Data Validation</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground mb-2">v3.0.1</div>
-                      <div className="text-xs text-purple-600">31 uses • 92% perf</div>
-                    </div>
-                  </div>
-                  
-                  {/* Bottom row - API Pattern, Session Mgmt, Caching */}
-                  <div className="col-span-1 flex justify-center items-end pb-8">
-                    <div
-                      data-pattern-node="api-pattern"
-                      className="bg-card border-2 border-orange-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
-                      onClick={() => setSelectedPattern(patternNodes[3])}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Layers className="w-5 h-5 text-orange-500" />
-                        <span className="font-semibold text-lg">API Pattern</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground mb-2">v2.3.0</div>
-                      <div className="text-xs text-orange-600">18 uses • 90% perf</div>
-                    </div>
-                  </div>
-                  
-                  <div className="col-span-1 flex justify-center items-end pb-8">
-                    <div
-                      data-pattern-node="session-management"
-                      className="bg-card border-2 border-red-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
-                      onClick={() => setSelectedPattern(patternNodes[4])}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Layers className="w-5 h-5 text-red-500" />
-                        <span className="font-semibold text-lg">Session Mgmt</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground mb-2">v1.5.0</div>
-                      <div className="text-xs text-red-600">12 uses • 85% perf</div>
-                    </div>
-                  </div>
-                  
-                  <div className="col-span-1 flex justify-center items-end pb-8">
-                    <div
-                      data-pattern-node="caching-pattern"
-                      className="bg-card border-2 border-teal-500 text-foreground rounded-lg p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow min-w-[200px]"
-                      onClick={() => setSelectedPattern(patternNodes[5])}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Layers className="w-5 h-5 text-teal-500" />
-                        <span className="font-semibold text-lg">Caching</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground mb-2">v2.0.0</div>
-                      <div className="text-xs text-teal-600">20 uses • 98% perf</div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Connection lines with dynamic positioning */}
-                <svg ref={svgRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
-                  {/* Only render lines when positions are calculated */}
-                  {Object.keys(nodePositions).length > 0 && patternConnections.map((conn, idx) => {
-                    const fromPos = nodePositions[conn.from];
-                    const toPos = nodePositions[conn.to];
-
-                    if (!fromPos || !toPos) return null;
-
-                    // Color mapping based on connection type
-                    const colorMap: Record<string, string> = {
-                      'dependency': '#3b82f6',
-                      'inheritance': '#10b981',
-                      'composition': '#8b5cf6',
-                      'usage': '#f59e0b',
-                    };
-                    const strokeColor = colorMap[conn.type] || '#94a3b8';
-
-                    // Calculate midpoint for marker
-                    const midX = (fromPos.x + toPos.x) / 2;
-                    const midY = (fromPos.y + toPos.y) / 2;
-
-                    return (
-                      <g key={`connection-${idx}`}>
-                        <line
-                          x1={fromPos.x}
-                          y1={fromPos.y}
-                          x2={toPos.x}
-                          y2={toPos.y}
-                          stroke={strokeColor}
-                          strokeWidth={2 + conn.strength * 2}
-                          strokeDasharray="8,4"
-                          opacity={0.6 + conn.strength * 0.3}
-                        />
-                        <circle
-                          cx={midX}
-                          cy={midY}
-                          r="3"
-                          fill={strokeColor}
-                          opacity={0.8}
-                        />
-                        {/* Arrow indicator */}
-                        {!conn.bidirectional && (
-                          <polygon
-                            points={`${toPos.x - 8},${toPos.y - 5} ${toPos.x},${toPos.y} ${toPos.x - 8},${toPos.y + 5}`}
-                            fill={strokeColor}
-                            opacity={0.8}
-                            transform={`rotate(${Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x) * 180 / Math.PI}, ${toPos.x}, ${toPos.y})`}
-                          />
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-              
-              {/* Zoom level indicator */}
-              <div className="absolute top-4 right-4 bg-muted/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm font-medium shadow-lg">
-                {zoomLevel}%
-              </div>
-              
-              {/* Instructions */}
-              <div className="absolute bottom-4 left-4 bg-muted/90 backdrop-blur-sm rounded-lg px-4 py-2 text-sm shadow-lg">
-                <div className="flex items-center gap-2">
-                  <Network className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Click nodes to select • Use zoom controls • Drag to pan</span>
-                </div>
-              </div>
-            </div>
+            <UnifiedGraph
+              nodes={graphNodes}
+              edges={graphEdges}
+              layout={{ type: 'hierarchy' }}
+              height="calc(100vh - 24rem)"
+              interactive={true}
+              zoomable={true}
+              onNodeClick={(node) => {
+                const patternNode = patternNodes.find(n => n.id === node.id);
+                if (patternNode) setSelectedPattern(patternNode);
+              }}
+              showLegend={true}
+              colorScheme={{
+                dependency: '#3b82f6',
+                inheritance: '#10b981',
+                composition: '#8b5cf6',
+                usage: '#f59e0b',
+              }}
+            />
           </CardContent>
         </Card>
       )}
