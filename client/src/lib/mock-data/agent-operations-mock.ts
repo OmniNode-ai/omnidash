@@ -49,13 +49,26 @@ export class AgentOperationsMockData {
       'Bug Fix',
     ];
 
+    const agentNames = [
+      'CodeAnalyzer',
+      'TestGenerator',
+      'DeployAssistant',
+      'RefactorAgent',
+      'SecurityScanner',
+      'PerformanceOptimizer',
+      'DocumentationAgent',
+      'QualityValidator',
+      'IntegrationMonitor',
+      'AnalysisAssistant',
+    ];
+
     for (let i = 0; i < count; i++) {
-      const agentName = Gen.agentName();
+      const agentName = Gen.randomItem(agentNames);
       const status = Gen.status(0.85);
 
       actions.push({
         id: Gen.uuid(),
-        agentId: `agent-${Gen.randomInt(1, 52)}`,
+        agentId: agentName.toLowerCase().replace(/\s+/g, '-'),
         agentName,
         action: Gen.randomItem(actionTypes),
         status,
@@ -139,11 +152,38 @@ export class AgentOperationsMockData {
   }
 
   /**
+   * Generate per-agent metrics for agent grid
+   */
+  static generatePerAgentMetrics() {
+    const agentNames = [
+      'CodeAnalyzer',
+      'TestGenerator',
+      'DeployAssistant',
+      'RefactorAgent',
+      'SecurityScanner',
+      'PerformanceOptimizer',
+      'DocumentationAgent',
+      'QualityValidator',
+      'IntegrationMonitor',
+      'AnalysisAssistant',
+    ];
+
+    return agentNames.map((agent) => ({
+      agent,
+      totalRequests: Gen.randomInt(50, 300),
+      successRate: Gen.randomFloat(0.85, 0.98, 2), // Decimal format (0-1)
+      avgRoutingTime: Gen.randomFloat(50, 200, 0), // Milliseconds
+      avgConfidence: Gen.randomFloat(0.8, 0.95, 2), // Decimal format (0-1)
+    }));
+  }
+
+  /**
    * Generate complete agent operations data
    */
   static generateAll() {
     const summary = this.generateSummary();
     const recentActions = this.generateRecentActions(50);
+    const perAgentMetrics = this.generatePerAgentMetrics();
     const health = this.generateHealth();
     const chartData = this.generateOperationsChart(20);
     const qualityChartData = this.generateQualityChart(20);
@@ -158,6 +198,7 @@ export class AgentOperationsMockData {
     return {
       summary,
       recentActions,
+      perAgentMetrics,
       health,
       chartData,
       qualityChartData,

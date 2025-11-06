@@ -95,6 +95,7 @@ export default function AgentRegistry() {
   const [activeTab, setActiveTab] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all"); // New: filter by status (active/all)
   const [selectedAgent, setSelectedAgent] = useState<AgentDefinition | null>(null);
   const [selectedExecution, setSelectedExecution] = useState<{correlationId: string, agentName: string} | null>(null);
   const [agents, setAgents] = useState<AgentDefinition[]>([]);
@@ -155,8 +156,12 @@ export default function AgentRegistry() {
 
   // Use centralized data source
   const { data: registryData, isLoading: agentsLoading, error: registryError } = useQuery({
-    queryKey: ['agent-registry', selectedCategory, searchQuery],
-    queryFn: () => agentRegistrySource.fetchAll({ category: selectedCategory, search: searchQuery }),
+    queryKey: ['agent-registry', selectedCategory, searchQuery, selectedStatus],
+    queryFn: () => agentRegistrySource.fetchAll({
+      category: selectedCategory,
+      search: searchQuery,
+      status: selectedStatus
+    }),
     refetchInterval: 60000,
   });
 
@@ -166,15 +171,13 @@ export default function AgentRegistry() {
   const routingData = registryData?.routing;
 
   // Fetch recent actions for Recent Activity section
-  const { data: recentActions } = useQuery({
+  const { data: recentActionsData } = useQuery({
     queryKey: ['recent-actions'],
-    queryFn: async () => {
-      const response = await fetch('/api/intelligence/actions/recent?limit=5');
-      if (!response.ok) return [];
-      return response.json();
-    },
+    queryFn: () => agentRegistrySource.fetchRecentActivity(20),
     refetchInterval: 10000, // Refresh every 10 seconds
   });
+
+  const recentActions = recentActionsData?.data || [];
 
   // Update state when data changes
   useEffect(() => {
@@ -287,19 +290,41 @@ export default function AgentRegistry() {
           {/* Search and Filters */}
           <Card>
             <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                    <Input
-                      placeholder="Search agents, capabilities, or tags..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
+              <div className="flex flex-col gap-4">
+                {/* Search and Status Toggle Row */}
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        placeholder="Search agents, capabilities, or tags..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  {/* Status Filter Toggle */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">Show:</span>
+                    <Button
+                      variant={selectedStatus === "active" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedStatus("active")}
+                    >
+                      Active Only
+                    </Button>
+                    <Button
+                      variant={selectedStatus === "all" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedStatus("all")}
+                    >
+                      All Agents
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                {/* Category Filter Row */}
+                <div className="flex gap-2 flex-wrap">
                   <Button
                     variant={selectedCategory === "all" ? "default" : "outline"}
                     size="sm"
@@ -331,8 +356,17 @@ export default function AgentRegistry() {
               return (
                 <Card
                   key={category.name}
-                  className={`cursor-pointer hover:shadow-md transition-all ${isSelected ? 'ring-2 ring-primary shadow-md' : ''}`}
+                  className={`cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] ${isSelected ? 'ring-2 ring-primary shadow-md' : ''}`}
                   onClick={() => setSelectedCategory(category.name)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedCategory(category.name);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Filter by ${category.name} category`}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
@@ -392,8 +426,17 @@ export default function AgentRegistry() {
                     return (
                       <Card
                         key={agent.id}
-                        className="cursor-pointer hover:shadow-md transition-shadow"
+                        className="cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
                         onClick={() => setSelectedAgent(agent)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedAgent(agent);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View details for ${agent.title}`}
                       >
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
@@ -470,13 +513,25 @@ export default function AgentRegistry() {
                     return (
                       <div
                         key={action.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                        className="flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
                         onClick={() => {
                           setSelectedExecution({
                             correlationId: action.correlationId,
                             agentName: action.agentName || 'Unknown Agent'
                           });
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedExecution({
+                              correlationId: action.correlationId,
+                              agentName: action.agentName || 'Unknown Agent'
+                            });
+                          }
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View execution trace for ${action.agentName || 'Unknown Agent'}`}
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-blue-500"></div>
@@ -508,11 +563,67 @@ export default function AgentRegistry() {
         </TabsContent>
 
         <TabsContent value="agents" className="space-y-4">
+          {/* Filters for All Agents Tab */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      placeholder="Search agents..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                {/* Status Filter Toggle */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">Show:</span>
+                  <Button
+                    variant={selectedStatus === "active" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedStatus("active")}
+                  >
+                    Active Only
+                  </Button>
+                  <Button
+                    variant={selectedStatus === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedStatus("all")}
+                  >
+                    All Agents
+                  </Button>
+                </div>
+                {/* Category Quick Filter */}
+                <div className="flex gap-2">
+                  <Button
+                    variant={selectedCategory === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedCategory("all")}
+                  >
+                    All
+                  </Button>
+                  {categories.slice(0, 3).map((category) => (
+                    <Button
+                      key={category.name}
+                      variant={selectedCategory === category.name ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedCategory(category.name)}
+                    >
+                      {category.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredAgents.map((agent) => {
               const Icon = getCategoryIcon(agent.category);
               return (
-                <Card key={agent.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                <Card key={agent.id} className="cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]" tabIndex={0} role="button" aria-label={`View details for ${agent.title}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">

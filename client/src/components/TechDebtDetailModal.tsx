@@ -167,7 +167,7 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                   <span>Debt Level</span>
                   <span className="font-mono">{opportunity.technicalDebt}/100</span>
                 </div>
-                <Progress value={opportunity.technicalDebt} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, opportunity.technicalDebt || 0))} className="h-2" />
               </div>
             </div>
 
@@ -178,7 +178,7 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                   <span>Complexity</span>
                   <span className="font-mono">{opportunity.complexity}/10</span>
                 </div>
-                <Progress value={opportunity.complexity * 10} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, (opportunity.complexity || 0) * 10))} className="h-2" />
               </div>
             </div>
 
@@ -189,7 +189,7 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                   <span>Coverage</span>
                   <span className="font-mono">{opportunity.testCoverage}%</span>
                 </div>
-                <Progress value={opportunity.testCoverage} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, opportunity.testCoverage || 0))} className="h-2" />
               </div>
             </div>
 
@@ -268,7 +268,7 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                   <span>Estimated Savings</span>
                   <span className="font-mono">${opportunity.costSavings.toLocaleString()}</span>
                 </div>
-                <Progress value={Math.min(opportunity.costSavings / 50000 * 100, 100)} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, (opportunity.costSavings || 0) / 50000 * 100))} className="h-2" />
               </div>
             </div>
 
@@ -279,7 +279,7 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                   <span>Refactoring Time</span>
                   <span className="font-mono">{opportunity.timeEstimate}</span>
                 </div>
-                <Progress value={opportunity.effort === 'low' ? 25 : opportunity.effort === 'medium' ? 50 : opportunity.effort === 'high' ? 75 : 100} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, opportunity.effort === 'low' ? 25 : opportunity.effort === 'medium' ? 50 : opportunity.effort === 'high' ? 75 : 100))} className="h-2" />
               </div>
             </div>
 

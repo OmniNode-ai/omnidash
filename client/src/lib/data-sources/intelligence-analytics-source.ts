@@ -1,3 +1,9 @@
+import { MockDataGenerator as Gen } from '../mock-data/config';
+import type { SavingsMetrics } from './intelligence-savings-source';
+
+// Re-export for external consumers
+export type { SavingsMetrics };
+
 export interface IntelligenceMetrics {
   totalQueries: number;
   avgResponseTime: number;
@@ -53,14 +59,14 @@ class IntelligenceAnalyticsDataSource {
           
           return {
             data: {
-              totalQueries: totalRequests,
-              avgResponseTime: avgRoutingTime,
+              totalQueries: Math.max(0, totalRequests),
+              avgResponseTime: Math.max(0, avgRoutingTime),
               successRate: avgSuccessRate, // Clamped to 0-100
               fallbackRate: Math.max(0, 100 - avgSuccessRate), // Ensure non-negative
               costPerQuery: 0.001,
-              totalCost: totalRequests * 0.001,
-              qualityScore: (avgSuccessRate / 100) * 10, // Convert back to 0-10 scale
-              userSatisfaction: (avgSuccessRate / 100) * 10, // Convert back to 0-10 scale
+              totalCost: Math.max(0, totalRequests * 0.001),
+              qualityScore: Math.max(0, Math.min(10, (avgSuccessRate / 100) * 10)), // Clamp 0-10
+              userSatisfaction: Math.max(0, Math.min(10, (avgSuccessRate / 100) * 10)), // Clamp 0-10
             },
             isMock: false,
           };
@@ -156,18 +162,18 @@ class IntelligenceAnalyticsDataSource {
             const rawSuccessRate = agent.successRate ?? agent.avgConfidence ?? 0;
             const successRate = isDecimalFormat ? rawSuccessRate * 100 : rawSuccessRate;
             const clampedSuccessRate = Math.max(0, Math.min(100, successRate));
-            
+
             return {
               agentId: agent.agent || 'unknown',
               agentName: agent.agent?.replace('agent-', '').replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown Agent',
-              totalRuns: agent.totalRequests || 0,
-              avgResponseTime: agent.avgRoutingTime || 0,
+              totalRuns: Math.max(0, agent.totalRequests || 0),
+              avgResponseTime: Math.max(0, agent.avgRoutingTime || 0),
               successRate: clampedSuccessRate,
               efficiency: clampedSuccessRate, // Use success rate as efficiency proxy
-              avgQualityScore: (agent.avgConfidence || 0) * 10,
-              popularity: agent.totalRequests || 0,
-              costPerSuccess: 0.001 * (agent.avgTokens || 1000) / 1000, // Estimate
-              p95Latency: (agent.avgRoutingTime || 0) * 1.5, // Estimate p95 as 1.5x avg
+              avgQualityScore: Math.max(0, Math.min(10, (agent.avgConfidence || 0) * 10)),
+              popularity: Math.max(0, agent.totalRequests || 0),
+              costPerSuccess: Math.max(0, 0.001 * (agent.avgTokens || 1000) / 1000), // Ensure positive
+              p95Latency: Math.max(0, (agent.avgRoutingTime || 0) * 1.5), // Ensure positive
             };
           });
 
@@ -229,20 +235,33 @@ class IntelligenceAnalyticsDataSource {
       if (response.ok) {
         const data = await response.json();
         if (data && typeof data === 'object') {
-          return { data, isMock: false };
+          // Validate that all currency values are positive (non-negative)
+          const isValid =
+            typeof data.totalSavings === 'number' && data.totalSavings >= 0 &&
+            typeof data.monthlySavings === 'number' && data.monthlySavings >= 0 &&
+            typeof data.weeklySavings === 'number' && data.weeklySavings >= 0 &&
+            typeof data.dailySavings === 'number' && data.dailySavings >= 0 &&
+            typeof data.intelligenceRuns === 'number' && data.intelligenceRuns >= 0 &&
+            typeof data.baselineRuns === 'number' && data.baselineRuns >= 0;
+
+          if (isValid) {
+            return { data, isMock: false };
+          } else {
+            console.warn('API returned invalid savings data (negative values detected), using mock data', data);
+          }
         }
       }
     } catch (err) {
       console.warn('Failed to fetch savings metrics, using mock data', err);
     }
 
-    // Mock data fallback
+    // Mock data fallback - always generates positive values
     return {
       data: {
-        totalSavings: 45000,
-        monthlySavings: 15000,
-        weeklySavings: 3750,
-        dailySavings: 536,
+        totalSavings: Gen.currency(50, 5000, 2),
+        monthlySavings: Gen.currency(20, 2000, 2),
+        weeklySavings: Gen.currency(5, 500, 2),
+        dailySavings: Gen.currency(1, 100, 2),
         intelligenceRuns: 15420,
         baselineRuns: 23500,
         avgTokensPerRun: 3200,
@@ -283,8 +302,6 @@ export interface AgentPerformance {
   costPerSuccess?: number;
   p95Latency?: number;
 }
-
-export type { SavingsMetrics } from './intelligence-savings-source';
 
 export const intelligenceAnalyticsSource = new IntelligenceAnalyticsDataSource();
 

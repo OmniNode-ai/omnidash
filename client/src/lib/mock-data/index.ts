@@ -7,6 +7,8 @@
 
 export { USE_MOCK_DATA, MockDataGenerator } from './config';
 export { AgentOperationsMockData } from './agent-operations-mock';
+export { AgentManagementMockData } from './agent-management-mock';
+export { AgentRegistryMockData } from './agent-registry-mock';
 export { PatternLearningMockData } from './pattern-learning-mock';
 export { IntelligenceOperationsMockData } from './intelligence-operations-mock';
 export { EventFlowMockData } from './event-flow-mock';
