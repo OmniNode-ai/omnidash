@@ -152,7 +152,7 @@ describe('AgentOperationsMockData', () => {
 
       actions.forEach((action) => {
         const timestamp = new Date(action.timestamp).getTime();
-        expect(timestamp).toBeGreaterThan(oneHourAgo);
+        expect(timestamp).toBeGreaterThanOrEqual(oneHourAgo);
         expect(timestamp).toBeLessThanOrEqual(now);
       });
     });

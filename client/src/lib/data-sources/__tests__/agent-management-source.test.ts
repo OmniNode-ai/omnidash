@@ -1,7 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { agentManagementSource } from '../agent-management-source';
 import type { AgentSummary, RoutingStats, AgentExecution } from '../agent-management-source';
 import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+
+// Mock the USE_MOCK_DATA constant to false so tests can validate real API logic
+vi.mock('../../mock-data', async () => {
+  const actual = await vi.importActual('../../mock-data') as any;
+  return {
+    ...actual,
+    USE_MOCK_DATA: false, // Force API mode for tests
+  };
+});
+
+// Import after mocking
+const { agentManagementSource } = await import('../agent-management-source');
 
 describe('AgentManagementDataSource', () => {
   beforeEach(() => {
@@ -110,14 +121,18 @@ describe('AgentManagementDataSource', () => {
       const result = await agentManagementSource.fetchSummary('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.totalAgents).toBe(15);
-      expect(result.data.successRate).toBe(94.0);
-      expect(result.data.avgExecutionTime).toBe(1.2);
+      // Mock data uses random ranges, so check ranges instead of exact values
+      expect(result.data.totalAgents).toBeGreaterThanOrEqual(12);
+      expect(result.data.totalAgents).toBeLessThanOrEqual(18);
+      expect(result.data.successRate).toBeGreaterThanOrEqual(92);
+      expect(result.data.successRate).toBeLessThanOrEqual(96);
+      expect(result.data.avgExecutionTime).toBeGreaterThanOrEqual(0.8);
+      expect(result.data.avgExecutionTime).toBeLessThanOrEqual(1.8);
     });
 
     it('should handle network errors gracefully', async () => {
       const networkError = new Error('Network request failed');
-      
+
       // Use setupFetchMock to throw error for all requests
       setupFetchMock(
         new Map([
@@ -129,7 +144,9 @@ describe('AgentManagementDataSource', () => {
       const result = await agentManagementSource.fetchSummary('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.totalAgents).toBe(15); // Mock fallback data
+      // Mock fallback data uses random ranges
+      expect(result.data.totalAgents).toBeGreaterThanOrEqual(12);
+      expect(result.data.totalAgents).toBeLessThanOrEqual(18);
     });
 
     it('should filter out inactive agents correctly', async () => {
@@ -224,8 +241,11 @@ describe('AgentManagementDataSource', () => {
       const result = await agentManagementSource.fetchRoutingStats('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.totalDecisions).toBe(15420);
-      expect(result.data.accuracy).toBe(94.2);
+      // Mock data uses random ranges
+      expect(result.data.totalDecisions).toBeGreaterThanOrEqual(14000);
+      expect(result.data.totalDecisions).toBeLessThanOrEqual(16000);
+      expect(result.data.accuracy).toBeGreaterThanOrEqual(92);
+      expect(result.data.accuracy).toBeLessThanOrEqual(96);
     });
   });
 
@@ -292,7 +312,7 @@ describe('AgentManagementDataSource', () => {
       expect(result.data[1].status).toBe('failed');
     });
 
-    it('should return empty array with mock flag when no data available', async () => {
+    it('should return mock data when APIs return empty arrays', async () => {
       setupFetchMock(
         new Map([
           ['/api/agents/executions', createMockResponse([])],
@@ -303,7 +323,10 @@ describe('AgentManagementDataSource', () => {
       const result = await agentManagementSource.fetchRecentExecutions('24h', 10);
 
       expect(result.isMock).toBe(true);
-      expect(result.data).toEqual([]);
+      // Should fallback to mock data generator, not return empty array
+      expect(result.data).toHaveLength(10);
+      expect(result.data[0]).toHaveProperty('id');
+      expect(result.data[0]).toHaveProperty('agentName');
     });
   });
 
