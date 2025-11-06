@@ -7,10 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Bot, 
-  Network, 
-  Activity, 
+import {
+  Bot,
+  Network,
+  Activity,
   BarChart3,
   Eye,
   Settings,
@@ -38,6 +38,7 @@ import {
 // Import existing components
 import AgentRegistry from "./AgentRegistry";
 import AgentOperations from "../AgentOperations";
+import { RoutingDecisionDetailModal } from "@/components/RoutingDecisionDetailModal";
 
 // Types imported from data source
 type AgentSummary = import('@/lib/data-sources/agent-management-source').AgentSummary;
@@ -48,6 +49,10 @@ type RoutingDecision = import('@/lib/data-sources/agent-management-source').Rout
 export default function AgentManagement() {
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("24h");
+  const [selectedDecision, setSelectedDecision] = useState<RoutingDecision | null>(null);
+  const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
+  const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false);
+  const [isExecuteModalOpen, setIsExecuteModalOpen] = useState(false);
 
   // Use centralized data source
   const { data: managementData, isLoading } = useQuery({
@@ -98,11 +103,18 @@ export default function AgentManagement() {
         </div>
         <div className="flex items-center gap-2">
           {usingMockData && <MockDataBadge />}
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsConfigureModalOpen(true)}
+          >
             <Settings className="w-4 h-4 mr-2" />
             Configure
           </Button>
-          <Button size="sm">
+          <Button
+            size="sm"
+            onClick={() => setIsExecuteModalOpen(true)}
+          >
             <Play className="w-4 h-4 mr-2" />
             Execute Agent
           </Button>
@@ -315,7 +327,24 @@ export default function AgentManagement() {
                   ) : (
                     <div className="space-y-2">
                       {recentDecisions.map((decision) => (
-                        <div key={decision.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div
+                          key={decision.id}
+                          className="flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
+                          onClick={() => {
+                            setSelectedDecision(decision);
+                            setIsDecisionModalOpen(true);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setSelectedDecision(decision);
+                              setIsDecisionModalOpen(true);
+                            }
+                          }}
+                          tabIndex={0}
+                          role="button"
+                          aria-label={`View routing decision for ${decision.selectedAgent}`}
+                        >
                           <div className="flex-1">
                             <div className="font-medium">{decision.userRequest}</div>
                             <div className="text-sm text-muted-foreground">
@@ -347,6 +376,146 @@ export default function AgentManagement() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Routing Decision Detail Modal */}
+      <RoutingDecisionDetailModal
+        decision={selectedDecision}
+        isOpen={isDecisionModalOpen}
+        onClose={() => {
+          setIsDecisionModalOpen(false);
+          setSelectedDecision(null);
+        }}
+      />
+
+      {/* Configure Modal */}
+      {isConfigureModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsConfigureModalOpen(false)}
+          />
+          <div className="relative z-10 w-[600px] bg-background rounded-2xl shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Agent Configuration</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsConfigureModalOpen(false)}
+              >
+                ✕
+              </Button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Routing Strategy</label>
+                <select className="w-full mt-1 p-2 border rounded-md bg-background">
+                  <option>Enhanced Fuzzy Matching</option>
+                  <option>Exact Match</option>
+                  <option>Capability Alignment</option>
+                  <option>Fallback</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Confidence Threshold</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  defaultValue="75"
+                  className="w-full mt-1"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Max Routing Time (ms)</label>
+                <input
+                  type="number"
+                  defaultValue="100"
+                  className="w-full mt-1 p-2 border rounded-md bg-background"
+                />
+              </div>
+              <div className="flex gap-2 pt-4">
+                <Button className="flex-1" onClick={() => setIsConfigureModalOpen(false)}>
+                  Save Configuration
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsConfigureModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Execute Agent Modal */}
+      {isExecuteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsExecuteModalOpen(false)}
+          />
+          <div className="relative z-10 w-[700px] bg-background rounded-2xl shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Execute Agent</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsExecuteModalOpen(false)}
+              >
+                ✕
+              </Button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Select Agent</label>
+                <select className="w-full mt-1 p-2 border rounded-md bg-background">
+                  <option>Polymorphic Agent</option>
+                  <option>Code Reviewer</option>
+                  <option>Test Generator</option>
+                  <option>Documentation Agent</option>
+                  <option>Refactoring Agent</option>
+                  <option>Security Analyzer</option>
+                  <option>Performance Optimizer</option>
+                  <option>API Designer</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Task Description</label>
+                <textarea
+                  placeholder="Describe the task you want the agent to perform..."
+                  rows={6}
+                  className="w-full mt-1 p-2 border rounded-md bg-background resize-none"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="auto-route" className="rounded" />
+                <label htmlFor="auto-route" className="text-sm">
+                  Let the router automatically select the best agent
+                </label>
+              </div>
+              <div className="flex gap-2 pt-4">
+                <Button className="flex-1" onClick={() => setIsExecuteModalOpen(false)}>
+                  <Play className="w-4 h-4 mr-2" />
+                  Execute
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsExecuteModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
