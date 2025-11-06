@@ -1,5 +1,6 @@
 import React from "react";
 import { DetailModal } from "./DetailModal";
+import { SavingsTooltip } from "@/components/SavingsTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,9 @@ import {
   Activity
 } from "lucide-react";
 
-interface RefactoringOpportunity {
+import type { RefactoringOpportunity } from "@/pages/preview/TechDebtAnalysis";
+
+interface _RefactoringOpportunity {
   id: string;
   title: string;
   description: string;
@@ -125,7 +128,7 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
               <div className="text-2xl font-bold font-mono">{opportunity.timeEstimate}</div>
             </Card>
             <Card className="p-4">
-              <div className="text-xs text-muted-foreground mb-1">Cost Savings</div>
+              <SavingsTooltip className="text-xs text-muted-foreground mb-1">Cost Savings</SavingsTooltip>
               <div className="text-2xl font-bold font-mono">${opportunity.costSavings.toLocaleString()}</div>
             </Card>
           </div>
@@ -265,7 +268,7 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
               <h4 className="text-sm font-semibold mb-3">Cost Impact</h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Estimated Savings</span>
+                  <SavingsTooltip>Estimated Savings</SavingsTooltip>
                   <span className="font-mono">${opportunity.costSavings.toLocaleString()}</span>
                 </div>
                 <Progress value={Math.max(0, Math.min(100, (opportunity.costSavings || 0) / 50000 * 100))} className="h-2" />

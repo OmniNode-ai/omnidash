@@ -9,6 +9,7 @@ import { StatusLegend } from "@/components/StatusLegend";
 import { EventDetailModal, EventAction } from "@/components/EventDetailModal";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
+import { SectionHeader } from "@/components/SectionHeader";
 import { Activity, Cpu, CheckCircle, Clock } from "lucide-react";
 import { Module, ModuleHeader, ModuleBody } from "@/components/Module";
 import { Pager } from "@/components/Pager";
@@ -356,6 +357,12 @@ export default function AgentOperations() {
 
   return (
     <div className="space-y-6">
+      <SectionHeader
+        title="Agent Operations"
+        description="Real-time monitoring of 52+ AI agents with performance metrics, activity tracking, and event streaming."
+        details="The Agent Operations dashboard provides live visibility into all active AI agents across the platform. Monitor request volumes, success rates, response times, and individual agent performance. Use filters to focus on active agents or view historical data. The live event stream shows real-time agent actions and decisions for immediate insight into system behavior."
+        level="h1"
+      />
 
       {/* Status legend */}
       <StatusLegend />

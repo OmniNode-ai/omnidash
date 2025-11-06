@@ -4,6 +4,7 @@ import { DataTable, Column } from "@/components/DataTable";
 import { TransformationFlow } from "@/components/TransformationFlow";
 import { AlertPill } from "@/components/AlertPill";
 import { ExportButton } from "@/components/ExportButton";
+import { SectionHeader } from "@/components/SectionHeader";
 import { Card } from "@/components/ui/card";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { Badge } from "@/components/ui/badge";
@@ -194,7 +195,9 @@ export default function IntelligenceOperations() {
 
   // Keep old queries for now but they're replaced by operationsSourceData
   const operationsData = null; // Deprecated - use operationsSourceData
-  const qualityImpactData = null; // Deprecated - use operationsSourceData
+  const qualityImpactData: QualityImpact[] = []; // Deprecated - use operationsSourceData
+  const qualityLoading = false;
+  const operationsLoading = operationsSourceLoading;
 
   // Fetch recent actions as fallback if WebSocket hasn't provided data yet
   const { data: recentActionsData } = useQuery<AgentAction[]>({
@@ -235,13 +238,13 @@ export default function IntelligenceOperations() {
 
   return (
     <div className="space-y-6">
+      <SectionHeader
+        title="Intelligence Operations"
+        description={isLoading ? 'Loading AI operations data...' : `${totalOperations} AI operations for code analysis and optimization`}
+        details="Intelligence Operations tracks all AI-powered analysis and optimization tasks across the platform. Monitor active operations, quality improvements, manifest injections, and document access patterns. This dashboard provides visibility into how AI agents are improving code quality and developer productivity in real-time."
+        level="h1"
+      />
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold mb-2">Intelligence Operations</h1>
-          <p className="text-muted-foreground">
-            {isLoading ? 'Loading...' : `${totalOperations} AI operations for code analysis and optimization`}
-          </p>
-        </div>
         <div className="flex items-center gap-4">
           <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
           <ExportButton
@@ -436,10 +439,12 @@ export default function IntelligenceOperations() {
 
       {/* Intelligence Health Monitoring */}
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-semibold mb-2">Manifest Injection Health</h2>
-          <p className="text-muted-foreground">Monitor intelligence system performance and detect degradation</p>
-        </div>
+        <SectionHeader
+          title="Manifest Injection Health"
+          description="Monitor intelligence system performance and detect degradation before it impacts users."
+          details="This section tracks the health of the manifest injection system, which powers AI agent intelligence by providing contextual information. Monitor success rates, latency trends, service health, and failed injections. Use these metrics to identify performance bottlenecks and ensure reliable AI operations."
+          level="h2"
+        />
 
         {healthLoading ? (
           <Card className="p-6">
@@ -565,10 +570,12 @@ export default function IntelligenceOperations() {
 
       {/* Document Access Ranking */}
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-semibold mb-2">Document Access Ranking</h2>
-          <p className="text-muted-foreground">Most accessed documents in knowledge base</p>
-        </div>
+        <SectionHeader
+          title="Document Access Ranking"
+          description="Most accessed documents in knowledge base with trend analysis."
+          details="Track which documentation and code files are accessed most frequently by AI agents. This helps identify critical knowledge sources, outdated documentation, and gaps in your knowledge base. Use access trends to prioritize documentation updates and improve agent performance."
+          level="h2"
+        />
 
         {(!topDocumentsData || topDocumentsData.length === 0) && <MockDataBadge className="mb-2" />}
         <DataTable<TopAccessedDocument>
