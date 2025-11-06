@@ -1143,10 +1143,28 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
     }
 
     const patternIdsParam = req.query.patterns as string;
-    let patternIds: string[] = [];
+    let nodeUuids: string[] = [];
 
     if (patternIdsParam) {
-      patternIds = patternIdsParam.split(',').map(id => id.trim());
+      // Query parameters might be string pattern IDs (e.g., "pattern-23") or UUIDs
+      const inputIds = patternIdsParam.split(',').map(id => id.trim());
+
+      // Check if they look like UUIDs (contain dashes and are 36 chars) or pattern IDs
+      const looksLikeUuids = inputIds.every(id =>
+        id.length === 36 && id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+      );
+
+      if (looksLikeUuids) {
+        // Use them directly as UUIDs
+        nodeUuids = inputIds;
+      } else {
+        // Look up UUIDs by patternId (VARCHAR column)
+        const nodes = await intelligenceDb
+          .select({ id: patternLineageNodes.id })
+          .from(patternLineageNodes)
+          .where(inArray(patternLineageNodes.patternId, inputIds));
+        nodeUuids = nodes.map(n => n.id);
+      }
     } else {
       // Get top 50 most recent patterns
       const topPatterns = await intelligenceDb
@@ -1154,16 +1172,16 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
         .from(patternLineageNodes)
         .orderBy(desc(patternLineageNodes.createdAt))
         .limit(50);
-      patternIds = topPatterns.map(p => p.id);
+      nodeUuids = topPatterns.map(p => p.id);
     }
 
     // Return empty array if no patterns found
-    if (patternIds.length === 0) {
+    if (nodeUuids.length === 0) {
       res.json([]);
       return;
     }
 
-    // Get real edges from database
+    // Get real edges from database using UUIDs
     const realEdges = await intelligenceDb
       .select({
         source: patternLineageEdges.sourceNodeId,
@@ -1174,8 +1192,8 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
       .from(patternLineageEdges)
       .where(
         or(
-          inArray(patternLineageEdges.sourceNodeId, patternIds),
-          inArray(patternLineageEdges.targetNodeId, patternIds)
+          inArray(patternLineageEdges.sourceNodeId, nodeUuids),
+          inArray(patternLineageEdges.targetNodeId, nodeUuids)
         )
       );
 
@@ -1187,7 +1205,7 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
     }));
 
     // If we have very few real edges, generate metadata-based relationships
-    if (relationships.length < 5 && patternIds.length > 1) {
+    if (relationships.length < 5 && nodeUuids.length > 1) {
       // Get pattern metadata for similarity-based connections
       const patterns = await intelligenceDb
         .select({
@@ -1196,7 +1214,7 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
           patternType: patternLineageNodes.patternType,
         })
         .from(patternLineageNodes)
-        .where(inArray(patternLineageNodes.id, patternIds));
+        .where(inArray(patternLineageNodes.id, nodeUuids));
 
       // Create metadata-based relationships (same language or type)
       const generatedEdges: PatternRelationship[] = [];

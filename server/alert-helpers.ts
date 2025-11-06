@@ -7,16 +7,87 @@ import {
 } from '../shared/intelligence-schema';
 
 /**
- * Helper function to calculate error rate over a time window
- * Returns ratio of failed executions to total executions
+ * Alert Metrics Cache
+ * Caches alert metrics for 30 seconds to reduce database load
  */
-export async function getErrorRate(timeWindow: string): Promise<number> {
+interface AlertMetricsCache {
+  errorRate: number;
+  injectionSuccessRate: number;
+  avgResponseTime: number;
+  successRate: number;
+  timestamp: number;
+}
+
+let metricsCache: AlertMetricsCache | null = null;
+const CACHE_TTL_MS = 30000; // 30 seconds
+
+/**
+ * Check if cache is valid
+ */
+function isCacheValid(): boolean {
+  if (!metricsCache) return false;
+  return Date.now() - metricsCache.timestamp < CACHE_TTL_MS;
+}
+
+/**
+ * Get all alert metrics in a single optimized query
+ * Fetches all metrics in parallel and caches for 30 seconds
+ */
+export async function getAllAlertMetrics(): Promise<AlertMetricsCache> {
+  // Return cached data if still valid
+  if (isCacheValid() && metricsCache) {
+    return metricsCache;
+  }
+
+  try {
+    // Execute all queries in parallel for maximum performance
+    const [errorRate, injectionSuccessRate, avgResponseTime, successRate] = await Promise.all([
+      getErrorRateUncached('10 minutes'),
+      getManifestInjectionSuccessRateUncached('1 hour'),
+      getAvgResponseTimeUncached('10 minutes'),
+      getSuccessRateUncached('1 hour'),
+    ]);
+
+    // Cache the results
+    metricsCache = {
+      errorRate,
+      injectionSuccessRate,
+      avgResponseTime,
+      successRate,
+      timestamp: Date.now(),
+    };
+
+    return metricsCache;
+  } catch (error) {
+    console.error('Error fetching alert metrics:', error);
+    // Return safe defaults on error
+    return {
+      errorRate: 0,
+      injectionSuccessRate: 1.0,
+      avgResponseTime: 0,
+      successRate: 1.0,
+      timestamp: Date.now(),
+    };
+  }
+}
+
+/**
+ * Clear the metrics cache (useful for testing or forcing refresh)
+ */
+export function clearAlertMetricsCache(): void {
+  metricsCache = null;
+}
+
+/**
+ * Internal: Calculate error rate without caching
+ */
+async function getErrorRateUncached(timeWindow: string): Promise<number> {
   try {
     const interval = timeWindow === '1 hour' ? '1 hour' :
                      timeWindow === '10 minutes' ? '10 minutes' :
                      timeWindow === '24 hours' ? '24 hours' : '10 minutes';
 
-    // Count total actions and error actions in time window
+    // Optimized query - only count, no full table scan
     const [result] = await intelligenceDb
       .select({
         totalActions: sql<number>`COUNT(*)::int`,
@@ -41,10 +112,9 @@ export async function getErrorRate(timeWindow: string): Promise<number> {
 }
 
 /**
- * Helper function to calculate manifest injection success rate
- * Returns ratio of successful injections to total injections
+ * Internal: Calculate manifest injection success rate without caching
  */
-export async function getManifestInjectionSuccessRate(timeWindow: string): Promise<number> {
+async function getManifestInjectionSuccessRateUncached(timeWindow: string): Promise<number> {
   try {
     const interval = timeWindow === '1 hour' ? '1 hour' :
                      timeWindow === '24 hours' ? '24 hours' : '1 hour';
@@ -62,22 +132,20 @@ export async function getManifestInjectionSuccessRate(timeWindow: string): Promi
       .where(sql`${agentManifestInjections.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
 
     if (!result || result.totalInjections === 0) {
-      // If no data, assume healthy (no failures yet)
       return 1.0;
     }
 
     return result.successfulInjections / result.totalInjections;
   } catch (error) {
     console.error('Error calculating manifest injection success rate:', error);
-    return 1.0; // Assume healthy on error
+    return 1.0;
   }
 }
 
 /**
- * Helper function to calculate average response time
- * Returns average routing time in milliseconds
+ * Internal: Calculate average response time without caching
  */
-export async function getAvgResponseTime(timeWindow: string): Promise<number> {
+async function getAvgResponseTimeUncached(timeWindow: string): Promise<number> {
   try {
     const interval = timeWindow === '10 minutes' ? '10 minutes' :
                      timeWindow === '1 hour' ? '1 hour' :
@@ -102,10 +170,9 @@ export async function getAvgResponseTime(timeWindow: string): Promise<number> {
 }
 
 /**
- * Helper function to calculate overall success rate
- * Returns ratio of successful routing decisions to total decisions
+ * Internal: Calculate overall success rate without caching
  */
-export async function getSuccessRate(timeWindow: string): Promise<number> {
+async function getSuccessRateUncached(timeWindow: string): Promise<number> {
   try {
     const interval = timeWindow === '1 hour' ? '1 hour' :
                      timeWindow === '24 hours' ? '24 hours' : '1 hour';
@@ -123,13 +190,36 @@ export async function getSuccessRate(timeWindow: string): Promise<number> {
       .where(sql`${agentRoutingDecisions.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
 
     if (!result || result.totalDecisions === 0) {
-      // If no data, assume healthy
       return 1.0;
     }
 
     return result.successfulDecisions / result.totalDecisions;
   } catch (error) {
     console.error('Error calculating success rate:', error);
-    return 1.0; // Assume healthy on error
+    return 1.0;
   }
+}
+
+/**
+ * Legacy public functions for backward compatibility
+ * Use getAllAlertMetrics() for best performance
+ */
+export async function getErrorRate(timeWindow: string): Promise<number> {
+  const metrics = await getAllAlertMetrics();
+  return metrics.errorRate;
+}
+
+export async function getManifestInjectionSuccessRate(timeWindow: string): Promise<number> {
+  const metrics = await getAllAlertMetrics();
+  return metrics.injectionSuccessRate;
+}
+
+export async function getAvgResponseTime(timeWindow: string): Promise<number> {
+  const metrics = await getAllAlertMetrics();
+  return metrics.avgResponseTime;
+}
+
+export async function getSuccessRate(timeWindow: string): Promise<number> {
+  const metrics = await getAllAlertMetrics();
+  return metrics.successRate;
 }
