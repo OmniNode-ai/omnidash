@@ -200,7 +200,7 @@ export default function PatternLearning() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <div>
           <RealtimeChart
             title="Pattern Discovery Rate"
@@ -212,42 +212,41 @@ export default function PatternLearning() {
             showArea
           />
         </div>
-        <div className="space-y-4">
-          {/* Live Pattern Discovery (from intelligence service) */}
-          <div className="bg-card border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold">Live Pattern Discovery</h3>
-              {liveDiscoverLoading && (
-                <span className="text-xs text-muted-foreground">Loading…</span>
-              )}
-            </div>
-            {liveDiscoverError ? (
-              <p className="text-xs text-destructive">Failed to load live patterns</p>
-            ) : (
-              <ul className="space-y-2 max-h-48 overflow-auto">
-                {(liveDiscoveredPatterns || []).slice(0, 8).map((p) => (
-                  <li key={`${p.file_path}-${p.name}`} className="text-sm">
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">{p.file_path}</div>
-                  </li>
-                ))}
-                {!liveDiscoverLoading && (!liveDiscoveredPatterns || liveDiscoveredPatterns.length === 0) && (
-                  <li className="text-xs text-muted-foreground">No patterns discovered yet</li>
-                )}
-              </ul>
+
+        {/* Live Pattern Discovery (from intelligence service) */}
+        <div className="bg-card border rounded-lg p-4 flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold">Live Pattern Discovery</h3>
+            {liveDiscoverLoading && (
+              <span className="text-xs text-muted-foreground">Loading…</span>
             )}
           </div>
+          {liveDiscoverError ? (
+            <p className="text-xs text-destructive">Failed to load live patterns</p>
+          ) : (
+            <ul className="space-y-2 flex-1 overflow-auto">
+              {(liveDiscoveredPatterns || []).slice(0, 8).map((p) => (
+                <li key={`${p.file_path}-${p.name}`} className="text-sm">
+                  <div className="font-medium">{p.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">{p.file_path}</div>
+                </li>
+              ))}
+              {!liveDiscoverLoading && (!liveDiscoveredPatterns || liveDiscoveredPatterns.length === 0) && (
+                <li className="text-xs text-muted-foreground">No patterns discovered yet</li>
+              )}
+            </ul>
+          )}
+        </div>
 
-          <div>
-            <RealtimeChart
-              title="Average Quality Score"
-              data={(qualityData || []).map(d => ({
-                time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                value: d.avgQuality * 100
-              }))}
-              color="hsl(var(--chart-3))"
-            />
-          </div>
+        <div>
+          <RealtimeChart
+            title="Average Quality Score"
+            data={(qualityData || []).map(d => ({
+              time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              value: d.avgQuality * 100
+            }))}
+            color="hsl(var(--chart-3))"
+          />
         </div>
       </div>
 

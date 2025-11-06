@@ -38,6 +38,7 @@ import PatternLineage from "./PatternLineage";
 import DuplicateDetection from "./DuplicateDetection";
 import TechDebtAnalysis from "./TechDebtAnalysis";
 import { MockDataBadge } from "@/components/MockDataBadge";
+import { codeIntelligenceSource } from "@/lib/data-sources";
 
 // Mock data interfaces
 interface CodeMetrics {
