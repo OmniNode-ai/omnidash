@@ -1,5 +1,3 @@
-import { USE_MOCK_DATA, CodeIntelligenceMockData } from '../mock-data';
-
 export interface CodeAnalysisData {
   files_analyzed: number;
   avg_complexity: number;
@@ -50,11 +48,6 @@ export interface CodeIntelligenceData {
 
 class CodeIntelligenceDataSource {
   async fetchCodeAnalysis(timeRange: string): Promise<{ data: CodeAnalysisData; isMock: boolean }> {
-    // Return comprehensive mock data if USE_MOCK_DATA is enabled
-    if (USE_MOCK_DATA) {
-      return { data: CodeIntelligenceMockData.generateCodeAnalysis(), isMock: true };
-    }
-
     try {
       const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
       const response = await fetch(`${omniarchonUrl}/api/intelligence/code/analysis?timeWindow=${timeRange}`);
@@ -68,7 +61,7 @@ class CodeIntelligenceDataSource {
       console.warn('Failed to fetch code analysis from OmniArchon, using mock data', err);
     }
 
-    // Mock data fallback
+    // Static mock data fallback - always returns predictable values for tests
     return {
       data: {
         files_analyzed: 1250,
@@ -83,11 +76,6 @@ class CodeIntelligenceDataSource {
   }
 
   async fetchCompliance(timeRange: string): Promise<{ data: ComplianceData; isMock: boolean }> {
-    // Return comprehensive mock data if USE_MOCK_DATA is enabled
-    if (USE_MOCK_DATA) {
-      return { data: CodeIntelligenceMockData.generateCompliance(), isMock: true };
-    }
-
     try {
       const response = await fetch(`/api/intelligence/code/compliance?timeWindow=${timeRange}`);
       if (response.ok) {
@@ -100,7 +88,7 @@ class CodeIntelligenceDataSource {
       console.warn('Failed to fetch compliance data, using mock data', err);
     }
 
-    // Mock data fallback
+    // Static mock data fallback - always returns predictable values for tests
     return {
       data: {
         summary: {
