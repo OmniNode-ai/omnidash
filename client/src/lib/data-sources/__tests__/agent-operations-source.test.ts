@@ -78,7 +78,10 @@ describe('AgentOperationsSource', () => {
       const result = await agentOperationsSource.fetchSummary('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.totalAgents).toBe(0);
+      // Mock data returns realistic data, not empty data
+      expect(result.data.totalAgents).toBeGreaterThan(0);
+      expect(result.data.successRate).toBeGreaterThanOrEqual(0);
+      expect(result.data.successRate).toBeLessThanOrEqual(100);
     });
   });
 

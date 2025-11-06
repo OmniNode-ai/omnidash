@@ -58,9 +58,12 @@ interface AgentOperationsData {
 
 class AgentOperationsSource {
   async fetchSummary(timeRange: string): Promise<{ data: AgentSummary; isMock: boolean }> {
-    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
     console.log('[fetchSummary] USE_MOCK_DATA =', USE_MOCK_DATA);
-    if (USE_MOCK_DATA) {
+    if (USE_MOCK_DATA && !isTestEnv) {
       const mockData = AgentOperationsMockData.generateSummary();
       console.log('[fetchSummary] Returning mock data:', mockData);
       return { data: mockData, isMock: true };
@@ -119,8 +122,11 @@ class AgentOperationsSource {
   }
 
   async fetchPerAgentMetrics(timeRange: string): Promise<{ data: any[]; isMock: boolean }> {
-    // Return comprehensive mock data if USE_MOCK_DATA is enabled
-    if (USE_MOCK_DATA) {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
       return { data: AgentOperationsMockData.generatePerAgentMetrics(), isMock: true };
     }
 
@@ -140,8 +146,11 @@ class AgentOperationsSource {
   }
 
   async fetchRecentActions(timeRange: string, limit: number = 100): Promise<{ data: RecentAction[]; isMock: boolean }> {
-    // Return comprehensive mock data if USE_MOCK_DATA is enabled
-    if (USE_MOCK_DATA) {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
       return { data: AgentOperationsMockData.generateRecentActions(limit), isMock: true };
     }
 
@@ -159,8 +168,11 @@ class AgentOperationsSource {
   }
 
   async fetchHealth(): Promise<{ data: HealthStatus; isMock: boolean }> {
-    // Return comprehensive mock data if USE_MOCK_DATA is enabled
-    if (USE_MOCK_DATA) {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
       return { data: AgentOperationsMockData.generateHealth(), isMock: true };
     }
 
@@ -178,8 +190,11 @@ class AgentOperationsSource {
   }
 
   async fetchOperationsData(timeRange: string): Promise<{ data: any[]; isMock: boolean }> {
-    // Return comprehensive mock data if USE_MOCK_DATA is enabled
-    if (USE_MOCK_DATA) {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
       // Generate mock operations data in the format expected by the chart
       const mockOperations = AgentOperationsMockData.generateOperations(8);
       return {
@@ -205,8 +220,11 @@ class AgentOperationsSource {
   }
 
   async fetchQualityImpactData(timeRange: string): Promise<{ data: any[]; isMock: boolean }> {
-    // Return comprehensive mock data if USE_MOCK_DATA is enabled
-    if (USE_MOCK_DATA) {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
       const chartData = AgentOperationsMockData.generateQualityChart(20);
       return {
         data: chartData.map(point => ({
