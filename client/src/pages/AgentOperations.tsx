@@ -6,6 +6,7 @@ import { ensureTimeSeries } from "@/components/mockUtils";
 import { EventFeed } from "@/components/EventFeed";
 import { DrillDownModal } from "@/components/DrillDownModal";
 import { StatusLegend } from "@/components/StatusLegend";
+import { EventDetailModal, EventAction } from "@/components/EventDetailModal";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
 import { Activity, Cpu, CheckCircle, Clock } from "lucide-react";
@@ -39,18 +40,14 @@ interface AgentAction {
   createdAt: string;
 }
 
-interface HealthStatus {
-  status: 'healthy' | 'unhealthy';
-  database: 'connected' | 'error';
-  timestamp: string;
-}
-
 // Routing insights are shown in the Routing tab; keep operations focused on live activity
 
 export default function AgentOperations() {
   const queryClient = useQueryClient();
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<EventAction | null>(null);
+  const [eventModalOpen, setEventModalOpen] = useState(false);
   const [chartData, setChartData] = useState<Array<{ time: string; value: number }>>([]);
   const [performanceChartData, setPerformanceChartData] = useState<Array<{ time: string; value: number }>>([]);
   const [showActiveOnly, setShowActiveOnly] = useState(true);
@@ -120,6 +117,17 @@ export default function AgentOperations() {
   // Transform data source response to expected format
   // Memoize to prevent creating new array references on every render (which would trigger infinite useEffect loops)
   const metrics: AgentMetrics[] = useMemo(() => {
+    // Use per-agent metrics if available (shows individual agents)
+    if (operationsData?.perAgentMetrics && operationsData.perAgentMetrics.length > 0) {
+      return operationsData.perAgentMetrics.map((m: any) => ({
+        agent: m.agent,
+        totalRequests: m.totalRequests || 0,
+        successRate: m.successRate,
+        avgRoutingTime: m.avgRoutingTime,
+        avgConfidence: m.avgConfidence,
+      }));
+    }
+    // Fallback to aggregate summary (single "all" agent)
     return operationsData?.summary ? [{
       agent: 'all',
       totalRequests: operationsData.summary.totalRuns,
@@ -127,10 +135,23 @@ export default function AgentOperations() {
       avgRoutingTime: operationsData.summary.avgExecutionTime,
       avgConfidence: null,
     }] : [];
-  }, [operationsData?.summary]);
+  }, [operationsData?.summary, operationsData?.perAgentMetrics]);
 
   const actions: AgentAction[] = useMemo(() => {
-    return operationsData?.recentActions || [];
+    if (!operationsData?.recentActions) return [];
+
+    // Transform RecentAction format to AgentAction format
+    return operationsData.recentActions.map((action: any) => ({
+      id: action.id,
+      correlationId: action.correlationId || action.id,
+      agentName: action.agentName,
+      actionType: action.actionType || action.action || 'unknown',
+      actionName: action.actionName || action.action || 'Unknown Action',
+      actionDetails: action.actionDetails || {},
+      debugMode: action.debugMode || false,
+      durationMs: action.durationMs || action.duration || 0,
+      createdAt: action.createdAt || action.timestamp || new Date().toISOString(),
+    }));
   }, [operationsData?.recentActions]);
 
   const health = operationsData?.health;
@@ -211,6 +232,15 @@ export default function AgentOperations() {
     setSelectedAgent(agent);
     setPanelOpen(true);
   }, []);
+
+  const handleEventClick = useCallback((event: any) => {
+    // Find the corresponding action from the actions array
+    const action = actions?.find(a => a.id === event.id);
+    if (action) {
+      setSelectedEvent(action);
+      setEventModalOpen(true);
+    }
+  }, [actions]);
 
   // Use summary from data source instead of calculating here
   const aggregatedMetrics = useMemo(() => {
@@ -394,8 +424,8 @@ export default function AgentOperations() {
       {/* (removed) Routing Strategy Breakdown to keep this tab focused on operations */}
 
       {/* Agent grid and event feed with real data */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
-        <div className="xl:col-span-2 h-full">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
+        <div className="h-full">
           <Module className="h-full">
             <ModuleHeader
               left={<span className="ty-title">Agents</span>}
@@ -459,7 +489,7 @@ export default function AgentOperations() {
             }
           />
           <ModuleBody>
-            <EventFeed events={eventsPaged} maxHeight={9999} bare />
+            <EventFeed events={eventsPaged} maxHeight={9999} bare onEventClick={handleEventClick} />
           </ModuleBody>
         </Module>
       </div>
@@ -471,6 +501,15 @@ export default function AgentOperations() {
         data={selectedAgent || {}}
         type="agent"
         variant="modal"
+      />
+
+      <EventDetailModal
+        event={selectedEvent}
+        isOpen={eventModalOpen}
+        onClose={() => {
+          setEventModalOpen(false);
+          setSelectedEvent(null);
+        }}
       />
     </div>
   );

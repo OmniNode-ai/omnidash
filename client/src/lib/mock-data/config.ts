@@ -29,6 +29,39 @@ export class MockDataGenerator {
   }
 
   /**
+   * Generate a clamped float within strict bounds
+   * Ensures the returned value is always within [min, max] range
+   */
+  static clampedFloat(min: number, max: number, decimals: number = 2): number {
+    const value = Math.random() * (max - min) + min;
+    return parseFloat(Math.max(min, Math.min(max, value)).toFixed(decimals));
+  }
+
+  /**
+   * Generate a positive float (>= 0)
+   * Ensures the returned value is never negative
+   */
+  static positiveFloat(min: number, max: number, decimals: number = 2): number {
+    return parseFloat(Math.max(0, Math.random() * (max - min) + min).toFixed(decimals));
+  }
+
+  /**
+   * Generate a percentage (0-100)
+   * Ensures the returned value is always a valid percentage
+   */
+  static percentage(decimals: number = 1): number {
+    return parseFloat((Math.random() * 100).toFixed(decimals));
+  }
+
+  /**
+   * Generate a currency value (always positive)
+   * Ensures the returned value is never negative for financial data
+   */
+  static currency(min: number = 0, max: number = 10000, decimals: number = 2): number {
+    return parseFloat(Math.max(0, Math.random() * (max - min) + min).toFixed(decimals));
+  }
+
+  /**
    * Pick a random item from an array
    */
   static randomItem<T>(items: T[]): T {

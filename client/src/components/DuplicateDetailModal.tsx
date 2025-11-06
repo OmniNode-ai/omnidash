@@ -91,10 +91,10 @@ export function DuplicateDetailModal({ duplicate, isOpen, onClose }: DuplicateDe
               <div className="text-xs text-muted-foreground mb-1">Similarity</div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>{duplicate.similarity}%</span>
+                  <span>{Math.max(0, Math.min(100, duplicate.similarity || 0)).toFixed(1)}%</span>
                   <span className="text-muted-foreground">High</span>
                 </div>
-                <Progress value={duplicate.similarity} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, duplicate.similarity || 0))} className="h-2" />
               </div>
             </Card>
             <Card className="p-4">

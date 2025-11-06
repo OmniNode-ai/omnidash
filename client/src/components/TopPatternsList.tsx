@@ -35,9 +35,12 @@ export function TopPatternsList({ patterns, limit = 10 }: TopPatternsListProps) 
 
       <div className="space-y-3">
         {topPatterns.map((pattern, index) => (
-          <div 
+          <div
             key={pattern.id}
-            className="flex items-start gap-3 p-3 rounded-lg border border-card-border hover-elevate active-elevate-2 cursor-pointer"
+            className="flex items-start gap-3 p-3 rounded-lg border border-card-border hover-elevate active-elevate-2 cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
+            tabIndex={0}
+            role="button"
+            aria-label={`View details for pattern ${pattern.name}`}
             data-testid={`pattern-${pattern.id}`}
           >
             <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary/10 text-primary font-bold text-sm">
