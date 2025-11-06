@@ -8,6 +8,7 @@ import { StatusLegend } from "@/components/StatusLegend";
 import { PatternFilters } from "@/components/PatternFilters";
 import { ExportButton } from "@/components/ExportButton";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
+import { SectionHeader } from "@/components/SectionHeader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Database, TrendingUp, Award, AlertTriangle } from "lucide-react";
 import { useState, useMemo } from "react";
@@ -153,13 +154,13 @@ export default function PatternLearning() {
 
   return (
     <div className="space-y-6">
+      <SectionHeader
+        title="Pattern Learning"
+        description={`Discovery and evolution of ${summary?.totalPatterns.toLocaleString() || '0'} code patterns across your codebase.`}
+        details="Pattern Learning uses machine learning and static analysis to automatically discover, track, and evolve code patterns. Monitor pattern quality scores, usage trends, and recent discoveries. The system learns from your codebase over time, identifying both successful patterns to reuse and anti-patterns to avoid."
+        level="h1"
+      />
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold mb-2">Pattern Learning</h1>
-          <p className="text-muted-foreground">
-            Discovery and evolution of {summary?.totalPatterns.toLocaleString() || '0'} code patterns
-          </p>
-        </div>
         <div className="flex items-center gap-4">
           <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
           <ExportButton
@@ -213,6 +214,17 @@ export default function PatternLearning() {
           />
         </div>
 
+        <div>
+          <RealtimeChart
+            title="Average Quality Score"
+            data={(qualityData || []).map(d => ({
+              time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              value: d.avgQuality * 100
+            }))}
+            color="hsl(var(--chart-3))"
+          />
+        </div>
+
         {/* Live Pattern Discovery (from intelligence service) */}
         <div className="bg-card border rounded-lg p-4 flex flex-col">
           <div className="flex items-center justify-between mb-2">
@@ -236,17 +248,6 @@ export default function PatternLearning() {
               )}
             </ul>
           )}
-        </div>
-
-        <div>
-          <RealtimeChart
-            title="Average Quality Score"
-            data={(qualityData || []).map(d => ({
-              time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-              value: d.avgQuality * 100
-            }))}
-            color="hsl(var(--chart-3))"
-          />
         </div>
       </div>
 

@@ -32,7 +32,6 @@ import FeatureShowcase from "@/pages/preview/FeatureShowcase";
 import ContractBuilder from "@/pages/preview/ContractBuilder";
 import TechDebtAnalysis from "@/pages/preview/TechDebtAnalysis";
 import PatternLineage from "@/pages/preview/PatternLineage";
-import DuplicateDetection from "@/pages/preview/DuplicateDetection";
 import NodeNetworkComposer from "@/pages/preview/NodeNetworkComposer";
 import IntelligenceSavings from "@/pages/preview/IntelligenceSavings";
 import AgentRegistry from "@/pages/preview/AgentRegistry";
@@ -66,7 +65,6 @@ function Router() {
           <Route path="/preview/contracts" component={ContractBuilder} />
           <Route path="/preview/tech-debt" component={TechDebtAnalysis} />
           <Route path="/preview/pattern-lineage" component={PatternLineage} />
-          <Route path="/preview/duplicate-detection" component={DuplicateDetection} />
           <Route path="/preview/composer" component={NodeNetworkComposer} />
           <Route path="/preview/savings" component={IntelligenceSavings} />
           <Route path="/preview/agent-registry" component={AgentRegistry} />

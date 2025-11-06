@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
+import { SectionHeader } from "@/components/SectionHeader";
 import { Activity, Zap, Database, TrendingUp, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { MockBadge } from "@/components/MockBadge";
@@ -95,18 +96,13 @@ export default function EventFlow() {
 
   return (
     <div className="space-y-6">
+      <SectionHeader
+        title="Event Flow"
+        description={`Real-time event stream from omniarchon intelligence infrastructure${dataUpdatedAt ? ` • Last updated: ${lastUpdateTime}` : ''}`}
+        details="Event Flow provides real-time visibility into all events flowing through the Kafka event bus. Monitor event throughput, processing lag, event types, and recent events. This dashboard is essential for debugging event-driven workflows, tracking system activity, and identifying performance bottlenecks in the event pipeline."
+        level="h1"
+      />
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold mb-2">Event Flow</h1>
-          <p className="text-muted-foreground">
-            Real-time event stream from omniarchon intelligence infrastructure
-            {dataUpdatedAt && (
-              <span className="ml-2 text-xs">
-                • Last updated: {lastUpdateTime}
-              </span>
-            )}
-          </p>
-        </div>
         <div className="flex items-center gap-4">
           <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
           <ExportButton
