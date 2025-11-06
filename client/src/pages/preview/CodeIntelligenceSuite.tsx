@@ -36,7 +36,6 @@ import CodeIntelligence from "../CodeIntelligence";
 import PatternLearning from "../PatternLearning";
 import PatternLineage from "./PatternLineage";
 import PatternDependencies from "./PatternDependencies";
-import DuplicateDetection from "./DuplicateDetection";
 import TechDebtAnalysis from "./TechDebtAnalysis";
 import { MockDataBadge } from "@/components/MockDataBadge";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -203,13 +202,12 @@ export default function CodeIntelligenceSuite() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analysis">Code Analysis</TabsTrigger>
           <TabsTrigger value="patterns">Pattern Discovery</TabsTrigger>
           <TabsTrigger value="lineage">Pattern Lineage</TabsTrigger>
           <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
-          <TabsTrigger value="duplicates">Duplicate Detection</TabsTrigger>
           <TabsTrigger value="techdebt">Tech Debt</TabsTrigger>
         </TabsList>
 
@@ -442,10 +440,6 @@ export default function CodeIntelligenceSuite() {
 
         <TabsContent value="dependencies" className="space-y-4">
           <PatternDependencies />
-        </TabsContent>
-
-        <TabsContent value="duplicates" className="space-y-4">
-          <DuplicateDetection />
         </TabsContent>
 
         <TabsContent value="techdebt" className="space-y-4">
