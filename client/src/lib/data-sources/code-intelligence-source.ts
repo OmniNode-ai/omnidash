@@ -61,7 +61,7 @@ class CodeIntelligenceDataSource {
       console.warn('Failed to fetch code analysis from OmniArchon, using mock data', err);
     }
 
-    // Mock data fallback
+    // Static mock data fallback - always returns predictable values for tests
     return {
       data: {
         files_analyzed: 1250,
@@ -88,7 +88,7 @@ class CodeIntelligenceDataSource {
       console.warn('Failed to fetch compliance data, using mock data', err);
     }
 
-    // Mock data fallback
+    // Static mock data fallback - always returns predictable values for tests
     return {
       data: {
         summary: {

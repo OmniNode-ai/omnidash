@@ -1,4 +1,7 @@
 // Agent Registry Data Source
+import { USE_MOCK_DATA, AgentRegistryMockData } from '../mock-data';
+import type { RecentActivity } from '../mock-data/agent-registry-mock';
+
 export interface AgentDefinition {
   id: string;
   name: string;
@@ -15,81 +18,24 @@ interface AgentRegistryData {
   isMock: boolean;
 }
 
+export type { RecentActivity };
+
 class AgentRegistrySource {
-  async fetchAgents(filters?: { category?: string; search?: string }): Promise<{ data: AgentDefinition[]; isMock: boolean }> {
-    // First try to get active agents with performance data from intelligence API
-    try {
-      const response = await fetch(`/api/intelligence/agents/summary?timeWindow=24h`);
-      if (response.ok) {
-        const performanceData = await response.json();
-        if (Array.isArray(performanceData) && performanceData.length > 0) {
-          // Transform performance data into agent definitions
-          const agents: AgentDefinition[] = performanceData.map((agent: any) => ({
-            id: agent.agent || 'unknown',
-            name: agent.agent || 'Unknown Agent',
-            title: agent.agent?.replace('agent-', '').replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown Agent',
-            description: `Active agent with ${agent.totalRequests || 0} requests`,
-            category: this.inferCategory(agent.agent || ''),
-            status: 'active',
-            color: this.inferColor(this.inferCategory(agent.agent || '')),
-            priority: 'medium' as const,
-            capabilities: [],
-            activationTriggers: [],
-            domainContext: '',
-            specializationLevel: 'specialist' as const,
-            performance: {
-              totalRuns: agent.totalRequests || 0,
-              successRate: Math.max(0, Math.min(100, ((agent.successRate || agent.avgConfidence || 0) <= 1
-                ? (agent.successRate || agent.avgConfidence || 0) * 100
-                : (agent.successRate || agent.avgConfidence || 0)))),
-              avgExecutionTime: (agent.avgRoutingTime || 0) / 1000,
-              avgQualityScore: (agent.avgConfidence || 0) * 10,
-              lastUsed: agent.lastSeen || new Date().toISOString(),
-              popularity: agent.totalRequests || 0,
-              efficiency: Math.max(0, Math.min(100, ((agent.successRate || agent.avgConfidence || 0) <= 1
-                ? (agent.successRate || agent.avgConfidence || 0) * 100
-                : (agent.successRate || agent.avgConfidence || 0)))),
-            },
-            lastUpdated: agent.lastSeen || new Date().toISOString(),
-            version: '1.0.0',
-            dependencies: [],
-            tags: [],
-          }));
-
-          // Apply filters
-          let filtered = agents;
-          if (filters?.category && filters.category !== 'all') {
-            filtered = filtered.filter(a => a.category === filters.category);
-          }
-          if (filters?.search) {
-            const searchLower = filters.search.toLowerCase();
-            filtered = filtered.filter(a => 
-              a.name.toLowerCase().includes(searchLower) ||
-              a.title.toLowerCase().includes(searchLower) ||
-              (a.description && a.description.toLowerCase().includes(searchLower))
-            );
-          }
-
-          return { data: filtered, isMock: false };
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to fetch from intelligence API, trying registry API', err);
-    }
-
-    // Fallback to static registry API
+  async fetchAgents(filters?: { category?: string; search?: string; status?: string }): Promise<{ data: AgentDefinition[]; isMock: boolean }> {
+    // Use the full registry API which has all agents with proper status information
     try {
       const params = new URLSearchParams();
       if (filters?.category && filters.category !== 'all') params.append('category', filters.category);
       if (filters?.search) params.append('search', filters.search);
-      
+      if (filters?.status && filters.status !== 'all') params.append('status', filters.status);
+
       const response = await fetch(`/api/agents/agents?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         return { data: Array.isArray(data) ? data : [], isMock: false };
       }
     } catch (err) {
-      console.warn('Failed to fetch agents, using mock data', err);
+      console.warn('Failed to fetch agents from registry API', err);
     }
 
     return {
@@ -171,7 +117,7 @@ class AgentRegistrySource {
     };
   }
 
-  async fetchAll(filters?: { category?: string; search?: string }): Promise<AgentRegistryData> {
+  async fetchAll(filters?: { category?: string; search?: string; status?: string }): Promise<AgentRegistryData> {
     const [agents, categories, performance, routing] = await Promise.all([
       this.fetchAgents(filters),
       this.fetchCategories(),
@@ -186,6 +132,28 @@ class AgentRegistrySource {
       routing: routing.data,
       isMock: agents.isMock || categories.isMock || performance.isMock || routing.isMock,
     };
+  }
+
+  async fetchRecentActivity(limit: number = 20): Promise<{ data: RecentActivity[]; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      const mockData = AgentRegistryMockData.generateRecentActivities(limit);
+      return { data: mockData, isMock: true };
+    }
+
+    try {
+      const response = await fetch(`/api/intelligence/actions/recent?limit=${limit}`);
+      if (response.ok) {
+        const data = await response.json();
+        return { data: Array.isArray(data) ? data : [], isMock: false };
+      }
+    } catch (err) {
+      console.warn('Failed to fetch recent activity from API, using mock data', err);
+    }
+
+    // Fallback to mock data if API fails
+    const mockData = AgentRegistryMockData.generateRecentActivities(limit);
+    return { data: mockData, isMock: true };
   }
 }
 

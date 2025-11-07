@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
+import { SectionHeader } from "@/components/SectionHeader";
 import { Users, Code, TrendingUp, Award } from "lucide-react";
 import { useState } from "react";
 import { MockBadge } from "@/components/MockBadge";
@@ -193,16 +194,18 @@ export default function DeveloperExperience() {
 
   return (
     <div className="space-y-6">
+      <SectionHeader
+        title="Developer Experience"
+        description="Workflow improvements and productivity metrics powered by AI assistance."
+        details="The Developer Experience dashboard tracks how AI agents improve developer productivity. Monitor active developers, code generation volumes, productivity gains, and pattern reuse rates. Analyze task completion velocity, workflow efficiency, and time savings across your development team. Use these insights to measure ROI from AI assistance and identify opportunities for further automation."
+        level="h1"
+      />
       {/* Header with controls */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold mb-2">Developer Experience</h1>
-          <p className="text-muted-foreground">Workflow improvements and productivity metrics</p>
-        </div>
         <div className="flex items-center gap-4">
           <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
           <ExportButton
-            data={metricsData}
+            data={(metricsData as unknown as Record<string, unknown>) || null}
             filename={`developer-experience-${timeRange}-${new Date().toISOString().split('T')[0]}`}
             disabled={!metricsData}
           />

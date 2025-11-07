@@ -1,4 +1,6 @@
 // Knowledge Graph Data Source
+import { USE_MOCK_DATA, KnowledgeGraphMockData } from '../mock-data';
+
 export interface GraphNode {
   id: string;
   label: string;
@@ -21,6 +23,11 @@ export interface KnowledgeGraphData {
 
 class KnowledgeGraphSource {
   async fetchGraph(timeRange: string, limit: number = 1000): Promise<KnowledgeGraphData> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return KnowledgeGraphMockData.generateAll(50, 80);
+    }
+
     try {
       const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
       const response = await fetch(`${omniarchonUrl}/api/intelligence/knowledge/graph?limit=${limit}&timeWindow=${timeRange}`);

@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Code, 
-  Zap, 
-  Download, 
-  Eye, 
-  FileText, 
-  Clock, 
+import {
+  Code,
+  Zap,
+  Download,
+  Eye,
+  FileText,
+  Clock,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -23,7 +23,8 @@ import {
   Users,
   Activity,
   ArrowRight,
-  ArrowDown
+  ArrowDown,
+  Circle
 } from "lucide-react";
 
 interface PatternNode {

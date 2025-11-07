@@ -1,4 +1,5 @@
 // Pattern Learning Data Source
+import { USE_MOCK_DATA, PatternLearningMockData } from '../mock-data';
 
 export interface DiscoveredPattern {
   name: string;
@@ -52,6 +53,11 @@ class PatternLearningSource {
    * Fetch pattern summary metrics
    */
   async fetchSummary(timeWindow: string = '24h'): Promise<PatternSummary> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return PatternLearningMockData.generateSummary();
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/summary?timeWindow=${timeWindow}`);
       if (response.ok) {
@@ -68,19 +74,19 @@ class PatternLearningSource {
       console.warn('Failed to fetch pattern summary, using mock data', err);
     }
 
-    // Mock fallback
-    return {
-      totalPatterns: 1056,
-      newPatternsToday: 42,
-      avgQualityScore: 0.85,
-      activeLearningCount: 8,
-    };
+    // Mock fallback - use mock data generator for realistic values
+    return PatternLearningMockData.generateSummary();
   }
 
   /**
    * Fetch pattern discovery trends over time
    */
   async fetchTrends(timeWindow: string = '24h'): Promise<PatternTrend[]> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return PatternLearningMockData.generateTrends(20);
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/trends?timeWindow=${timeWindow}`);
       if (response.ok) {
@@ -99,18 +105,19 @@ class PatternLearningSource {
       console.warn('Failed to fetch pattern trends, using mock data', err);
     }
 
-    // Mock fallback
-    return [
-      { period: new Date().toISOString(), manifestsGenerated: 12, avgPatternsPerManifest: 1.2, avgQueryTimeMs: 45 },
-      { period: new Date(Date.now() - 3600000).toISOString(), manifestsGenerated: 8, avgPatternsPerManifest: 0.8, avgQueryTimeMs: 52 },
-      { period: new Date(Date.now() - 2 * 3600000).toISOString(), manifestsGenerated: 15, avgPatternsPerManifest: 1.6, avgQueryTimeMs: 38 },
-    ];
+    // Mock fallback - use mock data generator for realistic time series
+    return PatternLearningMockData.generateTrends(20);
   }
 
   /**
    * Fetch pattern quality trends over time
    */
   async fetchQualityTrends(timeWindow: string = '24h'): Promise<QualityTrend[]> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return PatternLearningMockData.generateQualityTrends(20);
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/quality-trends?timeWindow=${timeWindow}`);
       if (response.ok) {
@@ -128,18 +135,19 @@ class PatternLearningSource {
       console.warn('Failed to fetch quality trends, using mock data', err);
     }
 
-    // Mock fallback
-    return [
-      { period: new Date().toISOString(), avgQuality: 0.86, manifestCount: 12 },
-      { period: new Date(Date.now() - 3600000).toISOString(), avgQuality: 0.84, manifestCount: 8 },
-      { period: new Date(Date.now() - 2 * 3600000).toISOString(), avgQuality: 0.85, manifestCount: 15 },
-    ];
+    // Mock fallback - use mock data generator for realistic time series
+    return PatternLearningMockData.generateQualityTrends(20);
   }
 
   /**
    * Fetch list of patterns with filtering
    */
   async fetchPatternList(limit: number = 50, timeWindow: string = '24h'): Promise<Pattern[]> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return PatternLearningMockData.generatePatternList(limit);
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/list?limit=${limit}&timeWindow=${timeWindow}`);
       if (response.ok) {
@@ -152,28 +160,19 @@ class PatternLearningSource {
       console.warn('Failed to fetch pattern list, using mock data', err);
     }
 
-    // Mock fallback - generate realistic patterns
-    const categories = ['authentication', 'data-processing', 'error-handling', 'caching', 'validation'];
-    const languages = ['python', 'typescript', 'rust', 'go'];
-    const trends: Array<'up' | 'down' | 'stable'> = ['up', 'down', 'stable'];
-
-    return Array.from({ length: Math.min(limit, 20) }, (_, i) => ({
-      id: `pattern-${i + 1}`,
-      name: `Pattern ${i + 1}`,
-      description: `Code pattern for ${categories[i % categories.length]}`,
-      quality: 0.7 + Math.random() * 0.3,
-      usage: Math.floor(Math.random() * 100),
-      trend: trends[i % trends.length],
-      trendPercentage: Math.floor(Math.random() * 30) - 10,
-      category: categories[i % categories.length],
-      language: languages[i % languages.length],
-    }));
+    // Mock fallback - use mock data generator for realistic patterns
+    return PatternLearningMockData.generatePatternList(limit);
   }
 
   /**
    * Fetch language breakdown statistics
    */
   async fetchLanguageBreakdown(timeWindow: string = '24h'): Promise<LanguageBreakdown[]> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return PatternLearningMockData.generateLanguageBreakdown();
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/by-language?timeWindow=${timeWindow}`);
       if (response.ok) {
@@ -199,18 +198,19 @@ class PatternLearningSource {
       console.warn('Failed to fetch language breakdown, using mock data', err);
     }
 
-    // Mock fallback
-    return [
-      { language: 'python', count: 686, percentage: 66.5 },
-      { language: 'typescript', count: 287, percentage: 27.8 },
-      { language: 'rust', count: 58, percentage: 5.7 },
-    ];
+    // Mock fallback - use mock data generator for realistic language distribution
+    return PatternLearningMockData.generateLanguageBreakdown();
   }
 
   /**
    * Fetch recently discovered patterns
    */
   async fetchDiscovery(limit: number = 8): Promise<{ data: DiscoveredPattern[]; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return { data: PatternLearningMockData.generateDiscoveredPatterns(limit), isMock: true };
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/discovery?limit=${limit}`);
       if (response.ok) {
@@ -229,13 +229,9 @@ class PatternLearningSource {
       console.warn('Failed to fetch pattern discovery, using mock data', err);
     }
 
-    // Mock fallback
+    // Mock fallback - use mock data generator for realistic discovered patterns
     return {
-      data: [
-        { name: 'OAuth Authentication Flow', file_path: '/src/auth/oauth_handler.py', createdAt: new Date().toISOString(), metadata: { createdAt: new Date().toISOString() } },
-        { name: 'Database Connection Pool', file_path: '/src/db/pool.py', createdAt: new Date(Date.now() - 3600000).toISOString(), metadata: { createdAt: new Date(Date.now() - 3600000).toISOString() } },
-        { name: 'Error Handling Middleware', file_path: '/src/middleware/errors.py', createdAt: new Date(Date.now() - 7200000).toISOString(), metadata: { createdAt: new Date(Date.now() - 7200000).toISOString() } },
-      ],
+      data: PatternLearningMockData.generateDiscoveredPatterns(limit),
       isMock: true,
     };
   }

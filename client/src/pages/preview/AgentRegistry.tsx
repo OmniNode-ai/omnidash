@@ -95,12 +95,14 @@ export default function AgentRegistry() {
   const [activeTab, setActiveTab] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all"); // New: filter by status (active/all)
   const [selectedAgent, setSelectedAgent] = useState<AgentDefinition | null>(null);
   const [selectedExecution, setSelectedExecution] = useState<{correlationId: string, agentName: string} | null>(null);
   const [agents, setAgents] = useState<AgentDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   // performance metric mode: 'success' shows success percentage, 'time' shows avg execution time in ms
   const [performanceMetricMode, setPerformanceMetricMode] = useState<'success' | 'time'>('time');
+  const [performanceTrendTimeRange, setPerformanceTrendTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
 
   const categories: AgentCategory[] = [
     {
@@ -155,8 +157,12 @@ export default function AgentRegistry() {
 
   // Use centralized data source
   const { data: registryData, isLoading: agentsLoading, error: registryError } = useQuery({
-    queryKey: ['agent-registry', selectedCategory, searchQuery],
-    queryFn: () => agentRegistrySource.fetchAll({ category: selectedCategory, search: searchQuery }),
+    queryKey: ['agent-registry', selectedCategory, searchQuery, selectedStatus],
+    queryFn: () => agentRegistrySource.fetchAll({
+      category: selectedCategory,
+      search: searchQuery,
+      status: selectedStatus
+    }),
     refetchInterval: 60000,
   });
 
@@ -166,15 +172,13 @@ export default function AgentRegistry() {
   const routingData = registryData?.routing;
 
   // Fetch recent actions for Recent Activity section
-  const { data: recentActions } = useQuery({
+  const { data: recentActionsData } = useQuery({
     queryKey: ['recent-actions'],
-    queryFn: async () => {
-      const response = await fetch('/api/intelligence/actions/recent?limit=5');
-      if (!response.ok) return [];
-      return response.json();
-    },
+    queryFn: () => agentRegistrySource.fetchRecentActivity(20),
     refetchInterval: 10000, // Refresh every 10 seconds
   });
+
+  const recentActions = recentActionsData?.data || [];
 
   // Update state when data changes
   useEffect(() => {
@@ -279,27 +283,52 @@ export default function AgentRegistry() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="agents">All Agents</TabsTrigger>
-          <TabsTrigger value="capabilities">Capabilities</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           {/* Search and Filters */}
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                    <Input
-                      placeholder="Search agents, capabilities, or tags..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
+            <CardHeader>
+              <CardTitle>Search & Filters</CardTitle>
+              <CardDescription>Find agents by name, capabilities, or tags and filter by category or status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4">
+                {/* Search and Status Toggle Row */}
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        placeholder="Search agents, capabilities, or tags..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  {/* Status Filter Toggle */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">Show:</span>
+                    <Button
+                      variant={selectedStatus === "active" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedStatus("active")}
+                    >
+                      Active Only
+                    </Button>
+                    <Button
+                      variant={selectedStatus === "all" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedStatus("all")}
+                    >
+                      All Agents
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                {/* Category Filter Row */}
+                <div className="flex gap-2 flex-wrap">
                   <Button
                     variant={selectedCategory === "all" ? "default" : "outline"}
                     size="sm"
@@ -331,8 +360,17 @@ export default function AgentRegistry() {
               return (
                 <Card
                   key={category.name}
-                  className={`cursor-pointer hover:shadow-md transition-all ${isSelected ? 'ring-2 ring-primary shadow-md' : ''}`}
+                  className={`cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] ${isSelected ? 'ring-2 ring-primary shadow-md' : ''}`}
                   onClick={() => setSelectedCategory(category.name)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedCategory(category.name);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Filter by ${category.name} category`}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
@@ -392,8 +430,17 @@ export default function AgentRegistry() {
                     return (
                       <Card
                         key={agent.id}
-                        className="cursor-pointer hover:shadow-md transition-shadow"
+                        className="cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
                         onClick={() => setSelectedAgent(agent)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedAgent(agent);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View details for ${agent.title}`}
                       >
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
@@ -470,13 +517,25 @@ export default function AgentRegistry() {
                     return (
                       <div
                         key={action.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                        className="flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
                         onClick={() => {
                           setSelectedExecution({
                             correlationId: action.correlationId,
                             agentName: action.agentName || 'Unknown Agent'
                           });
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedExecution({
+                              correlationId: action.correlationId,
+                              agentName: action.agentName || 'Unknown Agent'
+                            });
+                          }
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View execution trace for ${action.agentName || 'Unknown Agent'}`}
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-blue-500"></div>
@@ -508,11 +567,67 @@ export default function AgentRegistry() {
         </TabsContent>
 
         <TabsContent value="agents" className="space-y-4">
+          {/* Filters for All Agents Tab */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      placeholder="Search agents..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                {/* Status Filter Toggle */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">Show:</span>
+                  <Button
+                    variant={selectedStatus === "active" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedStatus("active")}
+                  >
+                    Active Only
+                  </Button>
+                  <Button
+                    variant={selectedStatus === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedStatus("all")}
+                  >
+                    All Agents
+                  </Button>
+                </div>
+                {/* Category Quick Filter */}
+                <div className="flex gap-2">
+                  <Button
+                    variant={selectedCategory === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedCategory("all")}
+                  >
+                    All
+                  </Button>
+                  {categories.slice(0, 3).map((category) => (
+                    <Button
+                      key={category.name}
+                      variant={selectedCategory === category.name ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedCategory(category.name)}
+                    >
+                      {category.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredAgents.map((agent) => {
               const Icon = getCategoryIcon(agent.category);
               return (
-                <Card key={agent.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                <Card key={agent.id} className="cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]" tabIndex={0} role="button" aria-label={`View details for ${agent.title}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
@@ -579,61 +694,6 @@ export default function AgentRegistry() {
               );
             })}
           </div>
-        </TabsContent>
-
-        <TabsContent value="capabilities" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Agent Capabilities Matrix</CardTitle>
-              <CardDescription>Comprehensive view of all agent capabilities and their expertise levels</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {categories.map((category) => {
-                  const categoryAgents = agents.filter(agent => agent.category === category.name);
-                  const allCapabilities = categoryAgents.flatMap(agent => agent.capabilities || []);
-                  const uniqueCapabilities = Array.from(new Set(allCapabilities.map(cap => cap.name)))
-                    .map(name => allCapabilities.find(cap => cap.name === name)!);
-
-                  return (
-                    <div key={category.name} className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <category.icon className="w-5 h-5" style={{ color: getColorHex(category.color) }} />
-                        <h3 className="text-lg font-semibold capitalize">{category.name}</h3>
-                        <Badge variant="outline">{categoryAgents.length} agents</Badge>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {uniqueCapabilities.map((capability, index) => {
-                          const agentsWithCapability = categoryAgents.filter(agent =>
-                            agent.capabilities?.some(cap => cap.name === capability.name)
-                          );
-                          
-                          return (
-                            <div key={index} className="p-3 border rounded-lg">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="font-medium text-sm">{capability.name}</div>
-                                <Badge variant="outline" className="text-xs">
-                                  {capability.level}
-                                </Badge>
-                              </div>
-                              <div className="text-xs text-muted-foreground mb-2">
-                                {capability.description}
-                              </div>
-                              <div className="text-xs">
-                                <span className="text-muted-foreground">Used by: </span>
-                                <span className="font-medium">{agentsWithCapability.length} agents</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
@@ -719,10 +779,42 @@ export default function AgentRegistry() {
 
             <Card>
               <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Performance Trends</CardTitle>
-                  <CardDescription>Agent performance over time</CardDescription>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Performance Trends</CardTitle>
+                    <CardDescription>Agent performance over time</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={performanceTrendTimeRange === '7d' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPerformanceTrendTimeRange('7d')}
+                    >
+                      7D
+                    </Button>
+                    <Button
+                      variant={performanceTrendTimeRange === '30d' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPerformanceTrendTimeRange('30d')}
+                    >
+                      30D
+                    </Button>
+                    <Button
+                      variant={performanceTrendTimeRange === '90d' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPerformanceTrendTimeRange('90d')}
+                    >
+                      90D
+                    </Button>
+                    <Button
+                      variant={performanceTrendTimeRange === 'all' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPerformanceTrendTimeRange('all')}
+                    >
+                      All Time
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -743,16 +835,14 @@ export default function AgentRegistry() {
               </div>
               </CardHeader>
               <CardContent>
-                <div className="h-64 bg-muted rounded-lg flex items-center justify-center">
+                <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg border-2 border-dashed">
                   <div className="text-center">
                     <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-muted-foreground">
-                      {performanceMetricMode === 'time' ? 'Completion time (ms)' : 'Success percentage (0–100%)'} trends chart would go here
+                    <p className="text-muted-foreground font-medium mb-1">
+                      Performance trends visualization
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {performanceMetricMode === 'time'
-                        ? 'Showing average completion time over time'
-                        : 'Showing success rate (0–100%) over time'}
+                      Tracking {performanceMetricMode === 'time' ? 'completion time (ms)' : 'success rate (%)'} over {performanceTrendTimeRange === 'all' ? 'all time' : `last ${performanceTrendTimeRange.toUpperCase()}`}
                     </p>
                   </div>
                 </div>

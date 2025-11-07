@@ -97,15 +97,24 @@ export function AgentStatusGrid({ agents, onAgentClick, cardBackgroundClass, com
   const GridContent = (
     <div ref={gridRef} className="grid grid-cols-3 md:grid-cols-5 xl:grid-cols-6 gap-3">
       {itemsToRender.map((agent) => (
-        <Card 
-          key={agent.id} 
+        <Card
+          key={agent.id}
           className={cn(
             compact ? "p-3" : "p-4",
-            "hover-elevate active-elevate-2 cursor-pointer transition-all border border-border/80",
+            "hover-elevate active-elevate-2 cursor-pointer transition-all duration-200 ease-in-out border border-border/80 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
             cardBackgroundClass,
             agent.status === "error" && "border-status-error/30"
           )}
           onClick={() => onAgentClick?.(agent)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onAgentClick?.(agent);
+            }
+          }}
+          tabIndex={0}
+          role="button"
+          aria-label={`View details for agent ${agent.name}`}
           data-testid={`card-agent-${agent.id}`}
           data-agent-card
         >

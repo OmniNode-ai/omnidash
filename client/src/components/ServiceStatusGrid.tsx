@@ -46,12 +46,15 @@ export function ServiceStatusGrid({ services }: ServiceStatusGridProps) {
         const Icon = iconMap[service.icon];
         
         return (
-          <Card 
-            key={service.id} 
+          <Card
+            key={service.id}
             className={cn(
-              "p-4 hover-elevate active-elevate-2 cursor-pointer transition-all",
+              "p-4 hover-elevate active-elevate-2 cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]",
               getStatusBorder(service.status)
             )}
+            tabIndex={0}
+            role="button"
+            aria-label={`View details for ${service.name} service`}
             data-testid={`card-service-${service.id}`}
           >
             <div className="flex items-start justify-between mb-3">
