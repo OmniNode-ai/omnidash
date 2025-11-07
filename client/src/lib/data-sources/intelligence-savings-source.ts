@@ -1,3 +1,5 @@
+import { USE_MOCK_DATA } from '../mock-data/config';
+
 export interface SavingsMetrics {
   totalSavings: number;
   monthlySavings: number;
@@ -74,6 +76,30 @@ export interface ProviderSavings {
 
 class IntelligenceSavingsDataSource {
   async fetchMetrics(timeRange: string): Promise<{ data: SavingsMetrics; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: {
+          totalSavings: 45000,
+          monthlySavings: 15000,
+          weeklySavings: 3750,
+          dailySavings: 536,
+          intelligenceRuns: 15420,
+          baselineRuns: 23500,
+          avgTokensPerRun: 3200,
+          avgComputePerRun: 1.2,
+          costPerToken: 0.000002,
+          costPerCompute: 0.05,
+          efficiencyGain: 34.0,
+          timeSaved: 12.5,
+        },
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/savings/metrics?timeRange=${timeRange}`);
       if (response.ok) {
@@ -105,6 +131,39 @@ class IntelligenceSavingsDataSource {
   }
 
   async fetchAgentComparisons(timeRange: string): Promise<{ data: AgentComparison[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: [
+          {
+            agentId: "polymorphic-agent",
+            agentName: "Polymorphic Agent",
+            withIntelligence: { avgTokens: 2500, avgCompute: 0.8, avgTime: 1.2, successRate: 95, cost: 0.045 },
+            withoutIntelligence: { avgTokens: 4500, avgCompute: 1.5, avgTime: 2.5, successRate: 88, cost: 0.082 },
+            savings: { tokens: 2000, compute: 0.7, time: 1.3, cost: 0.037, percentage: 45.1 }
+          },
+          {
+            agentId: "code-reviewer",
+            agentName: "Code Reviewer",
+            withIntelligence: { avgTokens: 3200, avgCompute: 1.1, avgTime: 2.1, successRate: 92, cost: 0.062 },
+            withoutIntelligence: { avgTokens: 5100, avgCompute: 1.8, avgTime: 3.8, successRate: 85, cost: 0.098 },
+            savings: { tokens: 1900, compute: 0.7, time: 1.7, cost: 0.036, percentage: 36.7 }
+          },
+          {
+            agentId: "test-generator",
+            agentName: "Test Generator",
+            withIntelligence: { avgTokens: 2800, avgCompute: 0.9, avgTime: 3.2, successRate: 89, cost: 0.051 },
+            withoutIntelligence: { avgTokens: 4200, avgCompute: 1.4, avgTime: 5.5, successRate: 82, cost: 0.079 },
+            savings: { tokens: 1400, compute: 0.5, time: 2.3, cost: 0.028, percentage: 35.4 }
+          },
+        ],
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/savings/agents?timeRange=${timeRange}`);
       if (response.ok) {
@@ -147,6 +206,61 @@ class IntelligenceSavingsDataSource {
   }
 
   async fetchTimeSeries(timeRange: string): Promise<{ data: TimeSeriesData[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      const data: TimeSeriesData[] = [];
+      const now = new Date();
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+
+        const baseRuns = 400 + Math.floor(Math.random() * 100);
+        const intelRuns = Math.floor(baseRuns * 0.65);
+        const tokenMultiplier = 0.6 + Math.random() * 0.15;
+
+        const intelTokens = Math.floor(intelRuns * 3000 * tokenMultiplier);
+        const intelCompute = parseFloat((intelRuns * 0.9 * tokenMultiplier).toFixed(2));
+        const intelCost = parseFloat((intelRuns * 0.048).toFixed(2));
+
+        const baseTokens = Math.floor(baseRuns * 4500);
+        const baseCompute = parseFloat((baseRuns * 1.5).toFixed(2));
+        const baseCost = parseFloat((baseRuns * 0.082).toFixed(2));
+
+        const tokenSavings = Math.max(0, baseTokens - intelTokens);
+        const computeSavings = Math.max(0, parseFloat((baseCompute - intelCompute).toFixed(2)));
+        const costSavings = Math.max(0, parseFloat((baseCost - intelCost).toFixed(2)));
+        const percentageSavings = Math.max(0, Math.min(100, 35 + Math.random() * 10));
+
+        data.push({
+          date: dateStr,
+          withIntelligence: {
+            tokens: Math.max(0, intelTokens),
+            compute: Math.max(0, intelCompute),
+            cost: Math.max(0, intelCost),
+            runs: Math.max(0, intelRuns),
+          },
+          withoutIntelligence: {
+            tokens: Math.max(0, baseTokens),
+            compute: Math.max(0, baseCompute),
+            cost: Math.max(0, baseCost),
+            runs: Math.max(0, baseRuns),
+          },
+          savings: {
+            tokens: tokenSavings,
+            compute: computeSavings,
+            cost: costSavings,
+            percentage: percentageSavings,
+          },
+        });
+      }
+
+      return { data, isMock: true };
+    }
+
     try {
       const response = await fetch(`/api/savings/timeseries?timeRange=${timeRange}`);
       if (response.ok) {
@@ -213,6 +327,77 @@ class IntelligenceSavingsDataSource {
   }
 
   async fetchProviderSavings(timeRange: string): Promise<{ data: ProviderSavings[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      const providers: ProviderSavings[] = [
+        {
+          providerId: 'claude-sonnet-4.5',
+          providerName: 'Claude Sonnet 4.5',
+          savingsAmount: 18500,
+          tokensProcessed: 2800000,
+          tokensOffloaded: 1200000,
+          percentageOfTotal: 41.1,
+          avgCostPerToken: 0.000015,
+          runsCount: 4850,
+        },
+        {
+          providerId: 'local-models',
+          providerName: 'Local Models',
+          savingsAmount: 12000,
+          tokensProcessed: 1500000,
+          tokensOffloaded: 800000,
+          percentageOfTotal: 26.7,
+          avgCostPerToken: 0.000008,
+          runsCount: 6200,
+        },
+        {
+          providerId: 'gpt-4-turbo',
+          providerName: 'GPT-4 Turbo',
+          savingsAmount: 8000,
+          tokensProcessed: 950000,
+          tokensOffloaded: 400000,
+          percentageOfTotal: 17.8,
+          avgCostPerToken: 0.00002,
+          runsCount: 2100,
+        },
+        {
+          providerId: 'claude-opus',
+          providerName: 'Claude Opus',
+          savingsAmount: 4200,
+          tokensProcessed: 680000,
+          tokensOffloaded: 280000,
+          percentageOfTotal: 9.3,
+          avgCostPerToken: 0.000075,
+          runsCount: 980,
+        },
+        {
+          providerId: 'gpt-4o',
+          providerName: 'GPT-4o',
+          savingsAmount: 1500,
+          tokensProcessed: 420000,
+          tokensOffloaded: 180000,
+          percentageOfTotal: 3.3,
+          avgCostPerToken: 0.00001,
+          runsCount: 1420,
+        },
+        {
+          providerId: 'claude-haiku',
+          providerName: 'Claude Haiku',
+          savingsAmount: 800,
+          tokensProcessed: 320000,
+          tokensOffloaded: 140000,
+          percentageOfTotal: 1.8,
+          avgCostPerToken: 0.000005,
+          runsCount: 2870,
+        },
+      ];
+
+      return { data: providers, isMock: true };
+    }
+
     try {
       const response = await fetch(`/api/savings/providers?timeRange=${timeRange}`);
       if (response.ok) {

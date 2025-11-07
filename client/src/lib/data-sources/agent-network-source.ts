@@ -1,4 +1,6 @@
 // Agent Network Data Source
+import { USE_MOCK_DATA } from '../mock-data/config';
+
 export interface Agent {
   id: string;
   name: string;
@@ -21,6 +23,22 @@ interface AgentNetworkData {
 
 class AgentNetworkSource {
   async fetchAgents(): Promise<{ data: Agent[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: [
+          { id: 'polymorphic-agent', name: 'Polymorphic Agent', category: 'Code Generation' },
+          { id: 'code-reviewer', name: 'Code Reviewer', category: 'Review' },
+          { id: 'test-generator', name: 'Test Generator', category: 'Testing' },
+          { id: 'documentation-agent', name: 'Documentation Agent', category: 'Docs' },
+        ],
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch('/api/agents/agents');
       if (response.ok) {
@@ -43,6 +61,17 @@ class AgentNetworkSource {
   }
 
   async fetchRoutingDecisions(): Promise<{ data: RoutingDecision[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: [],
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch('/api/agents/routing');
       if (response.ok) {
