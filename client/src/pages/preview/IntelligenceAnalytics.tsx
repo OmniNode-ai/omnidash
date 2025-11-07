@@ -75,6 +75,7 @@ export default function IntelligenceAnalytics() {
   const [patternDialogPage, setPatternDialogPage] = useState(1);
   const [selectedAgent, setSelectedAgent] = useState<any | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<any | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
 
   // Mock pattern data for detailed view
   const patternDetails: Record<string, Array<{ name: string; description: string; usageCount: number; effectiveness: number }>> = {
@@ -161,7 +162,7 @@ export default function IntelligenceAnalytics() {
   const usingMockActivity = activityResult?.isMock || false;
 
   const { data: savingsResult, isLoading: savingsLoading } = useQuery({
-    queryKey: ['savings-metrics', timeRange, Date.now()], // Force fresh data with timestamp
+    queryKey: ['savings-metrics', timeRange],
     queryFn: () => intelligenceAnalyticsSource.fetchSavingsMetrics(timeRange),
     retry: false,
     refetchInterval: 60000,
@@ -317,11 +318,14 @@ export default function IntelligenceAnalytics() {
           <TabsTrigger value="analytics">Advanced Analytics</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
+        <TabsContent value="overview" className="space-y-6">
           {/* Intelligence Operations Summary */}
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold">Intelligence Operations Summary</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Intelligence Operations Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Queries</CardTitle>
@@ -394,12 +398,16 @@ export default function IntelligenceAnalytics() {
                 </CardContent>
               </Card>
             </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Performance Snapshot */}
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold">Performance Snapshot</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Snapshot</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Quality Score</CardTitle>
@@ -460,12 +468,16 @@ export default function IntelligenceAnalytics() {
                 </CardContent>
               </Card>
             </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Cost Savings Highlights */}
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold">Cost Savings Highlights</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Cost Savings Highlights</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Daily Savings</CardTitle>
@@ -524,9 +536,10 @@ export default function IntelligenceAnalytics() {
                 </CardContent>
               </Card>
             </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Recent Activity & Quick Links */}
+          {/* Recent Activity & Spacer */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
@@ -537,15 +550,24 @@ export default function IntelligenceAnalytics() {
                 {usingMockActivity && <MockDataBadge className="mb-3" />}
                 <div className="space-y-4">
                   {recentActivity.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-3 flex-1">
                         <div className={`w-2 h-2 rounded-full ${
                           item.status === 'completed' ? 'bg-green-500' :
                           item.status === 'executing' ? 'bg-yellow-500' : 'bg-gray-500'
                         }`}></div>
-                        <div>
+                        <div className="flex-1">
                           <div className="font-medium text-sm">{item.action}</div>
-                          <div className="text-xs text-muted-foreground">{item.agent} • {item.time}</div>
+                          <div className="text-xs text-muted-foreground">
+                            <button
+                              onClick={() => setSelectedActivity(item)}
+                              className="hover:text-primary hover:underline cursor-pointer font-medium transition-colors"
+                            >
+                              {item.agent}
+                            </button>
+                            {' • '}
+                            {item.time}
+                          </div>
                         </div>
                       </div>
                       <Badge variant="outline" className="text-xs">
@@ -557,37 +579,9 @@ export default function IntelligenceAnalytics() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <h3 className="text-base font-medium">Quick Links</h3>
-                <CardDescription>Navigate to detailed analytics views</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => setActiveTab("intelligence")}
-                >
-                  <Brain className="w-4 h-4 mr-2" />
-                  Deep-dive Intelligence Analysis
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => setActiveTab("savings")}
-                >
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Cost & Savings Details
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => setActiveTab("analytics")}
-                >
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Advanced Analytics & Predictions
-                </Button>
-              </CardContent>
+            {/* Empty spacer card for layout balance */}
+            <Card className="border-dashed opacity-50">
+              <CardContent className="h-32" />
             </Card>
           </div>
         </TabsContent>
@@ -840,90 +834,94 @@ export default function IntelligenceAnalytics() {
           ) : (
             <>
               {/* Cost Savings Breakdown with Enhanced Trends */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold">Cost Savings Breakdown</h2>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-sm">
-                      <p className="text-xs">
-                        <strong>Methodology:</strong> Savings calculated by comparing agent performance with intelligence (pattern injection, optimized routing) vs baseline (standard AI agents). Includes token reduction (34%), local compute offload (12%), and avoided API calls (8%).
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">${savingsMetrics?.totalSavings?.toLocaleString() || "0"}</div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <TrendingUp className="h-3 w-3 text-green-600" />
-                        <span className="text-xs text-green-600 font-medium">+12% from last period</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        All savings in {timeRange}
-                      </p>
-                    </CardContent>
-                  </Card>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <CardTitle>Cost Savings Breakdown</CardTitle>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        <p className="text-xs">
+                          <strong>Methodology:</strong> Savings calculated by comparing agent performance with intelligence (pattern injection, optimized routing) vs baseline (standard AI agents). Includes token reduction (34%), local compute offload (12%), and avoided API calls (8%).
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">${savingsMetrics?.totalSavings?.toLocaleString() || "0"}</div>
+                        <div className="flex items-center gap-1 mt-1">
+                          <TrendingUp className="h-3 w-3 text-green-600" />
+                          <span className="text-xs text-green-600 font-medium">+12% from last period</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          All savings in {timeRange}
+                        </p>
+                      </CardContent>
+                    </Card>
 
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Daily Savings</CardTitle>
-                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">${savingsMetrics?.dailySavings?.toFixed(2) || "0.00"}</div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <TrendingUp className="h-3 w-3 text-green-600" />
-                        <span className="text-xs text-green-600 font-medium">+8% vs yesterday</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Average daily cost reduction
-                      </p>
-                    </CardContent>
-                  </Card>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Daily Savings</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">${savingsMetrics?.dailySavings?.toFixed(2) || "0.00"}</div>
+                        <div className="flex items-center gap-1 mt-1">
+                          <TrendingUp className="h-3 w-3 text-green-600" />
+                          <span className="text-xs text-green-600 font-medium">+8% vs yesterday</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Average daily cost reduction
+                        </p>
+                      </CardContent>
+                    </Card>
 
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Weekly Savings</CardTitle>
-                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">${savingsMetrics?.weeklySavings?.toFixed(2) || "0.00"}</div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <TrendingUp className="h-3 w-3 text-green-600" />
-                        <span className="text-xs text-green-600 font-medium">+15% vs last week</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Projected weekly savings
-                      </p>
-                    </CardContent>
-                  </Card>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Weekly Savings</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">${savingsMetrics?.weeklySavings?.toFixed(2) || "0.00"}</div>
+                        <div className="flex items-center gap-1 mt-1">
+                          <TrendingUp className="h-3 w-3 text-green-600" />
+                          <span className="text-xs text-green-600 font-medium">+15% vs last week</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Projected weekly savings
+                        </p>
+                      </CardContent>
+                    </Card>
 
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Monthly Savings</CardTitle>
-                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">${savingsMetrics?.monthlySavings?.toFixed(2) || "0.00"}</div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <TrendingUp className="h-3 w-3 text-green-600" />
-                        <span className="text-xs text-green-600 font-medium">+18% MoM growth</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Projected monthly savings
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Monthly Savings</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">${savingsMetrics?.monthlySavings?.toFixed(2) || "0.00"}</div>
+                        <div className="flex items-center gap-1 mt-1">
+                          <TrendingUp className="h-3 w-3 text-green-600" />
+                          <span className="text-xs text-green-600 font-medium">+18% MoM growth</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Projected monthly savings
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Expandable Token & Compute Usage Comparison */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1750,6 +1748,167 @@ export default function IntelligenceAnalytics() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Error rate:</span>
                       <span className="font-mono font-semibold text-orange-600">5.8%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Activity Event Trace Dialog */}
+      <Dialog open={selectedActivity !== null} onOpenChange={(open) => !open && setSelectedActivity(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">
+              {selectedActivity?.agent} - Event Trace
+            </DialogTitle>
+            <DialogDescription>
+              Detailed execution trace for {selectedActivity?.action} operation
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedActivity && (
+            <div className="space-y-6 mt-4">
+              {/* Summary Metrics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="border rounded-lg p-4">
+                  <div className="text-sm text-muted-foreground">Status</div>
+                  <div className="text-2xl font-bold">
+                    <Badge variant={selectedActivity.status === 'completed' ? 'default' : 'secondary'} className="text-lg">
+                      {selectedActivity.status}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="border rounded-lg p-4">
+                  <div className="text-sm text-muted-foreground">Duration</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    1.2s
+                  </div>
+                </div>
+                <div className="border rounded-lg p-4">
+                  <div className="text-sm text-muted-foreground">Tool Calls</div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    8
+                  </div>
+                </div>
+                <div className="border rounded-lg p-4">
+                  <div className="text-sm text-muted-foreground">Tokens Used</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    2,345
+                  </div>
+                </div>
+              </div>
+
+              {/* Event Timeline */}
+              <div>
+                <h3 className="font-semibold text-lg mb-4">Execution Timeline</h3>
+                <div className="space-y-3">
+                  {[
+                    { time: '0ms', event: 'Agent Initialization', type: 'start', icon: Activity },
+                    { time: '45ms', event: 'Pattern Lookup in Qdrant', type: 'tool', icon: Database },
+                    { time: '120ms', event: 'Retrieved 3 relevant patterns', type: 'success', icon: Target },
+                    { time: '180ms', event: 'Manifest Generation', type: 'tool', icon: Code },
+                    { time: '350ms', event: 'LLM Call - Claude Sonnet 4', type: 'llm', icon: Brain },
+                    { time: '980ms', event: 'Response Validation', type: 'tool', icon: TestTube },
+                    { time: '1150ms', event: 'Quality Gate Check', type: 'tool', icon: Target },
+                    { time: '1200ms', event: selectedActivity.status === 'completed' ? 'Execution Complete' : 'Execution In Progress', type: selectedActivity.status === 'completed' ? 'complete' : 'executing', icon: selectedActivity.status === 'completed' ? Target : Activity },
+                  ].map((step, idx) => {
+                    const Icon = step.icon;
+                    return (
+                      <div key={idx} className="flex items-start gap-4 p-3 border rounded-lg">
+                        <div className="flex flex-col items-center">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            step.type === 'start' ? 'bg-blue-100 text-blue-600' :
+                            step.type === 'tool' ? 'bg-purple-100 text-purple-600' :
+                            step.type === 'llm' ? 'bg-green-100 text-green-600' :
+                            step.type === 'success' ? 'bg-green-100 text-green-600' :
+                            step.type === 'complete' ? 'bg-green-100 text-green-600' :
+                            'bg-yellow-100 text-yellow-600'
+                          }`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          {idx < 7 && <div className="w-0.5 h-8 bg-border mt-1"></div>}
+                        </div>
+                        <div className="flex-1 pt-1">
+                          <div className="font-medium text-sm">{step.event}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{step.time}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Tool Calls & Actions */}
+              <div className="border-t pt-4">
+                <h3 className="font-semibold text-lg mb-4">Tool Calls & Actions</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tool</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead className="text-right">Duration</TableHead>
+                      <TableHead className="text-right">Result</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[
+                      { tool: 'Qdrant', action: 'Vector search for similar patterns', duration: '75ms', result: 'Success' },
+                      { tool: 'PostgreSQL', action: 'Retrieve agent manifest history', duration: '38ms', result: 'Success' },
+                      { tool: 'Manifest Generator', action: 'Generate optimized manifest', duration: '170ms', result: 'Success' },
+                      { tool: 'Claude API', action: 'Generate solution with patterns', duration: '630ms', result: 'Success' },
+                      { tool: 'Code Validator', action: 'Validate TypeScript syntax', duration: '22ms', result: 'Success' },
+                      { tool: 'Quality Gate', action: 'Run quality checks (8 gates)', duration: '50ms', result: 'Success' },
+                      { tool: 'Database', action: 'Store execution metrics', duration: '15ms', result: 'Success' },
+                      { tool: 'Kafka', action: 'Publish completion event', duration: '20ms', result: 'Success' },
+                    ].map((call, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{call.tool}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{call.action}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{call.duration}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="outline" className="text-green-600">
+                            {call.result}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Performance Metrics */}
+              <div className="border-t pt-4">
+                <h3 className="font-semibold text-lg mb-4">Performance Metrics</h3>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Total execution time:</span>
+                      <span className="font-mono font-semibold">1,200ms</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">LLM latency:</span>
+                      <span className="font-mono font-semibold">630ms (52%)</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Intelligence overhead:</span>
+                      <span className="font-mono font-semibold text-green-600">230ms (19%)</span>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Tokens saved:</span>
+                      <span className="font-mono font-semibold text-green-600">1,234 (34%)</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Patterns used:</span>
+                      <span className="font-mono font-semibold">3</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Cache hit rate:</span>
+                      <span className="font-mono font-semibold text-green-600">67%</span>
                     </div>
                   </div>
                 </div>

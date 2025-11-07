@@ -9,7 +9,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { Code, Search, CheckCircle, Gauge, AlertTriangle, FileCode, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { codeIntelligenceSource } from "@/lib/data-sources";
 
@@ -82,50 +82,40 @@ export default function CodeIntelligence() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold mb-2">Code Intelligence</h1>
-          <p className="text-muted-foreground">
-            {isLoading ? 'Loading code analysis...' : `Analyzing ${codeAnalysis?.files_analyzed || 0} files with semantic search and quality gates`}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          {usingMockData && <MockDataBadge />}
-          <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
-          <ExportButton
-            data={{ codeAnalysis, gates, thresholds, searchData, qualityData }}
-            filename={`code-intelligence-${timeRange}-${new Date().toISOString().split('T')[0]}`}
-            disabled={isLoading}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-4 gap-6">
-        <MetricCard
-          label="Files Analyzed"
-          value={isLoading ? '...' : (codeAnalysis?.files_analyzed?.toLocaleString() || '0')}
-          icon={FileCode}
-          status="healthy"
-        />
-        <MetricCard
-          label="Avg Complexity"
-          value={isLoading ? '...' : (codeAnalysis?.avg_complexity?.toFixed(1) || '0')}
-          icon={Gauge}
-          status={codeAnalysis && codeAnalysis.avg_complexity > 10 ? 'warning' : 'healthy'}
-        />
-        <MetricCard
-          label="Code Smells"
-          value={isLoading ? '...' : (codeAnalysis?.code_smells?.toString() || '0')}
-          icon={AlertTriangle}
-          status={codeAnalysis && codeAnalysis.code_smells > 10 ? 'warning' : codeAnalysis && codeAnalysis.code_smells > 0 ? 'warning' : 'healthy'}
-        />
-        <MetricCard
-          label="Security Issues"
-          value={isLoading ? '...' : (codeAnalysis?.security_issues?.toString() || '0')}
-          icon={AlertTriangle}
-          status={codeAnalysis && codeAnalysis.security_issues > 0 ? 'error' : 'healthy'}
-        />
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Code Intelligence Metrics</CardTitle>
+          <CardDescription>Overview of code quality, complexity, and security issues across analyzed files</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-4 gap-6">
+            <MetricCard
+              label="Files Analyzed"
+              value={isLoading ? '...' : (codeAnalysis?.files_analyzed?.toLocaleString() || '0')}
+              icon={FileCode}
+              status="healthy"
+            />
+            <MetricCard
+              label="Avg Complexity"
+              value={isLoading ? '...' : (codeAnalysis?.avg_complexity?.toFixed(1) || '0')}
+              icon={Gauge}
+              status={codeAnalysis && codeAnalysis.avg_complexity > 10 ? 'warning' : 'healthy'}
+            />
+            <MetricCard
+              label="Code Smells"
+              value={isLoading ? '...' : (codeAnalysis?.code_smells?.toString() || '0')}
+              icon={AlertTriangle}
+              status={codeAnalysis && codeAnalysis.code_smells > 10 ? 'warning' : codeAnalysis && codeAnalysis.code_smells > 0 ? 'warning' : 'healthy'}
+            />
+            <MetricCard
+              label="Security Issues"
+              value={isLoading ? '...' : (codeAnalysis?.security_issues?.toString() || '0')}
+              icon={AlertTriangle}
+              status={codeAnalysis && codeAnalysis.security_issues > 0 ? 'error' : 'healthy'}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 gap-6">
         <div>

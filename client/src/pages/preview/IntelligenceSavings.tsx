@@ -280,12 +280,15 @@ export default function IntelligenceSavings() {
 
         <TabsContent value="overview" className="space-y-4">
           {/* Intelligence Operations Metrics - Moved to Top */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">Intelligence Operations</h2>
-              <Badge variant="outline" className="text-xs">Real-time</Badge>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CardTitle>Intelligence Operations</CardTitle>
+                <Badge variant="outline" className="text-xs">Real-time</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Queries</CardTitle>
@@ -345,25 +348,29 @@ export default function IntelligenceSavings() {
                   </p>
                 </CardContent>
               </Card>
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Key Savings Metrics Cards */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">Cost Savings Breakdown</h2>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-sm">
-                  <p className="text-xs">
-                    <strong>Methodology:</strong> Savings calculated by comparing agent performance with intelligence (pattern injection, optimized routing) vs baseline (standard AI agents). Includes token reduction (34%), local compute offload (12%), and avoided API calls (8%).
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CardTitle>Cost Savings Breakdown</CardTitle>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    <p className="text-xs">
+                      <strong>Methodology:</strong> Savings calculated by comparing agent performance with intelligence (pattern injection, optimized routing) vs baseline (standard AI agents). Includes token reduction (34%), local compute offload (12%), and avoided API calls (8%).
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Daily Savings</CardTitle>
@@ -415,8 +422,9 @@ export default function IntelligenceSavings() {
                   </p>
                 </CardContent>
               </Card>
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Detailed Metrics */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

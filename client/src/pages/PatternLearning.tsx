@@ -7,9 +7,10 @@ import { DrillDownModal } from "@/components/DrillDownModal";
 import { StatusLegend } from "@/components/StatusLegend";
 import { PatternFilters } from "@/components/PatternFilters";
 import { ExportButton } from "@/components/ExportButton";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Database, TrendingUp, Award, AlertTriangle } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -154,52 +155,44 @@ export default function PatternLearning() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        title="Pattern Learning"
-        description={`Discovery and evolution of ${summary?.totalPatterns.toLocaleString() || '0'} code patterns across your codebase.`}
-        details="Pattern Learning uses machine learning and static analysis to automatically discover, track, and evolve code patterns. Monitor pattern quality scores, usage trends, and recent discoveries. The system learns from your codebase over time, identifying both successful patterns to reuse and anti-patterns to avoid."
-        level="h1"
-      />
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
-          <ExportButton
-            data={{ patterns: filteredPatterns, summary, discoveryData, qualityData }}
-            filename={`pattern-learning-${timeRange}-${new Date().toISOString().split('T')[0]}`}
-            disabled={!patterns}
-          />
-        </div>
-      </div>
 
       {/* Status legend */}
       <StatusLegend />
 
-      <div className="grid grid-cols-4 gap-6">
-        <MetricCard
-          label="Total Patterns"
-          value={summary?.totalPatterns.toLocaleString() || '0'}
-          icon={Database}
-          status="healthy"
-        />
-        <MetricCard
-          label="New Today"
-          value={summary?.newPatternsToday.toLocaleString() || '0'}
-          icon={TrendingUp}
-          status="healthy"
-        />
-        <MetricCard
-          label="Avg Quality"
-          value={`${Math.round((summary?.avgQualityScore || 0) * 100)}%`}
-          icon={Award}
-          status={(summary?.avgQualityScore || 0) > 0.80 ? "healthy" : "warning"}
-        />
-        <MetricCard
-          label="Active Learning"
-          value={summary?.activeLearningCount.toLocaleString() || '0'}
-          icon={Database}
-          status="healthy"
-        />
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Pattern Learning Metrics</CardTitle>
+          <CardDescription>Real-time pattern discovery metrics, quality scores, and active learning progress</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-4 gap-6">
+            <MetricCard
+              label="Total Patterns"
+              value={summary?.totalPatterns.toLocaleString() || '0'}
+              icon={Database}
+              status="healthy"
+            />
+            <MetricCard
+              label="New Today"
+              value={summary?.newPatternsToday.toLocaleString() || '0'}
+              icon={TrendingUp}
+              status="healthy"
+            />
+            <MetricCard
+              label="Avg Quality"
+              value={`${Math.round((summary?.avgQualityScore || 0) * 100)}%`}
+              icon={Award}
+              status={(summary?.avgQualityScore || 0) > 0.80 ? "healthy" : "warning"}
+            />
+            <MetricCard
+              label="Active Learning"
+              value={summary?.activeLearningCount.toLocaleString() || '0'}
+              icon={Database}
+              status="healthy"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <div>
