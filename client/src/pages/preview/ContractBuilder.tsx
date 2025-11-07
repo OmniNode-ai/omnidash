@@ -644,7 +644,7 @@ export default function ContractBuilder() {
             </CardHeader>
             <CardContent className="space-y-4">
               {Object.entries(sectionSchema).map(([key, field]) => {
-                if (typeof field === 'object' && field.type === 'array' && field.item_schema) {
+                if (typeof field === 'object' && field !== null && 'type' in field && field.type === 'array' && 'item_schema' in field && field.item_schema) {
                   // Handle array of objects
                   return (
                     <div key={`${sectionName}.${key}`} className="space-y-2">
@@ -658,8 +658,8 @@ export default function ContractBuilder() {
                     </div>
                   );
                 }
-                
-                if (typeof field === 'object' && field.type) {
+
+                if (typeof field === 'object' && field !== null && 'type' in field && field.type) {
                   return renderFormField(key, field, `${sectionName}.${key}`);
                 }
                 
@@ -989,12 +989,12 @@ export default function ContractBuilder() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              const yaml = yaml.dump(contract.contract, { indent: 2 });
-                              navigator.clipboard.writeText(yaml);
+                              const yamlStr = JSON.stringify(contract.contract, null, 2);
+                              navigator.clipboard.writeText(yamlStr);
                             }}
                           >
                             <Copy className="w-4 h-4 mr-2" />
-                            Copy YAML
+                            Copy JSON
                           </Button>
                         </div>
                       </div>
@@ -1028,34 +1028,23 @@ export default function ContractBuilder() {
                   {aiSuggestions.map((suggestion, index) => (
                     <div key={index} className="border rounded-lg p-4 space-y-2">
                       <div className="flex items-start justify-between">
-                        <h4 className="font-medium">{suggestion.title}</h4>
-                        <Badge variant={suggestion.priority === "high" ? "destructive" : suggestion.priority === "medium" ? "default" : "secondary"}>
-                          {suggestion.priority}
+                        <h4 className="font-medium">AI Suggestion #{index + 1}</h4>
+                        <Badge variant="default">
+                          Suggested
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">{suggestion.description}</p>
+                      <p className="text-sm text-muted-foreground">{suggestion}</p>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setUserPrompt(suggestion.prompt);
+                            setAiPrompt(suggestion);
                             setActiveTab("prompt");
                           }}
                         >
                           <Zap className="w-4 h-4 mr-2" />
-                          Use Prompt
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const yaml = yaml.dump(suggestion.example, { indent: 2 });
-                            navigator.clipboard.writeText(yaml);
-                          }}
-                        >
-                          <Copy className="w-4 h-4 mr-2" />
-                          Copy Example
+                          Use as Prompt
                         </Button>
                       </div>
                     </div>

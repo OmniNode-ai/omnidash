@@ -19,3 +19,10 @@ test-results/
 # Claude settings with credentials
 .claude/
 .local/
+
+# Playwright screenshots and captures
+.playwright-mcp/
+*.png
+*.jpeg
+page-*.png
+*-screenshot.png

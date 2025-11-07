@@ -69,18 +69,18 @@ describe('RealtimeChart', () => {
 
   it('should use custom dataKey when provided', () => {
     const dataWithCustomKey = [
-      { time: '10:00', count: 100 },
-      { time: '11:00', count: 150 },
+      { time: '10:00', value: 100 },
+      { time: '11:00', value: 150 },
     ];
-    
+
     render(
-      <RealtimeChart 
-        title="Custom Key" 
-        data={dataWithCustomKey} 
-        dataKey="count"
+      <RealtimeChart
+        title="Custom Key"
+        data={dataWithCustomKey}
+        dataKey="value"
       />
     );
-    
+
     expect(screen.getByTestId('chart-custom-key')).toBeInTheDocument();
   });
 
