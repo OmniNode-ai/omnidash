@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { MockDataBadge } from "@/components/MockDataBadge";
+import { SavingsTooltip } from "@/components/SavingsTooltip";
 import { RefactorPlanModal } from "@/components/RefactorPlanModal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +12,24 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DuplicateDetailModal } from "@/components/DuplicateDetailModal";
-import { 
-  Search, 
-  Filter, 
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import {
+  BarChart,
+  Bar,
+  LineChart as RechartsLineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  Legend
+} from "recharts";
+import {
+  Search,
+  Filter,
   RefreshCw,
   Download,
   Eye,
@@ -343,6 +359,35 @@ const DuplicateDetection: React.FC = () => {
     }
   ];
 
+  // Mock data for analytics charts
+  const duplicatesByCategory = [
+    { category: "Error Handling", count: 12, color: "hsl(var(--chart-1))" },
+    { category: "API Logic", count: 8, color: "hsl(var(--chart-2))" },
+    { category: "Database Queries", count: 6, color: "hsl(var(--chart-3))" },
+    { category: "Form Validation", count: 4, color: "hsl(var(--chart-4))" },
+    { category: "Cache Management", count: 3, color: "hsl(var(--chart-5))" }
+  ];
+
+  const refactoringProgressData = [
+    { month: "Jun", duplicates: 58, resolved: 5 },
+    { month: "Jul", duplicates: 53, resolved: 8 },
+    { month: "Aug", duplicates: 45, resolved: 6 },
+    { month: "Sep", duplicates: 39, resolved: 4 },
+    { month: "Oct", duplicates: 35, resolved: 7 },
+    { month: "Nov", duplicates: 33, resolved: 2 }
+  ];
+
+  const chartConfig = {
+    duplicates: {
+      label: "Duplicates",
+      color: "hsl(var(--chart-1))"
+    },
+    resolved: {
+      label: "Resolved",
+      color: "hsl(var(--chart-2))"
+    }
+  };
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical': return 'destructive';
@@ -482,18 +527,22 @@ const DuplicateDetection: React.FC = () => {
 
       {/* Detection View */}
       {activeView === "detection" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">Duplicate Code Detection</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Found <strong className="text-primary">15 duplicate clusters</strong> across {filteredDuplicates.length} instances
-              </p>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {filteredDuplicates.length} duplicate patterns
-            </div>
-          </div>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Duplicate Code Detection</CardTitle>
+                  <CardDescription className="mt-1">
+                    Found <strong className="text-primary">15 duplicate clusters</strong> across {filteredDuplicates.length} instances
+                  </CardDescription>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {filteredDuplicates.length} duplicate patterns
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
 
           {filteredDuplicates.map((duplicate) => (
             <Card key={duplicate.id}>
@@ -515,7 +564,7 @@ const DuplicateDetection: React.FC = () => {
                     <div className="text-2xl font-bold text-green-600">
                       ${duplicate.estimatedSavings.toLocaleString()}
                     </div>
-                    <div className="text-sm text-muted-foreground">Potential Savings</div>
+                    <SavingsTooltip className="text-sm text-muted-foreground" />
                   </div>
                 </div>
               </CardHeader>
@@ -643,9 +692,13 @@ const DuplicateDetection: React.FC = () => {
 
       {/* Pattern Replacements View */}
       {activeView === "patterns" && (
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold">Pattern Replacements</h2>
-          
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pattern Replacements</CardTitle>
+            </CardHeader>
+          </Card>
+
           {patternReplacements.map((replacement) => (
             <Card key={replacement.id}>
               <CardHeader>
@@ -724,9 +777,13 @@ const DuplicateDetection: React.FC = () => {
 
       {/* Refactoring Plans View */}
       {activeView === "plans" && (
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold">Refactoring Plans</h2>
-          
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Refactoring Plans</CardTitle>
+            </CardHeader>
+          </Card>
+
           {refactoringPlans.map((plan) => (
             <Card key={plan.id}>
               <CardHeader>
@@ -747,7 +804,7 @@ const DuplicateDetection: React.FC = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <div className="text-sm font-medium text-muted-foreground">Estimated Savings</div>
+                      <SavingsTooltip className="text-sm font-medium text-muted-foreground">Estimated Savings</SavingsTooltip>
                       <div className="text-2xl font-bold text-green-600">
                         ${plan.estimatedSavings.toLocaleString()}
                       </div>
@@ -832,9 +889,12 @@ const DuplicateDetection: React.FC = () => {
       {/* Analytics View */}
       {activeView === "analytics" && (
         <div className="space-y-6">
-          <h2 className="text-2xl font-bold">Duplicate Analysis</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Duplicate Analysis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -852,7 +912,7 @@ const DuplicateDetection: React.FC = () => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <DollarSign className="w-5 h-5 mr-2" />
-                  Potential Savings
+                  <SavingsTooltip />
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -887,33 +947,80 @@ const DuplicateDetection: React.FC = () => {
               </CardContent>
             </Card>
           </div>
+            </CardContent>
+          </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle>Duplicates by Category</CardTitle>
+                <CardDescription>Distribution of duplicate code across different categories</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center bg-muted rounded-lg">
-                  <div className="text-center">
-                    <PieChart className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-muted-foreground">Category distribution chart</p>
-                  </div>
-                </div>
+                <ChartContainer config={chartConfig} className="h-64">
+                  <BarChart data={duplicatesByCategory}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="category"
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      interval={0}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis />
+                    <ChartTooltip
+                      content={<ChartTooltipContent />}
+                      cursor={{ fill: 'rgba(0, 0, 0, 0.1)' }}
+                    />
+                    <Bar
+                      dataKey="count"
+                      radius={[8, 8, 0, 0]}
+                    >
+                      {duplicatesByCategory.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
                 <CardTitle>Refactoring Progress</CardTitle>
+                <CardDescription>Trend of duplicate reduction over the past 6 months</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center bg-muted rounded-lg">
-                  <div className="text-center">
-                    <LineChart className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-muted-foreground">Progress over time chart</p>
-                  </div>
-                </div>
+                <ChartContainer config={chartConfig} className="h-64">
+                  <RechartsLineChart data={refactoringProgressData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="month"
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis />
+                    <ChartTooltip
+                      content={<ChartTooltipContent />}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="duplicates"
+                      stroke="hsl(var(--chart-1))"
+                      strokeWidth={2}
+                      dot={{ fill: "hsl(var(--chart-1))", r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="resolved"
+                      stroke="hsl(var(--chart-2))"
+                      strokeWidth={2}
+                      dot={{ fill: "hsl(var(--chart-2))", r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </RechartsLineChart>
+                </ChartContainer>
               </CardContent>
             </Card>
           </div>

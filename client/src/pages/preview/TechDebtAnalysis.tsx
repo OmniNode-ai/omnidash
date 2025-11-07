@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { MockDataBadge } from "@/components/MockDataBadge";
-import { SectionHeader } from "@/components/SectionHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -729,26 +728,6 @@ const TechDebtAnalysis: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Tech Debt Analysis</h1>
-          <p className="ty-subtitle">
-            Monitor technical debt trends and identify optimization opportunities
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <MockDataBadge />
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export Report
-          </Button>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh Data
-          </Button>
-        </div>
-      </div>
-
       {/* Main Tab Navigation */}
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
@@ -768,15 +747,16 @@ const TechDebtAnalysis: React.FC = () => {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <SectionHeader
-            title="Technical Debt Overview"
-            description="Track and manage technical debt across your codebase with key metrics and trends."
-            details="Technical debt represents the implied cost of additional rework caused by choosing an easy solution now instead of using a better approach that would take longer. This dashboard helps you quantify, prioritize, and systematically pay down technical debt while preventing new debt from accumulating."
-            level="h2"
-          />
-
-          {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Technical Debt Overview</CardTitle>
+              <CardDescription>
+                Track and manage technical debt across your codebase with key metrics and trends.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Key Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {techDebtMetrics.map((metric, index) => (
               <Card key={index}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -805,6 +785,8 @@ const TechDebtAnalysis: React.FC = () => {
               </Card>
             ))}
           </div>
+            </CardContent>
+          </Card>
 
           {/* Tech Debt Health Score */}
           <Card>
@@ -1081,12 +1063,14 @@ const TechDebtAnalysis: React.FC = () => {
           {/* Pattern Analysis Section */}
           {selectedCategory === "patterns" && (
             <div className="space-y-6">
-              <SectionHeader
-                title="Pattern Analysis"
-                description="Analyze code patterns across your codebase to identify usage trends and health metrics."
-                details="This section provides insights into how design patterns are used in your codebase, their health status, and performance impact. Use this data to identify patterns that need updates or refactoring, and track pattern adoption across teams."
-                level="h2"
-              />
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pattern Analysis</CardTitle>
+                  <CardDescription>
+                    Analyze code patterns across your codebase to identify usage trends and health metrics.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Card>
@@ -1174,24 +1158,28 @@ const TechDebtAnalysis: React.FC = () => {
           {/* Refactoring Opportunities Section */}
           {selectedCategory === "opportunities" && (
             <div className="space-y-6">
-              <SectionHeader
-                title="Refactoring Opportunities"
-                description="High-value refactoring opportunities ranked by impact, effort, and ROI."
-                details="These opportunities are identified through static analysis and pattern recognition. Each opportunity includes estimated time savings, complexity analysis, and affected files. Prioritize opportunities with high impact and low effort for quick wins, or tackle high-complexity items for long-term architectural improvements."
-                level="h2"
-              />
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Filter
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Search className="w-4 h-4 mr-2" />
-                    Search
-                  </Button>
-                </div>
-              </div>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Refactoring Opportunities</CardTitle>
+                      <CardDescription>
+                        High-value refactoring opportunities ranked by impact, effort, and ROI.
+                      </CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        <Filter className="w-4 h-4 mr-2" />
+                        Filter
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Search className="w-4 h-4 mr-2" />
+                        Search
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
 
               <div className="space-y-4">
                 {refactoringOpportunities.map((opportunity) => (
@@ -1284,12 +1272,15 @@ const TechDebtAnalysis: React.FC = () => {
 
         {/* Duplicates Tab - Full content from DuplicateDetection */}
         <TabsContent value="duplicates" className="space-y-6">
-          <SectionHeader
-            title="Duplicate Code Detection"
-            description="Identify and eliminate duplicate code patterns to improve maintainability and reduce technical debt."
-            details="This tool uses advanced pattern matching and similarity algorithms to detect duplicate or near-duplicate code across your codebase. For each duplicate cluster, we provide similarity scores, refactoring suggestions, and estimated time savings. Use the filters to focus on high-impact duplicates first."
-            level="h2"
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Duplicate Code Detection</CardTitle>
+              <CardDescription>
+                Identify and eliminate duplicate code patterns to improve maintainability and reduce technical debt.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
           {/* Controls */}
           <div className="flex flex-wrap gap-4 items-center">
             <div className="flex items-center gap-2">

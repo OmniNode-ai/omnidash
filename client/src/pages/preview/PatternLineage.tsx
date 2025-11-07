@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { MockDataBadge } from "@/components/MockDataBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,60 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-import { PatternDetailModal } from "@/components/PatternDetailModal";
 import { UnifiedGraph, type GraphNode, type GraphEdge } from "@/components/UnifiedGraph";
-import { 
-  Network, 
-  Search, 
-  Filter, 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCcw,
-  Download,
-  Eye,
-  Code,
-  Layers,
-  GitBranch,
+import {
   Clock,
-  Users,
-  Activity,
-  ArrowRight,
-  ArrowDown,
-  Circle,
-  Square,
-  Triangle,
-  Diamond,
+  Search,
+  Download,
   RefreshCw,
   Settings,
-  Info
+  GitBranch,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
+  ArrowRight,
+  Code,
+  Users,
+  Calendar,
+  Activity,
+  Zap
 } from "lucide-react";
-
-interface PatternNode {
-  id: string;
-  name: string;
-  type: 'pattern' | 'implementation' | 'dependency' | 'version';
-  version: string;
-  status: 'active' | 'deprecated' | 'experimental' | 'stable';
-  usage: number;
-  performance: number;
-  complexity: number;
-  lastUpdated: string;
-  author: string;
-  dependencies: string[];
-  dependents: string[];
-  files: string[];
-  description: string;
-  category: string;
-}
-
-interface PatternConnection {
-  from: string;
-  to: string;
-  type: 'dependency' | 'inheritance' | 'composition' | 'usage';
-  strength: number;
-  bidirectional: boolean;
-}
 
 interface PatternVersion {
   version: string;
@@ -68,311 +32,362 @@ interface PatternVersion {
   breaking: boolean;
   performance: number;
   stability: number;
+  author: string;
+  status: 'current' | 'deprecated' | 'legacy';
+}
+
+interface PatternEvolution {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  firstVersion: string;
+  currentVersion: string;
+  totalVersions: number;
+  versions: PatternVersion[];
 }
 
 const PatternLineage: React.FC = () => {
-  const [activeView, setActiveView] = useState("graph");
-  const [selectedPattern, setSelectedPattern] = useState<PatternNode | null>(null);
+  const [activeView, setActiveView] = useState("timeline");
+  const [selectedPattern, setSelectedPattern] = useState<string>("auth-pattern");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [zoomLevel, setZoomLevel] = useState(100);
-  const [showDependencies, setShowDependencies] = useState(true);
-  const [showVersions, setShowVersions] = useState(false);
 
-  // Mock data for pattern nodes
-  const patternNodes: PatternNode[] = [
+  // Mock data for pattern evolution - showing version history over time
+  const patternEvolutions: PatternEvolution[] = [
     {
       id: "auth-pattern",
       name: "Authentication Pattern",
-      type: 'pattern',
-      version: "2.1.0",
-      status: 'stable',
-      usage: 15,
-      performance: 95,
-      complexity: 6,
-      lastUpdated: "2024-01-15",
-      author: "Team Alpha",
-      dependencies: ["error-handling", "session-management"],
-      dependents: ["user-service", "admin-service", "api-gateway"],
-      files: ["auth-pattern.ts", "auth-middleware.ts", "auth-guard.ts"],
+      category: "Security",
       description: "Centralized authentication logic with JWT token management",
-      category: "Security"
+      firstVersion: "1.0.0",
+      currentVersion: "2.1.0",
+      totalVersions: 8,
+      versions: [
+        {
+          version: "2.1.0",
+          date: "2024-01-15",
+          changes: [
+            "Added OAuth2 support",
+            "Improved JWT validation with better error messages",
+            "Added support for refresh tokens",
+            "Performance optimization for token verification"
+          ],
+          breaking: false,
+          performance: 95,
+          stability: 98,
+          author: "Team Alpha",
+          status: 'current'
+        },
+        {
+          version: "2.0.0",
+          date: "2023-12-01",
+          changes: [
+            "Major API redesign for better usability",
+            "Migrated from sessions to JWT tokens",
+            "Added multi-factor authentication support",
+            "Breaking: Changed authentication middleware signature"
+          ],
+          breaking: true,
+          performance: 90,
+          stability: 95,
+          author: "Team Alpha",
+          status: 'deprecated'
+        },
+        {
+          version: "1.9.0",
+          date: "2023-11-15",
+          changes: [
+            "Fixed memory leak in session management",
+            "Performance improvements for token validation",
+            "Added logging for authentication failures"
+          ],
+          breaking: false,
+          performance: 88,
+          stability: 92,
+          author: "Team Alpha",
+          status: 'deprecated'
+        },
+        {
+          version: "1.8.0",
+          date: "2023-10-20",
+          changes: [
+            "Added support for custom authentication strategies",
+            "Improved error handling"
+          ],
+          breaking: false,
+          performance: 85,
+          stability: 90,
+          author: "Team Alpha",
+          status: 'legacy'
+        },
+        {
+          version: "1.7.0",
+          date: "2023-09-10",
+          changes: [
+            "Added password reset functionality",
+            "Improved session security"
+          ],
+          breaking: false,
+          performance: 82,
+          stability: 88,
+          author: "Team Beta",
+          status: 'legacy'
+        }
+      ]
     },
     {
       id: "error-handling",
       name: "Error Handling",
-      type: 'pattern',
-      version: "1.8.2",
-      status: 'stable',
-      usage: 23,
-      performance: 88,
-      complexity: 4,
-      lastUpdated: "2024-01-10",
-      author: "Team Beta",
-      dependencies: ["logging-pattern"],
-      dependents: ["auth-pattern", "api-pattern", "data-validation"],
-      files: ["error-handler.ts", "exception-manager.ts", "error-types.ts"],
+      category: "Error Management",
       description: "Standardized error handling and exception management",
-      category: "Error Management"
+      firstVersion: "1.0.0",
+      currentVersion: "1.8.2",
+      totalVersions: 6,
+      versions: [
+        {
+          version: "1.8.2",
+          date: "2024-01-10",
+          changes: [
+            "Fixed memory leak in error aggregation",
+            "Added new error types for network failures",
+            "Improved error context propagation"
+          ],
+          breaking: false,
+          performance: 88,
+          stability: 95,
+          author: "Team Beta",
+          status: 'current'
+        },
+        {
+          version: "1.8.0",
+          date: "2023-12-20",
+          changes: [
+            "Enhanced logging integration",
+            "Better error context with stack traces",
+            "Added error categorization"
+          ],
+          breaking: false,
+          performance: 85,
+          stability: 90,
+          author: "Team Beta",
+          status: 'deprecated'
+        },
+        {
+          version: "1.7.0",
+          date: "2023-11-05",
+          changes: [
+            "Added async error handling support",
+            "Improved error reporting"
+          ],
+          breaking: false,
+          performance: 82,
+          stability: 88,
+          author: "Team Beta",
+          status: 'legacy'
+        }
+      ]
     },
     {
       id: "data-validation",
       name: "Data Validation",
-      type: 'pattern',
-      version: "3.0.1",
-      status: 'stable',
-      usage: 31,
-      performance: 92,
-      complexity: 7,
-      lastUpdated: "2024-01-20",
-      author: "Team Gamma",
-      dependencies: ["error-handling", "type-definitions"],
-      dependents: ["form-handler", "api-pattern", "data-transformer"],
-      files: ["validator.ts", "schema-builder.ts", "validation-rules.ts"],
+      category: "Data Management",
       description: "Comprehensive data validation with schema-based rules",
-      category: "Data Management"
+      firstVersion: "1.0.0",
+      currentVersion: "3.0.1",
+      totalVersions: 10,
+      versions: [
+        {
+          version: "3.0.1",
+          date: "2024-01-20",
+          changes: [
+            "Fixed bug in array validation",
+            "Performance optimization for large objects",
+            "Added custom error messages"
+          ],
+          breaking: false,
+          performance: 92,
+          stability: 97,
+          author: "Team Gamma",
+          status: 'current'
+        },
+        {
+          version: "3.0.0",
+          date: "2024-01-05",
+          changes: [
+            "Complete rewrite using Zod schema validation",
+            "Breaking: Changed validation API",
+            "Added TypeScript type inference",
+            "50% performance improvement"
+          ],
+          breaking: true,
+          performance: 90,
+          stability: 93,
+          author: "Team Gamma",
+          status: 'deprecated'
+        },
+        {
+          version: "2.5.0",
+          date: "2023-12-10",
+          changes: [
+            "Added async validation support",
+            "Improved error messages"
+          ],
+          breaking: false,
+          performance: 78,
+          stability: 90,
+          author: "Team Gamma",
+          status: 'legacy'
+        }
+      ]
     },
     {
       id: "api-pattern",
       name: "API Response Pattern",
-      type: 'pattern',
-      version: "2.3.0",
-      status: 'stable',
-      usage: 18,
-      performance: 90,
-      complexity: 5,
-      lastUpdated: "2024-01-18",
-      author: "Team Delta",
-      dependencies: ["error-handling", "data-validation"],
-      dependents: ["user-service", "product-service", "order-service"],
-      files: ["api-response.ts", "response-builder.ts", "status-codes.ts"],
+      category: "API Design",
       description: "Standardized API response format and status handling",
-      category: "API Design"
-    },
-    {
-      id: "session-management",
-      name: "Session Management",
-      type: 'pattern',
-      version: "1.5.0",
-      status: 'stable',
-      usage: 12,
-      performance: 85,
-      complexity: 8,
-      lastUpdated: "2024-01-12",
-      author: "Team Alpha",
-      dependencies: ["data-validation", "caching-pattern"],
-      dependents: ["auth-pattern", "user-service"],
-      files: ["session-manager.ts", "session-store.ts", "session-middleware.ts"],
-      description: "Secure session management with Redis backend",
-      category: "Security"
+      firstVersion: "1.0.0",
+      currentVersion: "2.3.0",
+      totalVersions: 7,
+      versions: [
+        {
+          version: "2.3.0",
+          date: "2024-01-18",
+          changes: [
+            "Added pagination support",
+            "Improved response compression",
+            "Added response caching headers"
+          ],
+          breaking: false,
+          performance: 90,
+          stability: 95,
+          author: "Team Delta",
+          status: 'current'
+        },
+        {
+          version: "2.2.0",
+          date: "2023-12-15",
+          changes: [
+            "Added HATEOAS links support",
+            "Improved error response format"
+          ],
+          breaking: false,
+          performance: 88,
+          stability: 92,
+          author: "Team Delta",
+          status: 'deprecated'
+        }
+      ]
     },
     {
       id: "caching-pattern",
       name: "Caching Pattern",
-      type: 'pattern',
-      version: "2.0.0",
-      status: 'stable',
-      usage: 20,
-      performance: 98,
-      complexity: 6,
-      lastUpdated: "2024-01-14",
-      author: "Team Epsilon",
-      dependencies: [],
-      dependents: ["session-management", "data-fetcher", "api-pattern"],
-      files: ["cache-manager.ts", "cache-strategies.ts", "cache-invalidator.ts"],
+      category: "Performance",
       description: "Multi-layer caching with intelligent invalidation",
-      category: "Performance"
-    },
-    {
-      id: "logging-pattern",
-      name: "Logging Pattern",
-      type: 'pattern',
-      version: "1.3.0",
-      status: 'stable',
-      usage: 28,
-      performance: 82,
-      complexity: 3,
-      lastUpdated: "2024-01-08",
-      author: "Team Beta",
-      dependencies: [],
-      dependents: ["error-handling", "api-pattern"],
-      files: ["logger.ts", "log-formatter.ts", "log-levels.ts"],
-      description: "Structured logging with context propagation",
-      category: "Observability"
-    },
-    {
-      id: "type-definitions",
-      name: "Type Definitions",
-      type: 'dependency',
-      version: "4.2.0",
-      status: 'stable',
-      usage: 45,
-      performance: 100,
-      complexity: 2,
-      lastUpdated: "2024-01-05",
-      author: "Team Gamma",
-      dependencies: [],
-      dependents: ["data-validation", "api-pattern"],
-      files: ["types.ts", "interfaces.ts"],
-      description: "Shared TypeScript type definitions",
-      category: "Type Safety"
-    },
-    {
-      id: "data-fetcher",
-      name: "Data Fetcher",
-      type: 'implementation',
-      version: "1.0.0",
-      status: 'stable',
-      usage: 14,
-      performance: 89,
-      complexity: 5,
-      lastUpdated: "2024-01-11",
-      author: "Team Epsilon",
-      dependencies: ["caching-pattern"],
-      dependents: [],
-      files: ["data-fetcher.ts", "fetch-strategies.ts"],
-      description: "Optimized data fetching with caching layer",
-      category: "Data Management"
+      firstVersion: "1.0.0",
+      currentVersion: "2.0.0",
+      totalVersions: 5,
+      versions: [
+        {
+          version: "2.0.0",
+          date: "2024-01-14",
+          changes: [
+            "Complete redesign with Redis support",
+            "Breaking: Changed cache key format",
+            "Added distributed caching",
+            "75% performance improvement"
+          ],
+          breaking: true,
+          performance: 98,
+          stability: 96,
+          author: "Team Epsilon",
+          status: 'current'
+        },
+        {
+          version: "1.5.0",
+          date: "2023-11-20",
+          changes: [
+            "Added LRU cache strategy",
+            "Improved cache invalidation"
+          ],
+          breaking: false,
+          performance: 85,
+          stability: 90,
+          author: "Team Epsilon",
+          status: 'legacy'
+        }
+      ]
     }
   ];
 
-  // Mock data for pattern connections - ensuring 2-3 hop lineage is visible
-  // Example: auth-pattern -> error-handling -> logging-pattern (3 hops)
-  // Example: api-pattern -> data-validation -> type-definitions (3 hops)
-  const patternConnections: PatternConnection[] = [
-    // Direct dependencies (hop 1)
-    { from: "auth-pattern", to: "error-handling", type: 'dependency', strength: 0.8, bidirectional: false },
-    { from: "auth-pattern", to: "session-management", type: 'dependency', strength: 0.9, bidirectional: false },
-    { from: "data-validation", to: "error-handling", type: 'dependency', strength: 0.6, bidirectional: false },
-    { from: "data-validation", to: "type-definitions", type: 'dependency', strength: 0.7, bidirectional: false },
-    { from: "api-pattern", to: "error-handling", type: 'dependency', strength: 0.8, bidirectional: false },
-    { from: "api-pattern", to: "data-validation", type: 'dependency', strength: 0.7, bidirectional: false },
-    { from: "session-management", to: "data-validation", type: 'dependency', strength: 0.5, bidirectional: false },
-    { from: "session-management", to: "caching-pattern", type: 'dependency', strength: 0.8, bidirectional: false },
-    
-    // Second hop dependencies (hop 2)
-    { from: "error-handling", to: "logging-pattern", type: 'dependency', strength: 0.7, bidirectional: false },
-    { from: "api-pattern", to: "logging-pattern", type: 'usage', strength: 0.6, bidirectional: false },
-    
-    // Third hop dependencies (hop 3)
-    { from: "caching-pattern", to: "data-fetcher", type: 'usage', strength: 0.6, bidirectional: true },
-    { from: "caching-pattern", to: "api-pattern", type: 'usage', strength: 0.5, bidirectional: true },
-    
-    // Additional connections for clear lineage visualization
-    { from: "type-definitions", to: "api-pattern", type: 'usage', strength: 0.4, bidirectional: false }
-  ];
-
-  // Mock data for pattern versions
-  const patternVersions: { [patternId: string]: PatternVersion[] } = {
-    "auth-pattern": [
-      { version: "2.1.0", date: "2024-01-15", changes: ["Added OAuth2 support", "Improved JWT validation"], breaking: false, performance: 95, stability: 98 },
-      { version: "2.0.0", date: "2023-12-01", changes: ["Major refactor", "New API design"], breaking: true, performance: 90, stability: 95 },
-      { version: "1.9.0", date: "2023-11-15", changes: ["Bug fixes", "Performance improvements"], breaking: false, performance: 88, stability: 92 }
-    ],
-    "error-handling": [
-      { version: "1.8.2", date: "2024-01-10", changes: ["Fixed memory leak", "Added new error types"], breaking: false, performance: 88, stability: 95 },
-      { version: "1.8.0", date: "2023-12-20", changes: ["Enhanced logging", "Better error context"], breaking: false, performance: 85, stability: 90 }
-    ]
-  };
-
-  const getNodeIcon = (type: string) => {
-    switch (type) {
-      case 'pattern': return <Layers className="w-4 h-4" />;
-      case 'implementation': return <Code className="w-4 h-4" />;
-      case 'dependency': return <GitBranch className="w-4 h-4" />;
-      case 'version': return <Clock className="w-4 h-4" />;
-      default: return <Circle className="w-4 h-4" />;
-    }
-  };
-
-  const getNodeShape = (type: string) => {
-    switch (type) {
-      case 'pattern': return <Square className="w-6 h-6" />;
-      case 'implementation': return <Circle className="w-6 h-6" />;
-      case 'dependency': return <Diamond className="w-6 h-6" />;
-      case 'version': return <Triangle className="w-6 h-6" />;
-      default: return <Circle className="w-6 h-6" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'stable': return 'default';
-      case 'experimental': return 'secondary';
-      case 'deprecated': return 'destructive';
-      case 'active': return 'default';
-      default: return 'outline';
-    }
-  };
-
-  const getPerformanceColor = (performance: number) => {
-    if (performance >= 90) return 'text-green-600';
-    if (performance >= 70) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const filteredNodes = patternNodes.filter(node => {
-    const matchesSearch = node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         node.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === "all" || node.category === filterCategory;
+  const filteredPatterns = patternEvolutions.filter(pattern => {
+    const matchesSearch = pattern.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         pattern.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = filterCategory === "all" || pattern.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
-  // Convert pattern nodes to UnifiedGraph format
-  const graphNodes: GraphNode[] = filteredNodes.map(node => ({
-    id: node.id,
-    label: node.name,
-    type: node.type,
-    color: node.status === 'stable' ? '#10b981' : node.status === 'experimental' ? '#f59e0b' : '#6b7280',
-    size: node.usage,
+  const selectedPatternData = patternEvolutions.find(p => p.id === selectedPattern);
+
+  // Memoize layout config to prevent infinite re-renders
+  const hierarchyLayout = useMemo(() => ({ type: 'hierarchy' as const }), []);
+
+  // Memoize color scheme to prevent infinite re-renders
+  const graphColorScheme = useMemo(() => ({
+    breaking: '#ef4444',
+    evolution: '#3b82f6',
+    current: '#10b981',
+    deprecated: '#f59e0b',
+    legacy: '#6b7280'
+  }), []);
+
+  // Convert pattern evolution to graph format for tree view
+  const graphNodes: GraphNode[] = selectedPatternData?.versions.map((version, index) => ({
+    id: `${selectedPattern}-${version.version}`,
+    label: `v${version.version}`,
+    type: version.status,
+    color: version.status === 'current' ? '#10b981' : version.status === 'deprecated' ? '#f59e0b' : '#6b7280',
+    size: Math.max(30, version.stability * 0.6), // Increased minimum size for better readability
     metadata: {
-      version: node.version,
-      status: node.status,
-      performance: node.performance,
-      complexity: node.complexity,
-      usage: node.usage,
-      description: node.description,
-      category: node.category
+      version: version.version,
+      date: version.date,
+      changes: version.changes.length,
+      breaking: version.breaking,
+      performance: version.performance,
+      stability: version.stability,
+      author: version.author
     }
-  }));
+  })) || [];
 
-  // Convert pattern connections to UnifiedGraph format
-  const graphEdges: GraphEdge[] = patternConnections
-    .filter(conn =>
-      filteredNodes.some(n => n.id === conn.from) &&
-      filteredNodes.some(n => n.id === conn.to)
-    )
-    .map(conn => ({
-      source: conn.from,
-      target: conn.to,
-      weight: conn.strength,
-      type: conn.type,
-      bidirectional: conn.bidirectional
-    }));
+  // Create edges showing version progression with labels
+  const graphEdges: GraphEdge[] = [];
+  if (selectedPatternData) {
+    for (let i = 0; i < selectedPatternData.versions.length - 1; i++) {
+      const current = selectedPatternData.versions[i];
+      const next = selectedPatternData.versions[i + 1];
 
+      // Determine label based on version change characteristics
+      let label = 'evolved to';
+      if (current.breaking) {
+        label = 'breaking →';
+      } else if (current.changes.some(c => c.toLowerCase().includes('fix'))) {
+        label = 'fixed in';
+      } else if (current.changes.some(c => c.toLowerCase().includes('optimize') || c.toLowerCase().includes('performance'))) {
+        label = 'optimized →';
+      }
+
+      graphEdges.push({
+        source: `${selectedPattern}-${next.version}`,
+        target: `${selectedPattern}-${current.version}`,
+        weight: current.breaking ? 1 : 0.5,
+        type: current.breaking ? 'breaking' : 'evolution',
+        label: label
+      });
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Pattern Lineage</h1>
-          <p className="ty-subtitle">
-            Visualize pattern dependencies, evolution, and relationships
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <MockDataBadge />
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export Graph
-          </Button>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
       {/* Controls */}
       <div className="flex flex-wrap gap-4 items-center">
         <div className="flex items-center gap-2">
@@ -385,7 +400,7 @@ const PatternLineage: React.FC = () => {
             className="w-64"
           />
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Label htmlFor="category">Category:</Label>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
@@ -404,236 +419,301 @@ const PatternLineage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Label>Zoom:</Label>
-          <Slider
-            value={[zoomLevel]}
-            onValueChange={(value) => setZoomLevel(value[0])}
-            max={200}
-            min={25}
-            step={25}
-            className="w-24"
-          />
-          <span className="text-sm text-muted-foreground">{zoomLevel}%</span>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <Button
-            variant={showDependencies ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowDependencies(!showDependencies)}
-          >
-            <Network className="w-4 h-4 mr-2" />
-            Dependencies
-          </Button>
-          <Button
-            variant={showVersions ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowVersions(!showVersions)}
-          >
-            <GitBranch className="w-4 h-4 mr-2" />
-            Versions
-          </Button>
+          <Label htmlFor="pattern">Pattern:</Label>
+          <Select value={selectedPattern} onValueChange={setSelectedPattern}>
+            <SelectTrigger className="w-64">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredPatterns.map((pattern) => (
+                <SelectItem key={pattern.id} value={pattern.id}>
+                  {pattern.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       {/* View Toggle */}
       <div className="flex gap-2">
-        <Button 
-          variant={activeView === "graph" ? "default" : "outline"} 
-          onClick={() => setActiveView("graph")}
-        >
-          <Network className="w-4 h-4 mr-2" />
-          Graph View
-        </Button>
-        <Button 
-          variant={activeView === "list" ? "default" : "outline"} 
-          onClick={() => setActiveView("list")}
-        >
-          <Layers className="w-4 h-4 mr-2" />
-          List View
-        </Button>
-        <Button 
-          variant={activeView === "timeline" ? "default" : "outline"} 
+        <Button
+          variant={activeView === "timeline" ? "default" : "outline"}
           onClick={() => setActiveView("timeline")}
         >
           <Clock className="w-4 h-4 mr-2" />
-          Timeline
+          Timeline View
+        </Button>
+        <Button
+          variant={activeView === "tree" ? "default" : "outline"}
+          onClick={() => setActiveView("tree")}
+        >
+          <GitBranch className="w-4 h-4 mr-2" />
+          Tree View
+        </Button>
+        <Button
+          variant={activeView === "comparison" ? "default" : "outline"}
+          onClick={() => setActiveView("comparison")}
+        >
+          <Activity className="w-4 h-4 mr-2" />
+          Version Comparison
         </Button>
       </div>
 
-      {/* Graph View */}
-      {activeView === "graph" && (
+      {/* Pattern Overview Card */}
+      {selectedPatternData && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Pattern Dependency Graph</span>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setZoomLevel(Math.min(200, zoomLevel + 25))}>
-                  <ZoomIn className="w-4 h-4 mr-2" />
-                  Zoom In
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setZoomLevel(Math.max(25, zoomLevel - 25))}>
-                  <ZoomOut className="w-4 h-4 mr-2" />
-                  Zoom Out
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setZoomLevel(100)}>
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Reset
-                </Button>
-              </div>
+            <CardTitle className="flex items-center gap-2">
+              {selectedPatternData.name}
+              <Badge>{selectedPatternData.category}</Badge>
+              <Badge variant="outline">v{selectedPatternData.currentVersion}</Badge>
             </CardTitle>
-            <CardDescription>
-              Interactive visualization of pattern relationships and dependencies
-            </CardDescription>
+            <CardDescription>{selectedPatternData.description}</CardDescription>
           </CardHeader>
           <CardContent>
-            <UnifiedGraph
-              nodes={graphNodes}
-              edges={graphEdges}
-              layout={{ type: 'hierarchy' }}
-              height="calc(100vh - 24rem)"
-              interactive={true}
-              zoomable={true}
-              onNodeClick={(node) => {
-                const patternNode = patternNodes.find(n => n.id === node.id);
-                if (patternNode) setSelectedPattern(patternNode);
-              }}
-              showLegend={true}
-              colorScheme={{
-                dependency: '#3b82f6',
-                inheritance: '#10b981',
-                composition: '#8b5cf6',
-                usage: '#f59e0b',
-              }}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* List View */}
-      {activeView === "list" && (
-        <div className="space-y-4">
-          {filteredNodes.map((node) => (
-            <Card key={node.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    {getNodeShape(node.type)}
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        {node.name}
-                        <Badge variant={getStatusColor(node.status)}>
-                          {node.status}
-                        </Badge>
-                        <Badge variant="outline">
-                          v{node.version}
-                        </Badge>
-                      </CardTitle>
-                      <CardDescription>{node.description}</CardDescription>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`text-lg font-semibold ${getPerformanceColor(node.performance)}`}>
-                      {node.performance}%
-                    </div>
-                    <div className="text-sm text-muted-foreground">Performance</div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">Usage</div>
-                    <div className="font-semibold">{node.usage} files</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">Complexity</div>
-                    <div className="font-semibold">{node.complexity}/10</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">Last Updated</div>
-                    <div className="font-semibold">{node.lastUpdated}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">Author</div>
-                    <div className="font-semibold">{node.author}</div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Dependencies:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {node.dependencies.map((dep, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {dep}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Used by:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {node.dependents.map((dep, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {dep}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 mt-4">
-                  <Button 
-                    size="sm" 
-                    onClick={() => setSelectedPattern(node)}
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    View Details
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Code className="w-4 h-4 mr-2" />
-                    View Code
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <GitBranch className="w-4 h-4 mr-2" />
-                    Version History
-                  </Button>
-                </div>
-
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Timeline View */}
-      {activeView === "timeline" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Pattern Evolution Timeline</CardTitle>
-            <CardDescription>
-              Track how patterns have evolved over time with version changes and dependencies
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center bg-muted rounded-lg">
-              <div className="text-center">
-                <Clock className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-muted-foreground">Timeline visualization would go here</p>
-                <p className="text-sm text-muted-foreground">
-                  Interactive timeline showing pattern evolution, version releases, and dependency changes
-                </p>
+            <div className="grid grid-cols-4 gap-4">
+              <div>
+                <div className="text-sm font-medium text-muted-foreground">First Version</div>
+                <div className="text-lg font-semibold">v{selectedPatternData.firstVersion}</div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-muted-foreground">Current Version</div>
+                <div className="text-lg font-semibold">v{selectedPatternData.currentVersion}</div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-muted-foreground">Total Versions</div>
+                <div className="text-lg font-semibold">{selectedPatternData.totalVersions}</div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-muted-foreground">Latest Update</div>
+                <div className="text-lg font-semibold">{selectedPatternData.versions[0]?.date}</div>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <PatternDetailModal
-        pattern={selectedPattern}
-        isOpen={!!selectedPattern}
-        onClose={() => setSelectedPattern(null)}
-      />
+      {/* Timeline View */}
+      {activeView === "timeline" && selectedPatternData && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Version Timeline</CardTitle>
+            <CardDescription>
+              Chronological history of pattern evolution showing versions and changes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {selectedPatternData.versions.map((version, index) => (
+                <div key={version.version} className="relative">
+                  {/* Timeline connector */}
+                  {index < selectedPatternData.versions.length - 1 && (
+                    <div className="absolute left-6 top-16 bottom-0 w-0.5 bg-border" />
+                  )}
+
+                  <div className="flex gap-4">
+                    {/* Timeline dot */}
+                    <div className="flex flex-col items-center">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        version.status === 'current'
+                          ? 'bg-green-100 text-green-600'
+                          : version.status === 'deprecated'
+                          ? 'bg-orange-100 text-orange-600'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {version.status === 'current' ? (
+                          <CheckCircle className="w-6 h-6" />
+                        ) : version.breaking ? (
+                          <AlertTriangle className="w-6 h-6" />
+                        ) : (
+                          <GitBranch className="w-6 h-6" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Version details */}
+                    <div className="flex-1 pb-8">
+                      <div className="bg-card border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold">v{version.version}</h3>
+                            <Badge variant={version.status === 'current' ? 'default' : 'secondary'}>
+                              {version.status}
+                            </Badge>
+                            {version.breaking && (
+                              <Badge variant="destructive">Breaking Change</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {version.date}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Users className="w-4 h-4" />
+                              {version.author}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 mb-3">
+                          <div className="text-sm font-medium">Changes:</div>
+                          <ul className="list-disc list-inside space-y-1">
+                            {version.changes.map((change, i) => (
+                              <li key={i} className="text-sm text-muted-foreground">{change}</li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pt-3 border-t">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Performance:</span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 w-24 bg-muted rounded-full h-2">
+                                <div
+                                  className="bg-green-600 h-2 rounded-full"
+                                  style={{ width: `${version.performance}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-medium">{version.performance}%</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Stability:</span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 w-24 bg-muted rounded-full h-2">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full"
+                                  style={{ width: `${version.stability}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-medium">{version.stability}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tree View */}
+      {activeView === "tree" && selectedPatternData && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Version Tree</CardTitle>
+            <CardDescription>
+              Visual representation of version evolution showing relationships
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UnifiedGraph
+              nodes={graphNodes}
+              edges={graphEdges}
+              layout={hierarchyLayout}
+              height="600px"
+              interactive={true}
+              zoomable={true}
+              showLegend={true}
+              colorScheme={graphColorScheme}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Version Comparison View */}
+      {activeView === "comparison" && selectedPatternData && selectedPatternData.versions.length >= 2 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Version Comparison</CardTitle>
+            <CardDescription>
+              Compare metrics and changes between different versions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {selectedPatternData.versions.slice(0, 2).map((version) => (
+                <div key={version.version} className="border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-lg font-semibold">v{version.version}</h3>
+                    <Badge variant={version.status === 'current' ? 'default' : 'secondary'}>
+                      {version.status}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Release Date</div>
+                      <div className="text-sm">{version.date}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Author</div>
+                      <div className="text-sm">{version.author}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Performance</div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-muted rounded-full h-2">
+                          <div
+                            className="bg-green-600 h-2 rounded-full"
+                            style={{ width: `${version.performance}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium">{version.performance}%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Stability</div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-muted rounded-full h-2">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full"
+                            style={{ width: `${version.stability}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium">{version.stability}%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Changes ({version.changes.length})</div>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        {version.changes.slice(0, 3).map((change, i) => (
+                          <li key={i} className="text-muted-foreground">{change}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {selectedPatternData.versions.length >= 2 && (
+              <div className="mt-4 p-4 bg-muted rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                  <h4 className="font-semibold">Key Improvements</h4>
+                </div>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  <li>
+                    Performance: +{selectedPatternData.versions[0].performance - selectedPatternData.versions[1].performance}%
+                  </li>
+                  <li>
+                    Stability: +{selectedPatternData.versions[0].stability - selectedPatternData.versions[1].stability}%
+                  </li>
+                  <li>
+                    {selectedPatternData.versions[0].changes.length} new changes
+                  </li>
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
