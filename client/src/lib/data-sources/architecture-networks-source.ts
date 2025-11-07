@@ -1,4 +1,6 @@
 // Architecture Networks Data Source
+import { USE_MOCK_DATA } from '../mock-data/config';
+
 export interface ArchitectureSummary {
   totalNodes: number;
   totalEdges: number;
@@ -47,6 +49,22 @@ interface ArchitectureNetworksData {
 
 class ArchitectureNetworksSource {
   async fetchSummary(timeRange: string): Promise<{ data: ArchitectureSummary; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: {
+          totalNodes: 8,
+          totalEdges: 12,
+          services: 6,
+          patterns: 2,
+        },
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/architecture/summary?timeRange=${timeRange}`);
       if (response.ok) {
@@ -69,6 +87,17 @@ class ArchitectureNetworksSource {
   }
 
   async fetchNodes(timeRange: string): Promise<{ data: ArchitectureNode[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: [],
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/architecture/nodes?timeRange=${timeRange}`);
       if (response.ok) {
