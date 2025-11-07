@@ -15,7 +15,8 @@
     "db:push": "drizzle-kit push",
     "seed-events": "tsx server/mock-event-generator.ts",
     "seed-events:continuous": "tsx server/mock-event-generator.ts --continuous",
-    "check-topics": "tsx scripts/check-kafka-topics.ts"
+    "check-topics": "tsx scripts/check-kafka-topics.ts",
+    "clean:screenshots": "bash scripts/clean-screenshots.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

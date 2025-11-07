@@ -48,7 +48,7 @@ export const queryClient = new QueryClient({
       refetchInterval: false, // Individual queries can override this
       refetchOnWindowFocus: true, // Refetch when user returns to tab
       staleTime: 0, // Data is immediately stale, allowing refetches
-      cacheTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes
+      gcTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes (formerly cacheTime in v4)
       retry: false,
     },
     mutations: {

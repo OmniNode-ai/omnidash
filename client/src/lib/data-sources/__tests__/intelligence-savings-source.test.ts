@@ -160,12 +160,26 @@ describe('IntelligenceSavingsSource', () => {
           savings: { tokens: 25000, compute: 50, cost: 25, percentage: 33.3 },
         },
       ];
+      // Mock providers data
+      const mockProviders = [
+        {
+          providerId: 'provider-1',
+          providerName: 'Provider 1',
+          savingsAmount: 1000,
+          tokensProcessed: 100000,
+          tokensOffloaded: 50000,
+          percentageOfTotal: 50,
+          avgCostPerToken: 0.00001,
+          runsCount: 100,
+        },
+      ];
 
       setupFetchMock(
         new Map([
           ['/api/savings/metrics', createMockResponse(mockMetrics)],
           ['/api/savings/agents', createMockResponse(mockComparisons)],
           ['/api/savings/timeseries', createMockResponse(mockTimeSeries)],
+          ['/api/savings/providers', createMockResponse(mockProviders)],
         ])
       );
 

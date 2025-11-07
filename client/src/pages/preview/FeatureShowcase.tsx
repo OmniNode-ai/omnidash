@@ -47,7 +47,8 @@ import {
   Code,
   ScrollText,
   HardDrive as HardDriveIcon,
-  Database as DatabaseIcon
+  Database as DatabaseIcon,
+  Activity
 } from "lucide-react";
 
 export default function FeatureShowcase() {
