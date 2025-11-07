@@ -102,6 +102,7 @@ export default function AgentRegistry() {
   const [isLoading, setIsLoading] = useState(true);
   // performance metric mode: 'success' shows success percentage, 'time' shows avg execution time in ms
   const [performanceMetricMode, setPerformanceMetricMode] = useState<'success' | 'time'>('time');
+  const [performanceTrendTimeRange, setPerformanceTrendTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
 
   const categories: AgentCategory[] = [
     {
@@ -282,14 +283,17 @@ export default function AgentRegistry() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="agents">All Agents</TabsTrigger>
-          <TabsTrigger value="capabilities">Capabilities</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           {/* Search and Filters */}
           <Card>
-            <CardContent className="pt-6">
+            <CardHeader>
+              <CardTitle>Search & Filters</CardTitle>
+              <CardDescription>Find agents by name, capabilities, or tags and filter by category or status</CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="flex flex-col gap-4">
                 {/* Search and Status Toggle Row */}
                 <div className="flex flex-col md:flex-row gap-4">
@@ -692,61 +696,6 @@ export default function AgentRegistry() {
           </div>
         </TabsContent>
 
-        <TabsContent value="capabilities" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Agent Capabilities Matrix</CardTitle>
-              <CardDescription>Comprehensive view of all agent capabilities and their expertise levels</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {categories.map((category) => {
-                  const categoryAgents = agents.filter(agent => agent.category === category.name);
-                  const allCapabilities = categoryAgents.flatMap(agent => agent.capabilities || []);
-                  const uniqueCapabilities = Array.from(new Set(allCapabilities.map(cap => cap.name)))
-                    .map(name => allCapabilities.find(cap => cap.name === name)!);
-
-                  return (
-                    <div key={category.name} className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <category.icon className="w-5 h-5" style={{ color: getColorHex(category.color) }} />
-                        <h3 className="text-lg font-semibold capitalize">{category.name}</h3>
-                        <Badge variant="outline">{categoryAgents.length} agents</Badge>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {uniqueCapabilities.map((capability, index) => {
-                          const agentsWithCapability = categoryAgents.filter(agent =>
-                            agent.capabilities?.some(cap => cap.name === capability.name)
-                          );
-                          
-                          return (
-                            <div key={index} className="p-3 border rounded-lg">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="font-medium text-sm">{capability.name}</div>
-                                <Badge variant="outline" className="text-xs">
-                                  {capability.level}
-                                </Badge>
-                              </div>
-                              <div className="text-xs text-muted-foreground mb-2">
-                                {capability.description}
-                              </div>
-                              <div className="text-xs">
-                                <span className="text-muted-foreground">Used by: </span>
-                                <span className="font-medium">{agentsWithCapability.length} agents</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="performance" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
@@ -830,10 +779,42 @@ export default function AgentRegistry() {
 
             <Card>
               <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Performance Trends</CardTitle>
-                  <CardDescription>Agent performance over time</CardDescription>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Performance Trends</CardTitle>
+                    <CardDescription>Agent performance over time</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={performanceTrendTimeRange === '7d' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPerformanceTrendTimeRange('7d')}
+                    >
+                      7D
+                    </Button>
+                    <Button
+                      variant={performanceTrendTimeRange === '30d' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPerformanceTrendTimeRange('30d')}
+                    >
+                      30D
+                    </Button>
+                    <Button
+                      variant={performanceTrendTimeRange === '90d' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPerformanceTrendTimeRange('90d')}
+                    >
+                      90D
+                    </Button>
+                    <Button
+                      variant={performanceTrendTimeRange === 'all' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPerformanceTrendTimeRange('all')}
+                    >
+                      All Time
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -854,16 +835,14 @@ export default function AgentRegistry() {
               </div>
               </CardHeader>
               <CardContent>
-                <div className="h-64 bg-muted rounded-lg flex items-center justify-center">
+                <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg border-2 border-dashed">
                   <div className="text-center">
                     <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-muted-foreground">
-                      {performanceMetricMode === 'time' ? 'Completion time (ms)' : 'Success percentage (0–100%)'} trends chart would go here
+                    <p className="text-muted-foreground font-medium mb-1">
+                      Performance trends visualization
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {performanceMetricMode === 'time'
-                        ? 'Showing average completion time over time'
-                        : 'Showing success rate (0–100%) over time'}
+                      Tracking {performanceMetricMode === 'time' ? 'completion time (ms)' : 'success rate (%)'} over {performanceTrendTimeRange === 'all' ? 'all time' : `last ${performanceTrendTimeRange.toUpperCase()}`}
                     </p>
                   </div>
                 </div>
