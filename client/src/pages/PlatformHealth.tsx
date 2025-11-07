@@ -5,6 +5,7 @@ import { EventFeed } from "@/components/EventFeed";
 import { DrillDownModal } from "@/components/DrillDownModal";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
+import { SectionHeader } from "@/components/SectionHeader";
 import { Server, Activity, AlertTriangle, Clock } from "lucide-react";
 import { useState } from "react";
 import { MockBadge } from "@/components/MockBadge";
@@ -58,13 +59,20 @@ export default function PlatformHealth() {
   });
 
   // Transform to expected format
-  const healthData: PlatformHealthResponse = healthDataResult?.health ? {
-    status: healthDataResult.health.status,
-    uptime: healthDataResult.health.uptime,
-    services: healthDataResult.health.services,
-  } : { status: 'unknown', uptime: 0, services: [] };
+  const healthData: PlatformHealthResponse | null = healthDataResult?.health ? {
+    database: (healthDataResult.health as any).database || { name: 'Database', status: 'down' as const },
+    kafka: (healthDataResult.health as any).kafka || { name: 'Kafka', status: 'down' as const },
+    services: (healthDataResult.health as any).services || [],
+  } : null;
 
-  const serviceRegistry: ServiceRegistryEntry[] = healthDataResult?.services?.services || [];
+  const serviceRegistry: ServiceRegistryEntry[] = (healthDataResult?.services?.services || []).map((s: any) => ({
+    id: s.id || `service-${s.name}`,
+    serviceName: s.name || s.serviceName || 'Unknown',
+    serviceUrl: s.url || s.serviceUrl || '',
+    serviceType: s.type || s.serviceType || 'unknown',
+    healthStatus: (s.status || s.healthStatus || 'unhealthy') as 'healthy' | 'degraded' | 'unhealthy',
+    lastHealthCheck: s.lastHealthCheck || null,
+  }));
 
   // Map health data to service status format for display
   const getIconForService = (serviceName: string): "server" | "database" | "api" | "web" => {
@@ -178,18 +186,17 @@ export default function PlatformHealth() {
 
   return (
     <div className="space-y-6">
+      <SectionHeader
+        title="Platform Health"
+        description={`Comprehensive system health monitoring and operational metrics${healthData ? ` · ${services.length} services monitored` : ''}`}
+        details="Platform Health provides real-time monitoring of all infrastructure services including databases, message queues, microservices, and external APIs. Track service uptime, latency, active alerts, and resource utilization. Use this dashboard to quickly identify and respond to service degradation or outages before they impact users."
+        level="h1"
+      />
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold mb-2">Platform Health</h1>
-          <p className="text-muted-foreground">
-            Comprehensive system health monitoring and operational metrics
-            {healthData && ` · ${services.length} services monitored`}
-          </p>
-        </div>
         <div className="flex items-center gap-4">
           <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
           <ExportButton
-            data={{ services, healthData, cpuData, memoryData, events, metrics: { healthyServices, avgUptime, avgLatency, activeAlerts } }}
+            data={{ services, healthData, cpuData: cpuDataEnsured.data, memoryData: memoryDataEnsured.data, events, metrics: { healthyServices, avgUptime, avgLatency, activeAlerts } }}
             filename={`platform-health-${timeRange}-${new Date().toISOString().split('T')[0]}`}
             disabled={isLoading || !!error}
           />
@@ -269,7 +276,12 @@ export default function PlatformHealth() {
           {/* Service Registry Grid */}
           {serviceRegistry && serviceRegistry.length > 0 && (
             <div className="mt-6">
-              <h2 className="text-2xl font-semibold mb-4">Service Registry</h2>
+              <SectionHeader
+                title="Service Registry"
+                description="Centralized registry of all platform services with health status and metadata."
+                details="The Service Registry maintains a catalog of all microservices and infrastructure components. View service types, URLs, health status, and last health check times. This registry enables service discovery, health monitoring, and operational visibility across the entire platform."
+                level="h2"
+              />
               <div className="bg-card rounded-lg border p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {serviceRegistry.map((service) => {

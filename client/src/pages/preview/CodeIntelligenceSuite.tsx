@@ -35,9 +35,10 @@ import {
 import CodeIntelligence from "../CodeIntelligence";
 import PatternLearning from "../PatternLearning";
 import PatternLineage from "./PatternLineage";
-import DuplicateDetection from "./DuplicateDetection";
+import PatternDependencies from "./PatternDependencies";
 import TechDebtAnalysis from "./TechDebtAnalysis";
 import { MockDataBadge } from "@/components/MockDataBadge";
+import { codeIntelligenceSource } from "@/lib/data-sources";
 
 // Mock data interfaces
 interface CodeMetrics {
@@ -205,13 +206,21 @@ export default function CodeIntelligenceSuite() {
           <TabsTrigger value="analysis">Code Analysis</TabsTrigger>
           <TabsTrigger value="patterns">Pattern Discovery</TabsTrigger>
           <TabsTrigger value="lineage">Pattern Lineage</TabsTrigger>
-          <TabsTrigger value="duplicates">Duplicate Detection</TabsTrigger>
+          <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
           <TabsTrigger value="techdebt">Tech Debt</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
-          {/* Code Metrics Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <TabsContent value="overview" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Code Intelligence Overview</CardTitle>
+              <CardDescription>
+                Comprehensive code quality metrics, pattern analysis, and technical debt tracking across your entire codebase.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Code Metrics Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Proven Patterns as hero metric per YC script */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -273,6 +282,8 @@ export default function CodeIntelligenceSuite() {
               </CardContent>
             </Card>
           </div>
+            </CardContent>
+          </Card>
 
           {/* Technical Debt and Quality Metrics */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -430,8 +441,8 @@ export default function CodeIntelligenceSuite() {
           <PatternLineage />
         </TabsContent>
 
-        <TabsContent value="duplicates" className="space-y-4">
-          <DuplicateDetection />
+        <TabsContent value="dependencies" className="space-y-4">
+          <PatternDependencies />
         </TabsContent>
 
         <TabsContent value="techdebt" className="space-y-4">

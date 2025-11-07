@@ -45,7 +45,9 @@ export function RefactorPlanModal({ open, onClose, plan, duplicateTitle }: Refac
     }
   };
 
-  const sortedSteps = [...plan.steps].sort((a, b) => a.order - b.order);
+  const sortedSteps = plan.steps && plan.steps.length > 0
+    ? [...plan.steps].sort((a, b) => a.order - b.order)
+    : [];
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -87,7 +89,7 @@ export function RefactorPlanModal({ open, onClose, plan, duplicateTitle }: Refac
           </div>
 
           {/* Prerequisites */}
-          {plan.prerequisites.length > 0 && (
+          {plan.prerequisites && plan.prerequisites.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4" />
@@ -107,8 +109,11 @@ export function RefactorPlanModal({ open, onClose, plan, duplicateTitle }: Refac
           {/* Refactoring Steps */}
           <div>
             <h4 className="text-sm font-semibold mb-3">Refactoring Steps</h4>
-            <div className="space-y-3">
-              {sortedSteps.map((step, idx) => (
+            {sortedSteps.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No refactoring steps defined.</p>
+            ) : (
+              <div className="space-y-3">
+                {sortedSteps.map((step, idx) => (
                 <Card key={step.id} className="p-4">
                   <div className="flex items-start gap-3">
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
@@ -128,14 +133,14 @@ export function RefactorPlanModal({ open, onClose, plan, duplicateTitle }: Refac
                           <span className="text-muted-foreground">Time:</span>
                           <span className="ml-2 font-medium">{step.estimatedTime}</span>
                         </div>
-                        {step.dependencies.length > 0 && (
+                        {step.dependencies && step.dependencies.length > 0 && (
                           <div>
                             <span className="text-muted-foreground">Depends on:</span>
                             <span className="ml-2 font-medium">Step {step.dependencies.join(', ')}</span>
                           </div>
                         )}
                       </div>
-                      {step.files.length > 0 && (
+                      {step.files && step.files.length > 0 && (
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Affected Files:</div>
                           <div className="flex flex-wrap gap-1">
@@ -151,11 +156,12 @@ export function RefactorPlanModal({ open, onClose, plan, duplicateTitle }: Refac
                   </div>
                 </Card>
               ))}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Test Plan */}
-          {plan.testPlan.length > 0 && (
+          {plan.testPlan && plan.testPlan.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold mb-2">Test Plan</h4>
               <ul className="space-y-1">

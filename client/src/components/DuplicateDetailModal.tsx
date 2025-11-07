@@ -1,5 +1,6 @@
 import React from "react";
 import { DetailModal } from "./DetailModal";
+import { SavingsTooltip } from "@/components/SavingsTooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,10 +92,10 @@ export function DuplicateDetailModal({ duplicate, isOpen, onClose }: DuplicateDe
               <div className="text-xs text-muted-foreground mb-1">Similarity</div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>{duplicate.similarity}%</span>
+                  <span>{Math.max(0, Math.min(100, duplicate.similarity || 0)).toFixed(1)}%</span>
                   <span className="text-muted-foreground">High</span>
                 </div>
-                <Progress value={duplicate.similarity} className="h-2" />
+                <Progress value={Math.max(0, Math.min(100, duplicate.similarity || 0))} className="h-2" />
               </div>
             </Card>
             <Card className="p-4">
@@ -155,7 +156,7 @@ export function DuplicateDetailModal({ duplicate, isOpen, onClose }: DuplicateDe
                 <span className="font-mono">{duplicate.refactoringComplexity}/10</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span>Estimated Savings</span>
+                <SavingsTooltip>Estimated Savings</SavingsTooltip>
                 <span className="font-mono">${duplicate.estimatedSavings.toLocaleString()}</span>
               </div>
             </div>
@@ -181,10 +182,10 @@ export function DuplicateDetailModal({ duplicate, isOpen, onClose }: DuplicateDe
             </div>
 
             <div>
-              <h4 className="text-sm font-semibold mb-3">Estimated Savings</h4>
+              <h4 className="text-sm font-semibold mb-3"><SavingsTooltip>Estimated Savings</SavingsTooltip></h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Cost Savings</span>
+                  <SavingsTooltip>Cost Savings</SavingsTooltip>
                   <span className="font-mono">${duplicate.estimatedSavings.toLocaleString()}</span>
                 </div>
                 <Progress value={Math.min(duplicate.estimatedSavings / 10000 * 100, 100)} className="h-2" />

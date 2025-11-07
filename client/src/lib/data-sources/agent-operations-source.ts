@@ -1,4 +1,6 @@
 // Agent Operations Data Source
+import { USE_MOCK_DATA, AgentOperationsMockData } from '../mock-data';
+
 export interface AgentSummary {
   totalAgents: number;
   activeAgents: number;
@@ -42,6 +44,7 @@ export interface OperationStatus {
 interface AgentOperationsData {
   summary: AgentSummary;
   recentActions: RecentAction[];
+  perAgentMetrics: any[];
   health: HealthStatus;
   chartData: ChartDataPoint[];
   qualityChartData: ChartDataPoint[];
@@ -55,6 +58,17 @@ interface AgentOperationsData {
 
 class AgentOperationsSource {
   async fetchSummary(timeRange: string): Promise<{ data: AgentSummary; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    console.log('[fetchSummary] USE_MOCK_DATA =', USE_MOCK_DATA);
+    if (USE_MOCK_DATA && !isTestEnv) {
+      const mockData = AgentOperationsMockData.generateSummary();
+      console.log('[fetchSummary] Returning mock data:', mockData);
+      return { data: mockData, isMock: true };
+    }
+
     try {
       const res = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
       if (res.ok) {
@@ -69,7 +83,7 @@ class AgentOperationsSource {
           const sampleAgent = agents.find(a => (a.successRate != null) || (a.avgConfidence != null));
           const sampleValue = sampleAgent?.successRate ?? sampleAgent?.avgConfidence;
           const isDecimalFormat = sampleValue != null && sampleValue <= 1;
-          
+
           const avgSuccessRate = totalRequestsForAvg > 0
             ? Math.max(0, Math.min(100, agents.reduce((sum, a) => {
                 const weight = (a.totalRequests || 0) / totalRequestsForAvg;
@@ -87,7 +101,7 @@ class AgentOperationsSource {
               }, 0)
             : 0;
           const avgExecutionTime = avgExecutionTimeMs / 1000; // Convert to seconds
-          
+
           return {
             data: {
               totalAgents: agents.length,
@@ -104,19 +118,42 @@ class AgentOperationsSource {
       console.warn('Failed to fetch agent summary, using mock data', err);
     }
 
-    return {
-      data: {
-        totalAgents: 0,
-        activeAgents: 0,
-        totalRuns: 0,
-        successRate: 0,
-        avgExecutionTime: 0,
-      },
-      isMock: true,
-    };
+    return { data: AgentOperationsMockData.generateSummary(), isMock: true };
+  }
+
+  async fetchPerAgentMetrics(timeRange: string): Promise<{ data: any[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return { data: AgentOperationsMockData.generatePerAgentMetrics(), isMock: true };
+    }
+
+    try {
+      const res = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
+      if (res.ok) {
+        const agents = await res.json();
+        if (Array.isArray(agents) && agents.length > 0) {
+          return { data: agents, isMock: false };
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch per-agent metrics, using mock data', err);
+    }
+
+    return { data: AgentOperationsMockData.generatePerAgentMetrics(), isMock: true };
   }
 
   async fetchRecentActions(timeRange: string, limit: number = 100): Promise<{ data: RecentAction[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return { data: AgentOperationsMockData.generateRecentActions(limit), isMock: true };
+    }
+
     try {
       const res = await fetch(`/api/intelligence/actions/recent?limit=${limit}&timeWindow=${timeRange}`);
       if (res.ok) {
@@ -127,13 +164,18 @@ class AgentOperationsSource {
       console.warn('Failed to fetch recent actions, using mock data', err);
     }
 
-    return {
-      data: [],
-      isMock: true,
-    };
+    return { data: AgentOperationsMockData.generateRecentActions(limit), isMock: true };
   }
 
   async fetchHealth(): Promise<{ data: HealthStatus; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return { data: AgentOperationsMockData.generateHealth(), isMock: true };
+    }
+
     try {
       const res = await fetch('/api/intelligence/health');
       if (res.ok) {
@@ -144,20 +186,27 @@ class AgentOperationsSource {
       console.warn('Failed to fetch health, using mock data', err);
     }
 
-    return {
-      data: {
-        status: 'healthy',
-        services: [
-          { name: 'PostgreSQL', status: 'up' },
-          { name: 'OmniArchon', status: 'up' },
-          { name: 'Qdrant', status: 'up' },
-        ]
-      },
-      isMock: true,
-    };
+    return { data: AgentOperationsMockData.generateHealth(), isMock: true };
   }
 
   async fetchOperationsData(timeRange: string): Promise<{ data: any[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      // Generate mock operations data in the format expected by the chart
+      const mockOperations = AgentOperationsMockData.generateOperations(8);
+      return {
+        data: mockOperations.map(op => ({
+          actionType: op.id,
+          operationsPerMinute: op.count / 60,
+          period: new Date().toISOString(),
+        })),
+        isMock: true
+      };
+    }
+
     try {
       const res = await fetch(`/api/intelligence/metrics/operations-per-minute?timeWindow=${timeRange}`);
       if (res.ok) {
@@ -171,6 +220,21 @@ class AgentOperationsSource {
   }
 
   async fetchQualityImpactData(timeRange: string): Promise<{ data: any[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      const chartData = AgentOperationsMockData.generateQualityChart(20);
+      return {
+        data: chartData.map(point => ({
+          period: new Date().toISOString(),
+          avgQualityImprovement: point.value / 100,
+        })),
+        isMock: true
+      };
+    }
+
     try {
       const res = await fetch(`/api/intelligence/metrics/quality-impact?timeWindow=${timeRange}`);
       if (res.ok) {
@@ -215,7 +279,7 @@ class AgentOperationsSource {
     const grouped = new Map<string, { name: string; count: number; totalOps: number }>();
     
     operationsData.forEach(item => {
-      const name = (item.actionType || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const name = (item.actionType || '').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
       const existing = grouped.get(item.actionType || '') || { name, count: 0, totalOps: 0 };
       existing.count += 1;
       existing.totalOps += (item.operationsPerMinute || 0);
@@ -232,9 +296,10 @@ class AgentOperationsSource {
   }
 
   async fetchAll(timeRange: string): Promise<AgentOperationsData> {
-    const [summary, recentActions, health, operationsData, qualityData] = await Promise.all([
+    const [summary, recentActions, perAgentMetrics, health, operationsData, qualityData] = await Promise.all([
       this.fetchSummary(timeRange),
       this.fetchRecentActions(timeRange, 100),
+      this.fetchPerAgentMetrics(timeRange),
       this.fetchHealth(),
       this.fetchOperationsData(timeRange),
       this.fetchQualityImpactData(timeRange),
@@ -244,7 +309,7 @@ class AgentOperationsSource {
     const chartData = this.transformOperationsForChart(operationsData.data);
     const qualityChartData = this.transformQualityForChart(qualityData.data);
     const operations = this.transformOperationsStatus(operationsData.data);
-    
+
     const totalOperations = operations.length;
     const runningOperations = operations.filter(op => op.status === 'running').length;
     const totalOpsPerMinute = operationsData.data.reduce((sum: number, item: any) => sum + (item.operationsPerMinute || 0), 0);
@@ -255,6 +320,7 @@ class AgentOperationsSource {
     return {
       summary: summary.data,
       recentActions: recentActions.data,
+      perAgentMetrics: perAgentMetrics.data,
       health: health.data,
       chartData,
       qualityChartData,
@@ -263,7 +329,7 @@ class AgentOperationsSource {
       runningOperations,
       totalOpsPerMinute,
       avgQualityImprovement,
-      isMock: summary.isMock || recentActions.isMock || health.isMock || operationsData.isMock || qualityData.isMock,
+      isMock: summary.isMock || recentActions.isMock || perAgentMetrics.isMock || health.isMock || operationsData.isMock || qualityData.isMock,
     };
   }
 }

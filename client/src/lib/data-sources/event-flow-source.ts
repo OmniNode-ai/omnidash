@@ -1,4 +1,5 @@
 // Event Flow Data Source
+
 export interface Event {
   id: string;
   timestamp: string;
@@ -87,12 +88,11 @@ class EventFlowSource {
 
   async fetchEvents(limit: number = 100): Promise<EventFlowData> {
     try {
-      const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
-      const response = await fetch(`${omniarchonUrl}/api/intelligence/events/stream?limit=${limit}`);
+      const response = await fetch(`/api/intelligence/events/stream?limit=${limit}`);
       if (response.ok) {
         const eventsData = await response.json();
         const events = Array.isArray(eventsData) ? eventsData : (eventsData.events || []);
-        
+
         return {
           events,
           metrics: this.calculateMetrics(events),
@@ -114,7 +114,7 @@ class EventFlowSource {
       { id: '5', timestamp: new Date(now - 120000).toISOString(), type: 'throughput', source: 'api', data: { count: 1180, endpoint: '/api/agents/execute' } },
       { id: '6', timestamp: new Date(now - 150000).toISOString(), type: 'cache-hit', source: 'cache', data: { hitRate: 0.67, key: 'agent-config:polymorphic-agent' } },
     ];
-    
+
     return {
       events: mockEvents,
       metrics: this.calculateMetrics(mockEvents),

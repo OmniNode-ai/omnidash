@@ -1,4 +1,5 @@
 // Note: eventConsumer is server-side only, so we'll fetch via API
+import { USE_MOCK_DATA, AgentManagementMockData } from '../mock-data';
 
 export interface AgentSummary {
   totalAgents: number;
@@ -65,6 +66,14 @@ export interface AgentManagementData {
 
 class AgentManagementDataSource {
   async fetchSummary(timeRange: string): Promise<{ data: AgentSummary; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    console.log('[fetchSummary] USE_MOCK_DATA =', USE_MOCK_DATA);
+    if (USE_MOCK_DATA) {
+      const mockData = AgentManagementMockData.generateSummary();
+      console.log('[fetchSummary] Returning mock data:', mockData);
+      return { data: mockData, isMock: true };
+    }
+
     // Use intelligence API first - it has real performance data from database
     try {
       const response = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
@@ -125,21 +134,16 @@ class AgentManagementDataSource {
       console.warn('Failed to fetch agent summary from registry API', err);
     }
 
-    // Mock data fallback - aligned with YC demo script metrics
-    return {
-      data: {
-        totalAgents: 15,
-        activeAgents: 12,
-        totalRuns: 1200, // ~1200 requests/day for demo
-        successRate: 94.0, // 94% success rate from script
-        avgExecutionTime: 1.2, // 1.2s avg response time from script
-        totalSavings: 45000,
-      },
-      isMock: true,
-    };
+    // Mock data fallback
+    return { data: AgentManagementMockData.generateSummary(), isMock: true };
   }
 
   async fetchRoutingStats(timeRange: string): Promise<{ data: RoutingStats; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return { data: AgentManagementMockData.generateRoutingStats(), isMock: true };
+    }
+
     try {
       const response = await fetch(`/api/agents/routing/stats?timeRange=${timeRange}`);
       if (response.ok) {
@@ -180,29 +184,16 @@ class AgentManagementDataSource {
       console.warn('Failed to fetch from intelligence API, using mock data', err);
     }
 
-    // Mock data fallback - aligned with YC demo script
-    return {
-      data: {
-        totalDecisions: 15420,
-        avgConfidence: 0.942,
-        avgRoutingTime: 45, // 45ms from demo script
-        accuracy: 94.2, // 94.2% from demo script
-        strategyBreakdown: {
-          enhanced_fuzzy_matching: 10000,
-          exact_match: 3500,
-          capability_alignment: 1200,
-          fallback: 720,
-        },
-        topAgents: [
-          { agentId: 'polymorphic-agent', agentName: 'Polymorphic Agent', usage: 456, successRate: 95.2 },
-          { agentId: 'code-reviewer', agentName: 'Code Reviewer', usage: 234, successRate: 92.5 },
-        ],
-      },
-      isMock: true,
-    };
+    // Mock data fallback
+    return { data: AgentManagementMockData.generateRoutingStats(), isMock: true };
   }
 
   async fetchRecentExecutions(timeRange: string, limit: number = 10): Promise<{ data: AgentExecution[]; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return { data: AgentManagementMockData.generateRecentExecutions(limit), isMock: true };
+    }
+
     try {
       const response = await fetch(`/api/agents/executions?timeRange=${timeRange}&limit=${limit}`);
       if (response.ok) {
@@ -244,13 +235,15 @@ class AgentManagementDataSource {
     }
 
     // Mock data fallback
-    return {
-      data: [],
-      isMock: true,
-    };
+    return { data: AgentManagementMockData.generateRecentExecutions(limit), isMock: true };
   }
 
   async fetchRecentDecisions(limit: number = 10): Promise<{ data: RoutingDecision[]; isMock: boolean }> {
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled
+    if (USE_MOCK_DATA) {
+      return { data: AgentManagementMockData.generateRecentDecisions(limit), isMock: true };
+    }
+
     try {
       const response = await fetch(`/api/intelligence/routing/decisions?limit=${limit}`);
       if (response.ok) {
@@ -264,10 +257,7 @@ class AgentManagementDataSource {
     }
 
     // Mock data fallback
-    return {
-      data: [],
-      isMock: true,
-    };
+    return { data: AgentManagementMockData.generateRecentDecisions(limit), isMock: true };
   }
 
   async fetchAll(timeRange: string): Promise<AgentManagementData> {

@@ -15,9 +15,10 @@ interface EventFeedProps {
   events: Event[];
   maxHeight?: number;
   bare?: boolean; // when true, render just the list (no outer Card/header)
+  onEventClick?: (event: Event) => void; // callback when an event is clicked
 }
 
-export function EventFeed({ events, maxHeight = 400, bare = false }: EventFeedProps) {
+export function EventFeed({ events, maxHeight = 400, bare = false, onEventClick }: EventFeedProps) {
   const getIndicatorColor = (type: Event["type"]) => {
     switch (type) {
       case "success": return "bg-status-healthy";
@@ -34,9 +35,20 @@ export function EventFeed({ events, maxHeight = 400, bare = false }: EventFeedPr
           <div
             key={event.id}
             className={cn(
-              "flex gap-3 p-3 rounded-lg border animate-slide-in bg-card border-border"
+              "flex gap-3 p-3 rounded-lg border animate-slide-in bg-card border-border",
+              onEventClick && "cursor-pointer transition-all duration-200 ease-in-out hover:bg-accent/50 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.99]"
             )}
             style={{ animationDelay: `${index * 50}ms` }}
+            onClick={onEventClick ? () => onEventClick(event) : undefined}
+            onKeyDown={onEventClick ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onEventClick(event);
+              }
+            } : undefined}
+            tabIndex={onEventClick ? 0 : undefined}
+            role={onEventClick ? "button" : undefined}
+            aria-label={onEventClick ? `View details for event: ${event.message}` : undefined}
           >
             <div className={cn("w-1 rounded", getIndicatorColor(event.type))} />
             <div className="flex-1 min-w-0">
