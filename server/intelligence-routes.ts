@@ -603,8 +603,8 @@ intelligenceRouter.get('/patterns/discovery', async (req, res) => {
     // Try to get real patterns from pattern_lineage_nodes
     const recentPatterns = await intelligenceDb
       .select({
-        name: patternLineageNodes.name,
-        file_path: patternLineageNodes.filePath,
+        name: patternLineageNodes.patternName,
+        file_path: patternLineageNodes.patternId,
         createdAt: patternLineageNodes.createdAt,
       })
       .from(patternLineageNodes)
@@ -3217,18 +3217,18 @@ intelligenceRouter.get('/agents/:agentName/details', async (req, res) => {
 
     // Calculate metrics
     const totalActions = actions.length;
-    const successfulActions = actions.filter(a => a.status === 'success').length;
+    const successfulActions = actions.filter(a => a.actionDetails && typeof a.actionDetails === 'object' && 'success' in a.actionDetails && a.actionDetails.success === true).length;
     const successRate = totalActions > 0 ? (successfulActions / totalActions) * 100 : 0;
 
     // Get average response time
-    const actionDurations = actions.filter(a => a.duration).map(a => a.duration!);
+    const actionDurations = actions.filter(a => a.durationMs).map(a => a.durationMs!);
     const avgResponseTime = actionDurations.length > 0
       ? actionDurations.reduce((sum, d) => sum + d, 0) / actionDurations.length
       : 0;
 
     // Determine current status
     const recentActions = actions.slice(0, 5);
-    const hasRecentErrors = recentActions.some(a => a.status === 'error');
+    const hasRecentErrors = recentActions.some(a => a.actionDetails && typeof a.actionDetails === 'object' && 'error' in a.actionDetails);
     const status = hasRecentErrors ? 'error' : (totalActions > 0 ? 'active' : 'idle');
 
     // Get current task (most recent action)
@@ -3238,8 +3238,8 @@ intelligenceRouter.get('/agents/:agentName/details', async (req, res) => {
     // Format recent activity
     const recentActivity = recentActions.map(action => ({
       id: action.id,
-      timestamp: action.timestamp,
-      description: `${action.actionType}: ${action.actionName || 'Unknown'}${action.status === 'error' ? ' (failed)' : ''}`
+      timestamp: action.createdAt,
+      description: `${action.actionType}: ${action.actionName || 'Unknown'}${action.actionDetails && typeof action.actionDetails === 'object' && 'error' in action.actionDetails ? ' (failed)' : ''}`
     }));
 
     const response = {
@@ -3319,28 +3319,31 @@ intelligenceRouter.get('/patterns/:patternId/details', async (req, res) => {
     // Calculate trend (compare recent vs older quality)
     let trend = 0;
     if (qualityMetrics.length >= 2) {
-      const recentAvg = qualityMetrics.slice(0, 5).reduce((sum, m) => sum + (m.qualityScore || 0), 0) / Math.min(5, qualityMetrics.length);
-      const olderAvg = qualityMetrics.slice(5).reduce((sum, m) => sum + (m.qualityScore || 0), 0) / Math.max(1, qualityMetrics.length - 5);
+      const recentAvg = qualityMetrics.slice(0, 5).reduce((sum, m) => sum + (typeof m.qualityScore === 'string' ? parseFloat(m.qualityScore) : (m.qualityScore || 0)), 0) / Math.min(5, qualityMetrics.length);
+      const olderAvg = qualityMetrics.slice(5).reduce((sum, m) => sum + (typeof m.qualityScore === 'string' ? parseFloat(m.qualityScore) : (m.qualityScore || 0)), 0) / Math.max(1, qualityMetrics.length - 5);
       trend = recentAvg - olderAvg;
     }
 
-    // Get usage examples from manifests
+    // Get usage examples from manifests (using actual schema fields)
     const usageExamples = await intelligenceDb
       .select({
-        project: agentManifestInjections.contextHash,
-        module: agentManifestInjections.injectionPoint,
+        project: agentManifestInjections.agentName,
+        module: agentManifestInjections.generationSource,
       })
       .from(agentManifestInjections)
-      .where(sql`${agentManifestInjections.discoveredPatterns}::text LIKE '%${sql.raw(patternId)}%'`)
+      .where(sql`${agentManifestInjections.fullManifestSnapshot}::text LIKE '%${sql.raw(patternId)}%'`)
       .limit(10);
+
+    // Extract metadata from patternData.metadata if available
+    const metadata = typeof patternData.metadata === 'object' && patternData.metadata !== null ? patternData.metadata as any : {};
 
     const response = {
       id: patternData.id,
       name: patternData.patternName || 'Unknown Pattern',
       quality: qualityScore || 0,
-      usage: patternData.usageCount || 0,
-      category: patternData.patternCategory || 'uncategorized',
-      description: patternData.description || '',
+      usage: metadata.usageCount || 0,
+      category: metadata.patternCategory || patternData.patternType || 'uncategorized',
+      description: metadata.description || '',
       trend: Math.round(trend * 100) / 100,
       usageExamples: usageExamples.map(ex => ({
         id: ex.project,
@@ -3400,7 +3403,7 @@ intelligenceRouter.get('/services/:serviceName/details', async (req, res) => {
       name: serviceHealth.service,
       status: statusMap[serviceHealth.status as keyof typeof statusMap] || 'down',
       uptime: serviceHealth.status === 'up' ? 99.9 : 0, // Placeholder - would need historical data
-      responseTime: serviceHealth.responseTime || 0,
+      responseTime: (serviceHealth as any).responseTime || 0,
       lastCheck: new Date().toISOString(),
       details: serviceHealth.details
     };

@@ -220,7 +220,7 @@ export default function CorrelationTrace() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Trace Results</h2>
             <ExportButton
-              data={traceData}
+              data={traceData as unknown as Record<string, unknown>}
               filename={`correlation-trace-${searchId}-${new Date().toISOString().split('T')[0]}`}
             />
           </div>

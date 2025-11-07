@@ -122,13 +122,19 @@ export default function AdvancedSettings() {
   const [activeTab, setActiveTab] = useState("general");
 
   const handleSettingChange = (category: string, key: string, value: any) => {
-    setSettings(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category as keyof typeof prev],
-        [key]: value
+    setSettings(prev => {
+      const categoryValue = prev[category as keyof typeof prev];
+      if (typeof categoryValue === 'object' && categoryValue !== null) {
+        return {
+          ...prev,
+          [category]: {
+            ...(categoryValue as Record<string, any>),
+            [key]: value
+          }
+        };
       }
-    }));
+      return prev;
+    });
     setHasUnsavedChanges(true);
   };
 
@@ -175,7 +181,30 @@ export default function AdvancedSettings() {
       primaryDatabase: "postgresql",
       backupDatabase: "mysql",
       enableReplication: true,
-      dataRetention: 90
+      dataRetention: 90,
+      aiModelProvider: "claude",
+      aiModelVersion: "3.5-sonnet",
+      aiCostLimit: 1000,
+      aiResponseTimeout: 30000,
+      enablePredictiveAnalytics: true,
+      mlModelRefreshInterval: 3600,
+      enableAutoScaling: true,
+      scalingThreshold: 75,
+      enableCostOptimization: true,
+      resourceOptimizationLevel: "balanced",
+      enableCaching: true,
+      cacheStrategy: "lru",
+      enableAdvancedMonitoring: true,
+      monitoringInterval: 60,
+      alertChannels: ["email", "slack"],
+      enableAnomalyDetection: true,
+      anomalySensitivity: "medium",
+      enableWebhooks: true,
+      webhookTimeout: 5000,
+      enableApiRateLimiting: true,
+      rateLimitRequests: 1000,
+      enableCors: true,
+      corsOrigins: "*"
     });
     setHasUnsavedChanges(false);
   };

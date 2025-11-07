@@ -26,6 +26,7 @@ export const AgentExecutionSchema = z.object({
     confidence: z.number(),
     strategy: z.string(),
     alternatives: z.array(z.string()).optional(),
+    routingTime: z.number().optional(),
   }).optional(),
   metadata: z.record(z.any()).optional(),
 });
