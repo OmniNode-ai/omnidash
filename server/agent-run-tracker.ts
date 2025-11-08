@@ -126,18 +126,18 @@ export class AgentRunTracker {
     const rawTimeSavings = timeSavingsPerRun * intelligenceRuns.length;
     const rawTokenSavings = tokenSavingsPerRun * intelligenceRuns.length;
 
-    // Apply validators to ensure all savings are >= 0
-    const costSavings = Math.max(0, rawCostSavings);
-    const timeSavedHours = Math.max(0, rawTimeSavings / 3600); // Convert seconds to hours
+    // Allow negative savings to detect performance regressions
+    const costSavings = rawCostSavings;
+    const timeSavedHours = rawTimeSavings / 3600; // Convert seconds to hours
     const efficiencyGain = baselineTokens > 0
-      ? Math.max(0, (rawTokenSavings / baselineTokens) * 100)
+      ? (rawTokenSavings / baselineTokens) * 100
       : 0;
 
-    // Calculate time period in days for extrapolation
+    // Calculate time period in days for extrapolation (allow negative values)
     const timePeriodDays = Math.max(1, (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const dailySavings = Math.max(0, costSavings / timePeriodDays);
-    const weeklySavings = Math.max(0, dailySavings * 7);
-    const monthlySavings = Math.max(0, dailySavings * 30);
+    const dailySavings = costSavings / timePeriodDays;
+    const weeklySavings = dailySavings * 7;
+    const monthlySavings = dailySavings * 30;
 
     // Calculate averages across all runs
     const totalRuns = intelligenceRuns.length + baselineRuns.length;

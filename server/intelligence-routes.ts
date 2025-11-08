@@ -3325,13 +3325,15 @@ intelligenceRouter.get('/patterns/:patternId/details', async (req, res) => {
     }
 
     // Get usage examples from manifests (using actual schema fields)
+    // Parameterize the LIKE pattern to prevent SQL injection
+    const likePattern = `%${patternId}%`;
     const usageExamples = await intelligenceDb
       .select({
         project: agentManifestInjections.agentName,
         module: agentManifestInjections.generationSource,
       })
       .from(agentManifestInjections)
-      .where(sql`${agentManifestInjections.fullManifestSnapshot}::text LIKE '%${sql.raw(patternId)}%'`)
+      .where(sql`${agentManifestInjections.fullManifestSnapshot}::text LIKE ${likePattern}`)
       .limit(10);
 
     // Extract metadata from patternData.metadata if available

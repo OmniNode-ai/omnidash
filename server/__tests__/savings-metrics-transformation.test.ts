@@ -84,12 +84,11 @@ describe('Savings Metrics Transformation', () => {
     // Verify efficiency gain is positive
     expect(metrics.efficiencyGain).toBeGreaterThan(0);
 
-    // Verify all values are non-negative
-    Object.values(metrics).forEach(value => {
-      if (typeof value === 'number') {
-        expect(value).toBeGreaterThanOrEqual(0);
-      }
-    });
+    // Verify averages are non-negative (counts and averages should always be >= 0)
+    expect(metrics.avgTokensPerRun).toBeGreaterThanOrEqual(0);
+    expect(metrics.avgComputePerRun).toBeGreaterThanOrEqual(0);
+    expect(metrics.costPerToken).toBeGreaterThanOrEqual(0);
+    expect(metrics.costPerCompute).toBeGreaterThanOrEqual(0);
   });
 
   it('should handle edge case with no runs', () => {
@@ -130,17 +129,16 @@ describe('Savings Metrics Transformation', () => {
     // Check for dataAvailable flag
     expect(metrics.dataAvailable).toBe(false);
 
-    // Verify all values are non-negative
-    Object.values(metrics).forEach(value => {
-      if (typeof value === 'number') {
-        expect(value).toBeGreaterThanOrEqual(0);
-      }
-    });
+    // Verify averages are non-negative
+    expect(metrics.avgTokensPerRun).toBeGreaterThanOrEqual(0);
+    expect(metrics.avgComputePerRun).toBeGreaterThanOrEqual(0);
+    expect(metrics.costPerToken).toBeGreaterThanOrEqual(0);
+    expect(metrics.costPerCompute).toBeGreaterThanOrEqual(0);
   });
 
-  it('should ensure no negative values', () => {
+  it('should detect performance regressions with negative savings', () => {
     // Test case: Intelligence runs are MORE expensive than baseline
-    // This should result in 0 savings (clamped to non-negative)
+    // This should result in NEGATIVE savings to indicate regression
 
     // Record baseline runs (cheaper in this scenario)
     for (let i = 0; i < 50; i++) {
@@ -184,19 +182,23 @@ describe('Savings Metrics Transformation', () => {
 
     const metrics = AgentRunTracker.calculateSavingsMetrics(startDate, now);
 
-    // Verify all negative values are clamped to 0 by Math.max() in the actual function
-    expect(metrics.totalSavings).toBeGreaterThanOrEqual(0);
-    expect(metrics.monthlySavings).toBeGreaterThanOrEqual(0);
-    expect(metrics.weeklySavings).toBeGreaterThanOrEqual(0);
-    expect(metrics.dailySavings).toBeGreaterThanOrEqual(0);
-    expect(metrics.efficiencyGain).toBeGreaterThanOrEqual(0);
-    expect(metrics.timeSaved).toBeGreaterThanOrEqual(0);
+    // Verify negative savings values indicate performance regression
+    // Baseline is CHEAPER so savings should be NEGATIVE
+    expect(metrics.totalSavings).toBeLessThan(0);
+    expect(metrics.monthlySavings).toBeLessThan(0);
+    expect(metrics.weeklySavings).toBeLessThan(0);
+    expect(metrics.dailySavings).toBeLessThan(0);
+    expect(metrics.efficiencyGain).toBeLessThan(0);
+    expect(metrics.timeSaved).toBeLessThan(0);
 
-    // Verify all values are non-negative
-    Object.values(metrics).forEach(value => {
-      if (typeof value === 'number') {
-        expect(value).toBeGreaterThanOrEqual(0);
-      }
-    });
+    // Verify run counts are still positive
+    expect(metrics.intelligenceRuns).toBe(100);
+    expect(metrics.baselineRuns).toBe(50);
+
+    // Verify averages are non-negative (counts and rates should always be >= 0)
+    expect(metrics.avgTokensPerRun).toBeGreaterThanOrEqual(0);
+    expect(metrics.avgComputePerRun).toBeGreaterThanOrEqual(0);
+    expect(metrics.costPerToken).toBeGreaterThanOrEqual(0);
+    expect(metrics.costPerCompute).toBeGreaterThanOrEqual(0);
   });
 });
