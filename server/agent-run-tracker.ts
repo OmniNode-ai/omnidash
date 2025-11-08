@@ -79,21 +79,22 @@ export class AgentRunTracker {
     // Helper function to round to 2 decimal places
     const round2 = (value: number): number => Math.round(value * 100) / 100;
 
-    // Fallback to realistic demo values when data is insufficient
+    // Return zeros when data is insufficient (no fabricated metrics)
     if (intelligenceRuns.length === 0 || baselineRuns.length === 0) {
       return {
-        totalSavings: round2(45000),
-        monthlySavings: round2(15000),
-        weeklySavings: round2(3750),
-        dailySavings: round2(536),
+        totalSavings: 0,
+        monthlySavings: 0,
+        weeklySavings: 0,
+        dailySavings: 0,
         intelligenceRuns: intelligenceRuns.length,
         baselineRuns: baselineRuns.length,
-        avgTokensPerRun: round2(3200),
-        avgComputePerRun: round2(1.2),
-        costPerToken: round2(0.000002),
-        costPerCompute: round2(0.05),
-        efficiencyGain: round2(34.0),
-        timeSaved: round2(128),
+        avgTokensPerRun: 0,
+        avgComputePerRun: 0,
+        costPerToken: 0,
+        costPerCompute: 0,
+        efficiencyGain: 0,
+        timeSaved: 0,
+        dataAvailable: false, // Flag for consumers to detect missing data
       };
     }
 
@@ -162,6 +163,7 @@ export class AgentRunTracker {
       costPerCompute: round2(costPerCompute),
       efficiencyGain: round2(efficiencyGain),
       timeSaved: round2(timeSavedHours),
+      dataAvailable: true, // Flag indicating real data is available
     };
   }
 

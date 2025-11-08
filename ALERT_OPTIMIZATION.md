@@ -117,9 +117,10 @@ WHERE created_at > NOW() - INTERVAL '10 minutes';
 
 ## Testing
 ```bash
-# Apply database indexes
-PGPASSWORD=omninode_remote_2024_secure psql \
-  -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge \
+# Apply database indexes (requires .env to be sourced)
+source .env
+PGPASSWORD="${POSTGRES_PASSWORD}" psql \
+  -h ${POSTGRES_HOST} -p ${POSTGRES_PORT} -U ${POSTGRES_USER} -d ${POSTGRES_DATABASE} \
   -f scripts/add-alert-indexes.sql
 
 # Restart server

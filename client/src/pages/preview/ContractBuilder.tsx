@@ -644,8 +644,8 @@ export default function ContractBuilder() {
             </CardHeader>
             <CardContent className="space-y-4">
               {Object.entries(sectionSchema).map(([key, field]) => {
+                // Handle array of objects
                 if (typeof field === 'object' && field !== null && 'type' in field && field.type === 'array' && 'item_schema' in field && field.item_schema) {
-                  // Handle array of objects
                   return (
                     <div key={`${sectionName}.${key}`} className="space-y-2">
                       <Label>{key}</Label>
@@ -659,10 +659,52 @@ export default function ContractBuilder() {
                   );
                 }
 
+                // Handle direct fields with type property
                 if (typeof field === 'object' && field !== null && 'type' in field && field.type) {
                   return renderFormField(key, field, `${sectionName}.${key}`);
                 }
-                
+
+                // Handle nested objects (e.g., performance_requirements.execution_time)
+                if (typeof field === 'object' && field !== null && !('type' in field)) {
+                  const hasNestedFields = Object.values(field).some(
+                    (nestedField: any) => typeof nestedField === 'object' && nestedField !== null && 'type' in nestedField
+                  );
+
+                  if (hasNestedFields) {
+                    return (
+                      <div key={`${sectionName}.${key}`} className="space-y-3 p-4 border rounded-lg bg-muted/20">
+                        <Label className="text-base font-semibold capitalize">{key.replace(/_/g, ' ')}</Label>
+                        <div className="space-y-4 pl-4">
+                          {Object.entries(field).map(([nestedKey, nestedField]: [string, any]) => {
+                            if (typeof nestedField === 'object' && nestedField !== null && 'type' in nestedField) {
+                              return renderFormField(nestedKey, nestedField, `${sectionName}.${key}.${nestedKey}`);
+                            }
+
+                            // Handle deeper nesting (e.g., performance_requirements.execution_time.target_ms)
+                            if (typeof nestedField === 'object' && nestedField !== null && !('type' in nestedField)) {
+                              return (
+                                <div key={`${sectionName}.${key}.${nestedKey}`} className="space-y-3 p-3 border rounded bg-background/50">
+                                  <Label className="text-sm font-medium capitalize">{nestedKey.replace(/_/g, ' ')}</Label>
+                                  <div className="space-y-3 pl-3">
+                                    {Object.entries(nestedField).map(([deepKey, deepField]: [string, any]) => {
+                                      if (typeof deepField === 'object' && deepField !== null && 'type' in deepField) {
+                                        return renderFormField(deepKey, deepField, `${sectionName}.${key}.${nestedKey}.${deepKey}`);
+                                      }
+                                      return null;
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return null;
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+                }
+
                 return null;
               })}
             </CardContent>
