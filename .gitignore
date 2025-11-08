@@ -22,7 +22,7 @@ test-results/
 
 # Playwright screenshots and captures
 .playwright-mcp/
-*.png
-*.jpeg
+.playwright-mcp/**/*.png
+.playwright-mcp/**/*.jpeg
 page-*.png
 *-screenshot.png

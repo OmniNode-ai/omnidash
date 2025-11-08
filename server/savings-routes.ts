@@ -36,6 +36,7 @@ const SavingsMetricsSchema = z.object({
   costPerCompute: z.number(),
   efficiencyGain: z.number(),
   timeSaved: z.number(),
+  dataAvailable: z.boolean().optional(), // Flag indicating if real data is available
 });
 
 const AgentComparisonSchema = z.object({
@@ -251,6 +252,7 @@ router.get("/metrics", (req, res) => {
       costPerCompute: rawMetrics.costPerCompute,
       efficiencyGain: rawMetrics.efficiencyGain,
       timeSaved: rawMetrics.timeSaved,
+      dataAvailable: rawMetrics.dataAvailable, // Include data availability flag
     };
 
     // Validate response matches SavingsMetrics schema

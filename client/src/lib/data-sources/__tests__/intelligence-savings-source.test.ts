@@ -188,6 +188,7 @@ describe('IntelligenceSavingsSource', () => {
       expect(result.metrics).toEqual(mockMetrics);
       expect(result.agentComparisons).toEqual(mockComparisons);
       expect(result.timeSeriesData).toEqual(mockTimeSeries);
+      expect(result.providerSavings).toEqual(mockProviders);
       expect(result.isMock).toBe(false);
     });
 

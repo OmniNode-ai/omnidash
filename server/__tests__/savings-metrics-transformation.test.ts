@@ -1,47 +1,60 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { AgentRunTracker } from '../agent-run-tracker';
 
 /**
- * Test the transformation logic from AgentRunTracker response to frontend SavingsMetrics interface
+ * Test the actual transformation logic in AgentRunTracker.calculateSavingsMetrics()
  */
 describe('Savings Metrics Transformation', () => {
-  it('should transform complete metrics correctly', () => {
-    // Simulated response from AgentRunTracker.calculateSavingsMetrics()
-    const rawMetrics = {
-      totalSavings: 100,
-      tokenSavings: 5000,
-      computeSavings: 2.5,
-      timeSavings: 10, // Already in hours
-      efficiencyGain: 34.5,
-      intelligenceRuns: 150,
-      baselineRuns: 200,
-      avgTokensPerIntelligenceRun: 3200,
-      avgTokensPerBaselineRun: 4800,
-      avgComputePerIntelligenceRun: 1.2,
-      avgComputePerBaselineRun: 1.8,
-    };
+  beforeEach(() => {
+    // Clear data before each test
+    AgentRunTracker.clearData();
+  });
 
-    const days = 30;
+  it('should calculate savings metrics correctly with real data', () => {
+    // Record baseline runs (without intelligence) - higher cost
+    // Note: recordRun() auto-generates timestamps as current time
+    for (let i = 0; i < 200; i++) {
+      AgentRunTracker.recordRun({
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        withIntelligence: false,
+        tokensUsed: 4800,
+        computeUnits: 1.8,
+        duration: 120, // seconds
+        success: true,
+        cost: 0.58, // (4800 * 0.0001) + (1.8 * 0.05)
+        metadata: {
+          model: 'claude-3.5-sonnet',
+          provider: 'anthropic',
+        },
+      });
+    }
 
-    // Apply transformation (same logic as in server/savings-routes.ts)
-    const totalSavings = Math.max(0, rawMetrics.totalSavings);
-    const monthlySavings = Math.max(0, (totalSavings / days) * 30);
-    const weeklySavings = Math.max(0, (totalSavings / days) * 7);
-    const dailySavings = Math.max(0, totalSavings / days);
+    // Record intelligence runs (with intelligence) - lower cost
+    for (let i = 0; i < 150; i++) {
+      AgentRunTracker.recordRun({
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        withIntelligence: true,
+        tokensUsed: 3200,
+        computeUnits: 1.2,
+        duration: 80, // seconds
+        success: true,
+        cost: 0.38, // (3200 * 0.0001) + (1.2 * 0.05)
+        metadata: {
+          model: 'claude-3.5-sonnet',
+          provider: 'anthropic',
+        },
+      });
+    }
 
-    const metrics = {
-      totalSavings,
-      monthlySavings,
-      weeklySavings,
-      dailySavings,
-      intelligenceRuns: Math.max(0, rawMetrics.intelligenceRuns),
-      baselineRuns: Math.max(0, rawMetrics.baselineRuns),
-      avgTokensPerRun: Math.max(0, rawMetrics.avgTokensPerIntelligenceRun || 0),
-      avgComputePerRun: Math.max(0, rawMetrics.avgComputePerIntelligenceRun || 0),
-      costPerToken: 0.000002,
-      costPerCompute: 0.05,
-      efficiencyGain: Math.max(0, rawMetrics.efficiencyGain),
-      timeSaved: Math.max(0, rawMetrics.timeSavings || 0),
-    };
+    // Use a wide date range that includes the just-created runs
+    // All runs were created with current timestamps
+    const now = new Date();
+    const startDate = new Date(now.getTime() - 1 * 60 * 60 * 1000); // 1 hour ago
+
+    // Call the actual transformation function
+    const metrics = AgentRunTracker.calculateSavingsMetrics(startDate, now);
 
     // Verify all required fields are present
     expect(metrics).toHaveProperty('totalSavings');
@@ -56,16 +69,20 @@ describe('Savings Metrics Transformation', () => {
     expect(metrics).toHaveProperty('costPerCompute');
     expect(metrics).toHaveProperty('efficiencyGain');
     expect(metrics).toHaveProperty('timeSaved');
+    expect(metrics).toHaveProperty('dataAvailable');
 
-    // Verify calculations
-    expect(metrics.totalSavings).toBe(100);
-    expect(metrics.monthlySavings).toBe(100); // (100/30)*30 = 100
-    expect(metrics.weeklySavings).toBeCloseTo(23.33, 1); // (100/30)*7 ≈ 23.33
-    expect(metrics.dailySavings).toBeCloseTo(3.33, 1); // 100/30 ≈ 3.33
-    expect(metrics.avgTokensPerRun).toBe(3200);
-    expect(metrics.avgComputePerRun).toBe(1.2);
-    expect(metrics.timeSaved).toBe(10);
-    expect(metrics.efficiencyGain).toBe(34.5);
+    // Verify run counts
+    expect(metrics.intelligenceRuns).toBe(150);
+    expect(metrics.baselineRuns).toBe(200);
+
+    // Verify savings are positive (intelligence should be cheaper)
+    expect(metrics.totalSavings).toBeGreaterThan(0);
+    expect(metrics.monthlySavings).toBeGreaterThan(0);
+    expect(metrics.weeklySavings).toBeGreaterThan(0);
+    expect(metrics.dailySavings).toBeGreaterThan(0);
+
+    // Verify efficiency gain is positive
+    expect(metrics.efficiencyGain).toBeGreaterThan(0);
 
     // Verify all values are non-negative
     Object.values(metrics).forEach(value => {
@@ -77,50 +94,41 @@ describe('Savings Metrics Transformation', () => {
 
   it('should handle edge case with no runs', () => {
     // Edge case: no intelligence or baseline runs
-    const rawMetrics = {
-      totalSavings: 0,
-      tokenSavings: 0,
-      computeSavings: 0,
-      timeSavings: 0,
-      efficiencyGain: 0,
-      intelligenceRuns: 0,
-      baselineRuns: 0,
-      // avgTokensPerIntelligenceRun and avgComputePerIntelligenceRun are missing
-    };
+    const now = new Date();
+    const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const days = 30;
+    // Don't record any runs - test with empty data
+    const metrics = AgentRunTracker.calculateSavingsMetrics(startDate, now);
 
-    const totalSavings = Math.max(0, rawMetrics.totalSavings);
-    const monthlySavings = Math.max(0, (totalSavings / days) * 30);
-    const weeklySavings = Math.max(0, (totalSavings / days) * 7);
-    const dailySavings = Math.max(0, totalSavings / days);
+    // When there's no data, AgentRunTracker returns fallback demo values
+    // Verify all fields are present
+    expect(metrics).toHaveProperty('totalSavings');
+    expect(metrics).toHaveProperty('monthlySavings');
+    expect(metrics).toHaveProperty('weeklySavings');
+    expect(metrics).toHaveProperty('dailySavings');
+    expect(metrics).toHaveProperty('intelligenceRuns');
+    expect(metrics).toHaveProperty('baselineRuns');
+    expect(metrics).toHaveProperty('avgTokensPerRun');
+    expect(metrics).toHaveProperty('avgComputePerRun');
+    expect(metrics).toHaveProperty('costPerToken');
+    expect(metrics).toHaveProperty('costPerCompute');
+    expect(metrics).toHaveProperty('efficiencyGain');
+    expect(metrics).toHaveProperty('timeSaved');
 
-    const metrics = {
-      totalSavings,
-      monthlySavings,
-      weeklySavings,
-      dailySavings,
-      intelligenceRuns: Math.max(0, rawMetrics.intelligenceRuns),
-      baselineRuns: Math.max(0, rawMetrics.baselineRuns),
-      avgTokensPerRun: Math.max(0, (rawMetrics as any).avgTokensPerIntelligenceRun || 0),
-      avgComputePerRun: Math.max(0, (rawMetrics as any).avgComputePerIntelligenceRun || 0),
-      costPerToken: 0.000002,
-      costPerCompute: 0.05,
-      efficiencyGain: Math.max(0, rawMetrics.efficiencyGain),
-      timeSaved: Math.max(0, rawMetrics.timeSavings || 0),
-    };
+    // Run counts should be 0 (no data)
+    expect(metrics.intelligenceRuns).toBe(0);
+    expect(metrics.baselineRuns).toBe(0);
 
-    // Verify all fields are present with zero values
+    // AgentRunTracker returns zeros when no data exists (no fabricated data)
     expect(metrics.totalSavings).toBe(0);
     expect(metrics.monthlySavings).toBe(0);
     expect(metrics.weeklySavings).toBe(0);
     expect(metrics.dailySavings).toBe(0);
-    expect(metrics.intelligenceRuns).toBe(0);
-    expect(metrics.baselineRuns).toBe(0);
-    expect(metrics.avgTokensPerRun).toBe(0);
-    expect(metrics.avgComputePerRun).toBe(0);
     expect(metrics.efficiencyGain).toBe(0);
     expect(metrics.timeSaved).toBe(0);
+
+    // Check for dataAvailable flag
+    expect(metrics.dataAvailable).toBe(false);
 
     // Verify all values are non-negative
     Object.values(metrics).forEach(value => {
@@ -131,47 +139,58 @@ describe('Savings Metrics Transformation', () => {
   });
 
   it('should ensure no negative values', () => {
-    // Simulated response with potential negative values
-    const rawMetrics = {
-      totalSavings: -50, // Negative (bad data)
-      tokenSavings: -1000,
-      computeSavings: -0.5,
-      timeSavings: -5,
-      efficiencyGain: -10,
-      intelligenceRuns: 100,
-      baselineRuns: 50,
-      avgTokensPerIntelligenceRun: 4000,
-      avgTokensPerBaselineRun: 3000,
-      avgComputePerIntelligenceRun: 1.5,
-      avgComputePerBaselineRun: 1.0,
-    };
+    // Test case: Intelligence runs are MORE expensive than baseline
+    // This should result in 0 savings (clamped to non-negative)
 
-    const days = 30;
+    // Record baseline runs (cheaper in this scenario)
+    for (let i = 0; i < 50; i++) {
+      AgentRunTracker.recordRun({
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        withIntelligence: false,
+        tokensUsed: 3000,
+        computeUnits: 1.0,
+        duration: 60,
+        success: true,
+        cost: 0.35, // (3000 * 0.0001) + (1.0 * 0.05)
+        metadata: {
+          model: 'gpt-3.5-turbo',
+          provider: 'openai',
+        },
+      });
+    }
 
-    const totalSavings = Math.max(0, rawMetrics.totalSavings);
-    const monthlySavings = Math.max(0, (totalSavings / days) * 30);
-    const weeklySavings = Math.max(0, (totalSavings / days) * 7);
-    const dailySavings = Math.max(0, totalSavings / days);
+    // Record intelligence runs (MORE expensive - unusual scenario)
+    for (let i = 0; i < 100; i++) {
+      AgentRunTracker.recordRun({
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        withIntelligence: true,
+        tokensUsed: 4000,
+        computeUnits: 1.5,
+        duration: 90,
+        success: true,
+        cost: 0.475, // (4000 * 0.0001) + (1.5 * 0.05)
+        metadata: {
+          model: 'claude-3.5-sonnet',
+          provider: 'anthropic',
+        },
+      });
+    }
 
-    const metrics = {
-      totalSavings,
-      monthlySavings,
-      weeklySavings,
-      dailySavings,
-      intelligenceRuns: Math.max(0, rawMetrics.intelligenceRuns),
-      baselineRuns: Math.max(0, rawMetrics.baselineRuns),
-      avgTokensPerRun: Math.max(0, rawMetrics.avgTokensPerIntelligenceRun || 0),
-      avgComputePerRun: Math.max(0, rawMetrics.avgComputePerIntelligenceRun || 0),
-      costPerToken: 0.000002,
-      costPerCompute: 0.05,
-      efficiencyGain: Math.max(0, rawMetrics.efficiencyGain),
-      timeSaved: Math.max(0, rawMetrics.timeSavings || 0),
-    };
+    // Use a wide date range that includes the just-created runs
+    const now = new Date();
+    const startDate = new Date(now.getTime() - 1 * 60 * 60 * 1000); // 1 hour ago
 
-    // Verify all negative values are clamped to 0
-    expect(metrics.totalSavings).toBe(0);
-    expect(metrics.efficiencyGain).toBe(0);
-    expect(metrics.timeSaved).toBe(0);
+    const metrics = AgentRunTracker.calculateSavingsMetrics(startDate, now);
+
+    // Verify all negative values are clamped to 0 by Math.max() in the actual function
+    expect(metrics.totalSavings).toBeGreaterThanOrEqual(0);
+    expect(metrics.monthlySavings).toBeGreaterThanOrEqual(0);
+    expect(metrics.weeklySavings).toBeGreaterThanOrEqual(0);
+    expect(metrics.dailySavings).toBeGreaterThanOrEqual(0);
+    expect(metrics.efficiencyGain).toBeGreaterThanOrEqual(0);
+    expect(metrics.timeSaved).toBeGreaterThanOrEqual(0);
 
     // Verify all values are non-negative
     Object.values(metrics).forEach(value => {
