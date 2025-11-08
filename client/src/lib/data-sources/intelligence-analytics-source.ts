@@ -243,20 +243,20 @@ class IntelligenceAnalyticsDataSource {
       if (response.ok) {
         const data = await response.json();
         if (data && typeof data === 'object') {
-          // Validate that all required fields exist and currency values are positive (non-negative)
+          // Validate that all required fields exist (allow negative values for regression detection)
           const isValid =
-            typeof data.totalSavings === 'number' && data.totalSavings >= 0 &&
-            typeof data.monthlySavings === 'number' && data.monthlySavings >= 0 &&
-            typeof data.weeklySavings === 'number' && data.weeklySavings >= 0 &&
-            typeof data.dailySavings === 'number' && data.dailySavings >= 0 &&
+            typeof data.totalSavings === 'number' &&
+            typeof data.monthlySavings === 'number' &&
+            typeof data.weeklySavings === 'number' &&
+            typeof data.dailySavings === 'number' &&
             typeof data.intelligenceRuns === 'number' && data.intelligenceRuns >= 0 &&
             typeof data.baselineRuns === 'number' && data.baselineRuns >= 0 &&
-            typeof data.timeSaved === 'number' && data.timeSaved > 0; // CRITICAL: Validate timeSaved exists and is positive
+            typeof data.timeSaved === 'number'; // Allow negative timeSaved for regression detection
 
           if (isValid) {
             return { data, isMock: false };
           } else {
-            console.warn('API returned invalid savings data (missing timeSaved or negative values detected), using mock data', data);
+            console.warn('API returned invalid savings data (missing required fields), using mock data', data);
           }
         }
       }
@@ -264,7 +264,8 @@ class IntelligenceAnalyticsDataSource {
       console.warn('Failed to fetch savings metrics, using mock data', err);
     }
 
-    // Mock data fallback - always generates positive values with hierarchical consistency
+    // Mock data fallback - always generates positive values for demonstration
+    // Note: Real API data can be negative to indicate performance regressions
     // Generate values that maintain logical relationships: daily < weekly < monthly < total
     const dailySavings = Math.max(1, Gen.currency(10, 50, 2)); // At least $1, typically $10-50/day
     const weeklySavings = Math.max(dailySavings * 7, Gen.currency(100, 500, 2)); // At least 7x daily
@@ -275,18 +276,18 @@ class IntelligenceAnalyticsDataSource {
 
     return {
       data: {
-        totalSavings: Math.max(0, totalSavings),
-        monthlySavings: Math.max(0, monthlySavings),
-        weeklySavings: Math.max(0, weeklySavings),
-        dailySavings: Math.max(0, dailySavings),
+        totalSavings,
+        monthlySavings,
+        weeklySavings,
+        dailySavings,
         intelligenceRuns: 15420,
         baselineRuns: 23500,
         avgTokensPerRun: 3200,
         avgComputePerRun: 1.2,
         costPerToken: 0.000002,
         costPerCompute: 0.05,
-        efficiencyGain: Math.max(0, efficiencyGain),
-        timeSaved: Math.max(1, timeSaved),
+        efficiencyGain,
+        timeSaved,
       },
       isMock: true,
     };

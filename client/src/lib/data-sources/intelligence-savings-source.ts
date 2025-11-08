@@ -11,6 +11,7 @@ export interface SavingsMetrics {
   costPerCompute: number;
   efficiencyGain: number;
   timeSaved: number;
+  dataAvailable?: boolean; // Flag indicating if real baseline data is available
 }
 
 export interface AgentComparison {
@@ -59,6 +60,7 @@ export interface TimeSeriesData {
     cost: number;
     percentage: number;
   };
+  dataAvailable?: boolean; // Flag indicating if baseline data was available for this day
 }
 
 export interface ProviderSavings {

@@ -644,8 +644,8 @@ export default function ContractBuilder() {
             </CardHeader>
             <CardContent className="space-y-4">
               {Object.entries(sectionSchema).map(([key, field]) => {
-                if (typeof field === 'object' && field.type === 'array' && field.item_schema) {
-                  // Handle array of objects
+                // Handle array of objects
+                if (typeof field === 'object' && field !== null && 'type' in field && field.type === 'array' && 'item_schema' in field && field.item_schema) {
                   return (
                     <div key={`${sectionName}.${key}`} className="space-y-2">
                       <Label>{key}</Label>
@@ -658,11 +658,53 @@ export default function ContractBuilder() {
                     </div>
                   );
                 }
-                
-                if (typeof field === 'object' && field.type) {
+
+                // Handle direct fields with type property
+                if (typeof field === 'object' && field !== null && 'type' in field && field.type) {
                   return renderFormField(key, field, `${sectionName}.${key}`);
                 }
-                
+
+                // Handle nested objects (e.g., performance_requirements.execution_time)
+                if (typeof field === 'object' && field !== null && !('type' in field)) {
+                  const hasNestedFields = Object.values(field).some(
+                    (nestedField: any) => typeof nestedField === 'object' && nestedField !== null && 'type' in nestedField
+                  );
+
+                  if (hasNestedFields) {
+                    return (
+                      <div key={`${sectionName}.${key}`} className="space-y-3 p-4 border rounded-lg bg-muted/20">
+                        <Label className="text-base font-semibold capitalize">{key.replace(/_/g, ' ')}</Label>
+                        <div className="space-y-4 pl-4">
+                          {Object.entries(field).map(([nestedKey, nestedField]: [string, any]) => {
+                            if (typeof nestedField === 'object' && nestedField !== null && 'type' in nestedField) {
+                              return renderFormField(nestedKey, nestedField, `${sectionName}.${key}.${nestedKey}`);
+                            }
+
+                            // Handle deeper nesting (e.g., performance_requirements.execution_time.target_ms)
+                            if (typeof nestedField === 'object' && nestedField !== null && !('type' in nestedField)) {
+                              return (
+                                <div key={`${sectionName}.${key}.${nestedKey}`} className="space-y-3 p-3 border rounded bg-background/50">
+                                  <Label className="text-sm font-medium capitalize">{nestedKey.replace(/_/g, ' ')}</Label>
+                                  <div className="space-y-3 pl-3">
+                                    {Object.entries(nestedField).map(([deepKey, deepField]: [string, any]) => {
+                                      if (typeof deepField === 'object' && deepField !== null && 'type' in deepField) {
+                                        return renderFormField(deepKey, deepField, `${sectionName}.${key}.${nestedKey}.${deepKey}`);
+                                      }
+                                      return null;
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return null;
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+                }
+
                 return null;
               })}
             </CardContent>
@@ -989,12 +1031,12 @@ export default function ContractBuilder() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              const yaml = yaml.dump(contract.contract, { indent: 2 });
-                              navigator.clipboard.writeText(yaml);
+                              const yamlStr = JSON.stringify(contract.contract, null, 2);
+                              navigator.clipboard.writeText(yamlStr);
                             }}
                           >
                             <Copy className="w-4 h-4 mr-2" />
-                            Copy YAML
+                            Copy JSON
                           </Button>
                         </div>
                       </div>
@@ -1028,34 +1070,23 @@ export default function ContractBuilder() {
                   {aiSuggestions.map((suggestion, index) => (
                     <div key={index} className="border rounded-lg p-4 space-y-2">
                       <div className="flex items-start justify-between">
-                        <h4 className="font-medium">{suggestion.title}</h4>
-                        <Badge variant={suggestion.priority === "high" ? "destructive" : suggestion.priority === "medium" ? "default" : "secondary"}>
-                          {suggestion.priority}
+                        <h4 className="font-medium">AI Suggestion #{index + 1}</h4>
+                        <Badge variant="default">
+                          Suggested
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">{suggestion.description}</p>
+                      <p className="text-sm text-muted-foreground">{suggestion}</p>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setUserPrompt(suggestion.prompt);
+                            setAiPrompt(suggestion);
                             setActiveTab("prompt");
                           }}
                         >
                           <Zap className="w-4 h-4 mr-2" />
-                          Use Prompt
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const yaml = yaml.dump(suggestion.example, { indent: 2 });
-                            navigator.clipboard.writeText(yaml);
-                          }}
-                        >
-                          <Copy className="w-4 h-4 mr-2" />
-                          Copy Example
+                          Use as Prompt
                         </Button>
                       </div>
                     </div>
