@@ -50,6 +50,53 @@ describe('IntelligenceSavingsSource', () => {
     });
   });
 
+  describe('fetchTimeSeries', () => {
+    it('should return time series data with dataAvailable flag', async () => {
+      const mockTimeSeries: TimeSeriesData[] = [
+        {
+          date: '2024-01-01',
+          withIntelligence: { tokens: 50000, compute: 100, cost: 50, runs: 10 },
+          withoutIntelligence: { tokens: 75000, compute: 150, cost: 75, runs: 10 },
+          savings: { tokens: 25000, compute: 50, cost: 25, percentage: 33.3 },
+          dataAvailable: true, // Has baseline data
+        },
+        {
+          date: '2024-01-02',
+          withIntelligence: { tokens: 0, compute: 0, cost: 0, runs: 5 },
+          withoutIntelligence: { tokens: 0, compute: 0, cost: 0, runs: 0 },
+          savings: { tokens: 0, compute: 0, cost: 0, percentage: 0 },
+          dataAvailable: false, // Missing baseline data
+        },
+      ];
+
+      setupFetchMock(
+        new Map([
+          ['/api/savings/timeseries', createMockResponse(mockTimeSeries)],
+        ])
+      );
+
+      const result = await intelligenceSavingsSource.fetchTimeSeries('7d');
+
+      expect(result.isMock).toBe(false);
+      expect(result.data).toEqual(mockTimeSeries);
+      expect(result.data[0].dataAvailable).toBe(true);
+      expect(result.data[1].dataAvailable).toBe(false);
+    });
+
+    it('should return mock data when API fails', async () => {
+      setupFetchMock(
+        new Map([
+          ['/api/savings/timeseries', createMockResponse(null, { status: 500 })],
+        ])
+      );
+
+      const result = await intelligenceSavingsSource.fetchTimeSeries('7d');
+
+      expect(result.isMock).toBe(true);
+      expect(result.data.length).toBeGreaterThan(0);
+    });
+  });
+
   describe('fetchAgentComparisons', () => {
     it('should return agent comparisons from API', async () => {
       const mockComparisons: AgentComparison[] = [
@@ -160,12 +207,26 @@ describe('IntelligenceSavingsSource', () => {
           savings: { tokens: 25000, compute: 50, cost: 25, percentage: 33.3 },
         },
       ];
+      // Mock providers data
+      const mockProviders = [
+        {
+          providerId: 'provider-1',
+          providerName: 'Provider 1',
+          savingsAmount: 1000,
+          tokensProcessed: 100000,
+          tokensOffloaded: 50000,
+          percentageOfTotal: 50,
+          avgCostPerToken: 0.00001,
+          runsCount: 100,
+        },
+      ];
 
       setupFetchMock(
         new Map([
           ['/api/savings/metrics', createMockResponse(mockMetrics)],
           ['/api/savings/agents', createMockResponse(mockComparisons)],
           ['/api/savings/timeseries', createMockResponse(mockTimeSeries)],
+          ['/api/savings/providers', createMockResponse(mockProviders)],
         ])
       );
 
@@ -174,6 +235,7 @@ describe('IntelligenceSavingsSource', () => {
       expect(result.metrics).toEqual(mockMetrics);
       expect(result.agentComparisons).toEqual(mockComparisons);
       expect(result.timeSeriesData).toEqual(mockTimeSeries);
+      expect(result.providerSavings).toEqual(mockProviders);
       expect(result.isMock).toBe(false);
     });
 
