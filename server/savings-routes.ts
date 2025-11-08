@@ -310,20 +310,48 @@ router.get("/timeseries", (req, res) => {
       const intelligenceRuns = dayRuns.filter(run => run.withIntelligence);
       const baselineRuns = dayRuns.filter(run => !run.withIntelligence);
 
+      // CRITICAL: Check if we have baseline data before calculating savings
+      // Without baseline data, we CANNOT calculate realistic savings estimates
+      if (baselineRuns.length === 0) {
+        return {
+          date: dateStr,
+          withIntelligence: {
+            tokens: 0,
+            compute: 0,
+            cost: 0,
+            runs: intelligenceRuns.length,
+          },
+          withoutIntelligence: {
+            tokens: 0,
+            compute: 0,
+            cost: 0,
+            runs: 0,
+          },
+          savings: {
+            tokens: 0,
+            compute: 0,
+            cost: 0,
+            percentage: 0,
+          },
+          dataAvailable: false, // Flag indicating no baseline data for this day
+        };
+      }
+
       // Calculate actual intelligence metrics
       const intelligenceTokens = intelligenceRuns.reduce((sum, run) => sum + run.tokensUsed, 0);
       const intelligenceCompute = intelligenceRuns.reduce((sum, run) => sum + run.computeUnits, 0);
       const intelligenceCost = intelligenceRuns.reduce((sum, run) => sum + run.cost, 0);
 
-      // Calculate baseline metrics (actual baseline runs)
+      // Calculate baseline metrics (actual baseline runs - we confirmed baselineRuns.length > 0 above)
       const baselineTokens = baselineRuns.reduce((sum, run) => sum + run.tokensUsed, 0);
       const baselineCompute = baselineRuns.reduce((sum, run) => sum + run.computeUnits, 0);
       const baselineCost = baselineRuns.reduce((sum, run) => sum + run.cost, 0);
 
       // Calculate average baseline cost per run (for comparison)
-      const avgBaselineCostPerRun = baselineRuns.length > 0 ? baselineCost / baselineRuns.length : 0.1;
-      const avgBaselineTokensPerRun = baselineRuns.length > 0 ? baselineTokens / baselineRuns.length : 1500;
-      const avgBaselineComputePerRun = baselineRuns.length > 0 ? baselineCompute / baselineRuns.length : 2.5;
+      // No fallback needed - we already checked baselineRuns.length > 0
+      const avgBaselineCostPerRun = baselineCost / baselineRuns.length;
+      const avgBaselineTokensPerRun = baselineTokens / baselineRuns.length;
+      const avgBaselineComputePerRun = baselineCompute / baselineRuns.length;
 
       // Calculate what the intelligence runs WOULD have cost without intelligence
       // (using average baseline cost as the reference)
@@ -358,6 +386,7 @@ router.get("/timeseries", (req, res) => {
             ? parseFloat((costSavings / estimatedCostWithoutIntelligence * 100).toFixed(2))
             : 0,
         },
+        dataAvailable: true, // Flag indicating reliable data available
       };
     });
 
