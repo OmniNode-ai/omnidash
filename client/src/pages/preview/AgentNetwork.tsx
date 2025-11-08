@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { agentNetworkSource } from "@/lib/data-sources";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MockDataBadge } from "@/components/MockDataBadge";
-import { 
-  Network, 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCcw, 
+import { UnifiedGraph, type GraphNode, type GraphEdge } from "@/components/UnifiedGraph";
+import {
+  Network,
   Search,
   Filter,
   Eye,
@@ -20,9 +18,7 @@ import {
   Server,
   Workflow,
   BookOpen,
-  Activity,
-  Target,
-  TrendingUp
+  Activity
 } from "lucide-react";
 
 interface AgentNode {
@@ -53,9 +49,7 @@ export default function AgentNetwork() {
   const [nodes, setNodes] = useState<AgentNode[]>([]);
   const [connections, setConnections] = useState<AgentConnection[]>([]);
   const [selectedNode, setSelectedNode] = useState<AgentNode | null>(null);
-  const [zoomLevel, setZoomLevel] = useState(100);
   const [isLoading, setIsLoading] = useState(true);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Use centralized data source
   const { data: networkData, isLoading: queryLoading } = useQuery({
@@ -163,30 +157,8 @@ export default function AgentNetwork() {
       { from: "agent-polymorphic-agent", to: "agent-performance", strength: 0.6, type: "routing" },
       { from: "agent-polymorphic-agent", to: "agent-testing", strength: 0.5, type: "routing" }
     ];
-      // Re-layout mock nodes in radial pattern: Polly in center, agents around it
-      const cw = canvasRef.current?.offsetWidth || 800;
-      const ch = canvasRef.current?.offsetHeight || 384;
-      const centerX = cw / 2;
-      const centerY = ch / 2;
-      const radius = Math.min(cw, ch) * 0.35;
 
-      const adjustedNodes = mockNodes.map((n, i) => {
-        // Polly in center
-        if (n.id === "agent-polymorphic-agent") {
-          return { ...n, x: centerX, y: centerY };
-        }
-        // Other agents in circle around Polly
-        const agentIndex = i - 1;
-        const totalAgents = mockNodes.length - 1;
-        const angle = (agentIndex / totalAgents) * 2 * Math.PI - Math.PI / 2;
-        return {
-          ...n,
-          x: Math.round(centerX + radius * Math.cos(angle)),
-          y: Math.round(centerY + radius * Math.sin(angle)),
-        };
-      });
-
-      setNodes(adjustedNodes);
+      setNodes(mockNodes);
       setConnections(mockConnections);
       setIsLoading(false);
       return;
@@ -194,63 +166,34 @@ export default function AgentNetwork() {
 
     // Transform live agent data to nodes
     let nodes: AgentNode[] = agents.map((agent: any, index: number) => {
-      const totalAgents = agents.length;
-      const cw = canvasRef.current?.offsetWidth || 800;
-      const ch = canvasRef.current?.offsetHeight || 384;
-      const centerX = cw / 2;
-      const centerY = ch / 2;
-      const radius = Math.min(cw, ch) * 0.35;
-      const angle = (index / Math.max(1, totalAgents)) * 2 * Math.PI;
-      
       return {
         id: agent.id || agent.name,
         name: agent.name || agent.id,
         title: agent.title || agent.name,
         category: agent.category || 'general',
         color: agent.color || 'blue',
-        x: centerX + radius * Math.cos(angle),
-        y: centerY + radius * Math.sin(angle),
+        x: 0, // Will be calculated by UnifiedGraph
+        y: 0, // Will be calculated by UnifiedGraph
         size: Math.max(40, Math.min(80, (agent.performance?.totalRuns || 0) / 50)),
         connections: [], // Will be populated from routing data
         performance: {
-          successRate: Math.max(0, Math.min(100, ((agent.performance?.successRate || 0) <= 1 
-            ? (agent.performance?.successRate || 0) * 100 
+          successRate: Math.max(0, Math.min(100, ((agent.performance?.successRate || 0) <= 1
+            ? (agent.performance?.successRate || 0) * 100
             : (agent.performance?.successRate || 0)))),
-          efficiency: Math.max(0, Math.min(100, ((agent.performance?.efficiency || 0) <= 1 
-            ? (agent.performance?.efficiency || 0) * 100 
+          efficiency: Math.max(0, Math.min(100, ((agent.performance?.efficiency || 0) <= 1
+            ? (agent.performance?.efficiency || 0) * 100
             : (agent.performance?.efficiency || 0)))),
           totalRuns: agent.performance?.totalRuns || 0,
         },
       };
     });
 
-    // Normalize layout to spread horizontally
-    if (nodes.length > 0) {
-      const pad = 40;
-      const cw = canvasRef.current?.offsetWidth || 800;
-      const ch = canvasRef.current?.offsetHeight || 384;
-      const minX = Math.min(...nodes.map(n => n.x));
-      const maxX = Math.max(...nodes.map(n => n.x));
-      const minY = Math.min(...nodes.map(n => n.y));
-      const maxY = Math.max(...nodes.map(n => n.y));
-      const rangeX = Math.max(1, maxX - minX);
-      const rangeY = Math.max(1, maxY - minY);
-      const scale = Math.min((cw - pad * 2) / rangeX, (ch - pad * 2) / rangeY);
-      const offsetX = (cw - (rangeX * scale)) / 2;
-      const offsetY = (ch - (rangeY * scale)) / 2;
-      nodes = nodes.map(n => ({
-        ...n,
-        x: Math.round((n.x - minX) * scale + offsetX),
-        y: Math.round((n.y - minY) * scale + offsetY),
-      }));
-    }
-
     // Build connections from routing data
     const connections: AgentConnection[] = [];
-    
+
     // Add routing connections from routing decisions
-    if (routingData?.recentDecisions) {
-      routingData.recentDecisions.forEach((decision: any) => {
+    if (Array.isArray(routingData) && routingData.length > 0) {
+      routingData.forEach((decision: any) => {
         // Find polymorphic agent (usually the main coordinator)
         const polyAgent = nodes.find(n => n.name.includes('polymorphic') || n.name.includes('polly'));
         const targetAgent = nodes.find(n => n.id === decision.agent || n.name === decision.agent);
@@ -311,137 +254,87 @@ export default function AgentNetwork() {
     }
   };
 
-  const drawNetwork = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  // Memoize custom layout for radial pattern: Polly in center, agents around it
+  const customLayout = useMemo(() => {
+    if (nodes.length === 0) return { type: 'circular' as const };
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    // Find Polly (polymorphic agent) to place in center
+    const polyIndex = nodes.findIndex(n =>
+      n.id.includes('polymorphic') || n.name.includes('polly')
+    );
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (polyIndex === -1) {
+      // No Polly found, use standard circular layout
+      return { type: 'circular' as const };
+    }
 
-    // Set canvas size
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+    // Create custom positions with Polly in center
+    const nodePositions: Record<string, { x: number; y: number }> = {};
+    const centerX = 400; // Default center, UnifiedGraph will scale to container
+    const centerY = 300;
+    const radius = 200;
 
-    // Apply zoom
-    ctx.save();
-    ctx.scale(zoomLevel / 100, zoomLevel / 100);
-
-    // Compute normalized positions based on current canvas size so layout fills width
-    const pad = 40;
-    const minX = Math.min(...nodes.map(n => n.x));
-    const maxX = Math.max(...nodes.map(n => n.x));
-    const minY = Math.min(...nodes.map(n => n.y));
-    const maxY = Math.max(...nodes.map(n => n.y));
-    const rangeX = Math.max(1, maxX - minX);
-    const rangeY = Math.max(1, maxY - minY);
-    const scale = Math.min((canvas.width - pad * 2) / rangeX, (canvas.height - pad * 2) / rangeY);
-    const offsetX = (canvas.width - (rangeX * scale)) / 2;
-    const offsetY = (canvas.height - (rangeY * scale)) / 2;
-
-    const pos = (n: AgentNode) => ({
-      x: (n.x - minX) * scale + offsetX,
-      y: (n.y - minY) * scale + offsetY,
+    nodes.forEach((node, i) => {
+      if (i === polyIndex) {
+        // Polly in center
+        nodePositions[node.id] = { x: centerX, y: centerY };
+      } else {
+        // Other agents in circle around Polly
+        const agentIndex = i < polyIndex ? i : i - 1;
+        const totalAgents = nodes.length - 1;
+        const angle = (agentIndex / totalAgents) * 2 * Math.PI - Math.PI / 2;
+        nodePositions[node.id] = {
+          x: centerX + radius * Math.cos(angle),
+          y: centerY + radius * Math.sin(angle),
+        };
+      }
     });
 
-    // Draw connections
-    connections.forEach(connection => {
-      const fromNode = nodes.find(n => n.id === connection.from);
-      const toNode = nodes.find(n => n.id === connection.to);
-      
-      if (!fromNode || !toNode) return;
+    return { type: 'custom' as const, nodePositions };
+  }, [nodes]);
 
-      ctx.beginPath();
-      const f = pos(fromNode);
-      const t = pos(toNode);
-      ctx.moveTo(f.x, f.y);
-      ctx.lineTo(t.x, t.y);
+  // Memoize color scheme
+  const graphColorScheme = useMemo(() => ({
+    routing: '#8B5CF6',
+    development: '#3B82F6',
+    architecture: '#8B5CF6',
+    quality: '#10B981',
+    infrastructure: '#F59E0B',
+    coordination: '#EC4899',
+    documentation: '#6B7280'
+  }), []);
 
-      // Routing connection style (only type that exists)
-      ctx.strokeStyle = "#8B5CF6";
-      ctx.lineWidth = 3;
-      ctx.setLineDash([5, 5]);
+  // Convert nodes to GraphNode format
+  const graphNodes: GraphNode[] = useMemo(() => {
+    return nodes.map(node => ({
+      id: node.id,
+      label: node.title,
+      type: node.category,
+      size: node.size,
+      color: getCategoryColor(node.category),
+      metadata: {
+        name: node.name,
+        category: node.category,
+        performance: node.performance,
+        connections: node.connections
+      }
+    }));
+  }, [nodes]);
 
-      ctx.stroke();
-      ctx.setLineDash([]);
-    });
+  // Convert connections to GraphEdge format
+  const graphEdges: GraphEdge[] = useMemo(() => {
+    return connections.map(conn => ({
+      source: conn.from,
+      target: conn.to,
+      weight: conn.strength,
+      type: conn.type,
+      label: undefined
+    }));
+  }, [connections]);
 
-    // Draw nodes
-    nodes.forEach(node => {
-      const isSelected = selectedNode?.id === node.id;
-      const color = getCategoryColor(node.category);
-      const p = pos(node);
-      
-      // Node circle
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, node.size / 2, 0, 2 * Math.PI);
-      ctx.fillStyle = isSelected ? "#FEF3C7" : color + "20";
-      ctx.fill();
-      ctx.strokeStyle = isSelected ? "#F59E0B" : color;
-      ctx.lineWidth = isSelected ? 3 : 2;
-      ctx.stroke();
-
-      // Node label (white for dark backgrounds)
-      ctx.fillStyle = "#FFFFFF";
-      ctx.font = "12px Inter, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(node.title, p.x, p.y + 4);
-
-      // Performance indicator
-      const performanceColor = node.performance.efficiency > 90 ? "#10B981" : 
-                              node.performance.efficiency > 80 ? "#F59E0B" : "#EF4444";
-      ctx.fillStyle = performanceColor;
-      ctx.beginPath();
-      ctx.arc(p.x + node.size/2 - 8, p.y - node.size/2 + 8, 4, 0, 2 * Math.PI);
-      ctx.fill();
-    });
-
-    ctx.restore();
-  };
-
-  useEffect(() => {
-    drawNetwork();
-  }, [nodes, connections, selectedNode, zoomLevel]);
-
-  // Redraw on window resize
-  useEffect(() => {
-    const handleResize = () => {
-      drawNetwork();
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [nodes, connections, selectedNode, zoomLevel]);
-
-  const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * (100 / zoomLevel);
-    const y = (event.clientY - rect.top) * (100 / zoomLevel);
-
-    // Find clicked node
-    const clickedNode = nodes.find(node => {
-      const distance = Math.sqrt((x - node.x) ** 2 + (y - node.y) ** 2);
-      return distance <= node.size / 2;
-    });
-
-    setSelectedNode(clickedNode || null);
-  };
-
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 25, 200));
-  };
-
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 25, 50));
-  };
-
-  const handleReset = () => {
-    setZoomLevel(100);
-    setSelectedNode(null);
+  const handleNodeClick = (node: GraphNode) => {
+    const agentNode = nodes.find(n => n.id === node.id);
+    setSelectedNode(agentNode || null);
   };
 
   if (isLoading) {
@@ -462,59 +355,31 @@ export default function AgentNetwork() {
           <h1 className="text-3xl font-bold">Agent Network</h1>
           <p className="text-muted-foreground">
             Visualize agent routing patterns. The graph shows the simple routing architecture:
-            <strong>Polly (polymorphic-agent)</strong> receives user requests and routes them to specialized agents.
-            <strong>Purple dashed lines</strong> show routing decisions (which agent handles which requests).
+            <strong> Polly (polymorphic-agent)</strong> receives user requests and routes them to specialized agents.
+            <strong> Purple lines</strong> show routing decisions (which agent handles which requests).
           </p>
         </div>
         <div className="flex items-center gap-2">
           {usingMockData && <MockDataBadge />}
-          <Button variant="outline" size="sm" onClick={handleZoomOut}>
-            <ZoomOut className="w-4 h-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleReset}>
-            <RotateCcw className="w-4 h-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleZoomIn}>
-            <ZoomIn className="w-4 h-4" />
-          </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Network Visualization */}
         <div className="lg:col-span-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>Agent Network Graph</CardTitle>
-              <CardDescription>
-                Interactive visualization of agent relationships and dependencies
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="relative">
-                <canvas
-                  ref={canvasRef}
-                  className="w-full h-96 border rounded-lg cursor-pointer"
-                  onClick={handleCanvasClick}
-                />
-                
-                {/* Legend */}
-                <div className="absolute top-4 right-4 bg-muted/90 backdrop-blur-sm rounded-lg p-3 text-sm shadow-lg">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-0.5 bg-purple-500" style={{borderTop: "2px dashed #8B5CF6"}}></div>
-                      <span>Routing (Polly → Agent)</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Zoom indicator */}
-                <div className="absolute bottom-4 left-4 bg-muted/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm font-medium shadow-lg">
-                  Zoom: {zoomLevel}%
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <UnifiedGraph
+            nodes={graphNodes}
+            edges={graphEdges}
+            layout={customLayout}
+            height="600px"
+            interactive={true}
+            zoomable={false}
+            showLegend={true}
+            colorScheme={graphColorScheme}
+            onNodeClick={handleNodeClick}
+            title="Agent Network Graph"
+            subtitle="Interactive visualization of agent relationships and dependencies"
+          />
 
           {/* Agent Cards (standardized with Agent Management styling) */}
           <div className="mt-6">

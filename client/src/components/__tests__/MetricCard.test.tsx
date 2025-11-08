@@ -83,17 +83,17 @@ describe('MetricCard', () => {
   });
 
   it('should render tooltip when provided', async () => {
-    const { user } = render(
-      <MetricCard 
-        label="Complex Metric" 
-        value="500" 
+    render(
+      <MetricCard
+        label="Complex Metric"
+        value="500"
         tooltip="This metric represents total operations per minute"
       />
     );
-    
+
     const label = screen.getByText('Complex Metric');
     expect(label).toBeInTheDocument();
-    
+
     // Tooltip should be present (hover to trigger)
     // Note: Testing tooltip visibility requires user interaction simulation
   });

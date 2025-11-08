@@ -73,16 +73,16 @@ export function setupFetchMock(
   
   global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-    
+
       // Find matching response
-      for (const [pattern, response] of responses.entries()) {
+      for (const [pattern, response] of Array.from(responses.entries())) {
         if (url.includes(pattern)) {
           if (response instanceof Error) {
             throw response;
           }
           // Get body text (cached) and create new Response each time to allow multiple reads
           const bodyText = await getBodyText(response);
-          
+
           return new Response(bodyText, {
             status: response.status,
             statusText: response.statusText,

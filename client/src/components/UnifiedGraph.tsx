@@ -13,6 +13,14 @@ export interface GraphNode {
   id: string;
   label: string;
   type?: string;
+  /**
+   * Node radius in pixels
+   * Recommended range: 25-70px for optimal text readability
+   * - Small nodes (25-35px): Shows abbreviated text (1-3 chars)
+   * - Medium nodes (35-50px): Shows short labels (4-8 chars)
+   * - Large nodes (50-70px): Shows full labels (8-12 chars)
+   * Default: 30px if not specified
+   */
   size?: number;
   color?: string;
   metadata?: Record<string, any>;
@@ -50,6 +58,120 @@ export interface UnifiedGraphProps {
 }
 
 /**
+ * Constants for text rendering in nodes
+ */
+const MIN_FONT_SIZE = 10;
+const MAX_FONT_SIZE = 14;
+const NODE_PADDING = 6; // Minimum padding between text and circle edge (reduced for more text space)
+const CHAR_WIDTH_RATIO = 0.55; // Approximate character width to font size ratio (more optimistic)
+const LINE_HEIGHT_RATIO = 1.15; // Line height multiplier (tighter spacing)
+
+/**
+ * Helper to split text into multiple lines that fit within a circle
+ * Returns array of lines with word wrapping
+ */
+function wrapTextForCircle(
+  text: string,
+  radius: number,
+  fontSize: number
+): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  const charWidth = fontSize * CHAR_WIDTH_RATIO;
+
+  // Calculate available width for text (accounting for padding on both sides)
+  const availableWidth = (radius - NODE_PADDING) * 2;
+  const maxCharsPerLine = Math.floor(availableWidth / charWidth);
+
+  if (maxCharsPerLine < 3) {
+    // For very small nodes, just show abbreviated text
+    return [text.substring(0, 2)];
+  }
+
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+
+    if (testLine.length <= maxCharsPerLine) {
+      currentLine = testLine;
+    } else {
+      // Current line is full, push it and start new line
+      if (currentLine) {
+        lines.push(currentLine);
+        currentLine = '';
+      }
+
+      // For individual words, only truncate if they're EXTREMELY long (>20 chars)
+      // This allows normal words like "Authentication" (14 chars) to display fully
+      if (word.length > 20) {
+        // Word is unreasonably long, truncate it
+        lines.push(word.substring(0, Math.max(8, maxCharsPerLine - 1)) + '…');
+      } else {
+        // Word gets its own line, regardless of maxCharsPerLine
+        // The text may overflow slightly but will be readable
+        currentLine = word;
+      }
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  // Limit to 3 lines maximum to fit in the circle
+  if (lines.length > 3) {
+    // Truncate last visible line and add ellipsis
+    const lastLine = lines[2];
+    if (lastLine.length > maxCharsPerLine) {
+      lines[2] = lastLine.substring(0, maxCharsPerLine - 1) + '…';
+    }
+    return lines.slice(0, 3);
+  }
+
+  return lines;
+}
+
+/**
+ * Helper to calculate optimal text display for a node with dynamic font sizing
+ * Uses iOS-style dynamic sizing: longer text gets smaller font to fit
+ */
+function calculateTextDisplay(
+  text: string,
+  radius: number,
+  fontFamily: string = 'IBM Plex Sans, sans-serif'
+): { fontSize: number; lines: string[]; needsEllipsis: boolean } {
+  // Start with maximum font size for this radius
+  let fontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, radius * 0.24));
+
+  // For very small nodes, reduce font size more aggressively
+  if (radius < 35) {
+    fontSize = Math.max(8, radius * 0.22);
+  }
+
+  // Try to fit text with current font size
+  let lines = wrapTextForCircle(text, radius, fontSize);
+  let needsEllipsis = lines.some(line => line.includes('…'));
+
+  // Dynamic font sizing (iOS-style): Aggressively reduce font size until text fits
+  let attempts = 0;
+  const maxAttempts = 8;  // More attempts for better fitting
+
+  while (needsEllipsis && fontSize > MIN_FONT_SIZE && attempts < maxAttempts) {
+    // Reduce font size by 15% (more aggressive than before)
+    fontSize = Math.max(MIN_FONT_SIZE, fontSize * 0.85);
+
+    // Recalculate with smaller font
+    lines = wrapTextForCircle(text, radius, fontSize);
+    needsEllipsis = lines.some(line => line.includes('…'));
+
+    attempts++;
+  }
+
+  return { fontSize, lines, needsEllipsis };
+}
+
+/**
  * Helper to calculate force-directed layout positions
  */
 function calculateForceLayout(
@@ -78,7 +200,7 @@ function calculateForceLayout(
 }
 
 /**
- * Helper to calculate hierarchy layout positions
+ * Helper to calculate hierarchy layout positions with improved spacing
  */
 function calculateHierarchyLayout(
   nodes: GraphNode[],
@@ -87,6 +209,14 @@ function calculateHierarchyLayout(
   height: number
 ): Record<string, { x: number; y: number }> {
   const positions: Record<string, { x: number; y: number }> = {};
+
+  // Add padding around the edges for better visual appearance
+  const HORIZONTAL_PADDING = Math.max(80, width * 0.08);
+  const VERTICAL_PADDING = Math.max(60, height * 0.1);
+  const MIN_NODE_SPACING = 150; // Minimum horizontal spacing between nodes
+
+  const usableWidth = width - (HORIZONTAL_PADDING * 2);
+  const usableHeight = height - (VERTICAL_PADDING * 2);
 
   // Build adjacency list
   const children: Record<string, string[]> = {};
@@ -101,8 +231,9 @@ function calculateHierarchyLayout(
   // Find root nodes (nodes with no parents)
   const roots = nodes.filter((node) => !parents[node.id]);
 
-  // Assign levels
+  // Assign levels with cycle detection
   const levels: Record<string, number> = {};
+  const visited = new Set<string>();
   const queue: Array<{ id: string; level: number }> = roots.map((node) => ({
     id: node.id,
     level: 0,
@@ -110,16 +241,30 @@ function calculateHierarchyLayout(
 
   while (queue.length > 0) {
     const { id, level } = queue.shift()!;
+
+    // Skip if already visited (prevents infinite loops with cycles)
+    if (visited.has(id)) continue;
+    visited.add(id);
+
     levels[id] = level;
     const nodeChildren = children[id] || [];
     nodeChildren.forEach((childId) => {
-      queue.push({ id: childId, level: level + 1 });
+      if (!visited.has(childId)) {
+        queue.push({ id: childId, level: level + 1 });
+      }
     });
   }
 
-  // Calculate positions
+  // Handle orphaned nodes (nodes not reachable from any root due to cycles)
+  nodes.forEach((node) => {
+    if (levels[node.id] === undefined) {
+      levels[node.id] = 0;
+    }
+  });
+
+  // Calculate positions with better spacing
   const maxLevel = Math.max(...Object.values(levels), 0);
-  const levelHeight = height / (maxLevel + 1);
+  const levelHeight = usableHeight / (maxLevel + 1);
 
   // Group nodes by level
   const nodesByLevel: Record<number, string[]> = {};
@@ -128,14 +273,23 @@ function calculateHierarchyLayout(
     nodesByLevel[level].push(id);
   });
 
-  // Position nodes
+  // Position nodes with improved horizontal spacing
   Object.entries(nodesByLevel).forEach(([levelStr, nodeIds]) => {
     const level = parseInt(levelStr);
-    const levelWidth = width / (nodeIds.length + 1);
+    const nodeCount = nodeIds.length;
+
+    // Calculate spacing based on node count and available width
+    const totalMinSpacing = (nodeCount - 1) * MIN_NODE_SPACING;
+    const actualSpacing = Math.max(MIN_NODE_SPACING, usableWidth / (nodeCount + 1));
+
+    // Center the nodes horizontally
+    const totalWidth = (nodeCount - 1) * actualSpacing;
+    const startX = HORIZONTAL_PADDING + (usableWidth - totalWidth) / 2;
+
     nodeIds.forEach((id, i) => {
       positions[id] = {
-        x: (i + 1) * levelWidth,
-        y: (level + 0.5) * levelHeight,
+        x: nodeCount === 1 ? width / 2 : startX + (i * actualSpacing),
+        y: VERTICAL_PADDING + (level + 0.5) * levelHeight,
       };
     });
   });
@@ -166,15 +320,47 @@ export function UnifiedGraph({
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
 
-  // Calculate layout positions
+  // Calculate layout positions and handle window resizing
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const w = typeof width === 'number' ? width : rect.width;
-    const h = typeof height === 'number' ? height : dimensions.height;
+    const updateDimensions = () => {
+      if (!containerRef.current) return;
 
-    setDimensions({ width: w, height: h });
+      const rect = containerRef.current.getBoundingClientRect();
+      const w = typeof width === 'number' ? width : rect.width || 800;
+      const h = typeof height === 'number' ? height :
+               (typeof height === 'string' && height.includes('vh')) ?
+               window.innerHeight * 0.7 : 600; // Default to 70vh or 600px
+
+      setDimensions({ width: w, height: h });
+    };
+
+    // Initial calculation
+    updateDimensions();
+
+    // Set up ResizeObserver to handle container resizing
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions();
+    });
+
+    resizeObserver.observe(containerRef.current);
+
+    // Also listen for window resize events
+    window.addEventListener('resize', updateDimensions);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, [width, height]);
+
+  // Recalculate node positions when dimensions change
+  useEffect(() => {
+    if (!containerRef.current || dimensions.width === 0) return;
+
+    const w = dimensions.width;
+    const h = dimensions.height;
 
     let positions: Record<string, { x: number; y: number }>;
 
@@ -222,7 +408,7 @@ export function UnifiedGraph({
     }
 
     setNodePositions(positions);
-  }, [nodes, edges, layout, width, height]);
+  }, [nodes, edges, layout, dimensions]);
 
   // Canvas rendering
   useEffect(() => {
@@ -266,7 +452,7 @@ export function UnifiedGraph({
       const pos = nodePositions[node.id];
       if (!pos) return;
 
-      const radius = node.size || 8;
+      const radius = node.size || 30; // Default to 30px for better readability
       const color = node.color || colorScheme[node.type || ''] || '#3b82f6';
 
       ctx.beginPath();
@@ -277,11 +463,23 @@ export function UnifiedGraph({
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Draw label
+      // Draw label inside circle using helper function with multi-line support
+      const { fontSize, lines } = calculateTextDisplay(node.label, radius);
+
       ctx.fillStyle = '#ffffff';
-      ctx.font = '10px IBM Plex Sans, sans-serif';
+      ctx.font = `${fontSize}px IBM Plex Sans, sans-serif`;
       ctx.textAlign = 'center';
-      ctx.fillText(node.label, pos.x, pos.y + radius + 12);
+      ctx.textBaseline = 'middle';
+
+      // Calculate line spacing
+      const lineHeight = fontSize * LINE_HEIGHT_RATIO;
+      const totalHeight = lines.length * lineHeight;
+      const startY = pos.y - totalHeight / 2 + lineHeight / 2;
+
+      // Draw each line
+      lines.forEach((line, i) => {
+        ctx.fillText(line, pos.x, startY + i * lineHeight);
+      });
     });
   }, [nodes, edges, nodePositions, dimensions, renderMode, colorScheme]);
 
@@ -300,7 +498,7 @@ export function UnifiedGraph({
       const pos = nodePositions[node.id];
       if (!pos) return false;
 
-      const radius = node.size || 8;
+      const radius = node.size || 30;
       const dx = x - pos.x;
       const dy = y - pos.y;
       return Math.sqrt(dx * dx + dy * dy) <= radius;
@@ -325,7 +523,7 @@ export function UnifiedGraph({
       const pos = nodePositions[node.id];
       if (!pos) return false;
 
-      const radius = node.size || 8;
+      const radius = node.size || 30;
       const dx = x - pos.x;
       const dy = y - pos.y;
       return Math.sqrt(dx * dx + dy * dy) <= radius;
@@ -391,6 +589,36 @@ export function UnifiedGraph({
             onClick={handleClick}
             onMouseMove={handleMouseMove}
           >
+            {/* Define arrow markers for directed edges */}
+            <defs>
+              {Object.entries(defaultColorScheme).map(([type, color]) => (
+                <marker
+                  key={`arrow-${type}`}
+                  id={`arrow-${type}`}
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="6"
+                  markerHeight="6"
+                  orient="auto"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill={color} opacity="0.8" />
+                </marker>
+              ))}
+              {/* Default arrow marker */}
+              <marker
+                id="arrow-default"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" opacity="0.8" />
+              </marker>
+            </defs>
+
             {/* Draw edges */}
             {edges.map((edge, idx) => {
               const sourcePos = nodePositions[edge.source];
@@ -398,50 +626,97 @@ export function UnifiedGraph({
 
               if (!sourcePos || !targetPos) return null;
 
-              const color = defaultColorScheme[edge.type || ''] || '#94a3b8';
+              const color = (edge.type && defaultColorScheme[edge.type as keyof typeof defaultColorScheme]) || '#94a3b8';
               const strokeWidth = edge.weight ? 1 + edge.weight * 2 : 1;
 
-              // Calculate midpoint for label
-              const midX = (sourcePos.x + targetPos.x) / 2;
-              const midY = (sourcePos.y + targetPos.y) / 2;
+              // Calculate target node radius to adjust line endpoint
+              const targetNode = nodes.find(n => n.id === edge.target);
+              const targetRadius = targetNode?.size ?? 30;
+
+              // Calculate edge angle and adjust endpoint to stop at node edge
+              const dx = targetPos.x - sourcePos.x;
+              const dy = targetPos.y - sourcePos.y;
+              const angle = Math.atan2(dy, dx);
+              const adjustedTargetX = targetPos.x - (targetRadius + 6) * Math.cos(angle);
+              const adjustedTargetY = targetPos.y - (targetRadius + 6) * Math.sin(angle);
+
+              // Calculate midpoint for label (slightly offset from center)
+              const midX = (sourcePos.x + adjustedTargetX) / 2;
+              const midY = (sourcePos.y + adjustedTargetY) / 2;
+
+              // Calculate perpendicular offset for label to avoid overlap with line
+              const perpAngle = angle + Math.PI / 2;
+              const labelOffsetX = 8 * Math.cos(perpAngle);
+              const labelOffsetY = 8 * Math.sin(perpAngle);
+
+              const markerId = edge.type ? `arrow-${edge.type}` : 'arrow-default';
 
               return (
                 <g key={`edge-${idx}`}>
                   <line
                     x1={sourcePos.x}
                     y1={sourcePos.y}
-                    x2={targetPos.x}
-                    y2={targetPos.y}
+                    x2={adjustedTargetX}
+                    y2={adjustedTargetY}
                     stroke={color}
                     strokeWidth={strokeWidth}
-                    opacity={0.5}
-                    className="hover:opacity-80 transition-opacity cursor-pointer"
+                    opacity={0.6}
+                    markerEnd={!edge.bidirectional ? `url(#${markerId})` : undefined}
+                    className="hover:opacity-90 transition-opacity cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       onEdgeClick?.(edge);
                     }}
                   />
-                  {edge.label && (
-                    <text
-                      x={midX}
-                      y={midY}
-                      className="text-xs fill-muted-foreground"
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                    >
-                      {edge.label}
-                    </text>
+                  {edge.bidirectional && (
+                    <>
+                      <marker
+                        id={`arrow-start-${idx}`}
+                        viewBox="0 0 10 10"
+                        refX="1"
+                        refY="5"
+                        markerWidth="6"
+                        markerHeight="6"
+                        orient="auto"
+                      >
+                        <path d="M 10 0 L 0 5 L 10 10 z" fill={color} opacity="0.8" />
+                      </marker>
+                      <line
+                        x1={sourcePos.x}
+                        y1={sourcePos.y}
+                        x2={adjustedTargetX}
+                        y2={adjustedTargetY}
+                        stroke={color}
+                        strokeWidth={strokeWidth}
+                        opacity={0.6}
+                        markerStart={`url(#arrow-start-${idx})`}
+                        markerEnd={`url(#${markerId})`}
+                        className="hover:opacity-90 transition-opacity cursor-pointer"
+                      />
+                    </>
                   )}
-                  {/* Arrow indicator for directed edges */}
-                  {!edge.bidirectional && (
-                    <polygon
-                      points="0,-5 8,0 0,5"
-                      fill={color}
-                      opacity={0.7}
-                      transform={`translate(${targetPos.x}, ${targetPos.y}) rotate(${
-                        (Math.atan2(targetPos.y - sourcePos.y, targetPos.x - sourcePos.x) * 180) / Math.PI
-                      }) translate(-8, 0)`}
-                    />
+                  {edge.label && (
+                    <g>
+                      {/* Background rectangle for better readability */}
+                      <rect
+                        x={midX + labelOffsetX - edge.label.length * 2.5}
+                        y={midY + labelOffsetY - 8}
+                        width={edge.label.length * 5}
+                        height={16}
+                        fill="hsl(var(--background))"
+                        opacity="0.9"
+                        rx="3"
+                      />
+                      <text
+                        x={midX + labelOffsetX}
+                        y={midY + labelOffsetY}
+                        className="text-xs fill-foreground font-medium pointer-events-none"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        {edge.label}
+                      </text>
+                    </g>
                   )}
                 </g>
               );
@@ -452,8 +727,16 @@ export function UnifiedGraph({
               const pos = nodePositions[node.id];
               if (!pos) return null;
 
-              const radius = node.size || 8;
-              const color = node.color || defaultColorScheme[node.type || ''] || '#3b82f6';
+              const radius = node.size || 30; // Default to 30px for better readability
+              const color = node.color || (node.type && defaultColorScheme[node.type as keyof typeof defaultColorScheme]) || '#3b82f6';
+
+              // Calculate optimal text display using helper function with multi-line support
+              const { fontSize, lines, needsEllipsis } = calculateTextDisplay(node.label, radius);
+
+              // Calculate line spacing
+              const lineHeight = fontSize * LINE_HEIGHT_RATIO;
+              const totalHeight = lines.length * lineHeight;
+              const startY = pos.y - totalHeight / 2 + lineHeight / 2;
 
               return (
                 <g
@@ -473,14 +756,36 @@ export function UnifiedGraph({
                     strokeWidth={2}
                     opacity={hoveredNode?.id === node.id ? 1 : 0.9}
                   />
+                  {/* Multi-line text inside circle */}
                   <text
                     x={pos.x}
-                    y={pos.y + radius + 12}
-                    className="text-xs fill-foreground font-medium"
+                    y={startY}
+                    className="fill-white font-semibold pointer-events-none select-none"
                     textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontSize={fontSize}
                   >
-                    {node.label.length > 15 ? node.label.substring(0, 12) + '...' : node.label}
+                    {lines.map((line, i) => (
+                      <tspan
+                        key={i}
+                        x={pos.x}
+                        dy={i === 0 ? 0 : lineHeight}
+                      >
+                        {line}
+                      </tspan>
+                    ))}
                   </text>
+                  {/* Optional: Full label on hover below node */}
+                  {hoveredNode?.id === node.id && needsEllipsis && (
+                    <text
+                      x={pos.x}
+                      y={pos.y + radius + 14}
+                      className="text-xs fill-foreground font-medium pointer-events-none"
+                      textAnchor="middle"
+                    >
+                      {node.label}
+                    </text>
+                  )}
                 </g>
               );
             })}
