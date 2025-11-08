@@ -23,8 +23,11 @@ export interface KnowledgeGraphData {
 
 class KnowledgeGraphSource {
   async fetchGraph(timeRange: string, limit: number = 1000): Promise<KnowledgeGraphData> {
-    // Return comprehensive mock data if USE_MOCK_DATA is enabled
-    if (USE_MOCK_DATA) {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
       return KnowledgeGraphMockData.generateAll(50, 80);
     }
 
