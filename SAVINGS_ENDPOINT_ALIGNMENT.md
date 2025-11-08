@@ -2,7 +2,7 @@
 
 ## Summary
 
-Successfully aligned the `/api/savings/metrics` endpoint response format with the frontend `SavingsMetrics` interface. The implementation ensures complete type safety, validation, and prevents negative values from being sent to the frontend.
+Successfully aligned the `/api/savings/metrics` endpoint response format with the frontend `SavingsMetrics` interface. The implementation ensures complete type safety, validation, and **allows negative values to detect performance regressions** where intelligence costs more than baseline.
 
 ## Changes Made
 
@@ -33,7 +33,7 @@ Successfully aligned the `/api/savings/metrics` endpoint response format with th
 
 **Key improvements**:
 - ✅ Calculates time period in days for accurate savings extrapolation
-- ✅ Applies `Math.max(0, ...)` validation on all numeric values
+- ✅ **Allows negative values** to detect performance regressions (intelligence worse than baseline)
 - ✅ Returns realistic demo values when data is insufficient
 - ✅ Converts time savings from seconds to hours
 - ✅ Calculates `costPerToken` and `costPerCompute` from actual data
@@ -78,14 +78,15 @@ res.json(validatedMetrics);
 Three test scenarios:
 1. **Complete metrics transformation** - Verifies all fields are present and calculated correctly
 2. **Edge case with no runs** - Ensures fallback to zero values works
-3. **Negative value prevention** - Confirms all values are clamped to >= 0
+3. **Performance regression detection** - Confirms negative savings are correctly returned when intelligence underperforms baseline
 
 ## Validation Strategy
 
 ### Data Layer (AgentRunTracker)
 - Calculates metrics from raw run data
-- Applies `Math.max(0, ...)` to prevent negative values
+- **Allows negative values** to indicate performance regressions
 - Returns fallback demo values when insufficient data
+- Averages and counts remain non-negative (only savings can be negative)
 
 ### API Layer (savings-routes.ts)
 - Explicit field mapping for type safety
@@ -94,20 +95,20 @@ Three test scenarios:
 
 ### Frontend Layer (intelligence-savings-source.ts)
 - Type-safe interface definition
-- Mock data fallback if API fails
-- All numeric fields guaranteed >= 0
+- Mock data fallback if API fails (mock data intentionally shows positive values)
+- **Real API data can be negative** to indicate performance regressions
 
 ## Test Results
 
-✅ **All 255 tests pass** (24 test files)
+✅ **All 257 tests pass** (24 test files)
 ✅ **TypeScript compilation succeeds** with no errors
-✅ **Transformation test covers**: complete metrics, edge cases, negative value prevention
+✅ **Transformation test covers**: complete metrics, edge cases, performance regression detection
 
 ## Success Criteria Met
 
 - ✅ `/api/savings/metrics` returns complete `SavingsMetrics` object
 - ✅ All required fields are present
-- ✅ All numeric values are >= 0
+- ✅ **Savings values can be negative** to indicate performance regressions
 - ✅ Response matches frontend interface exactly
 - ✅ Zod schema validation ensures runtime type safety
 
@@ -158,7 +159,9 @@ async fetchMetrics(timeRange: string): Promise<{ data: SavingsMetrics; isMock: b
 ## Notes
 
 - Time period calculation uses actual date range for accurate extrapolation
-- Savings calculations may result in 0 if intelligence uses more resources than baseline (edge case handled)
+- **Savings can be negative** when intelligence uses more resources than baseline (indicates performance regression)
+- Negative savings are intentionally returned to enable regression detection and alerting
+- Mock data always shows positive values for demonstration purposes
 - Demo values ($45K savings, 34% efficiency) align with YC demo script
 - All monetary values are in USD
 - Time saved is in hours (converted from seconds)

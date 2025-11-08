@@ -26,3 +26,8 @@ test-results/
 .playwright-mcp/**/*.jpeg
 page-*.png
 *-screenshot.png
+
+# Backup files
+*.bak
+*.backup
+*~
