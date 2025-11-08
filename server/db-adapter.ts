@@ -153,11 +153,12 @@ export class PostgresAdapter {
     }
 
     const result = await this.db.insert(table).values(data as any).returning();
+    const rows = Array.isArray(result) ? result : [];
 
-    if (result.length === 1) {
-      return result[0] as T;
+    if (rows.length === 1) {
+      return rows[0] as T;
     }
-    return result as T[];
+    return rows as T[];
   }
 
   /**
@@ -195,11 +196,12 @@ export class PostgresAdapter {
       .set(data as any)
       .where(and(...conditions))
       .returning();
+    const rows = Array.isArray(result) ? result : [];
 
-    if (result.length === 1) {
-      return result[0] as T;
+    if (rows.length === 1) {
+      return rows[0] as T;
     }
-    return result as T[];
+    return rows as T[];
   }
 
   /**
@@ -229,11 +231,12 @@ export class PostgresAdapter {
       .delete(table)
       .where(and(...conditions))
       .returning();
+    const rows = Array.isArray(result) ? result : [];
 
-    if (result.length === 1) {
-      return result[0] as T;
+    if (rows.length === 1) {
+      return rows[0] as T;
     }
-    return result as T[];
+    return rows as T[];
   }
 
   /**
@@ -278,8 +281,9 @@ export class PostgresAdapter {
         set: { ...data, updated_at: now } as any,
       })
       .returning();
+    const rows = Array.isArray(result) ? result : [];
 
-    return result[0] as T;
+    return rows[0] as T;
   }
 
   /**
@@ -310,13 +314,14 @@ export class PostgresAdapter {
 
   /**
    * Execute raw SQL query
-   * 
+   *
    * @param sqlQuery - SQL query string
    * @param params - Query parameters
    * @returns Query results
    */
   async executeRaw<T = any>(sqlQuery: string, params?: any[]): Promise<T[]> {
-    return await this.db.execute(sql.raw(sqlQuery, params || [])) as T[];
+    const result = await this.db.execute(sql.raw(sqlQuery));
+    return Array.isArray(result) ? result as T[] : [];
   }
 
   // Helper methods

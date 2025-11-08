@@ -139,11 +139,11 @@ router.get("/agents", (req, res) => {
 
     if (search) {
       const searchLower = (search as string).toLowerCase();
-      agents = agents.filter(agent => 
+      agents = agents.filter(agent =>
         agent.name.toLowerCase().includes(searchLower) ||
         agent.title.toLowerCase().includes(searchLower) ||
         agent.description.toLowerCase().includes(searchLower) ||
-        agent.tags.some(tag => tag.toLowerCase().includes(searchLower))
+        agent.tags.some((tag: string) => tag.toLowerCase().includes(searchLower))
       );
     }
 
@@ -241,10 +241,10 @@ router.get("/capabilities", (req, res) => {
 router.get("/performance", (req, res) => {
   try {
     const { agentId, timeRange = "30d" } = req.query;
-    
+
     if (agentId) {
       // Get performance for specific agent
-      const performance = mockPerformanceData[agentId as string];
+      const performance = getPerformanceData(agentId as string);
       if (!performance) {
         return res.status(404).json({ error: "Agent performance data not found" });
       }

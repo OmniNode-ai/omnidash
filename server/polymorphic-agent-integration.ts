@@ -182,8 +182,8 @@ export class PolymorphicAgentIntegration {
     executions.forEach(execution => {
       if (execution.routingDecision) {
         totalConfidence += execution.routingDecision.confidence;
-        totalRoutingTime += execution.routingDecision.routingTime;
-        
+        totalRoutingTime += execution.routingDecision.routingTime || 0;
+
         const strategy = execution.routingDecision.strategy;
         stats.strategyBreakdown[strategy] = (stats.strategyBreakdown[strategy] || 0) + 1;
       }
@@ -224,7 +224,7 @@ export class PolymorphicAgentIntegration {
         .reduce((acc, exec) => {
           if (exec.routingDecision) {
             acc.totalConfidence += exec.routingDecision.confidence;
-            acc.totalRoutingTime += exec.routingDecision.routingTime;
+            acc.totalRoutingTime += exec.routingDecision.routingTime || 0;
             acc.count++;
           }
           return acc;
