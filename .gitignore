@@ -7,9 +7,12 @@ vite.config.ts.*
 
 # Test outputs (not test source files)
 coverage/
+coverage-summary.json
 .nyc_output/
 test-results/
 *.lcov
+htmlcov/
+.coverage
 
 # Environment files with secrets
 .env
