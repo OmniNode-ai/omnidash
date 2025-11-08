@@ -135,6 +135,9 @@ export default function IntelligenceSavings() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+  // Unified model data sorting state (hoisted from IIFE to fix hooks violation)
+  const [modelSortColumn, setModelSortColumn] = React.useState<keyof UnifiedModelData>('cost');
+  const [modelSortDirection, setModelSortDirection] = React.useState<'asc' | 'desc'>('desc');
 
   // Use centralized data source
   const { data: savingsData, isLoading } = useQuery({
@@ -992,22 +995,19 @@ export default function IntelligenceSavings() {
                   };
                 });
 
-                const [sortColumn, setSortColumn] = React.useState<keyof UnifiedModelData>('cost');
-                const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
-
                 const handleSort = (column: keyof UnifiedModelData) => {
-                  if (sortColumn === column) {
-                    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                  if (modelSortColumn === column) {
+                    setModelSortDirection(modelSortDirection === 'asc' ? 'desc' : 'asc');
                   } else {
-                    setSortColumn(column);
-                    setSortDirection('desc');
+                    setModelSortColumn(column);
+                    setModelSortDirection('desc');
                   }
                 };
 
                 const sortedData = [...unifiedData].sort((a, b) => {
-                  const aVal = a[sortColumn];
-                  const bVal = b[sortColumn];
-                  const modifier = sortDirection === 'asc' ? 1 : -1;
+                  const aVal = a[modelSortColumn];
+                  const bVal = b[modelSortColumn];
+                  const modifier = modelSortDirection === 'asc' ? 1 : -1;
                   if (typeof aVal === 'number' && typeof bVal === 'number') {
                     return (aVal - bVal) * modifier;
                   }
@@ -1085,8 +1085,8 @@ export default function IntelligenceSavings() {
                               >
                                 <div className="flex items-center gap-1">
                                   Model
-                                  {sortColumn === 'model' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                  {modelSortColumn === 'model' && (
+                                    <span className="text-xs">{modelSortDirection === 'asc' ? '↑' : '↓'}</span>
                                   )}
                                 </div>
                               </th>
@@ -1096,8 +1096,8 @@ export default function IntelligenceSavings() {
                               >
                                 <div className="flex items-center justify-end gap-1">
                                   Requests
-                                  {sortColumn === 'requests' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                  {modelSortColumn === 'requests' && (
+                                    <span className="text-xs">{modelSortDirection === 'asc' ? '↑' : '↓'}</span>
                                   )}
                                 </div>
                               </th>
@@ -1107,8 +1107,8 @@ export default function IntelligenceSavings() {
                               >
                                 <div className="flex items-center justify-end gap-1">
                                   Avg Response
-                                  {sortColumn === 'avgResponseTime' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                  {modelSortColumn === 'avgResponseTime' && (
+                                    <span className="text-xs">{modelSortDirection === 'asc' ? '↑' : '↓'}</span>
                                   )}
                                 </div>
                               </th>
@@ -1118,8 +1118,8 @@ export default function IntelligenceSavings() {
                               >
                                 <div className="flex items-center justify-end gap-1">
                                   Success Rate
-                                  {sortColumn === 'successRate' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                  {modelSortColumn === 'successRate' && (
+                                    <span className="text-xs">{modelSortDirection === 'asc' ? '↑' : '↓'}</span>
                                   )}
                                 </div>
                               </th>
@@ -1129,8 +1129,8 @@ export default function IntelligenceSavings() {
                               >
                                 <div className="flex items-center justify-end gap-1">
                                   Total Cost
-                                  {sortColumn === 'cost' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                  {modelSortColumn === 'cost' && (
+                                    <span className="text-xs">{modelSortDirection === 'asc' ? '↑' : '↓'}</span>
                                   )}
                                 </div>
                               </th>
@@ -1140,8 +1140,8 @@ export default function IntelligenceSavings() {
                               >
                                 <div className="flex items-center justify-end gap-1">
                                   Cost/Request
-                                  {sortColumn === 'costPerRequest' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                  {modelSortColumn === 'costPerRequest' && (
+                                    <span className="text-xs">{modelSortDirection === 'asc' ? '↑' : '↓'}</span>
                                   )}
                                 </div>
                               </th>
@@ -1151,8 +1151,8 @@ export default function IntelligenceSavings() {
                               >
                                 <div className="flex items-center justify-end gap-1">
                                   Tokens
-                                  {sortColumn === 'tokens' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                  {modelSortColumn === 'tokens' && (
+                                    <span className="text-xs">{modelSortDirection === 'asc' ? '↑' : '↓'}</span>
                                   )}
                                 </div>
                               </th>
@@ -1162,8 +1162,8 @@ export default function IntelligenceSavings() {
                               >
                                 <div className="flex items-center justify-end gap-1">
                                   Savings
-                                  {sortColumn === 'savingsAmount' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                  {modelSortColumn === 'savingsAmount' && (
+                                    <span className="text-xs">{modelSortDirection === 'asc' ? '↑' : '↓'}</span>
                                   )}
                                 </div>
                               </th>

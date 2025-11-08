@@ -813,7 +813,7 @@ export default function FeatureShowcase() {
                               <div className="text-sm text-blue-600">Live Metrics</div>
                             </div>
                             <div className="border-2 border-dashed border-gray-300 rounded p-3 text-center">
-                              <Alert className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+                              <AlertTriangle className="w-6 h-6 mx-auto mb-2 text-gray-400" />
                               <div className="text-sm text-muted-foreground">Alert Panel</div>
                             </div>
                           </div>

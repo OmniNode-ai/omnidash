@@ -631,7 +631,7 @@ export function UnifiedGraph({
 
               // Calculate target node radius to adjust line endpoint
               const targetNode = nodes.find(n => n.id === edge.target);
-              const targetRadius = targetNode?.size || 8;
+              const targetRadius = targetNode?.size ?? 30;
 
               // Calculate edge angle and adjust endpoint to stop at node edge
               const dx = targetPos.x - sourcePos.x;

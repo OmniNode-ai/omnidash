@@ -84,14 +84,35 @@ Comprehensive edge color scheme:
 ```typescript
 // Pattern → GraphNode mapping
 function transformPatternsToNodes(patterns: Pattern[]): GraphNode[] {
-  return patterns.map(p => ({
-    id: p.id,
-    label: p.name,
-    type: p.category,
-    size: 25 + (normalizedUsage * 45), // 25-70px range
-    color: qualityBasedColor,
-    metadata: { quality, usage, language, category }
-  }));
+  return patterns.map(p => {
+    // Calculate node size based on usage (25-70px range for optimal text readability)
+    const normalizedUsage = Math.min(p.usage / 100, 1); // Normalize to 0-1
+    const size = 25 + (normalizedUsage * 45); // 25-70px range
+
+    // Color-code by quality score
+    let color: string;
+    if (p.quality > 0.80) {
+      color = '#10b981'; // Green for high quality (>80%)
+    } else if (p.quality > 0.60) {
+      color = '#f59e0b'; // Orange for medium quality (60-80%)
+    } else {
+      color = '#ef4444'; // Red for low quality (<60%)
+    }
+
+    return {
+      id: p.id,
+      label: p.name,
+      type: p.category,
+      size,
+      color,
+      metadata: {
+        quality: p.quality,
+        usage: p.usage,
+        language: p.language,
+        category: p.category,
+      },
+    };
+  });
 }
 
 // PatternRelationship → GraphEdge mapping

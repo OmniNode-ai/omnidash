@@ -98,13 +98,13 @@ export default function ArchitectureNetworks() {
   // Transform to expected formats
   const architectureSummary: ArchitectureSummary = architectureData?.summary ? {
     totalNodes: architectureData.summary.totalNodes || 0,
-    activeNodes: architectureData.summary.totalNodes || 0,
+    activeNodes: (architectureData.summary as any).activeNodes ?? (architectureData.summary.totalNodes || 0),
     totalConnections: architectureData.summary.totalEdges || 0,
-    networkHealth: 95,
-    avgLatency: 45,
-    dataFlow: 1200,
+    networkHealth: (architectureData.summary as any).networkHealth ?? 95,
+    avgLatency: (architectureData.summary as any).avgLatency ?? 45,
+    dataFlow: (architectureData.summary as any).dataFlow ?? 1200,
     knowledgeEntities: (architectureData.knowledgeEntities || []).length,
-    eventThroughput: 250,
+    eventThroughput: (architectureData.summary as any).eventThroughput ?? 250,
   } : {
     totalNodes: 0,
     activeNodes: 0,
@@ -120,30 +120,30 @@ export default function ArchitectureNetworks() {
     id: n.id,
     name: n.name,
     type: n.type,
-    status: 'healthy' as const,
-    nodes: 1,
-    connections: 0,
-    latency: 0,
-    throughput: 0,
-    children: [],
+    status: (n as any).status ?? 'healthy',
+    nodes: (n as any).nodes ?? 1,
+    connections: (n as any).connections ?? 0,
+    latency: (n as any).latency ?? 0,
+    throughput: (n as any).throughput ?? 0,
+    children: (n as any).children ?? [],
   }));
 
   const knowledgeEntities: KnowledgeEntity[] = (architectureData?.knowledgeEntities || []).map(e => ({
     id: e.id,
     name: e.name,
     type: e.type,
-    connections: 0,
-    lastUpdated: new Date().toISOString(),
-    confidence: 0.9,
-    usage: 0,
+    connections: (e as any).connections ?? 0,
+    lastUpdated: (e as any).lastUpdated ?? new Date().toISOString(),
+    confidence: (e as any).confidence ?? 0.9,
+    usage: (e as any).usage ?? 0,
   }));
 
   const eventFlowData: EventFlowData = architectureData?.eventFlow ? {
     totalEvents: (architectureData.eventFlow.events || []).length,
-    eventsPerSecond: 10,
-    avgProcessingTime: 50,
-    errorRate: 0.5,
-    topEventTypes: [],
+    eventsPerSecond: (architectureData.eventFlow as any).eventsPerSecond ?? 10,
+    avgProcessingTime: (architectureData.eventFlow as any).avgProcessingTime ?? 50,
+    errorRate: (architectureData.eventFlow as any).errorRate ?? 0.5,
+    topEventTypes: (architectureData.eventFlow as any).topEventTypes ?? [],
   } : {
     totalEvents: 0,
     eventsPerSecond: 0,
