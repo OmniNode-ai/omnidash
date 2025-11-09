@@ -47,15 +47,7 @@ class PlatformHealthSource {
     }
 
     return {
-      data: {
-        status: 'healthy',
-        uptime: 99.9,
-        services: [
-          { name: 'PostgreSQL', status: 'up' },
-          { name: 'OmniArchon', status: 'up' },
-          { name: 'Qdrant', status: 'up' },
-        ]
-      },
+      data: PlatformHealthMockData.generateHealth(),
       isMock: true,
     };
   }
@@ -80,13 +72,7 @@ class PlatformHealthSource {
     }
 
     return {
-      data: {
-        services: [
-          { name: 'API Gateway', status: 'healthy', health: 'up' },
-          { name: 'Agent Service', status: 'healthy', health: 'up' },
-          { name: 'PostgreSQL', status: 'healthy', health: 'up' },
-        ]
-      },
+      data: PlatformHealthMockData.generateServices(),
       isMock: true,
     };
   }

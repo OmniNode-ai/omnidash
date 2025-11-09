@@ -40,7 +40,7 @@ export default function CorrelationTrace() {
     queryKey: [`/api/intelligence/trace/${searchId || 'sample'}`],
     queryFn: async () => {
       // If USE_MOCK_DATA is enabled or no search ID, return mock data
-      if (USE_MOCK_DATA || !searchId || searchId.length === 0) {
+      if (USE_MOCK_DATA || !searchId) {
         // Return preloaded 4-hop sample trace
         const now = Date.now();
         return {

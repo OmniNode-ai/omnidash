@@ -106,6 +106,27 @@ class PlatformMonitoringSource {
   }
 
   async fetchDeveloperMetrics(timeRange: string): Promise<{ data: DeveloperMetrics; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: {
+          totalDevelopers: 24,
+          activeDevelopers: 18,
+          avgCommitsPerDay: 12.5,
+          avgPullRequestsPerDay: 4.2,
+          avgCodeReviewTime: 4.5,
+          avgDeploymentTime: 15,
+          codeQualityScore: 85,
+          testCoverage: 78,
+          bugResolutionTime: 2.5,
+        },
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/developer/metrics?timeRange=${timeRange}`);
       if (response.ok) {
@@ -134,6 +155,39 @@ class PlatformMonitoringSource {
   }
 
   async fetchIncidents(timeRange: string): Promise<{ data: Incident[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: [
+          {
+            id: 'inc-1',
+            title: 'Database Connection Pool Exhaustion',
+            severity: 'high',
+            status: 'resolved',
+            affectedServices: ['PostgreSQL', 'Qdrant'],
+            startTime: new Date(Date.now() - 172800000).toISOString(),
+            endTime: new Date(Date.now() - 86400000).toISOString(),
+            description: 'Connection pool reached 95% capacity during peak load',
+            assignee: 'DevOps Team'
+          },
+          {
+            id: 'inc-2',
+            title: 'Increased API Response Time',
+            severity: 'medium',
+            status: 'investigating',
+            affectedServices: ['API Gateway', 'Agent Service'],
+            startTime: new Date(Date.now() - 3600000).toISOString(),
+            description: 'p95 latency increased from 1.2s to 2.5s across multiple endpoints',
+            assignee: 'Platform Team'
+          }
+        ],
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/incidents?timeRange=${timeRange}`);
       if (response.ok) {

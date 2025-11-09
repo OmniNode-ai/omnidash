@@ -69,11 +69,12 @@ describe('PlatformHealthSource', () => {
       const result = await platformHealthSource.fetchHealth('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.status).toBe('healthy');
-      expect(result.data.uptime).toBe(99.9);
-      expect(result.data.services.length).toBe(3);
-      expect(result.data.services[0].name).toBe('PostgreSQL');
-      expect(result.data.services[0].status).toBe('up');
+      expect(result.data.status).toMatch(/^(healthy|degraded)$/);
+      expect(result.data.uptime).toBeGreaterThanOrEqual(99.0);
+      expect(result.data.uptime).toBeLessThanOrEqual(99.99);
+      expect(result.data.services.length).toBe(6);
+      expect(result.data.services[0]).toHaveProperty('name');
+      expect(result.data.services[0]).toHaveProperty('status');
     });
 
     it('should return mock data when API returns 404 error', async () => {
@@ -199,10 +200,10 @@ describe('PlatformHealthSource', () => {
       const result = await platformHealthSource.fetchServices();
 
       expect(result.isMock).toBe(true);
-      expect(result.data.services.length).toBe(3);
-      expect(result.data.services[0].name).toBe('API Gateway');
-      expect(result.data.services[0].status).toBe('healthy');
-      expect(result.data.services[0].health).toBe('up');
+      expect(result.data.services.length).toBe(12);
+      expect(result.data.services[0]).toHaveProperty('name');
+      expect(result.data.services[0]).toHaveProperty('status');
+      expect(result.data.services[0]).toHaveProperty('health');
     });
 
     it('should return mock data when API returns non-ok status', async () => {
@@ -343,7 +344,7 @@ describe('PlatformHealthSource', () => {
       expect(result.isMock).toBe(true);
       expect(result.health).toBeDefined();
       expect(result.services).toBeDefined();
-      expect(result.health.status).toBe('healthy');
+      expect(result.health.status).toMatch(/^(healthy|degraded)$/);
       expect(result.services.services.length).toBeGreaterThan(0);
     });
 
@@ -453,7 +454,7 @@ describe('PlatformHealthSource', () => {
       const result = await platformHealthSource.fetchHealth('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.status).toBe('healthy');
+      expect(result.data.status).toMatch(/^(healthy|degraded)$/);
     });
 
     it('should handle network timeout for services endpoint', async () => {

@@ -574,8 +574,11 @@ describe('IntelligenceAnalyticsDataSource', () => {
     });
 
     it('should handle malformed JSON responses', async () => {
-      // Mock fetch to throw an error (simulating network failure or malformed response)
-      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+      setupFetchMock(
+        new Map([
+          ['/api/savings/metrics', new Error('Network error')],
+        ])
+      );
 
       const result = await intelligenceAnalyticsSource.fetchSavingsMetrics('24h');
 
