@@ -48,6 +48,32 @@ interface ArchitectureNetworksData {
 }
 
 class ArchitectureNetworksSource {
+  private static readonly MOCK_NODES: ArchitectureNode[] = [
+    { id: 'node-1', name: 'API Gateway', type: 'service' },
+    { id: 'node-2', name: 'Agent Service', type: 'service' },
+    { id: 'node-3', name: 'Polymorphic Agent', type: 'agent' },
+    { id: 'node-4', name: 'Code Reviewer', type: 'agent' },
+    { id: 'node-5', name: 'PostgreSQL', type: 'database' },
+    { id: 'node-6', name: 'Qdrant', type: 'database' },
+    { id: 'node-7', name: 'Intelligence Service', type: 'service' },
+    { id: 'node-8', name: 'Event Stream', type: 'service' },
+  ];
+
+  private static readonly MOCK_EDGES: ArchitectureEdge[] = [
+    { source: 'node-1', target: 'node-2', type: 'routes-to' },
+    { source: 'node-2', target: 'node-3', type: 'delegates-to' },
+    { source: 'node-2', target: 'node-4', type: 'delegates-to' },
+    { source: 'node-3', target: 'node-5', type: 'queries' },
+    { source: 'node-3', target: 'node-6', type: 'queries' },
+    { source: 'node-4', target: 'node-5', type: 'queries' },
+    { source: 'node-7', target: 'node-5', type: 'queries' },
+    { source: 'node-7', target: 'node-6', type: 'queries' },
+    { source: 'node-7', target: 'node-3', type: 'injects-patterns' },
+    { source: 'node-7', target: 'node-4', type: 'injects-patterns' },
+    { source: 'node-8', target: 'node-7', type: 'streams-to' },
+    { source: 'node-1', target: 'node-8', type: 'publishes-to' },
+  ];
+
   async fetchSummary(timeRange: string): Promise<{ data: ArchitectureSummary; isMock: boolean }> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
@@ -93,7 +119,7 @@ class ArchitectureNetworksSource {
     // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
     if (USE_MOCK_DATA && !isTestEnv) {
       return {
-        data: [],
+        data: ArchitectureNetworksSource.MOCK_NODES,
         isMock: true,
       };
     }
@@ -110,23 +136,25 @@ class ArchitectureNetworksSource {
 
     // Seed realistic topology with 6-8 nodes and 10-12 edges
     return {
-      data: [
-        { id: 'node-1', name: 'API Gateway', type: 'service' },
-        { id: 'node-2', name: 'Agent Service', type: 'service' },
-        { id: 'node-3', name: 'Polymorphic Agent', type: 'agent' },
-        { id: 'node-4', name: 'Code Reviewer', type: 'agent' },
-        { id: 'node-5', name: 'PostgreSQL', type: 'database' },
-        { id: 'node-6', name: 'Qdrant', type: 'database' },
-        { id: 'node-7', name: 'Intelligence Service', type: 'service' },
-        { id: 'node-8', name: 'Event Stream', type: 'service' },
-      ],
+      data: ArchitectureNetworksSource.MOCK_NODES,
       isMock: true,
     };
   }
 
   async fetchEdges(timeRange: string): Promise<{ data: ArchitectureEdge[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: ArchitectureNetworksSource.MOCK_EDGES,
+        isMock: true,
+      };
+    }
+
     try {
-      const response = await fetch(`/api/knowledge/entities?timeRange=${timeRange}`);
+      const response = await fetch(`/api/architecture/edges?timeRange=${timeRange}`);
       if (response.ok) {
         const data = await response.json();
         return { data: Array.isArray(data) ? data : [], isMock: false };
@@ -137,25 +165,23 @@ class ArchitectureNetworksSource {
 
     // Seed edges connecting the nodes (10-12 edges)
     return {
-      data: [
-        { source: 'node-1', target: 'node-2', type: 'routes-to' },
-        { source: 'node-2', target: 'node-3', type: 'delegates-to' },
-        { source: 'node-2', target: 'node-4', type: 'delegates-to' },
-        { source: 'node-3', target: 'node-5', type: 'queries' },
-        { source: 'node-3', target: 'node-6', type: 'queries' },
-        { source: 'node-4', target: 'node-5', type: 'queries' },
-        { source: 'node-7', target: 'node-5', type: 'queries' },
-        { source: 'node-7', target: 'node-6', type: 'queries' },
-        { source: 'node-7', target: 'node-3', type: 'injects-patterns' },
-        { source: 'node-7', target: 'node-4', type: 'injects-patterns' },
-        { source: 'node-8', target: 'node-7', type: 'streams-to' },
-        { source: 'node-1', target: 'node-8', type: 'publishes-to' },
-      ],
+      data: ArchitectureNetworksSource.MOCK_EDGES,
       isMock: true,
     };
   }
 
   async fetchKnowledgeEntities(timeRange: string): Promise<{ data: KnowledgeEntity[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: [],
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/knowledge/entities?timeRange=${timeRange}`);
       if (response.ok) {
@@ -173,6 +199,17 @@ class ArchitectureNetworksSource {
   }
 
   async fetchEventFlow(timeRange: string): Promise<{ data: EventFlow; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: { events: [] },
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/events/flow?timeRange=${timeRange}`);
       if (response.ok) {

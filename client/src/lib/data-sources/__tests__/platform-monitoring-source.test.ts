@@ -165,6 +165,7 @@ describe('PlatformMonitoringSource', () => {
       const mockStatus: SystemStatus = {
         overall: 'healthy',
         uptime: 99.9,
+        lastIncident: new Date().toISOString(),
         responseTime: 150,
         services: [],
       };
