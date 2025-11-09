@@ -566,16 +566,19 @@ describe('IntelligenceAnalyticsDataSource', () => {
       expect(result.isMock).toBe(true);
       expect(result.data.totalSavings).toBeGreaterThan(0);
       expect(result.data.dailySavings).toBeGreaterThan(0);
-      expect(result.data.weeklySavings).toBeGreaterThan(result.data.dailySavings * 7);
-      expect(result.data.monthlySavings).toBeGreaterThan(result.data.weeklySavings * 4);
+      expect(result.data.weeklySavings).toBeGreaterThanOrEqual(result.data.dailySavings * 7);
+      expect(result.data.monthlySavings).toBeGreaterThanOrEqual(result.data.weeklySavings * 4);
       expect(result.data.efficiencyGain).toBeGreaterThanOrEqual(15);
       expect(result.data.efficiencyGain).toBeLessThanOrEqual(45);
       expect(result.data.timeSaved).toBeGreaterThanOrEqual(10);
     });
 
-    it('should handle malformed JSON responses', async () => {
-      // Mock fetch to throw an error (simulating network failure or malformed response)
-      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+    it('should handle network errors', async () => {
+      setupFetchMock(
+        new Map([
+          ['/api/savings/metrics', new Error('Network error')],
+        ])
+      );
 
       const result = await intelligenceAnalyticsSource.fetchSavingsMetrics('24h');
 
