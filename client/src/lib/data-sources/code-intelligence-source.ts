@@ -1,3 +1,5 @@
+import { USE_MOCK_DATA } from '../mock-data/config';
+
 export interface CodeAnalysisData {
   files_analyzed: number;
   avg_complexity: number;
@@ -48,6 +50,24 @@ export interface CodeIntelligenceData {
 
 class CodeIntelligenceDataSource {
   async fetchCodeAnalysis(timeRange: string): Promise<{ data: CodeAnalysisData; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: {
+          files_analyzed: 1250,
+          avg_complexity: 7.2,
+          code_smells: 23,
+          security_issues: 2,
+          complexity_trend: [],
+          quality_trend: [],
+        },
+        isMock: true,
+      };
+    }
+
     try {
       const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
       const response = await fetch(`${omniarchonUrl}/api/intelligence/code/analysis?timeWindow=${timeRange}`);
@@ -76,6 +96,33 @@ class CodeIntelligenceDataSource {
   }
 
   async fetchCompliance(timeRange: string): Promise<{ data: ComplianceData; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: {
+          summary: {
+            totalFiles: 150,
+            compliantFiles: 120,
+            nonCompliantFiles: 25,
+            pendingFiles: 5,
+            compliancePercentage: 80.0,
+            avgComplianceScore: 0.85,
+          },
+          statusBreakdown: [
+            { status: "compliant", count: 120, percentage: 80.0 },
+            { status: "non_compliant", count: 25, percentage: 16.7 },
+            { status: "pending", count: 5, percentage: 3.3 },
+          ],
+          nodeTypeBreakdown: [],
+          trend: [],
+        },
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/intelligence/code/compliance?timeWindow=${timeRange}`);
       if (response.ok) {
@@ -112,6 +159,28 @@ class CodeIntelligenceDataSource {
   }
 
   async fetchPatternSummary(): Promise<{ data: PatternSummary; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: {
+          totalPatterns: 125,
+          activePatterns: 98,
+          qualityScore: 8.5,
+          usageCount: 1247,
+          recentDiscoveries: 3,
+          topPatterns: [
+            { id: '1', name: 'OAuth Authentication', category: 'Security', quality: 0.95, usage: 45 },
+            { id: '2', name: 'Database Connection Pool', category: 'Data', quality: 0.92, usage: 32 },
+            { id: '3', name: 'Error Handling Middleware', category: 'Error', quality: 0.89, usage: 28 },
+          ],
+        },
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/intelligence/patterns/summary`);
       if (response.ok) {

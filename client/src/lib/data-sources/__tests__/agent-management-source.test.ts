@@ -330,6 +330,103 @@ describe('AgentManagementDataSource', () => {
     });
   });
 
+  describe('fetchRecentDecisions', () => {
+    it('should return routing decisions from API', async () => {
+      const mockDecisions = [
+        {
+          id: 'dec-1',
+          correlationId: 'corr-1',
+          userRequest: 'Create a new feature',
+          selectedAgent: 'agent-1',
+          confidenceScore: 0.92,
+          routingStrategy: 'enhanced_fuzzy_matching',
+          routingTimeMs: 45,
+          createdAt: '2024-01-01T00:00:00Z',
+        },
+      ];
+
+      setupFetchMock(
+        new Map([
+          ['/api/intelligence/routing/decisions', createMockResponse(mockDecisions)],
+        ])
+      );
+
+      const result = await agentManagementSource.fetchRecentDecisions(10);
+
+      expect(result.isMock).toBe(false);
+      expect(result.data).toEqual(mockDecisions);
+    });
+
+    it('should return mock data when API returns empty array', async () => {
+      setupFetchMock(
+        new Map([
+          ['/api/intelligence/routing/decisions', createMockResponse([])],
+        ])
+      );
+
+      const result = await agentManagementSource.fetchRecentDecisions(10);
+
+      expect(result.isMock).toBe(true);
+      // Should fallback to mock data
+      expect(result.data).toHaveLength(10);
+      expect(result.data[0]).toHaveProperty('id');
+      expect(result.data[0]).toHaveProperty('selectedAgent');
+    });
+
+    it('should return mock data when API fails', async () => {
+      setupFetchMock(
+        new Map([
+          ['/api/intelligence/routing/decisions', createMockResponse(null, { status: 500 })],
+        ])
+      );
+
+      const result = await agentManagementSource.fetchRecentDecisions(10);
+
+      expect(result.isMock).toBe(true);
+      expect(result.data).toHaveLength(10);
+    });
+
+    it('should respect limit parameter', async () => {
+      const mockDecisions = Array.from({ length: 5 }, (_, i) => ({
+        id: `dec-${i}`,
+        correlationId: `corr-${i}`,
+        userRequest: `Request ${i}`,
+        selectedAgent: 'agent-1',
+        confidenceScore: 0.9,
+        routingStrategy: 'enhanced_fuzzy_matching',
+        routingTimeMs: 50,
+        createdAt: '2024-01-01T00:00:00Z',
+      }));
+
+      setupFetchMock(
+        new Map([
+          ['/api/intelligence/routing/decisions', createMockResponse(mockDecisions)],
+        ])
+      );
+
+      const result = await agentManagementSource.fetchRecentDecisions(5);
+
+      expect(result.isMock).toBe(false);
+      expect(result.data).toHaveLength(5);
+    });
+
+    it('should handle network errors gracefully', async () => {
+      const networkError = new Error('Network connection lost');
+
+      setupFetchMock(
+        new Map([
+          ['/api/intelligence/routing/decisions', networkError],
+        ])
+      );
+
+      const result = await agentManagementSource.fetchRecentDecisions(10);
+
+      expect(result.isMock).toBe(true);
+      // Should fallback to mock data
+      expect(result.data).toHaveLength(10);
+    });
+  });
+
   describe('fetchAll', () => {
     it('should combine all data sources correctly', async () => {
       const mockAgents = [

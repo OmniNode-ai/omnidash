@@ -1,4 +1,6 @@
 // Platform Monitoring Data Source
+import { USE_MOCK_DATA } from '../mock-data/config';
+
 export interface SystemStatus {
   overall: "healthy" | "degraded" | "critical";
   services: ServiceStatus[];
@@ -49,6 +51,30 @@ interface PlatformMonitoringData {
 
 class PlatformMonitoringSource {
   async fetchSystemStatus(timeRange: string): Promise<{ data: SystemStatus; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: {
+          overall: 'healthy',
+          uptime: 99.9,
+          lastIncident: new Date(Date.now() - 86400000).toISOString(),
+          responseTime: 145,
+          services: [
+            { name: 'API Gateway', status: 'healthy', uptime: 99.95, responseTime: 45, lastCheck: new Date().toISOString(), dependencies: [] },
+            { name: 'Agent Service', status: 'healthy', uptime: 99.92, responseTime: 120, lastCheck: new Date().toISOString(), dependencies: ['PostgreSQL'] },
+            { name: 'PostgreSQL', status: 'healthy', uptime: 99.98, responseTime: 12, lastCheck: new Date().toISOString(), dependencies: [] },
+            { name: 'Qdrant', status: 'healthy', uptime: 99.88, responseTime: 23, lastCheck: new Date().toISOString(), dependencies: [] },
+            { name: 'Intelligence Service', status: 'healthy', uptime: 99.85, responseTime: 180, lastCheck: new Date().toISOString(), dependencies: ['PostgreSQL', 'Qdrant'] },
+            { name: 'Event Stream', status: 'healthy', uptime: 99.90, responseTime: 8, lastCheck: new Date().toISOString(), dependencies: [] },
+          ]
+        },
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/health/status?timeRange=${timeRange}`);
       if (response.ok) {

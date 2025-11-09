@@ -27,8 +27,11 @@ interface PlatformHealthData {
 
 class PlatformHealthSource {
   async fetchHealth(timeRange: string): Promise<{ data: PlatformHealth; isMock: boolean }> {
-    // Return comprehensive mock data if USE_MOCK_DATA is enabled
-    if (USE_MOCK_DATA) {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
       return { data: PlatformHealthMockData.generateHealth(), isMock: true };
     }
 
@@ -58,8 +61,11 @@ class PlatformHealthSource {
   }
 
   async fetchServices(): Promise<{ data: PlatformServices; isMock: boolean }> {
-    // Return comprehensive mock data if USE_MOCK_DATA is enabled
-    if (USE_MOCK_DATA) {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
       return { data: PlatformHealthMockData.generateServices(), isMock: true };
     }
 
