@@ -7,6 +7,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { USE_MOCK_DATA } from "@/lib/mock-data/config";
 
 // TypeScript interfaces for trace events
 interface TraceEvent {
@@ -38,7 +39,8 @@ export default function CorrelationTrace() {
   const { data: traceData, isLoading, error } = useQuery<TraceResponse>({
     queryKey: [`/api/intelligence/trace/${searchId || 'sample'}`],
     queryFn: async () => {
-      if (!searchId || searchId.length === 0) {
+      // If USE_MOCK_DATA is enabled or no search ID, return mock data
+      if (USE_MOCK_DATA || !searchId || searchId.length === 0) {
         // Return preloaded 4-hop sample trace
         const now = Date.now();
         return {

@@ -1,4 +1,4 @@
-import { MockDataGenerator as Gen } from '../mock-data/config';
+import { MockDataGenerator as Gen, USE_MOCK_DATA } from '../mock-data/config';
 import type { SavingsMetrics } from './intelligence-savings-source';
 
 // Re-export for external consumers
@@ -25,6 +25,26 @@ export interface RecentActivity {
 
 class IntelligenceAnalyticsDataSource {
   async fetchMetrics(timeRange: string): Promise<{ data: IntelligenceMetrics; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: {
+          totalQueries: 15420,
+          avgResponseTime: 1200,
+          successRate: 94.0,
+          fallbackRate: 6.0,
+          costPerQuery: 0.0012,
+          totalCost: 18.50,
+          qualityScore: 8.7,
+          userSatisfaction: 8.9,
+        },
+        isMock: true,
+      };
+    }
+
     // Try intelligence summary endpoint
     try {
       const response = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
@@ -93,6 +113,23 @@ class IntelligenceAnalyticsDataSource {
   }
 
   async fetchRecentActivity(limit: number = 5): Promise<{ data: RecentActivity[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: [
+          { action: "API optimization query", agent: "agent-performance", time: "2m ago", status: "completed", timestamp: new Date(Date.now() - 120000).toISOString() },
+          { action: "Debug database connection", agent: "agent-debug-intelligence", time: "5m ago", status: "completed", timestamp: new Date(Date.now() - 300000).toISOString() },
+          { action: "Create React component", agent: "agent-frontend-developer", time: "8m ago", status: "executing", timestamp: new Date(Date.now() - 480000).toISOString() },
+          { action: "Write unit tests", agent: "agent-testing", time: "12m ago", status: "completed", timestamp: new Date(Date.now() - 720000).toISOString() },
+          { action: "Design microservices", agent: "agent-api-architect", time: "15m ago", status: "completed", timestamp: new Date(Date.now() - 900000).toISOString() },
+        ],
+        isMock: true,
+      };
+    }
+
     // Try intelligence actions endpoint
     try {
       const response = await fetch(`/api/intelligence/actions/recent?limit=${limit}`);
@@ -148,6 +185,60 @@ class IntelligenceAnalyticsDataSource {
   }
 
   async fetchAgentPerformance(timeRange: string): Promise<{ data: AgentPerformance[]; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      return {
+        data: [
+          {
+            agentId: 'polymorphic-agent',
+            agentName: 'Polymorphic Agent',
+            totalRuns: 456,
+            avgResponseTime: 1200,
+            avgExecutionTime: 1200,
+            successRate: 95.2,
+            efficiency: 95.2,
+            avgQualityScore: 8.9,
+            popularity: 456,
+            costPerSuccess: 0.045,
+            p95Latency: 1450,
+            lastUsed: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          },
+          {
+            agentId: 'code-reviewer',
+            agentName: 'Code Reviewer',
+            totalRuns: 234,
+            avgResponseTime: 1800,
+            avgExecutionTime: 1800,
+            successRate: 92.5,
+            efficiency: 92.5,
+            avgQualityScore: 8.5,
+            popularity: 234,
+            costPerSuccess: 0.062,
+            p95Latency: 2100,
+            lastUsed: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+          },
+          {
+            agentId: 'test-generator',
+            agentName: 'Test Generator',
+            totalRuns: 189,
+            avgResponseTime: 3200,
+            avgExecutionTime: 3200,
+            successRate: 89.0,
+            efficiency: 89.0,
+            avgQualityScore: 8.2,
+            popularity: 189,
+            costPerSuccess: 0.051,
+            p95Latency: 3800,
+            lastUsed: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+          },
+        ],
+        isMock: true,
+      };
+    }
+
     try {
       const response = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
       if (response.ok) {
@@ -237,6 +328,37 @@ class IntelligenceAnalyticsDataSource {
   }
 
   async fetchSavingsMetrics(timeRange: string): Promise<{ data: SavingsMetrics; isMock: boolean }> {
+    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+
+    // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (USE_MOCK_DATA && !isTestEnv) {
+      const dailySavings = Math.max(1, Gen.currency(10, 50, 2));
+      const weeklySavings = Math.max(dailySavings * 7, Gen.currency(100, 500, 2));
+      const monthlySavings = Math.max(weeklySavings * 4, Gen.currency(5000, 50000, 2));
+      const totalSavings = Math.max(monthlySavings * 1.5, Gen.currency(10000, 100000, 2));
+      const efficiencyGain = Math.max(15, Math.min(45, Gen.randomFloat(25, 45, 1)));
+      const timeSaved = Math.max(10, Gen.randomFloat(50, 250, 1));
+
+      return {
+        data: {
+          totalSavings: Math.max(0, totalSavings),
+          monthlySavings: Math.max(0, monthlySavings),
+          weeklySavings: Math.max(0, weeklySavings),
+          dailySavings: Math.max(0, dailySavings),
+          intelligenceRuns: 15420,
+          baselineRuns: 23500,
+          avgTokensPerRun: 3200,
+          avgComputePerRun: 1.2,
+          costPerToken: 0.000002,
+          costPerCompute: 0.05,
+          efficiencyGain: Math.max(0, efficiencyGain),
+          timeSaved: Math.max(1, timeSaved),
+        },
+        isMock: true,
+      };
+    }
+
     // Try to fetch from API first
     try {
       const response = await fetch(`/api/savings/metrics?timeRange=${timeRange}`);
