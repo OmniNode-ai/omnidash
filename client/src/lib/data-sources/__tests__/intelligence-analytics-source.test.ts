@@ -573,7 +573,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
       expect(result.data.timeSaved).toBeGreaterThanOrEqual(10);
     });
 
-    it('should handle malformed JSON responses', async () => {
+    it('should handle network errors', async () => {
       setupFetchMock(
         new Map([
           ['/api/savings/metrics', new Error('Network error')],

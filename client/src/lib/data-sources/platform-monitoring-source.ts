@@ -50,29 +50,64 @@ interface PlatformMonitoringData {
 }
 
 class PlatformMonitoringSource {
+  private static readonly MOCK_SYSTEM_STATUS: SystemStatus = {
+    overall: 'healthy',
+    uptime: 99.9,
+    lastIncident: new Date(Date.now() - 86400000).toISOString(),
+    responseTime: 145,
+    services: [
+      { name: 'API Gateway', status: 'healthy', uptime: 99.95, responseTime: 45, lastCheck: new Date().toISOString(), dependencies: [] },
+      { name: 'Agent Service', status: 'healthy', uptime: 99.92, responseTime: 120, lastCheck: new Date().toISOString(), dependencies: ['PostgreSQL'] },
+      { name: 'PostgreSQL', status: 'healthy', uptime: 99.98, responseTime: 12, lastCheck: new Date().toISOString(), dependencies: [] },
+      { name: 'Qdrant', status: 'healthy', uptime: 99.88, responseTime: 23, lastCheck: new Date().toISOString(), dependencies: [] },
+      { name: 'Intelligence Service', status: 'healthy', uptime: 99.85, responseTime: 180, lastCheck: new Date().toISOString(), dependencies: ['PostgreSQL', 'Qdrant'] },
+      { name: 'Event Stream', status: 'healthy', uptime: 99.90, responseTime: 8, lastCheck: new Date().toISOString(), dependencies: [] },
+    ]
+  };
+
+  private static readonly MOCK_DEVELOPER_METRICS: DeveloperMetrics = {
+    totalDevelopers: 24,
+    activeDevelopers: 18,
+    avgCommitsPerDay: 12.5,
+    avgPullRequestsPerDay: 4.2,
+    avgCodeReviewTime: 4.5,
+    avgDeploymentTime: 15,
+    codeQualityScore: 85,
+    testCoverage: 78,
+    bugResolutionTime: 2.5,
+  };
+
+  private static readonly MOCK_INCIDENTS: Incident[] = [
+    {
+      id: 'inc-1',
+      title: 'Database Connection Pool Exhaustion',
+      severity: 'high',
+      status: 'resolved',
+      affectedServices: ['PostgreSQL', 'Qdrant'],
+      startTime: new Date(Date.now() - 172800000).toISOString(),
+      endTime: new Date(Date.now() - 86400000).toISOString(),
+      description: 'Connection pool reached 95% capacity during peak load',
+      assignee: 'DevOps Team'
+    },
+    {
+      id: 'inc-2',
+      title: 'Increased API Response Time',
+      severity: 'medium',
+      status: 'investigating',
+      affectedServices: ['API Gateway', 'Agent Service'],
+      startTime: new Date(Date.now() - 3600000).toISOString(),
+      description: 'p95 latency increased from 1.2s to 2.5s across multiple endpoints',
+      assignee: 'Platform Team'
+    }
+  ];
+
   async fetchSystemStatus(timeRange: string): Promise<{ data: SystemStatus; isMock: boolean }> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
 
     // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
     if (USE_MOCK_DATA && !isTestEnv) {
-      return {
-        data: {
-          overall: 'healthy',
-          uptime: 99.9,
-          lastIncident: new Date(Date.now() - 86400000).toISOString(),
-          responseTime: 145,
-          services: [
-            { name: 'API Gateway', status: 'healthy', uptime: 99.95, responseTime: 45, lastCheck: new Date().toISOString(), dependencies: [] },
-            { name: 'Agent Service', status: 'healthy', uptime: 99.92, responseTime: 120, lastCheck: new Date().toISOString(), dependencies: ['PostgreSQL'] },
-            { name: 'PostgreSQL', status: 'healthy', uptime: 99.98, responseTime: 12, lastCheck: new Date().toISOString(), dependencies: [] },
-            { name: 'Qdrant', status: 'healthy', uptime: 99.88, responseTime: 23, lastCheck: new Date().toISOString(), dependencies: [] },
-            { name: 'Intelligence Service', status: 'healthy', uptime: 99.85, responseTime: 180, lastCheck: new Date().toISOString(), dependencies: ['PostgreSQL', 'Qdrant'] },
-            { name: 'Event Stream', status: 'healthy', uptime: 99.90, responseTime: 8, lastCheck: new Date().toISOString(), dependencies: [] },
-          ]
-        },
-        isMock: true,
-      };
+      return { data: PlatformMonitoringSource.MOCK_SYSTEM_STATUS, isMock: true };
     }
 
     try {
@@ -86,23 +121,7 @@ class PlatformMonitoringSource {
     }
 
     // Mock fallback with realistic service data
-    return {
-      data: {
-        overall: 'healthy',
-        uptime: 99.9,
-        lastIncident: new Date(Date.now() - 86400000).toISOString(),
-        responseTime: 145,
-        services: [
-          { name: 'API Gateway', status: 'healthy', uptime: 99.95, responseTime: 45, lastCheck: new Date().toISOString(), dependencies: [] },
-          { name: 'Agent Service', status: 'healthy', uptime: 99.92, responseTime: 120, lastCheck: new Date().toISOString(), dependencies: ['PostgreSQL'] },
-          { name: 'PostgreSQL', status: 'healthy', uptime: 99.98, responseTime: 12, lastCheck: new Date().toISOString(), dependencies: [] },
-          { name: 'Qdrant', status: 'healthy', uptime: 99.88, responseTime: 23, lastCheck: new Date().toISOString(), dependencies: [] },
-          { name: 'Intelligence Service', status: 'healthy', uptime: 99.85, responseTime: 180, lastCheck: new Date().toISOString(), dependencies: ['PostgreSQL', 'Qdrant'] },
-          { name: 'Event Stream', status: 'healthy', uptime: 99.90, responseTime: 8, lastCheck: new Date().toISOString(), dependencies: [] },
-        ]
-      },
-      isMock: true,
-    };
+    return { data: PlatformMonitoringSource.MOCK_SYSTEM_STATUS, isMock: true };
   }
 
   async fetchDeveloperMetrics(timeRange: string): Promise<{ data: DeveloperMetrics; isMock: boolean }> {
@@ -111,20 +130,7 @@ class PlatformMonitoringSource {
 
     // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
     if (USE_MOCK_DATA && !isTestEnv) {
-      return {
-        data: {
-          totalDevelopers: 24,
-          activeDevelopers: 18,
-          avgCommitsPerDay: 12.5,
-          avgPullRequestsPerDay: 4.2,
-          avgCodeReviewTime: 4.5,
-          avgDeploymentTime: 15,
-          codeQualityScore: 85,
-          testCoverage: 78,
-          bugResolutionTime: 2.5,
-        },
-        isMock: true,
-      };
+      return { data: PlatformMonitoringSource.MOCK_DEVELOPER_METRICS, isMock: true };
     }
 
     try {
@@ -138,20 +144,7 @@ class PlatformMonitoringSource {
     }
 
     // Mock fallback
-    return {
-      data: {
-        totalDevelopers: 24,
-        activeDevelopers: 18,
-        avgCommitsPerDay: 12.5,
-        avgPullRequestsPerDay: 4.2,
-        avgCodeReviewTime: 4.5,
-        avgDeploymentTime: 15,
-        codeQualityScore: 85,
-        testCoverage: 78,
-        bugResolutionTime: 2.5,
-      },
-      isMock: true,
-    };
+    return { data: PlatformMonitoringSource.MOCK_DEVELOPER_METRICS, isMock: true };
   }
 
   async fetchIncidents(timeRange: string): Promise<{ data: Incident[]; isMock: boolean }> {
@@ -160,32 +153,7 @@ class PlatformMonitoringSource {
 
     // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
     if (USE_MOCK_DATA && !isTestEnv) {
-      return {
-        data: [
-          {
-            id: 'inc-1',
-            title: 'Database Connection Pool Exhaustion',
-            severity: 'high',
-            status: 'resolved',
-            affectedServices: ['PostgreSQL', 'Qdrant'],
-            startTime: new Date(Date.now() - 172800000).toISOString(),
-            endTime: new Date(Date.now() - 86400000).toISOString(),
-            description: 'Connection pool reached 95% capacity during peak load',
-            assignee: 'DevOps Team'
-          },
-          {
-            id: 'inc-2',
-            title: 'Increased API Response Time',
-            severity: 'medium',
-            status: 'investigating',
-            affectedServices: ['API Gateway', 'Agent Service'],
-            startTime: new Date(Date.now() - 3600000).toISOString(),
-            description: 'p95 latency increased from 1.2s to 2.5s across multiple endpoints',
-            assignee: 'Platform Team'
-          }
-        ],
-        isMock: true,
-      };
+      return { data: PlatformMonitoringSource.MOCK_INCIDENTS, isMock: true };
     }
 
     try {
@@ -199,32 +167,7 @@ class PlatformMonitoringSource {
     }
 
     // Fallback: Return mock incidents (1 closed + 1 open for credibility)
-    return {
-      data: [
-        {
-          id: 'inc-1',
-          title: 'Database Connection Pool Exhaustion',
-          severity: 'high',
-          status: 'resolved',
-          affectedServices: ['PostgreSQL', 'Qdrant'],
-          startTime: new Date(Date.now() - 172800000).toISOString(),
-          endTime: new Date(Date.now() - 86400000).toISOString(),
-          description: 'Connection pool reached 95% capacity during peak load',
-          assignee: 'DevOps Team'
-        },
-        {
-          id: 'inc-2',
-          title: 'Increased API Response Time',
-          severity: 'medium',
-          status: 'investigating',
-          affectedServices: ['API Gateway', 'Agent Service'],
-          startTime: new Date(Date.now() - 3600000).toISOString(),
-          description: 'p95 latency increased from 1.2s to 2.5s across multiple endpoints',
-          assignee: 'Platform Team'
-        }
-      ],
-      isMock: true,
-    };
+    return { data: PlatformMonitoringSource.MOCK_INCIDENTS, isMock: true };
   }
 
   async fetchAll(timeRange: string): Promise<PlatformMonitoringData> {
