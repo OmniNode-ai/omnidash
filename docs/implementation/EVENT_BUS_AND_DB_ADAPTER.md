@@ -196,7 +196,7 @@ KAFKA_BROKERS=192.168.86.200:9092
 KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:9092
 
 # PostgreSQL
-DATABASE_URL=postgresql://postgres:password@192.168.86.200:5436/omninode_bridge
+DATABASE_URL=postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge

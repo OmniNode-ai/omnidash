@@ -11,7 +11,7 @@ import { sql } from 'drizzle-orm';
 config();
 
 const connectionString = process.env.DATABASE_URL ||
-  `postgresql://postgres:REDACTED_PASSWORD_1@192.168.86.200:5436/omninode_bridge`;
+  `postgresql://postgres:YOUR_PASSWORD_HERE@192.168.86.200:5436/omninode_bridge`;
 
 const pool = new Pool({ connectionString });
 const db = drizzle(pool);
