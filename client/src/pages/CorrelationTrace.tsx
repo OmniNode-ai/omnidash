@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Clock, CheckCircle, AlertCircle, Code, Database, Zap } from "lucide-react";
+import { Search, Clock, CheckCircle, AlertCircle, Code, Database, Zap, Settings, Download, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ExportButton } from "@/components/ExportButton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { USE_MOCK_DATA } from "@/lib/mock-data/config";
 
 // TypeScript interfaces for trace events
@@ -157,11 +157,28 @@ export default function CorrelationTrace() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Correlation Trace</h1>
-        <p className="text-muted-foreground">
-          Trace complete agent execution flow using correlation IDs
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Correlation Trace</h1>
+          <p className="ty-subtitle">
+            Trace complete agent execution flow using correlation IDs
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {USE_MOCK_DATA && <MockDataBadge />}
+          <Button variant="outline" size="sm">
+            <Settings className="w-4 h-4 mr-2" />
+            Configure
+          </Button>
+          <Button variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <Button variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Search Section */}
@@ -219,13 +236,7 @@ export default function CorrelationTrace() {
       {/* Summary Section */}
       {traceData && traceData.events.length > 0 && (
         <>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Trace Results</h2>
-            <ExportButton
-              data={traceData as unknown as Record<string, unknown>}
-              filename={`correlation-trace-${searchId}-${new Date().toISOString().split('T')[0]}`}
-            />
-          </div>
+          <h2 className="text-xl font-semibold mb-4">Trace Results</h2>
           <div className="grid gap-4 md:grid-cols-5">
             <Card>
               <CardHeader className="pb-3">

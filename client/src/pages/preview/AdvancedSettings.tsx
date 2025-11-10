@@ -8,11 +8,12 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Settings, 
-  Save, 
-  RefreshCw, 
-  Download, 
+import { MockDataBadge } from "@/components/MockDataBadge";
+import {
+  Settings,
+  Save,
+  RefreshCw,
+  Download,
   Upload,
   Bell,
   Shield,
@@ -256,7 +257,7 @@ export default function AdvancedSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Advanced Settings</h1>
-          <p className="text-muted-foreground">
+          <p className="ty-subtitle">
             Configure system behavior, notifications, and advanced features
           </p>
         </div>
@@ -266,15 +267,20 @@ export default function AdvancedSettings() {
               Unsaved Changes
             </Badge>
           )}
-          <Button variant="outline" onClick={handleReset}>
+          <MockDataBadge />
+          <Button variant="outline" size="sm">
+            <Settings className="w-4 h-4 mr-2" />
+            Configure
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleReset}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Reset
           </Button>
-          <Button variant="outline" onClick={handleExport}>
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button variant="outline" onClick={() => document.getElementById('import-settings')?.click()}>
+          <Button variant="outline" size="sm" onClick={() => document.getElementById('import-settings')?.click()}>
             <Upload className="w-4 h-4 mr-2" />
             Import
           </Button>
@@ -285,7 +291,7 @@ export default function AdvancedSettings() {
             onChange={handleImport}
             className="hidden"
           />
-          <Button onClick={handleSave} disabled={!hasUnsavedChanges}>
+          <Button size="sm" onClick={handleSave} disabled={!hasUnsavedChanges}>
             <Save className="w-4 h-4 mr-2" />
             Save Changes
           </Button>

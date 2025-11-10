@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { intelligenceAnalyticsSource } from "@/lib/data-sources";
 import { intelligenceSavingsSource } from "@/lib/data-sources/intelligence-savings-source";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardSection } from "@/components/DashboardSection";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ import { format } from "date-fns";
 // Import existing components
 import { EnhancedAnalytics } from "./EnhancedAnalytics";
 import { MockDataBadge } from "@/components/MockDataBadge";
+import { formatCurrency } from "@/lib/utils";
 
 // Mock data interfaces
 interface IntelligenceMetrics {
@@ -172,7 +174,7 @@ export default function IntelligenceAnalytics() {
   const usingMockSavings = savingsResult?.isMock || false;
 
   // Fetch agent comparisons for Savings by Agent section
-  const { data: agentComparisonsResult } = useQuery({
+  const { data: agentComparisonsResult, isLoading: agentComparisonsLoading } = useQuery({
     queryKey: ['agent-comparisons', timeRange],
     queryFn: () => intelligenceSavingsSource.fetchAgentComparisons(timeRange),
     retry: false,
@@ -181,7 +183,7 @@ export default function IntelligenceAnalytics() {
   const agentComparisons = agentComparisonsResult?.data || [];
 
   // Fetch provider savings for Savings by Provider section
-  const { data: providerSavingsResult } = useQuery({
+  const { data: providerSavingsResult, isLoading: providerSavingsLoading } = useQuery({
     queryKey: ['provider-savings', timeRange],
     queryFn: () => intelligenceSavingsSource.fetchProviderSavings(timeRange),
     retry: false,
@@ -189,7 +191,8 @@ export default function IntelligenceAnalytics() {
   });
   const providerSavings = providerSavingsResult?.data || [];
 
-  const isLoading = metricsLoading || savingsLoading;
+  // Include ALL query loading states to prevent race conditions and ensure all data is available before rendering
+  const isLoading = metricsLoading || savingsLoading || activityLoading || agentComparisonsLoading || providerSavingsLoading;
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -320,12 +323,8 @@ export default function IntelligenceAnalytics() {
 
         <TabsContent value="overview" className="space-y-6">
           {/* Intelligence Operations Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Intelligence Operations Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <DashboardSection title="Intelligence Operations Summary">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Queries</CardTitle>
@@ -347,7 +346,11 @@ export default function IntelligenceAnalytics() {
                   <Target className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className={`text-2xl font-bold ${
+                    (intelligenceMetrics?.successRate || 0) >= 90 ? 'text-green-600' :
+                    (intelligenceMetrics?.successRate || 0) >= 70 ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
                     {Math.max(0, Math.min(100, intelligenceMetrics?.successRate || 0)).toFixed(1)}%
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -370,51 +373,23 @@ export default function IntelligenceAnalytics() {
                   </p>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-sm">
-                        <p className="text-xs">
-                          <strong>Methodology:</strong> Savings calculated by comparing agent performance with intelligence (pattern injection, optimized routing) vs baseline (standard AI agents). Includes token reduction (34%), local compute offload (12%), and avoided API calls (8%).
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    ${savingsMetrics?.totalSavings?.toLocaleString() || "0"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {savingsMetrics?.totalSavings ? `Total savings in ${timeRange}` : "No savings data"}
-                  </p>
-                </CardContent>
-              </Card>
             </div>
-            </CardContent>
-          </Card>
+          </DashboardSection>
 
           {/* Performance Snapshot */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Snapshot</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <DashboardSection title="Performance Snapshot">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Quality Score</CardTitle>
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className={`text-2xl font-bold ${
+                    (intelligenceMetrics?.qualityScore || 0) >= 8 ? 'text-green-600' :
+                    (intelligenceMetrics?.qualityScore || 0) >= 6 ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
                     {intelligenceMetrics?.qualityScore?.toFixed(1) || "0"}/10
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -429,7 +404,11 @@ export default function IntelligenceAnalytics() {
                   <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className={`text-2xl font-bold ${
+                    (intelligenceMetrics?.userSatisfaction || 0) >= 8 ? 'text-green-600' :
+                    (intelligenceMetrics?.userSatisfaction || 0) >= 6 ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
                     {intelligenceMetrics?.userSatisfaction?.toFixed(1) || "0"}/10
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -444,7 +423,11 @@ export default function IntelligenceAnalytics() {
                   <Target className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className={`text-2xl font-bold ${
+                    (intelligenceMetrics?.fallbackRate || 0) <= 5 ? 'text-green-600' :
+                    (intelligenceMetrics?.fallbackRate || 0) <= 10 ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
                     {intelligenceMetrics?.fallbackRate?.toFixed(1) || "0"}%
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -468,24 +451,19 @@ export default function IntelligenceAnalytics() {
                 </CardContent>
               </Card>
             </div>
-            </CardContent>
-          </Card>
+          </DashboardSection>
 
           {/* Cost Savings Highlights */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Cost Savings Highlights</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <DashboardSection title="Cost Savings Highlights">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Daily Savings</CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    ${savingsMetrics?.dailySavings?.toFixed(2) || "0.00"}
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(savingsMetrics?.dailySavings || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Average daily cost reduction
@@ -499,8 +477,8 @@ export default function IntelligenceAnalytics() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    ${savingsMetrics?.weeklySavings?.toFixed(2) || "0.00"}
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(savingsMetrics?.weeklySavings || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Projected weekly savings
@@ -514,8 +492,8 @@ export default function IntelligenceAnalytics() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    ${savingsMetrics?.monthlySavings?.toFixed(2) || "0.00"}
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(savingsMetrics?.monthlySavings || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Projected monthly savings
@@ -536,8 +514,7 @@ export default function IntelligenceAnalytics() {
                 </CardContent>
               </Card>
             </div>
-            </CardContent>
-          </Card>
+          </DashboardSection>
 
           {/* Recent Activity & Spacer */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -588,13 +565,11 @@ export default function IntelligenceAnalytics() {
 
         <TabsContent value="intelligence" className="space-y-4">
           {/* Query Performance Deep Dive */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Query Performance Details</CardTitle>
-              <CardDescription>In-depth analysis of intelligence query execution and response patterns</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <DashboardSection
+            title="Query Performance Details"
+            description="In-depth analysis of intelligence query execution and response patterns"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2 p-4 border rounded-lg">
                   <div className="text-sm font-medium text-muted-foreground">Total Queries</div>
                   <div className="text-2xl font-bold">{intelligenceMetrics?.totalQueries?.toLocaleString() || "0"}</div>
@@ -622,8 +597,7 @@ export default function IntelligenceAnalytics() {
                   <div className="text-xs text-muted-foreground">Lower is better</div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+          </DashboardSection>
 
           {/* Quality Metrics Deep Dive */}
           <Card>
@@ -834,10 +808,9 @@ export default function IntelligenceAnalytics() {
           ) : (
             <>
               {/* Cost Savings Breakdown with Enhanced Trends */}
-              <Card>
-                <CardHeader>
+              <DashboardSection title="Cost Savings Breakdown">
+                <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <CardTitle>Cost Savings Breakdown</CardTitle>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Info className="h-4 w-4 text-muted-foreground cursor-help" />
@@ -849,8 +822,6 @@ export default function IntelligenceAnalytics() {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                </CardHeader>
-                <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -858,7 +829,7 @@ export default function IntelligenceAnalytics() {
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">${savingsMetrics?.totalSavings?.toLocaleString() || "0"}</div>
+                        <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.totalSavings || 0)}</div>
                         <div className="flex items-center gap-1 mt-1">
                           <TrendingUp className="h-3 w-3 text-green-600" />
                           <span className="text-xs text-green-600 font-medium">+12% from last period</span>
@@ -875,7 +846,7 @@ export default function IntelligenceAnalytics() {
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">${savingsMetrics?.dailySavings?.toFixed(2) || "0.00"}</div>
+                        <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.dailySavings || 0)}</div>
                         <div className="flex items-center gap-1 mt-1">
                           <TrendingUp className="h-3 w-3 text-green-600" />
                           <span className="text-xs text-green-600 font-medium">+8% vs yesterday</span>
@@ -892,7 +863,7 @@ export default function IntelligenceAnalytics() {
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">${savingsMetrics?.weeklySavings?.toFixed(2) || "0.00"}</div>
+                        <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.weeklySavings || 0)}</div>
                         <div className="flex items-center gap-1 mt-1">
                           <TrendingUp className="h-3 w-3 text-green-600" />
                           <span className="text-xs text-green-600 font-medium">+15% vs last week</span>
@@ -909,7 +880,7 @@ export default function IntelligenceAnalytics() {
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">${savingsMetrics?.monthlySavings?.toFixed(2) || "0.00"}</div>
+                        <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.monthlySavings || 0)}</div>
                         <div className="flex items-center gap-1 mt-1">
                           <TrendingUp className="h-3 w-3 text-green-600" />
                           <span className="text-xs text-green-600 font-medium">+18% MoM growth</span>
@@ -920,8 +891,8 @@ export default function IntelligenceAnalytics() {
                       </CardContent>
                     </Card>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </DashboardSection>
 
               {/* Expandable Token & Compute Usage Comparison */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -946,7 +917,7 @@ export default function IntelligenceAnalytics() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      {expandedSection === 'tokens' ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                      {expandedSection === 'tokens' ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                     </div>
                     <CardDescription>
                       {Math.round((savingsMetrics?.avgTokensPerRun || 0) * 0.4).toLocaleString()} tokens saved per run
@@ -1074,7 +1045,7 @@ export default function IntelligenceAnalytics() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      {expandedSection === 'compute' ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                      {expandedSection === 'compute' ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                     </div>
                     <CardDescription>
                       {((savingsMetrics?.avgComputePerRun || 0) * 0.6).toFixed(1)} compute units saved per run
@@ -1282,7 +1253,7 @@ export default function IntelligenceAnalytics() {
                             </div>
                           </TableCell>
                           <TableCell className="text-right font-medium text-green-600">
-                            ${provider.savingsAmount.toLocaleString()}
+                            {formatCurrency(provider.savingsAmount)}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
@@ -1597,7 +1568,7 @@ export default function IntelligenceAnalytics() {
               {selectedProvider?.providerName} - Provider Breakdown
             </DialogTitle>
             <DialogDescription>
-              Detailed cost analysis for {selectedProvider?.providerName} showing ${selectedProvider?.savingsAmount.toLocaleString()} in savings
+              Detailed cost analysis for {selectedProvider?.providerName} showing {formatCurrency(selectedProvider?.savingsAmount || 0)} in savings
             </DialogDescription>
           </DialogHeader>
 
@@ -1608,7 +1579,7 @@ export default function IntelligenceAnalytics() {
                 <div className="border rounded-lg p-4">
                   <div className="text-sm text-muted-foreground">Total Savings</div>
                   <div className="text-2xl font-bold text-green-600">
-                    ${selectedProvider.savingsAmount.toLocaleString()}
+                    {formatCurrency(selectedProvider.savingsAmount)}
                   </div>
                 </div>
                 <div className="border rounded-lg p-4">
@@ -1640,7 +1611,7 @@ export default function IntelligenceAnalytics() {
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-medium">Token Processing Costs</span>
                       <span className="text-lg font-bold text-blue-600">
-                        ${(selectedProvider.savingsAmount * 0.68).toFixed(2)}
+                        {formatCurrency(selectedProvider.savingsAmount * 0.68)}
                       </span>
                     </div>
                     <div className="space-y-2">
@@ -1670,7 +1641,7 @@ export default function IntelligenceAnalytics() {
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-medium">API Call Reduction</span>
                       <span className="text-lg font-bold text-green-600">
-                        ${(selectedProvider.savingsAmount * 0.22).toFixed(2)}
+                        {formatCurrency(selectedProvider.savingsAmount * 0.22)}
                       </span>
                     </div>
                     <div className="space-y-2">
@@ -1697,7 +1668,7 @@ export default function IntelligenceAnalytics() {
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-medium">Compute Optimization</span>
                       <span className="text-lg font-bold text-purple-600">
-                        ${(selectedProvider.savingsAmount * 0.10).toFixed(2)}
+                        {formatCurrency(selectedProvider.savingsAmount * 0.10)}
                       </span>
                     </div>
                     <div className="space-y-2 text-sm">

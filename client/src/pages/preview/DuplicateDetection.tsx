@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { MockDataBadge } from "@/components/MockDataBadge";
 import { SavingsTooltip } from "@/components/SavingsTooltip";
 import { RefactorPlanModal } from "@/components/RefactorPlanModal";
+import { DashboardSection } from "@/components/DashboardSection";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,7 @@ import {
   Shield,
   Lightbulb
 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 interface DuplicateCode {
   id: string;
@@ -429,7 +430,6 @@ const DuplicateDetection: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <MockDataBadge />
           <Button variant="outline" size="sm">
             <RefreshCw className="w-4 h-4 mr-2" />
             Rescan
@@ -562,7 +562,7 @@ const DuplicateDetection: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-green-600">
-                      ${duplicate.estimatedSavings.toLocaleString()}
+                      {formatCurrency(duplicate.estimatedSavings)}
                     </div>
                     <SavingsTooltip className="text-sm text-muted-foreground" />
                   </div>
@@ -806,7 +806,7 @@ const DuplicateDetection: React.FC = () => {
                     <div>
                       <SavingsTooltip className="text-sm font-medium text-muted-foreground">Estimated Savings</SavingsTooltip>
                       <div className="text-2xl font-bold text-green-600">
-                        ${plan.estimatedSavings.toLocaleString()}
+                        {formatCurrency(plan.estimatedSavings)}
                       </div>
                     </div>
                     <div>
@@ -889,66 +889,63 @@ const DuplicateDetection: React.FC = () => {
       {/* Analytics View */}
       {activeView === "analytics" && (
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Duplicate Analysis</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Search className="w-5 h-5 mr-2" />
-                  Total Duplicates
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">47</div>
-                <div className="text-sm text-muted-foreground">+12 from last scan</div>
-              </CardContent>
-            </Card>
+          <DashboardSection
+            title="Duplicate Analysis"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Search className="w-5 h-5 mr-2" />
+                    Total Duplicates
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">47</div>
+                  <div className="text-sm text-muted-foreground">+12 from last scan</div>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <DollarSign className="w-5 h-5 mr-2" />
-                  <SavingsTooltip />
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">$156K</div>
-                <div className="text-sm text-muted-foreground">Total estimated savings</div>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <DollarSign className="w-5 h-5 mr-2" />
+                    <SavingsTooltip />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">$156K</div>
+                  <div className="text-sm text-muted-foreground">Total estimated savings</div>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Clock className="w-5 h-5 mr-2" />
-                  Refactoring Time
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">3.2 weeks</div>
-                <div className="text-sm text-muted-foreground">Total estimated time</div>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Clock className="w-5 h-5 mr-2" />
+                    Refactoring Time
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">3.2 weeks</div>
+                  <div className="text-sm text-muted-foreground">Total estimated time</div>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Target className="w-5 h-5 mr-2" />
-                  High Impact
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">8</div>
-                <div className="text-sm text-muted-foreground">Critical/High severity</div>
-              </CardContent>
-            </Card>
-          </div>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Target className="w-5 h-5 mr-2" />
+                    High Impact
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">8</div>
+                  <div className="text-sm text-muted-foreground">Critical/High severity</div>
+                </CardContent>
+              </Card>
+            </div>
+          </DashboardSection>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>

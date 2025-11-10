@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { MockDataBadge } from "@/components/MockDataBadge";
+import { DashboardSection } from "@/components/DashboardSection";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,7 @@ import {
   Shield,
   Lightbulb
 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 interface TechDebtMetric {
   name: string;
@@ -747,46 +748,41 @@ const TechDebtAnalysis: React.FC = () => {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Technical Debt Overview</CardTitle>
-              <CardDescription>
-                Track and manage technical debt across your codebase with key metrics and trends.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Key Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {techDebtMetrics.map((metric, index) => (
-              <Card key={index}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{metric.name}</CardTitle>
-                  <div className="flex items-center gap-2">
-                    {getTrendIcon(metric.trend)}
-                    <Badge variant={getSeverityColor(metric.severity)}>
-                      {metric.severity}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {metric.current}
-                    {!metric.unit.startsWith('%') && !metric.unit.startsWith('/') ? ' ' : ''}
-                    {metric.unit}
-                  </div>
-                  <div className="flex items-center text-xs text-muted-foreground">
-                    {metric.trend === 'up' ? '+' : ''}{((metric.current - metric.previous) / metric.previous * 100).toFixed(1)}% from last period
-                  </div>
-                  <Progress
-                    value={metric.severity === 'critical' ? 100 : metric.severity === 'high' ? 75 : metric.severity === 'medium' ? 50 : 25}
-                    className="mt-2"
-                  />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-            </CardContent>
-          </Card>
+          <DashboardSection
+            title="Technical Debt Overview"
+            description="Track and manage technical debt across your codebase with key metrics and trends."
+            showMockBadge
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {techDebtMetrics.map((metric, index) => (
+                <Card key={index}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{metric.name}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {getTrendIcon(metric.trend)}
+                      <Badge variant={getSeverityColor(metric.severity)}>
+                        {metric.severity}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {metric.current}
+                      {!metric.unit.startsWith('%') && !metric.unit.startsWith('/') ? ' ' : ''}
+                      {metric.unit}
+                    </div>
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      {metric.trend === 'up' ? '+' : ''}{((metric.current - metric.previous) / metric.previous * 100).toFixed(1)}% from last period
+                    </div>
+                    <Progress
+                      value={metric.severity === 'critical' ? 100 : metric.severity === 'high' ? 75 : metric.severity === 'medium' ? 50 : 25}
+                      className="mt-2"
+                    />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </DashboardSection>
 
           {/* Tech Debt Health Score */}
           <Card>
@@ -865,7 +861,7 @@ const TechDebtAnalysis: React.FC = () => {
                               <DollarSign className="w-4 h-4 text-green-600" />
                               <span className="text-muted-foreground">Savings:</span>
                               <span className="font-semibold text-green-600">
-                                ${opp.costSavings.toLocaleString()}
+                                {formatCurrency(opp.costSavings)}
                               </span>
                             </div>
                           </div>
@@ -1200,7 +1196,7 @@ const TechDebtAnalysis: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <div className="text-2xl font-bold text-green-600">
-                            ${opportunity.costSavings.toLocaleString()}
+                            {formatCurrency(opportunity.costSavings)}
                           </div>
                           <SavingsTooltip className="text-sm text-muted-foreground" />
                         </div>
@@ -1398,7 +1394,7 @@ const TechDebtAnalysis: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold text-green-600">
-                          ${duplicate.estimatedSavings.toLocaleString()}
+                          {formatCurrency(duplicate.estimatedSavings)}
                         </div>
                         <SavingsTooltip className="text-sm text-muted-foreground" />
                       </div>
@@ -1634,7 +1630,7 @@ const TechDebtAnalysis: React.FC = () => {
                         <div>
                           <SavingsTooltip className="text-sm font-medium text-muted-foreground">Estimated Savings</SavingsTooltip>
                           <div className="text-2xl font-bold text-green-600">
-                            ${plan.estimatedSavings.toLocaleString()}
+                            {formatCurrency(plan.estimatedSavings)}
                           </div>
                         </div>
                         <div>
@@ -1717,61 +1713,64 @@ const TechDebtAnalysis: React.FC = () => {
           {/* Analytics View */}
           {activeView === "analytics" && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold">Duplicate Analysis</h2>
+              <DashboardSection
+                title="Duplicate Analysis"
+                showMockBadge
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Search className="w-5 h-5 mr-2" />
+                        Total Duplicates
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">47</div>
+                      <div className="text-sm text-muted-foreground">+12 from last scan</div>
+                    </CardContent>
+                  </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Search className="w-5 h-5 mr-2" />
-                      Total Duplicates
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">47</div>
-                    <div className="text-sm text-muted-foreground">+12 from last scan</div>
-                  </CardContent>
-                </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <DollarSign className="w-5 h-5 mr-2" />
+                        <SavingsTooltip />
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-green-600">$156K</div>
+                      <div className="text-sm text-muted-foreground">Total estimated savings</div>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <DollarSign className="w-5 h-5 mr-2" />
-                      <SavingsTooltip />
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600">$156K</div>
-                    <div className="text-sm text-muted-foreground">Total estimated savings</div>
-                  </CardContent>
-                </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Clock className="w-5 h-5 mr-2" />
+                        Refactoring Time
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">3.2 weeks</div>
+                      <div className="text-sm text-muted-foreground">Total estimated time</div>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Clock className="w-5 h-5 mr-2" />
-                      Refactoring Time
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">3.2 weeks</div>
-                    <div className="text-sm text-muted-foreground">Total estimated time</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Target className="w-5 h-5 mr-2" />
-                      High Impact
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-red-600">8</div>
-                    <div className="text-sm text-muted-foreground">Critical/High severity</div>
-                  </CardContent>
-                </Card>
-              </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <Target className="w-5 h-5 mr-2" />
+                        High Impact
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-red-600">8</div>
+                      <div className="text-sm text-muted-foreground">Critical/High severity</div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </DashboardSection>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>

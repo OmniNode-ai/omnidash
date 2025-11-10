@@ -8,13 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { 
-  FileText, 
-  Wand2, 
-  CheckCircle, 
-  AlertTriangle, 
-  Copy, 
-  Download, 
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  FileText,
+  Wand2,
+  CheckCircle,
+  AlertTriangle,
+  Copy,
+  Download,
   Upload,
   RefreshCw,
   Eye,
@@ -28,8 +30,13 @@ import {
   Sparkles,
   FileCode,
   Shield,
-  Clock
+  Clock,
+  CalendarIcon
 } from "lucide-react";
+import { DashboardSection } from "@/components/DashboardSection";
+import { MockDataBadge } from "@/components/MockDataBadge";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 // Mock contract schemas based on omnibase_core models
 const CONTRACT_TYPES = {
@@ -262,6 +269,18 @@ export default function ContractBuilder() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"prompt" | "form" | "yaml" | "validation" | "history" | "suggestions">("prompt");
   const [formData, setFormData] = useState<any>({});
+
+  // Time range state
+  const [timeRange, setTimeRange] = useState("30d");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+
+  // Loading and error states
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Mock data indicator (currently all data is mock)
+  const usingMockData = true;
   // Seed contract history with 1-2 prior contracts for demo
   const [contractHistory, setContractHistory] = useState<any[]>([
     {
@@ -714,29 +733,124 @@ export default function ContractBuilder() {
     );
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading contract builder...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="bg-destructive/10 border border-destructive rounded-lg p-4 text-destructive">
+        <strong>Error loading data:</strong> {error}
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <FileText className="w-8 h-8" />
-            Contract Builder
-          </h1>
-          <p className="text-muted-foreground mt-2">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="w-8 h-8 text-primary" />
+            <h1 className="text-3xl font-bold">Contract Builder</h1>
+          </div>
+          <p className="ty-subtitle">
             AI-powered ONEX v2.0 contract generation with structured editing
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setActiveTab("prompt")}>
+        <div className="flex items-center gap-2">
+          {usingMockData && <MockDataBadge />}
+          <Button variant="outline" size="sm" onClick={() => setActiveTab("prompt")}>
             <RefreshCw className="w-4 h-4 mr-2" />
             New Contract
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" size="sm">
             <Upload className="w-4 h-4 mr-2" />
             Import
           </Button>
-          <Button>
+          <Button variant="outline" size="sm">
+            <Settings className="w-4 h-4 mr-2" />
+            Configure
+          </Button>
+
+          {/* Time range selector with divider */}
+          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+            <Button
+              variant={timeRange === "1h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("1h")}
+            >
+              1H
+            </Button>
+            <Button
+              variant={timeRange === "24h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("24h")}
+            >
+              24H
+            </Button>
+            <Button
+              variant={timeRange === "7d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("7d")}
+            >
+              7D
+            </Button>
+            <Button
+              variant={timeRange === "30d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("30d")}
+            >
+              30D
+            </Button>
+
+            {/* Custom date range picker */}
+            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={timeRange === "custom" ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  Custom
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  onSelect={(range) => {
+                    setCustomRange(range);
+                    if (range?.from && range?.to) {
+                      setTimeRange("custom");
+                      setShowCustomPicker(false);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Show selected custom range */}
+            {timeRange === "custom" && customRange?.from && customRange?.to && (
+              <span className="text-sm text-muted-foreground">
+                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+              </span>
+            )}
+          </div>
+
+          <Button variant="outline" size="sm">
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
@@ -744,38 +858,35 @@ export default function ContractBuilder() {
       </div>
 
       {/* Contract Type Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Contract Type</CardTitle>
-          <CardDescription>Select the type of ONEX contract to generate</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {Object.entries(CONTRACT_TYPES).map(([key, type]) => {
-              const Icon = type.icon;
-              return (
-                <Card 
-                  key={key}
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    selectedType === key ? 'ring-2 ring-primary' : ''
-                  }`}
-                  onClick={() => setSelectedType(key)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-8 h-8 text-primary" />
-                      <div>
-                        <h3 className="font-semibold">{type.name}</h3>
-                        <p className="text-sm text-muted-foreground">{type.description}</p>
-                      </div>
+      <DashboardSection
+        title="Contract Type"
+        description="Select the type of ONEX contract to generate"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Object.entries(CONTRACT_TYPES).map(([key, type]) => {
+            const Icon = type.icon;
+            return (
+              <Card
+                key={key}
+                className={`cursor-pointer transition-all hover:shadow-md ${
+                  selectedType === key ? 'ring-2 ring-primary' : ''
+                }`}
+                onClick={() => setSelectedType(key)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-8 h-8 text-primary" />
+                    <div>
+                      <h3 className="font-semibold">{type.name}</h3>
+                      <p className="text-sm text-muted-foreground">{type.description}</p>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </DashboardSection>
 
       {/* Main Content Tabs */}
       <div className="space-y-4">

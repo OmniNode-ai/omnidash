@@ -34,8 +34,8 @@ export function RealtimeChart({
         <div>
           <h3 className="text-base font-semibold">{title}</h3>
           <div className="flex items-center gap-2 mt-1">
-            <Activity className="w-3 h-3 text-status-healthy animate-pulse" />
-            <span className="text-xs text-muted-foreground">Live</span>
+            <Activity className="w-4 h-4 text-status-healthy animate-pulse" />
+            <span className="text-xs text-muted-foreground font-normal">Live</span>
           </div>
         </div>
       </div>

@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Settings, 
-  MessageSquare, 
-  Search, 
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Settings,
+  MessageSquare,
+  Search,
   Eye,
   Play,
   Pause,
@@ -35,22 +37,31 @@ import {
   AlertTriangle,
   CheckCircle,
   BarChart3,
-  Activity
+  Activity,
+  CalendarIcon,
+  RefreshCw
 } from "lucide-react";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 // Import existing components
 import { ChatInterface } from "../../components/ChatInterface";
 import CorrelationTrace from "../CorrelationTrace";
 import AdvancedSettings from "./AdvancedSettings";
+import { DashboardSection } from "@/components/DashboardSection";
+import { MockDataBadge } from "@/components/MockDataBadge";
 
 // Types imported from data source
 
 export default function DeveloperTools() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [timeRange, setTimeRange] = useState("24h");
+  const [timeRange, setTimeRange] = useState("30d");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Use centralized data source
-  const { data: toolsData, isLoading } = useQuery({
+  const { data: toolsData, isLoading, error } = useQuery({
     queryKey: ['developer-tools', timeRange],
     queryFn: () => developerToolsSource.fetchAll(timeRange),
     refetchInterval: 60000,
@@ -59,6 +70,13 @@ export default function DeveloperTools() {
   const developerActivity = toolsData?.activity;
   const toolUsage = toolsData?.toolUsage;
   const queryHistory = toolsData?.queryHistory;
+  const usingMockData = true; // Developer tools currently uses mock data
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    // Trigger refetch logic here if needed
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
 
   if (isLoading) {
     return (
@@ -67,6 +85,14 @@ export default function DeveloperTools() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading developer tools...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-destructive/10 border border-destructive rounded-lg p-4 text-destructive">
+        <strong>Error loading data:</strong> {error instanceof Error ? error.message : 'Unknown error'}
       </div>
     );
   }
@@ -81,13 +107,87 @@ export default function DeveloperTools() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {usingMockData && <MockDataBadge />}
           <Button variant="outline" size="sm">
             <Settings className="w-4 h-4 mr-2" />
             Configure
           </Button>
-          <Button size="sm">
-            <Play className="w-4 h-4 mr-2" />
-            Quick Start
+          <Button variant="outline" size="sm">
+            <Eye className="w-4 h-4 mr-2" />
+            Export Report
+          </Button>
+
+          {/* TIME RANGE SELECTOR */}
+          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+            <Button
+              variant={timeRange === "1h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("1h")}
+            >
+              1H
+            </Button>
+            <Button
+              variant={timeRange === "24h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("24h")}
+            >
+              24H
+            </Button>
+            <Button
+              variant={timeRange === "7d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("7d")}
+            >
+              7D
+            </Button>
+            <Button
+              variant={timeRange === "30d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("30d")}
+            >
+              30D
+            </Button>
+
+            {/* Custom date range picker */}
+            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={timeRange === "custom" ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  Custom
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  onSelect={(range) => {
+                    setCustomRange(range);
+                    if (range?.from && range?.to) {
+                      setTimeRange("custom");
+                      setShowCustomPicker(false);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Show selected custom range */}
+            {timeRange === "custom" && customRange?.from && customRange?.to && (
+              <span className="text-sm text-muted-foreground">
+                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+              </span>
+            )}
+          </div>
+
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
         </div>
       </div>
@@ -102,67 +202,72 @@ export default function DeveloperTools() {
 
         <TabsContent value="overview" className="space-y-4">
           {/* Developer Activity Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Queries</CardTitle>
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {developerActivity?.totalQueries?.toLocaleString() || "0"}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {developerActivity?.activeSessions || 0} active sessions
-                </p>
-              </CardContent>
-            </Card>
+          <DashboardSection
+            title="Developer Activity"
+            description="Real-time metrics for developer tool usage and satisfaction"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Queries</CardTitle>
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {developerActivity?.totalQueries?.toLocaleString() || "0"}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {developerActivity?.activeSessions || 0} active sessions
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {developerActivity?.avgResponseTime || 0}ms
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">-15ms</span> from last week
-                </p>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {developerActivity?.avgResponseTime || 0}ms
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="text-green-600">-15ms</span> from last week
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Satisfaction Score</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {developerActivity?.satisfactionScore?.toFixed(1) || "0"}/10
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+0.3</span> from last week
-                </p>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Satisfaction Score</CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {developerActivity?.satisfactionScore?.toFixed(1) || "0"}/10
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="text-green-600">+0.3</span> from last week
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Tools</CardTitle>
-                <Settings className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {toolUsage?.length || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Available tools
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Tools</CardTitle>
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {toolUsage?.length || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Available tools
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </DashboardSection>
 
           {/* Top Tools and Recent Activity */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
