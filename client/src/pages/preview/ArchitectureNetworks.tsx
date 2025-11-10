@@ -34,6 +34,7 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle,
+  XCircle,
   CalendarIcon,
   RefreshCw
 } from "lucide-react";
@@ -177,6 +178,16 @@ export default function ArchitectureNetworks() {
       case "critical": return "text-red-600 bg-red-100";
       case "maintenance": return "text-blue-600 bg-blue-100";
       default: return "text-gray-600 bg-gray-100";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "healthy": return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "degraded": return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+      case "critical": return <XCircle className="h-4 w-4 text-red-600" />;
+      case "maintenance": return <Clock className="h-4 w-4 text-blue-600" />;
+      default: return <Clock className="h-4 w-4 text-gray-600" />;
     }
   };
 
@@ -398,11 +409,7 @@ export default function ArchitectureNetworks() {
                     {nodeGroups?.slice(0, 5).map((group) => (
                       <div key={group.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${
-                            group.status === 'healthy' ? 'bg-green-500' :
-                            group.status === 'degraded' ? 'bg-yellow-500' :
-                            group.status === 'critical' ? 'bg-red-500' : 'bg-blue-500'
-                          }`}></div>
+                          {getStatusIcon(group.status)}
                           <div>
                             <div className="font-medium text-sm">{group.name}</div>
                             <div className="text-xs text-muted-foreground">
