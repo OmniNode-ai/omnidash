@@ -183,11 +183,11 @@ export default function ArchitectureNetworks() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "healthy": return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case "degraded": return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      case "critical": return <XCircle className="h-4 w-4 text-red-600" />;
-      case "maintenance": return <Clock className="h-4 w-4 text-blue-600" />;
-      default: return <Clock className="h-4 w-4 text-gray-600" />;
+      case "healthy": return <CheckCircle className="h-4 w-4 text-green-700 fill-green-700" />;
+      case "degraded": return <AlertTriangle className="h-4 w-4 text-orange-600 fill-orange-600" />;
+      case "critical": return <XCircle className="h-4 w-4 text-red-700 fill-red-700" />;
+      case "maintenance": return <Clock className="h-4 w-4 text-blue-700" />;
+      default: return <Clock className="h-4 w-4 text-gray-700" />;
     }
   };
 
