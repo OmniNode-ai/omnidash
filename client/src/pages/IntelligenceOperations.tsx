@@ -3,14 +3,15 @@ import { RealtimeChart } from "@/components/RealtimeChart";
 import { DataTable, Column } from "@/components/DataTable";
 import { TransformationFlow } from "@/components/TransformationFlow";
 import { AlertPill } from "@/components/AlertPill";
-import { ExportButton } from "@/components/ExportButton";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Card } from "@/components/ui/card";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Zap, CheckCircle, AlertTriangle, TrendingUp, Activity, Database, Server, Clock } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Zap, CheckCircle, AlertTriangle, TrendingUp, Activity, Database, Server, Clock, Settings, Eye, RefreshCw, Download, CalendarIcon } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -19,6 +20,8 @@ import { MockDataBadge } from "@/components/MockDataBadge";
 import { DashboardSection } from "@/components/DashboardSection";
 import { ensureTimeSeries, ensureArray } from "@/components/mockUtils";
 import { agentOperationsSource } from "@/lib/data-sources";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 interface ManifestInjectionHealth {
   successRate: number;
@@ -94,10 +97,19 @@ export default function IntelligenceOperations() {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleTimeRangeChange = (value: string) => {
     setTimeRange(value);
     localStorage.setItem('dashboard-timerange', value);
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    queryClient.invalidateQueries();
+    setTimeout(() => setIsRefreshing(false), 1000);
   };
 
   const queryClient = useQueryClient();
@@ -188,7 +200,7 @@ export default function IntelligenceOperations() {
   });
 
   // Use data source for all operations data (includes transformations)
-  const { data: operationsSourceData, isLoading: operationsSourceLoading } = useQuery({
+  const { data: operationsSourceData, isLoading: operationsSourceLoading, error: operationsError, refetch: refetchOperations } = useQuery({
     queryKey: ['agent-operations-full', timeRange],
     queryFn: () => agentOperationsSource.fetchAll(timeRange),
     refetchInterval: 60000,
@@ -237,22 +249,131 @@ export default function IntelligenceOperations() {
   // Loading state
   const isLoading = operationsSourceLoading;
 
+  // Error state
+  if (operationsError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertTriangle className="w-8 h-8 text-status-error mx-auto mb-4" />
+          <p className="text-muted-foreground mb-4">Failed to load intelligence operations data</p>
+          <Button variant="outline" onClick={() => refetchOperations()}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading intelligence operations...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <SectionHeader
-        title="Intelligence Operations"
-        description={isLoading ? 'Loading AI operations data...' : `${totalOperations} AI operations for code analysis and optimization`}
-        details="Intelligence Operations tracks all AI-powered analysis and optimization tasks across the platform. Monitor active operations, quality improvements, manifest injections, and document access patterns. This dashboard provides visibility into how AI agents are improving code quality and developer productivity in real-time."
-        level="h1"
-      />
+      {/* Header Structure with Title, Subtitle, Toolbar, and Time Range */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
-          <ExportButton
-            data={{ operations, operationsData, qualityImpactData, healthData, chartData, qualityData, liveEvents }}
-            filename={`intelligence-operations-${new Date().toISOString().split('T')[0]}`}
-            disabled={!operationsData && !qualityImpactData && !healthData}
-          />
+        <div>
+          <h1 className="text-3xl font-bold">Intelligence Operations</h1>
+          <p className="ty-subtitle">
+            {totalOperations} AI operations for code analysis and optimization
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {(isChartMock || isQualityMock) && <MockDataBadge />}
+          <Button variant="outline" size="sm">
+            <Settings className="w-4 h-4 mr-2" />
+            Configure
+          </Button>
+          <Button variant="outline" size="sm">
+            <Eye className="w-4 h-4 mr-2" />
+            Export Report
+          </Button>
+
+          {/* TIME RANGE CONTROLS */}
+          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+            <Button
+              variant={timeRange === "1h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("1h")}
+            >
+              1H
+            </Button>
+            <Button
+              variant={timeRange === "24h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("24h")}
+            >
+              24H
+            </Button>
+            <Button
+              variant={timeRange === "7d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("7d")}
+            >
+              7D
+            </Button>
+            <Button
+              variant={timeRange === "30d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("30d")}
+            >
+              30D
+            </Button>
+
+            {/* Custom date range picker */}
+            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={timeRange === "custom" ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  Custom
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  onSelect={(range) => {
+                    setCustomRange(range);
+                    if (range?.from && range?.to) {
+                      handleTimeRangeChange("custom");
+                      setShowCustomPicker(false);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Show selected custom range */}
+            {timeRange === "custom" && customRange?.from && customRange?.to && (
+              <span className="text-sm text-muted-foreground">
+                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+              </span>
+            )}
+
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+          </div>
         </div>
       </div>
 

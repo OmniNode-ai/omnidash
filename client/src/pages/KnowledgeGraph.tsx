@@ -2,13 +2,17 @@ import { MetricCard } from "@/components/MetricCard";
 import { PatternNetwork } from "@/components/PatternNetwork";
 import { DrillDownModal } from "@/components/DrillDownModal";
 import { Card } from "@/components/ui/card";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
-import { ExportButton } from "@/components/ExportButton";
-import { Database, Network, Link, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Database, Network, Link, TrendingUp, Download, CalendarIcon, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { MockDataBadge } from "@/components/MockDataBadge";
+import { DashboardSection } from "@/components/DashboardSection";
 import { useQuery } from "@tanstack/react-query";
 import { knowledgeGraphSource } from "@/lib/data-sources";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 // Graph data interfaces from omniarchon endpoint
 interface GraphNode {
@@ -48,17 +52,12 @@ interface PatternRelationship {
 export default function KnowledgeGraph() {
   const [selectedNode, setSelectedNode] = useState<Pattern | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [timeRange, setTimeRange] = useState(() => {
-    return localStorage.getItem('dashboard-timerange') || '24h';
-  });
-
-  const handleTimeRangeChange = (value: string) => {
-    setTimeRange(value);
-    localStorage.setItem('dashboard-timerange', value);
-  };
+  const [timeRange, setTimeRange] = useState("24h");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
 
   // Use centralized data source
-  const { data: graphDataResult, isLoading } = useQuery({
+  const { data: graphDataResult, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['knowledge-graph', timeRange],
     queryFn: () => knowledgeGraphSource.fetchGraph(timeRange, 1000),
     refetchInterval: 120000,
@@ -125,63 +124,176 @@ export default function KnowledgeGraph() {
     setPanelOpen(true);
   };
 
+  const handleExport = () => {
+    const exportData = {
+      nodes: patterns,
+      edges: relationships,
+      relationshipTypes,
+      metrics: { totalNodes, totalRelationships, connectedComponents, graphDensity },
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `knowledge-graph-${timeRange}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading knowledge graph...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Failed to load knowledge graph</h3>
+          <p className="text-muted-foreground mb-4">
+            {error instanceof Error ? error.message : 'An unexpected error occurred'}
+          </p>
+          <Button onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const usingMockData = patterns.length === 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold mb-2">Knowledge Graph</h1>
-          <p className="text-muted-foreground">
-            {isLoading ? 'Loading...' : `Interactive exploration of ${totalNodes} nodes and their relationships`}
+          <h1 className="text-3xl font-bold">Knowledge Graph</h1>
+          <p className="ty-subtitle">
+            Interactive exploration of {totalNodes.toLocaleString()} nodes and their relationships
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
-          <ExportButton
-            data={{ nodes: patterns, edges: relationships, relationshipTypes, metrics: { totalNodes, totalRelationships, connectedComponents, graphDensity } }}
-            filename={`knowledge-graph-${timeRange}-${new Date().toISOString().split('T')[0]}`}
-            disabled={isLoading || patterns.length === 0}
-          />
+        <div className="flex items-center gap-2">
+          {usingMockData && <MockDataBadge />}
+
+          {/* TIME RANGE CONTROLS */}
+          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+            <Button
+              variant={timeRange === "1h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("1h")}
+            >
+              1H
+            </Button>
+            <Button
+              variant={timeRange === "24h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("24h")}
+            >
+              24H
+            </Button>
+            <Button
+              variant={timeRange === "7d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("7d")}
+            >
+              7D
+            </Button>
+            <Button
+              variant={timeRange === "30d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("30d")}
+            >
+              30D
+            </Button>
+
+            {/* Custom date range picker */}
+            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={timeRange === "custom" ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  Custom
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  onSelect={(range) => {
+                    setCustomRange(range);
+                    if (range?.from && range?.to) {
+                      setTimeRange("custom");
+                      setShowCustomPicker(false);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Show selected custom range */}
+            {timeRange === "custom" && customRange?.from && customRange?.to && (
+              <span className="text-sm text-muted-foreground">
+                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+              </span>
+            )}
+          </div>
+
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={patterns.length === 0}>
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-6">
-        <MetricCard
-          label="Total Nodes"
-          value={isLoading ? '...' : totalNodes.toLocaleString()}
-          icon={Database}
-          status="healthy"
-        />
-        <MetricCard
-          label="Total Edges"
-          value={isLoading ? '...' : totalRelationships.toLocaleString()}
-          icon={Network}
-          status="healthy"
-        />
-        <MetricCard
-          label="Connected Components"
-          value={isLoading ? '...' : connectedComponents.toString()}
-          icon={Link}
-          status="healthy"
-        />
-        <MetricCard
-          label="Graph Density"
-          value={isLoading ? '...' : graphDensity}
-          icon={TrendingUp}
-          status="healthy"
-        />
-      </div>
+      <DashboardSection title="Graph Metrics" description="Real-time knowledge graph statistics">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard
+            label="Total Nodes"
+            value={totalNodes.toLocaleString()}
+            icon={Database}
+            status="healthy"
+          />
+          <MetricCard
+            label="Total Edges"
+            value={totalRelationships.toLocaleString()}
+            icon={Network}
+            status="healthy"
+          />
+          <MetricCard
+            label="Connected Components"
+            value={connectedComponents.toString()}
+            icon={Link}
+            status="healthy"
+          />
+          <MetricCard
+            label="Graph Density"
+            value={graphDensity}
+            icon={TrendingUp}
+            status="healthy"
+          />
+        </div>
+      </DashboardSection>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3">
-          {isLoading ? (
+          {patterns.length === 0 ? (
             <Card className="p-6">
-              <div className="flex items-center justify-center h-[600px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-              </div>
-            </Card>
-          ) : patterns.length === 0 ? (
-            <div className="p-6">
-              <MockDataBadge label="Mock Data: Knowledge Graph" />
               <PatternNetwork
                 patterns={[
                   { id: 'p1', name: 'Event Bus Producer', quality: 0.92, usage: 12, category: 'effect', language: 'python' },
@@ -191,7 +303,7 @@ export default function KnowledgeGraph() {
                 height={600}
                 onPatternClick={handleNodeClick}
               />
-            </div>
+            </Card>
           ) : (
             <PatternNetwork patterns={patterns} height={600} onPatternClick={handleNodeClick} />
           )}
@@ -199,27 +311,20 @@ export default function KnowledgeGraph() {
 
         <Card className="p-6">
           <h3 className="text-base font-semibold mb-4">Relationship Types</h3>
-          {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
-            </div>
-          ) : relationshipTypes.length === 0 ? (
-            <div>
-              <MockDataBadge label="Mock Data: Relationship Types" />
-              <div className="space-y-3">
-                {[
-                  { id: 'rel_depends_on', type: 'depends_on', count: 12 },
-                  { id: 'rel_uses', type: 'uses', count: 7 },
-                  { id: 'rel_related_to', type: 'related_to', count: 4 },
-                ].map((rel) => (
-                  <div key={rel.id} className="p-3 rounded-lg border border-card-border">
-                    <div className="text-sm font-medium font-mono mb-1">
-                      {rel.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                    </div>
-                    <div className="text-2xl font-bold font-mono">{rel.count.toLocaleString()}</div>
+          {relationshipTypes.length === 0 ? (
+            <div className="space-y-3">
+              {[
+                { id: 'rel_depends_on', type: 'depends_on', count: 12 },
+                { id: 'rel_uses', type: 'uses', count: 7 },
+                { id: 'rel_related_to', type: 'related_to', count: 4 },
+              ].map((rel) => (
+                <div key={rel.id} className="p-3 rounded-lg border border-card-border">
+                  <div className="text-sm font-medium font-mono mb-1">
+                    {rel.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                   </div>
-                ))}
-              </div>
+                  <div className="text-2xl font-bold font-mono">{rel.count.toLocaleString()}</div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="space-y-3">
@@ -239,28 +344,22 @@ export default function KnowledgeGraph() {
 
           <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/10">
             <h4 className="text-sm font-medium mb-2">Graph Statistics</h4>
-            {isLoading ? (
-              <div className="flex items-center justify-center h-20">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+            <div className="space-y-2 text-xs text-muted-foreground">
+              <div className="flex justify-between">
+                <span>Avg Degree:</span>
+                <span className="font-mono text-foreground">
+                  {totalNodes > 0 ? (totalRelationships / totalNodes).toFixed(1) : '0.0'}
+                </span>
               </div>
-            ) : (
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <div className="flex justify-between">
-                  <span>Avg Degree:</span>
-                  <span className="font-mono text-foreground">
-                    {totalNodes > 0 ? (totalRelationships / totalNodes).toFixed(1) : '0.0'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Nodes:</span>
-                  <span className="font-mono text-foreground">{totalNodes}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Density:</span>
-                  <span className="font-mono text-foreground">{graphDensity}</span>
-                </div>
+              <div className="flex justify-between">
+                <span>Nodes:</span>
+                <span className="font-mono text-foreground">{totalNodes}</span>
               </div>
-            )}
+              <div className="flex justify-between">
+                <span>Density:</span>
+                <span className="font-mono text-foreground">{graphDensity}</span>
+              </div>
+            </div>
           </div>
         </Card>
       </div>

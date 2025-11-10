@@ -3,15 +3,19 @@ import { QualityGatePanel } from "@/components/QualityGatePanel";
 import { PerformanceThresholds } from "@/components/PerformanceThresholds";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { ensureTimeSeries } from "@/components/mockUtils";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
-import { ExportButton } from "@/components/ExportButton";
 import { DashboardSection } from "@/components/DashboardSection";
-import { Code, Search, CheckCircle, Gauge, AlertTriangle, FileCode, Shield } from "lucide-react";
+import { MockDataBadge } from "@/components/MockDataBadge";
+import { Code, Search, CheckCircle, Gauge, AlertTriangle, FileCode, Shield, Settings, Download, RefreshCw, CalendarIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { codeIntelligenceSource } from "@/lib/data-sources";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 // Types from data source
 import type { CodeAnalysisData, ComplianceData } from "@/lib/data-sources/code-intelligence-source";
@@ -20,6 +24,9 @@ export default function CodeIntelligence() {
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleTimeRangeChange = (value: string) => {
     setTimeRange(value);
@@ -27,12 +34,18 @@ export default function CodeIntelligence() {
   };
 
   // Use centralized data source
-  const { data: intelligenceData, isLoading } = useQuery({
+  const { data: intelligenceData, isLoading, error, refetch } = useQuery({
     queryKey: ['code-intelligence', timeRange],
     queryFn: () => codeIntelligenceSource.fetchAll(timeRange),
     refetchInterval: 60000,
     refetchIntervalInBackground: true,
   });
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   const codeAnalysis = intelligenceData?.codeAnalysis;
   const complianceData = intelligenceData?.compliance;
@@ -80,8 +93,129 @@ export default function CodeIntelligence() {
     : [] as Array<{ time: string; value: number }>;
   const { data: qualityData, isMock: isQualityMock } = ensureTimeSeries(qualityDataRaw, 82, 8);
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading code intelligence...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertTriangle className="h-8 w-8 text-destructive mx-auto mb-4" />
+          <p className="text-muted-foreground mb-4">Failed to load code intelligence data</p>
+          <Button onClick={handleRefresh} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Standard Header with flex layout (C2, C3, C4, C5) */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Code Intelligence</h1>
+          <p className="ty-subtitle">
+            Semantic search, quality gates, and ONEX compliance monitoring for code analysis
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {(usingMockData || usingMockGates || usingMockThresholds) && <MockDataBadge />}
+          <Button variant="outline" size="sm">
+            <Settings className="w-4 h-4 mr-2" />
+            Configure
+          </Button>
+          <Button variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+
+          {/* Visual divider before time range (C7) */}
+          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+            <Button
+              variant={timeRange === "1h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("1h")}
+            >
+              1H
+            </Button>
+            <Button
+              variant={timeRange === "24h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("24h")}
+            >
+              24H
+            </Button>
+            <Button
+              variant={timeRange === "7d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("7d")}
+            >
+              7D
+            </Button>
+            <Button
+              variant={timeRange === "30d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("30d")}
+            >
+              30D
+            </Button>
+
+            {/* Custom date range picker (C6) */}
+            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={timeRange === "custom" ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  Custom
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  onSelect={(range) => {
+                    setCustomRange(range);
+                    if (range?.from && range?.to) {
+                      handleTimeRangeChange("custom");
+                      setShowCustomPicker(false);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Show selected custom range */}
+            {timeRange === "custom" && customRange?.from && customRange?.to && (
+              <span className="text-sm text-muted-foreground">
+                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+              </span>
+            )}
+
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </div>
       <DashboardSection
         title="Code Intelligence Metrics"
         description="Overview of code quality, complexity, and security issues across analyzed files"
@@ -143,7 +277,7 @@ export default function CodeIntelligence() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
-              <Shield className="h-5 w-5 text-primary" />
+              <Shield className="h-4 w-4 text-primary" />
             </div>
             <div>
               <h3 className="text-lg font-semibold">ONEX Compliance Coverage</h3>
