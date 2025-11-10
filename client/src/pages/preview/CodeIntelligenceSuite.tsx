@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Code, 
-  Network, 
-  Layers, 
-  Target, 
-  TrendingUp, 
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Code,
+  Network,
+  Layers,
+  Target,
+  TrendingUp,
   Search,
   Eye,
   Settings,
@@ -28,8 +30,12 @@ import {
   HardDrive,
   Users,
   BookOpen,
-  Workflow
+  Workflow,
+  CalendarIcon,
+  RefreshCw
 } from "lucide-react";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 // Import existing components
 import CodeIntelligence from "../CodeIntelligence";
@@ -39,6 +45,7 @@ import PatternDependencies from "./PatternDependencies";
 import TechDebtAnalysis from "./TechDebtAnalysis";
 import { DashboardSection } from "@/components/DashboardSection";
 import { MetricCard } from "@/components/MetricCard";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { codeIntelligenceSource } from "@/lib/data-sources";
 import { formatCurrency } from "@/lib/utils";
 
@@ -81,9 +88,12 @@ interface TechDebtSummary {
 export default function CodeIntelligenceSuite() {
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("30d");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Use centralized data source for compliance
-  const { data: complianceResult, isLoading: metricsLoading } = useQuery({
+  const { data: complianceResult, isLoading: metricsLoading, error: metricsError } = useQuery({
     queryKey: ['code-compliance', timeRange],
     queryFn: () => codeIntelligenceSource.fetchCompliance(timeRange),
     retry: false,
@@ -102,7 +112,7 @@ export default function CodeIntelligenceSuite() {
     vulnerabilities: complianceResult.data.summary?.nonCompliantFiles || 0,
   } : undefined;
 
-  const { data: patternSummaryResult, isLoading: patternsLoading } = useQuery({
+  const { data: patternSummaryResult, isLoading: patternsLoading, error: patternsError } = useQuery({
     queryKey: ['pattern-summary', timeRange],
     queryFn: () => codeIntelligenceSource.fetchPatternSummary(),
     retry: false,
@@ -110,7 +120,7 @@ export default function CodeIntelligenceSuite() {
   });
   const patternSummary = patternSummaryResult?.data;
 
-  const { data: techDebtSummary, isLoading: debtLoading } = useQuery<TechDebtSummary>({
+  const { data: techDebtSummary, isLoading: debtLoading, error: debtError } = useQuery<TechDebtSummary>({
     queryKey: ['tech-debt-summary', timeRange],
     queryFn: async () => {
       // Tech debt endpoint doesn't exist yet - return mock data
@@ -165,9 +175,12 @@ export default function CodeIntelligenceSuite() {
   const finalTechDebt = usingMockTechDebt ? mockTechDebt : techDebtSummary!;
 
   // Don't show loading state if we're using mock data
-  const isLoading = (metricsLoading && !usingMockCodeMetrics) || 
-                    (patternsLoading && !usingMockPatternSummary) || 
+  const isLoading = (metricsLoading && !usingMockCodeMetrics) ||
+                    (patternsLoading && !usingMockPatternSummary) ||
                     (debtLoading && !usingMockTechDebt);
+
+  // Check for errors (only show if all queries failed and we have no mock data)
+  const hasError = (metricsError || patternsError) && !usingMockCodeMetrics && !usingMockPatternSummary;
 
   if (isLoading && !usingMockCodeMetrics && !usingMockPatternSummary && !usingMockTechDebt) {
     return (
@@ -180,6 +193,44 @@ export default function CodeIntelligenceSuite() {
     );
   }
 
+  if (hasError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Code Intelligence Suite</h1>
+            <p className="ty-subtitle">
+              Comprehensive code analysis, pattern discovery, lineage tracking, and technical debt management
+            </p>
+          </div>
+        </div>
+        <div className="bg-destructive/10 border border-destructive rounded-lg p-4 text-destructive">
+          <strong>Error loading data:</strong>{" "}
+          {metricsError instanceof Error ? metricsError.message : patternsError instanceof Error ? patternsError.message : 'Unknown error'}
+          <div className="mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.reload()}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Determine if using any mock data
+  const usingAnyMockData = usingMockCodeMetrics || usingMockPatternSummary || usingMockTechDebt;
+
+  // Refresh handler
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    window.location.reload();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -190,14 +241,88 @@ export default function CodeIntelligenceSuite() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {usingAnyMockData && <MockDataBadge />}
           <Button variant="outline" size="sm">
             <Settings className="w-4 h-4 mr-2" />
             Configure
           </Button>
-          <Button size="sm">
-            <Search className="w-4 h-4 mr-2" />
-            Analyze Code
+          <Button variant="outline" size="sm">
+            <Eye className="w-4 h-4 mr-2" />
+            Export Report
           </Button>
+
+          {/* Time range selector with divider */}
+          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+            <Button
+              variant={timeRange === "1h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("1h")}
+            >
+              1H
+            </Button>
+            <Button
+              variant={timeRange === "24h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("24h")}
+            >
+              24H
+            </Button>
+            <Button
+              variant={timeRange === "7d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("7d")}
+            >
+              7D
+            </Button>
+            <Button
+              variant={timeRange === "30d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeRange("30d")}
+            >
+              30D
+            </Button>
+
+            {/* Custom date range picker */}
+            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={timeRange === "custom" ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  Custom
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  onSelect={(range) => {
+                    setCustomRange(range);
+                    if (range?.from && range?.to) {
+                      setTimeRange("custom");
+                      setShowCustomPicker(false);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Show selected custom range */}
+            {timeRange === "custom" && customRange?.from && customRange?.to && (
+              <span className="text-sm text-muted-foreground">
+                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+              </span>
+            )}
+
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
       </div>
 

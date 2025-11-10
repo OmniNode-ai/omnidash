@@ -7,12 +7,16 @@ import { EventFeed } from "@/components/EventFeed";
 import { DrillDownModal } from "@/components/DrillDownModal";
 import { DashboardSection } from "@/components/DashboardSection";
 import { EventDetailModal, EventAction } from "@/components/EventDetailModal";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
-import { ExportButton } from "@/components/ExportButton";
 import { STANDARD_ICONS } from "@/lib/standardIcons";
 import { Module, ModuleHeader, ModuleBody } from "@/components/Module";
 import { Pager } from "@/components/Pager";
 import { DateRangeFilter, DateRangeValue } from "@/components/DateRangeFilter";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Settings, Eye, RefreshCw, Download, Filter, CalendarIcon } from "lucide-react";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -54,6 +58,9 @@ export default function AgentOperations() {
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [eventsPage, setEventsPage] = useState(1);
   const [eventsPageSize, setEventsPageSize] = useState(10);
   const [eventsRange, setEventsRange] = useState<DateRangeValue>({ preset: '24h' });
@@ -114,6 +121,12 @@ export default function AgentOperations() {
     staleTime: 15000,
   });
 
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await refetchMetrics();
+    setTimeout(() => setIsRefreshing(false), 500);
+  }, [refetchMetrics]);
+
   // Transform data source response to expected format
   // Memoize to prevent creating new array references on every render (which would trigger infinite useEffect loops)
   const metrics: AgentMetrics[] = useMemo(() => {
@@ -157,6 +170,7 @@ export default function AgentOperations() {
   const health = operationsData?.health;
   const actionsLoading = metricsLoading;
   const actionsError = metricsError;
+  const usingMockData = operationsData?.isMock || false;
 
   // (removed) Routing strategy breakdown to avoid duplication with Routing tab
 
@@ -358,10 +372,112 @@ export default function AgentOperations() {
 
   return (
     <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Agent Operations</h1>
+          <p className="ty-subtitle">
+            Real-time monitoring of 52+ AI agents with performance metrics, activity tracking, and event streaming
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {usingMockData && <MockDataBadge />}
+          <Button variant="outline" size="sm">
+            <Settings className="w-4 h-4 mr-2" />
+            Configure
+          </Button>
+          <Button variant="outline" size="sm">
+            <Eye className="w-4 h-4 mr-2" />
+            Export Report
+          </Button>
+
+          {/* TIME RANGE CONTROLS */}
+          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+            <Button
+              variant={timeRange === "1h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("1h")}
+            >
+              1H
+            </Button>
+            <Button
+              variant={timeRange === "24h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("24h")}
+            >
+              24H
+            </Button>
+            <Button
+              variant={timeRange === "7d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("7d")}
+            >
+              7D
+            </Button>
+            <Button
+              variant={timeRange === "30d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("30d")}
+            >
+              30D
+            </Button>
+
+            {/* Custom date range picker */}
+            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={timeRange === "custom" ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  Custom
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  onSelect={(range) => {
+                    setCustomRange(range);
+                    if (range?.from && range?.to) {
+                      handleTimeRangeChange("custom");
+                      setShowCustomPicker(false);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Show selected custom range */}
+            {timeRange === "custom" && customRange?.from && customRange?.to && (
+              <span className="text-sm text-muted-foreground">
+                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+              </span>
+            )}
+
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+            <Button variant="outline" size="sm">
+              <Filter className="w-4 h-4 mr-2" />
+              Filter
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Unified metric cards - wrapped in standard DashboardSection component */}
       <DashboardSection
-        title="Agent Operations"
-        description="Real-time monitoring of 52+ AI agents with performance metrics, activity tracking, and event streaming."
+        title="Performance Metrics"
+        description="Aggregated performance metrics across all agents in the selected time range."
         showStatusLegend={true}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -463,24 +579,21 @@ export default function AgentOperations() {
             <ModuleHeader
               left={<span className="ty-title">Agents</span>}
               right={
-                <>
-                  <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Show:</span>
-                    <button
-                      className={`px-3 py-1 rounded border ${showActiveOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
-                      onClick={() => setShowActiveOnly(true)}
-                    >
-                      Active
-                    </button>
-                    <button
-                      className={`px-3 py-1 rounded border ${!showActiveOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
-                      onClick={() => setShowActiveOnly(false)}
-                    >
-                      All
-                    </button>
-                  </div>
-                </>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Show:</span>
+                  <button
+                    className={`px-3 py-1 rounded border ${showActiveOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                    onClick={() => setShowActiveOnly(true)}
+                  >
+                    Active
+                  </button>
+                  <button
+                    className={`px-3 py-1 rounded border ${!showActiveOnly ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                    onClick={() => setShowActiveOnly(false)}
+                  >
+                    All
+                  </button>
+                </div>
               }
             />
             <ModuleBody>
