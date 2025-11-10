@@ -6,7 +6,7 @@ import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
 import { Database, Network, Link, TrendingUp } from "lucide-react";
 import { useState } from "react";
-import { MockBadge } from "@/components/MockBadge";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { useQuery } from "@tanstack/react-query";
 import { knowledgeGraphSource } from "@/lib/data-sources";
 
@@ -78,6 +78,8 @@ export default function KnowledgeGraph() {
     usage: 0, // Not available from graph endpoint
     category: node.type,
     language: null,
+    // Note: trend and trendPercentage not available from graph endpoint
+    // These would need to be added to the API response for full trend support
   }));
 
   // Map GraphEdge data to PatternRelationship format
@@ -179,7 +181,7 @@ export default function KnowledgeGraph() {
             </Card>
           ) : patterns.length === 0 ? (
             <div className="p-6">
-              <MockBadge label="MOCK DATA: Knowledge Graph" />
+              <MockDataBadge label="Mock Data: Knowledge Graph" />
               <PatternNetwork
                 patterns={[
                   { id: 'p1', name: 'Event Bus Producer', quality: 0.92, usage: 12, category: 'effect', language: 'python' },
@@ -203,7 +205,7 @@ export default function KnowledgeGraph() {
             </div>
           ) : relationshipTypes.length === 0 ? (
             <div>
-              <MockBadge label="MOCK DATA: Relationship Types" />
+              <MockDataBadge label="Mock Data: Relationship Types" />
               <div className="space-y-3">
                 {[
                   { id: 'rel_depends_on', type: 'depends_on', count: 12 },

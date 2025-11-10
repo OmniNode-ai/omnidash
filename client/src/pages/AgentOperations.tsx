@@ -1,16 +1,15 @@
 import { MetricCard } from "@/components/MetricCard";
 import { AgentStatusGrid } from "@/components/AgentStatusGrid";
 import { RealtimeChart } from "@/components/RealtimeChart";
-import { MockBadge } from "@/components/MockBadge";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { EventFeed } from "@/components/EventFeed";
 import { DrillDownModal } from "@/components/DrillDownModal";
-import { StatusLegend } from "@/components/StatusLegend";
+import { DashboardSection } from "@/components/DashboardSection";
 import { EventDetailModal, EventAction } from "@/components/EventDetailModal";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
-import { SectionHeader } from "@/components/SectionHeader";
-import { Activity, Cpu, CheckCircle, Clock } from "lucide-react";
+import { STANDARD_ICONS } from "@/lib/standardIcons";
 import { Module, ModuleHeader, ModuleBody } from "@/components/Module";
 import { Pager } from "@/components/Pager";
 import { DateRangeFilter, DateRangeValue } from "@/components/DateRangeFilter";
@@ -246,10 +245,12 @@ export default function AgentOperations() {
   // Use summary from data source instead of calculating here
   const aggregatedMetrics = useMemo(() => {
     return {
+      totalAgents: operationsData?.summary?.totalAgents || 0,
       activeAgents: operationsData?.summary?.activeAgents || 0,
       totalRequests: operationsData?.summary?.totalRuns || 0,
       avgSuccessRate: operationsData?.summary?.successRate || 0,
       avgResponseTime: (operationsData?.summary?.avgExecutionTime || 0) * 1000, // Convert seconds to ms for display
+      avgExecutionTimeSec: operationsData?.summary?.avgExecutionTime || 0, // Keep original seconds value
     };
   }, [operationsData]);
 
@@ -333,7 +334,7 @@ export default function AgentOperations() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <Activity className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+          <STANDARD_ICONS.active className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-muted-foreground">Loading agent operations data...</p>
         </div>
       </div>
@@ -345,7 +346,7 @@ export default function AgentOperations() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <Activity className="h-12 w-12 mx-auto mb-4 text-destructive" />
+          <STANDARD_ICONS.active className="h-12 w-12 mx-auto mb-4 text-destructive" />
           <p className="text-destructive font-semibold mb-2">Failed to load agent data</p>
           <p className="text-muted-foreground text-sm">
             {metricsError?.message || actionsError?.message || 'Unknown error'}
@@ -357,45 +358,70 @@ export default function AgentOperations() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
+      {/* Unified metric cards - wrapped in standard DashboardSection component */}
+      <DashboardSection
         title="Agent Operations"
         description="Real-time monitoring of 52+ AI agents with performance metrics, activity tracking, and event streaming."
-        details="The Agent Operations dashboard provides live visibility into all active AI agents across the platform. Monitor request volumes, success rates, response times, and individual agent performance. Use filters to focus on active agents or view historical data. The live event stream shows real-time agent actions and decisions for immediate insight into system behavior."
-        level="h2"
-      />
-
-      {/* Status legend */}
-      <StatusLegend />
-
-      {/* Metric cards with real data */}
-      <div className="grid grid-cols-4 gap-6">
+        showStatusLegend={true}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Row 1: Real-time operational metrics with status indicators */}
+        <MetricCard
+          label="Total Agents"
+          value={aggregatedMetrics.totalAgents}
+          icon={STANDARD_ICONS.bot}
+          tooltip="Total agents in registry"
+        />
         <MetricCard
           label={`Active Agents (${timeRange})`}
           value={aggregatedMetrics.activeAgents}
-          icon={Activity}
+          icon={STANDARD_ICONS.active}
           status="healthy"
+          tooltip="Agents active in selected time range"
         />
         <MetricCard
           label={`Total Requests (${timeRange})`}
           value={aggregatedMetrics.totalRequests.toLocaleString()}
-          icon={Activity}
+          icon={STANDARD_ICONS.active}
           status="healthy"
-        />
-        <MetricCard
-          label="Avg Response Time"
-          value={`${Math.round(aggregatedMetrics.avgResponseTime)}ms`}
-          icon={Clock}
-          status={aggregatedMetrics.avgResponseTime < 100 ? "healthy" : "warning"}
-          tooltip="Target: < 100ms"
         />
         <MetricCard
           label="Success Rate"
           value={`${Math.max(0, Math.min(100, Math.round(aggregatedMetrics.avgSuccessRate <= 1 ? aggregatedMetrics.avgSuccessRate * 100 : aggregatedMetrics.avgSuccessRate)))}%`}
-          icon={CheckCircle}
+          icon={STANDARD_ICONS.success}
           status={aggregatedMetrics.avgSuccessRate > 0.9 ? "healthy" : "warning"}
           tooltip="Target: > 90%"
         />
-      </div>
+
+        {/* Row 2: Performance and timing metrics */}
+        <MetricCard
+          label="Avg Response Time"
+          value={`${Math.round(aggregatedMetrics.avgResponseTime)}ms`}
+          icon={STANDARD_ICONS.time}
+          status={aggregatedMetrics.avgResponseTime < 100 ? "healthy" : aggregatedMetrics.avgResponseTime < 200 ? "warning" : "error"}
+          tooltip="Target: < 100ms"
+        />
+        <MetricCard
+          label="Avg Execution Time"
+          value={`${aggregatedMetrics.avgExecutionTimeSec.toFixed(1)}s`}
+          icon={STANDARD_ICONS.time}
+          tooltip="Weighted average across all agents"
+        />
+        <MetricCard
+          label={`Total Runs (${timeRange})`}
+          value={aggregatedMetrics.totalRequests.toLocaleString()}
+          icon={STANDARD_ICONS.success}
+          tooltip="Total agent executions in time range"
+        />
+        <MetricCard
+          label="Completion Rate"
+          value={`${Math.max(0, Math.min(100, Math.round(aggregatedMetrics.avgSuccessRate <= 1 ? aggregatedMetrics.avgSuccessRate * 100 : aggregatedMetrics.avgSuccessRate)))}%`}
+          icon={STANDARD_ICONS.success}
+          status={aggregatedMetrics.avgSuccessRate > 0.95 ? "healthy" : aggregatedMetrics.avgSuccessRate > 0.85 ? "warning" : "error"}
+          tooltip="Agent task completion rate"
+        />
+        </div>
+      </DashboardSection>
 
       {/* Charts with real activity data */}
       <div className="grid grid-cols-2 gap-6">
@@ -403,7 +429,7 @@ export default function AgentOperations() {
           const ensured = ensureTimeSeries(chartData, 5, 2);
           return (
             <div>
-              {ensured.isMock && <MockBadge label="MOCK DATA: Agent Activity" />}
+              {ensured.isMock && <MockDataBadge label="Mock Data: Agent Activity" />}
               <RealtimeChart
                 title="Agent Activity (Actions per Minute)"
                 data={ensured.data}
@@ -416,7 +442,7 @@ export default function AgentOperations() {
           const ensured = ensureTimeSeries(performanceChartData, 150, 60);
           return (
             <div>
-              {ensured.isMock && <MockBadge label="MOCK DATA: Agent Performance" />}
+              {ensured.isMock && <MockDataBadge label="Mock Data: Agent Performance" />}
               <RealtimeChart
                 title="Agent Performance (Avg Execution Time ms)"
                 data={ensured.data}

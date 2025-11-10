@@ -16,6 +16,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { MockDataBadge } from "@/components/MockDataBadge";
+import { DashboardSection } from "@/components/DashboardSection";
 import { ensureTimeSeries, ensureArray } from "@/components/mockUtils";
 import { agentOperationsSource } from "@/lib/data-sources";
 
@@ -283,46 +284,50 @@ export default function IntelligenceOperations() {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        <div>
-          {isChartMock && <MockDataBadge className="mb-2" />}
+        <DashboardSection
+          title="Operations per Minute"
+          showMockBadge={isChartMock}
+        >
           <RealtimeChart
-            title="Operations per Minute"
+            title=""
             data={chartData}
             color="hsl(var(--chart-4))"
             showArea
           />
-        </div>
-        <div className="space-y-4">
-          {(() => {
-            // Check if quality impact data is empty or all zeros
-            const hasNoData = !qualityImpactData || qualityImpactData.length === 0;
-            const allZeros = qualityImpactData && qualityImpactData.length > 0 &&
-              qualityImpactData.every(d => Math.abs(d.avgQualityImprovement) < 0.001);
+        </DashboardSection>
+        <DashboardSection
+          title="Quality Improvement Impact"
+          showMockBadge={isQualityMock}
+        >
+          <div className="space-y-4">
+            {(() => {
+              // Check if quality impact data is empty or all zeros
+              const hasNoData = !qualityImpactData || qualityImpactData.length === 0;
+              const allZeros = qualityImpactData && qualityImpactData.length > 0 &&
+                qualityImpactData.every(d => Math.abs(d.avgQualityImprovement) < 0.001);
 
-            return (
-              <>
-                {(hasNoData || allZeros) && !qualityLoading && (
-                  <Alert className="border-status-warning/50 bg-status-warning/10">
-                    <AlertTriangle className="h-4 w-4 text-status-warning" />
-                    <AlertDescription className="text-status-warning">
-                      {hasNoData
-                        ? 'No quality impact data available yet. Quality improvement tracking may not be configured.'
-                        : 'No quality improvements detected in selected time range. Quality gates and optimizations may not be active.'}
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <div>
-                  {isQualityMock && <MockDataBadge className="mb-2" />}
+              return (
+                <>
+                  {(hasNoData || allZeros) && !qualityLoading && (
+                    <Alert className="border-status-warning/50 bg-status-warning/10">
+                      <AlertTriangle className="h-4 w-4 text-status-warning" />
+                      <AlertDescription className="text-status-warning">
+                        {hasNoData
+                          ? 'No quality impact data available yet. Quality improvement tracking may not be configured.'
+                          : 'No quality improvements detected in selected time range. Quality gates and optimizations may not be active.'}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <RealtimeChart
-                    title="Quality Improvement Impact"
+                    title=""
                     data={qualityData}
                     color="hsl(var(--chart-3))"
                   />
-                </div>
-              </>
-            );
-          })()}
-        </div>
+                </>
+              );
+            })()}
+          </div>
+        </DashboardSection>
       </div>
 
       <div className="space-y-6">
@@ -577,10 +582,13 @@ export default function IntelligenceOperations() {
           level="h2"
         />
 
-        {(!topDocumentsData || topDocumentsData.length === 0) && <MockDataBadge className="mb-2" />}
-        <DataTable<TopAccessedDocument>
+        <DashboardSection
           title="Top Accessed Documents"
-          data={(topDocumentsData && topDocumentsData.length > 0 ? topDocumentsData : [
+          showMockBadge={!topDocumentsData || topDocumentsData.length === 0}
+        >
+          <DataTable<TopAccessedDocument>
+            title=""
+            data={(topDocumentsData && topDocumentsData.length > 0 ? topDocumentsData : [
             { id: 'm1', repository: 'omniarchon', filePath: 'https://repo/docs/INTRO.md', accessCount: 128, lastAccessedAt: new Date().toISOString(), trend: 'up', trendPercentage: 18 },
             { id: 'm2', repository: 'omniarchon', filePath: 'https://repo/docs/API.md', accessCount: 64, lastAccessedAt: new Date(Date.now() - 86400000).toISOString(), trend: 'stable', trendPercentage: 0 },
             { id: 'm3', repository: 'omniarchon', filePath: 'https://repo/docs/SETUP.md', accessCount: 29, lastAccessedAt: null, trend: 'down', trendPercentage: 7 },
@@ -684,13 +692,16 @@ export default function IntelligenceOperations() {
           defaultPageSize={10}
           maxHeight="500px"
         />
+        </DashboardSection>
       </div>
 
       {/* Polymorphic Transformation Viewer */}
-      <div>
-        <MockDataBadge className="mb-2" />
+      <DashboardSection
+        title="Polymorphic Transformation Viewer"
+        showMockBadge={true}
+      >
         <TransformationFlow timeWindow="30d" />
-      </div>
+      </DashboardSection>
     </div>
   );
 }

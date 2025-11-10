@@ -1,6 +1,5 @@
 import { MetricCard } from "@/components/MetricCard";
 import { PatternNetwork } from "@/components/PatternNetwork";
-import { MockDataBadge } from "@/components/MockDataBadge";
 import { TopPatternsList } from "@/components/TopPatternsList";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { DrillDownModal } from "@/components/DrillDownModal";
@@ -8,6 +7,7 @@ import { StatusLegend } from "@/components/StatusLegend";
 import { PatternFilters } from "@/components/PatternFilters";
 import { ExportButton } from "@/components/ExportButton";
 import { SectionHeader } from "@/components/SectionHeader";
+import { DashboardSection } from "@/components/DashboardSection";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -159,40 +159,37 @@ export default function PatternLearning() {
       {/* Status legend */}
       <StatusLegend />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Pattern Learning Metrics</CardTitle>
-          <CardDescription>Real-time pattern discovery metrics, quality scores, and active learning progress</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-4 gap-6">
-            <MetricCard
-              label="Total Patterns"
-              value={summary?.totalPatterns.toLocaleString() || '0'}
-              icon={Database}
-              status="healthy"
-            />
-            <MetricCard
-              label="New Today"
-              value={summary?.newPatternsToday.toLocaleString() || '0'}
-              icon={TrendingUp}
-              status="healthy"
-            />
-            <MetricCard
-              label="Avg Quality"
-              value={`${Math.round((summary?.avgQualityScore || 0) * 100)}%`}
-              icon={Award}
-              status={(summary?.avgQualityScore || 0) > 0.80 ? "healthy" : "warning"}
-            />
-            <MetricCard
-              label="Active Learning"
-              value={summary?.activeLearningCount.toLocaleString() || '0'}
-              icon={Database}
-              status="healthy"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <DashboardSection
+        title="Pattern Learning Metrics"
+        description="Real-time pattern discovery metrics, quality scores, and active learning progress"
+      >
+        <div className="grid grid-cols-4 gap-6">
+          <MetricCard
+            label="Total Patterns"
+            value={summary?.totalPatterns.toLocaleString() || '0'}
+            icon={Database}
+            status="healthy"
+          />
+          <MetricCard
+            label="New Today"
+            value={summary?.newPatternsToday.toLocaleString() || '0'}
+            icon={TrendingUp}
+            status="healthy"
+          />
+          <MetricCard
+            label="Avg Quality"
+            value={`${Math.round((summary?.avgQualityScore || 0) * 100)}%`}
+            icon={Award}
+            status={(summary?.avgQualityScore || 0) > 0.80 ? "healthy" : "warning"}
+          />
+          <MetricCard
+            label="Active Learning"
+            value={summary?.activeLearningCount.toLocaleString() || '0'}
+            icon={Database}
+            status="healthy"
+          />
+        </div>
+      </DashboardSection>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <div>

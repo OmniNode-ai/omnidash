@@ -2,10 +2,10 @@ import { MetricCard } from "@/components/MetricCard";
 import { QualityGatePanel } from "@/components/QualityGatePanel";
 import { PerformanceThresholds } from "@/components/PerformanceThresholds";
 import { RealtimeChart } from "@/components/RealtimeChart";
-import { MockDataBadge } from "@/components/MockDataBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
+import { DashboardSection } from "@/components/DashboardSection";
 import { Code, Search, CheckCircle, Gauge, AlertTriangle, FileCode, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -82,59 +82,60 @@ export default function CodeIntelligence() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Code Intelligence Metrics</CardTitle>
-          <CardDescription>Overview of code quality, complexity, and security issues across analyzed files</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-4 gap-6">
-            <MetricCard
-              label="Files Analyzed"
-              value={isLoading ? '...' : (codeAnalysis?.files_analyzed?.toLocaleString() || '0')}
-              icon={FileCode}
-              status="healthy"
-            />
-            <MetricCard
-              label="Avg Complexity"
-              value={isLoading ? '...' : (codeAnalysis?.avg_complexity?.toFixed(1) || '0')}
-              icon={Gauge}
-              status={codeAnalysis && codeAnalysis.avg_complexity > 10 ? 'warning' : 'healthy'}
-            />
-            <MetricCard
-              label="Code Smells"
-              value={isLoading ? '...' : (codeAnalysis?.code_smells?.toString() || '0')}
-              icon={AlertTriangle}
-              status={codeAnalysis && codeAnalysis.code_smells > 10 ? 'warning' : codeAnalysis && codeAnalysis.code_smells > 0 ? 'warning' : 'healthy'}
-            />
-            <MetricCard
-              label="Security Issues"
-              value={isLoading ? '...' : (codeAnalysis?.security_issues?.toString() || '0')}
-              icon={AlertTriangle}
-              status={codeAnalysis && codeAnalysis.security_issues > 0 ? 'error' : 'healthy'}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <DashboardSection
+        title="Code Intelligence Metrics"
+        description="Overview of code quality, complexity, and security issues across analyzed files"
+      >
+        <div className="grid grid-cols-4 gap-6">
+          <MetricCard
+            label="Files Analyzed"
+            value={isLoading ? '...' : (codeAnalysis?.files_analyzed?.toLocaleString() || '0')}
+            icon={FileCode}
+            status="healthy"
+          />
+          <MetricCard
+            label="Avg Complexity"
+            value={isLoading ? '...' : (codeAnalysis?.avg_complexity?.toFixed(1) || '0')}
+            icon={Gauge}
+            status={codeAnalysis && codeAnalysis.avg_complexity > 10 ? 'warning' : 'healthy'}
+          />
+          <MetricCard
+            label="Code Smells"
+            value={isLoading ? '...' : (codeAnalysis?.code_smells?.toString() || '0')}
+            icon={AlertTriangle}
+            status={codeAnalysis && codeAnalysis.code_smells > 10 ? 'warning' : codeAnalysis && codeAnalysis.code_smells > 0 ? 'warning' : 'healthy'}
+          />
+          <MetricCard
+            label="Security Issues"
+            value={isLoading ? '...' : (codeAnalysis?.security_issues?.toString() || '0')}
+            icon={AlertTriangle}
+            status={codeAnalysis && codeAnalysis.security_issues > 0 ? 'error' : 'healthy'}
+          />
+        </div>
+      </DashboardSection>
 
       <div className="grid grid-cols-2 gap-6">
-        <div>
-          {isSearchMock && <MockDataBadge className="mb-2" />}
+        <DashboardSection
+          title="Semantic Search Queries"
+          showMockBadge={isSearchMock}
+        >
           <RealtimeChart
-            title="Semantic Search Queries"
+            title=""
             data={searchData}
             color="hsl(var(--chart-1))"
             showArea
           />
-        </div>
-        <div>
-          {isQualityMock && <MockDataBadge className="mb-2" />}
+        </DashboardSection>
+        <DashboardSection
+          title="Overall Code Quality Score"
+          showMockBadge={isQualityMock}
+        >
           <RealtimeChart
-            title="Overall Code Quality Score"
+            title=""
             data={qualityData}
             color="hsl(var(--chart-3))"
           />
-        </div>
+        </DashboardSection>
       </div>
 
       {/* ONEX Compliance Coverage Widget */}
@@ -261,14 +262,18 @@ export default function CodeIntelligence() {
       </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div>
-          {usingMockGates && <MockDataBadge className="mb-2" />}
+        <DashboardSection
+          title="Quality Gates"
+          showMockBadge={usingMockGates}
+        >
           <QualityGatePanel gates={gates} />
-        </div>
-        <div>
-          {usingMockThresholds && <MockDataBadge className="mb-2" />}
+        </DashboardSection>
+        <DashboardSection
+          title="Performance Thresholds"
+          showMockBadge={usingMockThresholds}
+        >
           <PerformanceThresholds thresholds={thresholds} />
-        </div>
+        </DashboardSection>
       </div>
     </div>
   );

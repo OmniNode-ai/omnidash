@@ -37,8 +37,10 @@ import PatternLearning from "../PatternLearning";
 import PatternLineage from "./PatternLineage";
 import PatternDependencies from "./PatternDependencies";
 import TechDebtAnalysis from "./TechDebtAnalysis";
-import { MockDataBadge } from "@/components/MockDataBadge";
+import { DashboardSection } from "@/components/DashboardSection";
+import { MetricCard } from "@/components/MetricCard";
 import { codeIntelligenceSource } from "@/lib/data-sources";
+import { formatCurrency } from "@/lib/utils";
 
 // Mock data interfaces
 interface CodeMetrics {
@@ -188,7 +190,6 @@ export default function CodeIntelligenceSuite() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {(usingMockCodeMetrics || usingMockPatternSummary || usingMockTechDebt) && <MockDataBadge />}
           <Button variant="outline" size="sm">
             <Settings className="w-4 h-4 mr-2" />
             Configure
@@ -211,79 +212,44 @@ export default function CodeIntelligenceSuite() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Code Intelligence Overview</CardTitle>
-              <CardDescription>
-                Comprehensive code quality metrics, pattern analysis, and technical debt tracking across your entire codebase.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Code Metrics Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Proven Patterns as hero metric per YC script */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Proven Patterns</CardTitle>
-                <Network className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {finalPatternSummary?.totalPatterns || "125"}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {finalPatternSummary?.activePatterns || "98"} active • {finalPatternSummary?.topPatterns?.length || 3} proven
-                </p>
-              </CardContent>
-            </Card>
+          <DashboardSection
+            title="Code Intelligence Overview"
+            description="Comprehensive code quality metrics, pattern analysis, and technical debt tracking across your entire codebase."
+          >
+            {/* Code Metrics Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Proven Patterns as hero metric per YC script */}
+              <MetricCard
+                label="Proven Patterns"
+                value={finalPatternSummary?.totalPatterns || 125}
+                icon={Network}
+                tooltip={`${finalPatternSummary?.activePatterns || 98} active patterns, ${finalPatternSummary?.topPatterns?.length || 3} proven implementations`}
+              />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Files</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {finalCodeMetrics?.totalFiles?.toLocaleString() || "0"}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {finalCodeMetrics?.totalLines?.toLocaleString() || "0"} lines of code
-                </p>
-              </CardContent>
-            </Card>
+              <MetricCard
+                label="Total Files"
+                value={finalCodeMetrics?.totalFiles?.toLocaleString() || "0"}
+                icon={FileText}
+                tooltip={`${finalCodeMetrics?.totalLines?.toLocaleString() || "0"} lines of code`}
+              />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Code Quality</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {finalCodeMetrics?.codeQualityScore?.toFixed(1) || "0"}/10
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {usingMockCodeMetrics ? "" : <span className="text-green-600">+0.3</span>} from last 7 days
-                </p>
-              </CardContent>
-            </Card>
+              <MetricCard
+                label="Code Quality"
+                value={`${finalCodeMetrics?.codeQualityScore?.toFixed(1) || "0"}/10`}
+                icon={CheckCircle}
+                trend={usingMockCodeMetrics ? undefined : { value: 0.3, isPositive: true }}
+                tooltip="Quality score from last 7 days"
+              />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Test Coverage</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {finalCodeMetrics?.testCoverage?.toFixed(1) || "0"}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {usingMockCodeMetrics ? "" : <span className="text-green-600">+2.1%</span>} from last 7 days
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-            </CardContent>
-          </Card>
+              <MetricCard
+                label="Test Coverage"
+                value={`${finalCodeMetrics?.testCoverage?.toFixed(1) || "0"}%`}
+                icon={Target}
+                trend={usingMockCodeMetrics ? undefined : { value: 2.1, isPositive: true }}
+                tooltip="Coverage change from last 7 days"
+              />
+            </div>
+          </DashboardSection>
 
           {/* Technical Debt and Quality Metrics */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -315,7 +281,7 @@ export default function CodeIntelligenceSuite() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Estimated Savings</span>
                     <span className="text-lg font-bold text-green-600">
-                      ${finalTechDebt?.estimatedSavings?.toLocaleString() || "0"}
+                      {formatCurrency(finalTechDebt?.estimatedSavings || 0)}
                     </span>
                   </div>
                 </div>

@@ -7,7 +7,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Activity, Zap, Database, TrendingUp, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { MockBadge } from "@/components/MockBadge";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useState, useMemo } from "react";
 import { eventFlowSource } from "@/lib/data-sources";
@@ -153,7 +153,7 @@ export default function EventFlow() {
 
       <div className="grid grid-cols-2 gap-6">
         <div>
-          {isThroughputMock && <MockBadge label="MOCK DATA: Event Throughput" />}
+          {isThroughputMock && <MockDataBadge label="Mock Data: Event Throughput" />}
           <RealtimeChart
             title="Event Throughput (by minute)"
             data={throughputData}
@@ -162,7 +162,7 @@ export default function EventFlow() {
           />
         </div>
         <div>
-          {isLagMock && <MockBadge label="MOCK DATA: Event Lag" />}
+          {isLagMock && <MockDataBadge label="Mock Data: Event Lag" />}
           <RealtimeChart
             title="Event Lag (seconds)"
             data={lagData}

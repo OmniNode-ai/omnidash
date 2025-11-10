@@ -7,7 +7,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Users, Code, TrendingUp, Award } from "lucide-react";
 import { useState } from "react";
-import { MockBadge } from "@/components/MockBadge";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -247,7 +247,7 @@ export default function DeveloperExperience() {
       {/* Charts with real data */}
       <div className="grid grid-cols-2 gap-6">
         <div>
-          {isVelocityMock && <MockBadge label="MOCK DATA: Development Velocity" />}
+          {isVelocityMock && <MockDataBadge label="Mock Data: Development Velocity" />}
           <RealtimeChart
             title={`Development Velocity (${timeRange})`}
             data={velocityData}
@@ -256,7 +256,7 @@ export default function DeveloperExperience() {
           />
         </div>
         <div>
-          {isProductivityMock && <MockBadge label="MOCK DATA: Productivity Score" />}
+          {isProductivityMock && <MockDataBadge label="Mock Data: Productivity Score" />}
           <RealtimeChart
             title={`Developer Productivity Score (${timeRange})`}
             data={productivityData}
