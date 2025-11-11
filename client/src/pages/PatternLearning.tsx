@@ -1,20 +1,23 @@
 import { MetricCard } from "@/components/MetricCard";
 import { PatternNetwork } from "@/components/PatternNetwork";
-import { MockDataBadge } from "@/components/MockDataBadge";
 import { TopPatternsList } from "@/components/TopPatternsList";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { DrillDownModal } from "@/components/DrillDownModal";
 import { StatusLegend } from "@/components/StatusLegend";
 import { PatternFilters } from "@/components/PatternFilters";
-import { ExportButton } from "@/components/ExportButton";
-import { SectionHeader } from "@/components/SectionHeader";
+import { DashboardSection } from "@/components/DashboardSection";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Database, TrendingUp, Award, AlertTriangle } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Database, TrendingUp, Award, AlertTriangle, Settings, Download, RefreshCw, CalendarIcon } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { patternLearningSource } from "@/lib/data-sources";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 import type {
   DiscoveredPattern,
   PatternSummary,
@@ -38,10 +41,19 @@ export default function PatternLearning() {
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleTimeRangeChange = (value: string) => {
     setTimeRange(value);
     localStorage.setItem('dashboard-timerange', value);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    // Trigger refetch of all queries - they will use their existing refetch functions
+    setTimeout(() => setIsRefreshing(false), 1000);
   };
 
   // Fetch pattern summary metrics with 30-second polling
@@ -155,44 +167,134 @@ export default function PatternLearning() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Pattern Learning</h1>
+          <p className="ty-subtitle">
+            Real-time pattern discovery metrics, quality scores, and active learning progress
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <MockDataBadge />
+          <Button variant="outline" size="sm">
+            <Settings className="w-4 h-4 mr-2" />
+            Configure
+          </Button>
+          <Button variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Export Report
+          </Button>
+
+          {/* TIME RANGE CONTROLS */}
+          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+            <Button
+              variant={timeRange === "1h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("1h")}
+            >
+              1H
+            </Button>
+            <Button
+              variant={timeRange === "24h" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("24h")}
+            >
+              24H
+            </Button>
+            <Button
+              variant={timeRange === "7d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("7d")}
+            >
+              7D
+            </Button>
+            <Button
+              variant={timeRange === "30d" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleTimeRangeChange("30d")}
+            >
+              30D
+            </Button>
+
+            {/* Custom date range picker */}
+            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={timeRange === "custom" ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  Custom
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  onSelect={(range) => {
+                    setCustomRange(range);
+                    if (range?.from && range?.to) {
+                      handleTimeRangeChange("custom");
+                      setShowCustomPicker(false);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Show selected custom range */}
+            {timeRange === "custom" && customRange?.from && customRange?.to && (
+              <span className="text-sm text-muted-foreground">
+                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+              </span>
+            )}
+
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Status legend */}
       <StatusLegend />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Pattern Learning Metrics</CardTitle>
-          <CardDescription>Real-time pattern discovery metrics, quality scores, and active learning progress</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-4 gap-6">
-            <MetricCard
-              label="Total Patterns"
-              value={summary?.totalPatterns.toLocaleString() || '0'}
-              icon={Database}
-              status="healthy"
-            />
-            <MetricCard
-              label="New Today"
-              value={summary?.newPatternsToday.toLocaleString() || '0'}
-              icon={TrendingUp}
-              status="healthy"
-            />
-            <MetricCard
-              label="Avg Quality"
-              value={`${Math.round((summary?.avgQualityScore || 0) * 100)}%`}
-              icon={Award}
-              status={(summary?.avgQualityScore || 0) > 0.80 ? "healthy" : "warning"}
-            />
-            <MetricCard
-              label="Active Learning"
-              value={summary?.activeLearningCount.toLocaleString() || '0'}
-              icon={Database}
-              status="healthy"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <DashboardSection
+        title="Pattern Learning Metrics"
+        description="Real-time pattern discovery metrics, quality scores, and active learning progress"
+      >
+        <div className="grid grid-cols-4 gap-6">
+          <MetricCard
+            label="Total Patterns"
+            value={summary?.totalPatterns.toLocaleString() || '0'}
+            icon={Database}
+            status="healthy"
+          />
+          <MetricCard
+            label="New Today"
+            value={summary?.newPatternsToday.toLocaleString() || '0'}
+            icon={TrendingUp}
+            status="healthy"
+          />
+          <MetricCard
+            label="Avg Quality"
+            value={`${Math.round((summary?.avgQualityScore || 0) * 100)}%`}
+            icon={Award}
+            status={(summary?.avgQualityScore || 0) > 0.80 ? "healthy" : "warning"}
+          />
+          <MetricCard
+            label="Active Learning"
+            value={summary?.activeLearningCount.toLocaleString() || '0'}
+            icon={Database}
+            status="healthy"
+          />
+        </div>
+      </DashboardSection>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <div>

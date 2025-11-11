@@ -46,9 +46,13 @@ export const storage = new MemStorage();
 
 // Intelligence Database Connection
 // Connects to PostgreSQL database at 192.168.86.200:5436 (omninode_bridge)
-const intelligenceConnectionString =
-  process.env.DATABASE_URL ||
-  `postgresql://${process.env.POSTGRES_USER || 'postgres'}:${process.env.POSTGRES_PASSWORD || 'REDACTED_PASSWORD_2'}@${process.env.POSTGRES_HOST || '192.168.86.200'}:${process.env.POSTGRES_PORT || '5436'}/${process.env.POSTGRES_DATABASE || 'omninode_bridge'}`;
+const intelligenceConnectionString = process.env.DATABASE_URL || (() => {
+  // If DATABASE_URL not set, require POSTGRES_PASSWORD
+  if (!process.env.POSTGRES_PASSWORD) {
+    throw new Error('DATABASE_URL or POSTGRES_PASSWORD environment variable required for database connection');
+  }
+  return `postgresql://${process.env.POSTGRES_USER || 'postgres'}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST || '192.168.86.200'}:${process.env.POSTGRES_PORT || '5436'}/${process.env.POSTGRES_DATABASE || 'omninode_bridge'}`;
+})();
 
 const pool = new Pool({
   connectionString: intelligenceConnectionString,

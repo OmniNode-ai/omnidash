@@ -111,10 +111,21 @@ class EventConsumer extends EventEmitter {
     this.kafka = new Kafka({
       brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(','),
       clientId: 'omnidash-event-consumer',
+      connectionTimeout: 10000, // 10 seconds
+      requestTimeout: 30000, // 30 seconds
+      retry: {
+        initialRetryTime: 100,
+        retries: 8,
+        maxRetryTime: 30000, // 30 seconds max
+        multiplier: 2,
+      },
     });
 
     this.consumer = this.kafka.consumer({
       groupId: 'omnidash-consumers-v2', // Changed to force reading from beginning
+      sessionTimeout: 30000, // 30 seconds
+      rebalanceTimeout: 60000, // 60 seconds
+      heartbeatInterval: 3000, // 3 seconds
     });
   }
 

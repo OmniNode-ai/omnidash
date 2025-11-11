@@ -8,8 +8,9 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AlertBanner } from "@/components/AlertBanner";
-import { DemoModeProvider } from "@/contexts/DemoModeContext";
+import { DemoModeProvider, useDemoMode } from "@/contexts/DemoModeContext";
 import { DemoModeToggle } from "@/components/DemoModeToggle";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { Activity } from "lucide-react";
 
@@ -79,7 +80,7 @@ function Router() {
   );
 }
 
-function App() {
+function AppContent() {
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
@@ -90,56 +91,68 @@ function App() {
     debug: false,
   });
 
+  // Demo mode status for mock data badge (now inside DemoModeProvider)
+  const { isDemoMode } = useDemoMode();
+
+  return (
+    <ThemeProvider defaultTheme="dark">
+      <TooltipProvider>
+        <SidebarProvider style={style as React.CSSProperties}>
+        <div className="flex h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger data-testid="button-sidebar-toggle" />
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <img src="/favicon.svg" alt="OmniNode icon" className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-semibold">OmniNode</h1>
+                    <p className="text-xs text-muted-foreground">Code Intelligence Platform</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <DemoModeToggle />
+                {isDemoMode && (
+                  <MockDataBadge label="Mock Data" className="hidden sm:inline-flex" />
+                )}
+                <div className="flex items-center gap-2">
+                  <div className={`h-2 w-2 rounded-full transition-colors duration-300 ${
+                    isConnected ? 'bg-green-500 animate-pulse' :
+                    connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                    'bg-red-500'
+                  }`} />
+                  <span className="text-xs text-muted-foreground">
+                    {isConnected ? 'Connected' : connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+                  </span>
+                </div>
+                <ThemeToggle />
+              </div>
+            </header>
+
+            <AlertBanner />
+
+            <main className="flex-1 overflow-auto p-8">
+              <Router />
+            </main>
+          </div>
+        </div>
+        </SidebarProvider>
+      <Toaster />
+    </TooltipProvider>
+  </ThemeProvider>
+  );
+}
+
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <DemoModeProvider>
-        <ThemeProvider defaultTheme="dark">
-          <TooltipProvider>
-            <SidebarProvider style={style as React.CSSProperties}>
-            <div className="flex h-screen w-full">
-              <AppSidebar />
-              <div className="flex flex-col flex-1 overflow-hidden">
-                <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-                  <div className="flex items-center gap-4">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <img src="/favicon.svg" alt="OmniNode icon" className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h1 className="text-lg font-semibold">OmniNode</h1>
-                        <p className="text-xs text-muted-foreground">Code Intelligence Platform</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <DemoModeToggle />
-                    <div className="flex items-center gap-2">
-                      <div className={`h-2 w-2 rounded-full transition-colors duration-300 ${
-                        isConnected ? 'bg-green-500 animate-pulse' :
-                        connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
-                        'bg-red-500'
-                      }`} />
-                      <span className="text-xs text-muted-foreground">
-                        {isConnected ? 'Connected' : connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
-                      </span>
-                    </div>
-                    <ThemeToggle />
-                  </div>
-                </header>
-
-                <AlertBanner />
-
-                <main className="flex-1 overflow-auto p-8">
-                  <Router />
-                </main>
-              </div>
-            </div>
-            </SidebarProvider>
-          <Toaster />
-        </TooltipProvider>
-      </ThemeProvider>
+        <AppContent />
       </DemoModeProvider>
     </QueryClientProvider>
   );
