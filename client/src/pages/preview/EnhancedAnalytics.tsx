@@ -576,7 +576,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
               <CardContent>
                 <div className="text-2xl font-bold">{systemMetrics.totalRequests.toLocaleString()}</div>
                 <div className="flex items-center text-xs text-muted-foreground">
-                  <TrendingUp className="h-4 w-4 mr-1 text-green-500" />
+                  <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
                   +12.5% from last {timeRange}
                 </div>
               </CardContent>
@@ -590,7 +590,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
               <CardContent>
                 <div className="text-2xl font-bold">{systemMetrics.avgResponseTime}ms</div>
                 <div className="flex items-center text-xs text-muted-foreground">
-                  <TrendingDown className="h-4 w-4 mr-1 text-green-500" />
+                  <TrendingDown className="h-3 w-3 mr-1 text-green-500" />
                   -8ms from last {timeRange}
                 </div>
               </CardContent>
@@ -604,7 +604,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
               <CardContent>
                 <div className="text-2xl font-bold">{systemMetrics.successRate}%</div>
                 <div className="flex items-center text-xs text-muted-foreground">
-                  <TrendingUp className="h-4 w-4 mr-1 text-green-500" />
+                  <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
                   +2.1% from last {timeRange}
                 </div>
               </CardContent>
@@ -618,7 +618,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
               <CardContent>
                 <div className="text-2xl font-bold">{systemMetrics.activeUsers}</div>
                 <div className="flex items-center text-xs text-muted-foreground">
-                  <TrendingUp className="h-4 w-4 mr-1 text-green-500" />
+                  <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
                   +3 from last {timeRange}
                 </div>
               </CardContent>
@@ -635,7 +635,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
             size="sm"
             onClick={() => setActiveSection("performance")}
           >
-            <BarChart className="w-4 h-4 mr-2 text-muted-foreground" />
+            <BarChart className="w-4 h-4 mr-2" />
             Performance
           </Button>
           <Button
@@ -643,31 +643,31 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
             size="sm"
             onClick={() => setActiveSection("quality")}
           >
-            <Shield className="w-4 h-4 mr-2 text-muted-foreground" />
+            <Shield className="w-4 h-4 mr-2" />
             Quality
           </Button>
-          <Button
-            variant={activeSection === "predictions" ? "default" : "outline"}
+          <Button 
+            variant={activeSection === "predictions" ? "default" : "outline"} 
             size="sm"
             onClick={() => setActiveSection("predictions")}
           >
-            <Eye className="w-4 h-4 mr-2 text-muted-foreground" />
+            <Eye className="w-4 h-4 mr-2" />
             Predictions
           </Button>
-          <Button
-            variant={activeSection === "optimization" ? "default" : "outline"}
+          <Button 
+            variant={activeSection === "optimization" ? "default" : "outline"} 
             size="sm"
             onClick={() => setActiveSection("optimization")}
           >
-            <Lightbulb className="w-4 h-4 mr-2 text-muted-foreground" />
+            <Lightbulb className="w-4 h-4 mr-2" />
             Optimization
           </Button>
-          <Button
-            variant={activeSection === "routing" ? "default" : "outline"}
+          <Button 
+            variant={activeSection === "routing" ? "default" : "outline"} 
             size="sm"
             onClick={() => setActiveSection("routing")}
           >
-            <Zap className="w-4 h-4 mr-2 text-muted-foreground" />
+            <Zap className="w-4 h-4 mr-2" />
             Routing & Patterns
           </Button>
         </div>
@@ -727,9 +727,9 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                           <TableCell>
                             <div className="flex items-center gap-1">
                               {data.errors > 0 ? (
-                                <AlertTriangle className="h-4 w-4 text-red-500" />
+                                <AlertTriangle className="h-3 w-3 text-red-500" />
                               ) : (
-                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <CheckCircle className="h-3 w-3 text-green-500" />
                               )}
                               <span className="text-sm">{data.errors}</span>
                             </div>
@@ -972,7 +972,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                                           </div>
                                           <p className="text-sm text-muted-foreground mb-2">{win.impact}</p>
                                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <Clock className="h-4 w-4" />
+                                            <Clock className="h-3 w-3" />
                                             <span>Est. time: {win.estimatedTime}</span>
                                           </div>
                                         </div>
@@ -1012,7 +1012,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                         </p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>Current: {opportunity.current}</span>
-                          <ArrowRight className="h-4 w-4" />
+                          <ArrowRight className="h-3 w-3" />
                           <span className="text-green-600 font-medium">Target: {opportunity.target}</span>
                         </div>
                       </div>
@@ -1386,7 +1386,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                       <TooltipTrigger asChild>
                         <div className="cursor-help flex items-center gap-1">
                           <CardTitle className="text-sm font-medium">Routing Accuracy</CardTitle>
-                          <Info className="h-4 w-4 text-muted-foreground" />
+                          <Info className="h-3 w-3 text-muted-foreground" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">
@@ -1418,7 +1418,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                       <TooltipTrigger asChild>
                         <div className="cursor-help flex items-center gap-1">
                           <CardTitle className="text-sm font-medium">Cache Hit Rate</CardTitle>
-                          <Info className="h-4 w-4 text-muted-foreground" />
+                          <Info className="h-3 w-3 text-muted-foreground" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">
@@ -1457,7 +1457,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                       <TooltipTrigger asChild>
                         <div className="cursor-help flex items-center gap-1">
                           <CardTitle className="text-sm font-medium">Avg Routing Time</CardTitle>
-                          <Info className="h-4 w-4 text-muted-foreground" />
+                          <Info className="h-3 w-3 text-muted-foreground" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">

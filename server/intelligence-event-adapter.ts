@@ -24,18 +24,7 @@ export class IntelligenceEventAdapter {
   public readonly TOPIC_FAILED = process.env.INTEL_FAILED_TOPIC || 'dev.archon-intelligence.intelligence.code-analysis-failed.v1';
 
   constructor(private readonly brokers: string[] = (process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(',')) {
-    this.kafka = new Kafka({
-      brokers: this.brokers,
-      clientId: 'omnidash-intelligence-adapter',
-      connectionTimeout: 10000, // 10 seconds
-      requestTimeout: 30000, // 30 seconds
-      retry: {
-        initialRetryTime: 100,
-        retries: 8,
-        maxRetryTime: 30000, // 30 seconds max
-        multiplier: 2,
-      },
-    });
+    this.kafka = new Kafka({ brokers: this.brokers, clientId: 'omnidash-intelligence-adapter' });
   }
 
   async start(): Promise<void> {
@@ -44,12 +33,7 @@ export class IntelligenceEventAdapter {
     this.producer = this.kafka.producer();
     await this.producer.connect();
 
-    this.consumer = this.kafka.consumer({
-      groupId: `omnidash-intel-${randomUUID().slice(0, 8)}`,
-      sessionTimeout: 30000, // 30 seconds
-      rebalanceTimeout: 60000, // 60 seconds
-      heartbeatInterval: 3000, // 3 seconds
-    });
+    this.consumer = this.kafka.consumer({ groupId: `omnidash-intel-${randomUUID().slice(0, 8)}` });
     await this.consumer.connect();
     await this.consumer.subscribe({ topic: this.TOPIC_COMPLETED, fromBeginning: false });
     await this.consumer.subscribe({ topic: this.TOPIC_FAILED, fromBeginning: false });

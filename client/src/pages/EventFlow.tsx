@@ -2,18 +2,15 @@ import { MetricCard } from "@/components/MetricCard";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { DashboardSection } from "@/components/DashboardSection";
-import { Activity, Zap, Database, Clock, Download, CalendarIcon } from "lucide-react";
+import { TimeRangeSelector } from "@/components/TimeRangeSelector";
+import { ExportButton } from "@/components/ExportButton";
+import { SectionHeader } from "@/components/SectionHeader";
+import { Activity, Zap, Database, TrendingUp, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { MockDataBadge } from "@/components/MockDataBadge";
+import { MockBadge } from "@/components/MockBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useState, useMemo } from "react";
 import { eventFlowSource } from "@/lib/data-sources";
-import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
 
 // Event stream interface matching omniarchon endpoint
 interface EventStreamItem {
@@ -33,8 +30,6 @@ export default function EventFlow() {
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
-  const [customRange, setCustomRange] = useState<DateRange | undefined>();
-  const [showCustomPicker, setShowCustomPicker] = useState(false);
 
   const handleTimeRangeChange = (value: string) => {
     setTimeRange(value);
@@ -99,105 +94,22 @@ export default function EventFlow() {
   // Format last update time
   const lastUpdateTime = new Date(dataUpdatedAt).toLocaleTimeString();
 
-  // Check if using mock data
-  const usingMockData = isThroughputMock || isLagMock;
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading event flow data...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* STANDARD HEADER PATTERN */}
+      <SectionHeader
+        title="Event Flow"
+        description={`Real-time event stream from omniarchon intelligence infrastructure${dataUpdatedAt ? ` • Last updated: ${lastUpdateTime}` : ''}`}
+        details="Event Flow provides real-time visibility into all events flowing through the Kafka event bus. Monitor event throughput, processing lag, event types, and recent events. This dashboard is essential for debugging event-driven workflows, tracking system activity, and identifying performance bottlenecks in the event pipeline."
+        level="h1"
+      />
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Event Flow</h1>
-          <p className="ty-subtitle">
-            Real-time event stream from omniarchon intelligence infrastructure
-            {dataUpdatedAt ? ` • Last updated: ${lastUpdateTime}` : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {usingMockData && <MockDataBadge />}
-          <Button variant="outline" size="sm" disabled={!data || isError}>
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-
-          {/* TIME RANGE CONTROLS WITH DIVIDER */}
-          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
-            <Button
-              variant={timeRange === "1h" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("1h")}
-            >
-              1H
-            </Button>
-            <Button
-              variant={timeRange === "24h" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("24h")}
-            >
-              24H
-            </Button>
-            <Button
-              variant={timeRange === "7d" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("7d")}
-            >
-              7D
-            </Button>
-            <Button
-              variant={timeRange === "30d" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("30d")}
-            >
-              30D
-            </Button>
-
-            {/* Custom date range picker */}
-            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={timeRange === "custom" ? "default" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <CalendarIcon className="h-4 w-4" />
-                  Custom
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={customRange}
-                  onSelect={(range) => {
-                    setCustomRange(range);
-                    if (range?.from && range?.to) {
-                      handleTimeRangeChange("custom");
-                      setShowCustomPicker(false);
-                    }
-                  }}
-                  numberOfMonths={2}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-
-            {/* Show selected custom range */}
-            {timeRange === "custom" && customRange?.from && customRange?.to && (
-              <span className="text-sm text-muted-foreground">
-                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
-              </span>
-            )}
-          </div>
+        <div className="flex items-center gap-4">
+          <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
+          <ExportButton
+            data={{ events: data?.events, metrics, throughputData, lagData, topics }}
+            filename={`event-flow-${timeRange}-${new Date().toISOString().split('T')[0]}`}
+            disabled={!data || isError}
+          />
         </div>
       </div>
 
@@ -212,39 +124,36 @@ export default function EventFlow() {
         </Card>
       )}
 
-      {/* METRIC CARDS IN DASHBOARDSECTION */}
-      <DashboardSection title="Event Stream Metrics">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            label="Total Events"
-            value={metrics.totalEvents.toString()}
-            icon={Activity}
-            status={isError ? "error" : "healthy"}
-          />
-          <MetricCard
-            label="Event Types"
-            value={metrics.uniqueTypes.toString()}
-            icon={Database}
-            status={isError ? "error" : "healthy"}
-          />
-          <MetricCard
-            label="Events/min"
-            value={metrics.eventsPerMinute.toString()}
-            icon={Zap}
-            status={isError ? "error" : "healthy"}
-          />
-          <MetricCard
-            label="Avg Processing"
-            value={`${metrics.avgProcessingTime}ms`}
-            icon={Clock}
-            status={isError ? "error" : "healthy"}
-          />
-        </div>
-      </DashboardSection>
+      <div className="grid grid-cols-4 gap-6">
+        <MetricCard
+          label="Total Events"
+          value={isLoading ? "..." : metrics.totalEvents.toString()}
+          icon={Activity}
+          status={isError ? "error" : "healthy"}
+        />
+        <MetricCard
+          label="Event Types"
+          value={isLoading ? "..." : metrics.uniqueTypes.toString()}
+          icon={Database}
+          status={isError ? "error" : "healthy"}
+        />
+        <MetricCard
+          label="Events/min"
+          value={isLoading ? "..." : metrics.eventsPerMinute.toString()}
+          icon={Zap}
+          status={isError ? "error" : "healthy"}
+        />
+        <MetricCard
+          label="Avg Processing"
+          value={isLoading ? "..." : `${metrics.avgProcessingTime}ms`}
+          icon={Clock}
+          status={isError ? "error" : "healthy"}
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-6">
         <div>
-          {isThroughputMock && <MockDataBadge label="Mock Data: Event Throughput" />}
+          {isThroughputMock && <MockBadge label="MOCK DATA: Event Throughput" />}
           <RealtimeChart
             title="Event Throughput (by minute)"
             data={throughputData}
@@ -253,7 +162,7 @@ export default function EventFlow() {
           />
         </div>
         <div>
-          {isLagMock && <MockDataBadge label="Mock Data: Event Lag" />}
+          {isLagMock && <MockBadge label="MOCK DATA: Event Lag" />}
           <RealtimeChart
             title="Event Lag (seconds)"
             data={lagData}

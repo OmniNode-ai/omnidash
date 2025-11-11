@@ -34,7 +34,3 @@ page-*.png
 *.bak
 *.backup
 *~
-
-# Server output logs
-server.out
-*.out

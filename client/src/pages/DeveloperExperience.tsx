@@ -2,17 +2,15 @@ import { MetricCard } from "@/components/MetricCard";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Users, Code, TrendingUp, Award, Settings, Eye, CalendarIcon, RefreshCw, Download, Filter } from "lucide-react";
+import { TimeRangeSelector } from "@/components/TimeRangeSelector";
+import { ExportButton } from "@/components/ExportButton";
+import { SectionHeader } from "@/components/SectionHeader";
+import { Users, Code, TrendingUp, Award } from "lucide-react";
 import { useState } from "react";
-import { MockDataBadge } from "@/components/MockDataBadge";
+import { MockBadge } from "@/components/MockBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
 
 // TypeScript interfaces for API responses
 interface Workflow {
@@ -73,17 +71,6 @@ export default function DeveloperExperience() {
   const handleTimeRangeChange = (value: string) => {
     setTimeRange(value);
     localStorage.setItem('dashboard-timerange', value);
-  };
-
-  // Custom date range picker state
-  const [customRange, setCustomRange] = useState<DateRange | undefined>();
-  const [showCustomPicker, setShowCustomPicker] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    queryClient.invalidateQueries();
-    setTimeout(() => setIsRefreshing(false), 1000);
   };
 
   // WebSocket for real-time updates
@@ -207,104 +194,21 @@ export default function DeveloperExperience() {
 
   return (
     <div className="space-y-6">
+      <SectionHeader
+        title="Developer Experience"
+        description="Workflow improvements and productivity metrics powered by AI assistance."
+        details="The Developer Experience dashboard tracks how AI agents improve developer productivity. Monitor active developers, code generation volumes, productivity gains, and pattern reuse rates. Analyze task completion velocity, workflow efficiency, and time savings across your development team. Use these insights to measure ROI from AI assistance and identify opportunities for further automation."
+        level="h1"
+      />
+      {/* Header with controls */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Developer Experience</h1>
-          <p className="ty-subtitle">
-            Workflow improvements and productivity metrics powered by AI assistance
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {(isVelocityMock || isProductivityMock) && <MockDataBadge />}
-          <Button variant="outline" size="sm">
-            <Settings className="w-4 h-4 mr-2" />
-            Configure
-          </Button>
-          <Button variant="outline" size="sm">
-            <Eye className="w-4 h-4 mr-2" />
-            Export Report
-          </Button>
-
-          {/* TIME RANGE CONTROLS */}
-          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
-            <Button
-              variant={timeRange === "1h" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("1h")}
-            >
-              1H
-            </Button>
-            <Button
-              variant={timeRange === "24h" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("24h")}
-            >
-              24H
-            </Button>
-            <Button
-              variant={timeRange === "7d" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("7d")}
-            >
-              7D
-            </Button>
-            <Button
-              variant={timeRange === "30d" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("30d")}
-            >
-              30D
-            </Button>
-
-            {/* Custom date range picker */}
-            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={timeRange === "custom" ? "default" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <CalendarIcon className="h-4 w-4" />
-                  Custom
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={customRange}
-                  onSelect={(range) => {
-                    setCustomRange(range);
-                    if (range?.from && range?.to) {
-                      handleTimeRangeChange("custom");
-                      setShowCustomPicker(false);
-                    }
-                  }}
-                  numberOfMonths={2}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-
-            {/* Show selected custom range */}
-            {timeRange === "custom" && customRange?.from && customRange?.to && (
-              <span className="text-sm text-muted-foreground">
-                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
-              </span>
-            )}
-
-            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
-            <Button variant="outline" size="sm">
-              <Filter className="w-4 h-4 mr-2" />
-              Filter
-            </Button>
-          </div>
+        <div className="flex items-center gap-4">
+          <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
+          <ExportButton
+            data={(metricsData as unknown as Record<string, unknown>) || null}
+            filename={`developer-experience-${timeRange}-${new Date().toISOString().split('T')[0]}`}
+            disabled={!metricsData}
+          />
         </div>
       </div>
 
@@ -343,7 +247,7 @@ export default function DeveloperExperience() {
       {/* Charts with real data */}
       <div className="grid grid-cols-2 gap-6">
         <div>
-          {isVelocityMock && <MockDataBadge label="Mock Data: Development Velocity" />}
+          {isVelocityMock && <MockBadge label="MOCK DATA: Development Velocity" />}
           <RealtimeChart
             title={`Development Velocity (${timeRange})`}
             data={velocityData}
@@ -352,7 +256,7 @@ export default function DeveloperExperience() {
           />
         </div>
         <div>
-          {isProductivityMock && <MockDataBadge label="Mock Data: Productivity Score" />}
+          {isProductivityMock && <MockBadge label="MOCK DATA: Productivity Score" />}
           <RealtimeChart
             title={`Developer Productivity Score (${timeRange})`}
             data={productivityData}

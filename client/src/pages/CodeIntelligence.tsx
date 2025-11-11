@@ -2,20 +2,16 @@ import { MetricCard } from "@/components/MetricCard";
 import { QualityGatePanel } from "@/components/QualityGatePanel";
 import { PerformanceThresholds } from "@/components/PerformanceThresholds";
 import { RealtimeChart } from "@/components/RealtimeChart";
-import { ensureTimeSeries } from "@/components/mockUtils";
-import { DashboardSection } from "@/components/DashboardSection";
 import { MockDataBadge } from "@/components/MockDataBadge";
-import { Code, Search, CheckCircle, Gauge, AlertTriangle, FileCode, Shield, Settings, Download, RefreshCw, CalendarIcon } from "lucide-react";
+import { ensureTimeSeries } from "@/components/mockUtils";
+import { TimeRangeSelector } from "@/components/TimeRangeSelector";
+import { ExportButton } from "@/components/ExportButton";
+import { Code, Search, CheckCircle, Gauge, AlertTriangle, FileCode, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { codeIntelligenceSource } from "@/lib/data-sources";
-import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
 
 // Types from data source
 import type { CodeAnalysisData, ComplianceData } from "@/lib/data-sources/code-intelligence-source";
@@ -24,9 +20,6 @@ export default function CodeIntelligence() {
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
-  const [customRange, setCustomRange] = useState<DateRange | undefined>();
-  const [showCustomPicker, setShowCustomPicker] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleTimeRangeChange = (value: string) => {
     setTimeRange(value);
@@ -34,18 +27,12 @@ export default function CodeIntelligence() {
   };
 
   // Use centralized data source
-  const { data: intelligenceData, isLoading, error, refetch } = useQuery({
+  const { data: intelligenceData, isLoading } = useQuery({
     queryKey: ['code-intelligence', timeRange],
     queryFn: () => codeIntelligenceSource.fetchAll(timeRange),
     refetchInterval: 60000,
     refetchIntervalInBackground: true,
   });
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await refetch();
-    setTimeout(() => setIsRefreshing(false), 500);
-  };
 
   const codeAnalysis = intelligenceData?.codeAnalysis;
   const complianceData = intelligenceData?.compliance;
@@ -93,183 +80,61 @@ export default function CodeIntelligence() {
     : [] as Array<{ time: string; value: number }>;
   const { data: qualityData, isMock: isQualityMock } = ensureTimeSeries(qualityDataRaw, 82, 8);
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading code intelligence...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertTriangle className="h-8 w-8 text-destructive mx-auto mb-4" />
-          <p className="text-muted-foreground mb-4">Failed to load code intelligence data</p>
-          <Button onClick={handleRefresh} variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* Standard Header with flex layout (C2, C3, C4, C5) */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Code Intelligence</h1>
-          <p className="ty-subtitle">
-            Semantic search, quality gates, and ONEX compliance monitoring for code analysis
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {(usingMockData || usingMockGates || usingMockThresholds) && <MockDataBadge />}
-          <Button variant="outline" size="sm">
-            <Settings className="w-4 h-4 mr-2" />
-            Configure
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-
-          {/* Visual divider before time range (C7) */}
-          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
-            <Button
-              variant={timeRange === "1h" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("1h")}
-            >
-              1H
-            </Button>
-            <Button
-              variant={timeRange === "24h" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("24h")}
-            >
-              24H
-            </Button>
-            <Button
-              variant={timeRange === "7d" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("7d")}
-            >
-              7D
-            </Button>
-            <Button
-              variant={timeRange === "30d" ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleTimeRangeChange("30d")}
-            >
-              30D
-            </Button>
-
-            {/* Custom date range picker (C6) */}
-            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={timeRange === "custom" ? "default" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <CalendarIcon className="h-4 w-4" />
-                  Custom
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={customRange}
-                  onSelect={(range) => {
-                    setCustomRange(range);
-                    if (range?.from && range?.to) {
-                      handleTimeRangeChange("custom");
-                      setShowCustomPicker(false);
-                    }
-                  }}
-                  numberOfMonths={2}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-
-            {/* Show selected custom range */}
-            {timeRange === "custom" && customRange?.from && customRange?.to && (
-              <span className="text-sm text-muted-foreground">
-                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
-              </span>
-            )}
-
-            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+      <Card>
+        <CardHeader>
+          <CardTitle>Code Intelligence Metrics</CardTitle>
+          <CardDescription>Overview of code quality, complexity, and security issues across analyzed files</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-4 gap-6">
+            <MetricCard
+              label="Files Analyzed"
+              value={isLoading ? '...' : (codeAnalysis?.files_analyzed?.toLocaleString() || '0')}
+              icon={FileCode}
+              status="healthy"
+            />
+            <MetricCard
+              label="Avg Complexity"
+              value={isLoading ? '...' : (codeAnalysis?.avg_complexity?.toFixed(1) || '0')}
+              icon={Gauge}
+              status={codeAnalysis && codeAnalysis.avg_complexity > 10 ? 'warning' : 'healthy'}
+            />
+            <MetricCard
+              label="Code Smells"
+              value={isLoading ? '...' : (codeAnalysis?.code_smells?.toString() || '0')}
+              icon={AlertTriangle}
+              status={codeAnalysis && codeAnalysis.code_smells > 10 ? 'warning' : codeAnalysis && codeAnalysis.code_smells > 0 ? 'warning' : 'healthy'}
+            />
+            <MetricCard
+              label="Security Issues"
+              value={isLoading ? '...' : (codeAnalysis?.security_issues?.toString() || '0')}
+              icon={AlertTriangle}
+              status={codeAnalysis && codeAnalysis.security_issues > 0 ? 'error' : 'healthy'}
+            />
           </div>
-        </div>
-      </div>
-      <DashboardSection
-        title="Code Intelligence Metrics"
-        description="Overview of code quality, complexity, and security issues across analyzed files"
-      >
-        <div className="grid grid-cols-4 gap-6">
-          <MetricCard
-            label="Files Analyzed"
-            value={isLoading ? '...' : (codeAnalysis?.files_analyzed?.toLocaleString() || '0')}
-            icon={FileCode}
-            status="healthy"
-          />
-          <MetricCard
-            label="Avg Complexity"
-            value={isLoading ? '...' : (codeAnalysis?.avg_complexity?.toFixed(1) || '0')}
-            icon={Gauge}
-            status={codeAnalysis && codeAnalysis.avg_complexity > 10 ? 'warning' : 'healthy'}
-          />
-          <MetricCard
-            label="Code Smells"
-            value={isLoading ? '...' : (codeAnalysis?.code_smells?.toString() || '0')}
-            icon={AlertTriangle}
-            status={codeAnalysis && codeAnalysis.code_smells > 10 ? 'warning' : codeAnalysis && codeAnalysis.code_smells > 0 ? 'warning' : 'healthy'}
-          />
-          <MetricCard
-            label="Security Issues"
-            value={isLoading ? '...' : (codeAnalysis?.security_issues?.toString() || '0')}
-            icon={AlertTriangle}
-            status={codeAnalysis && codeAnalysis.security_issues > 0 ? 'error' : 'healthy'}
-          />
-        </div>
-      </DashboardSection>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 gap-6">
-        <DashboardSection
-          title="Semantic Search Queries"
-          showMockBadge={isSearchMock}
-        >
+        <div>
+          {isSearchMock && <MockDataBadge className="mb-2" />}
           <RealtimeChart
-            title=""
+            title="Semantic Search Queries"
             data={searchData}
             color="hsl(var(--chart-1))"
             showArea
           />
-        </DashboardSection>
-        <DashboardSection
-          title="Overall Code Quality Score"
-          showMockBadge={isQualityMock}
-        >
+        </div>
+        <div>
+          {isQualityMock && <MockDataBadge className="mb-2" />}
           <RealtimeChart
-            title=""
+            title="Overall Code Quality Score"
             data={qualityData}
             color="hsl(var(--chart-3))"
           />
-        </DashboardSection>
+        </div>
       </div>
 
       {/* ONEX Compliance Coverage Widget */}
@@ -277,7 +142,7 @@ export default function CodeIntelligence() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
-              <Shield className="h-4 w-4 text-primary" />
+              <Shield className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h3 className="text-lg font-semibold">ONEX Compliance Coverage</h3>
@@ -396,18 +261,14 @@ export default function CodeIntelligence() {
       </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <DashboardSection
-          title="Quality Gates"
-          showMockBadge={usingMockGates}
-        >
+        <div>
+          {usingMockGates && <MockDataBadge className="mb-2" />}
           <QualityGatePanel gates={gates} />
-        </DashboardSection>
-        <DashboardSection
-          title="Performance Thresholds"
-          showMockBadge={usingMockThresholds}
-        >
+        </div>
+        <div>
+          {usingMockThresholds && <MockDataBadge className="mb-2" />}
           <PerformanceThresholds thresholds={thresholds} />
-        </DashboardSection>
+        </div>
       </div>
     </div>
   );

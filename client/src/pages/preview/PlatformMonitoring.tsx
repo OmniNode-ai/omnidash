@@ -7,16 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Shield,
-  Server,
-  Users,
-  Activity,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
+import { 
+  Shield, 
+  Server, 
+  Users, 
+  Activity, 
+  AlertTriangle, 
+  CheckCircle, 
+  XCircle, 
   Clock,
   Database,
   Network,
@@ -34,11 +32,8 @@ import {
   Target,
   Code,
   GitBranch,
-  MessageSquare,
-  CalendarIcon
+  MessageSquare
 } from "lucide-react";
-import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
 
 // Import existing components
 import SystemHealth from "./SystemHealth";
@@ -51,9 +46,6 @@ import type { ServiceStatus } from "@/lib/data-sources/platform-monitoring-sourc
 export default function PlatformMonitoring() {
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("24h");
-  const [customRange, setCustomRange] = useState<DateRange | undefined>();
-  const [showCustomPicker, setShowCustomPicker] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Use centralized data source
   const { data: monitoringData, isLoading } = useQuery({
@@ -66,29 +58,23 @@ export default function PlatformMonitoring() {
   const developerMetrics = monitoringData?.developerMetrics;
   const incidents = monitoringData?.incidents;
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    // Simulate refresh
-    setTimeout(() => setIsRefreshing(false), 1000);
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "healthy": return "text-green-400 bg-green-900/30 border border-green-700/40";
-      case "degraded": return "text-yellow-400 bg-yellow-900/30 border border-yellow-700/40";
-      case "critical": return "text-red-400 bg-red-900/30 border border-red-700/40";
-      case "maintenance": return "text-blue-400 bg-blue-900/30 border border-blue-700/40";
-      default: return "text-gray-400 bg-gray-900/30 border border-gray-700/40";
+      case "healthy": return "text-green-600 bg-green-100";
+      case "degraded": return "text-yellow-600 bg-yellow-100";
+      case "critical": return "text-red-600 bg-red-100";
+      case "maintenance": return "text-blue-600 bg-blue-100";
+      default: return "text-gray-600 bg-gray-100";
     }
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case "low": return "text-blue-400 bg-blue-900/30 border border-blue-700/40";
-      case "medium": return "text-yellow-400 bg-yellow-900/30 border border-yellow-700/40";
-      case "high": return "text-orange-400 bg-orange-900/30 border border-orange-700/40";
-      case "critical": return "text-red-400 bg-red-900/30 border border-red-700/40";
-      default: return "text-gray-400 bg-gray-900/30 border border-gray-700/40";
+      case "low": return "text-blue-600 bg-blue-100";
+      case "medium": return "text-yellow-600 bg-yellow-100";
+      case "high": return "text-orange-600 bg-orange-100";
+      case "critical": return "text-red-600 bg-red-100";
+      default: return "text-gray-600 bg-gray-100";
     }
   };
 
@@ -105,15 +91,18 @@ export default function PlatformMonitoring() {
 
   return (
     <div className="space-y-6">
-      {/* PAGE HEADER - Outside Card */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Platform Monitoring</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold">Platform Monitoring</h1>
+          <p className="ty-subtitle">
             Comprehensive monitoring of system health, service status, and developer productivity
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
           <Button variant="outline" size="sm">
             <Settings className="w-4 h-4 mr-2" />
             Configure
@@ -122,93 +111,17 @@ export default function PlatformMonitoring() {
             <Bell className="w-4 h-4 mr-2" />
             Alerts
           </Button>
-
-          {/* TIME RANGE CONTROLS - Button Group Pattern */}
-          <div className="flex items-center gap-2 ml-2 pl-2 border-l">
-            <Button
-              variant={timeRange === "1h" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeRange("1h")}
-            >
-              1H
-            </Button>
-            <Button
-              variant={timeRange === "24h" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeRange("24h")}
-            >
-              24H
-            </Button>
-            <Button
-              variant={timeRange === "7d" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeRange("7d")}
-            >
-              7D
-            </Button>
-            <Button
-              variant={timeRange === "30d" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeRange("30d")}
-            >
-              30D
-            </Button>
-
-            {/* Custom date range picker */}
-            <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={timeRange === "custom" ? "default" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <CalendarIcon className="h-4 w-4" />
-                  Custom
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={customRange}
-                  onSelect={(range) => {
-                    setCustomRange(range);
-                    if (range?.from && range?.to) {
-                      setTimeRange("custom");
-                      setShowCustomPicker(false);
-                    }
-                  }}
-                  numberOfMonths={2}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-
-            {/* Show selected custom range */}
-            {timeRange === "custom" && customRange?.from && customRange?.to && (
-              <span className="text-sm text-muted-foreground">
-                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
-              </span>
-            )}
-
-            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
         </div>
       </div>
 
-      {/* TABS AND CONTENT - Inside Card */}
-      <Card>
-        <CardContent className="pt-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="system">System Health</TabsTrigger>
-              <TabsTrigger value="services">Services</TabsTrigger>
-              <TabsTrigger value="developers">Developer Metrics</TabsTrigger>
-              <TabsTrigger value="incidents">Incidents</TabsTrigger>
-            </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="system">System Health</TabsTrigger>
+          <TabsTrigger value="services">Services</TabsTrigger>
+          <TabsTrigger value="developers">Developer Metrics</TabsTrigger>
+          <TabsTrigger value="incidents">Incidents</TabsTrigger>
+        </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           {/* System Status Overview */}
@@ -498,9 +411,7 @@ export default function PlatformMonitoring() {
             </CardContent>
           </Card>
         </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+      </Tabs>
     </div>
   );
 }

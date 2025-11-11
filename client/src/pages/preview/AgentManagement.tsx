@@ -116,6 +116,7 @@ export default function AgentManagement() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {usingMockData && <MockDataBadge />}
           <Button
             variant="outline"
             size="sm"
@@ -143,7 +144,80 @@ export default function AgentManagement() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          {/* Agent Operations - unified metrics section with status indicators and real-time data */}
+          {/* Agent Summary Metrics */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Agent Operations Overview</CardTitle>
+              <CardDescription>
+                Key metrics and statistics for agent execution and performance
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Agents</CardTitle>
+                    <Bot className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {agentSummary?.totalAgents || 0}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {agentSummary?.activeAgents || 0} active
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Runs</CardTitle>
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {agentSummary?.totalRuns?.toLocaleString() || "0"}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {agentSummary?.totalRuns ? `${agentSummary.totalRuns.toLocaleString()} total executions` : "No executions yet"}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {Math.max(0, Math.min(100, agentSummary?.successRate || 0)).toFixed(1)}%
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {agentSummary?.totalRuns ? `Based on ${agentSummary.totalRuns.toLocaleString()} runs` : "No data available"}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Avg Execution Time</CardTitle>
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {agentSummary?.avgExecutionTime ? `${agentSummary.avgExecutionTime.toFixed(1)}s` : "0s"}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {agentSummary?.avgExecutionTime ? `Weighted average across all agents` : "No execution data"}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Agent Operations lives here in Overview as the primary section */}
           <AgentOperations />
         </TabsContent>
 
@@ -160,33 +234,33 @@ export default function AgentManagement() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="border">
-                  <CardContent className="p-6">
+                <Card className="border-2">
+                  <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
+                      <div className="text-3xl font-bold text-green-600">
                         {routingStats?.accuracy?.toFixed(1) || "0"}%
                       </div>
-                      <div className="text-sm text-muted-foreground font-normal">Routing Accuracy</div>
+                      <div className="text-sm text-muted-foreground">Routing Accuracy</div>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="border">
-                  <CardContent className="p-6">
+                <Card className="border-2">
+                  <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
+                      <div className="text-3xl font-bold text-blue-600">
                         {routingStats?.avgRoutingTime?.toFixed(0) || "0"}ms
                       </div>
-                      <div className="text-sm text-muted-foreground font-normal">Avg Routing Time</div>
+                      <div className="text-sm text-muted-foreground">Avg Routing Time</div>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="border">
-                  <CardContent className="p-6">
+                <Card className="border-2">
+                  <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">
+                      <div className="text-3xl font-bold text-purple-600">
                         {routingStats?.totalDecisions?.toLocaleString() || "0"}
                       </div>
-                      <div className="text-sm text-muted-foreground font-normal">Total Decisions</div>
+                      <div className="text-sm text-muted-foreground">Total Decisions</div>
                     </div>
                   </CardContent>
                 </Card>
@@ -207,16 +281,12 @@ export default function AgentManagement() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {Object.entries(routingStats?.strategyBreakdown || {}).map(([strategy, count]) => (
-                  <Card key={strategy} className="border">
-                    <CardContent className="p-6">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-foreground">{count}</div>
-                        <div className="text-sm text-muted-foreground font-normal capitalize">
-                          {strategy.replace('_', ' ')}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div key={strategy} className="p-4 border rounded-lg text-center">
+                    <div className="text-2xl font-bold">{count}</div>
+                    <div className="text-sm text-muted-foreground capitalize">
+                      {strategy.replace('_', ' ')}
+                    </div>
+                  </div>
                 ))}
               </div>
             </CardContent>
@@ -229,30 +299,26 @@ export default function AgentManagement() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="border">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground font-normal">Average Confidence</span>
-                      <span className="text-2xl font-bold text-green-600">
-                        {routingStats?.avgConfidence ? (routingStats.avgConfidence * 100).toFixed(1) : "0"}%
-                      </span>
-                    </div>
-                    <Progress value={routingStats?.avgConfidence ? routingStats.avgConfidence * 100 : 0} className="h-2" />
-                  </CardContent>
-                </Card>
-                <Card className="border">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground font-normal">Routing Speed</span>
-                      <span className="text-2xl font-bold text-blue-600">
-                        {routingStats?.avgRoutingTime || 0}ms
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground font-normal">
-                      Target: &lt;100ms
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Average Confidence</span>
+                    <span className="text-2xl font-bold text-green-600">
+                      {routingStats?.avgConfidence ? (routingStats.avgConfidence * 100).toFixed(1) : "0"}%
+                    </span>
+                  </div>
+                  <Progress value={routingStats?.avgConfidence ? routingStats.avgConfidence * 100 : 0} className="h-2" />
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Routing Speed</span>
+                    <span className="text-2xl font-bold text-blue-600">
+                      {routingStats?.avgRoutingTime || 0}ms
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Target: &lt;100ms
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -292,8 +358,8 @@ export default function AgentManagement() {
                       aria-label={`View routing decision for ${decision.selectedAgent}`}
                     >
                       <div className="flex-1">
-                        <div className="text-base font-medium">{decision.userRequest}</div>
-                        <div className="text-sm text-muted-foreground font-normal">
+                        <div className="font-medium">{decision.userRequest}</div>
+                        <div className="text-sm text-muted-foreground">
                           Routed to {decision.selectedAgent} with {(decision.confidenceScore * 100).toFixed(1)}% confidence
                         </div>
                         {decision.createdAt && (
@@ -304,12 +370,12 @@ export default function AgentManagement() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <div className="text-sm text-foreground font-medium">{(decision.confidenceScore * 100).toFixed(1)}%</div>
-                          <div className="text-xs text-muted-foreground font-normal">Confidence</div>
+                          <div className="text-sm font-medium">{(decision.confidenceScore * 100).toFixed(1)}%</div>
+                          <div className="text-xs text-muted-foreground">Confidence</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-foreground font-medium">{decision.routingTimeMs}ms</div>
-                          <div className="text-xs text-muted-foreground font-normal">Time</div>
+                          <div className="text-sm font-medium">{decision.routingTimeMs}ms</div>
+                          <div className="text-xs text-muted-foreground">Time</div>
                         </div>
                       </div>
                     </div>
