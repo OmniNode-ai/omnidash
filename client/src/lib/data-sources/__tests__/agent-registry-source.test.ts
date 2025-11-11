@@ -3,6 +3,28 @@ import { agentRegistrySource } from '../agent-registry-source';
 import type { AgentDefinition, RecentActivity } from '../agent-registry-source';
 import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
 
+// Mock the USE_MOCK_DATA flag to ensure tests use real fetch
+vi.mock('../../mock-data', () => ({
+  USE_MOCK_DATA: false,
+  AgentRegistryMockData: {
+    generateRecentActivities: vi.fn((limit: number = 20) =>
+      Array.from({ length: Math.min(limit, 5) }, (_, i) => ({
+        id: `activity-${i}`,
+        correlationId: `corr-${i}`,
+        agentName: 'test-agent',
+        actionType: 'execution',
+        actionName: 'test-action',
+        description: 'Test activity',
+        status: 'success' as const,
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        duration: 100,
+        durationMs: 100,
+      }))
+    ),
+  },
+}));
+
 describe('AgentRegistrySource', () => {
   beforeEach(() => {
     resetFetchMock();

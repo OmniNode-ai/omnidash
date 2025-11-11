@@ -69,9 +69,10 @@ describe('PlatformHealthSource', () => {
       const result = await platformHealthSource.fetchHealth('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.status).toMatch(/^(healthy|degraded)$/);
-      expect(result.data.uptime).toBeGreaterThanOrEqual(99.0);
-      expect(result.data.uptime).toBeLessThanOrEqual(99.99);
+      // New mock structure has database, kafka, services
+      expect(result.data).toHaveProperty('database');
+      expect(result.data).toHaveProperty('kafka');
+      expect(result.data.database.status).toMatch(/^(healthy|degraded|down)$/);
       expect(result.data.services.length).toBeGreaterThan(0);
       expect(result.data.services.length).toBeLessThanOrEqual(12);
       expect(result.data.services[0]).toHaveProperty('name');
@@ -102,7 +103,9 @@ describe('PlatformHealthSource', () => {
       const result = await platformHealthSource.fetchHealth('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.status).toBe('healthy');
+      // New mock structure has database, kafka, services
+      expect(result.data).toHaveProperty('database');
+      expect(result.data.database.status).toBeDefined();
       expect(result.data.services).toBeDefined();
     });
 
@@ -346,7 +349,9 @@ describe('PlatformHealthSource', () => {
       expect(result.isMock).toBe(true);
       expect(result.health).toBeDefined();
       expect(result.services).toBeDefined();
-      expect(result.health.status).toMatch(/^(healthy|degraded)$/);
+      // New mock structure has database, kafka, services
+      expect(result.health).toHaveProperty('database');
+      expect(result.health.database.status).toMatch(/^(healthy|degraded|down)$/);
       expect(result.services.services.length).toBeGreaterThan(0);
     });
 
@@ -456,7 +461,9 @@ describe('PlatformHealthSource', () => {
       const result = await platformHealthSource.fetchHealth('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.status).toMatch(/^(healthy|degraded)$/);
+      // New mock structure has database, kafka, services
+      expect(result.data).toHaveProperty('database');
+      expect(result.data.database.status).toMatch(/^(healthy|degraded|down)$/);
     });
 
     it('should handle network timeout for services endpoint', async () => {
@@ -510,7 +517,9 @@ describe('PlatformHealthSource', () => {
       const result = await platformHealthSource.fetchHealth('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.status).toBe('healthy');
+      // New mock structure has database, kafka, services
+      expect(result.data).toHaveProperty('database');
+      expect(result.data.database.status).toBeDefined();
     });
 
     it('should handle response with status code 401', async () => {
@@ -584,11 +593,12 @@ describe('PlatformHealthSource', () => {
 
       const result = await platformHealthSource.fetchHealth('24h');
 
-      expect(result.data).toHaveProperty('status');
-      expect(result.data).toHaveProperty('uptime');
+      // New mock structure has database, kafka, services
+      expect(result.data).toHaveProperty('database');
+      expect(result.data).toHaveProperty('kafka');
       expect(result.data).toHaveProperty('services');
-      expect(typeof result.data.status).toBe('string');
-      expect(typeof result.data.uptime).toBe('number');
+      expect(typeof result.data.database.status).toBe('string');
+      expect(typeof result.data.database.uptime).toBe('string'); // Changed to string (e.g., "99.95%")
       expect(Array.isArray(result.data.services)).toBe(true);
     });
 
