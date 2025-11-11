@@ -100,11 +100,11 @@ Latency: <200ms
 
 ### 1. PostgreSQL Database
 
-**Host**: `192.168.86.200`
-**Port**: `5436`
-**Database**: `omninode_bridge`
-**User**: `postgres`
-**Password**: (see environment variables)
+**Host**: `${POSTGRES_HOST}` (check `.env` file)
+**Port**: `${POSTGRES_PORT}` (check `.env` file)
+**Database**: `${POSTGRES_DATABASE}` (check `.env` file)
+**User**: `${POSTGRES_USER}` (check `.env` file)
+**Password**: (see `.env` file - never hardcode passwords!)
 
 **Key Tables** (30+ total):
 
@@ -123,7 +123,7 @@ Latency: <200ms
 
 ### 2. Kafka Event Bus
 
-**Brokers**: `192.168.86.200:9092`
+**Brokers**: `${KAFKA_BOOTSTRAP_SERVERS}` (check `.env` file)
 **Protocol**: Kafka 2.x compatible
 **Consumer Group**: `omnidash-consumers` (suggested)
 
@@ -138,7 +138,7 @@ Latency: <200ms
 
 ### 3. Qdrant Vector Database
 
-**Host**: `archon-qdrant` (Docker network) or `192.168.86.101:6333`
+**Host**: `archon-qdrant` (Docker network) or `${QDRANT_HOST}:${QDRANT_PORT}` (check `.env` file)
 **Collections**:
 - `execution_patterns` (~50 patterns)
 - `code_patterns` (~100 patterns)
@@ -156,16 +156,17 @@ Create `.env` file in omnidash root (copy from `.env.example` and update values)
 
 ```bash
 # PostgreSQL Connection
-# IMPORTANT: Replace <your_password> with actual password - never commit real passwords to git!
-DATABASE_URL="postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge"
-POSTGRES_HOST=192.168.86.200
-POSTGRES_PORT=5436
+# IMPORTANT: Get actual values from ~/.claude/CLAUDE.md or shared .env file
+# NEVER commit passwords to git!
+DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}"
+POSTGRES_HOST=<check_shared_env>
+POSTGRES_PORT=<check_shared_env>
 POSTGRES_DATABASE=omninode_bridge
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=<your_password>
+POSTGRES_PASSWORD=<get_from_shared_env>
 
 # Kafka Connection
-KAFKA_BROKERS=192.168.86.200:9092
+KAFKA_BROKERS=<check_shared_env>
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers
 
@@ -176,8 +177,8 @@ ENABLE_REAL_TIME_EVENTS=true
 ### Network Access
 
 **Requirements**:
-- Dashboard server must have network access to `192.168.86.0/24` subnet
-- Ports required: 5436 (PostgreSQL), 9092 (Kafka), 6333 (Qdrant)
+- Dashboard server must have network access to infrastructure subnet (check `.env` for server IPs)
+- Ports required: `${POSTGRES_PORT}` (PostgreSQL), `${KAFKA_BOOTSTRAP_SERVERS}` port (Kafka), `${QDRANT_PORT}` (Qdrant)
 - No authentication required for local development (production: add auth)
 
 ---
@@ -622,7 +623,7 @@ GROUP BY generation_source;
 import { Kafka } from 'kafkajs';
 
 const kafka = new Kafka({
-  brokers: ['192.168.86.200:9092']
+  brokers: [process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092']
 });
 
 const admin = kafka.admin();
@@ -1109,7 +1110,7 @@ import { Kafka } from 'kafkajs';
 import { createServer } from 'http';
 
 const kafka = new Kafka({
-  brokers: ['192.168.86.200:9092'],
+  brokers: [process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092'],
   clientId: 'omnidash-websocket',
 });
 
@@ -1266,7 +1267,7 @@ intelligenceRouter.get('/events/stream', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
 
   const kafka = new Kafka({
-    brokers: ['192.168.86.200:9092'],
+    brokers: [process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092'],
     clientId: `omnidash-sse-${Date.now()}`,
   });
 
@@ -1553,7 +1554,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   const kafka = new Kafka({
-    brokers: ['192.168.86.200:9092'],
+    brokers: [process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092'],
     clientId: 'omnidash-websocket',
   });
 
@@ -1721,7 +1722,7 @@ useEffect(() => {
 ### Common Issues
 
 **Issue**: Can't connect to PostgreSQL
-**Solution**: Check network access to 192.168.86.200:5436, verify credentials, ensure firewall allows connection
+**Solution**: Check network access to `${POSTGRES_HOST}:${POSTGRES_PORT}` (verify values in `.env`), verify credentials, ensure firewall allows connection
 
 **Issue**: Kafka consumer lag
 **Solution**: Increase consumer parallelism, add more partitions to topics, optimize message processing

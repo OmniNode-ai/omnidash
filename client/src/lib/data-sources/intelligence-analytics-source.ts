@@ -1,5 +1,6 @@
 import { MockDataGenerator as Gen, USE_MOCK_DATA } from '../mock-data/config';
 import type { SavingsMetrics } from './intelligence-savings-source';
+import { fallbackChain, withFallback, ensureNumeric, ensureString } from './defensive-transform-logger';
 
 // Re-export for external consumers
 export type { SavingsMetrics };
@@ -51,26 +52,49 @@ class IntelligenceAnalyticsDataSource {
       if (response.ok) {
         const agents = await response.json();
         if (Array.isArray(agents) && agents.length > 0) {
-          const totalRequests = agents.reduce((sum, a) => sum + (a.totalRequests || 0), 0);
+          const totalRequests = agents.reduce((sum, a) =>
+            sum + ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-metrics-total' }), 0
+          );
           // Use weighted average for routing time based on request volume (more accurate)
-          const totalRequestsForAvg = agents.reduce((sum, a) => sum + (a.totalRequests || 0), 0);
+          const totalRequestsForAvg = agents.reduce((sum, a) =>
+            sum + ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-metrics-avg' }), 0
+          );
           const avgRoutingTime = totalRequestsForAvg > 0
             ? agents.reduce((sum, a) => {
-                const weight = (a.totalRequests || 0) / totalRequestsForAvg;
-                return sum + ((a.avgRoutingTime || 0) * weight);
+                const weight = ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-metrics-weight' }) / totalRequestsForAvg;
+                const routingTime = ensureNumeric('avgRoutingTime', a.avgRoutingTime, 0, { id: a.agent, context: 'intelligence-metrics-routing-time' });
+                return sum + (routingTime * weight);
               }, 0)
             : 0;
           // Calculate weighted average success rate (based on request volume, not simple average)
           // Detect format: if any value > 1, assume percentage format, else decimal (0-1)
           // Check both successRate and avgConfidence for format detection
           const sampleRate = agents.find(a => (a.successRate != null) || (a.avgConfidence != null));
-          const sampleValue = sampleRate?.successRate ?? sampleRate?.avgConfidence;
+          const sampleValue = sampleRate
+            ? fallbackChain(
+                'successRate',
+                { id: sampleRate.agent || 'unknown', context: 'intelligence-metrics-format-detection' },
+                [
+                  { value: sampleRate.successRate, label: 'successRate field' },
+                  { value: sampleRate.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
+                  { value: undefined, label: 'no format detection available', level: 'debug' }
+                ]
+              )
+            : undefined;
           const isDecimalFormat = sampleValue != null && sampleValue <= 1;
           
           const avgSuccessRate = totalRequestsForAvg > 0
             ? Math.max(0, Math.min(100, agents.reduce((sum, a) => {
-                const weight = (a.totalRequests || 0) / totalRequestsForAvg;
-                const rate = (a.successRate != null) ? a.successRate : (a.avgConfidence || 0);
+                const weight = ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-success-rate-weight' }) / totalRequestsForAvg;
+                const rate = fallbackChain(
+                  'successRate',
+                  { id: a.agent || 'unknown', context: 'intelligence-success-rate' },
+                  [
+                    { value: a.successRate, label: 'successRate field' },
+                    { value: a.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
+                    { value: 0, label: 'default zero', level: 'error' }
+                  ]
+                );
                 // Convert decimal to percentage if needed
                 const rateAsPercentage = isDecimalFormat ? rate * 100 : rate;
                 return sum + (rateAsPercentage * weight);
@@ -137,10 +161,18 @@ class IntelligenceAnalyticsDataSource {
         const actions = await response.json();
         if (Array.isArray(actions) && actions.length > 0) {
           const activities: RecentActivity[] = actions.map((action: any) => ({
-            action: action.actionName || action.actionType || 'Unknown action',
-            agent: action.agentName || 'unknown',
+            action: fallbackChain(
+              'actionName',
+              { id: action.id, context: 'recent-activity-action' },
+              [
+                { value: action.actionName, label: 'actionName field' },
+                { value: action.actionType, label: 'actionType field (fallback)', level: 'warn' },
+                { value: 'Unknown action', label: 'default unknown', level: 'error' }
+              ]
+            ),
+            agent: withFallback('agentName', action.agentName, 'unknown', { id: action.id, context: 'recent-activity-agent' }),
             time: this.formatTimeAgo(action.createdAt),
-            status: action.actionType === 'error' ? 'failed' : 
+            status: action.actionType === 'error' ? 'failed' :
                     action.durationMs ? 'completed' : 'executing',
             timestamp: action.createdAt,
           }));
@@ -158,8 +190,24 @@ class IntelligenceAnalyticsDataSource {
         const executions = await response.json();
         if (Array.isArray(executions) && executions.length > 0) {
           const activities: RecentActivity[] = executions.map((exec: any) => ({
-            action: exec.query || exec.actionName || 'Task execution',
-            agent: exec.agentName || exec.agentId || 'unknown',
+            action: fallbackChain(
+              'query',
+              { id: exec.id, context: 'executions-action' },
+              [
+                { value: exec.query, label: 'query field' },
+                { value: exec.actionName, label: 'actionName field (fallback)', level: 'warn' },
+                { value: 'Task execution', label: 'default task execution', level: 'error' }
+              ]
+            ),
+            agent: fallbackChain(
+              'agentName',
+              { id: exec.id, context: 'executions-agent' },
+              [
+                { value: exec.agentName, label: 'agentName field' },
+                { value: exec.agentId, label: 'agentId field (fallback)', level: 'warn' },
+                { value: 'unknown', label: 'default unknown', level: 'error' }
+              ]
+            ),
             time: this.formatTimeAgo(exec.startedAt),
             status: exec.status,
             timestamp: exec.startedAt,
@@ -246,26 +294,44 @@ class IntelligenceAnalyticsDataSource {
         if (Array.isArray(agents) && agents.length > 0) {
           // Detect format for success rate
           const sampleAgent = agents.find((a: any) => (a.successRate != null) || (a.avgConfidence != null));
-          const sampleValue = sampleAgent?.successRate ?? sampleAgent?.avgConfidence;
+          const sampleValue = sampleAgent
+            ? fallbackChain(
+                'successRate',
+                { id: sampleAgent.agent || 'unknown', context: 'agent-performance-format-detection' },
+                [
+                  { value: sampleAgent.successRate, label: 'successRate field' },
+                  { value: sampleAgent.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
+                  { value: undefined, label: 'no format detection available', level: 'debug' }
+                ]
+              )
+            : undefined;
           const isDecimalFormat = sampleValue != null && sampleValue <= 1;
 
           const performance: AgentPerformance[] = agents.map((agent: any) => {
-            const rawSuccessRate = agent.successRate ?? agent.avgConfidence ?? 0;
+            const rawSuccessRate = fallbackChain(
+              'successRate',
+              { id: agent.agent || 'unknown', context: 'agent-performance-success-rate' },
+              [
+                { value: agent.successRate, label: 'successRate field' },
+                { value: agent.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
+                { value: 0, label: 'default zero', level: 'error' }
+              ]
+            );
             const successRate = isDecimalFormat ? rawSuccessRate * 100 : rawSuccessRate;
             const clampedSuccessRate = Math.max(0, Math.min(100, successRate));
 
             return {
-              agentId: agent.agent || 'unknown',
+              agentId: withFallback('agent', agent.agent, 'unknown', { context: 'agent-performance-id' }),
               agentName: agent.agent?.replace('agent-', '').replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown Agent',
-              totalRuns: Math.max(0, agent.totalRequests || 0),
-              avgResponseTime: Math.max(0, agent.avgRoutingTime || 0),
-              avgExecutionTime: Math.max(0, agent.avgRoutingTime || 0),
+              totalRuns: Math.max(0, ensureNumeric('totalRequests', agent.totalRequests, 0, { id: agent.agent, context: 'agent-performance-total-runs' })),
+              avgResponseTime: Math.max(0, ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, { id: agent.agent, context: 'agent-performance-response-time' })),
+              avgExecutionTime: Math.max(0, ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, { id: agent.agent, context: 'agent-performance-exec-time' })),
               successRate: clampedSuccessRate,
               efficiency: clampedSuccessRate, // Use success rate as efficiency proxy
-              avgQualityScore: Math.max(0, Math.min(10, (agent.avgConfidence || 0) * 10)),
-              popularity: Math.max(0, agent.totalRequests || 0),
-              costPerSuccess: Math.max(0, 0.001 * (agent.avgTokens || 1000) / 1000), // Ensure positive
-              p95Latency: Math.max(0, (agent.avgRoutingTime || 0) * 1.5), // Ensure positive
+              avgQualityScore: Math.max(0, Math.min(10, ensureNumeric('avgConfidence', agent.avgConfidence, 0, { id: agent.agent, context: 'agent-performance-quality' }) * 10)),
+              popularity: Math.max(0, ensureNumeric('totalRequests', agent.totalRequests, 0, { id: agent.agent, context: 'agent-performance-popularity' })),
+              costPerSuccess: Math.max(0, 0.001 * ensureNumeric('avgTokens', agent.avgTokens, 1000, { id: agent.agent, context: 'agent-performance-tokens' }) / 1000), // Ensure positive
+              p95Latency: Math.max(0, ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, { id: agent.agent, context: 'agent-performance-latency' }) * 1.5), // Ensure positive
               lastUsed: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
             };
           });

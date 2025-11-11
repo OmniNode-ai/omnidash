@@ -118,9 +118,9 @@ WHERE created_at > NOW() - INTERVAL '10 minutes';
 ## Testing
 ```bash
 # Apply database indexes (requires .env to be sourced)
+# IMPORTANT: source .env loads POSTGRES_PASSWORD securely into environment
 source .env
-PGPASSWORD="${POSTGRES_PASSWORD}" psql \
-  -h ${POSTGRES_HOST} -p ${POSTGRES_PORT} -U ${POSTGRES_USER} -d ${POSTGRES_DATABASE} \
+psql -h ${POSTGRES_HOST} -p ${POSTGRES_PORT} -U ${POSTGRES_USER} -d ${POSTGRES_DATABASE} \
   -f scripts/add-alert-indexes.sql
 
 # Restart server

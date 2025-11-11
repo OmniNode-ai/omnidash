@@ -272,22 +272,25 @@ export function useRoutingStrategies(timeWindow: string = '24h') {
 
 ### Verify Data Exists
 ```bash
+# IMPORTANT: Load credentials from .env file first (secure method)
+source .env
+
 # Check routing strategies
-PGPASSWORD='<your_password>' psql -h 192.168.86.200 -p 5436 \
-  -U postgres -d omninode_bridge \
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT \
+  -U $POSTGRES_USER -d $POSTGRES_DATABASE \
   -c "SELECT routing_strategy, COUNT(*) FROM agent_routing_decisions \
       WHERE created_at > NOW() - INTERVAL '24 hours' \
       GROUP BY routing_strategy"
 
 # Check pattern languages
-PGPASSWORD='<your_password>' psql -h 192.168.86.200 -p 5436 \
-  -U postgres -d omninode_bridge \
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT \
+  -U $POSTGRES_USER -d $POSTGRES_DATABASE \
   -c "SELECT language, COUNT(*) FROM pattern_lineage_nodes \
       GROUP BY language ORDER BY count DESC"
 
 # Check document access
-PGPASSWORD='<your_password>' psql -h 192.168.86.200 -p 5436 \
-  -U postgres -d omninode_bridge \
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT \
+  -U $POSTGRES_USER -d $POSTGRES_DATABASE \
   -c "SELECT repository, COUNT(*) FROM document_metadata \
       GROUP BY repository"
 ```

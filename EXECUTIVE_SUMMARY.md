@@ -252,16 +252,16 @@
 
 **Database Access**:
 ```bash
-# Replace <your_password> with actual password from .env file
-PGPASSWORD='<your_password>' \
-  psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge
+# IMPORTANT: Load credentials from .env file (secure method)
+source .env
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DATABASE
 ```
 
 **Service Endpoints**:
 - Omnidash: http://localhost:3000
 - Omniarchon: http://localhost:8053
-- Database: 192.168.86.200:5436
-- Kafka: 192.168.86.200:9092
+- Database: Check `.env` for POSTGRES_HOST and POSTGRES_PORT
+- Kafka: Check `.env` for KAFKA_BOOTSTRAP_SERVERS
 
 **Note**: Intelligence integration is work-in-progress. Some advanced features (vector search, graph queries) are planned for future implementation.
 

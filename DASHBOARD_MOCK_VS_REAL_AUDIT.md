@@ -1,7 +1,7 @@
 # Dashboard Mock vs Real Data Audit
 
 **Generated**: 2025-11-03 (Historical Documentation)
-**Database**: PostgreSQL at 192.168.86.200:5436 (omninode_bridge)
+**Database**: PostgreSQL (check `.env` for connection details - omninode_bridge database)
 **Server**: Running on PORT 3000
 
 > **⚠️ HISTORICAL DOCUMENT**: This audit was conducted on 2025-11-03. Some issues described here may have been resolved. For current configuration, always check `.env` file and recent commit history.
@@ -31,19 +31,19 @@
 
 **Current .env configuration**:
 ```bash
-TRACEABILITY_DB_HOST=192.168.86.200
+TRACEABILITY_DB_HOST=<check_shared_env>
 TRACEABILITY_DB_PORT=5436
 TRACEABILITY_DB_NAME=omninode_bridge
 TRACEABILITY_DB_USER=postgres
 TRACEABILITY_DB_PASSWORD=<your_secure_password>
-TRACEABILITY_DB_URL=postgresql://postgres:<your_secure_password>@192.168.86.200:5436/omninode_bridge
+TRACEABILITY_DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}
 ```
 
 **Expected by code** (`server/storage.ts:49-51`):
 ```typescript
 const intelligenceConnectionString =
   process.env.DATABASE_URL ||
-  `postgresql://${process.env.POSTGRES_USER || 'postgres'}:${process.env.POSTGRES_PASSWORD || '<default_password>'}@${process.env.POSTGRES_HOST || '192.168.86.200'}:${process.env.POSTGRES_PORT || '5436'}/${process.env.POSTGRES_DATABASE || 'omninode_bridge'}`;
+  `postgresql://${process.env.POSTGRES_USER || 'postgres'}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT || '5436'}/${process.env.POSTGRES_DATABASE || 'omninode_bridge'}`;
 ```
 
 **Alert Check** (`server/alert-routes.ts:73-85`):
@@ -68,7 +68,7 @@ try {
 **Option 1: Add POSTGRES_* variables to .env** (Recommended)
 ```bash
 # Add to .env file
-POSTGRES_HOST=192.168.86.200
+POSTGRES_HOST=<check_shared_env>
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge
 POSTGRES_USER=postgres
@@ -510,14 +510,14 @@ export function ensureTimeSeries(
 
 ```bash
 # Option 1: Use POSTGRES_* prefix (matches code expectations)
-POSTGRES_HOST=192.168.86.200
+POSTGRES_HOST=<check_shared_env>
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=<your_secure_password>
 
 # Option 2: Use DATABASE_URL (takes precedence)
-DATABASE_URL=postgresql://postgres:<your_secure_password>@192.168.86.200:5436/omninode_bridge
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}
 ```
 
 ### Optional Features
@@ -533,7 +533,7 @@ VITE_INTELLIGENCE_SERVICE_URL=http://localhost:8053
 INTELLIGENCE_SERVICE_URL=http://localhost:8053
 
 # Kafka event streaming (if implemented)
-KAFKA_BROKERS=192.168.86.200:9092
+KAFKA_BROKERS=<check_shared_env>
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers
 ```
@@ -546,14 +546,15 @@ KAFKA_CONSUMER_GROUP=omnidash-consumers
 
 ```bash
 # Test database connection directly
+# IMPORTANT: source .env loads credentials securely
 source .env
-psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "SELECT 1"
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DATABASE -c "SELECT 1"
 
 # Check if agent_actions table exists
-psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "\dt agent_actions"
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DATABASE -c "\dt agent_actions"
 
 # Test query that alert endpoint uses
-psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "SELECT 1::int FROM agent_actions LIMIT 1"
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DATABASE -c "SELECT 1::int FROM agent_actions LIMIT 1"
 ```
 
 ### Test API Endpoints

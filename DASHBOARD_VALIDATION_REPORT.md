@@ -32,7 +32,7 @@ The Pattern Learning dashboard integration has been validated against the backen
 
 ### 1. Frontend Implementation
 
-**Location**: `/Volumes/PRO-G40/Code/omnidash/client/src/pages/PatternLearning.tsx`
+**Location**: `client/src/pages/PatternLearning.tsx`
 
 #### ✅ API Integration - Correct
 ```typescript
@@ -81,7 +81,7 @@ if (isFlat) {
 
 ### 2. Backend API Issues
 
-**Location**: `/Volumes/PRO-G40/Code/omnidash/server/intelligence-routes.ts`
+**Location**: `server/intelligence-routes.ts`
 
 #### 🔴 Issue #1: Hardcoded Quality Scores in Pattern List
 
@@ -165,7 +165,7 @@ if (ageInHours < 12) {
 
 ### 3. Database Schema Analysis
 
-**Location**: `/Volumes/PRO-G40/Code/omnidash/shared/intelligence-schema.ts`
+**Location**: `shared/intelligence-schema.ts`
 
 #### Pattern Lineage Nodes Table
 ```typescript
@@ -191,7 +191,7 @@ export const patternLineageNodes = pgTable('pattern_lineage_nodes', {
 
 ### 4. Pattern Relationship Network
 
-**Location**: `/Volumes/PRO-G40/Code/omnidash/client/src/components/PatternNetwork.tsx`
+**Location**: `client/src/components/PatternNetwork.tsx`
 
 #### ✅ API Integration - Correct
 ```typescript

@@ -1,5 +1,6 @@
 // Knowledge Graph Data Source
 import { USE_MOCK_DATA, KnowledgeGraphMockData } from '../mock-data';
+import { ensureArray } from './defensive-transform-logger';
 
 export interface GraphNode {
   id: string;
@@ -37,8 +38,8 @@ class KnowledgeGraphSource {
       if (response.ok) {
         const data = await response.json();
         return {
-          nodes: data.nodes || [],
-          edges: data.edges || [],
+          nodes: ensureArray('nodes', data.nodes, { context: 'knowledge-graph' }),
+          edges: ensureArray('edges', data.edges, { context: 'knowledge-graph' }),
           isMock: false,
         };
       }

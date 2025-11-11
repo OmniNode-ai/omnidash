@@ -1,5 +1,6 @@
 // Event Flow Data Source
 import { USE_MOCK_DATA } from '../mock-data/config';
+import { ensureNumeric, ensureArray } from './defensive-transform-logger';
 
 export interface Event {
   id: string;
@@ -35,10 +36,22 @@ class EventFlowSource {
     let totalProcessingTime = 0;
     let processingTimeCount = 0;
 
-    events.forEach(event => {
-      typeCount.set(event.type, (typeCount.get(event.type) || 0) + 1);
-      if (event.data?.durationMs) {
-        totalProcessingTime += event.data.durationMs;
+    events.forEach((event, index) => {
+      const currentCount = typeCount.get(event.type);
+      if (currentCount === undefined) {
+        typeCount.set(event.type, 1);
+      } else {
+        typeCount.set(event.type, currentCount + 1);
+      }
+
+      if (event.data?.durationMs !== undefined) {
+        const duration = ensureNumeric(
+          'durationMs',
+          event.data.durationMs,
+          0,
+          { id: event.id || index, context: 'event-metrics-duration' }
+        );
+        totalProcessingTime += duration;
         processingTimeCount++;
       }
     });
@@ -64,7 +77,12 @@ class EventFlowSource {
     events.forEach(event => {
       const time = new Date(event.timestamp);
       const minute = `${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')}`;
-      minuteCounts.set(minute, (minuteCounts.get(minute) || 0) + 1);
+      const currentCount = minuteCounts.get(minute);
+      if (currentCount === undefined) {
+        minuteCounts.set(minute, 1);
+      } else {
+        minuteCounts.set(minute, currentCount + 1);
+      }
     });
 
     const throughput = Array.from(minuteCounts.entries())
@@ -115,7 +133,10 @@ class EventFlowSource {
       const response = await fetch(`/api/intelligence/events/stream?limit=${limit}`);
       if (response.ok) {
         const eventsData = await response.json();
-        const events = Array.isArray(eventsData) ? eventsData : (eventsData.events || []);
+        // Ensure we always get an array, with logging for unexpected formats
+        const events = Array.isArray(eventsData)
+          ? eventsData
+          : ensureArray('events', eventsData.events, { context: 'event-flow-fetch' });
 
         return {
           events,

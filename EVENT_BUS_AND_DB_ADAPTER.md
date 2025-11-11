@@ -191,17 +191,20 @@ try {
 
 **Environment Variables**:
 ```bash
+# IMPORTANT: Get actual values from ~/.claude/CLAUDE.md or shared .env file
+# NEVER commit passwords to git!
+
 # Kafka/Redpanda
-KAFKA_BROKERS=192.168.86.200:9092
-KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:9092
+KAFKA_BROKERS=<check_shared_env>
+KAFKA_BOOTSTRAP_SERVERS=<check_shared_env>
 
 # PostgreSQL
-DATABASE_URL=postgresql://postgres:password@192.168.86.200:5436/omninode_bridge
-POSTGRES_HOST=192.168.86.200
-POSTGRES_PORT=5436
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}
+POSTGRES_HOST=<check_shared_env>
+POSTGRES_PORT=<check_shared_env>
 POSTGRES_DATABASE=omninode_bridge
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=<your_password>  # Get from .env file - never commit passwords!
+POSTGRES_PASSWORD=<get_from_shared_env>  # Get from .env file - never commit passwords!
 
 # Feature Flags
 USE_EVENT_BUS_FOR_WRITES=false  # Enable when publisher is ready

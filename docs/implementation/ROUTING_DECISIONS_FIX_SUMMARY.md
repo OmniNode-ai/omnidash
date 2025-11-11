@@ -203,19 +203,19 @@ Currently returns empty array because:
 
 ## Files Modified
 
-1. `/Volumes/PRO-G40/Code/omnidash/client/src/lib/data-sources/agent-management-source.ts`
+1. `client/src/lib/data-sources/agent-management-source.ts`
    - Added `RoutingDecision` interface
    - Added `fetchRecentDecisions()` method
    - Updated `AgentManagementData` interface
    - Updated `fetchAll()` to include decisions
 
-2. `/Volumes/PRO-G40/Code/omnidash/client/src/pages/preview/AgentManagement.tsx`
+2. `client/src/pages/preview/AgentManagement.tsx`
    - Added `RoutingDecision` type import
    - Extracted `recentDecisions` from query data
    - Replaced hardcoded mock array with dynamic rendering
    - Added empty state UI
 
-3. `/Volumes/PRO-G40/Code/omnidash/client/src/pages/preview/AgentNetwork.tsx`
+3. `client/src/pages/preview/AgentNetwork.tsx`
    - Fixed syntax error (bonus fix)
 
 ## Technical Notes

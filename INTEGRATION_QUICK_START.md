@@ -9,8 +9,8 @@
 
 OmniClaude has **34+ PostgreSQL tables** and **8 Kafka topics** tracking comprehensive agent execution data. All data is production-ready and available for integration.
 
-**Database**: `postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge`
-**Kafka**: `192.168.86.200:9092`
+**Database**: Check `.env` file for connection details
+**Kafka**: Check `.env` file for broker address
 
 ---
 
@@ -34,11 +34,14 @@ OmniClaude has **34+ PostgreSQL tables** and **8 Kafka topics** tracking compreh
 
 **Verify credentials in omnidash/.env**:
 ```bash
+# IMPORTANT: Get actual values from ~/.claude/CLAUDE.md or shared .env file
 # These should already be set from shared infrastructure
-DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge"
-POSTGRES_HOST=192.168.86.200
-POSTGRES_PORT=5436
+DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}"
+POSTGRES_HOST=<check_shared_env>
+POSTGRES_PORT=<check_shared_env>
 POSTGRES_DATABASE=omninode_bridge
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=<get_from_shared_env>
 ```
 
 **Test connection**:
@@ -385,7 +388,9 @@ grep POSTGRES_PASSWORD /Volumes/PRO-G40/Code/omniclaude/.env
 **Error: "relation does not exist"**
 ```bash
 # Solution: Verify database name is correct
-psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "\dt"
+# First, load credentials from .env
+source .env
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DATABASE -c "\dt"
 # Should list agent_routing_decisions, agent_actions, etc.
 ```
 
@@ -410,7 +415,9 @@ SELECT COUNT(*) FROM agent_routing_decisions WHERE created_at > NOW() - INTERVAL
 **Metrics seem stale**:
 ```bash
 # Check when omniclaude last wrote data
-psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "
+# First, load credentials from .env
+source .env
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DATABASE -c "
 SELECT
     'routing_decisions' as table_name,
     MAX(created_at) as latest,
@@ -461,7 +468,7 @@ After basic integration works:
 
 If you encounter issues:
 
-1. Check database connection: `psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge`
+1. Check database connection: `source .env && psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DATABASE`
 2. Verify data exists: `SELECT COUNT(*) FROM agent_routing_decisions;`
 3. Check API endpoints: `curl http://localhost:3000/api/intelligence/routing/metrics`
 4. Review server logs for errors

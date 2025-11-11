@@ -1415,7 +1415,7 @@ const anomalies = detectedAnomalies.filter(a => a.severity !== 'normal');
 
 All screenshots captured on November 7, 2025 and stored in:
 ```
-/Volumes/PRO-G40/Code/omnidash/.playwright-mcp/
+.playwright-mcp/
 ```
 
 ### Intelligence Savings

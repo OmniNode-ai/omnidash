@@ -150,15 +150,17 @@ All endpoints include comprehensive error handling:
 
 1. **Environment Variables** (`.env` file):
 ```bash
-# IMPORTANT: Replace <your_password> with actual password from .env file
-DATABASE_URL="postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge"
-POSTGRES_HOST=192.168.86.200
-POSTGRES_PORT=5436
+# IMPORTANT: Get actual values from ~/.claude/CLAUDE.md or shared .env file
+# NEVER commit passwords to git!
+DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}"
+POSTGRES_HOST=<check_shared_env>
+POSTGRES_PORT=<check_shared_env>
 POSTGRES_DATABASE=omninode_bridge
-POSTGRES_PASSWORD=<your_password>
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=<get_from_shared_env>
 ```
 
-2. **Network Access**: Server must be able to connect to 192.168.86.200:5436
+2. **Network Access**: Server must be able to connect to `${POSTGRES_HOST}:${POSTGRES_PORT}` (verify values in `.env`)
 
 3. **Database Table**: `agent_manifest_injections` table must exist with data
 

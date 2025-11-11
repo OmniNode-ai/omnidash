@@ -1,4 +1,5 @@
 import { USE_MOCK_DATA } from '../mock-data/config';
+import { fallbackChain, ensureNumeric, ensureEnvVar } from './defensive-transform-logger';
 
 export interface CodeAnalysisData {
   files_analyzed: number;
@@ -69,7 +70,11 @@ class CodeIntelligenceDataSource {
     }
 
     try {
-      const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
+      const omniarchonUrl = ensureEnvVar(
+        'VITE_INTELLIGENCE_SERVICE_URL',
+        'http://localhost:8053',
+        'debug'
+      );
       const response = await fetch(`${omniarchonUrl}/api/intelligence/code/analysis?timeWindow=${timeRange}`);
       if (response.ok) {
         const data = await response.json();
@@ -187,11 +192,31 @@ class CodeIntelligenceDataSource {
         const data = await response.json();
         return {
           data: {
-            totalPatterns: data.totalPatterns || 0,
-            activePatterns: data.activeLearningCount || 0,
-            qualityScore: (data.avgQualityScore || 0) * 10,
+            totalPatterns: ensureNumeric(
+              'totalPatterns',
+              data.totalPatterns,
+              0,
+              { context: 'pattern-summary' }
+            ),
+            activePatterns: ensureNumeric(
+              'activeLearningCount',
+              data.activeLearningCount,
+              0,
+              { context: 'pattern-summary' }
+            ),
+            qualityScore: ensureNumeric(
+              'avgQualityScore',
+              data.avgQualityScore,
+              0,
+              { context: 'pattern-summary' }
+            ) * 10,
             usageCount: 0,
-            recentDiscoveries: data.newPatternsToday || 0,
+            recentDiscoveries: ensureNumeric(
+              'newPatternsToday',
+              data.newPatternsToday,
+              0,
+              { context: 'pattern-summary' }
+            ),
             topPatterns: [],
           },
           isMock: false,

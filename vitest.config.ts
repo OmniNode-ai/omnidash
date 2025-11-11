@@ -8,6 +8,19 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./client/src/tests/setup.ts'],
+    // Limit parallelism to prevent CPU overload
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: false,
+        maxThreads: 2,  // Max 2 worker threads
+        minThreads: 1,
+      },
+    },
+    // Run tests sequentially within files to reduce CPU load
+    sequence: {
+      concurrent: false,
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
