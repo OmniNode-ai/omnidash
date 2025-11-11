@@ -11,28 +11,35 @@ export class PlatformHealthMockData {
    */
   static generateHealth(): PlatformHealth {
     const services = [
-      { name: 'PostgreSQL', status: 'up', latency: Gen.randomInt(5, 30) },
-      { name: 'OmniArchon', status: 'up', latency: Gen.randomInt(20, 80) },
-      { name: 'Qdrant', status: 'up', latency: Gen.randomInt(10, 50) },
-      { name: 'Kafka/Redpanda', status: 'up', latency: Gen.randomInt(15, 60) },
-      { name: 'Redis Cache', status: 'up', latency: Gen.randomInt(2, 15) },
-      { name: 'API Gateway', status: 'up', latency: Gen.randomInt(25, 100) },
+      { name: 'PostgreSQL', status: 'up', latency_ms: Gen.randomInt(5, 30), uptime: Gen.randomFloat(99.5, 99.99, 2) },
+      { name: 'OmniArchon', status: 'up', latency_ms: Gen.randomInt(20, 80), uptime: Gen.randomFloat(99.0, 99.9, 2) },
+      { name: 'Qdrant', status: 'up', latency_ms: Gen.randomInt(10, 50), uptime: Gen.randomFloat(99.2, 99.95, 2) },
+      { name: 'Kafka/Redpanda', status: 'up', latency_ms: Gen.randomInt(15, 60), uptime: Gen.randomFloat(99.3, 99.98, 2) },
+      { name: 'Redis Cache', status: 'up', latency_ms: Gen.randomInt(2, 15), uptime: Gen.randomFloat(99.8, 99.99, 2) },
+      { name: 'API Gateway', status: 'up', latency_ms: Gen.randomInt(25, 100), uptime: Gen.randomFloat(99.1, 99.9, 2) },
     ];
 
     // Randomly degrade one service (10% chance)
     if (Math.random() < 0.1) {
       const idx = Gen.randomInt(0, services.length - 1);
       services[idx].status = 'degraded';
-      services[idx].latency = Gen.randomInt(200, 500);
+      services[idx].latency_ms = Gen.randomInt(200, 500);
     }
 
-    const allHealthy = services.every((s) => s.status === 'up');
-    const status = allHealthy ? 'healthy' : 'degraded';
-    const uptime = Gen.randomFloat(99.0, 99.99, 2);
-
+    // New nested structure matching test expectations
     return {
-      status,
-      uptime,
+      database: {
+        name: 'PostgreSQL',
+        status: 'healthy',
+        uptime: `${Gen.randomFloat(99.5, 99.99, 2)}%`,
+        latency_ms: Gen.randomInt(5, 30),
+      },
+      kafka: {
+        name: 'Kafka/Redpanda',
+        status: 'healthy',
+        uptime: `${Gen.randomFloat(99.3, 99.98, 2)}%`,
+        latency_ms: Gen.randomInt(15, 60),
+      },
       services,
     };
   }
