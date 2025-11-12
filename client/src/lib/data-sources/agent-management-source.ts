@@ -1,6 +1,6 @@
 // Note: eventConsumer is server-side only, so we'll fetch via API
 import { USE_MOCK_DATA, AgentManagementMockData } from '../mock-data';
-import { fallbackChain, withFallback, ensureNumeric } from './defensive-transform-logger';
+import { fallbackChain, withFallback, ensureNumeric } from '../defensive-transform-logger';
 
 export interface AgentSummary {
   totalAgents: number;
@@ -68,10 +68,8 @@ export interface AgentManagementData {
 class AgentManagementDataSource {
   async fetchSummary(timeRange: string): Promise<{ data: AgentSummary; isMock: boolean }> {
     // Return comprehensive mock data if USE_MOCK_DATA is enabled
-    console.log('[fetchSummary] USE_MOCK_DATA =', USE_MOCK_DATA);
     if (USE_MOCK_DATA) {
       const mockData = AgentManagementMockData.generateSummary();
-      console.log('[fetchSummary] Returning mock data:', mockData);
       return { data: mockData, isMock: true };
     }
 

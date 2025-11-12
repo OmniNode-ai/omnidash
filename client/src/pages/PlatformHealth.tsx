@@ -12,6 +12,7 @@ import { MockBadge } from "@/components/MockBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useQuery } from "@tanstack/react-query";
 import { platformHealthSource } from "@/lib/data-sources";
+import { HEALTH_QUERY_CONFIG } from "@/lib/constants/query-config";
 
 // TypeScript interfaces for platform health endpoint
 interface ServiceHealth {
@@ -53,9 +54,8 @@ export default function PlatformHealth() {
   const { data: healthDataResult, isLoading, error } = useQuery({
     queryKey: ['platform-health', timeRange],
     queryFn: () => platformHealthSource.fetchAll(timeRange),
-    refetchInterval: 15000,
+    ...HEALTH_QUERY_CONFIG,
     refetchOnWindowFocus: true,
-    staleTime: 10000,
   });
 
   // Transform to expected format

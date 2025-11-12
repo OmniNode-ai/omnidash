@@ -15,6 +15,7 @@ import { Database, TrendingUp, Award, AlertTriangle } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { patternLearningSource } from "@/lib/data-sources";
+import { POLLING_INTERVAL_MEDIUM, POLLING_INTERVAL_SLOW } from "@/lib/constants/query-config";
 import type {
   DiscoveredPattern,
   PatternSummary,
@@ -44,47 +45,47 @@ export default function PatternLearning() {
     localStorage.setItem('dashboard-timerange', value);
   };
 
-  // Fetch pattern summary metrics with 30-second polling
+  // Fetch pattern summary metrics with standard polling
   const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery<PatternSummary>({
     queryKey: ['patterns', 'summary', timeRange],
     queryFn: () => patternLearningSource.fetchSummary(timeRange),
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: POLLING_INTERVAL_MEDIUM,
   });
 
-  // Fetch pattern discovery trends with 60-second polling
+  // Fetch pattern discovery trends with slow polling
   const { data: discoveryData, isLoading: discoveryLoading } = useQuery<PatternTrend[]>({
     queryKey: ['patterns', 'trends', timeRange],
     queryFn: () => patternLearningSource.fetchTrends(timeRange),
-    refetchInterval: 60000, // Refetch every 60 seconds
+    refetchInterval: POLLING_INTERVAL_SLOW,
   });
 
-  // Fetch pattern quality trends with 60-second polling
+  // Fetch pattern quality trends with slow polling
   const { data: qualityData, isLoading: qualityLoading } = useQuery<QualityTrend[]>({
     queryKey: ['patterns', 'quality-trends', timeRange],
     queryFn: () => patternLearningSource.fetchQualityTrends(timeRange),
-    refetchInterval: 60000, // Refetch every 60 seconds
+    refetchInterval: POLLING_INTERVAL_SLOW,
   });
 
-  // Fetch pattern list with 30-second polling
+  // Fetch pattern list with standard polling
   const { data: patterns, isLoading: patternsLoading, error: patternsError } = useQuery<Pattern[]>({
     queryKey: ['patterns', 'list', timeRange],
     queryFn: () => patternLearningSource.fetchPatternList(50, timeRange),
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: POLLING_INTERVAL_MEDIUM,
   });
 
   // Live pattern discovery via data source
   const { data: discoveryResult, isLoading: liveDiscoverLoading, error: liveDiscoverError } = useQuery({
     queryKey: ['patterns', 'discovery'],
     queryFn: () => patternLearningSource.fetchDiscovery(8),
-    refetchInterval: 60000,
+    refetchInterval: POLLING_INTERVAL_SLOW,
   });
   const liveDiscoveredPatterns = discoveryResult?.data;
 
-  // Fetch language breakdown with 60-second polling
+  // Fetch language breakdown with slow polling
   const { data: languageData, isLoading: languageLoading } = useQuery<LanguageBreakdown[]>({
     queryKey: ['patterns', 'language-breakdown', timeRange],
     queryFn: () => patternLearningSource.fetchLanguageBreakdown(timeRange),
-    refetchInterval: 60000, // Refetch every 60 seconds
+    refetchInterval: POLLING_INTERVAL_SLOW,
   });
 
   // Filter patterns client-side based on filter criteria

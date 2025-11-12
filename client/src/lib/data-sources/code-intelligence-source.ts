@@ -1,5 +1,5 @@
 import { USE_MOCK_DATA } from '../mock-data/config';
-import { fallbackChain, ensureNumeric, ensureEnvVar } from './defensive-transform-logger';
+import { fallbackChain, ensureNumeric, ensureEnvVar } from '../defensive-transform-logger';
 
 export interface CodeAnalysisData {
   files_analyzed: number;

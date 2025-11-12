@@ -1,6 +1,6 @@
 // Knowledge Graph Data Source
 import { USE_MOCK_DATA, KnowledgeGraphMockData } from '../mock-data';
-import { ensureArray } from './defensive-transform-logger';
+import { ensureArray } from '../defensive-transform-logger';
 
 export interface GraphNode {
   id: string;

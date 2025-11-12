@@ -11,6 +11,7 @@ import { MockBadge } from "@/components/MockBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useState, useMemo } from "react";
 import { eventFlowSource } from "@/lib/data-sources";
+import { POLLING_INTERVAL_MEDIUM } from "@/lib/constants/query-config";
 
 // Event stream interface matching omniarchon endpoint
 interface EventStreamItem {
@@ -26,7 +27,6 @@ interface EventStreamResponse {
 }
 
 export default function EventFlow() {
-  const [pollingInterval] = useState(30000); // 30 seconds
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
@@ -40,7 +40,7 @@ export default function EventFlow() {
   const { data: eventFlowData, isLoading, isError, error, dataUpdatedAt } = useQuery({
     queryKey: ['events', 'stream'],
     queryFn: () => eventFlowSource.fetchEvents(100),
-    refetchInterval: pollingInterval,
+    refetchInterval: POLLING_INTERVAL_MEDIUM,
     refetchOnWindowFocus: true,
   });
 

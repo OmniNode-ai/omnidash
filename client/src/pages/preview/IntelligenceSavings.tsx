@@ -725,7 +725,7 @@ export default function IntelligenceSavings() {
                         </tr>
                       </thead>
                       <tbody>
-                        {timeSeriesData?.slice(-14).reverse().map((day, index) => (
+                        {[...timeSeriesData?.slice(-14) || []].reverse().map((day, index) => (
                           <React.Fragment key={day.date}>
                             {/* Main row - clickable */}
                             <tr
@@ -869,7 +869,7 @@ export default function IntelligenceSavings() {
                         </tr>
                       </thead>
                       <tbody>
-                        {timeSeriesData?.slice(-10).reverse().map((day, index) => (
+                        {[...timeSeriesData?.slice(-10) || []].reverse().map((day, index) => (
                           <tr key={day.date} className={index % 2 === 0 ? "bg-background hover:bg-muted/30" : "bg-muted/50 hover:bg-muted/70"}>
                             <td className="p-3 font-medium">{new Date(day.date).toLocaleDateString()}</td>
                             <td className="text-right p-3">{formatNumber(day.withIntelligence.tokens)}</td>

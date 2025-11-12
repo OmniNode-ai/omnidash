@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { codeIntelligenceSource } from "@/lib/data-sources";
+import { POLLING_INTERVAL_SLOW } from "@/lib/constants/query-config";
 
 // Types from data source
 import type { CodeAnalysisData, ComplianceData } from "@/lib/data-sources/code-intelligence-source";
@@ -30,7 +31,7 @@ export default function CodeIntelligence() {
   const { data: intelligenceData, isLoading } = useQuery({
     queryKey: ['code-intelligence', timeRange],
     queryFn: () => codeIntelligenceSource.fetchAll(timeRange),
-    refetchInterval: 60000,
+    refetchInterval: POLLING_INTERVAL_SLOW,
     refetchIntervalInBackground: true,
   });
 

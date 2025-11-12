@@ -1,6 +1,6 @@
 // Agent Operations Data Source
 import { USE_MOCK_DATA, AgentOperationsMockData } from '../mock-data';
-import { fallbackChain, withFallback, ensureNumeric } from './defensive-transform-logger';
+import { fallbackChain, withFallback, ensureNumeric } from '../defensive-transform-logger';
 
 export interface AgentSummary {
   totalAgents: number;
@@ -63,10 +63,8 @@ class AgentOperationsSource {
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
 
     // Return comprehensive mock data if USE_MOCK_DATA is enabled (but not in tests)
-    console.log('[fetchSummary] USE_MOCK_DATA =', USE_MOCK_DATA);
     if (USE_MOCK_DATA && !isTestEnv) {
       const mockData = AgentOperationsMockData.generateSummary();
-      console.log('[fetchSummary] Returning mock data:', mockData);
       return { data: mockData, isMock: true };
     }
 
@@ -278,19 +276,19 @@ class AgentOperationsSource {
       aggregated.set(time, existing + opsPerMinute);
     });
 
-    return Array.from(aggregated.entries())
-      .map(([time, value]) => ({ time, value }))
+    return [...Array.from(aggregated.entries())
+      .map(([time, value]) => ({ time, value }))]
       .reverse();
   }
 
   transformQualityForChart(qualityData: any[]): ChartDataPoint[] {
     if (!qualityData || qualityData.length === 0) return [];
 
-    return qualityData
+    return [...qualityData
       .map(item => ({
         time: new Date(item.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
         value: ensureNumeric('avgQualityImprovement', item.avgQualityImprovement, 0, { context: 'quality-chart-transform' }) * 100,
-      }))
+      }))]
       .reverse();
   }
 

@@ -26,21 +26,22 @@ export class PlatformHealthMockData {
       services[idx].latency_ms = Gen.randomInt(200, 500);
     }
 
-    // New nested structure matching test expectations
+    // Calculate overall status based on service health
+    const hasDown = services.some(s => s.status === 'down');
+    const hasDegraded = services.some(s => s.status === 'degraded');
+    const overallStatus = hasDown ? 'down' : hasDegraded ? 'degraded' : 'up';
+
+    // Calculate average uptime
+    const avgUptime = services.reduce((sum, s) => sum + s.uptime, 0) / services.length;
+
     return {
-      database: {
-        name: 'PostgreSQL',
-        status: 'healthy',
-        uptime: `${Gen.randomFloat(99.5, 99.99, 2)}%`,
-        latency_ms: Gen.randomInt(5, 30),
-      },
-      kafka: {
-        name: 'Kafka/Redpanda',
-        status: 'healthy',
-        uptime: `${Gen.randomFloat(99.3, 99.98, 2)}%`,
-        latency_ms: Gen.randomInt(15, 60),
-      },
-      services,
+      status: overallStatus,
+      uptime: avgUptime,
+      services: services.map(s => ({
+        name: s.name,
+        status: s.status,
+        latency: s.latency_ms,
+      })),
     };
   }
 

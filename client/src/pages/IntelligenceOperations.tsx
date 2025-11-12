@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { MockDataBadge } from "@/components/MockDataBadge";
 import { ensureTimeSeries, ensureArray } from "@/components/mockUtils";
 import { agentOperationsSource } from "@/lib/data-sources";
+import { POLLING_INTERVAL_SLOW, POLLING_INTERVAL_MEDIUM } from "@/lib/constants/query-config";
 
 interface ManifestInjectionHealth {
   successRate: number;
@@ -183,14 +184,14 @@ export default function IntelligenceOperations() {
   // Fetch manifest injection health data (updated via WebSocket)
   const { data: healthData, isLoading: healthLoading } = useQuery<ManifestInjectionHealth>({
     queryKey: [`http://localhost:3000/api/intelligence/health/manifest-injection?timeWindow=${timeRange}`],
-    refetchInterval: 60000, // Refetch every 60 seconds
+    refetchInterval: POLLING_INTERVAL_SLOW,
   });
 
   // Use data source for all operations data (includes transformations)
   const { data: operationsSourceData, isLoading: operationsSourceLoading } = useQuery({
     queryKey: ['agent-operations-full', timeRange],
     queryFn: () => agentOperationsSource.fetchAll(timeRange),
-    refetchInterval: 60000,
+    refetchInterval: POLLING_INTERVAL_SLOW,
   });
 
   // Keep old queries for now but they're replaced by operationsSourceData
@@ -202,14 +203,14 @@ export default function IntelligenceOperations() {
   // Fetch recent actions as fallback if WebSocket hasn't provided data yet
   const { data: recentActionsData } = useQuery<AgentAction[]>({
     queryKey: [`http://localhost:3000/api/intelligence/actions/recent?limit=50`],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: POLLING_INTERVAL_MEDIUM,
     enabled: liveEvents.length === 0 && !isConnected, // Only fetch if no live events and not connected
   });
 
   // Fetch top accessed documents
   const { data: topDocumentsData, isLoading: documentsLoading } = useQuery<TopAccessedDocument[]>({
     queryKey: [`http://localhost:3000/api/intelligence/documents/top-accessed?timeWindow=${timeRange}&limit=10`],
-    refetchInterval: 60000, // Refetch every 60 seconds
+    refetchInterval: POLLING_INTERVAL_SLOW,
   });
 
   // Populate live events from API fallback
@@ -425,7 +426,7 @@ export default function IntelligenceOperations() {
             {
               key: 'source',
               label: 'Agent',
-              options: Array.from(new Set(liveEvents.map(e => e.source)))
+              options: [...Array.from(new Set(liveEvents.map(e => e.source)))]
                 .sort()
                 .map(source => ({ value: source, label: source })),
             },
@@ -486,10 +487,10 @@ export default function IntelligenceOperations() {
             <div className="grid grid-cols-2 gap-6">
               <RealtimeChart
                 title="Injection Latency Trend (24h)"
-                data={healthData.latencyTrend.map(t => ({
+                data={[...healthData.latencyTrend.map(t => ({
                   time: new Date(t.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
                   value: t.avgLatencyMs,
-                })).reverse()}
+                }))].reverse()}
                 color="hsl(var(--chart-2))"
                 showArea
               />
@@ -665,7 +666,7 @@ export default function IntelligenceOperations() {
             {
               key: 'repository',
               label: 'Repository',
-              options: Array.from(new Set((topDocumentsData || []).map(d => d.repository)))
+              options: [...Array.from(new Set((topDocumentsData || []).map(d => d.repository)))]
                 .sort()
                 .map(repo => ({ value: repo, label: repo })),
             },

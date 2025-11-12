@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { intelligenceAnalyticsSource } from "@/lib/data-sources";
 import { intelligenceSavingsSource } from "@/lib/data-sources/intelligence-savings-source";
+import { POLLING_INTERVAL_SLOW, POLLING_INTERVAL_MEDIUM, STALE_TIME_IMMEDIATE } from "@/lib/constants/query-config";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -145,7 +146,7 @@ export default function IntelligenceAnalytics() {
   const { data: metricsResult, isLoading: metricsLoading } = useQuery({
     queryKey: ['intelligence-metrics', timeRange],
     queryFn: () => intelligenceAnalyticsSource.fetchMetrics(timeRange),
-    refetchInterval: 60000,
+    refetchInterval: POLLING_INTERVAL_SLOW,
   });
   
   const intelligenceMetrics = metricsResult?.data;
@@ -155,7 +156,7 @@ export default function IntelligenceAnalytics() {
   const { data: activityResult, isLoading: activityLoading } = useQuery({
     queryKey: ['recent-activity'],
     queryFn: () => intelligenceAnalyticsSource.fetchRecentActivity(5),
-    refetchInterval: 30000,
+    refetchInterval: POLLING_INTERVAL_MEDIUM,
   });
   
   const recentActivity = activityResult?.data || [];
@@ -165,8 +166,8 @@ export default function IntelligenceAnalytics() {
     queryKey: ['savings-metrics', timeRange],
     queryFn: () => intelligenceAnalyticsSource.fetchSavingsMetrics(timeRange),
     retry: false,
-    refetchInterval: 60000,
-    staleTime: 0, // Always consider data stale to force refetch
+    refetchInterval: POLLING_INTERVAL_SLOW,
+    staleTime: STALE_TIME_IMMEDIATE,
   });
   const savingsMetrics = savingsResult?.data;
   const usingMockSavings = savingsResult?.isMock || false;
@@ -176,7 +177,7 @@ export default function IntelligenceAnalytics() {
     queryKey: ['agent-comparisons', timeRange],
     queryFn: () => intelligenceSavingsSource.fetchAgentComparisons(timeRange),
     retry: false,
-    refetchInterval: 60000,
+    refetchInterval: POLLING_INTERVAL_SLOW,
   });
   const agentComparisons = agentComparisonsResult?.data || [];
 
@@ -185,7 +186,7 @@ export default function IntelligenceAnalytics() {
     queryKey: ['provider-savings', timeRange],
     queryFn: () => intelligenceSavingsSource.fetchProviderSavings(timeRange),
     retry: false,
-    refetchInterval: 60000,
+    refetchInterval: POLLING_INTERVAL_SLOW,
   });
   const providerSavings = providerSavingsResult?.data || [];
 

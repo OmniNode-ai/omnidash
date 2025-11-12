@@ -19,6 +19,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { agentOperationsSource } from "@/lib/data-sources";
 import type { HealthStatus } from "@/lib/data-sources/agent-operations-source";
+import {
+  REALTIME_QUERY_CONFIG,
+  QUERY_INVALIDATION_THROTTLE_MS,
+} from "@/lib/constants/query-config";
 
 // TypeScript interfaces for API responses
 interface AgentMetrics {
@@ -61,14 +65,13 @@ export default function AgentOperations() {
 
   // Throttle query invalidations to prevent excessive re-renders
   const lastInvalidationRef = useRef<{ [key: string]: number }>({});
-  const INVALIDATION_THROTTLE_MS = 1000; // Wait 1 second between invalidations
 
   const throttledInvalidate = useCallback((queryKey: string[]) => {
     const key = queryKey.join(':');
     const now = Date.now();
     const lastTime = lastInvalidationRef.current[key] || 0;
 
-    if (now - lastTime > INVALIDATION_THROTTLE_MS) {
+    if (now - lastTime > QUERY_INVALIDATION_THROTTLE_MS) {
       lastInvalidationRef.current[key] = now;
       queryClient.invalidateQueries({ queryKey });
     }
@@ -111,8 +114,7 @@ export default function AgentOperations() {
   const { data: operationsData, isLoading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useQuery({
     queryKey: ['agent-operations', timeRange],
     queryFn: () => agentOperationsSource.fetchAll(timeRange),
-    refetchInterval: 30000,
-    staleTime: 15000,
+    ...REALTIME_QUERY_CONFIG,
   });
 
   // Transform data source response to expected format

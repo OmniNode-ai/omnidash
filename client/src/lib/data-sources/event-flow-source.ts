@@ -1,6 +1,6 @@
 // Event Flow Data Source
 import { USE_MOCK_DATA } from '../mock-data/config';
-import { ensureNumeric, ensureArray } from './defensive-transform-logger';
+import { ensureNumeric, ensureArray } from '../defensive-transform-logger';
 
 export interface Event {
   id: string;

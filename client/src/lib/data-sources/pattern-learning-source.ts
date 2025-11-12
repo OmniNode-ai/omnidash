@@ -1,6 +1,6 @@
 // Pattern Learning Data Source
 import { USE_MOCK_DATA, PatternLearningMockData } from '../mock-data';
-import { fallbackChain, withFallback, ensureNumeric, ensureString } from './defensive-transform-logger';
+import { fallbackChain, withFallback, ensureNumeric, ensureString } from '../defensive-transform-logger';
 
 export interface DiscoveredPattern {
   name: string;

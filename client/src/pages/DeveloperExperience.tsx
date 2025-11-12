@@ -11,6 +11,7 @@ import { MockBadge } from "@/components/MockBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { POLLING_INTERVAL_MEDIUM } from "@/lib/constants/query-config";
 
 // TypeScript interfaces for API responses
 interface Workflow {
@@ -91,16 +92,16 @@ export default function DeveloperExperience() {
     debug: false,
   });
 
-  // Fetch unified developer metrics from omniarchon with 30-second polling
+  // Fetch unified developer metrics from omniarchon with standard polling
   const { data: metricsData, isLoading: metricsLoading, error: metricsError } = useQuery<DeveloperMetricsResponse>({
     queryKey: [`http://localhost:8053/api/intelligence/developer/metrics?timeWindow=${timeRange}`],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: POLLING_INTERVAL_MEDIUM,
   });
 
   // Fetch task completion velocity from local API
   const { data: taskVelocityData, isLoading: velocityLoading } = useQuery<TaskVelocityDataPoint[]>({
     queryKey: [`/api/intelligence/developer/task-velocity?timeWindow=${timeRange}`],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: POLLING_INTERVAL_MEDIUM,
   });
 
   // Extract data from unified response

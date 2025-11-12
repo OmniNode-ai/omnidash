@@ -1,6 +1,6 @@
 import { MockDataGenerator as Gen, USE_MOCK_DATA } from '../mock-data/config';
 import type { SavingsMetrics } from './intelligence-savings-source';
-import { fallbackChain, withFallback, ensureNumeric, ensureString } from './defensive-transform-logger';
+import { fallbackChain, withFallback, ensureNumeric, ensureString } from '../defensive-transform-logger';
 
 // Re-export for external consumers
 export type { SavingsMetrics };
