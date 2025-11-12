@@ -27,3 +27,5 @@ export async function fetchPatterns(params: { path: string; lang?: string; timeo
 
 
 
+
+

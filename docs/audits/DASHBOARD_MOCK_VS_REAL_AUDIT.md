@@ -10,10 +10,12 @@
 
 ## Executive Summary
 
+**UPDATE (2025-11-12)**: This issue has been fully resolved. The `TRACEABILITY_DB_*` variables have been deprecated and removed from `.env` in favor of the standard `POSTGRES_*` naming convention. This document is retained for historical context.
+
 **NOTE**: The database connection issue described below was identified on 2025-11-03 and addressed in subsequent commits.
 
 **Root Cause**:
-- `.env` file uses `TRACEABILITY_DB_*` prefix for database configuration
+- `.env` file previously used `TRACEABILITY_DB_*` prefix for database configuration
 - `server/storage.ts` expects `POSTGRES_*` prefix for database configuration
 - The database health check in `server/alert-routes.ts` (lines 74-85) attempts to query the `agent_actions` table
 - When this query fails, it triggers a "Database connection failed" alert in the AlertBanner component

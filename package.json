@@ -12,6 +12,11 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
+    "test:snapshots": "playwright test",
+    "test:snapshots:update": "playwright test --update-snapshots",
+    "test:snapshots:ui": "playwright test --ui",
+    "test:snapshots:debug": "playwright test --debug",
+    "test:snapshots:report": "playwright show-report",
     "db:push": "drizzle-kit push",
     "seed-events": "tsx server/mock-event-generator.ts",
     "seed-events:continuous": "tsx server/mock-event-generator.ts --continuous",
@@ -90,6 +95,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@replit/vite-plugin-cartographer": "^0.4.0",
     "@replit/vite-plugin-dev-banner": "^0.1.1",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",

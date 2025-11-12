@@ -14,6 +14,12 @@ test-results/
 htmlcov/
 .coverage
 
+# Playwright test artifacts
+playwright-report/
+playwright/.cache/
+test-results/
+*.spec.ts-snapshots/
+
 # Environment files with secrets
 .env
 .env.local

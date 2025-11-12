@@ -486,7 +486,7 @@ describe('PlatformHealthSource', () => {
       expect(result.data).toBeDefined();
     });
 
-    it('should handle empty response body for health', async () => {
+    it('should fall back to mock data when API returns null', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(null),
@@ -494,13 +494,14 @@ describe('PlatformHealthSource', () => {
 
       const result = await platformHealthSource.fetchHealth('24h');
 
-      // When API returns null but ok: true, it's treated as successful (returns null data)
-      // This is expected behavior - the source returns whatever the API returns
-      expect(result.isMock).toBe(false);
-      expect(result.data).toBeNull();
+      // When API returns null, Zod validation fails, falls back to mock data
+      expect(result.isMock).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data).toHaveProperty('status');
+      expect(result.data).toHaveProperty('services');
     });
 
-    it('should handle empty response body for services', async () => {
+    it('should fall back to mock data when API returns null for services', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(null),
@@ -508,10 +509,10 @@ describe('PlatformHealthSource', () => {
 
       const result = await platformHealthSource.fetchServices();
 
-      // When API returns null but ok: true, it's treated as successful (returns null data)
-      // This is expected behavior - the source returns whatever the API returns
-      expect(result.isMock).toBe(false);
-      expect(result.data).toBeNull();
+      // When API returns null, Zod validation fails, falls back to mock data
+      expect(result.isMock).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data).toHaveProperty('services');
     });
 
     it('should handle response with status code 503', async () => {

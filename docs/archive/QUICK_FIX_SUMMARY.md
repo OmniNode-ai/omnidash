@@ -1,12 +1,14 @@
 # Quick Fix Summary: Database Connection Failed
 
+> **⚠️ ARCHIVED DOCUMENT (2025-11-12)**: This issue has been fully resolved. The `.env` file now uses the standard `POSTGRES_*` variables, and all `TRACEABILITY_DB_*` variables have been deprecated and removed. This document is retained for historical reference only.
+
 ## Problem
 
 The dashboard header shows **"Database connection failed"** and all dashboards are silently falling back to mock data.
 
 ## Root Cause
 
-**Environment variable mismatch** between `.env` file and code expectations:
+**Environment variable mismatch** between `.env` file and code expectations (RESOLVED as of 2025-11-12):
 
 | What .env has | What code expects |
 |---------------|-------------------|

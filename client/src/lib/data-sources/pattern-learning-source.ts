@@ -1,6 +1,15 @@
 // Pattern Learning Data Source
 import { USE_MOCK_DATA, PatternLearningMockData } from '../mock-data';
 import { fallbackChain, withFallback, ensureNumeric, ensureString } from '../defensive-transform-logger';
+import {
+  patternSummarySchema,
+  patternTrendSchema,
+  qualityTrendSchema,
+  languageBreakdownApiSchema,
+  discoveredPatternSchema,
+  safeParseResponse,
+  parseArrayResponse,
+} from '../schemas/api-response-schemas';
 
 export interface DiscoveredPattern {
   name: string;
@@ -62,15 +71,20 @@ class PatternLearningSource {
     try {
       const response = await fetch(`/api/intelligence/patterns/summary?timeWindow=${timeWindow}`);
       if (response.ok) {
-        const data = await response.json();
-        // Transform snake_case API response to camelCase with defensive logging
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = safeParseResponse(patternSummarySchema, rawData, 'pattern-summary');
+        if (!data) {
+          console.warn('Pattern summary validation failed, using mock data');
+          return PatternLearningMockData.generateSummary();
+        }
+        // Transform API response with defensive logging
         return {
           totalPatterns: fallbackChain(
             'totalPatterns',
             { context: 'pattern-summary' },
             [
-              { value: data.total_patterns, label: 'snake_case total_patterns' },
-              { value: data.totalPatterns, label: 'camelCase totalPatterns', level: 'warn' },
+              { value: data.totalPatterns, label: 'camelCase totalPatterns' },
               { value: 0, label: 'default zero', level: 'error' }
             ]
           ),
@@ -78,8 +92,7 @@ class PatternLearningSource {
             'newPatternsToday',
             { context: 'pattern-summary' },
             [
-              { value: data.new_patterns_today, label: 'snake_case new_patterns_today' },
-              { value: data.newPatternsToday, label: 'camelCase newPatternsToday', level: 'warn' },
+              { value: data.newPatternsToday, label: 'camelCase newPatternsToday' },
               { value: 0, label: 'default zero', level: 'error' }
             ]
           ),
@@ -87,8 +100,7 @@ class PatternLearningSource {
             'avgQualityScore',
             { context: 'pattern-summary' },
             [
-              { value: data.avg_quality_score, label: 'snake_case avg_quality_score' },
-              { value: data.avgQualityScore, label: 'camelCase avgQualityScore', level: 'warn' },
+              { value: data.avgQualityScore, label: 'camelCase avgQualityScore' },
               { value: 0, label: 'default zero', level: 'error' }
             ]
           ),
@@ -96,8 +108,7 @@ class PatternLearningSource {
             'activeLearningCount',
             { context: 'pattern-summary' },
             [
-              { value: data.active_learning_count, label: 'snake_case active_learning_count' },
-              { value: data.activeLearningCount, label: 'camelCase activeLearningCount', level: 'warn' },
+              { value: data.activeLearningCount, label: 'camelCase activeLearningCount' },
               { value: 0, label: 'default zero', level: 'error' }
             ]
           ),
@@ -123,8 +134,10 @@ class PatternLearningSource {
     try {
       const response = await fetch(`/api/intelligence/patterns/trends?timeWindow=${timeWindow}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data && data.length > 0) {
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = parseArrayResponse(patternTrendSchema, rawData, 'pattern-trends');
+        if (data.length > 0) {
           // Transform to ensure proper format with defensive logging
           return data.map((item: any, index: number) => ({
             period: withFallback(
@@ -184,8 +197,10 @@ class PatternLearningSource {
     try {
       const response = await fetch(`/api/intelligence/patterns/quality-trends?timeWindow=${timeWindow}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data && data.length > 0) {
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = parseArrayResponse(qualityTrendSchema, rawData, 'quality-trends');
+        if (data.length > 0) {
           // Transform to ensure proper format with defensive logging
           return data.map((item: any, index: number) => ({
             period: withFallback(
@@ -261,8 +276,10 @@ class PatternLearningSource {
     try {
       const response = await fetch(`/api/intelligence/patterns/by-language?timeWindow=${timeWindow}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data && data.length > 0) {
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = parseArrayResponse(languageBreakdownApiSchema, rawData, 'language-breakdown');
+        if (data.length > 0) {
           // Calculate total for percentages with defensive logging
           const total = data.reduce((sum: number, item: any, index: number) => {
             const count = fallbackChain(
@@ -322,9 +339,11 @@ class PatternLearningSource {
     try {
       const response = await fetch(`/api/intelligence/patterns/discovery?limit=${limit}`);
       if (response.ok) {
-        const data = await response.json();
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = parseArrayResponse(discoveredPatternSchema, rawData, 'pattern-discovery');
         return {
-          data: data.map((p: any) => ({
+          data: data.map((p) => ({
             name: p.name,
             file_path: p.file_path,
             metadata: { createdAt: p.createdAt },
@@ -346,6 +365,8 @@ class PatternLearningSource {
 }
 
 export const patternLearningSource = new PatternLearningSource();
+
+
 
 
 

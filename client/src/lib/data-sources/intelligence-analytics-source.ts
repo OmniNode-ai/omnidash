@@ -1,6 +1,13 @@
 import { MockDataGenerator as Gen, USE_MOCK_DATA } from '../mock-data/config';
 import type { SavingsMetrics } from './intelligence-savings-source';
 import { fallbackChain, withFallback, ensureNumeric, ensureString } from '../defensive-transform-logger';
+import {
+  agentMetricsApiSchema,
+  recentActionSchema,
+  savingsMetricsSchema,
+  parseArrayResponse,
+  safeParseResponse,
+} from '../schemas/api-response-schemas';
 
 // Re-export for external consumers
 export type { SavingsMetrics };
@@ -50,8 +57,10 @@ class IntelligenceAnalyticsDataSource {
     try {
       const response = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
       if (response.ok) {
-        const agents = await response.json();
-        if (Array.isArray(agents) && agents.length > 0) {
+        const rawAgents = await response.json();
+        // Validate API response with Zod schema
+        const agents = parseArrayResponse(agentMetricsApiSchema, rawAgents, 'intelligence-metrics');
+        if (agents.length > 0) {
           const totalRequests = agents.reduce((sum, a) =>
             sum + ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-metrics-total' }), 0
           );
@@ -158,23 +167,16 @@ class IntelligenceAnalyticsDataSource {
     try {
       const response = await fetch(`/api/intelligence/actions/recent?limit=${limit}`);
       if (response.ok) {
-        const actions = await response.json();
-        if (Array.isArray(actions) && actions.length > 0) {
+        const rawActions = await response.json();
+        // Validate API response with Zod schema
+        const actions = parseArrayResponse(recentActionSchema, rawActions, 'recent-activity-actions');
+        if (actions.length > 0) {
           const activities: RecentActivity[] = actions.map((action: any) => ({
-            action: fallbackChain(
-              'actionName',
-              { id: action.id, context: 'recent-activity-action' },
-              [
-                { value: action.actionName, label: 'actionName field' },
-                { value: action.actionType, label: 'actionType field (fallback)', level: 'warn' },
-                { value: 'Unknown action', label: 'default unknown', level: 'error' }
-              ]
-            ),
+            action: withFallback('action', action.action, 'Unknown action', { id: action.id, context: 'recent-activity-action' }),
             agent: withFallback('agentName', action.agentName, 'unknown', { id: action.id, context: 'recent-activity-agent' }),
-            time: this.formatTimeAgo(action.createdAt),
-            status: action.actionType === 'error' ? 'failed' :
-                    action.durationMs ? 'completed' : 'executing',
-            timestamp: action.createdAt,
+            time: this.formatTimeAgo(action.timestamp),
+            status: action.status as RecentActivity['status'],
+            timestamp: action.timestamp,
           }));
           return { data: activities, isMock: false };
         }
@@ -290,8 +292,10 @@ class IntelligenceAnalyticsDataSource {
     try {
       const response = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
       if (response.ok) {
-        const agents = await response.json();
-        if (Array.isArray(agents) && agents.length > 0) {
+        const rawAgents = await response.json();
+        // Validate API response with Zod schema
+        const agents = parseArrayResponse(agentMetricsApiSchema, rawAgents, 'agent-performance');
+        if (agents.length > 0) {
           // Detect format for success rate
           const sampleAgent = agents.find((a: any) => (a.successRate != null) || (a.avgConfidence != null));
           const sampleValue = sampleAgent
@@ -429,23 +433,13 @@ class IntelligenceAnalyticsDataSource {
     try {
       const response = await fetch(`/api/savings/metrics?timeRange=${timeRange}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data && typeof data === 'object') {
-          // Validate that all required fields exist (allow negative values for regression detection)
-          const isValid =
-            typeof data.totalSavings === 'number' &&
-            typeof data.monthlySavings === 'number' &&
-            typeof data.weeklySavings === 'number' &&
-            typeof data.dailySavings === 'number' &&
-            typeof data.intelligenceRuns === 'number' && data.intelligenceRuns >= 0 &&
-            typeof data.baselineRuns === 'number' && data.baselineRuns >= 0 &&
-            typeof data.timeSaved === 'number'; // Allow negative timeSaved for regression detection
-
-          if (isValid) {
-            return { data, isMock: false };
-          } else {
-            console.warn('API returned invalid savings data (missing required fields), using mock data', data);
-          }
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = safeParseResponse(savingsMetricsSchema, rawData, 'savings-metrics');
+        if (data) {
+          return { data, isMock: false };
+        } else {
+          console.warn('Savings metrics validation failed, using mock data');
         }
       }
     } catch (err) {

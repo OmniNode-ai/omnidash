@@ -287,7 +287,7 @@ npm run test:coverage     # Generate coverage report
 **Kafka Event Bus** (`192.168.86.200:9092`):
 - **Real-time event streaming** with <100ms latency
 - **Topics**: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
-- **Consumer Group**: `omnidash-consumers` (suggested)
+- **Consumer Group**: `omnidash-consumers-v2`
 - **Retention**: 3-7 days depending on topic
 
 ### Environment Variables
@@ -305,7 +305,7 @@ POSTGRES_DATABASE=omninode_bridge
 # Kafka Event Streaming
 KAFKA_BROKERS=192.168.86.200:9092
 KAFKA_CLIENT_ID=omnidash-dashboard
-KAFKA_CONSUMER_GROUP=omnidash-consumers
+KAFKA_CONSUMER_GROUP=omnidash-consumers-v2
 
 # Feature Flags
 ENABLE_REAL_TIME_EVENTS=true

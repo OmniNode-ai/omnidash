@@ -1,6 +1,13 @@
 // Agent Operations Data Source
 import { USE_MOCK_DATA, AgentOperationsMockData } from '../mock-data';
 import { fallbackChain, withFallback, ensureNumeric } from '../defensive-transform-logger';
+import {
+  agentMetricsApiSchema,
+  recentActionSchema,
+  healthStatusSchema,
+  parseArrayResponse,
+  safeParseResponse,
+} from '../schemas/api-response-schemas';
 
 export interface AgentSummary {
   totalAgents: number;
@@ -71,8 +78,10 @@ class AgentOperationsSource {
     try {
       const res = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
       if (res.ok) {
-        const agents = await res.json();
-        if (Array.isArray(agents) && agents.length > 0) {
+        const rawAgents = await res.json();
+        // Validate API response with Zod schema
+        const agents = parseArrayResponse(agentMetricsApiSchema, rawAgents, 'agent-summary');
+        if (agents.length > 0) {
           const totalRuns = agents.reduce((sum, a) => sum + ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'agent-summary-total-runs' }), 0);
           const activeAgents = agents.filter(a => ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'agent-summary-active-check' }) > 0).length;
           const totalRequestsForAvg = agents.reduce((sum, a) => sum + ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'agent-summary-avg-calc' }), 0);
@@ -151,8 +160,10 @@ class AgentOperationsSource {
     try {
       const res = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
       if (res.ok) {
-        const agents = await res.json();
-        if (Array.isArray(agents) && agents.length > 0) {
+        const rawAgents = await res.json();
+        // Validate API response with Zod schema
+        const agents = parseArrayResponse(agentMetricsApiSchema, rawAgents, 'per-agent-metrics');
+        if (agents.length > 0) {
           return { data: agents, isMock: false };
         }
       }
@@ -175,8 +186,10 @@ class AgentOperationsSource {
     try {
       const res = await fetch(`/api/intelligence/actions/recent?limit=${limit}&timeWindow=${timeRange}`);
       if (res.ok) {
-        const data = await res.json();
-        return { data: Array.isArray(data) ? data : [], isMock: false };
+        const rawData = await res.json();
+        // Validate API response with Zod schema
+        const data = parseArrayResponse(recentActionSchema, rawData, 'recent-actions');
+        return { data, isMock: false };
       }
     } catch (err) {
       console.warn('Failed to fetch recent actions, using mock data', err);
@@ -197,8 +210,12 @@ class AgentOperationsSource {
     try {
       const res = await fetch('/api/intelligence/health');
       if (res.ok) {
-        const data = await res.json();
-        return { data, isMock: false };
+        const rawData = await res.json();
+        // Validate API response with Zod schema
+        const data = safeParseResponse(healthStatusSchema, rawData, 'health-status');
+        if (data) {
+          return { data, isMock: false };
+        }
       }
     } catch (err) {
       console.warn('Failed to fetch health, using mock data', err);

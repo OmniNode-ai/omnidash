@@ -1,13 +1,14 @@
 // Event Flow Data Source
 import { USE_MOCK_DATA } from '../mock-data/config';
 import { ensureNumeric, ensureArray } from '../defensive-transform-logger';
+import { eventSchema, parseArrayResponse } from '../schemas/api-response-schemas';
 
 export interface Event {
   id: string;
   timestamp: string;
   type: string;
   source: string;
-  data: any;
+  data?: any; // Optional - not all events have associated data
 }
 
 export interface EventMetrics {
@@ -132,11 +133,14 @@ class EventFlowSource {
     try {
       const response = await fetch(`/api/intelligence/events/stream?limit=${limit}`);
       if (response.ok) {
-        const eventsData = await response.json();
+        const rawData = await response.json();
         // Ensure we always get an array, with logging for unexpected formats
-        const events = Array.isArray(eventsData)
-          ? eventsData
-          : ensureArray('events', eventsData.events, { context: 'event-flow-fetch' });
+        const eventsData = Array.isArray(rawData)
+          ? rawData
+          : ensureArray('events', rawData.events, { context: 'event-flow-fetch' });
+
+        // Validate API response with Zod schema
+        const events = parseArrayResponse(eventSchema, eventsData, 'event-flow');
 
         return {
           events,

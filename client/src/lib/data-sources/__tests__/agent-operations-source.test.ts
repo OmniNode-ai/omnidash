@@ -90,11 +90,12 @@ describe('AgentOperationsSource', () => {
       const mockActions = [
         {
           id: 'action-1',
+          agentId: 'agent-1',
           agentName: 'agent-1',
-          actionName: 'test-action',
-          actionType: 'tool_call',
-          durationMs: 5000,
-          createdAt: '2024-01-01T00:00:00Z',
+          action: 'test-action',
+          status: 'completed',
+          timestamp: '2024-01-01T00:00:00Z',
+          duration: 5000,
         },
       ];
 
@@ -223,7 +224,7 @@ describe('AgentOperationsSource', () => {
         { agent: 'agent-1', totalRequests: 100, successRate: 0.95, avgConfidence: 0.92, avgRoutingTime: 1000 },
       ];
       const mockActions = [
-        { id: 'action-1', agentName: 'agent-1', actionName: 'test', actionType: 'tool_call', createdAt: '2024-01-01T00:00:00Z' },
+        { id: 'action-1', agentId: 'agent-1', agentName: 'agent-1', action: 'test', status: 'completed', timestamp: '2024-01-01T00:00:00Z' },
       ];
       const mockHealth: HealthStatus = {
         status: 'healthy',

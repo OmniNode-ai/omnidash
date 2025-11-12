@@ -84,7 +84,7 @@ describe('KnowledgeGraphSource', () => {
       expect(result.edges).toEqual([]);
     });
 
-    it('should return empty arrays when API response has no nodes/edges properties', async () => {
+    it('should fall back to mock data when API response has no nodes/edges properties', async () => {
       const mockGraphData = {};
 
       setupFetchMock(
@@ -95,9 +95,10 @@ describe('KnowledgeGraphSource', () => {
 
       const result = await knowledgeGraphSource.fetchGraph('24h', 100);
 
-      expect(result.isMock).toBe(false);
-      expect(result.nodes).toEqual([]);
-      expect(result.edges).toEqual([]);
+      // Validation fails due to missing required fields, falls back to mock data
+      expect(result.isMock).toBe(true);
+      expect(result.nodes.length).toBeGreaterThan(0);
+      expect(result.edges.length).toBeGreaterThan(0);
     });
 
     it('should return mock fallback data when API fails', async () => {

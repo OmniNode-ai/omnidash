@@ -1,5 +1,10 @@
 // Platform Health Data Source
 import { USE_MOCK_DATA, PlatformHealthMockData } from '../mock-data';
+import {
+  platformHealthSchema,
+  platformServicesSchema,
+  safeParseResponse,
+} from '../schemas/api-response-schemas';
 
 export interface PlatformHealth {
   status: string;
@@ -39,8 +44,12 @@ class PlatformHealthSource {
       const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
       const response = await fetch(`${omniarchonUrl}/api/intelligence/platform/health?timeWindow=${timeRange}`);
       if (response.ok) {
-        const data = await response.json();
-        return { data, isMock: false };
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = safeParseResponse(platformHealthSchema, rawData, 'platform-health');
+        if (data) {
+          return { data, isMock: false };
+        }
       }
     } catch (err) {
       console.warn('Failed to fetch platform health, using mock data', err);
@@ -64,8 +73,12 @@ class PlatformHealthSource {
     try {
       const response = await fetch('http://localhost:3000/api/intelligence/platform/services');
       if (response.ok) {
-        const data = await response.json();
-        return { data, isMock: false };
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = safeParseResponse(platformServicesSchema, rawData, 'platform-services');
+        if (data) {
+          return { data, isMock: false };
+        }
       }
     } catch (err) {
       console.warn('Failed to fetch platform services, using mock data', err);
@@ -92,6 +105,8 @@ class PlatformHealthSource {
 }
 
 export const platformHealthSource = new PlatformHealthSource();
+
+
 
 
 
