@@ -158,7 +158,7 @@ PatternNetwork (refactored)
 ## Testing & Validation
 
 ### Visual Testing
-Screenshots captured at `/Volumes/PRO-G40/Code/omnidash/.playwright-mcp/`:
+Screenshots captured at `.playwright-mcp/`:
 - `pattern-network-refactored.png` - Full page view
 - `pattern-network-graph-closeup.png` - Grid view (50 nodes)
 - `pattern-network-tree-view.png` - Hierarchical tree layout

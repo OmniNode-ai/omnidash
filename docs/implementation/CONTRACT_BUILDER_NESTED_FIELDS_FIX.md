@@ -44,7 +44,7 @@ if (typeof nestedField === 'object' && nestedField !== null && !('type' in neste
 - Labels auto-capitalize and convert underscores to spaces
 
 ## Files Changed
-- `/Volumes/PRO-G40/Code/omnidash/client/src/pages/preview/ContractBuilder.tsx` (lines 645-710)
+- `client/src/pages/preview/ContractBuilder.tsx` (lines 645-710)
 
 ## Verification
 Tested with Workflow (Orchestrator) contract type using "Load Example":

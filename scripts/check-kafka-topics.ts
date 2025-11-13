@@ -21,7 +21,7 @@ const TOPICS_TO_CHECK = [
   'agent-actions',
 ];
 
-const CONSUMER_GROUP = 'omnidash-consumers';
+const CONSUMER_GROUP = 'omnidash-consumers-v2';
 
 async function checkTopics() {
   const admin = kafka.admin();

@@ -17,7 +17,7 @@ Implemented a complete API-based chat history system with proper error handling 
 
 ### 1. Created Chat API Routes (`server/chat-routes.ts`)
 
-**New file**: `/Volumes/PRO-G40/Code/omnidash/server/chat-routes.ts`
+**New file**: `server/chat-routes.ts`
 
 **Features**:
 - `GET /api/chat/history` - Returns chat history (currently demo messages)
@@ -34,7 +34,7 @@ The endpoint returns 6 demo messages (3 Q&A pairs) showcasing AI assistant capab
 
 ### 2. Registered Chat Routes (`server/routes.ts`)
 
-**Modified file**: `/Volumes/PRO-G40/Code/omnidash/server/routes.ts`
+**Modified file**: `server/routes.ts`
 
 **Changes**:
 - Added import: `import { chatRouter } from "./chat-routes";`
@@ -43,7 +43,7 @@ The endpoint returns 6 demo messages (3 Q&A pairs) showcasing AI assistant capab
 
 ### 3. Updated ChatInterface Component (`client/src/components/ChatInterface.tsx`)
 
-**Modified file**: `/Volumes/PRO-G40/Code/omnidash/client/src/components/ChatInterface.tsx`
+**Modified file**: `client/src/components/ChatInterface.tsx`
 
 **Changes**:
 - **Removed**: Lines 38-86 (hardcoded mock data in queryFn)

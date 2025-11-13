@@ -1,7 +1,7 @@
 # IntelligenceSavings.tsx Component Standardization Audit
 
 **Date**: 2025-11-10
-**File**: `/Volumes/PRO-G40/Code/omnidash/client/src/pages/preview/IntelligenceSavings.tsx`
+**File**: `client/src/pages/preview/IntelligenceSavings.tsx`
 
 ---
 

@@ -201,11 +201,12 @@ describe('CodeIntelligenceDataSource', () => {
       expect(result.data.summary.totalFiles).toBe(150);
     });
 
-    it('should handle missing summary field', async () => {
+    it('should handle missing summary field and fall back to mock data', async () => {
       const invalidData = {
         statusBreakdown: [],
         nodeTypeBreakdown: [],
         trend: [],
+        // Missing required 'summary' field - validation should fail
       };
 
       setupFetchMock(
@@ -216,9 +217,12 @@ describe('CodeIntelligenceDataSource', () => {
 
       const result = await codeIntelligenceSource.fetchCompliance('24h');
 
+      // Validation fails due to missing summary, so it falls back to mock data
       expect(result.isMock).toBe(true);
       expect(result.data.summary).toBeDefined();
-      expect(result.data.summary.totalFiles).toBe(150);
+      // Mock data generates totalFiles between 100-300, so verify it's in the documented range
+      expect(result.data.summary.totalFiles).toBeGreaterThanOrEqual(100);
+      expect(result.data.summary.totalFiles).toBeLessThanOrEqual(300);
     });
 
     it('should handle network errors', async () => {

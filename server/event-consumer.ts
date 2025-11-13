@@ -61,10 +61,15 @@ export interface TransformationEvent {
  * - 'connected': When consumer successfully connects
  * - 'disconnected': When consumer disconnects
  */
-class EventConsumer extends EventEmitter {
+export class EventConsumer extends EventEmitter {
   private kafka: Kafka;
   private consumer: Consumer | null = null;
   private isRunning = false;
+
+  // Data retention configuration
+  private readonly DATA_RETENTION_MS = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly PRUNE_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+  private pruneTimer?: NodeJS.Timeout;
 
   // In-memory aggregations
   private agentMetrics = new Map<string, {
@@ -108,14 +113,83 @@ class EventConsumer extends EventEmitter {
   constructor() {
     super(); // Initialize EventEmitter
 
+    // Get brokers from environment variable
+    // If not configured, create a dummy Kafka instance that will fail validation
+    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092';
+
     this.kafka = new Kafka({
-      brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(','),
+      brokers: brokers.split(','),
       clientId: 'omnidash-event-consumer',
     });
 
     this.consumer = this.kafka.consumer({
       groupId: 'omnidash-consumers-v2', // Changed to force reading from beginning
     });
+  }
+
+  /**
+   * Validate Kafka broker reachability before starting consumer
+   * @returns Promise<boolean> - true if broker is reachable, false otherwise
+   */
+  async validateConnection(): Promise<boolean> {
+    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+
+    if (!brokers) {
+      console.warn('⚠️  KAFKA_BROKERS not configured - real-time event streaming disabled');
+      return false;
+    }
+
+    try {
+      console.log(`🔍 Validating Kafka broker connection: ${brokers}`);
+
+      const admin = this.kafka.admin();
+      await admin.connect();
+
+      // Quick health check - list topics to verify connectivity
+      const topics = await admin.listTopics();
+      console.log(`✅ Kafka broker reachable: ${brokers} (${topics.length} topics available)`);
+
+      await admin.disconnect();
+      return true;
+    } catch (error) {
+      console.error(`❌ Kafka broker unreachable: ${brokers}`);
+      console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('   Real-time event streaming will be disabled');
+      console.error('   Verify KAFKA_BROKERS configuration and network connectivity');
+      return false;
+    }
+  }
+
+  /**
+   * Connect to Kafka with exponential backoff retry logic
+   * @param maxRetries - Maximum number of retry attempts (default: 5)
+   */
+  async connectWithRetry(maxRetries = 5): Promise<void> {
+    if (!this.consumer) {
+      throw new Error('Consumer not initialized');
+    }
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        await this.consumer.connect();
+        console.log('✅ Kafka consumer connected successfully');
+        return;
+      } catch (error) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+        const remaining = maxRetries - attempt - 1;
+
+        if (remaining > 0) {
+          console.warn(`⚠️ Kafka connection failed (attempt ${attempt + 1}/${maxRetries})`);
+          console.warn(`   Error: ${error instanceof Error ? error.message : String(error)}`);
+          console.warn(`   Retrying in ${delay}ms... (${remaining} attempts remaining)`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          console.error('❌ Kafka consumer failed after max retries');
+          console.error(`   Final error: ${error instanceof Error ? error.message : String(error)}`);
+          throw new Error(`Kafka connection failed after ${maxRetries} attempts: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    }
   }
 
   async start() {
@@ -125,7 +199,7 @@ class EventConsumer extends EventEmitter {
     }
 
     try {
-      await this.consumer.connect();
+      await this.connectWithRetry();
       console.log('Kafka consumer connected');
       this.emit('connected'); // Emit connected event
 
@@ -176,12 +250,33 @@ class EventConsumer extends EventEmitter {
           } catch (error) {
             console.error('Error processing Kafka message:', error);
             this.emit('error', error); // Emit error event
+
+            // If error suggests connection issue, attempt reconnection
+            if (error instanceof Error &&
+                (error.message.includes('connection') ||
+                 error.message.includes('broker') ||
+                 error.message.includes('network'))) {
+              console.warn('⚠️ Connection error detected, attempting reconnection...');
+              try {
+                await this.connectWithRetry();
+                console.log('✅ Reconnection successful, resuming event processing');
+              } catch (reconnectError) {
+                console.error('❌ Reconnection failed:', reconnectError);
+                this.emit('error', reconnectError);
+              }
+            }
           }
         },
       });
 
       this.isRunning = true;
-      console.log('Event consumer started successfully');
+
+      // Start periodic pruning to prevent unbounded memory growth
+      this.pruneTimer = setInterval(() => {
+        this.pruneOldData();
+      }, this.PRUNE_INTERVAL_MS);
+
+      console.log('✅ Event consumer started with automatic data pruning');
     } catch (error) {
       console.error('Failed to start event consumer:', error);
       this.emit('error', error); // Emit error event
@@ -452,6 +547,52 @@ class EventConsumer extends EventEmitter {
     }
   }
 
+  /**
+   * Prune old data from in-memory arrays to prevent unbounded memory growth
+   * Removes events older than DATA_RETENTION_MS (24 hours by default)
+   */
+  private pruneOldData(): void {
+    const cutoff = Date.now() - this.DATA_RETENTION_MS;
+
+    // Prune recent actions
+    const actionsBefore = this.recentActions.length;
+    this.recentActions = this.recentActions.filter(action => {
+      const timestamp = new Date(action.createdAt).getTime();
+      return timestamp > cutoff;
+    });
+    const actionsRemoved = actionsBefore - this.recentActions.length;
+
+    // Prune routing decisions
+    const decisionsBefore = this.routingDecisions.length;
+    this.routingDecisions = this.routingDecisions.filter(decision => {
+      const timestamp = new Date(decision.createdAt).getTime();
+      return timestamp > cutoff;
+    });
+    const decisionsRemoved = decisionsBefore - this.routingDecisions.length;
+
+    // Prune transformations
+    const transformationsBefore = this.recentTransformations.length;
+    this.recentTransformations = this.recentTransformations.filter(transformation => {
+      const timestamp = new Date(transformation.createdAt).getTime();
+      return timestamp > cutoff;
+    });
+    const transformationsRemoved = transformationsBefore - this.recentTransformations.length;
+
+    // Prune performance metrics
+    const metricsBefore = this.performanceMetrics.length;
+    this.performanceMetrics = this.performanceMetrics.filter(metric => {
+      const timestamp = new Date(metric.createdAt).getTime();
+      return timestamp > cutoff;
+    });
+    const metricsRemoved = metricsBefore - this.performanceMetrics.length;
+
+    // Log pruning statistics if anything was removed
+    const totalRemoved = actionsRemoved + decisionsRemoved + transformationsRemoved + metricsRemoved;
+    if (totalRemoved > 0) {
+      console.log(`🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics (total: ${totalRemoved})`);
+    }
+  }
+
   // Public getters for API endpoints
   getAgentMetrics(): AgentMetrics[] {
     const now = new Date();
@@ -568,9 +709,15 @@ class EventConsumer extends EventEmitter {
     }
 
     try {
+      // Clear pruning timer
+      if (this.pruneTimer) {
+        clearInterval(this.pruneTimer);
+        this.pruneTimer = undefined;
+      }
+
       await this.consumer.disconnect();
       this.isRunning = false;
-      console.log('Kafka consumer disconnected');
+      console.log('✅ Event consumer stopped');
       this.emit('disconnected'); // Emit disconnected event
     } catch (error) {
       console.error('Error disconnecting Kafka consumer:', error);

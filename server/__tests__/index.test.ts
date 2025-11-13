@@ -1,0 +1,132 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+const registerRoutesMock = vi.fn();
+const setupViteMock = vi.fn();
+const serveStaticMock = vi.fn();
+const logMock = vi.fn();
+const setupWebSocketMock = vi.fn();
+const validateConnectionMock = vi.fn();
+const startMock = vi.fn();
+const stopMock = vi.fn();
+
+vi.mock('../routes', () => ({
+  registerRoutes: registerRoutesMock,
+}));
+
+vi.mock('../vite', () => ({
+  setupVite: setupViteMock,
+  serveStatic: serveStaticMock,
+  log: logMock,
+}));
+
+vi.mock('../websocket', () => ({
+  setupWebSocket: setupWebSocketMock,
+}));
+
+vi.mock('../event-consumer', () => ({
+  eventConsumer: {
+    validateConnection: validateConnectionMock,
+    start: startMock,
+    stop: stopMock,
+  },
+}));
+
+describe('server/index bootstrap', () => {
+  let originalEnv: NodeJS.ProcessEnv;
+  let processOnSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  let mockServer: any;
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+
+    originalEnv = { ...process.env };
+
+    mockServer = {
+      listen: vi.fn((_port: number, _host: string, cb?: () => void) => {
+        cb?.();
+        return mockServer;
+      }),
+      close: vi.fn((cb?: () => void) => {
+        cb?.();
+        return mockServer;
+      }),
+    };
+
+    registerRoutesMock.mockResolvedValue(mockServer);
+    validateConnectionMock.mockResolvedValue(true);
+    startMock.mockResolvedValue(undefined);
+    stopMock.mockResolvedValue(undefined);
+
+    processOnSpy = vi.spyOn(process, 'on').mockImplementation(() => process);
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+    processOnSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
+  async function importIndex() {
+    await import('../index');
+    // Allow pending microtasks to resolve
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  it('starts services with realtime events enabled in development', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.PORT = '4001';
+    process.env.ENABLE_REAL_TIME_EVENTS = 'true';
+
+    await importIndex();
+
+    expect(registerRoutesMock).toHaveBeenCalledTimes(1);
+    expect(validateConnectionMock).toHaveBeenCalledTimes(1);
+    expect(startMock).toHaveBeenCalledTimes(1);
+    expect(setupWebSocketMock).toHaveBeenCalledWith(mockServer);
+    expect(setupViteMock).toHaveBeenCalledWith(expect.anything(), mockServer);
+    expect(serveStaticMock).not.toHaveBeenCalled();
+    expect(mockServer.listen).toHaveBeenCalledWith(4001, '0.0.0.0', expect.any(Function));
+    expect(logMock).toHaveBeenCalledWith('serving on port 4001');
+    expect(processOnSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
+    expect(processOnSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+  });
+
+  it('falls back to serveStatic when realtime events disabled or unavailable', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.ENABLE_REAL_TIME_EVENTS = 'false';
+    delete process.env.PORT;
+
+    validateConnectionMock.mockResolvedValueOnce(false);
+
+    await importIndex();
+
+    expect(startMock).not.toHaveBeenCalled();
+    expect(setupWebSocketMock).not.toHaveBeenCalled();
+    expect(setupViteMock).not.toHaveBeenCalled();
+    expect(serveStaticMock).toHaveBeenCalledWith(expect.anything());
+    expect(mockServer.listen).toHaveBeenCalledWith(3000, '0.0.0.0', expect.any(Function));
+  });
+
+  it('logs and continues when event consumer fails to start', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.ENABLE_REAL_TIME_EVENTS = 'true';
+    validateConnectionMock.mockResolvedValueOnce(true);
+    const failure = new Error('broker unavailable');
+    startMock.mockRejectedValueOnce(failure);
+
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await importIndex();
+
+    expect(validateConnectionMock).toHaveBeenCalled();
+    expect(startMock).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith('❌ Failed to start event consumer:', failure);
+    expect(consoleErrorSpy).toHaveBeenCalledWith('   Intelligence endpoints will not receive real-time data');
+    expect(setupWebSocketMock).toHaveBeenCalledWith(mockServer);
+
+    consoleErrorSpy.mockRestore();
+  });
+});

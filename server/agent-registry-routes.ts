@@ -54,7 +54,11 @@ function getPerformanceData(agentName: string) {
 // Load agent registry from YAML file
 function loadAgentRegistry() {
   try {
-    const registryPath = "/Volumes/PRO-G40/Code/omniclaude/agents/definitions/agent-registry.yaml";
+    // Use environment variable or fallback to sibling directory
+    const agentDefinitionsPath = process.env.AGENT_DEFINITIONS_PATH ||
+      path.resolve(__dirname, '../../omniclaude/agents/definitions');
+    const registryPath = path.join(agentDefinitionsPath, 'agent-registry.yaml');
+
     const fileContents = fs.readFileSync(registryPath, 'utf8');
     const registry = yaml.load(fileContents) as any;
     return registry;
@@ -67,7 +71,11 @@ function loadAgentRegistry() {
 // Load individual agent definition
 function loadAgentDefinition(agentName: string) {
   try {
-    const definitionPath = `/Volumes/PRO-G40/Code/omniclaude/agents/definitions/${agentName}.yaml`;
+    // Use environment variable or fallback to sibling directory
+    const agentDefinitionsPath = process.env.AGENT_DEFINITIONS_PATH ||
+      path.resolve(__dirname, '../../omniclaude/agents/definitions');
+    const definitionPath = path.join(agentDefinitionsPath, `${agentName}.yaml`);
+
     const fileContents = fs.readFileSync(definitionPath, 'utf8');
     const definition = yaml.load(fileContents) as any;
     return definition;

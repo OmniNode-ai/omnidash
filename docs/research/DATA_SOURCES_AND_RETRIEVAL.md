@@ -39,14 +39,15 @@ This guide summarizes live data sources (PostgreSQL, Kafka, Memgraph, Qdrant), r
 **Environment Variables in `.env`:**
 ```bash
 # IMPORTANT: Replace <your_password> with actual password from .env file
-DATABASE_URL=postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge
+# NOTE: POSTGRES_* variables are the canonical configuration (as of 2025-11-12)
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
 POSTGRES_DATABASE=omninode_bridge
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=<your_password>
-TRACEABILITY_DB_URL=postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge
-PG_DSN=postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge
+
+# Optional: Connection string (takes priority if set)
+# DATABASE_URL=postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge
 ```
 
 **Usage:** Used via Drizzle ORM in `server/intelligence-routes.ts` and `shared/intelligence-schema.ts`.

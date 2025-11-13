@@ -8,7 +8,7 @@ Added comprehensive test coverage for mock data generators with **55 passing tes
 
 ## Test File Details
 
-- **Location**: `/Volumes/PRO-G40/Code/omnidash/client/src/lib/mock-data/__tests__/mock-data-generators.test.ts`
+- **Location**: `client/src/lib/mock-data/__tests__/mock-data-generators.test.ts`
 - **Test Cases**: 55 individual tests
 - **Test Suites**: 6 main suites with 25 nested describe blocks
 - **Test Result**: ✅ All 55 tests passing

@@ -40,6 +40,11 @@ export interface AgentManagementData {
 **Added new fetch method:**
 ```typescript
 async fetchRecentDecisions(limit: number = 10): Promise<{ data: RoutingDecision[]; isMock: boolean }> {
+  // Return comprehensive mock data if USE_MOCK_DATA is enabled
+  if (USE_MOCK_DATA) {
+    return { data: AgentManagementMockData.generateRecentDecisions(limit), isMock: true };
+  }
+
   try {
     const response = await fetch(`/api/intelligence/routing/decisions?limit=${limit}`);
     if (response.ok) {
@@ -52,13 +57,15 @@ async fetchRecentDecisions(limit: number = 10): Promise<{ data: RoutingDecision[
     console.warn('Failed to fetch routing decisions from API, using mock data', err);
   }
 
-  // Mock data fallback (returns empty array)
+  // Mock data fallback (returns generated mock decisions, not empty array)
   return {
-    data: [],
+    data: AgentManagementMockData.generateRecentDecisions(limit),
     isMock: true,
   };
 }
 ```
+
+**Note:** The implementation respects the `USE_MOCK_DATA` flag (defined in `client/src/lib/mock-data/config.ts`). When enabled, it immediately returns mock data without attempting API calls. On API failure, it falls back to `AgentManagementMockData.generateRecentDecisions(limit)` rather than an empty array.
 
 **Updated fetchAll method:**
 - Now includes `fetchRecentDecisions(10)` in parallel Promise.all call
@@ -134,18 +141,14 @@ const recentDecisions = managementData?.recentDecisions || [];
 **Existing API endpoint used:**
 - `GET /api/intelligence/routing/decisions?limit=10`
 - Provided by `server/intelligence-routes.ts`
-- Returns routing decisions from in-memory event consumer (sourced from Kafka topics)
+- Returns routing decisions from in-memory event consumer
 
 **Data flow:**
-1. API fetches from EventConsumer's in-memory store
-2. EventConsumer populated via Kafka topic: `agent-routing-decisions`
-3. Falls back to empty array if no data available
+1. Client calls `/api/intelligence/routing/decisions?limit=10`
+2. Server returns decisions from EventConsumer's in-memory store (populated from Kafka topic: `agent-routing-decisions`)
+3. Client falls back to `AgentManagementMockData.generateRecentDecisions(limit)` if API fails or returns empty
 
-### 4. Bonus Fix: AgentNetwork.tsx Syntax Error
-
-Fixed unrelated syntax error preventing server startup:
-- Removed unnecessary double semicolon on line 187
-- Changed `}));` to `});`
+*Note: For detailed backend architecture (Kafka topics, event consumer implementation), see `server/event-consumer.ts` and related backend documentation.*
 
 ## Testing Results
 
@@ -158,12 +161,15 @@ Fixed unrelated syntax error preventing server startup:
 ### API Verification
 ```bash
 curl http://localhost:3000/api/intelligence/routing/decisions?limit=5
-# Response: []
+# Response: [] (when no data available)
 ```
-Currently returns empty array because:
+
+**Current state:** The API endpoint currently returns an empty array because:
 - Event consumer is running but no routing decisions in Kafka topics yet
 - Database connection warning shown in UI: "Database connection failed"
 - Expected behavior: Will populate when agents are actually invoked
+
+*Note: As documented in the data flow section (line 149), the client-side `fetchRecentDecisions()` method falls back to `AgentManagementMockData.generateRecentDecisions(limit)` when the API returns empty or fails, ensuring the UI always displays sample data for development/testing purposes.*
 
 ## User Experience Improvements
 
@@ -203,26 +209,24 @@ Currently returns empty array because:
 
 ## Files Modified
 
-1. `/Volumes/PRO-G40/Code/omnidash/client/src/lib/data-sources/agent-management-source.ts`
+1. `client/src/lib/data-sources/agent-management-source.ts`
    - Added `RoutingDecision` interface
    - Added `fetchRecentDecisions()` method
    - Updated `AgentManagementData` interface
    - Updated `fetchAll()` to include decisions
 
-2. `/Volumes/PRO-G40/Code/omnidash/client/src/pages/preview/AgentManagement.tsx`
+2. `client/src/pages/preview/AgentManagement.tsx`
    - Added `RoutingDecision` type import
    - Extracted `recentDecisions` from query data
    - Replaced hardcoded mock array with dynamic rendering
    - Added empty state UI
 
-3. `/Volumes/PRO-G40/Code/omnidash/client/src/pages/preview/AgentNetwork.tsx`
-   - Fixed syntax error (bonus fix)
-
 ## Technical Notes
 
 - **API endpoint exists:** Server already provides `/api/intelligence/routing/decisions`
 - **Type safety:** Full TypeScript types for all routing decision fields
-- **Error handling:** Graceful fallback to empty array on API failure
+- **Error handling:** Graceful fallback to `AgentManagementMockData.generateRecentDecisions(limit)` on API failure
+- **USE_MOCK_DATA flag:** Implementation respects `USE_MOCK_DATA` from `client/src/lib/mock-data/config.ts` - when enabled, immediately returns mock data without API calls
 - **Performance:** Fetched in parallel with other dashboard data
-- **Caching:** Uses TanStack Query's 60-second refetch interval
-- **Mock data badge:** Dashboard shows "Mock Data Active" when using fallback data
+- **Caching:** Uses TanStack Query's 60-second refetch interval (`refetchInterval: 60000` in `AgentManagement.tsx` lines 66, 80)
+- **Mock data badge:** Dashboard displays `<MockDataBadge />` component (implemented in `AgentManagement.tsx` line 119) when `usingMockData` is true

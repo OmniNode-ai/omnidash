@@ -247,6 +247,6 @@ docker logs archon-intelligence | grep -i "error.*intelligence.*adapter"
 
 - **OmniClaude Pattern**: `/Volumes/PRO-G40/Code/omniclaude/agents/lib/intelligence_event_client.py`
 - **OmniArchon Handler**: `/Volumes/PRO-G40/Code/omniarchon/services/intelligence/src/handlers/intelligence_adapter_handler.py`
-- **Omnidash Adapter**: `/Volumes/PRO-G40/Code/omnidash/server/intelligence-event-adapter.ts`
+- **Omnidash Adapter**: `server/intelligence-event-adapter.ts`
 - **Event Schemas**: `/Volumes/PRO-G40/Code/omniarchon/services/intelligence/src/events/models/intelligence_adapter_events.py`
 

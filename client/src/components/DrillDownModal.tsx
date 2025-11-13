@@ -162,15 +162,9 @@ export function DrillDownModal({
                 </Card>
                 <Card className="p-4">
                   <div className="text-xs text-muted-foreground mb-1">Trend</div>
-                  {data.trendPercentage !== undefined ? (
-                    <div className={`text-lg font-semibold ${data.trendPercentage > 0 ? 'text-green-500' : data.trendPercentage < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                      {data.trendPercentage > 0 ? '+' : ''}{data.trendPercentage}%
-                    </div>
-                  ) : (
-                    <div className="text-lg font-semibold text-muted-foreground">
-                      N/A
-                    </div>
-                  )}
+                  <div className={`text-lg font-semibold ${data.trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {data.trend > 0 ? '+' : ''}{data.trend}%
+                  </div>
                 </Card>
               </div>
             </TabsContent>
@@ -189,11 +183,11 @@ export function DrillDownModal({
                       <p className="text-sm mt-1">{data.description}</p>
                     </div>
                   )}
-                  {data.trendPercentage !== undefined && (
+                  {data.trend !== undefined && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Trend</span>
-                      <span className={`font-mono text-sm ${data.trendPercentage > 0 ? 'text-green-500' : data.trendPercentage < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                        {data.trendPercentage > 0 ? '+' : ''}{data.trendPercentage}%
+                      <span className={`font-mono text-sm ${data.trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {data.trend > 0 ? '+' : ''}{data.trend}%
                       </span>
                     </div>
                   )}

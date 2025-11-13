@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { STALE_TIME_STANDARD, STALE_TIME_MEDIUM, STALE_TIME_LONG, POLLING_INTERVAL_MEDIUM, POLLING_INTERVAL_STANDARD } from '@/lib/constants/query-config';
 
 // ============================================================================
 // Type Definitions
@@ -105,8 +106,8 @@ export function useAgentDetails(
     queryKey: ['agent-details', agentName, timeWindow],
     queryFn: () => fetchAgentDetails(agentName!, timeWindow),
     enabled: enabled && !!agentName,
-    staleTime: 30_000, // 30 seconds
-    refetchInterval: 30_000, // Refetch every 30 seconds for real-time updates
+    staleTime: STALE_TIME_MEDIUM,
+    refetchInterval: POLLING_INTERVAL_MEDIUM,
   });
 }
 
@@ -123,7 +124,7 @@ export function usePatternDetails(
     queryKey: ['pattern-details', patternId],
     queryFn: () => fetchPatternDetails(patternId!),
     enabled: enabled && !!patternId,
-    staleTime: 60_000, // 1 minute
+    staleTime: STALE_TIME_LONG,
   });
 }
 
@@ -140,7 +141,7 @@ export function useServiceDetails(
     queryKey: ['service-details', serviceName],
     queryFn: () => fetchServiceDetails(serviceName!),
     enabled: enabled && !!serviceName,
-    staleTime: 15_000, // 15 seconds
-    refetchInterval: 15_000, // Refetch every 15 seconds for health monitoring
+    staleTime: STALE_TIME_STANDARD,
+    refetchInterval: POLLING_INTERVAL_STANDARD,
   });
 }
