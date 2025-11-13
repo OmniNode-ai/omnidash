@@ -22,6 +22,29 @@ export function setupWebSocket(httpServer: HTTPServer) {
   // Track connected clients with their preferences
   const clients = new Map<WebSocket, ClientData>();
 
+  /**
+   * Memory Leak Prevention Strategy:
+   *
+   * EventConsumer listeners are SERVER-WIDE, not per-client. They broadcast to ALL connected clients.
+   * This array tracks all listeners registered with EventConsumer so we can remove them when the server closes.
+   *
+   * Why we track listeners:
+   * - EventEmitters keep references to all registered handlers
+   * - Without cleanup, restarting the WebSocket server would accumulate handlers
+   * - Each restart would add 6 more listeners (metricUpdate, actionUpdate, routingUpdate, error, connected, disconnected)
+   * - Over time, this causes memory leaks and duplicate event handling
+   *
+   * Cleanup happens in wss.on('close') handler:
+   * - All listeners are removed from EventConsumer
+   * - eventListeners array is cleared
+   * - All client connections are terminated
+   * - clients Map is cleared
+   *
+   * Note: We do NOT remove listeners when individual clients disconnect because listeners are shared.
+   * The broadcast() function filters events per-client based on their subscriptions.
+   */
+  const eventListeners: Array<{ event: string; handler: (...args: any[]) => void }> = [];
+
   // Heartbeat interval (30 seconds) with tolerance for missed pings
   const HEARTBEAT_INTERVAL_MS = 30000;
   const MAX_MISSED_PINGS = 2; // Allow 2 missed pings before terminating (60s total)
@@ -48,6 +71,15 @@ export function setupWebSocket(httpServer: HTTPServer) {
     });
   }, HEARTBEAT_INTERVAL_MS);
 
+  // Helper function to register EventConsumer listeners with cleanup tracking
+  const registerEventListener = <T extends any[]>(
+    event: string,
+    handler: (...args: T) => void
+  ) => {
+    eventConsumer.on(event, handler);
+    eventListeners.push({ event, handler });
+  };
+
   // Broadcast helper function with filtering
   const broadcast = (type: string, data: any, eventType?: string) => {
     const message = JSON.stringify({
@@ -70,20 +102,20 @@ export function setupWebSocket(httpServer: HTTPServer) {
     });
   };
 
-  // Listen to EventConsumer events
-  eventConsumer.on('metricUpdate', (metrics) => {
+  // Listen to EventConsumer events with automatic cleanup tracking
+  registerEventListener('metricUpdate', (metrics) => {
     broadcast('AGENT_METRIC_UPDATE', metrics, 'metrics');
   });
 
-  eventConsumer.on('actionUpdate', (action) => {
+  registerEventListener('actionUpdate', (action) => {
     broadcast('AGENT_ACTION', action, 'actions');
   });
 
-  eventConsumer.on('routingUpdate', (decision) => {
+  registerEventListener('routingUpdate', (decision) => {
     broadcast('ROUTING_DECISION', decision, 'routing');
   });
 
-  eventConsumer.on('error', (error) => {
+  registerEventListener('error', (error) => {
     console.error('EventConsumer error:', error);
     broadcast('ERROR', {
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -91,12 +123,12 @@ export function setupWebSocket(httpServer: HTTPServer) {
     }, 'errors');
   });
 
-  eventConsumer.on('connected', () => {
+  registerEventListener('connected', () => {
     console.log('EventConsumer connected');
     broadcast('CONSUMER_STATUS', { status: 'connected' }, 'system');
   });
 
-  eventConsumer.on('disconnected', () => {
+  registerEventListener('disconnected', () => {
     console.log('EventConsumer disconnected');
     broadcast('CONSUMER_STATUS', { status: 'disconnected' }, 'system');
   });
@@ -248,11 +280,43 @@ export function setupWebSocket(httpServer: HTTPServer) {
     console.error('WebSocket server error:', error);
   });
 
-  // Cleanup on server shutdown
+  /**
+   * Server Shutdown Cleanup Handler
+   *
+   * Critical for preventing memory leaks when server restarts or closes.
+   * Removes all EventConsumer listeners and terminates client connections.
+   *
+   * Without this cleanup:
+   * - EventConsumer would retain references to closed server's handlers
+   * - Multiple server restarts would accumulate listeners
+   * - Memory usage would grow unbounded
+   * - Events would be handled multiple times by dead handlers
+   */
   wss.on('close', () => {
+    console.log('WebSocket server closing, cleaning up resources...');
+
+    // Clear heartbeat interval
     clearInterval(heartbeatInterval);
+
+    // Remove all EventConsumer listeners to prevent memory leaks
+    console.log(`Removing ${eventListeners.length} EventConsumer listeners...`);
+    eventListeners.forEach(({ event, handler }) => {
+      eventConsumer.removeListener(event, handler);
+    });
+    eventListeners.length = 0; // Clear the array
+
+    // Terminate all client connections
+    console.log(`Terminating ${clients.size} client connections...`);
+    clients.forEach((clientData, ws) => {
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.terminate();
+      }
+    });
+
+    // Clear clients map
     clients.clear();
-    console.log('WebSocket server closed');
+
+    console.log('✅ WebSocket server closed, all listeners and connections cleaned up');
   });
 
   console.log('WebSocket server initialized at /ws');

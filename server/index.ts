@@ -74,13 +74,22 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  // Start Kafka event consumer
+  // Validate and start Kafka event consumer
   try {
-    await eventConsumer.start();
-    log('Event consumer started successfully');
+    // First validate that Kafka broker is reachable
+    const isKafkaAvailable = await eventConsumer.validateConnection();
+
+    if (isKafkaAvailable) {
+      await eventConsumer.start();
+      log('✅ Event consumer started successfully - real-time events enabled');
+    } else {
+      log('⚠️  Kafka broker validation failed - continuing without real-time events');
+      log('   Dashboard will use database queries only (slower, no live updates)');
+    }
   } catch (error) {
-    console.error('Failed to start event consumer:', error);
-    console.error('Intelligence endpoints will not receive real-time data');
+    console.error('❌ Failed to start event consumer:', error);
+    console.error('   Intelligence endpoints will not receive real-time data');
+    console.error('   Application will continue with limited functionality');
   }
 
   // Setup WebSocket for real-time events

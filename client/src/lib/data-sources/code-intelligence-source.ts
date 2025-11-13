@@ -1,4 +1,11 @@
 import { USE_MOCK_DATA } from '../mock-data/config';
+import { fallbackChain, ensureNumeric, ensureEnvVar } from '../defensive-transform-logger';
+import {
+  codeAnalysisDataSchema,
+  complianceDataSchema,
+  patternSummarySchema,
+  safeParseResponse,
+} from '../schemas/api-response-schemas';
 
 export interface CodeAnalysisData {
   files_analyzed: number;
@@ -69,11 +76,17 @@ class CodeIntelligenceDataSource {
     }
 
     try {
-      const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
+      const omniarchonUrl = ensureEnvVar(
+        'VITE_INTELLIGENCE_SERVICE_URL',
+        'http://localhost:8053',
+        'debug'
+      );
       const response = await fetch(`${omniarchonUrl}/api/intelligence/code/analysis?timeWindow=${timeRange}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data.files_analyzed > 0) {
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = safeParseResponse(codeAnalysisDataSchema, rawData, 'code-analysis');
+        if (data && data.files_analyzed > 0) {
           return { data, isMock: false };
         }
       }
@@ -126,8 +139,10 @@ class CodeIntelligenceDataSource {
     try {
       const response = await fetch(`/api/intelligence/code/compliance?timeWindow=${timeRange}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data.summary && data.summary.totalFiles > 0) {
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = safeParseResponse(complianceDataSchema, rawData, 'compliance-data');
+        if (data && data.summary && data.summary.totalFiles > 0) {
           return { data, isMock: false };
         }
       }
@@ -184,14 +199,51 @@ class CodeIntelligenceDataSource {
     try {
       const response = await fetch(`/api/intelligence/patterns/summary`);
       if (response.ok) {
-        const data = await response.json();
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = safeParseResponse(patternSummarySchema, rawData, 'pattern-summary-code-intel');
+        if (data) {
+          return {
+            data: {
+              totalPatterns: ensureNumeric(
+                'totalPatterns',
+                data.totalPatterns,
+                0,
+                { context: 'pattern-summary' }
+              ),
+              activePatterns: ensureNumeric(
+                'activeLearningCount',
+                data.activeLearningCount,
+                0,
+                { context: 'pattern-summary' }
+              ),
+              qualityScore: ensureNumeric(
+                'avgQualityScore',
+                data.avgQualityScore,
+                0,
+                { context: 'pattern-summary' }
+              ) * 10,
+              usageCount: 0,
+              recentDiscoveries: ensureNumeric(
+                'newPatternsToday',
+                data.newPatternsToday,
+                0,
+                { context: 'pattern-summary' }
+              ),
+              topPatterns: [],
+            },
+            isMock: false,
+          };
+        }
+        // If response is ok but validation failed, return empty data with isMock: false
+        // This handles cases where API returns empty object or missing fields
         return {
           data: {
-            totalPatterns: data.totalPatterns || 0,
-            activePatterns: data.activeLearningCount || 0,
-            qualityScore: (data.avgQualityScore || 0) * 10,
+            totalPatterns: ensureNumeric('totalPatterns', rawData?.totalPatterns, 0, { context: 'pattern-summary' }),
+            activePatterns: ensureNumeric('activeLearningCount', rawData?.activeLearningCount, 0, { context: 'pattern-summary' }),
+            qualityScore: ensureNumeric('avgQualityScore', rawData?.avgQualityScore, 0, { context: 'pattern-summary' }) * 10,
             usageCount: 0,
-            recentDiscoveries: data.newPatternsToday || 0,
+            recentDiscoveries: ensureNumeric('newPatternsToday', rawData?.newPatternsToday, 0, { context: 'pattern-summary' }),
             topPatterns: [],
           },
           isMock: false,

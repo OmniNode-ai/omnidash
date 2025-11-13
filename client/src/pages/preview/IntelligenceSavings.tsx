@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { MockDataBadge } from "@/components/MockDataBadge";
 import { useQuery } from "@tanstack/react-query";
 import { intelligenceSavingsSource, intelligenceAnalyticsSource } from "@/lib/data-sources";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +36,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
-import { getSuccessRateVariant, formatCurrency } from "@/lib/utils";
+import { getSuccessRateVariant } from "@/lib/utils";
 
 interface SavingsMetrics {
   totalSavings: number;
@@ -171,6 +172,14 @@ export default function IntelligenceSavings() {
 
   // Data is now managed by TanStack Query, no need for local state
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2
+    }).format(amount);
+  };
+
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US').format(num);
   };
@@ -199,6 +208,7 @@ export default function IntelligenceSavings() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {(usingMockData || usingMockIntelligence) && <MockDataBadge />}
           <Button
             variant={timeRange === "7d" ? "default" : "outline"}
             size="sm"
@@ -325,6 +335,19 @@ export default function IntelligenceSavings() {
                   </p>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.totalSavings || 0)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Total cost savings achieved
+                  </p>
+                </CardContent>
+              </Card>
               </div>
             </CardContent>
           </Card>
@@ -348,19 +371,6 @@ export default function IntelligenceSavings() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.totalSavings || 0)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Total cost savings achieved
-                  </p>
-                </CardContent>
-              </Card>
-
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Daily Savings</CardTitle>
@@ -715,7 +725,7 @@ export default function IntelligenceSavings() {
                         </tr>
                       </thead>
                       <tbody>
-                        {timeSeriesData?.slice(-14).reverse().map((day, index) => (
+                        {[...timeSeriesData?.slice(-14) || []].reverse().map((day, index) => (
                           <React.Fragment key={day.date}>
                             {/* Main row - clickable */}
                             <tr
@@ -859,7 +869,7 @@ export default function IntelligenceSavings() {
                         </tr>
                       </thead>
                       <tbody>
-                        {timeSeriesData?.slice(-10).reverse().map((day, index) => (
+                        {[...timeSeriesData?.slice(-10) || []].reverse().map((day, index) => (
                           <tr key={day.date} className={index % 2 === 0 ? "bg-background hover:bg-muted/30" : "bg-muted/50 hover:bg-muted/70"}>
                             <td className="p-3 font-medium">{new Date(day.date).toLocaleDateString()}</td>
                             <td className="text-right p-3">{formatNumber(day.withIntelligence.tokens)}</td>

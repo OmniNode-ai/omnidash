@@ -6,13 +6,13 @@ import { DrillDownModal } from "@/components/DrillDownModal";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
 import { SectionHeader } from "@/components/SectionHeader";
-import { Card, CardContent } from "@/components/ui/card";
 import { Server, Activity, AlertTriangle, Clock } from "lucide-react";
 import { useState } from "react";
-import { MockDataBadge } from "@/components/MockDataBadge";
+import { MockBadge } from "@/components/MockBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useQuery } from "@tanstack/react-query";
 import { platformHealthSource } from "@/lib/data-sources";
+import { HEALTH_QUERY_CONFIG } from "@/lib/constants/query-config";
 
 // TypeScript interfaces for platform health endpoint
 interface ServiceHealth {
@@ -54,9 +54,8 @@ export default function PlatformHealth() {
   const { data: healthDataResult, isLoading, error } = useQuery({
     queryKey: ['platform-health', timeRange],
     queryFn: () => platformHealthSource.fetchAll(timeRange),
-    refetchInterval: 15000,
+    ...HEALTH_QUERY_CONFIG,
     refetchOnWindowFocus: true,
-    staleTime: 10000,
   });
 
   // Transform to expected format
@@ -247,7 +246,7 @@ export default function PlatformHealth() {
 
           <div className="grid grid-cols-2 gap-6">
             <div>
-              {cpuDataEnsured.isMock && <MockDataBadge label="Mock Data: CPU Usage" />}
+              {cpuDataEnsured.isMock && <MockBadge label="MOCK DATA: CPU Usage" />}
               <RealtimeChart
                 title="CPU Usage"
                 data={cpuDataEnsured.data}
@@ -256,7 +255,7 @@ export default function PlatformHealth() {
               />
             </div>
             <div>
-              {memoryDataEnsured.isMock && <MockDataBadge label="Mock Data: Memory Usage" />}
+              {memoryDataEnsured.isMock && <MockBadge label="MOCK DATA: Memory Usage" />}
               <RealtimeChart
                 title="Memory Usage"
                 data={memoryDataEnsured.data}
@@ -283,8 +282,7 @@ export default function PlatformHealth() {
                 details="The Service Registry maintains a catalog of all microservices and infrastructure components. View service types, URLs, health status, and last health check times. This registry enables service discovery, health monitoring, and operational visibility across the entire platform."
                 level="h2"
               />
-              <Card>
-                <CardContent className="p-6">
+              <div className="bg-card rounded-lg border p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {serviceRegistry.map((service) => {
                     // Map health status to color
@@ -306,38 +304,35 @@ export default function PlatformHealth() {
                       : 'Never';
 
                     return (
-                      <Card
+                      <div
                         key={service.id}
-                        className="hover:border-primary/50 transition-colors"
+                        className="bg-muted/50 rounded-lg p-4 border border-border hover:border-primary/50 transition-colors"
                       >
-                        <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="font-medium text-sm">{service.serviceName}</h3>
                           <div className={`px-2 py-1 rounded-full text-xs font-medium ${statusBg} ${statusColor}`}>
                             {service.healthStatus}
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground font-normal space-y-1">
+                        <div className="text-xs text-muted-foreground space-y-1">
                           <div className="flex items-center gap-1">
                             <span className="font-medium">Type:</span>
-                            <span className="font-normal">{service.serviceType}</span>
+                            <span>{service.serviceType}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="font-medium">URL:</span>
-                            <span className="font-normal truncate">{service.serviceUrl}</span>
+                            <span className="truncate">{service.serviceUrl}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="font-medium">Last Check:</span>
-                            <span className="font-normal">{lastCheck}</span>
+                            <span>{lastCheck}</span>
                           </div>
                         </div>
-                        </CardContent>
-                      </Card>
+                      </div>
                     );
                   })}
                 </div>
-                </CardContent>
-              </Card>
+              </div>
             </div>
           )}
         </>

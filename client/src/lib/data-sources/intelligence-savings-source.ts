@@ -7,11 +7,11 @@ export interface SavingsMetrics {
   dailySavings: number;
   intelligenceRuns: number;
   baselineRuns: number;
-  avgTokensPerRun: number;
-  avgComputePerRun: number;
-  costPerToken: number;
-  costPerCompute: number;
-  efficiencyGain: number;
+  avgTokensPerRun?: number; // Optional - may not be available for all time periods
+  avgComputePerRun?: number; // Optional - may not be available for all time periods
+  costPerToken?: number; // Optional - may not be available for all time periods
+  costPerCompute?: number; // Optional - may not be available for all time periods
+  efficiencyGain?: number; // Optional - may not be available for all time periods
   timeSaved: number;
   dataAvailable?: boolean; // Flag indicating if real baseline data is available
 }

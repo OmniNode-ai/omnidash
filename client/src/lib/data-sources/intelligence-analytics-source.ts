@@ -1,5 +1,16 @@
 import { MockDataGenerator as Gen, USE_MOCK_DATA } from '../mock-data/config';
 import type { SavingsMetrics } from './intelligence-savings-source';
+import { fallbackChain, withFallback, ensureNumeric, ensureString } from '../defensive-transform-logger';
+import {
+  agentMetricsApiSchema,
+  recentActionSchema,
+  savingsMetricsSchema,
+  executionSchema,
+  parseArrayResponse,
+  safeParseResponse,
+  type Execution,
+  type AgentMetricsApi,
+} from '../schemas/api-response-schemas';
 
 // Re-export for external consumers
 export type { SavingsMetrics };
@@ -24,6 +35,16 @@ export interface RecentActivity {
 }
 
 class IntelligenceAnalyticsDataSource {
+  /**
+   * Normalizes status values to ensure they match the RecentActivity status union type.
+   * Defaults unknown statuses to 'pending' to prevent runtime errors in UI components.
+   */
+  private normalizeStatus(status: string): RecentActivity['status'] {
+    const validStatuses: RecentActivity['status'][] = ['completed', 'executing', 'failed', 'pending'];
+    return validStatuses.includes(status as RecentActivity['status']) 
+      ? (status as RecentActivity['status'])
+      : 'pending';
+  }
   async fetchMetrics(timeRange: string): Promise<{ data: IntelligenceMetrics; isMock: boolean }> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
@@ -49,28 +70,61 @@ class IntelligenceAnalyticsDataSource {
     try {
       const response = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
       if (response.ok) {
-        const agents = await response.json();
-        if (Array.isArray(agents) && agents.length > 0) {
-          const totalRequests = agents.reduce((sum, a) => sum + (a.totalRequests || 0), 0);
+        const rawAgents = await response.json();
+        // Validate API response with Zod schema
+        const agents = parseArrayResponse(agentMetricsApiSchema, rawAgents, 'intelligence-metrics');
+        if (agents.length > 0) {
+          const totalRequests = agents.reduce((sum, a) =>
+            sum + ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-metrics-total' }), 0
+          );
           // Use weighted average for routing time based on request volume (more accurate)
-          const totalRequestsForAvg = agents.reduce((sum, a) => sum + (a.totalRequests || 0), 0);
+          const totalRequestsForAvg = agents.reduce((sum, a) =>
+            sum + ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-metrics-avg' }), 0
+          );
           const avgRoutingTime = totalRequestsForAvg > 0
             ? agents.reduce((sum, a) => {
-                const weight = (a.totalRequests || 0) / totalRequestsForAvg;
-                return sum + ((a.avgRoutingTime || 0) * weight);
+                const weight = ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-metrics-weight' }) / totalRequestsForAvg;
+                const routingTime = ensureNumeric('avgRoutingTime', a.avgRoutingTime, 0, { id: a.agent, context: 'intelligence-metrics-routing-time' });
+                return sum + (routingTime * weight);
               }, 0)
             : 0;
           // Calculate weighted average success rate (based on request volume, not simple average)
-          // Detect format: if any value > 1, assume percentage format, else decimal (0-1)
-          // Check both successRate and avgConfidence for format detection
-          const sampleRate = agents.find(a => (a.successRate != null) || (a.avgConfidence != null));
-          const sampleValue = sampleRate?.successRate ?? sampleRate?.avgConfidence;
-          const isDecimalFormat = sampleValue != null && sampleValue <= 1;
+          // Detect format: check all non-zero samples to determine if values are decimal (0-1) or percentage (0-100)
+          // Ignore zeros as they don't indicate format (0% = 0.0 in both formats)
+          const nonZeroSamples = agents
+            .map((a: AgentMetricsApi) => {
+              const rate = fallbackChain(
+                'successRate',
+                { id: a.agent || 'unknown', context: 'intelligence-metrics-format-detection' },
+                [
+                  { value: a.successRate, label: 'successRate field' },
+                  { value: a.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
+                  { value: undefined, label: 'no sample available', level: 'debug' }
+                ]
+              );
+              return rate != null ? rate : undefined;
+            })
+            .filter((v): v is number => v != null && v > 0);
+          
+          // If we have non-zero samples, check if all are <= 1 (decimal format)
+          // If any sample > 1, assume percentage format
+          // Default to percentage format if no samples available
+          const isDecimalFormat = nonZeroSamples.length > 0
+            ? nonZeroSamples.every(v => v <= 1)
+            : false;
           
           const avgSuccessRate = totalRequestsForAvg > 0
             ? Math.max(0, Math.min(100, agents.reduce((sum, a) => {
-                const weight = (a.totalRequests || 0) / totalRequestsForAvg;
-                const rate = (a.successRate != null) ? a.successRate : (a.avgConfidence || 0);
+                const weight = ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-success-rate-weight' }) / totalRequestsForAvg;
+                const rate = fallbackChain(
+                  'successRate',
+                  { id: a.agent || 'unknown', context: 'intelligence-success-rate' },
+                  [
+                    { value: a.successRate, label: 'successRate field' },
+                    { value: a.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
+                    { value: 0, label: 'default zero', level: 'error' }
+                  ]
+                );
                 // Convert decimal to percentage if needed
                 const rateAsPercentage = isDecimalFormat ? rate * 100 : rate;
                 return sum + (rateAsPercentage * weight);
@@ -134,15 +188,16 @@ class IntelligenceAnalyticsDataSource {
     try {
       const response = await fetch(`/api/intelligence/actions/recent?limit=${limit}`);
       if (response.ok) {
-        const actions = await response.json();
-        if (Array.isArray(actions) && actions.length > 0) {
+        const rawActions = await response.json();
+        // Validate API response with Zod schema
+        const actions = parseArrayResponse(recentActionSchema, rawActions, 'recent-activity-actions');
+        if (actions.length > 0) {
           const activities: RecentActivity[] = actions.map((action: any) => ({
-            action: action.actionName || action.actionType || 'Unknown action',
-            agent: action.agentName || 'unknown',
-            time: this.formatTimeAgo(action.createdAt),
-            status: action.actionType === 'error' ? 'failed' : 
-                    action.durationMs ? 'completed' : 'executing',
-            timestamp: action.createdAt,
+            action: withFallback('action', action.action, 'Unknown action', { id: action.id, context: 'recent-activity-action' }),
+            agent: withFallback('agentName', action.agentName, 'unknown', { id: action.id, context: 'recent-activity-agent' }),
+            time: this.formatTimeAgo(action.timestamp),
+            status: this.normalizeStatus(action.status),
+            timestamp: action.timestamp,
           }));
           return { data: activities, isMock: false };
         }
@@ -155,13 +210,31 @@ class IntelligenceAnalyticsDataSource {
     try {
       const response = await fetch(`/api/agents/executions?limit=${limit}`);
       if (response.ok) {
-        const executions = await response.json();
-        if (Array.isArray(executions) && executions.length > 0) {
-          const activities: RecentActivity[] = executions.map((exec: any) => ({
-            action: exec.query || exec.actionName || 'Task execution',
-            agent: exec.agentName || exec.agentId || 'unknown',
+        const rawExecutions = await response.json();
+        // Validate API response with Zod schema
+        const executions = parseArrayResponse(executionSchema, rawExecutions, 'recent-activity-executions');
+        if (executions.length > 0) {
+          const activities: RecentActivity[] = executions.map((exec: Execution) => ({
+            action: fallbackChain(
+              'query',
+              { id: exec.id, context: 'executions-action' },
+              [
+                { value: exec.query, label: 'query field' },
+                { value: exec.actionName, label: 'actionName field (fallback)', level: 'warn' },
+                { value: 'Task execution', label: 'default task execution', level: 'error' }
+              ]
+            ),
+            agent: fallbackChain(
+              'agentName',
+              { id: exec.id, context: 'executions-agent' },
+              [
+                { value: exec.agentName, label: 'agentName field' },
+                { value: exec.agentId, label: 'agentId field (fallback)', level: 'warn' },
+                { value: 'unknown', label: 'default unknown', level: 'error' }
+              ]
+            ),
             time: this.formatTimeAgo(exec.startedAt),
-            status: exec.status,
+            status: this.normalizeStatus(exec.status),
             timestamp: exec.startedAt,
           }));
           return { data: activities, isMock: false };
@@ -242,30 +315,59 @@ class IntelligenceAnalyticsDataSource {
     try {
       const response = await fetch(`/api/intelligence/agents/summary?timeWindow=${timeRange}`);
       if (response.ok) {
-        const agents = await response.json();
-        if (Array.isArray(agents) && agents.length > 0) {
-          // Detect format for success rate
-          const sampleAgent = agents.find((a: any) => (a.successRate != null) || (a.avgConfidence != null));
-          const sampleValue = sampleAgent?.successRate ?? sampleAgent?.avgConfidence;
-          const isDecimalFormat = sampleValue != null && sampleValue <= 1;
+        const rawAgents = await response.json();
+        // Validate API response with Zod schema
+        const agents = parseArrayResponse(agentMetricsApiSchema, rawAgents, 'agent-performance');
+        if (agents.length > 0) {
+          // Detect format for success rate: check all non-zero samples to determine if values are decimal (0-1) or percentage (0-100)
+          // Ignore zeros as they don't indicate format (0% = 0.0 in both formats)
+          const nonZeroSamples = agents
+            .map((a: AgentMetricsApi) => {
+              const rate = fallbackChain(
+                'successRate',
+                { id: a.agent || 'unknown', context: 'agent-performance-format-detection' },
+                [
+                  { value: a.successRate, label: 'successRate field' },
+                  { value: a.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
+                  { value: undefined, label: 'no sample available', level: 'debug' }
+                ]
+              );
+              return rate != null ? rate : undefined;
+            })
+            .filter((v): v is number => v != null && v > 0);
+          
+          // If we have non-zero samples, check if all are <= 1 (decimal format)
+          // If any sample > 1, assume percentage format
+          // Default to percentage format if no samples available
+          const isDecimalFormat = nonZeroSamples.length > 0
+            ? nonZeroSamples.every(v => v <= 1)
+            : false;
 
-          const performance: AgentPerformance[] = agents.map((agent: any) => {
-            const rawSuccessRate = agent.successRate ?? agent.avgConfidence ?? 0;
+          const performance: AgentPerformance[] = agents.map((agent: AgentMetricsApi) => {
+            const rawSuccessRate = fallbackChain(
+              'successRate',
+              { id: agent.agent || 'unknown', context: 'agent-performance-success-rate' },
+              [
+                { value: agent.successRate, label: 'successRate field' },
+                { value: agent.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
+                { value: 0, label: 'default zero', level: 'error' }
+              ]
+            );
             const successRate = isDecimalFormat ? rawSuccessRate * 100 : rawSuccessRate;
             const clampedSuccessRate = Math.max(0, Math.min(100, successRate));
 
             return {
-              agentId: agent.agent || 'unknown',
+              agentId: withFallback('agent', agent.agent, 'unknown', { context: 'agent-performance-id' }),
               agentName: agent.agent?.replace('agent-', '').replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown Agent',
-              totalRuns: Math.max(0, agent.totalRequests || 0),
-              avgResponseTime: Math.max(0, agent.avgRoutingTime || 0),
-              avgExecutionTime: Math.max(0, agent.avgRoutingTime || 0),
+              totalRuns: Math.max(0, ensureNumeric('totalRequests', agent.totalRequests, 0, { id: agent.agent, context: 'agent-performance-total-runs' })),
+              avgResponseTime: Math.max(0, ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, { id: agent.agent, context: 'agent-performance-response-time' })),
+              avgExecutionTime: Math.max(0, ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, { id: agent.agent, context: 'agent-performance-exec-time' })),
               successRate: clampedSuccessRate,
               efficiency: clampedSuccessRate, // Use success rate as efficiency proxy
-              avgQualityScore: Math.max(0, Math.min(10, (agent.avgConfidence || 0) * 10)),
-              popularity: Math.max(0, agent.totalRequests || 0),
-              costPerSuccess: Math.max(0, 0.001 * (agent.avgTokens || 1000) / 1000), // Ensure positive
-              p95Latency: Math.max(0, (agent.avgRoutingTime || 0) * 1.5), // Ensure positive
+              avgQualityScore: Math.max(0, Math.min(10, ensureNumeric('avgConfidence', agent.avgConfidence, 0, { id: agent.agent, context: 'agent-performance-quality' }) * 10)),
+              popularity: Math.max(0, ensureNumeric('totalRequests', agent.totalRequests, 0, { id: agent.agent, context: 'agent-performance-popularity' })),
+              costPerSuccess: Math.max(0, 0.001 * ensureNumeric('avgTokens', agent.avgTokens, 1000, { id: agent.agent, context: 'agent-performance-tokens' }) / 1000), // Ensure positive
+              p95Latency: Math.max(0, ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, { id: agent.agent, context: 'agent-performance-latency' }) * 1.5), // Ensure positive
               lastUsed: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
             };
           });
@@ -363,23 +465,13 @@ class IntelligenceAnalyticsDataSource {
     try {
       const response = await fetch(`/api/savings/metrics?timeRange=${timeRange}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data && typeof data === 'object') {
-          // Validate that all required fields exist (allow negative values for regression detection)
-          const isValid =
-            typeof data.totalSavings === 'number' &&
-            typeof data.monthlySavings === 'number' &&
-            typeof data.weeklySavings === 'number' &&
-            typeof data.dailySavings === 'number' &&
-            typeof data.intelligenceRuns === 'number' && data.intelligenceRuns >= 0 &&
-            typeof data.baselineRuns === 'number' && data.baselineRuns >= 0 &&
-            typeof data.timeSaved === 'number'; // Allow negative timeSaved for regression detection
-
-          if (isValid) {
-            return { data, isMock: false };
-          } else {
-            console.warn('API returned invalid savings data (missing required fields), using mock data', data);
-          }
+        const rawData = await response.json();
+        // Validate API response with Zod schema
+        const data = safeParseResponse(savingsMetricsSchema, rawData, 'savings-metrics');
+        if (data) {
+          return { data, isMock: false };
+        } else {
+          console.warn('Savings metrics validation failed, using mock data');
         }
       }
     } catch (err) {

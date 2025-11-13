@@ -26,6 +26,22 @@ import { eq, and, or, gte, lte, desc, asc, sql, SQL, inArray } from 'drizzle-orm
 import { intelligenceDb } from './storage';
 import * as schema from '@shared/intelligence-schema';
 
+// Import defensive logging helpers (server-side - need to point to client path)
+// Note: This is a server file but uses client utilities - consider extracting shared utilities
+function ensureNumeric(
+  fieldName: string,
+  value: number | string | undefined | null,
+  fallback: number,
+  context: { context: string; id?: string | number }
+): number {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (typeof num !== 'number' || isNaN(num)) {
+    console.warn(`[DataTransform] Invalid numeric value for '${fieldName}' in ${context.context}: ${value}, using fallback ${fallback}`);
+    return fallback;
+  }
+  return num;
+}
+
 export interface QueryOptions {
   limit?: number;
   offset?: number;
@@ -143,13 +159,13 @@ export class PostgresAdapter {
       throw new Error(`Table ${tableName} not found in schema`);
     }
 
-    // Add timestamps if columns exist
+    // Add timestamps if columns exist (use camelCase for Drizzle schema properties)
     const now = new Date();
-    if (this.hasColumn(table, 'created_at')) {
-      (data as any).created_at = now;
+    if (this.hasColumn(table, 'createdAt')) {
+      (data as any).createdAt = now;
     }
-    if (this.hasColumn(table, 'updated_at')) {
-      (data as any).updated_at = now;
+    if (this.hasColumn(table, 'updatedAt')) {
+      (data as any).updatedAt = now;
     }
 
     const result = await this.db.insert(table).values(data as any).returning();
@@ -181,9 +197,9 @@ export class PostgresAdapter {
       throw new Error(`Table ${tableName} not found in schema`);
     }
 
-    // Add updated_at timestamp if column exists
-    if (this.hasColumn(table, 'updated_at')) {
-      (data as any).updated_at = new Date();
+    // Add updated_at timestamp if column exists (use camelCase for Drizzle schema properties)
+    if (this.hasColumn(table, 'updatedAt')) {
+      (data as any).updatedAt = new Date();
     }
 
     const conditions = this.buildWhereConditions(table, where);
@@ -257,13 +273,13 @@ export class PostgresAdapter {
       throw new Error(`Table ${tableName} not found in schema`);
     }
 
-    // Add/update timestamps
+    // Add/update timestamps (use camelCase for Drizzle schema properties)
     const now = new Date();
-    if (this.hasColumn(table, 'created_at')) {
-      (data as any).created_at = (data as any).created_at || now;
+    if (this.hasColumn(table, 'createdAt')) {
+      (data as any).createdAt = (data as any).createdAt || now;
     }
-    if (this.hasColumn(table, 'updated_at')) {
-      (data as any).updated_at = now;
+    if (this.hasColumn(table, 'updatedAt')) {
+      (data as any).updatedAt = now;
     }
 
     // Build conflict columns for ON CONFLICT clause
@@ -278,7 +294,7 @@ export class PostgresAdapter {
       .values(data as any)
       .onConflictDoUpdate({
         target: conflictCols as any,
-        set: { ...data, updated_at: now } as any,
+        set: { ...data, updatedAt: now } as any,
       })
       .returning();
     const rows = Array.isArray(result) ? result : [];
@@ -309,7 +325,13 @@ export class PostgresAdapter {
     }
 
     const result = await query;
-    return Number(result[0]?.count || 0);
+    const count = result[0]?.count;
+    return ensureNumeric(
+      'count',
+      count,
+      0,
+      { context: `count-query-${tableName}` }
+    );
   }
 
   /**
@@ -359,7 +381,7 @@ export class PostgresAdapter {
     for (const [key, value] of Object.entries(where)) {
       const column = this.getColumn(table, key);
       if (!column) {
-        console.warn(`Column ${key} not found in table, skipping condition`);
+        console.warn(`[DataTransform] Column '${key}' not found in table, skipping condition`);
         continue;
       }
 

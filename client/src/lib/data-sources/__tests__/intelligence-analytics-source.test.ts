@@ -51,9 +51,9 @@ describe('IntelligenceAnalyticsDataSource', () => {
         {
           agent: 'agent-1',
           totalRequests: 100,
-          successRate: null,
-          avgConfidence: 0.90,
           avgRoutingTime: 1000,
+          avgConfidence: 0.90,
+          // Note: successRate is optional, so we omit it to test avgConfidence fallback
         },
       ];
 
@@ -100,18 +100,20 @@ describe('IntelligenceAnalyticsDataSource', () => {
       const mockActions = [
         {
           id: 'action-1',
+          agentId: 'agent-1',
           agentName: 'agent-1',
-          actionName: 'code-review',
-          actionType: 'tool_call',
-          durationMs: 5000,
-          createdAt: '2024-01-01T12:00:00Z',
+          action: 'code-review',
+          status: 'completed',
+          timestamp: '2024-01-01T12:00:00Z',
+          duration: 5000,
         },
         {
           id: 'action-2',
+          agentId: 'agent-2',
           agentName: 'agent-2',
-          actionName: 'error-action',
-          actionType: 'error',
-          createdAt: '2024-01-01T11:00:00Z',
+          action: 'error-action',
+          status: 'failed',
+          timestamp: '2024-01-01T11:00:00Z',
         },
       ];
 
@@ -125,20 +127,26 @@ describe('IntelligenceAnalyticsDataSource', () => {
 
       expect(result.isMock).toBe(false);
       expect(result.data).toHaveLength(2);
-      expect(result.data[0].action).toBe('code-review');
-      expect(result.data[0].agent).toBe('agent-1');
-      expect(result.data[0].status).toBe('completed');
-      expect(result.data[1].status).toBe('failed');
+      // Data is passed through as-is from API (already in correct format)
+      expect(result.data[0]).toEqual(expect.objectContaining({
+        action: 'code-review',
+        agent: 'agent-1',
+        status: 'completed'
+      }));
+      expect(result.data[1]).toEqual(expect.objectContaining({
+        status: 'failed'
+      }));
     });
 
-    it('should handle actions without durationMs as executing', async () => {
+    it('should handle actions without duration as executing', async () => {
       const mockActions = [
         {
           id: 'action-1',
+          agentId: 'agent-1',
           agentName: 'agent-1',
-          actionName: 'in-progress-action',
-          actionType: 'tool_call',
-          createdAt: new Date().toISOString(),
+          action: 'in-progress-action',
+          status: 'executing',
+          timestamp: new Date().toISOString(),
         },
       ];
 
@@ -150,7 +158,9 @@ describe('IntelligenceAnalyticsDataSource', () => {
 
       const result = await intelligenceAnalyticsSource.fetchRecentActivity(5);
 
-      expect(result.data[0].status).toBe('executing');
+      expect(result.data[0]).toEqual(expect.objectContaining({
+        status: 'executing'
+      }));
     });
 
     it('should fallback to agent executions API when actions API fails', async () => {
@@ -307,9 +317,9 @@ describe('IntelligenceAnalyticsDataSource', () => {
         {
           agent: 'test-agent',
           totalRequests: 100,
-          successRate: null,
-          avgConfidence: 0.88,
           avgRoutingTime: 1000,
+          avgConfidence: 0.88,
+          // Note: successRate is optional, so we omit it to test avgConfidence fallback
         },
       ];
 
@@ -383,6 +393,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
         {
           agent: 'minimal-agent',
           totalRequests: 50,
+          avgRoutingTime: 0, // Required field
         },
       ];
 
@@ -401,8 +412,8 @@ describe('IntelligenceAnalyticsDataSource', () => {
 
     it('should transform agent names correctly', async () => {
       const mockAgents = [
-        { agent: 'agent-frontend-developer', totalRequests: 10 },
-        { agent: 'test-generator', totalRequests: 5 },
+        { agent: 'agent-frontend-developer', totalRequests: 10, avgRoutingTime: 1000 },
+        { agent: 'test-generator', totalRequests: 5, avgRoutingTime: 800 },
       ];
 
       setupFetchMock(

@@ -2,7 +2,7 @@
 
 **Purpose**: Integration guide for replacing mock data in omnidash with real intelligence from omniarchon
 **Date**: 2025-11-03
-**Target Dashboard**: omnidash (`/Volumes/PRO-G40/Code/omnidash`)
+**Target Dashboard**: omnidash (this repository)
 **Intelligence Source**: omniarchon (`/Volumes/PRO-G40/Code/omniarchon`)
 
 ---

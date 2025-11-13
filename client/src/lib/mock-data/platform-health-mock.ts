@@ -10,70 +10,60 @@ export class PlatformHealthMockData {
    * Generate mock platform health data
    */
   static generateHealth(): PlatformHealth {
-    // Generate database service with realistic metrics
-    const database = {
-      name: 'PostgreSQL',
-      status: Gen.healthStatus(),
-      uptime: `${Gen.randomFloat(99.8, 99.99, 2)}%`,
-      latency_ms: Gen.randomInt(5, 30)
-    };
+    const databaseUptime = Gen.randomFloat(99.5, 99.99, 2);
+    const kafkaUptime = Gen.randomFloat(99.3, 99.98, 2);
+    const databaseLatency = Gen.randomInt(5, 30);
+    const kafkaLatency = Gen.randomInt(15, 60);
+    
+    const databaseStatus = Math.random() > 0.05 ? 'healthy' : (Math.random() > 0.5 ? 'degraded' : 'down');
+    const kafkaStatus = Math.random() > 0.05 ? 'healthy' : (Math.random() > 0.5 ? 'degraded' : 'down');
 
-    // Generate Kafka service with realistic metrics
-    const kafka = {
-      name: 'Kafka/Redpanda',
-      status: Math.random() < 0.95 ? ('healthy' as const) : ('degraded' as const),
-      uptime: `${Gen.randomFloat(99.5, 99.95, 2)}%`,
-      latency_ms: Gen.randomInt(15, 60)
-    };
-
-    // Generate 8-12 other services with realistic variations
-    const serviceNames = [
-      { name: 'OmniArchon', baseLatency: 20, latencyRange: 60 },
-      { name: 'Qdrant', baseLatency: 10, latencyRange: 40 },
-      { name: 'Redis Cache', baseLatency: 2, latencyRange: 13 },
-      { name: 'API Gateway', baseLatency: 25, latencyRange: 75 },
-      { name: 'Consul', baseLatency: 15, latencyRange: 45 },
-      { name: 'Vault', baseLatency: 20, latencyRange: 50 },
-      { name: 'OnexTree', baseLatency: 30, latencyRange: 70 },
-      { name: 'Metadata Service', baseLatency: 18, latencyRange: 42 },
+    const services = [
+      { name: 'PostgreSQL', status: 'up', latency_ms: databaseLatency, uptime: databaseUptime },
+      { name: 'OmniArchon', status: 'up', latency_ms: Gen.randomInt(20, 80), uptime: Gen.randomFloat(99.0, 99.9, 2) },
+      { name: 'Qdrant', status: 'up', latency_ms: Gen.randomInt(10, 50), uptime: Gen.randomFloat(99.2, 99.95, 2) },
+      { name: 'Kafka/Redpanda', status: 'up', latency_ms: kafkaLatency, uptime: kafkaUptime },
+      { name: 'Redis Cache', status: 'up', latency_ms: Gen.randomInt(2, 15), uptime: Gen.randomFloat(99.8, 99.99, 2) },
+      { name: 'API Gateway', status: 'up', latency_ms: Gen.randomInt(25, 100), uptime: Gen.randomFloat(99.1, 99.9, 2) },
     ];
 
-    const services = serviceNames.map(svc => {
-      // 10% chance of degraded service, 2% chance of down
-      const isDegraded = Math.random() < 0.1;
-      const isDown = Math.random() < 0.02;
+    // Randomly degrade one service (10% chance)
+    if (Math.random() < 0.1) {
+      const idx = Gen.randomInt(0, services.length - 1);
+      services[idx].status = 'degraded';
+      services[idx].latency_ms = Gen.randomInt(200, 500);
+    }
 
-      let status: 'healthy' | 'degraded' | 'down';
-      let uptime: string;
-      let latency_ms: number;
+    // Calculate overall status based on service health
+    const hasDown = services.some(s => s.status === 'down');
+    const hasDegraded = services.some(s => s.status === 'degraded');
+    const overallStatus = hasDown ? 'down' : hasDegraded ? 'degraded' : 'up';
 
-      if (isDown) {
-        status = 'down';
-        uptime = `${Gen.randomFloat(95, 98, 2)}%`;
-        latency_ms = 0; // No response
-      } else if (isDegraded) {
-        status = 'degraded';
-        uptime = `${Gen.randomFloat(98.5, 99.5, 2)}%`;
-        latency_ms = Gen.randomInt(svc.baseLatency * 3, svc.baseLatency * 8);
-      } else {
-        status = 'healthy';
-        uptime = `${Gen.randomFloat(99.7, 99.99, 2)}%`;
-        latency_ms = Gen.randomInt(svc.baseLatency, svc.baseLatency + svc.latencyRange);
-      }
-
-      return {
-        name: svc.name,
-        status,
-        uptime,
-        latency_ms
-      };
-    });
+    // Calculate average uptime
+    const avgUptime = services.reduce((sum, s) => sum + s.uptime, 0) / services.length;
 
     return {
-      database,
-      kafka,
-      services,
-    } as any;
+      status: overallStatus,
+      uptime: avgUptime,
+      database: {
+        name: 'PostgreSQL',
+        status: databaseStatus,
+        uptime: `${databaseUptime.toFixed(2)}%`,
+        latency_ms: databaseLatency,
+      },
+      kafka: {
+        name: 'Kafka/Redpanda',
+        status: kafkaStatus,
+        uptime: `${kafkaUptime.toFixed(2)}%`,
+        latency_ms: kafkaLatency,
+      },
+      services: services.map(s => ({
+        name: s.name,
+        status: s.status,
+        latency_ms: s.latency_ms,
+        uptime: s.uptime,
+      })),
+    };
   }
 
   /**
@@ -97,9 +87,11 @@ export class PlatformHealthMockData {
 
     const services = serviceNames.map((name) => {
       const healthStatus = Gen.healthStatus();
+      // Map healthStatus to status: 'healthy' | 'degraded' | 'unhealthy'
+      const status = healthStatus === 'down' ? 'unhealthy' : healthStatus;
       return {
         name,
-        status: healthStatus,
+        status,
         health: healthStatus === 'healthy' ? 'up' : healthStatus === 'degraded' ? 'degraded' : 'down',
       };
     });
@@ -125,40 +117,31 @@ export class PlatformHealthMockData {
    * Generate service registry entries
    */
   static generateServiceRegistry() {
-    const services = [
-      { name: 'PostgreSQL Primary', type: 'database', url: 'postgres://192.168.86.200:5436', port: 5436 },
-      { name: 'PostgreSQL Replica', type: 'database', url: 'postgres://192.168.86.200:5437', port: 5437 },
-      { name: 'Kafka/Redpanda', type: 'message_queue', url: 'kafka://192.168.86.200:9092', port: 9092 },
-      { name: 'OmniArchon Intelligence', type: 'api', url: 'http://192.168.86.200:8053', port: 8053 },
-      { name: 'OmniArchon Search', type: 'api', url: 'http://192.168.86.200:8055', port: 8055 },
-      { name: 'OmniArchon Bridge', type: 'api', url: 'http://192.168.86.200:8054', port: 8054 },
-      { name: 'Qdrant Vector Store', type: 'vector_db', url: 'http://localhost:6333', port: 6333 },
-      { name: 'Redis Cache Master', type: 'cache', url: 'redis://localhost:6379', port: 6379 },
-      { name: 'Redis Cache Replica', type: 'cache', url: 'redis://localhost:6380', port: 6380 },
-      { name: 'Consul Service Discovery', type: 'orchestration', url: 'http://192.168.86.200:28500', port: 28500 },
-      { name: 'Vault Secrets Manager', type: 'security', url: 'http://192.168.86.200:8200', port: 8200 },
-      { name: 'OnexTree Indexing', type: 'api', url: 'http://192.168.86.200:8058', port: 8058 },
-      { name: 'Metadata Stamping Service', type: 'api', url: 'http://192.168.86.200:8057', port: 8057 },
+    const serviceNames = [
+      'omnidash-api',
+      'omnidash-agents',
+      'omnidash-intelligence',
+      'omnidash-patterns',
+      'omnidash-events',
+      'postgresql-primary',
+      'postgresql-replica',
+      'qdrant-cluster-1',
+      'qdrant-cluster-2',
+      'kafka-broker-1',
+      'kafka-broker-2',
+      'redis-master',
+      'redis-replica',
     ];
 
-    return services.map((service) => {
+    return serviceNames.map((serviceName) => {
       const healthStatus = Gen.healthStatus();
-      // Calculate last health check within the last 2 minutes
-      const secondsAgo = Gen.randomInt(5, 120);
-      const lastCheck = new Date(Date.now() - secondsAgo * 1000).toISOString();
-
       return {
         id: Gen.uuid(),
-        name: service.name,
-        serviceName: service.name,
-        url: service.url,
-        serviceUrl: service.url,
-        type: service.type,
-        serviceType: service.type,
-        status: healthStatus,
-        healthStatus: healthStatus === 'down' ? 'unhealthy' : healthStatus,
-        lastCheck,
-        lastHealthCheck: lastCheck,
+        serviceName,
+        serviceUrl: `http://192.168.86.200:${Gen.randomInt(8000, 9000)}`,
+        serviceType: Gen.randomItem(['api', 'database', 'queue', 'cache', 'compute']),
+        healthStatus: healthStatus === 'healthy' ? 'healthy' : healthStatus === 'degraded' ? 'degraded' : 'unhealthy',
+        lastHealthCheck: Gen.pastTimestamp(15),
       };
     });
   }

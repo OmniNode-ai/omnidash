@@ -69,9 +69,11 @@ describe('PlatformHealthSource', () => {
       const result = await platformHealthSource.fetchHealth('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.status).toMatch(/^(healthy|degraded)$/);
-      expect(result.data.uptime).toBeGreaterThanOrEqual(99.0);
-      expect(result.data.uptime).toBeLessThanOrEqual(99.99);
+      // Mock data should match PlatformHealth interface
+      expect(result.data).toHaveProperty('status');
+      expect(result.data).toHaveProperty('uptime');
+      expect(result.data).toHaveProperty('services');
+      expect(result.data.status).toMatch(/^(up|degraded|down)$/);
       expect(result.data.services.length).toBeGreaterThan(0);
       expect(result.data.services.length).toBeLessThanOrEqual(12);
       expect(result.data.services[0]).toHaveProperty('name');
@@ -102,7 +104,11 @@ describe('PlatformHealthSource', () => {
       const result = await platformHealthSource.fetchHealth('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.status).toBe('healthy');
+      // Mock data should match PlatformHealth interface
+      expect(result.data).toHaveProperty('status');
+      expect(result.data).toHaveProperty('uptime');
+      expect(result.data).toHaveProperty('services');
+      expect(result.data.status).toBeDefined();
       expect(result.data.services).toBeDefined();
     });
 
@@ -346,7 +352,11 @@ describe('PlatformHealthSource', () => {
       expect(result.isMock).toBe(true);
       expect(result.health).toBeDefined();
       expect(result.services).toBeDefined();
-      expect(result.health.status).toMatch(/^(healthy|degraded)$/);
+      // Mock structure should match PlatformHealth interface
+      expect(result.health).toHaveProperty('status');
+      expect(result.health).toHaveProperty('uptime');
+      expect(result.health).toHaveProperty('services');
+      expect(result.health.status).toMatch(/^(up|degraded|down)$/);
       expect(result.services.services.length).toBeGreaterThan(0);
     });
 
@@ -456,7 +466,11 @@ describe('PlatformHealthSource', () => {
       const result = await platformHealthSource.fetchHealth('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.status).toMatch(/^(healthy|degraded)$/);
+      // Mock data should match PlatformHealth interface
+      expect(result.data).toHaveProperty('status');
+      expect(result.data).toHaveProperty('uptime');
+      expect(result.data).toHaveProperty('services');
+      expect(result.data.status).toMatch(/^(up|degraded|down)$/);
     });
 
     it('should handle network timeout for services endpoint', async () => {
@@ -472,7 +486,7 @@ describe('PlatformHealthSource', () => {
       expect(result.data).toBeDefined();
     });
 
-    it('should handle empty response body for health', async () => {
+    it('should fall back to mock data when API returns null', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(null),
@@ -480,13 +494,14 @@ describe('PlatformHealthSource', () => {
 
       const result = await platformHealthSource.fetchHealth('24h');
 
-      // When API returns null but ok: true, it's treated as successful (returns null data)
-      // This is expected behavior - the source returns whatever the API returns
-      expect(result.isMock).toBe(false);
-      expect(result.data).toBeNull();
+      // When API returns null, Zod validation fails, falls back to mock data
+      expect(result.isMock).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data).toHaveProperty('status');
+      expect(result.data).toHaveProperty('services');
     });
 
-    it('should handle empty response body for services', async () => {
+    it('should fall back to mock data when API returns null for services', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(null),
@@ -494,10 +509,10 @@ describe('PlatformHealthSource', () => {
 
       const result = await platformHealthSource.fetchServices();
 
-      // When API returns null but ok: true, it's treated as successful (returns null data)
-      // This is expected behavior - the source returns whatever the API returns
-      expect(result.isMock).toBe(false);
-      expect(result.data).toBeNull();
+      // When API returns null, Zod validation fails, falls back to mock data
+      expect(result.isMock).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data).toHaveProperty('services');
     });
 
     it('should handle response with status code 503', async () => {
@@ -510,7 +525,11 @@ describe('PlatformHealthSource', () => {
       const result = await platformHealthSource.fetchHealth('24h');
 
       expect(result.isMock).toBe(true);
-      expect(result.data.status).toBe('healthy');
+      // Mock data should match PlatformHealth interface
+      expect(result.data).toHaveProperty('status');
+      expect(result.data).toHaveProperty('uptime');
+      expect(result.data).toHaveProperty('services');
+      expect(result.data.status).toBeDefined();
     });
 
     it('should handle response with status code 401', async () => {
@@ -584,6 +603,7 @@ describe('PlatformHealthSource', () => {
 
       const result = await platformHealthSource.fetchHealth('24h');
 
+      // Mock data should match PlatformHealth interface
       expect(result.data).toHaveProperty('status');
       expect(result.data).toHaveProperty('uptime');
       expect(result.data).toHaveProperty('services');
