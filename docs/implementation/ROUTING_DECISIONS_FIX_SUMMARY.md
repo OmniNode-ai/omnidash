@@ -141,12 +141,14 @@ const recentDecisions = managementData?.recentDecisions || [];
 **Existing API endpoint used:**
 - `GET /api/intelligence/routing/decisions?limit=10`
 - Provided by `server/intelligence-routes.ts`
-- Returns routing decisions from in-memory event consumer (sourced from Kafka topics)
+- Returns routing decisions from in-memory event consumer
 
 **Data flow:**
-1. API fetches from EventConsumer's in-memory store
-2. EventConsumer populated via Kafka topic: `agent-routing-decisions`
-3. Falls back to `AgentManagementMockData.generateRecentDecisions(limit)` if API fails or returns empty
+1. Client calls `/api/intelligence/routing/decisions?limit=10`
+2. Server returns decisions from EventConsumer's in-memory store (populated from Kafka topic: `agent-routing-decisions`)
+3. Client falls back to `AgentManagementMockData.generateRecentDecisions(limit)` if API fails or returns empty
+
+*Note: For detailed backend architecture (Kafka topics, event consumer implementation), see `server/event-consumer.ts` and related backend documentation.*
 
 ## Testing Results
 
@@ -161,12 +163,13 @@ const recentDecisions = managementData?.recentDecisions || [];
 curl http://localhost:3000/api/intelligence/routing/decisions?limit=5
 # Response: [] (when no data available)
 ```
-**Note:** The API endpoint returns an empty array when no routing decisions are available. However, the client-side `fetchRecentDecisions()` method falls back to `AgentManagementMockData.generateRecentDecisions(limit)` when the API returns empty or fails, ensuring the UI always displays sample data for development/testing purposes.
 
-Currently returns empty array from API because:
+**Current state:** The API endpoint currently returns an empty array because:
 - Event consumer is running but no routing decisions in Kafka topics yet
 - Database connection warning shown in UI: "Database connection failed"
 - Expected behavior: Will populate when agents are actually invoked
+
+*Note: As documented in the data flow section (line 149), the client-side `fetchRecentDecisions()` method falls back to `AgentManagementMockData.generateRecentDecisions(limit)` when the API returns empty or fails, ensuring the UI always displays sample data for development/testing purposes.*
 
 ## User Experience Improvements
 
@@ -225,5 +228,5 @@ Currently returns empty array from API because:
 - **Error handling:** Graceful fallback to `AgentManagementMockData.generateRecentDecisions(limit)` on API failure
 - **USE_MOCK_DATA flag:** Implementation respects `USE_MOCK_DATA` from `client/src/lib/mock-data/config.ts` - when enabled, immediately returns mock data without API calls
 - **Performance:** Fetched in parallel with other dashboard data
-- **Caching:** Uses TanStack Query's 60-second refetch interval
-- **Mock data badge:** Dashboard shows "Mock Data Active" when using fallback data
+- **Caching:** Uses TanStack Query's 60-second refetch interval (`refetchInterval: 60000` in `AgentManagement.tsx` lines 66, 80)
+- **Mock data badge:** Dashboard displays `<MockDataBadge />` component (implemented in `AgentManagement.tsx` line 119) when `usingMockData` is true

@@ -304,20 +304,29 @@ class IntelligenceAnalyticsDataSource {
         // Validate API response with Zod schema
         const agents = parseArrayResponse(agentMetricsApiSchema, rawAgents, 'agent-performance');
         if (agents.length > 0) {
-          // Detect format for success rate
-          const sampleAgent = agents.find((a: any) => (a.successRate != null) || (a.avgConfidence != null));
-          const sampleValue = sampleAgent
-            ? fallbackChain(
+          // Detect format for success rate: check all non-zero samples to determine if values are decimal (0-1) or percentage (0-100)
+          // Ignore zeros as they don't indicate format (0% = 0.0 in both formats)
+          const nonZeroSamples = agents
+            .map((a: any) => {
+              const rate = fallbackChain(
                 'successRate',
-                { id: sampleAgent.agent || 'unknown', context: 'agent-performance-format-detection' },
+                { id: a.agent || 'unknown', context: 'agent-performance-format-detection' },
                 [
-                  { value: sampleAgent.successRate, label: 'successRate field' },
-                  { value: sampleAgent.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
-                  { value: undefined, label: 'no format detection available', level: 'debug' }
+                  { value: a.successRate, label: 'successRate field' },
+                  { value: a.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
+                  { value: undefined, label: 'no sample available', level: 'debug' }
                 ]
-              )
-            : undefined;
-          const isDecimalFormat = sampleValue != null && sampleValue <= 1;
+              );
+              return rate != null ? rate : undefined;
+            })
+            .filter((v): v is number => v != null && v > 0);
+          
+          // If we have non-zero samples, check if all are <= 1 (decimal format)
+          // If any sample > 1, assume percentage format
+          // Default to percentage format if no samples available
+          const isDecimalFormat = nonZeroSamples.length > 0
+            ? nonZeroSamples.every(v => v <= 1)
+            : false;
 
           const performance: AgentPerformance[] = agents.map((agent: any) => {
             const rawSuccessRate = fallbackChain(
