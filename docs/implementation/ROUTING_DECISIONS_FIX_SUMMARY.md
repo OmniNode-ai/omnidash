@@ -40,6 +40,11 @@ export interface AgentManagementData {
 **Added new fetch method:**
 ```typescript
 async fetchRecentDecisions(limit: number = 10): Promise<{ data: RoutingDecision[]; isMock: boolean }> {
+  // Return comprehensive mock data if USE_MOCK_DATA is enabled
+  if (USE_MOCK_DATA) {
+    return { data: AgentManagementMockData.generateRecentDecisions(limit), isMock: true };
+  }
+
   try {
     const response = await fetch(`/api/intelligence/routing/decisions?limit=${limit}`);
     if (response.ok) {
@@ -52,13 +57,15 @@ async fetchRecentDecisions(limit: number = 10): Promise<{ data: RoutingDecision[
     console.warn('Failed to fetch routing decisions from API, using mock data', err);
   }
 
-  // Mock data fallback (returns empty array)
+  // Mock data fallback (returns generated mock decisions, not empty array)
   return {
-    data: [],
+    data: AgentManagementMockData.generateRecentDecisions(limit),
     isMock: true,
   };
 }
 ```
+
+**Note:** The implementation respects the `USE_MOCK_DATA` flag (defined in `client/src/lib/mock-data/config.ts`). When enabled, it immediately returns mock data without attempting API calls. On API failure, it falls back to `AgentManagementMockData.generateRecentDecisions(limit)` rather than an empty array.
 
 **Updated fetchAll method:**
 - Now includes `fetchRecentDecisions(10)` in parallel Promise.all call
@@ -139,13 +146,7 @@ const recentDecisions = managementData?.recentDecisions || [];
 **Data flow:**
 1. API fetches from EventConsumer's in-memory store
 2. EventConsumer populated via Kafka topic: `agent-routing-decisions`
-3. Falls back to empty array if no data available
-
-### 4. Bonus Fix: AgentNetwork.tsx Syntax Error
-
-Fixed unrelated syntax error preventing server startup:
-- Removed unnecessary double semicolon on line 187
-- Changed `}));` to `});`
+3. Falls back to `AgentManagementMockData.generateRecentDecisions(limit)` if API fails or returns empty
 
 ## Testing Results
 
@@ -158,9 +159,11 @@ Fixed unrelated syntax error preventing server startup:
 ### API Verification
 ```bash
 curl http://localhost:3000/api/intelligence/routing/decisions?limit=5
-# Response: []
+# Response: [] (when no data available)
 ```
-Currently returns empty array because:
+**Note:** The API endpoint returns an empty array when no routing decisions are available. However, the client-side `fetchRecentDecisions()` method falls back to `AgentManagementMockData.generateRecentDecisions(limit)` when the API returns empty or fails, ensuring the UI always displays sample data for development/testing purposes.
+
+Currently returns empty array from API because:
 - Event consumer is running but no routing decisions in Kafka topics yet
 - Database connection warning shown in UI: "Database connection failed"
 - Expected behavior: Will populate when agents are actually invoked
@@ -215,14 +218,12 @@ Currently returns empty array because:
    - Replaced hardcoded mock array with dynamic rendering
    - Added empty state UI
 
-3. `client/src/pages/preview/AgentNetwork.tsx`
-   - Fixed syntax error (bonus fix)
-
 ## Technical Notes
 
 - **API endpoint exists:** Server already provides `/api/intelligence/routing/decisions`
 - **Type safety:** Full TypeScript types for all routing decision fields
-- **Error handling:** Graceful fallback to empty array on API failure
+- **Error handling:** Graceful fallback to `AgentManagementMockData.generateRecentDecisions(limit)` on API failure
+- **USE_MOCK_DATA flag:** Implementation respects `USE_MOCK_DATA` from `client/src/lib/mock-data/config.ts` - when enabled, immediately returns mock data without API calls
 - **Performance:** Fetched in parallel with other dashboard data
 - **Caching:** Uses TanStack Query's 60-second refetch interval
 - **Mock data badge:** Dashboard shows "Mock Data Active" when using fallback data

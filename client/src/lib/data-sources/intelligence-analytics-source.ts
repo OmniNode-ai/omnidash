@@ -76,21 +76,29 @@ class IntelligenceAnalyticsDataSource {
               }, 0)
             : 0;
           // Calculate weighted average success rate (based on request volume, not simple average)
-          // Detect format: if any value > 1, assume percentage format, else decimal (0-1)
-          // Check both successRate and avgConfidence for format detection
-          const sampleRate = agents.find(a => (a.successRate != null) || (a.avgConfidence != null));
-          const sampleValue = sampleRate
-            ? fallbackChain(
+          // Detect format: check all non-zero samples to determine if values are decimal (0-1) or percentage (0-100)
+          // Ignore zeros as they don't indicate format (0% = 0.0 in both formats)
+          const nonZeroSamples = agents
+            .map(a => {
+              const rate = fallbackChain(
                 'successRate',
-                { id: sampleRate.agent || 'unknown', context: 'intelligence-metrics-format-detection' },
+                { id: a.agent || 'unknown', context: 'intelligence-metrics-format-detection' },
                 [
-                  { value: sampleRate.successRate, label: 'successRate field' },
-                  { value: sampleRate.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
-                  { value: undefined, label: 'no format detection available', level: 'debug' }
+                  { value: a.successRate, label: 'successRate field' },
+                  { value: a.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
+                  { value: undefined, label: 'no sample available', level: 'debug' }
                 ]
-              )
-            : undefined;
-          const isDecimalFormat = sampleValue != null && sampleValue <= 1;
+              );
+              return rate != null ? rate : undefined;
+            })
+            .filter((v): v is number => v != null && v > 0);
+          
+          // If we have non-zero samples, check if all are <= 1 (decimal format)
+          // If any sample > 1, assume percentage format
+          // Default to percentage format if no samples available
+          const isDecimalFormat = nonZeroSamples.length > 0
+            ? nonZeroSamples.every(v => v <= 1)
+            : false;
           
           const avgSuccessRate = totalRequestsForAvg > 0
             ? Math.max(0, Math.min(100, agents.reduce((sum, a) => {

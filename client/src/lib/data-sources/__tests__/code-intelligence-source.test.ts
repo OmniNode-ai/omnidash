@@ -220,7 +220,9 @@ describe('CodeIntelligenceDataSource', () => {
       // Validation fails due to missing summary, so it falls back to mock data
       expect(result.isMock).toBe(true);
       expect(result.data.summary).toBeDefined();
-      expect(result.data.summary.totalFiles).toBeGreaterThanOrEqual(0);
+      // Mock data generates totalFiles between 100-300, so verify it's a meaningful value
+      expect(result.data.summary.totalFiles).toBeGreaterThan(0);
+      expect(result.data.summary.totalFiles).toBeLessThanOrEqual(300);
     });
 
     it('should handle network errors', async () => {
