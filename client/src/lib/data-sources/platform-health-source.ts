@@ -9,10 +9,24 @@ import {
 export interface PlatformHealth {
   status: string;
   uptime: number;
+  database?: {
+    name: string;
+    status: string;
+    uptime: string;
+    latency_ms: number;
+  };
+  kafka?: {
+    name: string;
+    status: string;
+    uptime: string;
+    latency_ms: number;
+  };
   services: Array<{
     name: string;
     status: string;
     latency?: number;
+    latency_ms?: number;
+    uptime?: number;
   }>;
 }
 

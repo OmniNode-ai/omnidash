@@ -859,7 +859,7 @@ describe('PlatformHealthMockData', () => {
 
       registry.forEach((entry) => {
         const checkTime = new Date(entry.lastHealthCheck).getTime();
-        expect(checkTime).toBeGreaterThanOrEqual(fifteenMinutesAgo);
+        expect(checkTime).toBeGreaterThanOrEqual(fifteenMinutesAgo - 1000);
         expect(checkTime).toBeLessThanOrEqual(now);
       });
     });

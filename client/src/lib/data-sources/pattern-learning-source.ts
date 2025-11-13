@@ -72,19 +72,16 @@ class PatternLearningSource {
       const response = await fetch(`/api/intelligence/patterns/summary?timeWindow=${timeWindow}`);
       if (response.ok) {
         const rawData = await response.json();
-        // Validate API response with Zod schema
+        // Validate API response with Zod schema (handles camelCase)
         const data = safeParseResponse(patternSummarySchema, rawData, 'pattern-summary');
-        if (!data) {
-          console.warn('Pattern summary validation failed, using mock data');
-          return PatternLearningMockData.generateSummary();
-        }
-        // Transform API response with defensive logging
+        // Transform API response with defensive logging, handling both camelCase and snake_case
         return {
           totalPatterns: fallbackChain(
             'totalPatterns',
             { context: 'pattern-summary' },
             [
-              { value: data.totalPatterns, label: 'camelCase totalPatterns' },
+              { value: data?.totalPatterns, label: 'camelCase totalPatterns' },
+              { value: (rawData as any)?.total_patterns, label: 'snake_case total_patterns', level: 'warn' },
               { value: 0, label: 'default zero', level: 'error' }
             ]
           ),
@@ -92,7 +89,8 @@ class PatternLearningSource {
             'newPatternsToday',
             { context: 'pattern-summary' },
             [
-              { value: data.newPatternsToday, label: 'camelCase newPatternsToday' },
+              { value: data?.newPatternsToday, label: 'camelCase newPatternsToday' },
+              { value: (rawData as any)?.new_patterns_today, label: 'snake_case new_patterns_today', level: 'warn' },
               { value: 0, label: 'default zero', level: 'error' }
             ]
           ),
@@ -100,7 +98,8 @@ class PatternLearningSource {
             'avgQualityScore',
             { context: 'pattern-summary' },
             [
-              { value: data.avgQualityScore, label: 'camelCase avgQualityScore' },
+              { value: data?.avgQualityScore, label: 'camelCase avgQualityScore' },
+              { value: (rawData as any)?.avg_quality_score, label: 'snake_case avg_quality_score', level: 'warn' },
               { value: 0, label: 'default zero', level: 'error' }
             ]
           ),
@@ -108,7 +107,8 @@ class PatternLearningSource {
             'activeLearningCount',
             { context: 'pattern-summary' },
             [
-              { value: data.activeLearningCount, label: 'camelCase activeLearningCount' },
+              { value: data?.activeLearningCount, label: 'camelCase activeLearningCount' },
+              { value: (rawData as any)?.active_learning_count, label: 'snake_case active_learning_count', level: 'warn' },
               { value: 0, label: 'default zero', level: 'error' }
             ]
           ),
@@ -135,11 +135,13 @@ class PatternLearningSource {
       const response = await fetch(`/api/intelligence/patterns/trends?timeWindow=${timeWindow}`);
       if (response.ok) {
         const rawData = await response.json();
-        // Validate API response with Zod schema
-        const data = parseArrayResponse(patternTrendSchema, rawData, 'pattern-trends');
-        if (data.length > 0) {
+        // Handle both validated data and raw data (for cases where validation fails but we have data)
+        const validatedData = parseArrayResponse(patternTrendSchema, rawData, 'pattern-trends');
+        const dataArray = Array.isArray(rawData) ? rawData : (validatedData.length > 0 ? validatedData : []);
+        
+        if (dataArray.length > 0) {
           // Transform to ensure proper format with defensive logging
-          return data.map((item: any, index: number) => ({
+          return dataArray.map((item: any, index: number) => ({
             period: withFallback(
               'period',
               item.period,
@@ -198,11 +200,13 @@ class PatternLearningSource {
       const response = await fetch(`/api/intelligence/patterns/quality-trends?timeWindow=${timeWindow}`);
       if (response.ok) {
         const rawData = await response.json();
-        // Validate API response with Zod schema
-        const data = parseArrayResponse(qualityTrendSchema, rawData, 'quality-trends');
-        if (data.length > 0) {
+        // Handle both validated data and raw data (for cases where validation fails but we have data)
+        const validatedData = parseArrayResponse(qualityTrendSchema, rawData, 'quality-trends');
+        const dataArray = Array.isArray(rawData) ? rawData : (validatedData.length > 0 ? validatedData : []);
+        
+        if (dataArray.length > 0) {
           // Transform to ensure proper format with defensive logging
-          return data.map((item: any, index: number) => ({
+          return dataArray.map((item: any, index: number) => ({
             period: withFallback(
               'period',
               item.period,
@@ -277,11 +281,13 @@ class PatternLearningSource {
       const response = await fetch(`/api/intelligence/patterns/by-language?timeWindow=${timeWindow}`);
       if (response.ok) {
         const rawData = await response.json();
-        // Validate API response with Zod schema
-        const data = parseArrayResponse(languageBreakdownApiSchema, rawData, 'language-breakdown');
-        if (data.length > 0) {
+        // Handle both validated data and raw data (for cases where validation fails but we have data)
+        const validatedData = parseArrayResponse(languageBreakdownApiSchema, rawData, 'language-breakdown');
+        const dataArray = Array.isArray(rawData) ? rawData : (validatedData.length > 0 ? validatedData : []);
+        
+        if (dataArray.length > 0) {
           // Calculate total for percentages with defensive logging
-          const total = data.reduce((sum: number, item: any, index: number) => {
+          const total = dataArray.reduce((sum: number, item: any, index: number) => {
             const count = fallbackChain(
               'pattern_count',
               { id: index, context: 'language-breakdown-total' },
@@ -295,7 +301,7 @@ class PatternLearningSource {
           }, 0);
 
           // Transform snake_case API response to camelCase with percentages
-          return data.map((item: any, index: number) => {
+          return dataArray.map((item: any, index: number) => {
             const count = fallbackChain(
               'pattern_count',
               { id: index, context: 'language-breakdown' },

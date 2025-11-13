@@ -10,11 +10,19 @@ export class PlatformHealthMockData {
    * Generate mock platform health data
    */
   static generateHealth(): PlatformHealth {
+    const databaseUptime = Gen.randomFloat(99.5, 99.99, 2);
+    const kafkaUptime = Gen.randomFloat(99.3, 99.98, 2);
+    const databaseLatency = Gen.randomInt(5, 30);
+    const kafkaLatency = Gen.randomInt(15, 60);
+    
+    const databaseStatus = Math.random() > 0.05 ? 'healthy' : (Math.random() > 0.5 ? 'degraded' : 'down');
+    const kafkaStatus = Math.random() > 0.05 ? 'healthy' : (Math.random() > 0.5 ? 'degraded' : 'down');
+
     const services = [
-      { name: 'PostgreSQL', status: 'up', latency_ms: Gen.randomInt(5, 30), uptime: Gen.randomFloat(99.5, 99.99, 2) },
+      { name: 'PostgreSQL', status: 'up', latency_ms: databaseLatency, uptime: databaseUptime },
       { name: 'OmniArchon', status: 'up', latency_ms: Gen.randomInt(20, 80), uptime: Gen.randomFloat(99.0, 99.9, 2) },
       { name: 'Qdrant', status: 'up', latency_ms: Gen.randomInt(10, 50), uptime: Gen.randomFloat(99.2, 99.95, 2) },
-      { name: 'Kafka/Redpanda', status: 'up', latency_ms: Gen.randomInt(15, 60), uptime: Gen.randomFloat(99.3, 99.98, 2) },
+      { name: 'Kafka/Redpanda', status: 'up', latency_ms: kafkaLatency, uptime: kafkaUptime },
       { name: 'Redis Cache', status: 'up', latency_ms: Gen.randomInt(2, 15), uptime: Gen.randomFloat(99.8, 99.99, 2) },
       { name: 'API Gateway', status: 'up', latency_ms: Gen.randomInt(25, 100), uptime: Gen.randomFloat(99.1, 99.9, 2) },
     ];
@@ -37,10 +45,23 @@ export class PlatformHealthMockData {
     return {
       status: overallStatus,
       uptime: avgUptime,
+      database: {
+        name: 'PostgreSQL',
+        status: databaseStatus,
+        uptime: `${databaseUptime.toFixed(2)}%`,
+        latency_ms: databaseLatency,
+      },
+      kafka: {
+        name: 'Kafka/Redpanda',
+        status: kafkaStatus,
+        uptime: `${kafkaUptime.toFixed(2)}%`,
+        latency_ms: kafkaLatency,
+      },
       services: services.map(s => ({
         name: s.name,
         status: s.status,
-        latency: s.latency_ms,
+        latency_ms: s.latency_ms,
+        uptime: s.uptime,
       })),
     };
   }
@@ -66,9 +87,11 @@ export class PlatformHealthMockData {
 
     const services = serviceNames.map((name) => {
       const healthStatus = Gen.healthStatus();
+      // Map healthStatus to status: 'healthy' | 'degraded' | 'unhealthy'
+      const status = healthStatus === 'down' ? 'unhealthy' : healthStatus;
       return {
         name,
-        status: healthStatus,
+        status,
         health: healthStatus === 'healthy' ? 'up' : healthStatus === 'degraded' ? 'degraded' : 'down',
       };
     });

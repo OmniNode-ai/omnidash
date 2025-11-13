@@ -790,3 +790,234 @@ describe('DatabaseAdapter - Connection Management', () => {
     expect((adapterWithoutKafka as any).eventBusEnabled).toBe(false);
   });
 });
+
+describe('DatabaseAdapter - Additional Methods', () => {
+  let adapter: PostgresAdapter;
+
+  beforeEach(() => {
+    adapter = new PostgresAdapter();
+    vi.clearAllMocks();
+  });
+
+  describe('count', () => {
+    it('should count all records when no where clause', async () => {
+      const mockResult = [{ count: 42 }];
+      const chain = createMockQueryChain(mockResult);
+      // count() uses select({ count: ... }).from(), so we need to mock select to return chainable object
+      vi.mocked(intelligenceDb.select).mockReturnValue({
+        from: vi.fn().mockResolvedValue(mockResult),
+      } as any);
+
+      const result = await adapter.count('agent_actions');
+
+      expect(result).toBe(42);
+      expect(intelligenceDb.select).toHaveBeenCalled();
+    });
+
+    it('should count records with where conditions', async () => {
+      const mockResult = [{ count: 10 }];
+      const chain = {
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(mockResult),
+      };
+      vi.mocked(intelligenceDb.select).mockReturnValue(chain as any);
+
+      const result = await adapter.count('agent_actions', { agentName: 'test-agent' });
+
+      expect(result).toBe(10);
+      expect(chain.where).toHaveBeenCalled();
+    });
+
+    it('should return 0 when count is null or undefined', async () => {
+      const mockResult = [{ count: null }];
+      vi.mocked(intelligenceDb.select).mockReturnValue({
+        from: vi.fn().mockResolvedValue(mockResult),
+      } as any);
+
+      const result = await adapter.count('agent_actions');
+
+      expect(result).toBe(0);
+    });
+
+    it('should throw error for invalid table name', async () => {
+      await expect(adapter.count('invalid_table')).rejects.toThrow('Table invalid_table not found in schema');
+    });
+  });
+
+  describe('upsert', () => {
+    it('should insert new record when no conflict', async () => {
+      const mockResult = [{ id: '123', agentName: 'test-agent', createdAt: new Date() }];
+      const chain = {
+        values: vi.fn().mockReturnThis(),
+        onConflictDoUpdate: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue(mockResult),
+      };
+      vi.mocked(intelligenceDb.insert).mockReturnValue(chain as any);
+
+      const result = await adapter.upsert('agent_actions', {
+        id: '123',
+        agentName: 'test-agent',
+        actionType: 'test',
+        actionName: 'test',
+      }, ['id']);
+
+      expect(result).toBeDefined();
+      expect(intelligenceDb.insert).toHaveBeenCalled();
+      expect(chain.onConflictDoUpdate).toHaveBeenCalled();
+    });
+
+    it('should throw error for invalid table name', async () => {
+      await expect(
+        adapter.upsert('invalid_table', { id: '123' }, ['id'])
+      ).rejects.toThrow('Table invalid_table not found in schema');
+    });
+
+    it('should throw error when conflict columns not found', async () => {
+      const mockResult = [{ id: '123' }];
+      const { chain } = createMockQueryChain(mockResult);
+      vi.mocked(intelligenceDb.insert).mockReturnValue(chain);
+
+      // Mock getColumn to return null (column not found)
+      const adapterAny = adapter as any;
+      const originalGetColumn = adapterAny.getColumn;
+      adapterAny.getColumn = vi.fn(() => null);
+
+      await expect(
+        adapter.upsert('agent_actions', { id: '123' }, ['nonexistent'])
+      ).rejects.toThrow('Conflict columns not found');
+
+      adapterAny.getColumn = originalGetColumn;
+    });
+  });
+
+  describe('executeRaw', () => {
+    it('should execute raw SQL query', async () => {
+      const mockResult = [{ id: '1', name: 'test' }];
+      vi.mocked(intelligenceDb.execute).mockResolvedValue(mockResult as any);
+
+      const result = await adapter.executeRaw('SELECT * FROM agent_actions LIMIT 1');
+
+      expect(result).toEqual(mockResult);
+      expect(intelligenceDb.execute).toHaveBeenCalled();
+    });
+
+    it('should return empty array when result is not an array', async () => {
+      vi.mocked(intelligenceDb.execute).mockResolvedValue(null as any);
+
+      const result = await adapter.executeRaw('SELECT * FROM agent_actions');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('buildWhereConditions - edge cases', () => {
+    it('should handle IN clause with array values', async () => {
+      const mockResult = [{ id: '1' }];
+      const chain = createMockQueryChain(mockResult);
+      // query() does this.db.select().from(table), so select() must return an object with from()
+      vi.mocked(intelligenceDb.select).mockReturnValue({
+        from: vi.fn().mockReturnValue(chain),
+      } as any);
+
+      const result = await adapter.query('agent_actions', {
+        where: { agentName: ['agent-1', 'agent-2'] },
+      });
+
+      expect(result).toEqual(mockResult);
+      expect(intelligenceDb.select).toHaveBeenCalled();
+    });
+
+    it('should handle $gt operator', async () => {
+      const mockResult = [{ id: '1' }];
+      const chain = createMockQueryChain(mockResult);
+      vi.mocked(intelligenceDb.select).mockReturnValue({
+        from: vi.fn().mockReturnValue(chain),
+      } as any);
+
+      const result = await adapter.query('agent_actions', {
+        where: { durationMs: { $gt: 100 } },
+      });
+
+      expect(result).toEqual(mockResult);
+      expect(intelligenceDb.select).toHaveBeenCalled();
+    });
+
+    it('should handle $gte operator', async () => {
+      const mockResult = [{ id: '1' }];
+      const chain = createMockQueryChain(mockResult);
+      vi.mocked(intelligenceDb.select).mockReturnValue({
+        from: vi.fn().mockReturnValue(chain),
+      } as any);
+
+      const result = await adapter.query('agent_actions', {
+        where: { durationMs: { $gte: 100 } },
+      });
+
+      expect(result).toEqual(mockResult);
+      expect(intelligenceDb.select).toHaveBeenCalled();
+    });
+
+    it('should handle $lt operator', async () => {
+      const mockResult = [{ id: '1' }];
+      const chain = createMockQueryChain(mockResult);
+      vi.mocked(intelligenceDb.select).mockReturnValue({
+        from: vi.fn().mockReturnValue(chain),
+      } as any);
+
+      const result = await adapter.query('agent_actions', {
+        where: { durationMs: { $lt: 100 } },
+      });
+
+      expect(result).toEqual(mockResult);
+      expect(intelligenceDb.select).toHaveBeenCalled();
+    });
+
+    it('should handle $lte operator', async () => {
+      const mockResult = [{ id: '1' }];
+      const chain = createMockQueryChain(mockResult);
+      vi.mocked(intelligenceDb.select).mockReturnValue({
+        from: vi.fn().mockReturnValue(chain),
+      } as any);
+
+      const result = await adapter.query('agent_actions', {
+        where: { durationMs: { $lte: 100 } },
+      });
+
+      expect(result).toEqual(mockResult);
+      expect(intelligenceDb.select).toHaveBeenCalled();
+    });
+
+    it('should handle $ne operator', async () => {
+      const mockResult = [{ id: '1' }];
+      const chain = createMockQueryChain(mockResult);
+      vi.mocked(intelligenceDb.select).mockReturnValue({
+        from: vi.fn().mockReturnValue(chain),
+      } as any);
+
+      const result = await adapter.query('agent_actions', {
+        where: { agentName: { $ne: 'test-agent' } },
+      });
+
+      expect(result).toEqual(mockResult);
+      expect(intelligenceDb.select).toHaveBeenCalled();
+    });
+
+    it('should skip conditions for non-existent columns', async () => {
+      const mockResult = [{ id: '1' }];
+      const chain = createMockQueryChain(mockResult);
+      vi.mocked(intelligenceDb.select).mockReturnValue({
+        from: vi.fn().mockReturnValue(chain),
+      } as any);
+
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await adapter.query('agent_actions', {
+        where: { nonexistentColumn: 'value' },
+      });
+
+      expect(result).toEqual(mockResult);
+      expect(consoleWarnSpy).toHaveBeenCalled();
+      consoleWarnSpy.mockRestore();
+    });
+  });
+});

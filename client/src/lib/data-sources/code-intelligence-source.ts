@@ -235,6 +235,19 @@ class CodeIntelligenceDataSource {
             isMock: false,
           };
         }
+        // If response is ok but validation failed, return empty data with isMock: false
+        // This handles cases where API returns empty object or missing fields
+        return {
+          data: {
+            totalPatterns: ensureNumeric('totalPatterns', rawData?.totalPatterns, 0, { context: 'pattern-summary' }),
+            activePatterns: ensureNumeric('activeLearningCount', rawData?.activeLearningCount, 0, { context: 'pattern-summary' }),
+            qualityScore: ensureNumeric('avgQualityScore', rawData?.avgQualityScore, 0, { context: 'pattern-summary' }) * 10,
+            usageCount: 0,
+            recentDiscoveries: ensureNumeric('newPatternsToday', rawData?.newPatternsToday, 0, { context: 'pattern-summary' }),
+            topPatterns: [],
+          },
+          isMock: false,
+        };
       }
     } catch (err) {
       console.warn('Failed to fetch pattern summary, using mock data', err);

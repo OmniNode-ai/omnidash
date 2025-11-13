@@ -641,4 +641,64 @@ describe('AgentRegistrySource', () => {
       expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('search=test'));
     });
   });
+
+  describe('edge cases', () => {
+    it('should handle empty API response', async () => {
+      setupFetchMock(
+        new Map([
+          ['/api/agents/agents', createMockResponse([])],
+        ])
+      );
+
+      const result = await agentRegistrySource.fetchAgents();
+      expect(result.isMock).toBe(false);
+      expect(result.data).toEqual([]);
+    });
+
+    it('should handle non-array API response', async () => {
+      setupFetchMock(
+        new Map([
+          ['/api/agents/agents', createMockResponse({ agents: [] })],
+        ])
+      );
+
+      const result = await agentRegistrySource.fetchAgents();
+      expect(result.isMock).toBe(false);
+      expect(result.data).toEqual([]);
+    });
+
+    it('should handle network errors gracefully', async () => {
+      setupFetchMock(
+        new Map([
+          ['/api/agents/agents', new Error('Network error')],
+        ])
+      );
+
+      const result = await agentRegistrySource.fetchAgents();
+      expect(result.isMock).toBe(true);
+      expect(result.data).toEqual([]);
+    });
+
+    it('should handle 500 error responses', async () => {
+      setupFetchMock(
+        new Map([
+          ['/api/agents/agents', createMockResponse({ error: 'Server error' }, { status: 500 })],
+        ])
+      );
+
+      const result = await agentRegistrySource.fetchAgents();
+      expect(result.isMock).toBe(true);
+    });
+
+    it('should handle fetch timeout', async () => {
+      setupFetchMock(
+        new Map([
+          ['/api/agents/agents', new Error('Timeout')],
+        ])
+      );
+
+      const result = await agentRegistrySource.fetchAgents();
+      expect(result.isMock).toBe(true);
+    });
+  });
 });
