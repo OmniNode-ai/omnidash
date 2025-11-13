@@ -531,17 +531,19 @@ router.get("/breakdown", (req, res) => {
 
 // Record agent run (for data collection)
 router.post("/runs", (req, res) => {
-  try {
-    const runData = AgentRunSchema.parse(req.body);
-    
-    // In a real implementation, this would save to database
-    console.log("Recording agent run:", runData);
-    
-    res.json({ success: true, id: Date.now().toString() });
-  } catch (error) {
-    console.error("Error recording agent run:", error);
-    res.status(400).json({ error: "Invalid agent run data" });
+  const result = AgentRunSchema.safeParse(req.body);
+  
+  if (!result.success) {
+    console.error("Invalid agent run data:", result.error.format());
+    return res.status(400).json({ error: "Invalid agent run data" });
   }
+  
+  const runData = result.data;
+  
+  // In a real implementation, this would save to database
+  console.log("Recording agent run:", runData);
+  
+  res.json({ success: true, id: Date.now().toString() });
 });
 
 export default router;
