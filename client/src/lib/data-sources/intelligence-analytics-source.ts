@@ -35,6 +35,16 @@ export interface RecentActivity {
 }
 
 class IntelligenceAnalyticsDataSource {
+  /**
+   * Normalizes status values to ensure they match the RecentActivity status union type.
+   * Defaults unknown statuses to 'pending' to prevent runtime errors in UI components.
+   */
+  private normalizeStatus(status: string): RecentActivity['status'] {
+    const validStatuses: RecentActivity['status'][] = ['completed', 'executing', 'failed', 'pending'];
+    return validStatuses.includes(status as RecentActivity['status']) 
+      ? (status as RecentActivity['status'])
+      : 'pending';
+  }
   async fetchMetrics(timeRange: string): Promise<{ data: IntelligenceMetrics; isMock: boolean }> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
@@ -186,7 +196,7 @@ class IntelligenceAnalyticsDataSource {
             action: withFallback('action', action.action, 'Unknown action', { id: action.id, context: 'recent-activity-action' }),
             agent: withFallback('agentName', action.agentName, 'unknown', { id: action.id, context: 'recent-activity-agent' }),
             time: this.formatTimeAgo(action.timestamp),
-            status: action.status as RecentActivity['status'],
+            status: this.normalizeStatus(action.status),
             timestamp: action.timestamp,
           }));
           return { data: activities, isMock: false };
@@ -224,7 +234,7 @@ class IntelligenceAnalyticsDataSource {
               ]
             ),
             time: this.formatTimeAgo(exec.startedAt),
-            status: exec.status,
+            status: this.normalizeStatus(exec.status),
             timestamp: exec.startedAt,
           }));
           return { data: activities, isMock: false };

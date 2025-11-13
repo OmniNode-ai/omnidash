@@ -73,7 +73,7 @@ export const executionSchema = z.object({
   actionName: z.string().optional(),
   agentName: z.string().optional(),
   agentId: z.string().optional(),
-  status: z.string(),
+  status: z.enum(['completed', 'executing', 'failed', 'pending']),
   startedAt: z.string(),
 });
 
