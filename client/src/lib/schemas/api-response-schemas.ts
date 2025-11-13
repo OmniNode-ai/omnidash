@@ -62,8 +62,19 @@ export const agentMetricsApiSchema = z.object({
   totalRequests: z.number().min(0),
   avgRoutingTime: z.number().min(0),
   successRate: z.number().optional(), // Can be decimal (0-1) or percentage (0-100)
-  avgConfidence: z.number().optional(), // Legacy field
+  avgConfidence: z.number().min(0).max(1).optional(), // Legacy field, must be normalized to 0-1
   avgTokens: z.number().optional(),
+});
+
+// Execution schema for /api/agents/executions endpoint
+export const executionSchema = z.object({
+  id: z.string(),
+  query: z.string().optional(),
+  actionName: z.string().optional(),
+  agentName: z.string().optional(),
+  agentId: z.string().optional(),
+  status: z.string(),
+  startedAt: z.string(),
 });
 
 // ===========================
@@ -328,6 +339,7 @@ export type HealthStatus = z.infer<typeof healthStatusSchema>;
 export type ChartDataPoint = z.infer<typeof chartDataPointSchema>;
 export type OperationStatus = z.infer<typeof operationStatusSchema>;
 export type AgentMetricsApi = z.infer<typeof agentMetricsApiSchema>;
+export type Execution = z.infer<typeof executionSchema>;
 
 export type DiscoveredPattern = z.infer<typeof discoveredPatternSchema>;
 export type PatternSummary = z.infer<typeof patternSummarySchema>;

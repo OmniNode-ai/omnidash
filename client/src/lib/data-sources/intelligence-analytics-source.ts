@@ -5,8 +5,11 @@ import {
   agentMetricsApiSchema,
   recentActionSchema,
   savingsMetricsSchema,
+  executionSchema,
   parseArrayResponse,
   safeParseResponse,
+  type Execution,
+  type AgentMetricsApi,
 } from '../schemas/api-response-schemas';
 
 // Re-export for external consumers
@@ -79,7 +82,7 @@ class IntelligenceAnalyticsDataSource {
           // Detect format: check all non-zero samples to determine if values are decimal (0-1) or percentage (0-100)
           // Ignore zeros as they don't indicate format (0% = 0.0 in both formats)
           const nonZeroSamples = agents
-            .map(a => {
+            .map((a: AgentMetricsApi) => {
               const rate = fallbackChain(
                 'successRate',
                 { id: a.agent || 'unknown', context: 'intelligence-metrics-format-detection' },
@@ -197,9 +200,11 @@ class IntelligenceAnalyticsDataSource {
     try {
       const response = await fetch(`/api/agents/executions?limit=${limit}`);
       if (response.ok) {
-        const executions = await response.json();
-        if (Array.isArray(executions) && executions.length > 0) {
-          const activities: RecentActivity[] = executions.map((exec: any) => ({
+        const rawExecutions = await response.json();
+        // Validate API response with Zod schema
+        const executions = parseArrayResponse(executionSchema, rawExecutions, 'recent-activity-executions');
+        if (executions.length > 0) {
+          const activities: RecentActivity[] = executions.map((exec: Execution) => ({
             action: fallbackChain(
               'query',
               { id: exec.id, context: 'executions-action' },
@@ -307,7 +312,7 @@ class IntelligenceAnalyticsDataSource {
           // Detect format for success rate: check all non-zero samples to determine if values are decimal (0-1) or percentage (0-100)
           // Ignore zeros as they don't indicate format (0% = 0.0 in both formats)
           const nonZeroSamples = agents
-            .map((a: any) => {
+            .map((a: AgentMetricsApi) => {
               const rate = fallbackChain(
                 'successRate',
                 { id: a.agent || 'unknown', context: 'agent-performance-format-detection' },
@@ -328,7 +333,7 @@ class IntelligenceAnalyticsDataSource {
             ? nonZeroSamples.every(v => v <= 1)
             : false;
 
-          const performance: AgentPerformance[] = agents.map((agent: any) => {
+          const performance: AgentPerformance[] = agents.map((agent: AgentMetricsApi) => {
             const rawSuccessRate = fallbackChain(
               'successRate',
               { id: agent.agent || 'unknown', context: 'agent-performance-success-rate' },
