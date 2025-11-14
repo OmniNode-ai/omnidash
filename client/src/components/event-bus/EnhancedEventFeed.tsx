@@ -90,7 +90,9 @@ export function EnhancedEventFeed({
               {groupedByCorrelation && correlationId !== 'ungrouped' && (
                 <div className="flex items-center gap-2 px-2 py-1 bg-muted/50 rounded text-xs">
                   <Link2 className="w-3 h-3" />
-                  <span className="font-mono">Correlation: {correlationId.slice(0, 16)}...</span>
+                  <span className="font-mono">
+                    Correlation: {correlationId.length > 16 ? `${correlationId.slice(0, 16)}...` : correlationId}
+                  </span>
                   <Badge variant="secondary" className="ml-auto">
                     {groupEvents.length} events
                   </Badge>
@@ -137,7 +139,7 @@ export function EnhancedEventFeed({
                         <EventTypeBadge eventType={event.event_type} />
                         {event.causation_id && (
                           <Badge variant="outline" className="text-xs font-mono">
-                            Caused by: {event.causation_id.slice(0, 8)}...
+                            Caused by: {event.causation_id.length > 8 ? `${event.causation_id.slice(0, 8)}...` : event.causation_id}
                           </Badge>
                         )}
                       </div>

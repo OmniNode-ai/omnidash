@@ -87,8 +87,7 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
       filters.tenant_id = tenantId;
     }
     if (source) {
-      // Note: source filtering would need to be added to the API
-      // For now, we'll just pass it in the filters object
+      filters.source = source;
     }
 
     return filters;
@@ -106,14 +105,17 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
     setTenantId('');
     setSource('');
     setTimeRange('24h');
+    // Compute default time range inline to avoid stale closure
+    const now = new Date();
+    const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     onFilterChange({
-      start_time: timeRangeDates.start,
-      end_time: timeRangeDates.end,
+      start_time: start,
+      end_time: now,
       limit: 100,
       order_by: 'timestamp',
       order_direction: 'desc',
     });
-  }, [onFilterChange, timeRangeDates]);
+  }, [onFilterChange]);
 
   // Update filters when inputs change
   useEffect(() => {
@@ -144,7 +146,6 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
           <label htmlFor="event-type-filter" className="text-xs text-muted-foreground">Event Type</label>
           <Select value={eventTypeFilter || 'all'} onValueChange={(value) => {
             setEventTypeFilter(value === 'all' ? '' : value);
-            setTimeout(handleFilterChange, 0);
           }}>
             <SelectTrigger id="event-type-filter">
               <SelectValue placeholder="All types" />
@@ -169,7 +170,6 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
             value={correlationId}
             onChange={(e) => {
               setCorrelationId(e.target.value);
-              setTimeout(handleFilterChange, 0);
             }}
             className="font-mono text-xs"
           />
@@ -180,7 +180,6 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
           <label htmlFor="time-range-filter" className="text-xs text-muted-foreground">Time Range</label>
           <Select value={timeRange} onValueChange={(value) => {
             setTimeRange(value);
-            setTimeout(handleFilterChange, 0);
           }}>
             <SelectTrigger id="time-range-filter">
               <SelectValue />
@@ -221,7 +220,6 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
               value={tenantId}
               onChange={(e) => {
                 setTenantId(e.target.value);
-                setTimeout(handleFilterChange, 0);
               }}
               className="font-mono text-xs"
             />
@@ -235,7 +233,6 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
               value={source}
               onChange={(e) => {
                 setSource(e.target.value);
-                setTimeout(handleFilterChange, 0);
               }}
               className="font-mono text-xs"
             />
@@ -253,7 +250,6 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
               <button
                 onClick={() => {
                   setEventTypeFilter('');
-                  setTimeout(handleFilterChange, 0);
                 }}
                 className="ml-1 hover:text-destructive"
               >
@@ -263,11 +259,10 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
           )}
           {correlationId && (
             <Badge variant="secondary" className="text-xs">
-              Correlation: {correlationId.slice(0, 8)}...
+              Correlation: {correlationId.length > 16 ? `${correlationId.slice(0, 16)}...` : correlationId}
               <button
                 onClick={() => {
                   setCorrelationId('');
-                  setTimeout(handleFilterChange, 0);
                 }}
                 className="ml-1 hover:text-destructive"
               >
@@ -281,7 +276,6 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
               <button
                 onClick={() => {
                   setTenantId('');
-                  setTimeout(handleFilterChange, 0);
                 }}
                 className="ml-1 hover:text-destructive"
               >
@@ -295,7 +289,6 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
               <button
                 onClick={() => {
                   setSource('');
-                  setTimeout(handleFilterChange, 0);
                 }}
                 className="ml-1 hover:text-destructive"
               >

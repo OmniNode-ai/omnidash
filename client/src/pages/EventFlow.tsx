@@ -157,14 +157,16 @@ export default function EventFlow() {
     events.forEach(e => {
       typeCounts.set(e.event_type, (typeCounts.get(e.event_type) || 0) + 1);
     });
+    // Use effectiveTimeRange to match the actual query time window
+    const windowMs = effectiveTimeRange.end.getTime() - effectiveTimeRange.start.getTime();
     return {
       totalEvents: events.length,
       uniqueTypes: typeCounts.size,
-      eventsPerMinute: events.length / ((timeRangeDates.end.getTime() - timeRangeDates.start.getTime()) / 60000),
+      eventsPerMinute: windowMs > 0 ? events.length / (windowMs / 60000) : 0,
       avgProcessingTime: 0, // Not available from event bus
       topicCounts: typeCounts,
     };
-  }, [eventBusData, useEventBus, timeRangeDates]);
+  }, [eventBusData, useEventBus, effectiveTimeRange]);
 
   // Use metrics and chart data from data source
   const metrics = useMemo(() => {

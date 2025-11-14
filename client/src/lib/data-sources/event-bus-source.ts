@@ -35,6 +35,7 @@ export interface EventQueryOptions {
   tenant_id?: string;
   namespace?: string;
   correlation_id?: string;
+  source?: string;
   start_time?: Date;
   end_time?: Date;
   limit?: number;
@@ -91,6 +92,9 @@ class EventBusSource {
       }
       if (options.correlation_id) {
         params.append('correlation_id', options.correlation_id);
+      }
+      if (options.source) {
+        params.append('source', options.source);
       }
       if (options.start_time) {
         // Validate date before appending

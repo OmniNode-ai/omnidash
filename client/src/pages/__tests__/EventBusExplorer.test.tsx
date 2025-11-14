@@ -13,6 +13,8 @@ vi.mock('@/lib/data-sources', () => ({
   eventBusSource: {
     queryEvents: vi.fn(),
     getEventChain: vi.fn(),
+    getStatistics: vi.fn(),
+    getStatus: vi.fn(),
   },
 }));
 

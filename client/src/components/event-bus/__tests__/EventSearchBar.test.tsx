@@ -38,7 +38,7 @@ describe('EventSearchBar', () => {
     expect(screen.getByLabelText(/Tenant ID/)).toBeInTheDocument();
   });
 
-  it('should clear filters when clear button is clicked', async () => {
+  it('should disable clear button when no filters are active', async () => {
     const user = userEvent.setup();
     const onFilterChange = vi.fn();
     render(<EventSearchBar onFilterChange={onFilterChange} eventTypes={['type1']} />);

@@ -54,6 +54,7 @@ export interface EventQueryOptions {
   tenant_id?: string;
   namespace?: string;
   correlation_id?: string;
+  source?: string;
   start_time?: Date;
   end_time?: Date;
   limit?: number;
@@ -448,6 +449,10 @@ export class EventBusDataSource extends EventEmitter {
 
       if (options.correlation_id) {
         conditions.push(sql`correlation_id = ${options.correlation_id}`);
+      }
+
+      if (options.source) {
+        conditions.push(sql`source = ${options.source}`);
       }
 
       if (options.start_time) {

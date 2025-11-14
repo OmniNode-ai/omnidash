@@ -251,7 +251,17 @@ export function EventPayloadViewer({ payload, className }: EventPayloadViewerPro
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+      const jsonString = JSON.stringify(payload, null, 2);
+      // Check size before copying to prevent browser hang (limit to ~1MB)
+      if (jsonString.length > 1000000) {
+        toast({
+          variant: "destructive",
+          title: "Payload too large",
+          description: "This payload is too large to copy. Consider downloading it instead.",
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(jsonString);
       setCopied(true);
       // Clear any existing timeout before setting a new one
       if (timeoutRef.current) {
