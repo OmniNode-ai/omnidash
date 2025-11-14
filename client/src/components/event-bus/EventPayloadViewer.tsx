@@ -22,21 +22,25 @@ export interface EventPayloadViewerProps {
 const MAX_DEPTH = 10;
 const MAX_STRING_LENGTH = 10000;
 
-function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: { 
+function JsonViewer({ 
+  data, 
+  searchTerm = '', 
+  level = 0, 
+  path = '',
+  collapsed,
+  onToggleCollapse
+}: { 
   data: any; 
   searchTerm?: string; 
   level?: number;
   path?: string;
+  collapsed: Record<string, boolean>;
+  onToggleCollapse: (key: string) => void;
 }) {
   // Prevent stack overflow from deeply nested objects
   if (level > MAX_DEPTH) {
     return <span className="text-yellow-600">[Max depth reached]</span>;
   }
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-
-  const toggleCollapse = (key: string) => {
-    setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
-  };
 
   const matchesSearch = (value: any): boolean => {
     if (!searchTerm) return true;
@@ -74,7 +78,7 @@ function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: {
     return (
       <div className="ml-4">
         <button
-          onClick={() => toggleCollapse(key)}
+          onClick={() => onToggleCollapse(key)}
           aria-expanded={!isCollapsed}
           aria-label={isCollapsed ? 'Expand array' : 'Collapse array'}
           className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
@@ -93,7 +97,14 @@ function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: {
             {data.slice(0, 100).map((item, index) => (
               <div key={index} className="flex items-start gap-2">
                 <span className="text-gray-500">{index}:</span>
-                <JsonViewer data={item} searchTerm={searchTerm} level={level + 1} path={`${path}[${index}]`} />
+                <JsonViewer 
+                  data={item} 
+                  searchTerm={searchTerm} 
+                  level={level + 1} 
+                  path={`${path}[${index}]`}
+                  collapsed={collapsed}
+                  onToggleCollapse={onToggleCollapse}
+                />
               </div>
             ))}
             {data.length > 100 && (
@@ -115,7 +126,7 @@ function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: {
     return (
       <div className="ml-4">
         <button
-          onClick={() => toggleCollapse(key)}
+          onClick={() => onToggleCollapse(key)}
           aria-expanded={!isCollapsed}
           aria-label={isCollapsed ? 'Expand object' : 'Collapse object'}
           className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
@@ -131,13 +142,25 @@ function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: {
         </button>
         {!isCollapsed && (
           <div className="ml-4 space-y-1">
-            {entries.map(([key, value]) => (
+            {entries.slice(0, 100).map(([key, value]) => (
               <div key={key} className="flex items-start gap-2">
                 <span className="text-orange-600">"{key}"</span>
                 <span className="text-gray-500">:</span>
-                <JsonViewer data={value} searchTerm={searchTerm} level={level + 1} path={`${path}.${key}`} />
+                <JsonViewer 
+                  data={value} 
+                  searchTerm={searchTerm} 
+                  level={level + 1} 
+                  path={`${path}.${key}`}
+                  collapsed={collapsed}
+                  onToggleCollapse={onToggleCollapse}
+                />
               </div>
             ))}
+            {entries.length > 100 && (
+              <div className="text-yellow-600 text-sm">
+                ... [showing first 100 keys of {entries.length} total]
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -150,7 +173,12 @@ function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: {
 export function EventPayloadViewer({ payload, className }: EventPayloadViewerProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [copied, setCopied] = useState(false);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
+
+  const handleToggleCollapse = (key: string) => {
+    setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const handleCopy = async () => {
     try {
@@ -206,7 +234,12 @@ export function EventPayloadViewer({ payload, className }: EventPayloadViewerPro
       <CardContent>
         <ScrollArea className="h-96 w-full">
           <pre className="text-xs font-mono">
-            <JsonViewer data={payload} searchTerm={searchTerm} />
+            <JsonViewer 
+              data={payload} 
+              searchTerm={searchTerm}
+              collapsed={collapsed}
+              onToggleCollapse={handleToggleCollapse}
+            />
           </pre>
         </ScrollArea>
       </CardContent>
