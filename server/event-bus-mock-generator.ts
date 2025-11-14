@@ -69,18 +69,18 @@ export class EventBusMockGenerator {
     initialChains?: number;
   } = {}): Promise<void> {
     // Prevent multiple overlapping start() calls
+    // Set isRunning immediately after check to prevent race conditions
     if (this.isRunning) {
       console.log('[EventBusMockGenerator] Already running; ignoring start()');
       return;
     }
+    this.isRunning = true; // Set immediately to prevent race condition
 
     const {
       continuous = true,
       interval_ms = 5000, // Generate events every 5 seconds
       initialChains = 20,
     } = options;
-
-    this.isRunning = true;
 
     // Generate initial event chains with error handling
     console.log(`[EventBusMockGenerator] Generating ${initialChains} initial event chains...`);
