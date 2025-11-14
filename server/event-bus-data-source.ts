@@ -1,0 +1,651 @@
+/**
+ * Event Bus Data Source
+ * 
+ * Subscribes to all events from Kafka/Redpanda event bus and provides:
+ * 1. Event storage in PostgreSQL for historical queries
+ * 2. Real-time event streaming via WebSocket
+ * 3. Query APIs for data sources to consume events
+ * 4. Event transformation to normalized data source formats
+ * 
+ * Architecture:
+ * - Subscribes to all topics matching event catalog patterns
+ * - Normalizes event envelope structure
+ * - Stores events in PostgreSQL with event_type partitioning
+ * - Provides query methods for data sources
+ * - Emits events for WebSocket broadcasting
+ */
+
+import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
+import { EventEmitter } from 'events';
+import { intelligenceDb } from './storage';
+import { sql, SQL, inArray } from 'drizzle-orm';
+
+/**
+ * Normalized event envelope structure matching event catalog
+ */
+export interface EventBusEvent {
+  // Envelope fields (frozen per EVENT_BUS_INTEGRATION_GUIDE.md)
+  event_type: string;
+  event_id: string;
+  timestamp: string;
+  tenant_id: string;
+  namespace: string;
+  source: string;
+  correlation_id?: string;
+  causation_id?: string;
+  schema_ref: string;
+  payload: Record<string, any>;
+  
+  // Kafka metadata
+  topic: string;
+  partition: number;
+  offset: string;
+  
+  // Processing metadata
+  processed_at: Date;
+  stored_at?: Date;
+}
+
+/**
+ * Event query options for data sources
+ */
+export interface EventQueryOptions {
+  event_types?: string[];
+  tenant_id?: string;
+  namespace?: string;
+  correlation_id?: string;
+  start_time?: Date;
+  end_time?: Date;
+  limit?: number;
+  offset?: number;
+  order_by?: 'timestamp' | 'processed_at';
+  order_direction?: 'asc' | 'desc';
+}
+
+/**
+ * Event aggregation options
+ */
+export interface EventAggregationOptions {
+  event_types: string[];
+  group_by?: string[];
+  aggregate?: {
+    field: string;
+    function: 'count' | 'sum' | 'avg' | 'min' | 'max';
+  };
+  start_time?: Date;
+  end_time?: Date;
+  tenant_id?: string;
+}
+
+/**
+ * Event statistics
+ */
+export interface EventStatistics {
+  total_events: number;
+  events_by_type: Record<string, number>;
+  events_by_tenant: Record<string, number>;
+  events_per_minute: number;
+  oldest_event: Date | null;
+  newest_event: Date | null;
+}
+
+/**
+ * EventBusDataSource - Main class for event bus integration
+ * 
+ * Events emitted:
+ * - 'event': When new event is received (EventBusEvent)
+ * - 'event:stored': When event is stored in database (EventBusEvent)
+ * - 'error': When error occurs (Error)
+ * - 'connected': When consumer connects
+ * - 'disconnected': When consumer disconnects
+ */
+export class EventBusDataSource extends EventEmitter {
+  private kafka: Kafka;
+  private consumer: Consumer | null = null;
+  private isRunning = false;
+  private isConnected = false;
+  
+  // Event type patterns from event catalog
+  private readonly EVENT_PATTERNS = [
+    // Intelligence domain
+    /^[^.]+\.omninode\.intelligence\..*\.v\d+$/,
+    // Agent domain
+    /^[^.]+\.omninode\.agent\..*\.v\d+$/,
+    // Metadata domain
+    /^[^.]+\.omninode\.metadata\..*\.v\d+$/,
+    // Code generation domain
+    /^[^.]+\.omninode\.code\..*\.v\d+$/,
+    // Registry domain
+    /^[^.]+\.omninode\.node\..*\.v\d+$/,
+    /^[^.]+\.onex\..*\.v\d+$/,
+    // Database domain
+    /^[^.]+\.omninode\.database\..*\.v\d+$/,
+    // Consul domain
+    /^[^.]+\.omninode\.consul\..*\.v\d+$/,
+    // Vault domain
+    /^[^.]+\.omninode\.vault\..*\.v\d+$/,
+    // Bridge domain
+    /^[^.]+\.omninode\.bridge\..*\.v\d+$/,
+    // Service health domain
+    /^[^.]+\.omninode\.service\..*\.v\d+$/,
+    /^[^.]+\.omninode\.kafka\..*\.v\d+$/,
+    // Logging domain
+    /^[^.]+\.omninode\.logging\..*\.v\d+$/,
+    // Token economy (planned)
+    /^[^.]+\.omninode\.token\..*\.v\d+$/,
+    // Pattern distribution (planned)
+    /^[^.]+\.omninode\.pattern\..*\.v\d+$/,
+    // P2P distribution (planned)
+    /^[^.]+\.omninode\.p2p\..*\.v\d+$/,
+    // MetaContext (planned)
+    /^[^.]+\.omninode\.metacontext\..*\.v\d+$/,
+  ];
+
+  constructor() {
+    super();
+    
+    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092';
+    
+    this.kafka = new Kafka({
+      brokers: brokers.split(','),
+      clientId: 'omnidash-event-bus-data-source',
+    });
+    
+    this.consumer = this.kafka.consumer({
+      groupId: 'omnidash-event-bus-datasource-v1',
+    });
+  }
+
+  /**
+   * Validate Kafka broker connection
+   */
+  async validateConnection(): Promise<boolean> {
+    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+    
+    if (!brokers) {
+      console.warn('[EventBusDataSource] KAFKA_BROKERS not configured');
+      return false;
+    }
+
+    try {
+      const admin = this.kafka.admin();
+      await admin.connect();
+      const topics = await admin.listTopics();
+      await admin.disconnect();
+      
+      console.log(`[EventBusDataSource] Kafka broker reachable: ${brokers} (${topics.length} topics)`);
+      return true;
+    } catch (error) {
+      console.error(`[EventBusDataSource] Kafka broker unreachable: ${brokers}`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Initialize database schema for event storage
+   */
+  async initializeSchema(): Promise<void> {
+    try {
+      // Create events table if it doesn't exist
+      // Note: "offset" is a reserved keyword in PostgreSQL, so we quote it
+      await intelligenceDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS event_bus_events (
+          id BIGSERIAL PRIMARY KEY,
+          event_type VARCHAR(255) NOT NULL,
+          event_id VARCHAR(255) NOT NULL UNIQUE,
+          timestamp TIMESTAMPTZ NOT NULL,
+          tenant_id VARCHAR(255) NOT NULL,
+          namespace VARCHAR(255),
+          source VARCHAR(255) NOT NULL,
+          correlation_id VARCHAR(255),
+          causation_id VARCHAR(255),
+          schema_ref VARCHAR(500),
+          payload JSONB NOT NULL,
+          topic VARCHAR(255) NOT NULL,
+          partition INTEGER NOT NULL,
+          "offset" VARCHAR(255) NOT NULL,
+          processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          stored_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+
+      // Create indexes for common queries
+      await intelligenceDb.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_event_bus_events_event_type 
+        ON event_bus_events(event_type)
+      `);
+
+      await intelligenceDb.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_event_bus_events_tenant_id 
+        ON event_bus_events(tenant_id)
+      `);
+
+      await intelligenceDb.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_event_bus_events_correlation_id 
+        ON event_bus_events(correlation_id)
+      `);
+
+      await intelligenceDb.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_event_bus_events_timestamp 
+        ON event_bus_events(timestamp)
+      `);
+
+      await intelligenceDb.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_event_bus_events_namespace 
+        ON event_bus_events(namespace)
+      `);
+
+      // Composite index for common query patterns
+      await intelligenceDb.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_event_bus_events_type_tenant_time 
+        ON event_bus_events(event_type, tenant_id, timestamp)
+      `);
+
+      console.log('[EventBusDataSource] Database schema initialized');
+    } catch (error) {
+      console.error('[EventBusDataSource] Error initializing schema:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Start consuming events from Kafka
+   */
+  async start(): Promise<void> {
+    if (this.isRunning) {
+      console.warn('[EventBusDataSource] Already running');
+      return;
+    }
+
+    try {
+      await this.initializeSchema();
+      
+      if (!this.consumer) {
+        throw new Error('Consumer not initialized');
+      }
+
+      await this.consumer.connect();
+      this.isConnected = true;
+      this.emit('connected');
+
+      // Get all topics and filter by event patterns
+      const admin = this.kafka.admin();
+      await admin.connect();
+      const topics = await admin.listTopics();
+      await admin.disconnect();
+
+      // Filter out Kafka internal topics and filter topics that match event patterns
+      const internalTopics = ['__consumer_offsets', '__transaction_state', '__schema'];
+      const eventTopics = topics.filter(topic => {
+        // Skip Kafka internal topics
+        if (internalTopics.some(internal => topic.startsWith(internal))) {
+          return false;
+        }
+        // Extract event_type from topic (format: {tenant}.omninode.{domain}.v1)
+        // Or use topic name directly if it matches pattern
+        return this.EVENT_PATTERNS.some(pattern => pattern.test(topic));
+      });
+
+      if (eventTopics.length === 0) {
+        console.warn('[EventBusDataSource] No matching event topics found, subscribing to all non-internal topics');
+        // Subscribe to all non-internal topics as fallback
+        const nonInternalTopics = topics.filter(topic => 
+          !internalTopics.some(internal => topic.startsWith(internal))
+        );
+        await this.consumer.subscribe({ topics: nonInternalTopics, fromBeginning: false });
+      } else {
+        console.log(`[EventBusDataSource] Subscribing to ${eventTopics.length} event topics`);
+        await this.consumer.subscribe({ topics: eventTopics, fromBeginning: false });
+      }
+
+      // Start consuming messages
+      await this.consumer.run({
+        eachMessage: async (payload: EachMessagePayload) => {
+          await this.handleMessage(payload);
+        },
+      });
+
+      this.isRunning = true;
+      console.log('[EventBusDataSource] Started consuming events');
+    } catch (error) {
+      console.error('[EventBusDataSource] Error starting consumer:', error);
+      this.emit('error', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle incoming Kafka message
+   */
+  private async handleMessage(payload: EachMessagePayload): Promise<void> {
+    try {
+      const { topic, partition, message } = payload;
+      const offset = message.offset;
+
+      // Skip Kafka internal topics (they contain binary data, not JSON)
+      const internalTopics = ['__consumer_offsets', '__transaction_state', '__schema'];
+      if (internalTopics.some(internal => topic.startsWith(internal))) {
+        return; // Silently skip internal topics
+      }
+
+      // Parse message value (should be JSON event envelope)
+      let eventData: any;
+      try {
+        const messageValue = message.value?.toString() || '{}';
+        // Skip if message is empty or not valid UTF-8
+        if (!messageValue || messageValue.trim() === '') {
+          return;
+        }
+        eventData = JSON.parse(messageValue);
+      } catch (error) {
+        // Only log if it's not an internal topic (we already filtered those)
+        console.warn(`[EventBusDataSource] Error parsing message from ${topic}:${partition}:${offset} - skipping`);
+        return;
+      }
+
+      // Extract event_type from message (could be in payload or headers)
+      const eventType = eventData.event_type || 
+                       message.headers?.['x-event-type']?.toString() ||
+                       topic; // Fallback to topic name
+
+      // Normalize event envelope
+      const normalizedEvent: EventBusEvent = {
+        event_type: eventType,
+        event_id: eventData.event_id || `${topic}-${partition}-${offset}`,
+        timestamp: eventData.timestamp || new Date().toISOString(),
+        tenant_id: eventData.tenant_id || message.headers?.['x-tenant']?.toString() || 'default',
+        namespace: eventData.namespace || '',
+        source: eventData.source || message.headers?.['x-source']?.toString() || 'unknown',
+        correlation_id: eventData.correlation_id || message.headers?.['x-correlation-id']?.toString(),
+        causation_id: eventData.causation_id || message.headers?.['x-causation-id']?.toString(),
+        schema_ref: eventData.schema_ref || '',
+        payload: eventData.payload || eventData, // Use payload if exists, otherwise whole event
+        topic,
+        partition,
+        offset,
+        processed_at: new Date(),
+      };
+
+      // Emit event for real-time processing
+      this.emit('event', normalizedEvent);
+
+      // Store event in database
+      await this.storeEvent(normalizedEvent);
+
+      // Emit stored event
+      this.emit('event:stored', normalizedEvent);
+    } catch (error) {
+      console.error('[EventBusDataSource] Error handling message:', error);
+      this.emit('error', error);
+    }
+  }
+
+  /**
+   * Store event in PostgreSQL
+   * Public method to allow mock generators to inject events
+   */
+  async storeEvent(event: EventBusEvent): Promise<void> {
+    try {
+      await intelligenceDb.execute(sql`
+        INSERT INTO event_bus_events (
+          event_type, event_id, timestamp, tenant_id, namespace, source,
+          correlation_id, causation_id, schema_ref, payload,
+          topic, partition, "offset", processed_at, stored_at
+        ) VALUES (
+          ${event.event_type},
+          ${event.event_id},
+          ${event.timestamp}::timestamptz,
+          ${event.tenant_id},
+          ${event.namespace || null},
+          ${event.source},
+          ${event.correlation_id || null},
+          ${event.causation_id || null},
+          ${event.schema_ref || null},
+          ${JSON.stringify(event.payload)}::jsonb,
+          ${event.topic},
+          ${event.partition},
+          ${event.offset},
+          ${event.processed_at}::timestamptz,
+          NOW()
+        )
+        ON CONFLICT (event_id) DO NOTHING
+      `);
+    } catch (error) {
+      console.error('[EventBusDataSource] Error storing event:', error);
+      // Don't throw - continue processing even if storage fails
+    }
+  }
+
+  /**
+   * Query events from database
+   */
+  async queryEvents(options: EventQueryOptions = {}): Promise<EventBusEvent[]> {
+    try {
+      // Build WHERE conditions
+      const conditions: SQL[] = [];
+      
+      if (options.event_types && options.event_types.length > 0) {
+        // Build OR conditions for event types
+        // This is safer than using ANY() with array parameterization
+        const typeConditions = options.event_types.map(type => sql`event_type = ${type}`);
+        if (typeConditions.length === 1) {
+          conditions.push(typeConditions[0]);
+        } else {
+          // Combine with OR: (event_type = $1 OR event_type = $2 OR ...)
+          const combined = typeConditions.reduce((acc, condition, index) => {
+            if (index === 0) return condition;
+            return sql`${acc} OR ${condition}`;
+          });
+          conditions.push(sql`(${combined})`);
+        }
+      }
+
+      if (options.tenant_id) {
+        conditions.push(sql`tenant_id = ${options.tenant_id}`);
+      }
+
+      if (options.namespace) {
+        conditions.push(sql`namespace = ${options.namespace}`);
+      }
+
+      if (options.correlation_id) {
+        conditions.push(sql`correlation_id = ${options.correlation_id}`);
+      }
+
+      if (options.start_time) {
+        conditions.push(sql`timestamp >= ${options.start_time}::timestamptz`);
+      }
+
+      if (options.end_time) {
+        conditions.push(sql`timestamp <= ${options.end_time}::timestamptz`);
+      }
+
+      // Build WHERE clause
+      let whereClause: SQL;
+      if (conditions.length > 0) {
+        whereClause = sql`WHERE ${conditions.reduce((acc, condition, index) => {
+          if (index === 0) return condition;
+          return sql`${acc} AND ${condition}`;
+        })}`;
+      } else {
+        whereClause = sql``;
+      }
+
+      // Build ORDER BY clause
+      const orderBy = options.order_by || 'timestamp';
+      const orderDirection = options.order_direction || 'desc';
+      const orderByClause = sql`ORDER BY ${sql.raw(orderBy)} ${sql.raw(orderDirection.toUpperCase())}`;
+
+      // Build LIMIT/OFFSET
+      const limitClause = options.limit ? sql`LIMIT ${options.limit}` : sql``;
+      const offsetClause = options.offset ? sql`OFFSET ${options.offset}` : sql``;
+
+      // Build final query
+      // Note: Must quote "offset" column name as it's a reserved keyword
+      const query = sql`
+        SELECT 
+          id, event_type, event_id, timestamp, tenant_id, namespace, source,
+          correlation_id, causation_id, schema_ref, payload,
+          topic, partition, "offset" as offset, processed_at, stored_at, created_at
+        FROM event_bus_events
+        ${whereClause}
+        ${orderByClause}
+        ${limitClause}
+        ${offsetClause}
+      `;
+
+      const result = await intelligenceDb.execute(query);
+      
+      return result.rows.map((row: any) => ({
+        event_type: row.event_type,
+        event_id: row.event_id,
+        timestamp: row.timestamp,
+        tenant_id: row.tenant_id,
+        namespace: row.namespace,
+        source: row.source,
+        correlation_id: row.correlation_id,
+        causation_id: row.causation_id,
+        schema_ref: row.schema_ref,
+        payload: row.payload,
+        topic: row.topic,
+        partition: row.partition,
+        offset: row.offset,
+        processed_at: row.processed_at,
+        stored_at: row.stored_at,
+      }));
+    } catch (error) {
+      console.error('[EventBusDataSource] Error querying events:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get event statistics
+   */
+  async getStatistics(timeRange?: { start: Date; end: Date }): Promise<EventStatistics> {
+    try {
+      const timeFilter = timeRange 
+        ? sql`WHERE timestamp >= ${timeRange.start}::timestamptz AND timestamp <= ${timeRange.end}::timestamptz`
+        : sql``;
+
+      // Get total events and time range
+      const totalQuery = sql`
+        SELECT 
+          COUNT(*) as total_events,
+          MIN(timestamp) as oldest_event,
+          MAX(timestamp) as newest_event
+        FROM event_bus_events
+        ${timeFilter}
+      `;
+
+      // Get events by type
+      const typeQuery = sql`
+        SELECT 
+          event_type,
+          COUNT(*) as count
+        FROM event_bus_events
+        ${timeFilter}
+        GROUP BY event_type
+      `;
+
+      // Get events by tenant
+      const tenantQuery = sql`
+        SELECT 
+          tenant_id,
+          COUNT(*) as count
+        FROM event_bus_events
+        ${timeFilter}
+        GROUP BY tenant_id
+      `;
+
+      const [totalResult, typeResult, tenantResult] = await Promise.all([
+        intelligenceDb.execute(totalQuery),
+        intelligenceDb.execute(typeQuery),
+        intelligenceDb.execute(tenantQuery),
+      ]);
+
+      const totalRow = totalResult.rows[0];
+      const eventsByType: Record<string, number> = {};
+      const eventsByTenant: Record<string, number> = {};
+
+      typeResult.rows.forEach((row: any) => {
+        eventsByType[row.event_type] = parseInt(row.count) || 0;
+      });
+
+      tenantResult.rows.forEach((row: any) => {
+        eventsByTenant[row.tenant_id] = parseInt(row.count) || 0;
+      });
+
+      // Calculate events per minute
+      let eventsPerMinute = 0;
+      if (totalRow.oldest_event && totalRow.newest_event) {
+        const timeDiff = new Date(totalRow.newest_event).getTime() - new Date(totalRow.oldest_event).getTime();
+        const minutes = timeDiff / (1000 * 60);
+        if (minutes > 0) {
+          eventsPerMinute = parseInt(totalRow.total_events) / minutes;
+        }
+      }
+
+      return {
+        total_events: parseInt(totalRow.total_events) || 0,
+        events_by_type: eventsByType,
+        events_by_tenant: eventsByTenant,
+        events_per_minute: eventsPerMinute,
+        oldest_event: totalRow.oldest_event ? new Date(totalRow.oldest_event) : null,
+        newest_event: totalRow.newest_event ? new Date(totalRow.newest_event) : null,
+      };
+    } catch (error) {
+      console.error('[EventBusDataSource] Error getting statistics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Stop consuming events
+   */
+  async stop(): Promise<void> {
+    if (!this.isRunning) {
+      return;
+    }
+
+    try {
+      if (this.consumer) {
+        await this.consumer.disconnect();
+      }
+      this.isRunning = false;
+      this.isConnected = false;
+      this.emit('disconnected');
+      console.log('[EventBusDataSource] Stopped');
+    } catch (error) {
+      console.error('[EventBusDataSource] Error stopping:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if data source is running
+   */
+  isActive(): boolean {
+    return this.isRunning && this.isConnected;
+  }
+
+  /**
+   * Inject event directly (for mock generators)
+   * Bypasses Kafka and stores event directly
+   */
+  async injectEvent(event: EventBusEvent): Promise<void> {
+    // Emit for real-time processing
+    this.emit('event', event);
+    
+    // Store in database
+    await this.storeEvent(event);
+    
+    // Emit stored event
+    this.emit('event:stored', event);
+  }
+}
+
+// Export singleton instance
+export const eventBusDataSource = new EventBusDataSource();
+
