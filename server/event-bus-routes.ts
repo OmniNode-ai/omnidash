@@ -30,8 +30,17 @@ const parseIntSafe = (value: string | undefined, defaultValue: number, max?: num
 
 router.get('/events', async (req, res) => {
   try {
+    // Parse and validate event_types array (limit to 100 to prevent DoS)
+    let eventTypes: string[] | undefined;
+    if (req.query.event_types) {
+      eventTypes = (req.query.event_types as string).split(',').slice(0, 100); // Max 100 event types
+      if (eventTypes.length === 0) {
+        eventTypes = undefined;
+      }
+    }
+    
     const options: EventQueryOptions = {
-      event_types: req.query.event_types ? (req.query.event_types as string).split(',') : undefined,
+      event_types: eventTypes,
       tenant_id: req.query.tenant_id as string | undefined,
       namespace: req.query.namespace as string | undefined,
       correlation_id: req.query.correlation_id as string | undefined,

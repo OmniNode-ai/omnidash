@@ -470,15 +470,26 @@ export class EventBusDataSource extends EventEmitter {
       }
 
       // Build ORDER BY clause with whitelist validation to prevent SQL injection
-      const validOrderBy = ['timestamp', 'processed_at', 'stored_at', 'created_at'];
-      const validDirection = ['asc', 'desc'];
-      const safeOrderBy = validOrderBy.includes(options.order_by || 'timestamp') 
-        ? (options.order_by || 'timestamp') 
+      // Use conditional SQL fragments instead of sql.raw() for extra safety
+      const validOrderBy = ['timestamp', 'processed_at', 'stored_at', 'created_at'] as const;
+      const validDirection = ['asc', 'desc'] as const;
+      const safeOrderBy = validOrderBy.includes((options.order_by || 'timestamp') as typeof validOrderBy[number])
+        ? (options.order_by || 'timestamp') as typeof validOrderBy[number]
         : 'timestamp';
-      const safeDirection = validDirection.includes((options.order_direction || 'desc').toLowerCase())
-        ? (options.order_direction || 'desc').toLowerCase()
+      const safeDirection = validDirection.includes((options.order_direction || 'desc').toLowerCase() as typeof validDirection[number])
+        ? (options.order_direction || 'desc').toLowerCase() as typeof validDirection[number]
         : 'desc';
-      const orderByClause = sql`ORDER BY ${sql.raw(safeOrderBy)} ${sql.raw(safeDirection.toUpperCase())}`;
+      
+      // Build ORDER BY using conditional fragments (safer than sql.raw)
+      const orderByClause = safeDirection === 'asc'
+        ? (safeOrderBy === 'timestamp' ? sql`ORDER BY timestamp ASC`
+          : safeOrderBy === 'processed_at' ? sql`ORDER BY processed_at ASC`
+          : safeOrderBy === 'stored_at' ? sql`ORDER BY stored_at ASC`
+          : sql`ORDER BY created_at ASC`)
+        : (safeOrderBy === 'timestamp' ? sql`ORDER BY timestamp DESC`
+          : safeOrderBy === 'processed_at' ? sql`ORDER BY processed_at DESC`
+          : safeOrderBy === 'stored_at' ? sql`ORDER BY stored_at DESC`
+          : sql`ORDER BY created_at DESC`);
 
       // Build LIMIT/OFFSET
       const limitClause = options.limit ? sql`LIMIT ${options.limit}` : sql``;

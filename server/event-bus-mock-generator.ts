@@ -14,27 +14,20 @@
 import { randomUUID } from 'crypto';
 import { eventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 
-interface EventChain {
-  correlation_id: string;
-  tenant_id: string;
-  namespace: string;
-  source: string;
-  events: Array<{
-    event_type: string;
-    delay_ms: number; // Delay before this event in the chain
-    payload: Record<string, any>;
-  }>;
-}
-
 /**
  * Mock Event Generator for Event Bus
  */
 export class EventBusMockGenerator {
   private intervalId?: NodeJS.Timeout;
   private isRunning = false;
-  private tenantId = 'default-tenant';
-  private namespace = 'development';
+  private tenantId: string;
+  private namespace: string;
   private offsetCounter = 0; // Sequential offset counter to match Kafka semantics
+
+  constructor(options: { tenantId?: string; namespace?: string } = {}) {
+    this.tenantId = options.tenantId ?? 'default-tenant';
+    this.namespace = options.namespace ?? 'development';
+  }
 
   // Agent configurations
   private agents = [
