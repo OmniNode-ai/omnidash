@@ -34,6 +34,7 @@ jobs:
 
       - name: Run unit tests
         run: npm run test -- --run
+        timeout-minutes: 10
 
       - name: Upload coverage reports
         if: always()
