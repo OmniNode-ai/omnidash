@@ -10,8 +10,13 @@ import { useQuery } from "@tanstack/react-query";
 import { MockBadge } from "@/components/MockBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useState, useMemo } from "react";
-import { eventFlowSource } from "@/lib/data-sources";
+import { eventFlowSource, eventBusSource, type EventBusEvent } from "@/lib/data-sources";
 import { POLLING_INTERVAL_MEDIUM } from "@/lib/constants/query-config";
+import { EventStatisticsPanel } from "@/components/event-bus/EventStatisticsPanel";
+import { EventSearchBar } from "@/components/event-bus/EventSearchBar";
+import { EventTypeBadge } from "@/components/event-bus/EventTypeBadge";
+import { EventBusHealthIndicator } from "@/components/event-bus/EventBusHealthIndicator";
+import type { EventQueryOptions } from "@/lib/data-sources";
 
 // Event stream interface matching omniarchon endpoint
 interface EventStreamItem {
@@ -30,22 +35,93 @@ export default function EventFlow() {
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
+  const [useEventBus, setUseEventBus] = useState(true); // Toggle between old and new API
+  const [eventBusFilters, setEventBusFilters] = useState<EventQueryOptions>({
+    limit: 100,
+    order_by: 'timestamp',
+    order_direction: 'desc',
+  });
 
   const handleTimeRangeChange = (value: string) => {
     setTimeRange(value);
     localStorage.setItem('dashboard-timerange', value);
   };
 
-  // Fetch events with TanStack Query and polling using data source
-  const { data: eventFlowData, isLoading, isError, error, dataUpdatedAt } = useQuery({
+  // Calculate time range for event bus
+  const timeRangeDates = useMemo(() => {
+    const now = new Date();
+    let start: Date;
+    
+    switch (timeRange) {
+      case '1h':
+        start = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case '24h':
+        start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+    
+    return { start, end: now };
+  }, [timeRange]);
+
+  // Fetch events from event bus (new API)
+  const { data: eventBusData, isLoading: isLoadingBus, isError: isErrorBus, error: errorBus, dataUpdatedAt: busUpdatedAt } = useQuery({
+    queryKey: ['event-bus-events', { ...eventBusFilters, ...timeRangeDates }],
+    queryFn: () => eventBusSource.queryEvents({
+      ...eventBusFilters,
+      start_time: timeRangeDates.start,
+      end_time: timeRangeDates.end,
+    }),
+    refetchInterval: POLLING_INTERVAL_MEDIUM,
+    refetchOnWindowFocus: true,
+    enabled: useEventBus,
+  });
+
+  // Fetch events with TanStack Query and polling using old data source (fallback)
+  const { data: eventFlowData, isLoading: isLoadingOld, isError: isErrorOld, error: errorOld, dataUpdatedAt: oldUpdatedAt } = useQuery({
     queryKey: ['events', 'stream'],
     queryFn: () => eventFlowSource.fetchEvents(100),
     refetchInterval: POLLING_INTERVAL_MEDIUM,
     refetchOnWindowFocus: true,
+    enabled: !useEventBus,
   });
 
+  const isLoading = useEventBus ? isLoadingBus : isLoadingOld;
+  const isError = useEventBus ? isErrorBus : isErrorOld;
+  const error = useEventBus ? errorBus : errorOld;
+  const dataUpdatedAt = useEventBus ? busUpdatedAt : oldUpdatedAt;
+
+  // Transform event bus events to expected format
+  const eventBusEvents: EventStreamItem[] = useMemo(() => {
+    if (!eventBusData?.events) return [];
+    return eventBusData.events.map((e: EventBusEvent) => ({
+      id: e.event_id,
+      type: e.event_type,
+      timestamp: e.timestamp,
+      data: {
+        ...e.payload,
+        correlationId: e.correlation_id,
+        causationId: e.causation_id,
+        source: e.source,
+        tenant_id: e.tenant_id,
+        namespace: e.namespace,
+      },
+    }));
+  }, [eventBusData]);
+
   // Transform to expected format
-  const data: EventStreamResponse = eventFlowData ? {
+  const data: EventStreamResponse = useEventBus ? {
+    events: eventBusEvents,
+    total: eventBusEvents.length,
+  } : (eventFlowData ? {
     events: eventFlowData.events.map(e => ({
       id: e.id,
       type: e.type,
@@ -53,10 +129,30 @@ export default function EventFlow() {
       data: e.data,
     })),
     total: eventFlowData.events.length,
-  } : { events: [], total: 0 };
+  } : { events: [], total: 0 });
+
+  // Calculate metrics from event bus data
+  const eventBusMetrics = useMemo(() => {
+    if (!eventBusData?.events || !useEventBus) return null;
+    const events = eventBusData.events;
+    const typeCounts = new Map<string, number>();
+    events.forEach(e => {
+      typeCounts.set(e.event_type, (typeCounts.get(e.event_type) || 0) + 1);
+    });
+    return {
+      totalEvents: events.length,
+      uniqueTypes: typeCounts.size,
+      eventsPerMinute: events.length / ((timeRangeDates.end.getTime() - timeRangeDates.start.getTime()) / 60000),
+      avgProcessingTime: 0, // Not available from event bus
+      topicCounts: typeCounts,
+    };
+  }, [eventBusData, useEventBus, timeRangeDates]);
 
   // Use metrics and chart data from data source
   const metrics = useMemo(() => {
+    if (useEventBus && eventBusMetrics) {
+      return eventBusMetrics;
+    }
     if (!eventFlowData?.metrics) {
       return {
         totalEvents: 0,
@@ -67,13 +163,13 @@ export default function EventFlow() {
       };
     }
     return eventFlowData.metrics;
-  }, [eventFlowData]);
+  }, [useEventBus, eventBusMetrics, eventFlowData]);
 
-  // Use chart data from data source
-  const throughputDataRaw = eventFlowData?.chartData?.throughput || [];
+  // Use chart data from data source (only for legacy API)
+  const throughputDataRaw = useEventBus ? [] : (eventFlowData?.chartData?.throughput || []);
   const { data: throughputData, isMock: isThroughputMock } = ensureTimeSeries(throughputDataRaw, 10, 6);
 
-  const lagDataRaw = eventFlowData?.chartData?.lag || [];
+  const lagDataRaw = useEventBus ? [] : (eventFlowData?.chartData?.lag || []);
   const { data: lagData, isMock: isLagMock } = ensureTimeSeries(lagDataRaw, 3, 1.2);
 
   // Convert topic counts to array for display
@@ -96,12 +192,35 @@ export default function EventFlow() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        title="Event Flow"
-        description={`Real-time event stream from omniarchon intelligence infrastructure${dataUpdatedAt ? ` • Last updated: ${lastUpdateTime}` : ''}`}
-        details="Event Flow provides real-time visibility into all events flowing through the Kafka event bus. Monitor event throughput, processing lag, event types, and recent events. This dashboard is essential for debugging event-driven workflows, tracking system activity, and identifying performance bottlenecks in the event pipeline."
-        level="h1"
-      />
+      <div className="flex items-center justify-between">
+        <SectionHeader
+          title="Event Flow"
+          description={`Real-time event stream${dataUpdatedAt ? ` • Last updated: ${lastUpdateTime}` : ''}`}
+          details="Event Flow provides real-time visibility into all events flowing through the Kafka event bus. Monitor event throughput, processing lag, event types, and recent events. This dashboard is essential for debugging event-driven workflows, tracking system activity, and identifying performance bottlenecks in the event pipeline."
+          level="h1"
+        />
+        <div className="flex items-center gap-2">
+          <EventBusHealthIndicator showLabel={false} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setUseEventBus(!useEventBus)}
+          >
+            {useEventBus ? 'Using Event Bus API' : 'Using Legacy API'}
+          </Button>
+        </div>
+      </div>
+
+      {useEventBus && (
+        <>
+          <EventSearchBar
+            eventTypes={[]}
+            onFilterChange={(filters) => setEventBusFilters({ ...eventBusFilters, ...filters })}
+          />
+          <EventStatisticsPanel />
+        </>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
@@ -217,10 +336,14 @@ export default function EventFlow() {
                   {new Date(event.timestamp).toLocaleTimeString()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {event.type}
-                    </Badge>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    {useEventBus ? (
+                      <EventTypeBadge eventType={event.type} />
+                    ) : (
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {event.type}
+                      </Badge>
+                    )}
                     {event.data?.correlationId && (
                       <span className="text-xs text-muted-foreground font-mono truncate">
                         ID: {event.data.correlationId.slice(0, 8)}...

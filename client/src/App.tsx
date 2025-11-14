@@ -18,6 +18,7 @@ import PatternLearning from "@/pages/PatternLearning";
 import IntelligenceOperations from "@/pages/IntelligenceOperations";
 import CodeIntelligence from "@/pages/CodeIntelligence";
 import EventFlow from "@/pages/EventFlow";
+import EventBusExplorer from "@/pages/EventBusExplorer";
 import KnowledgeGraph from "@/pages/KnowledgeGraph";
 import PlatformHealth from "@/pages/PlatformHealth";
 import DeveloperExperience from "@/pages/DeveloperExperience";
@@ -51,6 +52,7 @@ function Router() {
       <Route path="/intelligence" component={IntelligenceOperations} />
       <Route path="/code" component={CodeIntelligence} />
       <Route path="/events" component={EventFlow} />
+      <Route path="/event-bus" component={EventBusExplorer} />
       <Route path="/knowledge" component={KnowledgeGraph} />
       <Route path="/health" component={PlatformHealth} />
       <Route path="/developer" component={DeveloperExperience} />
