@@ -55,7 +55,7 @@ export interface EventStatistics {
 export interface EventBusStatus {
   active: boolean;
   connected: boolean;
-  status: 'running' | 'stopped';
+  status: 'running' | 'stopped' | 'unknown' | 'error';
 }
 
 export interface EventQueryResponse {
@@ -93,10 +93,20 @@ class EventBusSource {
         params.append('correlation_id', options.correlation_id);
       }
       if (options.start_time) {
-        params.append('start_time', options.start_time.toISOString());
+        // Validate date before appending
+        if (isNaN(options.start_time.getTime())) {
+          console.warn('Invalid start_time provided, skipping');
+        } else {
+          params.append('start_time', options.start_time.toISOString());
+        }
       }
       if (options.end_time) {
-        params.append('end_time', options.end_time.toISOString());
+        // Validate date before appending
+        if (isNaN(options.end_time.getTime())) {
+          console.warn('Invalid end_time provided, skipping');
+        } else {
+          params.append('end_time', options.end_time.toISOString());
+        }
       }
       if (options.limit) {
         params.append('limit', options.limit.toString());
@@ -124,6 +134,12 @@ class EventBusSource {
         options: data.options || options,
       };
     } catch (error) {
+      // In production, throw errors instead of silently falling back to mock data
+      const isProduction = import.meta.env.PROD === true || import.meta.env.MODE === 'production';
+      if (isProduction && !USE_MOCK_DATA) {
+        console.error('Failed to fetch events from event bus in production', error);
+        throw error;
+      }
       console.warn('Failed to fetch events from event bus, using mock data', error);
       return this.getMockEvents(options);
     }
@@ -155,6 +171,12 @@ class EventBusSource {
       const data = await response.json();
       return data;
     } catch (error) {
+      // In production, throw errors instead of silently falling back to mock data
+      const isProduction = import.meta.env.PROD === true || import.meta.env.MODE === 'production';
+      if (isProduction && !USE_MOCK_DATA) {
+        console.error('Failed to fetch statistics from event bus in production', error);
+        throw error;
+      }
       console.warn('Failed to fetch statistics from event bus, using mock data', error);
       return this.getMockStatistics();
     }
@@ -184,11 +206,21 @@ class EventBusSource {
       const data = await response.json();
       return data;
     } catch (error) {
+      // In production, return 'unknown' status instead of 'stopped' when API is unreachable
+      const isProduction = import.meta.env.PROD === true || import.meta.env.MODE === 'production';
+      if (isProduction && !USE_MOCK_DATA) {
+        console.error('Failed to fetch event bus status in production', error);
+        return {
+          active: false,
+          connected: false,
+          status: 'unknown' as const,
+        };
+      }
       console.warn('Failed to fetch event bus status, using mock data', error);
       return {
         active: false,
         connected: false,
-        status: 'stopped',
+        status: 'unknown' as const,
       };
     }
   }
@@ -203,14 +235,17 @@ class EventBusSource {
 
   /**
    * Generate mock events for development/testing
+   * Uses stable IDs and timestamps to prevent regeneration on each call
    */
   private getMockEvents(options: EventQueryOptions): EventQueryResponse {
+    // Use fixed base timestamp to ensure stable mock data
+    const baseTimestamp = new Date('2024-01-15T10:00:00Z').getTime();
     const now = Date.now();
     const mockEvents: EventBusEvent[] = [
       {
         event_type: 'omninode.intelligence.query.requested.v1',
-        event_id: `evt-${now}-1`,
-        timestamp: new Date(now - 60000).toISOString(),
+        event_id: 'evt-mock-001',
+        timestamp: new Date(baseTimestamp - 60000).toISOString(),
         tenant_id: 'default-tenant',
         namespace: 'development',
         source: 'omniarchon',
@@ -220,28 +255,28 @@ class EventBusSource {
         topic: 'default-tenant.omninode.intelligence.v1',
         partition: 0,
         offset: '100',
-        processed_at: new Date(now - 60000).toISOString(),
+        processed_at: new Date(baseTimestamp - 60000).toISOString(),
       },
       {
         event_type: 'omninode.intelligence.query.completed.v1',
-        event_id: `evt-${now}-2`,
-        timestamp: new Date(now - 50000).toISOString(),
+        event_id: 'evt-mock-002',
+        timestamp: new Date(baseTimestamp - 50000).toISOString(),
         tenant_id: 'default-tenant',
         namespace: 'development',
         source: 'omniarchon',
         correlation_id: 'corr-123',
-        causation_id: `evt-${now}-1`,
+        causation_id: 'evt-mock-001',
         schema_ref: 'registry://omninode/intelligence/query_completed/v1',
         payload: { results: 5, duration_ms: 120 },
         topic: 'default-tenant.omninode.intelligence.v1',
         partition: 0,
         offset: '101',
-        processed_at: new Date(now - 50000).toISOString(),
+        processed_at: new Date(baseTimestamp - 50000).toISOString(),
       },
       {
         event_type: 'omninode.agent.execution.started.v1',
-        event_id: `evt-${now}-3`,
-        timestamp: new Date(now - 40000).toISOString(),
+        event_id: 'evt-mock-003',
+        timestamp: new Date(baseTimestamp - 40000).toISOString(),
         tenant_id: 'default-tenant',
         namespace: 'development',
         source: 'polymorphic-agent',
@@ -251,7 +286,7 @@ class EventBusSource {
         topic: 'default-tenant.omninode.agent.v1',
         partition: 0,
         offset: '200',
-        processed_at: new Date(now - 40000).toISOString(),
+        processed_at: new Date(baseTimestamp - 40000).toISOString(),
       },
     ];
 

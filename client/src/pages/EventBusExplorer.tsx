@@ -21,6 +21,7 @@ import { EventBusHealthIndicator } from "@/components/event-bus/EventBusHealthIn
 import { POLLING_INTERVAL_MEDIUM } from "@/lib/constants/query-config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { X } from "lucide-react";
 
 export default function EventBusExplorer() {
@@ -41,12 +42,15 @@ export default function EventBusExplorer() {
   });
 
   // Fetch event chain if correlation ID is selected
-  const { data: chainData } = useQuery({
+  const { data: chainData, isLoading: isChainLoading } = useQuery({
     queryKey: ['event-bus-chain', selectedCorrelationId],
     queryFn: () => selectedCorrelationId 
       ? eventBusSource.getEventChain(selectedCorrelationId)
       : Promise.resolve([]),
     enabled: !!selectedCorrelationId,
+    refetchInterval: POLLING_INTERVAL_MEDIUM,
+    refetchOnWindowFocus: true,
+    staleTime: 30000,
   });
 
   const events = eventsData?.events || [];
@@ -89,12 +93,26 @@ export default function EventBusExplorer() {
       <EventStatisticsPanel />
 
       {/* Event Chain Visualization (if correlation selected) */}
-      {selectedCorrelationId && chainEvents.length > 0 && (
-        <EventChainVisualization
-          events={chainEvents}
-          correlationId={selectedCorrelationId}
-          onEventClick={handleEventClick}
-        />
+      {selectedCorrelationId && (
+        <>
+          {isChainLoading && (
+            <Card className="mb-6 p-6">
+              <Skeleton className="h-48 w-full" />
+            </Card>
+          )}
+          {!isChainLoading && chainEvents.length > 0 && (
+            <EventChainVisualization
+              events={chainEvents}
+              correlationId={selectedCorrelationId}
+              onEventClick={handleEventClick}
+            />
+          )}
+          {!isChainLoading && chainEvents.length === 0 && (
+            <Card className="mb-6 p-6 text-center text-muted-foreground">
+              <p>No events found for correlation ID "{selectedCorrelationId}".</p>
+            </Card>
+          )}
+        </>
       )}
 
       {/* Events List */}

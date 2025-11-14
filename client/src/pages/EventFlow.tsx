@@ -74,12 +74,20 @@ export default function EventFlow() {
   }, [timeRange]);
 
   // Fetch events from event bus (new API)
+  // Respect time range from EventSearchBar if provided, otherwise use page-level timeRangeDates
+  const effectiveTimeRange = useMemo(() => {
+    if (eventBusFilters.start_time && eventBusFilters.end_time) {
+      return { start: eventBusFilters.start_time, end: eventBusFilters.end_time };
+    }
+    return timeRangeDates;
+  }, [eventBusFilters.start_time, eventBusFilters.end_time, timeRangeDates]);
+
   const { data: eventBusData, isLoading: isLoadingBus, isError: isErrorBus, error: errorBus, dataUpdatedAt: busUpdatedAt } = useQuery({
-    queryKey: ['event-bus-events', { ...eventBusFilters, ...timeRangeDates }],
+    queryKey: ['event-bus-events', { ...eventBusFilters, ...effectiveTimeRange }],
     queryFn: () => eventBusSource.queryEvents({
       ...eventBusFilters,
-      start_time: timeRangeDates.start,
-      end_time: timeRangeDates.end,
+      start_time: effectiveTimeRange.start,
+      end_time: effectiveTimeRange.end,
     }),
     refetchInterval: POLLING_INTERVAL_MEDIUM,
     refetchOnWindowFocus: true,

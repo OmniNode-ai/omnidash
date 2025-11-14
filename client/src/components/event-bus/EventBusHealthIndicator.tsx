@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { eventBusSource, type EventBusStatus } from "@/lib/data-sources";
 import { POLLING_INTERVAL_MEDIUM } from "@/lib/constants/query-config";
-import { Activity, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Activity, CheckCircle2, XCircle, AlertCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface EventBusHealthIndicatorProps {
@@ -19,7 +19,7 @@ export interface EventBusHealthIndicatorProps {
 }
 
 export function EventBusHealthIndicator({ className, showLabel = true }: EventBusHealthIndicatorProps) {
-  const { data: status, isLoading } = useQuery({
+  const { data: status, isLoading, isError, error } = useQuery({
     queryKey: ['event-bus-status'],
     queryFn: () => eventBusSource.getStatus(),
     refetchInterval: POLLING_INTERVAL_MEDIUM,
@@ -31,42 +31,56 @@ export function EventBusHealthIndicator({ className, showLabel = true }: EventBu
     return (
       <Badge variant="outline" className={cn("gap-1.5", className)}>
         <Activity className="w-3 h-3 animate-pulse" />
-        {showLabel && <span>Checking...</span>}
+        {showLabel && <span className="text-xs">Loading...</span>}
       </Badge>
     );
   }
 
-  const isHealthy = status?.active && status?.connected;
-  const statusText = status?.status || 'unknown';
+  // Distinguish between error state and unknown state
+  const effectiveStatus: EventBusStatus['status'] = isError 
+    ? 'error' 
+    : (status?.status || 'unknown');
 
-  const StatusIcon = isHealthy ? CheckCircle2 : status?.active ? AlertCircle : XCircle;
-  const statusColor = isHealthy 
-    ? 'bg-green-500/10 text-green-600 border-green-500/20' 
-    : status?.active 
-    ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
-    : 'bg-red-500/10 text-red-600 border-red-500/20';
+  const getStatusIcon = (s: EventBusStatus['status']) => {
+    switch (s) {
+      case 'running': return CheckCircle2;
+      case 'stopped': return XCircle;
+      case 'connecting': return Clock;
+      case 'error': return XCircle;
+      case 'unknown': return AlertCircle;
+      default: return AlertCircle;
+    }
+  };
 
-  const badge = (
-    <Badge variant="outline" className={cn("gap-1.5", statusColor, className)}>
-      <StatusIcon className="w-3 h-3" />
-      {showLabel && (
-        <span className="capitalize">{statusText}</span>
-      )}
-    </Badge>
-  );
+  const getStatusColor = (s: EventBusStatus['status']) => {
+    switch (s) {
+      case 'running': return 'bg-green-500';
+      case 'stopped': return 'bg-red-500';
+      case 'connecting': return 'bg-yellow-500';
+      case 'error': return 'bg-red-500';
+      case 'unknown': return 'bg-gray-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const StatusIcon = getStatusIcon(effectiveStatus);
+  const statusColor = getStatusColor(effectiveStatus);
+  const statusText = effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1);
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          {badge}
+          <Badge variant="outline" className={cn("gap-1.5", className)}>
+            <span className={cn("h-2 w-2 rounded-full", statusColor, effectiveStatus === 'connecting' && 'animate-pulse')} />
+            {showLabel && <span className="text-xs">{statusText}</span>}
+          </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          <div className="space-y-1 text-xs">
-            <p><strong>Status:</strong> {statusText}</p>
-            <p><strong>Active:</strong> {status?.active ? 'Yes' : 'No'}</p>
-            <p><strong>Connected:</strong> {status?.connected ? 'Yes' : 'No'}</p>
-          </div>
+          <p>Event Bus Status: {statusText}</p>
+          <p>Connection: {status?.connected ? 'Established' : 'Lost'}</p>
+          {isError && <p className="text-destructive">Error: {error instanceof Error ? error.message : 'Unknown error'}</p>}
+          {(effectiveStatus === 'stopped' || effectiveStatus === 'error') && <p className="text-destructive">Check server logs for errors.</p>}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

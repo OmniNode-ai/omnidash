@@ -115,7 +115,8 @@ export function EnhancedEventFeed({
                     tabIndex={onEventClick ? 0 : undefined}
                     aria-label={onEventClick ? `View details for event ${event.event_type}` : undefined}
                     className={cn(
-                      "flex gap-3 p-3 rounded-lg border animate-slide-in bg-card border-border",
+                      "flex gap-3 p-3 rounded-lg border bg-card border-border",
+                      index < 20 && "animate-slide-in",
                       onEventClick && "cursor-pointer transition-all duration-200 ease-in-out hover:bg-accent/50 hover:scale-[1.01]"
                     )}
                     style={index < 20 ? { animationDelay: `${index * 50}ms` } : undefined}
@@ -158,6 +159,11 @@ export function EnhancedEventFeed({
           ))}
         </div>
       </ScrollArea>
+      {events.length === 0 && (
+        <div className="p-6 text-center text-muted-foreground">
+          <p className="text-sm">No events found. Waiting for new events...</p>
+        </div>
+      )}
     </Card>
   );
 }

@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { X, Search, Filter, Calendar } from "lucide-react";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import type { EventQueryOptions } from "@/lib/data-sources";
@@ -122,7 +123,7 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
   const hasActiveFilters = eventTypeFilter || correlationId || tenantId || source;
 
   return (
-    <Card className={`p-4 space-y-4 ${className}`}>
+    <Card className={cn("p-4 space-y-4", className)}>
       <div className="flex items-center gap-2">
         <Search className="w-4 h-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold">Search & Filter Events</h3>

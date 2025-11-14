@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Copy, CheckCircle2, Search, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export interface EventPayloadViewerProps {
   payload: Record<string, any>;
@@ -128,6 +129,7 @@ function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: {
 export function EventPayloadViewer({ payload, className }: EventPayloadViewerProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
 
   const handleCopy = async () => {
     try {
@@ -136,6 +138,11 @@ export function EventPayloadViewer({ payload, className }: EventPayloadViewerPro
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error('Failed to copy:', error);
+      toast({
+        variant: "destructive",
+        title: "Copy failed",
+        description: "Failed to copy payload to clipboard. Please try again.",
+      });
     }
   };
 
