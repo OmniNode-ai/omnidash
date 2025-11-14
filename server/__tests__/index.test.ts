@@ -8,6 +8,13 @@ const setupWebSocketMock = vi.fn();
 const validateConnectionMock = vi.fn();
 const startMock = vi.fn();
 const stopMock = vi.fn();
+const eventBusValidateConnectionMock = vi.fn();
+const eventBusStartMock = vi.fn();
+const eventBusStopMock = vi.fn();
+const eventBusInitializeSchemaMock = vi.fn();
+const eventBusIsActiveMock = vi.fn();
+const mockGeneratorStartMock = vi.fn();
+const mockGeneratorStopMock = vi.fn();
 
 vi.mock('../routes', () => ({
   registerRoutes: registerRoutesMock,
@@ -28,6 +35,23 @@ vi.mock('../event-consumer', () => ({
     validateConnection: validateConnectionMock,
     start: startMock,
     stop: stopMock,
+  },
+}));
+
+vi.mock('../event-bus-data-source', () => ({
+  eventBusDataSource: {
+    validateConnection: eventBusValidateConnectionMock,
+    start: eventBusStartMock,
+    stop: eventBusStopMock,
+    initializeSchema: eventBusInitializeSchemaMock,
+    isActive: eventBusIsActiveMock,
+  },
+}));
+
+vi.mock('../event-bus-mock-generator', () => ({
+  eventBusMockGenerator: {
+    start: mockGeneratorStartMock,
+    stop: mockGeneratorStopMock,
   },
 }));
 
@@ -58,6 +82,13 @@ describe('server/index bootstrap', () => {
     validateConnectionMock.mockResolvedValue(true);
     startMock.mockResolvedValue(undefined);
     stopMock.mockResolvedValue(undefined);
+    eventBusValidateConnectionMock.mockResolvedValue(true);
+    eventBusStartMock.mockResolvedValue(undefined);
+    eventBusStopMock.mockResolvedValue(undefined);
+    eventBusInitializeSchemaMock.mockResolvedValue(undefined);
+    eventBusIsActiveMock.mockReturnValue(true);
+    mockGeneratorStartMock.mockResolvedValue(undefined);
+    mockGeneratorStopMock.mockReturnValue(undefined);
 
     processOnSpy = vi.spyOn(process, 'on').mockImplementation(() => process);
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

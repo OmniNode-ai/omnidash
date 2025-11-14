@@ -5,6 +5,7 @@ import { intelligenceRouter } from "./intelligence-routes";
 import savingsRoutes from "./savings-routes";
 import agentRegistryRoutes from "./agent-registry-routes";
 import { chatRouter } from "./chat-routes";
+import eventBusRoutes from "./event-bus-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -24,6 +25,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount chat routes for AI assistant interactions
   app.use("/api/chat", chatRouter);
+
+  // Mount event bus routes for event querying and statistics
+  app.use("/api/event-bus", eventBusRoutes);
 
   const httpServer = createServer(app);
 

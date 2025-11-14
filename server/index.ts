@@ -12,6 +12,8 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupWebSocket } from './websocket';
 import { eventConsumer } from './event-consumer';
+import { eventBusDataSource } from './event-bus-data-source';
+import { eventBusMockGenerator } from './event-bus-mock-generator';
 
 const app = express();
 
@@ -92,6 +94,61 @@ app.use((req, res, next) => {
     console.error('   Application will continue with limited functionality');
   }
 
+  // Validate and start Event Bus Data Source
+  try {
+    const isEventBusAvailable = await eventBusDataSource.validateConnection();
+
+    if (isEventBusAvailable) {
+      await eventBusDataSource.start();
+      log('✅ Event Bus Data Source started successfully - event storage enabled');
+    } else {
+      log('⚠️  Event Bus Data Source validation failed - continuing without event storage');
+      log('   Event querying will be limited to database queries');
+      
+      // In development mode, start mock generator if Kafka is not available
+      // Skip in test environment to prevent hanging tests
+      if (
+        app.get('env') === 'development' && 
+        process.env.NODE_ENV !== 'test' &&
+        process.env.ENABLE_MOCK_EVENTS !== 'false'
+      ) {
+        log('🔧 Starting mock event generator (development mode)');
+        await eventBusDataSource.initializeSchema(); // Ensure schema exists
+        await eventBusMockGenerator.start({
+          continuous: true,
+          interval_ms: 5000,
+          initialChains: 20,
+        });
+        log('✅ Mock event generator started - simulating event chains');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Failed to start Event Bus Data Source:', error);
+    console.error('   Event querying endpoints will not be available');
+    console.error('   Application will continue with limited functionality');
+    
+    // Try mock generator as fallback in development
+    // Skip in test environment to prevent hanging tests
+    if (
+      app.get('env') === 'development' && 
+      process.env.NODE_ENV !== 'test' &&
+      process.env.ENABLE_MOCK_EVENTS !== 'false'
+    ) {
+      try {
+        log('🔧 Attempting to start mock event generator as fallback');
+        await eventBusDataSource.initializeSchema();
+        await eventBusMockGenerator.start({
+          continuous: true,
+          interval_ms: 5000,
+          initialChains: 20,
+        });
+        log('✅ Mock event generator started as fallback');
+      } catch (mockError) {
+        console.error('❌ Failed to start mock event generator:', mockError);
+      }
+    }
+  }
+
   // Setup WebSocket for real-time events
   if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
     setupWebSocket(server);
@@ -127,6 +184,8 @@ app.use((req, res, next) => {
   process.on('SIGTERM', async () => {
     log('SIGTERM received, shutting down gracefully');
     await eventConsumer.stop();
+    await eventBusDataSource.stop();
+    eventBusMockGenerator.stop();
     server.close(() => {
       log('Server closed');
       process.exit(0);
@@ -136,6 +195,8 @@ app.use((req, res, next) => {
   process.on('SIGINT', async () => {
     log('SIGINT received, shutting down gracefully');
     await eventConsumer.stop();
+    await eventBusDataSource.stop();
+    eventBusMockGenerator.stop();
     server.close(() => {
       log('Server closed');
       process.exit(0);
