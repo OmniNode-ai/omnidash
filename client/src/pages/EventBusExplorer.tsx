@@ -68,6 +68,13 @@ export default function EventBusExplorer() {
   };
 
   const handleCorrelationClick = (correlationId: string) => {
+    // Validate correlation ID format to prevent injection attacks
+    // Allow alphanumeric, hyphens, and underscores
+    const CORRELATION_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
+    if (!CORRELATION_ID_REGEX.test(correlationId)) {
+      console.error('Invalid correlation ID format:', correlationId);
+      return;
+    }
     setSelectedCorrelationId(correlationId);
   };
 

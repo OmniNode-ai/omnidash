@@ -135,14 +135,14 @@ describe('EventBusSource', () => {
       expect(result.status).toBe('running');
     });
 
-    it('should return stopped status on error', async () => {
+    it('should return unknown status on error', async () => {
       vi.mocked(global.fetch).mockRejectedValueOnce(new Error('Network error'));
 
       const result = await eventBusSource.getStatus();
 
       expect(result.active).toBe(false);
       expect(result.connected).toBe(false);
-      expect(result.status).toBe('stopped');
+      expect(result.status).toBe('unknown');
     });
   });
 

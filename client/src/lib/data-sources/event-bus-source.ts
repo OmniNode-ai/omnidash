@@ -109,9 +109,17 @@ class EventBusSource {
         }
       }
       if (options.limit) {
+        // Validate limit to prevent DoS attacks (1-1000 range)
+        if (options.limit < 1 || options.limit > 1000) {
+          throw new Error('Limit must be between 1 and 1000');
+        }
         params.append('limit', options.limit.toString());
       }
       if (options.offset) {
+        // Validate offset to prevent negative values
+        if (options.offset < 0) {
+          throw new Error('Offset must be non-negative');
+        }
         params.append('offset', options.offset.toString());
       }
       if (options.order_by) {
@@ -229,6 +237,12 @@ class EventBusSource {
    * Get event chain by correlation_id
    */
   async getEventChain(correlationId: string): Promise<EventBusEvent[]> {
+    // Validate correlation ID format to prevent injection attacks
+    // Allow alphanumeric, hyphens, and underscores
+    const CORRELATION_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
+    if (!CORRELATION_ID_REGEX.test(correlationId)) {
+      throw new Error('Invalid correlation ID format. Only alphanumeric characters, hyphens, and underscores are allowed.');
+    }
     const result = await this.queryEvents({ correlation_id: correlationId });
     return result.events;
   }
