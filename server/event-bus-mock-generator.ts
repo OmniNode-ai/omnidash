@@ -34,6 +34,7 @@ export class EventBusMockGenerator {
   private isRunning = false;
   private tenantId = 'default-tenant';
   private namespace = 'development';
+  private offsetCounter = 0; // Sequential offset counter to match Kafka semantics
 
   // Agent configurations
   private agents = [
@@ -81,10 +82,16 @@ export class EventBusMockGenerator {
 
     this.isRunning = true;
 
-    // Generate initial event chains
+    // Generate initial event chains with error handling
     console.log(`[EventBusMockGenerator] Generating ${initialChains} initial event chains...`);
-    for (let i = 0; i < initialChains; i++) {
-      await this.generateRandomEventChain();
+    try {
+      for (let i = 0; i < initialChains; i++) {
+        await this.generateRandomEventChain();
+      }
+    } catch (error) {
+      console.error('[EventBusMockGenerator] Error generating initial chains:', error);
+      this.isRunning = false;
+      throw error;
     }
 
     if (continuous) {
@@ -165,7 +172,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.intelligence.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
 
@@ -193,7 +200,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.intelligence.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
   }
@@ -224,7 +231,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.agent.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
 
@@ -250,7 +257,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.agent.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
 
@@ -274,7 +281,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.agent.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
 
@@ -302,7 +309,7 @@ export class EventBusMockGenerator {
         },
         topic: `${this.tenantId}.omninode.agent.v1`,
         partition: 0,
-        offset: randomUUID(),
+        offset: this.getNextOffset(),
         processed_at: new Date(),
       });
     } else {
@@ -324,7 +331,7 @@ export class EventBusMockGenerator {
         },
         topic: `${this.tenantId}.omninode.agent.v1`,
         partition: 0,
-        offset: randomUUID(),
+        offset: this.getNextOffset(),
         processed_at: new Date(),
       });
     }
@@ -354,7 +361,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.code.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
 
@@ -377,7 +384,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.code.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
   }
@@ -406,7 +413,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.metadata.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
 
@@ -431,7 +438,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.metadata.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
   }
@@ -459,7 +466,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.database.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
 
@@ -481,7 +488,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.database.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
   }
@@ -511,7 +518,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.consul.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
 
@@ -533,7 +540,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.consul.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
   }
@@ -562,7 +569,7 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.vault.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
 
@@ -588,9 +595,16 @@ export class EventBusMockGenerator {
       },
       topic: `${this.tenantId}.omninode.vault.v1`,
       partition: 0,
-      offset: randomUUID(),
+      offset: this.getNextOffset(),
       processed_at: new Date(),
     });
+  }
+
+  /**
+   * Get next sequential offset (Kafka offsets are numeric strings)
+   */
+  private getNextOffset(): string {
+    return String(this.offsetCounter++);
   }
 
   /**
