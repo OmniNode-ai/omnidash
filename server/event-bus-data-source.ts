@@ -64,6 +64,9 @@ export interface EventQueryOptions {
 
 /**
  * Event aggregation options
+ * TODO: Implement aggregateEvents() method to support complex aggregations
+ * This interface is reserved for future functionality to support advanced
+ * event analytics and aggregation queries.
  */
 export interface EventAggregationOptions {
   event_types: string[];
@@ -426,19 +429,13 @@ export class EventBusDataSource extends EventEmitter {
       const conditions: SQL[] = [];
       
       if (options.event_types && options.event_types.length > 0) {
-        // Build OR conditions for event types
-        // This is safer than using ANY() with array parameterization
-        const typeConditions = options.event_types.map(type => sql`event_type = ${type}`);
-        if (typeConditions.length === 1) {
-          conditions.push(typeConditions[0]);
-        } else {
-          // Combine with OR: (event_type = $1 OR event_type = $2 OR ...)
-          const combined = typeConditions.reduce((acc, condition, index) => {
-            if (index === 0) return condition;
-            return sql`${acc} OR ${condition}`;
-          });
-          conditions.push(sql`(${combined})`);
-        }
+        // Use PostgreSQL ANY() with array for better performance than OR chain
+        // Parameterize each value to prevent SQL injection
+        const arrayValues = options.event_types.map((_, i) => sql`${options.event_types[i]}`);
+        // Build: event_type = ANY(ARRAY[$1, $2, $3, ...])
+        // This is more efficient than OR chains for large arrays
+        const arrayLiteral = sql.join(arrayValues, sql`, `);
+        conditions.push(sql`event_type = ANY(ARRAY[${arrayLiteral}])`);
       }
 
       if (options.tenant_id) {

@@ -32,7 +32,6 @@ interface EventChain {
 export class EventBusMockGenerator {
   private intervalId?: NodeJS.Timeout;
   private isRunning = false;
-  private eventChains: EventChain[] = [];
   private tenantId = 'default-tenant';
   private namespace = 'development';
 
