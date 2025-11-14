@@ -45,8 +45,67 @@ function JsonViewer({
   const matchesSearch = (value: any): boolean => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
-    const str = JSON.stringify(value).toLowerCase();
-    return str.includes(searchLower);
+    
+    // Optimize search: only stringify primitive values or handle objects/arrays safely
+    try {
+      // For primitives, convert directly
+      if (value === null || value === undefined) {
+        return 'null'.includes(searchLower) || 'undefined'.includes(searchLower);
+      }
+      if (typeof value === 'string') {
+        return value.toLowerCase().includes(searchLower);
+      }
+      if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value).toLowerCase().includes(searchLower);
+      }
+      
+      // For objects/arrays, only stringify if not too large (performance optimization)
+      // Limit stringification to prevent performance issues with large payloads
+      if (typeof value === 'object') {
+        // For arrays, check length and first few items
+        if (Array.isArray(value)) {
+          if (value.length > 0 && value.length <= 50) {
+            // Only stringify small arrays
+            const str = JSON.stringify(value).toLowerCase();
+            return str.includes(searchLower);
+          }
+          // For large arrays, check if search term matches the array representation
+          return `[${value.length} items]`.toLowerCase().includes(searchLower);
+        }
+        
+        // For objects, check keys first (faster)
+        const keys = Object.keys(value);
+        if (keys.some(key => key.toLowerCase().includes(searchLower))) {
+          return true;
+        }
+        
+        // Only stringify small objects to avoid performance issues
+        if (keys.length <= 20) {
+          try {
+            const str = JSON.stringify(value).toLowerCase();
+            return str.includes(searchLower);
+          } catch {
+            // Handle circular references gracefully
+            return false;
+          }
+        }
+        
+        // For large objects, just check if search matches the object representation
+        return `{${keys.length} keys}`.toLowerCase().includes(searchLower);
+      }
+      
+      // Fallback: try stringifying with error handling
+      try {
+        const str = JSON.stringify(value).toLowerCase();
+        return str.includes(searchLower);
+      } catch {
+        // Circular reference or other error - skip this node
+        return false;
+      }
+    } catch {
+      // Any error in search matching - skip this node
+      return false;
+    }
   };
 
   if (!matchesSearch(data)) return null;
