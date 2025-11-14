@@ -106,7 +106,12 @@ app.use((req, res, next) => {
       log('   Event querying will be limited to database queries');
       
       // In development mode, start mock generator if Kafka is not available
-      if (app.get('env') === 'development' && process.env.ENABLE_MOCK_EVENTS !== 'false') {
+      // Skip in test environment to prevent hanging tests
+      if (
+        app.get('env') === 'development' && 
+        process.env.NODE_ENV !== 'test' &&
+        process.env.ENABLE_MOCK_EVENTS !== 'false'
+      ) {
         log('🔧 Starting mock event generator (development mode)');
         await eventBusDataSource.initializeSchema(); // Ensure schema exists
         await eventBusMockGenerator.start({
@@ -123,7 +128,12 @@ app.use((req, res, next) => {
     console.error('   Application will continue with limited functionality');
     
     // Try mock generator as fallback in development
-    if (app.get('env') === 'development' && process.env.ENABLE_MOCK_EVENTS !== 'false') {
+    // Skip in test environment to prevent hanging tests
+    if (
+      app.get('env') === 'development' && 
+      process.env.NODE_ENV !== 'test' &&
+      process.env.ENABLE_MOCK_EVENTS !== 'false'
+    ) {
       try {
         log('🔧 Attempting to start mock event generator as fallback');
         await eventBusDataSource.initializeSchema();

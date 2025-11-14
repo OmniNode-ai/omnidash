@@ -112,9 +112,13 @@ async function verifyEventBus() {
       if (eventsWithCorrelation.length > 0) {
         const correlationId = eventsWithCorrelation[0].correlation_id;
         const chainResponse = await fetch(
-          `${BASE_URL}/api/event-bus/events?correlation_id=${correlationId}`
+          `${BASE_URL}/api/event-bus/events?correlation_id=${encodeURIComponent(correlationId)}`
         );
-        if (chainResponse.ok) {
+        if (!chainResponse.ok) {
+          console.log(
+            `   ⚠️  Correlation chain request failed: ${chainResponse.status} ${chainResponse.statusText}`
+          );
+        } else {
           const chainData = await chainResponse.json();
           console.log(`   ✅ Found ${chainData.events.length} events in chain: ${correlationId}`);
           const chainTypes = chainData.events.map((e: any) => e.event_type);

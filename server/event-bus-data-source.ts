@@ -472,10 +472,16 @@ export class EventBusDataSource extends EventEmitter {
         whereClause = sql``;
       }
 
-      // Build ORDER BY clause
-      const orderBy = options.order_by || 'timestamp';
-      const orderDirection = options.order_direction || 'desc';
-      const orderByClause = sql`ORDER BY ${sql.raw(orderBy)} ${sql.raw(orderDirection.toUpperCase())}`;
+      // Build ORDER BY clause with whitelist validation to prevent SQL injection
+      const validOrderBy = ['timestamp', 'processed_at', 'stored_at', 'created_at'];
+      const validDirection = ['asc', 'desc'];
+      const safeOrderBy = validOrderBy.includes(options.order_by || 'timestamp') 
+        ? (options.order_by || 'timestamp') 
+        : 'timestamp';
+      const safeDirection = validDirection.includes((options.order_direction || 'desc').toLowerCase())
+        ? (options.order_direction || 'desc').toLowerCase()
+        : 'desc';
+      const orderByClause = sql`ORDER BY ${sql.raw(safeOrderBy)} ${sql.raw(safeDirection.toUpperCase())}`;
 
       // Build LIMIT/OFFSET
       const limitClause = options.limit ? sql`LIMIT ${options.limit}` : sql``;

@@ -13,6 +13,21 @@ const router = Router();
  * GET /api/event-bus/events
  * Query events with filters
  */
+// Helper to safely parse dates
+const parseDate = (dateStr: string | undefined): Date | undefined => {
+  if (!dateStr) return undefined;
+  const date = new Date(dateStr);
+  return isNaN(date.getTime()) ? undefined : date;
+};
+
+// Helper to safely parse integers with validation
+const parseIntSafe = (value: string | undefined, defaultValue: number, max?: number): number => {
+  if (!value) return defaultValue;
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed) || parsed < 0) return defaultValue;
+  return max ? Math.min(parsed, max) : parsed;
+};
+
 router.get('/events', async (req, res) => {
   try {
     const options: EventQueryOptions = {
@@ -20,10 +35,10 @@ router.get('/events', async (req, res) => {
       tenant_id: req.query.tenant_id as string | undefined,
       namespace: req.query.namespace as string | undefined,
       correlation_id: req.query.correlation_id as string | undefined,
-      start_time: req.query.start_time ? new Date(req.query.start_time as string) : undefined,
-      end_time: req.query.end_time ? new Date(req.query.end_time as string) : undefined,
-      limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 100,
-      offset: req.query.offset ? parseInt(req.query.offset as string, 10) : 0,
+      start_time: parseDate(req.query.start_time as string | undefined),
+      end_time: parseDate(req.query.end_time as string | undefined),
+      limit: parseIntSafe(req.query.limit as string | undefined, 100, 1000), // Max 1000
+      offset: parseIntSafe(req.query.offset as string | undefined, 0),
       order_by: (req.query.order_by as 'timestamp' | 'processed_at') || 'timestamp',
       order_direction: (req.query.order_direction as 'asc' | 'desc') || 'desc',
     };
@@ -51,9 +66,13 @@ router.get('/events', async (req, res) => {
 router.get('/statistics', async (req, res) => {
   try {
     const timeRange = req.query.start && req.query.end ? {
-      start: new Date(req.query.start as string),
-      end: new Date(req.query.end as string),
-    } : undefined;
+      start: parseDate(req.query.start as string) || new Date(Date.now() - 24 * 60 * 60 * 1000), // Default to last 24h
+      end: parseDate(req.query.end as string) || new Date(),
+    } : {
+      // Default to last 24 hours if no range provided
+      start: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      end: new Date(),
+    };
 
     const statistics = await eventBusDataSource.getStatistics(timeRange);
     

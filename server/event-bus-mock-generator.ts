@@ -68,6 +68,12 @@ export class EventBusMockGenerator {
     interval_ms?: number;
     initialChains?: number;
   } = {}): Promise<void> {
+    // Prevent multiple overlapping start() calls
+    if (this.isRunning) {
+      console.log('[EventBusMockGenerator] Already running; ignoring start()');
+      return;
+    }
+
     const {
       continuous = true,
       interval_ms = 5000, // Generate events every 5 seconds
@@ -143,9 +149,10 @@ export class EventBusMockGenerator {
     const source = 'omniarchon';
 
     // Requested event
+    const requestedEventId = randomUUID();
     await this.emitEvent({
       event_type: 'omninode.intelligence.query.requested.v1',
-      event_id: randomUUID(),
+      event_id: requestedEventId,
       timestamp: new Date().toISOString(),
       tenant_id: this.tenantId,
       namespace: this.namespace,
@@ -174,7 +181,7 @@ export class EventBusMockGenerator {
       namespace: this.namespace,
       source,
       correlation_id: correlationId,
-      causation_id: correlationId,
+      causation_id: requestedEventId, // Reference the previous event
       schema_ref: 'registry://omninode/intelligence/query_completed/v1',
       payload: {
         query,
@@ -202,9 +209,10 @@ export class EventBusMockGenerator {
     const source = 'omniclaude';
 
     // Routing requested
+    const routingRequestedId = randomUUID();
     await this.emitEvent({
       event_type: 'omninode.agent.routing.requested.v1',
-      event_id: randomUUID(),
+      event_id: routingRequestedId,
       timestamp: new Date().toISOString(),
       tenant_id: this.tenantId,
       namespace: this.namespace,
@@ -224,15 +232,16 @@ export class EventBusMockGenerator {
     await this.sleep(50 + Math.random() * 100);
 
     // Routing completed
+    const routingCompletedId = randomUUID();
     await this.emitEvent({
       event_type: 'omninode.agent.routing.completed.v1',
-      event_id: randomUUID(),
+      event_id: routingCompletedId,
       timestamp: new Date().toISOString(),
       tenant_id: this.tenantId,
       namespace: this.namespace,
       source,
       correlation_id: correlationId,
-      causation_id: correlationId,
+      causation_id: routingRequestedId, // Reference the previous event
       schema_ref: 'registry://omninode/agent/routing_completed/v1',
       payload: {
         selected_agent: agent,
@@ -249,15 +258,16 @@ export class EventBusMockGenerator {
     await this.sleep(100);
 
     // Execution started
+    const executionStartedId = randomUUID();
     await this.emitEvent({
       event_type: 'omninode.agent.execution.started.v1',
-      event_id: randomUUID(),
+      event_id: executionStartedId,
       timestamp: new Date().toISOString(),
       tenant_id: this.tenantId,
       namespace: this.namespace,
       source,
       correlation_id: correlationId,
-      causation_id: correlationId,
+      causation_id: routingCompletedId, // Reference the previous event
       schema_ref: 'registry://omninode/agent/execution_started/v1',
       payload: {
         agent_id: agent,
@@ -281,7 +291,7 @@ export class EventBusMockGenerator {
         namespace: this.namespace,
         source,
         correlation_id: correlationId,
-        causation_id: correlationId,
+        causation_id: executionStartedId, // Reference the previous event
         schema_ref: 'registry://omninode/agent/execution_completed/v1',
         payload: {
           agent_id: agent,
@@ -305,7 +315,7 @@ export class EventBusMockGenerator {
         namespace: this.namespace,
         source,
         correlation_id: correlationId,
-        causation_id: correlationId,
+        causation_id: executionStartedId, // Reference the previous event
         schema_ref: 'registry://omninode/agent/execution_failed/v1',
         payload: {
           agent_id: agent,
@@ -329,9 +339,10 @@ export class EventBusMockGenerator {
     const contractId = randomUUID();
     const source = 'omninode_bridge';
 
+    const requestedEventId = randomUUID();
     await this.emitEvent({
       event_type: 'omninode.code.generation.requested.v1',
-      event_id: randomUUID(),
+      event_id: requestedEventId,
       timestamp: new Date().toISOString(),
       tenant_id: this.tenantId,
       namespace: this.namespace,
@@ -358,7 +369,7 @@ export class EventBusMockGenerator {
       namespace: this.namespace,
       source,
       correlation_id: correlationId,
-      causation_id: correlationId,
+      causation_id: requestedEventId, // Reference the previous event
       schema_ref: 'registry://omninode/code/generation_completed/v1',
       payload: {
         contract_id: contractId,
@@ -380,9 +391,10 @@ export class EventBusMockGenerator {
     const artifactHash = randomUUID();
     const source = 'omninode_bridge';
 
+    const requestedEventId = randomUUID();
     await this.emitEvent({
       event_type: 'omninode.metadata.stamping.requested.v1',
-      event_id: randomUUID(),
+      event_id: requestedEventId,
       timestamp: new Date().toISOString(),
       tenant_id: this.tenantId,
       namespace: this.namespace,
@@ -409,7 +421,7 @@ export class EventBusMockGenerator {
       namespace: this.namespace,
       source,
       correlation_id: correlationId,
-      causation_id: correlationId,
+      causation_id: requestedEventId, // Reference the previous event
       schema_ref: 'registry://omninode/metadata/stamping_stamped/v1',
       payload: {
         target_artifact_hash: artifactHash,
@@ -432,9 +444,10 @@ export class EventBusMockGenerator {
     const correlationId = randomUUID();
     const source = 'postgres-adapter';
 
+    const requestedEventId = randomUUID();
     await this.emitEvent({
       event_type: 'omninode.database.query.requested.v1',
-      event_id: randomUUID(),
+      event_id: requestedEventId,
       timestamp: new Date().toISOString(),
       tenant_id: this.tenantId,
       namespace: this.namespace,
@@ -461,7 +474,7 @@ export class EventBusMockGenerator {
       namespace: this.namespace,
       source,
       correlation_id: correlationId,
-      causation_id: correlationId,
+      causation_id: requestedEventId, // Reference the previous event
       schema_ref: 'registry://omninode/database/query_completed/v1',
       payload: {
         rows_returned: Math.floor(5 + Math.random() * 10),
@@ -482,9 +495,10 @@ export class EventBusMockGenerator {
     const serviceName = `service-${Math.floor(Math.random() * 10)}`;
     const source = 'consul-adapter';
 
+    const requestedEventId = randomUUID();
     await this.emitEvent({
       event_type: 'omninode.consul.service.register.requested.v1',
-      event_id: randomUUID(),
+      event_id: requestedEventId,
       timestamp: new Date().toISOString(),
       tenant_id: this.tenantId,
       namespace: this.namespace,
@@ -512,7 +526,7 @@ export class EventBusMockGenerator {
       namespace: this.namespace,
       source,
       correlation_id: correlationId,
-      causation_id: correlationId,
+      causation_id: requestedEventId, // Reference the previous event
       schema_ref: 'registry://omninode/consul/service_registered/v1',
       payload: {
         service_name: serviceName,
@@ -533,9 +547,10 @@ export class EventBusMockGenerator {
     const secretPath = `secret/data/app/${Math.floor(Math.random() * 10)}`;
     const source = 'vault-adapter';
 
+    const requestedEventId = randomUUID();
     await this.emitEvent({
       event_type: 'omninode.vault.secret.read.requested.v1',
-      event_id: randomUUID(),
+      event_id: requestedEventId,
       timestamp: new Date().toISOString(),
       tenant_id: this.tenantId,
       namespace: this.namespace,
@@ -562,7 +577,7 @@ export class EventBusMockGenerator {
       namespace: this.namespace,
       source,
       correlation_id: correlationId,
-      causation_id: correlationId,
+      causation_id: requestedEventId, // Reference the previous event
       schema_ref: 'registry://omninode/vault/secret_read_completed/v1',
       payload: {
         secret_path: secretPath,
