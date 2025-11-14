@@ -290,19 +290,24 @@ class EventBusSource {
       },
     ];
 
-    // Apply filters
+    // Apply filters in a single pass for better performance
     let filtered = mockEvents;
-    if (options.event_types && options.event_types.length > 0) {
-      filtered = filtered.filter(e => options.event_types!.includes(e.event_type));
-    }
-    if (options.correlation_id) {
-      filtered = filtered.filter(e => e.correlation_id === options.correlation_id);
-    }
-    if (options.tenant_id) {
-      filtered = filtered.filter(e => e.tenant_id === options.tenant_id);
-    }
-    if (options.namespace) {
-      filtered = filtered.filter(e => e.namespace === options.namespace);
+    if (options.event_types || options.correlation_id || options.tenant_id || options.namespace) {
+      filtered = mockEvents.filter(e => {
+        if (options.event_types && options.event_types.length > 0 && !options.event_types.includes(e.event_type)) {
+          return false;
+        }
+        if (options.correlation_id && e.correlation_id !== options.correlation_id) {
+          return false;
+        }
+        if (options.tenant_id && e.tenant_id !== options.tenant_id) {
+          return false;
+        }
+        if (options.namespace && e.namespace !== options.namespace) {
+          return false;
+        }
+        return true;
+      });
     }
 
     // Apply limit

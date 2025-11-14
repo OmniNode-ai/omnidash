@@ -127,6 +127,14 @@ export default function EventFlow() {
     }));
   }, [eventBusData]);
 
+  // Derive event types from event bus events for EventSearchBar
+  const eventTypes = useMemo(() => {
+    if (!useEventBus || !eventBusData?.events) return [];
+    const types = new Set<string>();
+    eventBusData.events.forEach((e: EventBusEvent) => types.add(e.event_type));
+    return Array.from(types).sort();
+  }, [useEventBus, eventBusData]);
+
   // Transform to expected format
   const data: EventStreamResponse = useEventBus ? {
     events: eventBusEvents,
@@ -224,7 +232,7 @@ export default function EventFlow() {
       {useEventBus && (
         <>
           <EventSearchBar
-            eventTypes={[]}
+            eventTypes={eventTypes}
             onFilterChange={(filters) => setEventBusFilters({ ...eventBusFilters, ...filters })}
           />
           <EventStatisticsPanel />

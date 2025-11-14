@@ -18,12 +18,20 @@ export interface EventPayloadViewerProps {
   className?: string;
 }
 
+// Security limits to prevent stack overflow and performance issues
+const MAX_DEPTH = 10;
+const MAX_STRING_LENGTH = 10000;
+
 function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: { 
   data: any; 
   searchTerm?: string; 
   level?: number;
   path?: string;
 }) {
+  // Prevent stack overflow from deeply nested objects
+  if (level > MAX_DEPTH) {
+    return <span className="text-yellow-600">[Max depth reached]</span>;
+  }
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const toggleCollapse = (key: string) => {
@@ -44,7 +52,11 @@ function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: {
   }
 
   if (typeof data === 'string') {
-    return <span className="text-green-600">"{data}"</span>;
+    // Truncate very long strings to prevent performance issues
+    const displayValue = data.length > MAX_STRING_LENGTH 
+      ? `${data.slice(0, MAX_STRING_LENGTH)}... [truncated, ${data.length} chars total]`
+      : data;
+    return <span className="text-green-600">"{displayValue}"</span>;
   }
 
   if (typeof data === 'number') {
@@ -63,6 +75,8 @@ function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: {
       <div className="ml-4">
         <button
           onClick={() => toggleCollapse(key)}
+          aria-expanded={!isCollapsed}
+          aria-label={isCollapsed ? 'Expand array' : 'Collapse array'}
           className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
         >
           {isCollapsed ? (
@@ -76,12 +90,17 @@ function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: {
         </button>
         {!isCollapsed && (
           <div className="ml-4 space-y-1">
-            {data.map((item, index) => (
+            {data.slice(0, 100).map((item, index) => (
               <div key={index} className="flex items-start gap-2">
                 <span className="text-gray-500">{index}:</span>
                 <JsonViewer data={item} searchTerm={searchTerm} level={level + 1} path={`${path}[${index}]`} />
               </div>
             ))}
+            {data.length > 100 && (
+              <div className="text-yellow-600 text-sm">
+                ... [showing first 100 items of {data.length} total]
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -97,6 +116,8 @@ function JsonViewer({ data, searchTerm = '', level = 0, path = '' }: {
       <div className="ml-4">
         <button
           onClick={() => toggleCollapse(key)}
+          aria-expanded={!isCollapsed}
+          aria-label={isCollapsed ? 'Expand object' : 'Collapse object'}
           className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
         >
           {isCollapsed ? (
