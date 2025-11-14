@@ -50,6 +50,7 @@ export function EventStatisticsPanel({ className }: EventStatisticsPanelProps) {
     queryFn: () => eventBusSource.getStatistics(timeRangeDates),
     refetchInterval: POLLING_INTERVAL_MEDIUM,
     refetchOnWindowFocus: true,
+    staleTime: 30000, // Consider data fresh for 30s
   });
 
   const isMock = statistics && (statistics as any).isMock;

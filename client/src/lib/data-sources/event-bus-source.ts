@@ -3,6 +3,11 @@
  * 
  * Client-side data source for querying events from the event bus API.
  * Provides methods to query events, get statistics, and check status.
+ * 
+ * API Endpoints (implemented in server/event-bus-routes.ts):
+ * - GET /api/event-bus/events - Query events with filters
+ * - GET /api/event-bus/statistics - Get event statistics
+ * - GET /api/event-bus/status - Get data source status
  */
 
 import { USE_MOCK_DATA } from '../mock-data/config';
@@ -17,7 +22,7 @@ export interface EventBusEvent {
   correlation_id?: string;
   causation_id?: string;
   schema_ref: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   topic: string;
   partition: number;
   offset: string;

@@ -2,6 +2,7 @@ import { MetricCard } from "@/components/MetricCard";
 import { RealtimeChart } from "@/components/RealtimeChart";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { TimeRangeSelector } from "@/components/TimeRangeSelector";
 import { ExportButton } from "@/components/ExportButton";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -82,6 +83,7 @@ export default function EventFlow() {
     }),
     refetchInterval: POLLING_INTERVAL_MEDIUM,
     refetchOnWindowFocus: true,
+    staleTime: 30000, // Consider data fresh for 30s
     enabled: useEventBus,
   });
 

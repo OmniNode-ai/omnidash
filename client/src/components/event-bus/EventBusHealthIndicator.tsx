@@ -24,6 +24,7 @@ export function EventBusHealthIndicator({ className, showLabel = true }: EventBu
     queryFn: () => eventBusSource.getStatus(),
     refetchInterval: POLLING_INTERVAL_MEDIUM,
     refetchOnWindowFocus: true,
+    staleTime: 30000, // Consider data fresh for 30s
   });
 
   if (isLoading) {

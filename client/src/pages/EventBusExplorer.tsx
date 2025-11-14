@@ -130,8 +130,17 @@ export default function EventBusExplorer() {
               {events.map((event) => (
                 <div
                   key={event.event_id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View details for event ${event.event_type}`}
                   className="flex items-start gap-4 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors cursor-pointer"
                   onClick={() => handleEventClick(event)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleEventClick(event);
+                    }
+                  }}
                 >
                   <div className="flex-shrink-0 w-24 text-xs text-muted-foreground font-mono">
                     {new Date(event.timestamp).toLocaleTimeString()}
@@ -144,6 +153,7 @@ export default function EventBusExplorer() {
                           variant="ghost"
                           size="sm"
                           className="h-6 text-xs"
+                          aria-label={`View event chain for correlation ${event.correlation_id}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleCorrelationClick(event.correlation_id!);

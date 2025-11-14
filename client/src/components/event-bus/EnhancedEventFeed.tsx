@@ -99,6 +99,7 @@ export function EnhancedEventFeed({
                       variant="ghost"
                       size="sm"
                       className="h-5 text-xs px-2"
+                      aria-label={`View event chain for correlation ${correlationId}`}
                       onClick={() => onCorrelationClick(correlationId)}
                     >
                       View Chain
@@ -110,12 +111,21 @@ export function EnhancedEventFeed({
                 {groupEvents.map((event, index) => (
                   <div
                     key={event.event_id}
+                    role={onEventClick ? "button" : undefined}
+                    tabIndex={onEventClick ? 0 : undefined}
+                    aria-label={onEventClick ? `View details for event ${event.event_type}` : undefined}
                     className={cn(
                       "flex gap-3 p-3 rounded-lg border animate-slide-in bg-card border-border",
                       onEventClick && "cursor-pointer transition-all duration-200 ease-in-out hover:bg-accent/50 hover:scale-[1.01]"
                     )}
-                    style={{ animationDelay: `${index * 50}ms` }}
+                    style={index < 20 ? { animationDelay: `${index * 50}ms` } : undefined}
                     onClick={onEventClick ? () => onEventClick(event) : undefined}
+                    onKeyDown={onEventClick ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onEventClick(event);
+                      }
+                    } : undefined}
                   >
                     <div className={cn("w-1 rounded", getStatusColor(event.event_type))} />
                     <div className="flex-1 min-w-0 space-y-2">

@@ -140,12 +140,12 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Event Type Filter */}
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Event Type</label>
+          <label htmlFor="event-type-filter" className="text-xs text-muted-foreground">Event Type</label>
           <Select value={eventTypeFilter || 'all'} onValueChange={(value) => {
             setEventTypeFilter(value === 'all' ? '' : value);
             setTimeout(handleFilterChange, 0);
           }}>
-            <SelectTrigger>
+            <SelectTrigger id="event-type-filter">
               <SelectValue placeholder="All types" />
             </SelectTrigger>
             <SelectContent>
@@ -161,8 +161,9 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
 
         {/* Correlation ID Search */}
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Correlation ID</label>
+          <label htmlFor="correlation-id-filter" className="text-xs text-muted-foreground">Correlation ID</label>
           <Input
+            id="correlation-id-filter"
             placeholder="Search by correlation ID"
             value={correlationId}
             onChange={(e) => {
@@ -175,12 +176,12 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
 
         {/* Time Range */}
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Time Range</label>
+          <label htmlFor="time-range-filter" className="text-xs text-muted-foreground">Time Range</label>
           <Select value={timeRange} onValueChange={(value) => {
             setTimeRange(value);
             setTimeout(handleFilterChange, 0);
           }}>
-            <SelectTrigger>
+            <SelectTrigger id="time-range-filter">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -212,8 +213,9 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
       {showAdvanced && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t">
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Tenant ID</label>
+            <label htmlFor="tenant-id-filter" className="text-xs text-muted-foreground">Tenant ID</label>
             <Input
+              id="tenant-id-filter"
               placeholder="Filter by tenant"
               value={tenantId}
               onChange={(e) => {
@@ -225,8 +227,9 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Source</label>
+            <label htmlFor="source-filter" className="text-xs text-muted-foreground">Source</label>
             <Input
+              id="source-filter"
               placeholder="Filter by source"
               value={source}
               onChange={(e) => {
