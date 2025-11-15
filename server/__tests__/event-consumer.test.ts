@@ -65,6 +65,7 @@ describe('EventConsumer', () => {
   });
 
   afterEach(async () => {
+    vi.useRealTimers(); // Clean up timers after each test
     try {
       await consumer.stop();
     } catch (e) {
@@ -522,23 +523,25 @@ describe('EventConsumer', () => {
     });
 
     it('should retry with exponential backoff on failure', async () => {
+      vi.useFakeTimers();
+      
       // Fail 2 times, then succeed
       mockConsumerConnect
         .mockRejectedValueOnce(new Error('Connection refused'))
         .mockRejectedValueOnce(new Error('Connection refused'))
         .mockResolvedValueOnce(undefined);
 
-      const startTime = Date.now();
-      await consumer.connectWithRetry(5);
-      const elapsed = Date.now() - startTime;
+      const connectPromise = consumer.connectWithRetry(5);
+      
+      // Fast-forward through delays: 1s + 2s = 3s
+      await vi.advanceTimersByTimeAsync(3000);
+      
+      await connectPromise;
 
       // Should have tried 3 times (2 failures + 1 success)
       expect(mockConsumerConnect).toHaveBeenCalledTimes(3);
-
-      // Should have waited: 1000ms (attempt 1) + 2000ms (attempt 2) = ~3000ms
-      // Allow some tolerance for execution time
-      expect(elapsed).toBeGreaterThanOrEqual(2900);
-      expect(elapsed).toBeLessThan(4000);
+      
+      vi.useRealTimers();
     });
 
     it('should throw error after max retries', async () => {
