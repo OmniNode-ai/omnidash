@@ -45,7 +45,6 @@ export function EventBusHealthIndicator({ className, showLabel = true }: EventBu
     switch (s) {
       case 'running': return CheckCircle2;
       case 'stopped': return XCircle;
-      case 'connecting': return Clock;
       case 'error': return XCircle;
       case 'unknown': return AlertCircle;
       default: return AlertCircle;
@@ -56,7 +55,6 @@ export function EventBusHealthIndicator({ className, showLabel = true }: EventBu
     switch (s) {
       case 'running': return 'bg-green-500';
       case 'stopped': return 'bg-red-500';
-      case 'connecting': return 'bg-yellow-500';
       case 'error': return 'bg-red-500';
       case 'unknown': return 'bg-gray-500';
       default: return 'bg-gray-500';
@@ -71,8 +69,8 @@ export function EventBusHealthIndicator({ className, showLabel = true }: EventBu
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge variant="outline" className={cn("gap-1.5", className)}>
-            <span className={cn("h-2 w-2 rounded-full", statusColor, effectiveStatus === 'connecting' && 'animate-pulse')} />
+        <Badge variant="outline" className={cn("gap-1.5", className)}>
+          <span className={cn("h-2 w-2 rounded-full", statusColor)} />
             {showLabel && <span className="text-xs">{statusText}</span>}
           </Badge>
         </TooltipTrigger>

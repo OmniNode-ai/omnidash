@@ -163,6 +163,13 @@ class EventBusSource {
   async getStatistics(timeRange?: { start: Date; end: Date }): Promise<EventStatistics> {
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
 
+    // Validate time range dates if provided
+    if (timeRange) {
+      if (isNaN(timeRange.start.getTime()) || isNaN(timeRange.end.getTime())) {
+        throw new Error('Invalid time range dates provided');
+      }
+    }
+
     if (USE_MOCK_DATA && !isTestEnv) {
       return this.getMockStatistics();
     }

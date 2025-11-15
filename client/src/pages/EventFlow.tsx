@@ -414,7 +414,9 @@ export default function EventFlow() {
                     )}
                     {event.data?.correlationId && (
                       <span className="text-xs text-muted-foreground font-mono truncate">
-                        ID: {event.data.correlationId.slice(0, 8)}...
+                        ID: {event.data.correlationId.length > 8
+                          ? `${event.data.correlationId.slice(0, 8)}...`
+                          : event.data.correlationId}
                       </span>
                     )}
                   </div>

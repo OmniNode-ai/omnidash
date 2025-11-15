@@ -128,3 +128,15 @@ export const STATIC_QUERY_CONFIG = {
   refetchInterval: POLLING_INTERVAL_SLOW,
   staleTime: STALE_TIME_LONG,
 } as const;
+
+/**
+ * Helper to get polling interval, returning false in test environment to prevent infinite loops
+ * Use this instead of directly using POLLING_INTERVAL_* constants in components
+ */
+export function getPollingInterval(interval: number): number | false {
+  // Disable polling in test environment
+  if (typeof import.meta !== 'undefined' && (import.meta.env?.VITEST === true || import.meta.env?.VITEST === 'true')) {
+    return false;
+  }
+  return interval;
+}
