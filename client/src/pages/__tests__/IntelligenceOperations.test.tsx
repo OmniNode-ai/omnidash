@@ -26,6 +26,8 @@ function renderWithClient(ui: React.ReactNode) {
     defaultOptions: {
       queries: {
         retry: false,
+        refetchInterval: false, // Disable polling in tests to prevent infinite loops
+        refetchOnWindowFocus: false,
         queryFn: getQueryFn({ on401: 'throw' }),
       },
     },

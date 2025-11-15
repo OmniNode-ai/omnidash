@@ -349,7 +349,10 @@ export class AgentRunTracker {
       }
     }
 
-    console.log(`Generated ${agentRuns.length} mock agent runs (${totalDays} days, balanced distribution)`);
+    // Only log in non-test environments to avoid flooding test output
+    if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+      console.log(`Generated ${agentRuns.length} mock agent runs (${totalDays} days, balanced distribution)`);
+    }
   }
 
   /**

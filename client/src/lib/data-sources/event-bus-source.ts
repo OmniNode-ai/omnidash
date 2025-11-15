@@ -376,8 +376,9 @@ class EventBusSource {
    * Generate mock statistics
    */
   private getMockStatistics(): EventStatistics {
-    const now = new Date();
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    // Use stable timestamp for test consistency
+    const baseTimestamp = new Date('2024-01-15T11:00:00Z');
+    const oneHourAgo = new Date(baseTimestamp.getTime() - 60 * 60 * 1000);
     
     return {
       total_events: 1250,
@@ -395,7 +396,7 @@ class EventBusSource {
       },
       events_per_minute: 20.8,
       oldest_event: oneHourAgo.toISOString(),
-      newest_event: now.toISOString(),
+      newest_event: baseTimestamp.toISOString(),
     };
   }
 }

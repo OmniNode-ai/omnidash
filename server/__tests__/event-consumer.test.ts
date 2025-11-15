@@ -570,25 +570,28 @@ describe('EventConsumer', () => {
       // Use fake timers to avoid waiting for real delays
       vi.useFakeTimers();
       
-      // Mock high retry count to test max delay
-      // Delays: 1s, 2s, 4s, 8s, 16s, 30s (capped), 30s (capped)
+      // Mock high retry count to test max delay cap
+      // Delays: 1s, 2s, 4s, 8s, 16s, 30s (capped), 30s (capped), 30s (capped)
+      // Need 7+ failures to actually hit the 30s cap (since 2^5 = 32s, but cap is 30s)
       mockConsumerConnect
         .mockRejectedValueOnce(new Error('Connection refused'))
         .mockRejectedValueOnce(new Error('Connection refused'))
         .mockRejectedValueOnce(new Error('Connection refused'))
         .mockRejectedValueOnce(new Error('Connection refused'))
         .mockRejectedValueOnce(new Error('Connection refused'))
-        .mockResolvedValueOnce(undefined); // Success on 6th attempt
+        .mockRejectedValueOnce(new Error('Connection refused')) // 6th: would be 32s, capped to 30s
+        .mockRejectedValueOnce(new Error('Connection refused')) // 7th: still 30s (capped)
+        .mockResolvedValueOnce(undefined); // Success on 8th attempt
 
       const connectPromise = consumer.connectWithRetry(10);
       
-      // Fast-forward through all delays: 1s + 2s + 4s + 8s + 16s = 31s
-      await vi.advanceTimersByTimeAsync(31000);
+      // Fast-forward through all delays: 1s + 2s + 4s + 8s + 16s + 30s + 30s = 91s
+      await vi.advanceTimersByTimeAsync(91000);
       
       await connectPromise;
 
-      // Verify it was called 6 times (5 failures + 1 success)
-      expect(mockConsumerConnect).toHaveBeenCalledTimes(6);
+      // Verify it was called 8 times (7 failures + 1 success)
+      expect(mockConsumerConnect).toHaveBeenCalledTimes(8);
       
       vi.useRealTimers();
     }, 10000); // Reduced timeout since we're using fake timers

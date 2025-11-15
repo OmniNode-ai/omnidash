@@ -24,7 +24,13 @@ describe('EventBusExplorer', () => {
   beforeEach(() => {
     queryClient = new QueryClient({
       defaultOptions: {
-        queries: { retry: false },
+        queries: {
+          retry: false,
+          refetchInterval: false, // Disable polling in tests to prevent infinite loops
+          refetchOnWindowFocus: false,
+          gcTime: 0, // Disable cache to prevent stale data issues
+          staleTime: Infinity, // Never consider data stale in tests
+        },
       },
     });
     vi.clearAllMocks();

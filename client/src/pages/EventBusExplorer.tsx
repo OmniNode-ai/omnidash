@@ -184,12 +184,16 @@ export default function EventBusExplorer() {
                             handleCorrelationClick(event.correlation_id!);
                           }}
                         >
-                          Chain: {event.correlation_id.slice(0, 8)}...
+                          Chain: {event.correlation_id.length > 8
+                            ? `${event.correlation_id.slice(0, 8)}...`
+                            : event.correlation_id}
                         </Button>
                       )}
                       {event.causation_id && (
                         <Badge variant="outline" className="text-xs font-mono">
-                          Caused by: {event.causation_id.slice(0, 8)}...
+                          Caused by: {event.causation_id.length > 8
+                            ? `${event.causation_id.slice(0, 8)}...`
+                            : event.causation_id}
                         </Badge>
                       )}
                     </div>

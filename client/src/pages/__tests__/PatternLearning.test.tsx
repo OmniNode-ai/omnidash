@@ -30,6 +30,10 @@ function renderWithClient(ui: ReactNode) {
     defaultOptions: {
       queries: {
         retry: false,
+        refetchInterval: false, // Disable polling in tests to prevent infinite loops
+        refetchOnWindowFocus: false,
+        gcTime: 0, // Disable cache to prevent stale data issues
+        staleTime: Infinity, // Never consider data stale in tests
       },
     },
   });

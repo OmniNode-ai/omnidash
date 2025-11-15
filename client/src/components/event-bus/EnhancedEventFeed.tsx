@@ -147,11 +147,15 @@ export function EnhancedEventFeed({
                         <div className="text-xs text-muted-foreground mb-1">
                           Source: <span className="font-mono">{event.source}</span>
                         </div>
-                        {event.payload && Object.keys(event.payload).length > 0 && (
-                          <div className="text-xs text-muted-foreground truncate">
-                            {JSON.stringify(event.payload).slice(0, 100)}...
-                          </div>
-                        )}
+                        {event.payload && Object.keys(event.payload).length > 0 && (() => {
+                          const json = JSON.stringify(event.payload);
+                          const preview = json.slice(0, 100);
+                          return (
+                            <div className="text-xs text-muted-foreground truncate">
+                              {json.length > 100 ? `${preview}...` : preview}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
