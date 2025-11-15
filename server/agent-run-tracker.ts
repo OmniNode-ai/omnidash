@@ -40,7 +40,10 @@ export class AgentRunTracker {
     };
 
     agentRuns.push(run);
-    console.log(`Recorded agent run: ${run.agentId} (${run.withIntelligence ? 'with' : 'without'} intelligence)`);
+    // Only log in non-test environments to avoid flooding test output
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`Recorded agent run: ${run.agentId} (${run.withIntelligence ? 'with' : 'without'} intelligence)`);
+    }
     
     return run;
   }

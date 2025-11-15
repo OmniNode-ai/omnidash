@@ -54,6 +54,7 @@ describe('EventConsumer', () => {
   beforeEach(() => {
     // Clear all mock calls
     vi.clearAllMocks();
+    vi.useRealTimers(); // Ensure real timers for most tests
 
     // Reset environment variables
     process.env.KAFKA_BOOTSTRAP_SERVERS = '192.168.86.200:9092';
@@ -541,19 +542,31 @@ describe('EventConsumer', () => {
     });
 
     it('should throw error after max retries', async () => {
+      vi.useFakeTimers();
+      
       const maxRetries = 3;
       vi.clearAllMocks(); // Ensure clean state before this test
       mockConsumerConnect.mockRejectedValue(new Error('Connection refused'));
 
-      await expect(consumer.connectWithRetry(maxRetries)).rejects.toThrow(
+      const connectPromise = consumer.connectWithRetry(maxRetries);
+      
+      // Fast-forward through all retry delays: 1s + 2s = 3s
+      await vi.advanceTimersByTimeAsync(3000);
+      
+      await expect(connectPromise).rejects.toThrow(
         'Kafka connection failed after 3 attempts'
       );
 
       // Should have tried exactly maxRetries times
       expect(mockConsumerConnect).toHaveBeenCalledTimes(maxRetries);
-    }, 10000); // Increase timeout for retry delays
+      
+      vi.useRealTimers();
+    }, 5000); // Reduced timeout since we're using fake timers
 
     it('should respect max delay of 30 seconds', async () => {
+      // Use fake timers to avoid waiting for real delays
+      vi.useFakeTimers();
+      
       // Mock high retry count to test max delay
       // Delays: 1s, 2s, 4s, 8s, 16s, 30s (capped), 30s (capped)
       mockConsumerConnect
@@ -564,25 +577,37 @@ describe('EventConsumer', () => {
         .mockRejectedValueOnce(new Error('Connection refused'))
         .mockResolvedValueOnce(undefined); // Success on 6th attempt
 
-      const startTime = Date.now();
-      await consumer.connectWithRetry(10);
-      const elapsed = Date.now() - startTime;
+      const connectPromise = consumer.connectWithRetry(10);
+      
+      // Fast-forward through all delays: 1s + 2s + 4s + 8s + 16s = 31s
+      await vi.advanceTimersByTimeAsync(31000);
+      
+      await connectPromise;
 
-      // Total delay: 1000 + 2000 + 4000 + 8000 + 16000 = 31000ms
-      // Allow tolerance for execution time
-      expect(elapsed).toBeGreaterThanOrEqual(30000);
-      expect(elapsed).toBeLessThan(33000);
-    }, 35000); // Increase timeout to 35s for long retry test
+      // Verify it was called 6 times (5 failures + 1 success)
+      expect(mockConsumerConnect).toHaveBeenCalledTimes(6);
+      
+      vi.useRealTimers();
+    }, 10000); // Reduced timeout since we're using fake timers
 
     it('should handle non-Error exceptions', async () => {
+      vi.useFakeTimers();
+      
       mockConsumerConnect
         .mockRejectedValueOnce('String error')
         .mockResolvedValueOnce(undefined);
 
-      await consumer.connectWithRetry(5);
+      const connectPromise = consumer.connectWithRetry(5);
+      
+      // Fast-forward through the 1s delay
+      await vi.advanceTimersByTimeAsync(1000);
+      
+      await connectPromise;
 
       expect(mockConsumerConnect).toHaveBeenCalledTimes(2);
-    }, 10000); // Increase timeout to 10s for retry delay
+      
+      vi.useRealTimers();
+    }, 5000); // Reduced timeout since we're using fake timers
 
     it('should throw error if consumer not initialized', async () => {
       const uninitializedConsumer = new EventConsumer();

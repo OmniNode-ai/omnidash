@@ -309,8 +309,24 @@ class EventBusSource {
 
     // Apply filters in a single pass for better performance
     let filtered = mockEvents;
+    
+    // Filter by time range first
+    if (options.start_time || options.end_time) {
+      filtered = filtered.filter(e => {
+        const eventTime = new Date(e.timestamp).getTime();
+        if (options.start_time && eventTime < options.start_time.getTime()) {
+          return false;
+        }
+        if (options.end_time && eventTime > options.end_time.getTime()) {
+          return false;
+        }
+        return true;
+      });
+    }
+    
+    // Filter by other criteria
     if (options.event_types || options.correlation_id || options.tenant_id || options.namespace || options.source) {
-      filtered = mockEvents.filter(e => {
+      filtered = filtered.filter(e => {
         if (options.event_types && options.event_types.length > 0 && !options.event_types.includes(e.event_type)) {
           return false;
         }
@@ -330,7 +346,21 @@ class EventBusSource {
       });
     }
 
-    // Apply limit
+    // Apply sorting
+    if (options.order_by) {
+      const field = options.order_by === 'timestamp' ? 'timestamp' : (options.order_by === 'processed_at' ? 'processed_at' : 'timestamp');
+      const direction = options.order_direction === 'desc' ? -1 : 1;
+      filtered = [...filtered].sort((a, b) => {
+        const aTime = new Date(a[field] || a.timestamp).getTime();
+        const bTime = new Date(b[field] || b.timestamp).getTime();
+        return (aTime - bTime) * direction;
+      });
+    }
+
+    // Apply offset and limit (offset first, then limit)
+    if (options.offset) {
+      filtered = filtered.slice(options.offset);
+    }
     if (options.limit) {
       filtered = filtered.slice(0, options.limit);
     }
