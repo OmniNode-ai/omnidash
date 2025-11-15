@@ -309,7 +309,7 @@ class EventBusSource {
 
     // Apply filters in a single pass for better performance
     let filtered = mockEvents;
-    if (options.event_types || options.correlation_id || options.tenant_id || options.namespace) {
+    if (options.event_types || options.correlation_id || options.tenant_id || options.namespace || options.source) {
       filtered = mockEvents.filter(e => {
         if (options.event_types && options.event_types.length > 0 && !options.event_types.includes(e.event_type)) {
           return false;
@@ -321,6 +321,9 @@ class EventBusSource {
           return false;
         }
         if (options.namespace && e.namespace !== options.namespace) {
+          return false;
+        }
+        if (options.source && e.source !== options.source) {
           return false;
         }
         return true;
