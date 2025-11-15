@@ -258,7 +258,6 @@ class EventBusSource {
   private getMockEvents(options: EventQueryOptions): EventQueryResponse {
     // Use fixed base timestamp to ensure stable mock data
     const baseTimestamp = new Date('2024-01-15T10:00:00Z').getTime();
-    const now = Date.now();
     const mockEvents: EventBusEvent[] = [
       {
         event_type: 'omninode.intelligence.query.requested.v1',
