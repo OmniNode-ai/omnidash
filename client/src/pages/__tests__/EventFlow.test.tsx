@@ -33,6 +33,10 @@ function renderWithClient(ui: ReactNode) {
     defaultOptions: {
       queries: {
         retry: false,
+        refetchInterval: false, // Disable polling in tests to prevent infinite loops
+        refetchOnWindowFocus: false,
+        gcTime: 0, // Disable cache to prevent stale data issues
+        staleTime: Infinity, // Never consider data stale in tests
       },
     },
   });
@@ -48,6 +52,29 @@ describe('EventFlow page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMocks.getItem.mockReturnValue('24h');
+    // Reset all mocks to return empty/default values
+    vi.mocked(eventBusSource.queryEvents).mockResolvedValue({
+      events: [],
+      count: 0,
+      options: {},
+    });
+    vi.mocked(eventBusSource.getStatistics).mockResolvedValue({
+      total_events: 0,
+      events_by_type: {},
+      events_by_tenant: {},
+      events_per_minute: 0,
+      oldest_event: null,
+      newest_event: null,
+    });
+    vi.mocked(eventBusSource.getStatus).mockResolvedValue({
+      active: true,
+      connected: true,
+      status: 'running',
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
   });
 
   it('renders metrics, charts, and recent events on success', async () => {

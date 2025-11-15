@@ -84,7 +84,7 @@ describe('EventBusHealthIndicator', () => {
 
     renderWithClient(<EventBusHealthIndicator />);
 
-    expect(screen.getByText('Checking...')).toBeInTheDocument();
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 });
 

@@ -75,15 +75,58 @@ export default function EventFlow() {
 
   // Fetch events from event bus (new API)
   // Respect time range from EventSearchBar if provided, otherwise use page-level timeRangeDates
+  // Use stable references to prevent infinite loops - compare by timestamp values, not object references
   const effectiveTimeRange = useMemo(() => {
-    if (eventBusFilters.start_time && eventBusFilters.end_time) {
-      return { start: eventBusFilters.start_time, end: eventBusFilters.end_time };
+    const filterStartTime = eventBusFilters.start_time?.getTime();
+    const filterEndTime = eventBusFilters.end_time?.getTime();
+    const pageStartTime = timeRangeDates.start.getTime();
+    const pageEndTime = timeRangeDates.end.getTime();
+    
+    if (filterStartTime && filterEndTime) {
+      // Return stable object reference - only create new if values actually changed
+      return { start: new Date(filterStartTime), end: new Date(filterEndTime) };
     }
-    return timeRangeDates;
-  }, [eventBusFilters.start_time, eventBusFilters.end_time, timeRangeDates]);
+    // Return stable reference to timeRangeDates
+    return { start: new Date(pageStartTime), end: new Date(pageEndTime) };
+  }, [
+    eventBusFilters.start_time?.getTime(), // Compare by timestamp, not object reference
+    eventBusFilters.end_time?.getTime(),
+    timeRangeDates.start.getTime(),
+    timeRangeDates.end.getTime(),
+  ]);
+
+  // Create stable query key to prevent infinite loops
+  const eventBusQueryKey = useMemo(() => {
+    return [
+      'event-bus-events',
+      eventBusFilters.event_types?.join(','),
+      eventBusFilters.correlation_id,
+      eventBusFilters.tenant_id,
+      eventBusFilters.namespace,
+      eventBusFilters.source,
+      eventBusFilters.limit,
+      eventBusFilters.offset,
+      eventBusFilters.order_by,
+      eventBusFilters.order_direction,
+      effectiveTimeRange.start.getTime(),
+      effectiveTimeRange.end.getTime(),
+    ];
+  }, [
+    eventBusFilters.event_types,
+    eventBusFilters.correlation_id,
+    eventBusFilters.tenant_id,
+    eventBusFilters.namespace,
+    eventBusFilters.source,
+    eventBusFilters.limit,
+    eventBusFilters.offset,
+    eventBusFilters.order_by,
+    eventBusFilters.order_direction,
+    effectiveTimeRange.start.getTime(),
+    effectiveTimeRange.end.getTime(),
+  ]);
 
   const { data: eventBusData, isLoading: isLoadingBus, isError: isErrorBus, error: errorBus, dataUpdatedAt: busUpdatedAt } = useQuery({
-    queryKey: ['event-bus-events', { ...eventBusFilters, ...effectiveTimeRange }],
+    queryKey: eventBusQueryKey,
     queryFn: () => eventBusSource.queryEvents({
       ...eventBusFilters,
       start_time: effectiveTimeRange.start,
@@ -150,23 +193,28 @@ export default function EventFlow() {
   } : { events: [], total: 0 });
 
   // Calculate metrics from event bus data
+  // Use eventBusData.count instead of events.length to avoid dependency on array reference
   const eventBusMetrics = useMemo(() => {
-    if (!eventBusData?.events || !useEventBus) return null;
-    const events = eventBusData.events;
+    if (!eventBusData || !useEventBus) return null;
+    const events = eventBusData.events || [];
+    const eventCount = eventBusData.count ?? events.length;
     const typeCounts = new Map<string, number>();
     events.forEach(e => {
       typeCounts.set(e.event_type, (typeCounts.get(e.event_type) || 0) + 1);
     });
     // Use effectiveTimeRange to match the actual query time window
-    const windowMs = effectiveTimeRange.end.getTime() - effectiveTimeRange.start.getTime();
+    // Compare by timestamp values to prevent infinite loops
+    const startTime = effectiveTimeRange.start.getTime();
+    const endTime = effectiveTimeRange.end.getTime();
+    const windowMs = endTime - startTime;
     return {
-      totalEvents: events.length,
+      totalEvents: eventCount,
       uniqueTypes: typeCounts.size,
-      eventsPerMinute: windowMs > 0 ? events.length / (windowMs / 60000) : 0,
+      eventsPerMinute: windowMs > 0 ? eventCount / (windowMs / 60000) : 0,
       avgProcessingTime: 0, // Not available from event bus
       topicCounts: typeCounts,
     };
-  }, [eventBusData, useEventBus, effectiveTimeRange]);
+  }, [eventBusData?.count, eventBusData?.events?.length, useEventBus, effectiveTimeRange.start.getTime(), effectiveTimeRange.end.getTime()]);
 
   // Use metrics and chart data from data source
   const metrics = useMemo(() => {
