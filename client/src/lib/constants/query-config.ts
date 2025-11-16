@@ -132,24 +132,34 @@ export const STATIC_QUERY_CONFIG = {
 /**
  * Helper to get polling interval, returning false in test environment to speed up tests
  * Use this instead of directly using POLLING_INTERVAL_* constants in components
+ * 
+ * @param interval - The polling interval in milliseconds
+ * @returns The interval number, or false if in test environment
+ * 
+ * @example
+ * ```typescript
+ * const { data } = useQuery({
+ *   queryKey: ['my-query'],
+ *   queryFn: fetchData,
+ *   refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
+ * });
+ * ```
  */
 export function getPollingInterval(interval: number): number | false {
   // Disable polling in test environment to speed up tests and avoid timeouts
-  // Check multiple ways to detect test environment for reliability
-  // Vitest sets import.meta.env.VITEST automatically, but we also check process.env as fallback
+  // Check multiple reliable signals to ensure we catch all test scenarios
   const isTestEnv = 
+    // Vitest sets this automatically
     (typeof import.meta !== 'undefined' && 
      (import.meta.env?.VITEST === true || 
       import.meta.env?.VITEST === 'true' || 
       import.meta.env?.MODE === 'test')) ||
+    // Node.js test environment
     (typeof process !== 'undefined' && 
      (process.env.VITEST === 'true' || 
-      process.env.NODE_ENV === 'test' ||
-      process.env.CI === 'true' && process.env.NODE_ENV !== 'production')) ||
-    (typeof window !== 'undefined' && (window as any).__VITEST__ === true) ||
-    // Check if vitest globals are available (vi, describe, it, etc.)
-    (typeof globalThis !== 'undefined' && 
-     typeof (globalThis as any).vi !== 'undefined');
+      process.env.NODE_ENV === 'test')) ||
+    // Vitest globals (vi, describe, it, expect, etc.)
+    (typeof globalThis !== 'undefined' && typeof (globalThis as any).vi !== 'undefined');
   
   if (isTestEnv) {
     return false;

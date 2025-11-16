@@ -129,6 +129,7 @@ export default function EventFlow() {
     queryKey: eventBusQueryKey,
     queryFn: () => eventBusSource.queryEvents({
       ...eventBusFilters,
+      // Use effectiveTimeRange which already respects EventSearchBar filters if provided
       start_time: effectiveTimeRange.start,
       end_time: effectiveTimeRange.end,
     }),
@@ -214,7 +215,7 @@ export default function EventFlow() {
       avgProcessingTime: 0, // Not available from event bus
       topicCounts: typeCounts,
     };
-  }, [eventBusData?.count, eventBusData?.events?.length, useEventBus, effectiveTimeRange.start.getTime(), effectiveTimeRange.end.getTime()]);
+  }, [eventBusData?.count, eventBusData?.events, useEventBus, effectiveTimeRange.start.getTime(), effectiveTimeRange.end.getTime()]);
 
   // Use metrics and chart data from data source
   const metrics = useMemo(() => {

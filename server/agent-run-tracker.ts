@@ -41,7 +41,7 @@ export class AgentRunTracker {
 
     agentRuns.push(run);
     // Only log in non-test environments to avoid flooding test output
-    if (process.env.NODE_ENV !== 'test') {
+    if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
       console.log(`Recorded agent run: ${run.agentId} (${run.withIntelligence ? 'with' : 'without'} intelligence)`);
     }
     
