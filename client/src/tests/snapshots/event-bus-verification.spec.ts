@@ -330,7 +330,8 @@ test.describe('Event Bus Verification', () => {
 
         // Verify all event types match known patterns
         eventTypes.forEach((eventType) => {
-          const matches = validPatterns.some(pattern => pattern.test(eventType));
+          const eventTypeStr = String(eventType);
+          const matches = validPatterns.some(pattern => pattern.test(eventTypeStr));
           expect(matches).toBeTruthy();
         });
       }

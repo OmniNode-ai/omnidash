@@ -129,7 +129,7 @@ export default function EventBusExplorer() {
             Events ({events.length})
           </h3>
           <ExportButton
-            data={events as Record<string, unknown>[]}
+            data={events as unknown as Record<string, unknown>[]}
             filename={`event-bus-events-${new Date().toISOString().split('T')[0]}`}
             disabled={isLoading || isError}
           />

@@ -73,9 +73,6 @@ describe('AgentOperations page', () => {
           status: 'completed',
           timestamp: new Date().toISOString(),
           duration: 100,
-          debugMode: false,
-          durationMs: 120,
-          createdAt: now,
         },
       ],
       perAgentMetrics: [
@@ -154,9 +151,6 @@ describe('AgentOperations page', () => {
           status: 'completed',
           timestamp: new Date().toISOString(),
           duration: 200,
-          debugMode: false,
-          durationMs: 250,
-          createdAt: now,
         },
       ],
       perAgentMetrics: [

@@ -432,7 +432,7 @@ export class EventBusDataSource extends EventEmitter {
       if (options.event_types && options.event_types.length > 0) {
         // Use PostgreSQL ANY() with array for better performance than OR chain
         // Parameterize each value to prevent SQL injection
-        const arrayValues = options.event_types.map((_, i) => sql`${options.event_types[i]}`);
+        const arrayValues = options.event_types.map((type) => sql`${type}`);
         // Build: event_type = ANY(ARRAY[$1, $2, $3, ...])
         // This is more efficient than OR chains for large arrays
         const arrayLiteral = sql.join(arrayValues, sql`, `);
@@ -599,20 +599,24 @@ export class EventBusDataSource extends EventEmitter {
       // Calculate events per minute
       let eventsPerMinute = 0;
       if (totalRow.oldest_event && totalRow.newest_event) {
-        const timeDiff = new Date(totalRow.newest_event).getTime() - new Date(totalRow.oldest_event).getTime();
+        const oldestEvent = typeof totalRow.oldest_event === 'string' ? totalRow.oldest_event : String(totalRow.oldest_event);
+        const newestEvent = typeof totalRow.newest_event === 'string' ? totalRow.newest_event : String(totalRow.newest_event);
+        const timeDiff = new Date(newestEvent).getTime() - new Date(oldestEvent).getTime();
         const minutes = timeDiff / (1000 * 60);
         if (minutes > 0) {
-          eventsPerMinute = parseInt(totalRow.total_events) / minutes;
+          const totalEvents = typeof totalRow.total_events === 'string' ? parseInt(totalRow.total_events) : Number(totalRow.total_events);
+          eventsPerMinute = totalEvents / minutes;
         }
       }
 
+      const totalEvents = typeof totalRow.total_events === 'string' ? parseInt(totalRow.total_events) : Number(totalRow.total_events);
       return {
-        total_events: parseInt(totalRow.total_events) || 0,
+        total_events: totalEvents || 0,
         events_by_type: eventsByType,
         events_by_tenant: eventsByTenant,
         events_per_minute: eventsPerMinute,
-        oldest_event: totalRow.oldest_event ? new Date(totalRow.oldest_event) : null,
-        newest_event: totalRow.newest_event ? new Date(totalRow.newest_event) : null,
+        oldest_event: totalRow.oldest_event ? new Date(String(totalRow.oldest_event)) : null,
+        newest_event: totalRow.newest_event ? new Date(String(totalRow.newest_event)) : null,
       };
     } catch (error) {
       console.error('[EventBusDataSource] Error getting statistics:', error);
