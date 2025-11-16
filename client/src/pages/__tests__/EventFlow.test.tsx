@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, beforeEach, vi } from 'vitest';
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import EventFlow from '../EventFlow';
 
 type LocalStorageMock = {
@@ -81,7 +81,7 @@ describe('EventFlow page', () => {
     const now = new Date().toISOString();
     vi.mocked(eventFlowSource.fetchEvents).mockResolvedValue({
       events: [
-        { id: 'evt-1', timestamp: now, type: 'throughput', data: { correlationId: 'abc123', count: 100 } },
+        { id: 'evt-1', timestamp: now, type: 'throughput', source: 'test', data: { correlationId: 'abc123', count: 100 } },
       ],
       metrics: {
         totalEvents: 1,
@@ -89,8 +89,6 @@ describe('EventFlow page', () => {
         eventsPerMinute: 120,
         avgProcessingTime: 45,
         topicCounts: new Map<string, number>([['throughput', 120]]),
-        totalEventsProcessed: 1,
-        uniqueSources: 1,
       },
       chartData: {
         throughput: [

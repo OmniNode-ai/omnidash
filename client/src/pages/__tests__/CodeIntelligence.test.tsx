@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, beforeEach, vi } from 'vitest';
+import { describe, it, beforeEach, expect, vi } from 'vitest';
 import CodeIntelligence from '../CodeIntelligence';
 import { codeIntelligenceSource } from '@/lib/data-sources';
 

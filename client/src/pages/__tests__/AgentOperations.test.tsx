@@ -1,7 +1,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, beforeEach, vi } from 'vitest';
+import { describe, it, beforeEach, expect, vi } from 'vitest';
 import AgentOperations from '../AgentOperations';
 import { agentOperationsSource } from '@/lib/data-sources';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -67,11 +67,12 @@ describe('AgentOperations page', () => {
       recentActions: [
         {
           id: 'action-1',
+          agentId: 'agent-alpha',
           agentName: 'Agent Alpha',
-          correlationId: 'corr-1',
-          actionName: 'Read File',
-          actionType: 'tool_call',
-          actionDetails: {},
+          action: 'Read File',
+          status: 'completed',
+          timestamp: new Date().toISOString(),
+          duration: 100,
           debugMode: false,
           durationMs: 120,
           createdAt: now,
@@ -147,11 +148,12 @@ describe('AgentOperations page', () => {
       recentActions: [
         {
           id: 'action-2',
+          agentId: 'agent-gamma',
           agentName: 'Agent Gamma',
-          correlationId: 'corr-2',
-          actionName: 'Plan Task',
-          actionType: 'analysis',
-          actionDetails: {},
+          action: 'Plan Task',
+          status: 'completed',
+          timestamp: new Date().toISOString(),
+          duration: 200,
           debugMode: false,
           durationMs: 250,
           createdAt: now,

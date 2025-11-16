@@ -396,7 +396,7 @@ export default function EventFlow() {
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div
                       className="h-full bg-status-healthy transition-all"
-                      style={{ width: `${Math.min((metrics.topicCounts.get(topic.name) || 0) / ('totalTopicCount' in metrics ? metrics.totalTopicCount : metrics.totalEvents) * 100, 100)}%` }}
+                      style={{ width: `${Math.min((metrics.topicCounts.get(topic.name) || 0) / ('totalTopicCount' in metrics ? (metrics as any).totalTopicCount : metrics.totalEvents) * 100, 100)}%` }}
                     />
                   </div>
                 </div>
