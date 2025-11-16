@@ -12,7 +12,7 @@ import { MockBadge } from "@/components/MockBadge";
 import { ensureTimeSeries } from "@/components/mockUtils";
 import { useState, useMemo } from "react";
 import { eventFlowSource, eventBusSource, type EventBusEvent } from "@/lib/data-sources";
-import { POLLING_INTERVAL_MEDIUM } from "@/lib/constants/query-config";
+import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
 import { EventStatisticsPanel } from "@/components/event-bus/EventStatisticsPanel";
 import { EventSearchBar } from "@/components/event-bus/EventSearchBar";
 import { EventTypeBadge } from "@/components/event-bus/EventTypeBadge";
@@ -132,7 +132,7 @@ export default function EventFlow() {
       start_time: effectiveTimeRange.start,
       end_time: effectiveTimeRange.end,
     }),
-    refetchInterval: POLLING_INTERVAL_MEDIUM,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     refetchOnWindowFocus: true,
     staleTime: 30000, // Consider data fresh for 30s
     enabled: useEventBus,
@@ -142,7 +142,7 @@ export default function EventFlow() {
   const { data: eventFlowData, isLoading: isLoadingOld, isError: isErrorOld, error: errorOld, dataUpdatedAt: oldUpdatedAt } = useQuery({
     queryKey: ['events', 'stream'],
     queryFn: () => eventFlowSource.fetchEvents(100),
-    refetchInterval: POLLING_INTERVAL_MEDIUM,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     refetchOnWindowFocus: true,
     enabled: !useEventBus,
   });
@@ -283,7 +283,7 @@ export default function EventFlow() {
         <>
           <EventSearchBar
             eventTypes={eventTypes}
-            onFilterChange={(filters) => setEventBusFilters({ ...eventBusFilters, ...filters })}
+            onFilterChange={(filters) => setEventBusFilters(prev => ({ ...prev, ...filters }))}
           />
           <EventStatisticsPanel />
         </>

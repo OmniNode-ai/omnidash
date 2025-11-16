@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { eventBusSource, type EventBusStatus } from "@/lib/data-sources";
-import { POLLING_INTERVAL_MEDIUM } from "@/lib/constants/query-config";
+import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
 import { Activity, CheckCircle2, XCircle, AlertCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +22,7 @@ export function EventBusHealthIndicator({ className, showLabel = true }: EventBu
   const { data: status, isLoading, isError, error } = useQuery({
     queryKey: ['event-bus-status'],
     queryFn: () => eventBusSource.getStatus(),
-    refetchInterval: POLLING_INTERVAL_MEDIUM,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     refetchOnWindowFocus: true,
     staleTime: 30000, // Consider data fresh for 30s
   });

@@ -18,7 +18,7 @@ import { EventChainVisualization } from "@/components/event-bus/EventChainVisual
 import { EventTypeBadge } from "@/components/event-bus/EventTypeBadge";
 import { EventPayloadViewer } from "@/components/event-bus/EventPayloadViewer";
 import { EventBusHealthIndicator } from "@/components/event-bus/EventBusHealthIndicator";
-import { POLLING_INTERVAL_MEDIUM } from "@/lib/constants/query-config";
+import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,7 +37,7 @@ export default function EventBusExplorer() {
   const { data: eventsData, isLoading, isError, error, dataUpdatedAt } = useQuery({
     queryKey: ['event-bus-events', filters],
     queryFn: () => eventBusSource.queryEvents(filters),
-    refetchInterval: POLLING_INTERVAL_MEDIUM,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     refetchOnWindowFocus: true,
   });
 
@@ -48,7 +48,7 @@ export default function EventBusExplorer() {
       ? eventBusSource.getEventChain(selectedCorrelationId)
       : Promise.resolve([]),
     enabled: !!selectedCorrelationId,
-    refetchInterval: POLLING_INTERVAL_MEDIUM,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     refetchOnWindowFocus: true,
     staleTime: 30000,
   });

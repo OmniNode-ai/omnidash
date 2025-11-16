@@ -130,11 +130,11 @@ export const STATIC_QUERY_CONFIG = {
 } as const;
 
 /**
- * Helper to get polling interval, returning false in test environment to prevent infinite loops
+ * Helper to get polling interval, returning false in test environment to speed up tests
  * Use this instead of directly using POLLING_INTERVAL_* constants in components
  */
 export function getPollingInterval(interval: number): number | false {
-  // Disable polling in test environment
+  // Disable polling in test environment to speed up tests and avoid timeouts
   if (typeof import.meta !== 'undefined' && (import.meta.env?.VITEST === true || import.meta.env?.VITEST === 'true')) {
     return false;
   }

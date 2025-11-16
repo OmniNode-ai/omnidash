@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { MetricCard } from "@/components/MetricCard";
 import { Activity, TrendingUp, Users, Zap } from "lucide-react";
 import { eventBusSource, type EventStatistics } from "@/lib/data-sources";
-import { POLLING_INTERVAL_MEDIUM } from "@/lib/constants/query-config";
+import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
 import { MockBadge } from "@/components/MockBadge";
 import { useState, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -48,7 +48,7 @@ export function EventStatisticsPanel({ className }: EventStatisticsPanelProps) {
   const { data: statistics, isLoading, isError, dataUpdatedAt } = useQuery({
     queryKey: ['event-bus-statistics', timeRange],
     queryFn: () => eventBusSource.getStatistics(timeRangeDates),
-    refetchInterval: POLLING_INTERVAL_MEDIUM,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     refetchOnWindowFocus: true,
     staleTime: 30000, // Consider data fresh for 30s
   });
