@@ -14,27 +14,21 @@
 
 export async function teardown() {
   // Clear any remaining timers
+  // Note: Vitest's globalTeardown runs after all tests complete
+  // We rely on proper cleanup in afterEach/afterAll hooks rather than forcing exit
   if (typeof globalThis !== 'undefined' && typeof (globalThis as any).vi !== 'undefined') {
     try {
       (globalThis as any).vi.useRealTimers();
       // Clear all fake timers if any are still running
       (globalThis as any).vi.clearAllTimers();
     } catch (e) {
-      // Ignore errors
+      // Ignore errors - vi may not be available in teardown context
     }
   }
 
-  // In CI environments, ensure process exits cleanly
-  // Vitest's `run` mode should exit naturally, but this is a safety net
-  if (process.env.CI === 'true') {
-    // Give a small delay for any final cleanup
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Force exit if we're still running (shouldn't be necessary with vitest run)
-    // This is only a last resort
-    if (process.env.FORCE_EXIT === 'true') {
-      process.exit(0);
-    }
-  }
+  // Vitest's `run` mode should exit naturally after teardown completes
+  // If tests hang, the root cause should be fixed (unclosed timers, polling, etc.)
+  // rather than masking it with process.exit()
 }
+
 

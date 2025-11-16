@@ -38,8 +38,6 @@ jobs:
         env:
           CI: true
           FORCE_COLOR: 0
-          # Force exit if Vitest doesn't exit naturally (last resort)
-          FORCE_EXIT: true
 
       - name: Upload coverage reports
         if: always()

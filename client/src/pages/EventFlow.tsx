@@ -208,12 +208,15 @@ export default function EventFlow() {
     const startTime = effectiveTimeRange.start.getTime();
     const endTime = effectiveTimeRange.end.getTime();
     const windowMs = endTime - startTime;
+    // Calculate total topic count from the actual displayed events for accurate percentages
+    const totalTopicCount = Array.from(typeCounts.values()).reduce((sum, count) => sum + count, 0) || 1;
     return {
       totalEvents: eventCount,
       uniqueTypes: typeCounts.size,
       eventsPerMinute: windowMs > 0 ? eventCount / (windowMs / 60000) : 0,
       avgProcessingTime: 0, // Not available from event bus
       topicCounts: typeCounts,
+      totalTopicCount, // Add this for accurate percentage calculations
     };
   }, [eventBusData?.count, eventBusData?.events, useEventBus, effectiveTimeRange.start.getTime(), effectiveTimeRange.end.getTime()]);
 
@@ -393,7 +396,7 @@ export default function EventFlow() {
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div
                       className="h-full bg-status-healthy transition-all"
-                      style={{ width: `${Math.min((metrics.topicCounts.get(topic.name) || 0) / metrics.totalEvents * 100, 100)}%` }}
+                      style={{ width: `${Math.min((metrics.topicCounts.get(topic.name) || 0) / metrics.totalTopicCount * 100, 100)}%` }}
                     />
                   </div>
                 </div>
