@@ -171,6 +171,7 @@ class EventBusSource {
       }
     }
 
+    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
     if (USE_MOCK_DATA && !isTestEnv) {
       return this.getMockStatistics();
     }
