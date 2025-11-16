@@ -364,6 +364,9 @@ class EventBusSource {
       });
     }
 
+    // Calculate total count before pagination for proper UI display
+    const totalCount = filtered.length;
+
     // Apply offset and limit (offset first, then limit)
     if (options.offset) {
       filtered = filtered.slice(options.offset);
@@ -374,7 +377,7 @@ class EventBusSource {
 
     return {
       events: filtered,
-      count: filtered.length,
+      count: totalCount, // Return total matching count, not paginated slice length
       options,
     };
   }

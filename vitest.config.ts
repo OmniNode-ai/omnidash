@@ -8,6 +8,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./client/src/tests/setup.ts'],
+    // Global teardown to ensure clean exit in CI
+    globalTeardown: './client/src/tests/teardown.ts',
     // Test timeout to prevent hanging tests
     testTimeout: 10000, // 10 seconds per test
     hookTimeout: 10000, // 10 seconds for hooks

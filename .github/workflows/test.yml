@@ -33,8 +33,13 @@ jobs:
         continue-on-error: true # Don't fail on pre-existing TypeScript errors
 
       - name: Run unit tests
-        run: npm run test -- --run --no-coverage
+        run: npm run test:ci
         timeout-minutes: 10
+        env:
+          CI: true
+          FORCE_COLOR: 0
+          # Force exit if Vitest doesn't exit naturally (last resort)
+          FORCE_EXIT: true
 
       - name: Upload coverage reports
         if: always()

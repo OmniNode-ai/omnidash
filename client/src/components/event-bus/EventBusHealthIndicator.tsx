@@ -75,8 +75,8 @@ export function EventBusHealthIndicator({ className, showLabel = true }: EventBu
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Event Bus Status: {statusText}</p>
-          <p>Connection: {status?.connected ? 'Established' : 'Lost'}</p>
+                <p>Event Bus Status: {statusText}</p>
+                <p>Connection: {isError ? 'Unknown' : (status?.connected ? 'Established' : 'Lost')}</p>
           {isError && <p className="text-destructive">Error: {error instanceof Error ? error.message : 'Unknown error'}</p>}
           {(effectiveStatus === 'stopped' || effectiveStatus === 'error') && <p className="text-destructive">Check server logs for errors.</p>}
         </TooltipContent>

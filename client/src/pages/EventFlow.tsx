@@ -284,7 +284,18 @@ export default function EventFlow() {
         <>
           <EventSearchBar
             eventTypes={eventTypes}
-            onFilterChange={(filters) => setEventBusFilters(prev => ({ ...prev, ...filters }))}
+            onFilterChange={(filters) => {
+              setEventBusFilters(prev => {
+                const next = { ...prev, ...filters };
+                // Remove undefined values so cleared filters are actually removed
+                Object.keys(next).forEach(key => {
+                  if (next[key as keyof typeof next] === undefined) {
+                    delete next[key as keyof typeof next];
+                  }
+                });
+                return next;
+              });
+            }}
           />
           <EventStatisticsPanel />
         </>
