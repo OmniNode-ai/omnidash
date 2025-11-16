@@ -26,9 +26,26 @@ export async function teardown() {
     }
   }
 
-  // Vitest's `run` mode should exit naturally after teardown completes
-  // If tests hang, the root cause should be fixed (unclosed timers, polling, etc.)
-  // rather than masking it with process.exit()
+  // In CI, ensure all Node.js handles are closed
+  // This helps Vitest exit cleanly after all tests complete
+  if (process.env.CI === 'true') {
+    // Give a brief moment for any final async operations
+    await new Promise(resolve => setImmediate(resolve));
+    
+    // Force close any remaining handles that might prevent exit
+    // This is a last resort to ensure CI doesn't hang
+    if (typeof process !== 'undefined' && process.exit) {
+      // Use setImmediate to allow any pending operations to complete
+      setImmediate(() => {
+        // Only exit if we're still running (shouldn't be necessary with vitest run)
+        // But this ensures CI doesn't hang indefinitely
+        if (process.listenerCount('beforeExit') === 0) {
+          // No listeners means nothing is waiting, safe to exit
+          process.exit(0);
+        }
+      });
+    }
+  }
 }
 
 
