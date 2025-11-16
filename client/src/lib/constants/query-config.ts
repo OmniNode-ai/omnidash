@@ -135,7 +135,23 @@ export const STATIC_QUERY_CONFIG = {
  */
 export function getPollingInterval(interval: number): number | false {
   // Disable polling in test environment to speed up tests and avoid timeouts
-  if (typeof import.meta !== 'undefined' && (import.meta.env?.VITEST === true || import.meta.env?.VITEST === 'true')) {
+  // Check multiple ways to detect test environment for reliability
+  // Vitest sets import.meta.env.VITEST automatically, but we also check process.env as fallback
+  const isTestEnv = 
+    (typeof import.meta !== 'undefined' && 
+     (import.meta.env?.VITEST === true || 
+      import.meta.env?.VITEST === 'true' || 
+      import.meta.env?.MODE === 'test')) ||
+    (typeof process !== 'undefined' && 
+     (process.env.VITEST === 'true' || 
+      process.env.NODE_ENV === 'test' ||
+      process.env.CI === 'true' && process.env.NODE_ENV !== 'production')) ||
+    (typeof window !== 'undefined' && (window as any).__VITEST__ === true) ||
+    // Check if vitest globals are available (vi, describe, it, etc.)
+    (typeof globalThis !== 'undefined' && 
+     typeof (globalThis as any).vi !== 'undefined');
+  
+  if (isTestEnv) {
     return false;
   }
   return interval;

@@ -2,6 +2,14 @@ import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
+// Ensure VITEST is set for test environment detection
+// Note: import.meta.env is read-only in Vite, but Vitest should set it automatically
+// We set process.env as a fallback
+if (typeof process !== 'undefined') {
+  process.env.VITEST = 'true';
+  process.env.NODE_ENV = 'test';
+}
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();
