@@ -13,6 +13,15 @@ if (typeof process !== 'undefined') {
 // Cleanup after each test
 afterEach(() => {
   cleanup();
+  // Clear all timers to prevent hanging
+  if (typeof globalThis !== 'undefined' && typeof (globalThis as any).vi !== 'undefined') {
+    // Vitest is available, ensure timers are cleared
+    try {
+      (globalThis as any).vi.useRealTimers();
+    } catch (e) {
+      // Ignore errors
+    }
+  }
 });
 
 // Mock ResizeObserver for Recharts and other components

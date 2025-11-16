@@ -12,6 +12,15 @@ export default defineConfig({
     testTimeout: 10000, // 10 seconds per test
     hookTimeout: 10000, // 10 seconds for hooks
     teardownTimeout: 5000, // 5 seconds for teardown
+    // Ensure Vitest exits after tests complete
+    poolOptions: {
+      threads: {
+        singleThread: false,
+        maxThreads: 2,  // Max 2 worker threads
+        minThreads: 1,
+        isolate: true, // Isolate each test file
+      },
+    },
     // Exclude Playwright snapshot tests (they use test.describe from @playwright/test)
     exclude: [
       '**/node_modules/**',

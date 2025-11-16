@@ -33,7 +33,7 @@ jobs:
         continue-on-error: true # Don't fail on pre-existing TypeScript errors
 
       - name: Run unit tests
-        run: npm run test -- --run
+        run: npm run test -- --run --no-coverage
         timeout-minutes: 10
 
       - name: Upload coverage reports
