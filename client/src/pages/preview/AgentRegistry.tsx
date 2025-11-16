@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { agentRegistrySource } from "@/lib/data-sources";
+import { getPollingInterval } from "@/lib/constants/query-config";
 import type { AgentDefinition as ImportedAgentDefinition } from "@/lib/data-sources/agent-registry-source";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -163,7 +164,7 @@ export default function AgentRegistry() {
       search: searchQuery,
       status: selectedStatus
     }),
-    refetchInterval: 60000,
+    refetchInterval: getPollingInterval(60000),
   });
 
   const agentsData = registryData?.agents;
@@ -175,7 +176,7 @@ export default function AgentRegistry() {
   const { data: recentActionsData } = useQuery({
     queryKey: ['recent-actions'],
     queryFn: () => agentRegistrySource.fetchRecentActivity(20),
-    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchInterval: getPollingInterval(10000), // Refresh every 10 seconds
   });
 
   const recentActions = recentActionsData?.data || [];

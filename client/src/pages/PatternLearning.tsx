@@ -15,7 +15,7 @@ import { Database, TrendingUp, Award, AlertTriangle } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { patternLearningSource } from "@/lib/data-sources";
-import { POLLING_INTERVAL_MEDIUM, POLLING_INTERVAL_SLOW } from "@/lib/constants/query-config";
+import { POLLING_INTERVAL_MEDIUM, POLLING_INTERVAL_SLOW, getPollingInterval } from "@/lib/constants/query-config";
 import type {
   DiscoveredPattern,
   PatternSummary,
@@ -49,35 +49,35 @@ export default function PatternLearning() {
   const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery<PatternSummary>({
     queryKey: ['patterns', 'summary', timeRange],
     queryFn: () => patternLearningSource.fetchSummary(timeRange),
-    refetchInterval: POLLING_INTERVAL_MEDIUM,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
 
   // Fetch pattern discovery trends with slow polling
   const { data: discoveryData, isLoading: discoveryLoading } = useQuery<PatternTrend[]>({
     queryKey: ['patterns', 'trends', timeRange],
     queryFn: () => patternLearningSource.fetchTrends(timeRange),
-    refetchInterval: POLLING_INTERVAL_SLOW,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
 
   // Fetch pattern quality trends with slow polling
   const { data: qualityData, isLoading: qualityLoading } = useQuery<QualityTrend[]>({
     queryKey: ['patterns', 'quality-trends', timeRange],
     queryFn: () => patternLearningSource.fetchQualityTrends(timeRange),
-    refetchInterval: POLLING_INTERVAL_SLOW,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
 
   // Fetch pattern list with standard polling
   const { data: patterns, isLoading: patternsLoading, error: patternsError } = useQuery<Pattern[]>({
     queryKey: ['patterns', 'list', timeRange],
     queryFn: () => patternLearningSource.fetchPatternList(50, timeRange),
-    refetchInterval: POLLING_INTERVAL_MEDIUM,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
 
   // Live pattern discovery via data source
   const { data: discoveryResult, isLoading: liveDiscoverLoading, error: liveDiscoverError } = useQuery({
     queryKey: ['patterns', 'discovery'],
     queryFn: () => patternLearningSource.fetchDiscovery(8),
-    refetchInterval: POLLING_INTERVAL_SLOW,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
   const liveDiscoveredPatterns = discoveryResult?.data;
 
@@ -85,7 +85,7 @@ export default function PatternLearning() {
   const { data: languageData, isLoading: languageLoading } = useQuery<LanguageBreakdown[]>({
     queryKey: ['patterns', 'language-breakdown', timeRange],
     queryFn: () => patternLearningSource.fetchLanguageBreakdown(timeRange),
-    refetchInterval: POLLING_INTERVAL_SLOW,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
 
   // Filter patterns client-side based on filter criteria

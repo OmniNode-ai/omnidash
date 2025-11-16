@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { developerToolsSource } from "@/lib/data-sources";
+import { getPollingInterval } from "@/lib/constants/query-config";
 import type { DeveloperActivity, ToolUsage, QueryHistory } from "@/lib/data-sources/developer-tools-source";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +54,7 @@ export default function DeveloperTools() {
   const { data: toolsData, isLoading } = useQuery({
     queryKey: ['developer-tools', timeRange],
     queryFn: () => developerToolsSource.fetchAll(timeRange),
-    refetchInterval: 60000,
+    refetchInterval: getPollingInterval(60000),
   });
 
   const developerActivity = toolsData?.activity;
