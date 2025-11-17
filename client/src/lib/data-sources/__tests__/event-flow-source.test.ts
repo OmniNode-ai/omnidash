@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { eventFlowSource } from '../event-flow-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import { createMockResponse, createMockFetchError, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
 
 // Mock the USE_MOCK_DATA flag to false so we can test real API paths
 vi.mock('../../mock-data/config', () => ({
@@ -50,7 +50,7 @@ describe('EventFlowSource', () => {
     it('should return mock data when API fails', async () => {
       setupFetchMock(
         new Map([
-          ['/api/intelligence/events', { ok: false, status: 500 }],
+          ['/api/intelligence/events', createMockFetchError('Server error')],
         ])
       );
 

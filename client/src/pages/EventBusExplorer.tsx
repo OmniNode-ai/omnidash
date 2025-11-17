@@ -36,7 +36,11 @@ export default function EventBusExplorer() {
   // Fetch events
   const { data: eventsData, isLoading, isError, error, dataUpdatedAt } = useQuery({
     queryKey: ['event-bus-events', filters],
-    queryFn: () => eventBusSource.queryEvents(filters),
+    queryFn: async () => {
+      const result = await eventBusSource.queryEvents(filters);
+      // Ensure we always return a valid value
+      return result || { events: [], count: 0, options: filters };
+    },
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     refetchOnWindowFocus: true,
   });
