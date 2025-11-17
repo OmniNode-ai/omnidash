@@ -122,7 +122,7 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
     handleFilterChange();
   }, [handleFilterChange]);
 
-  const hasActiveFilters = eventTypeFilter || correlationId || tenantId || source;
+  const hasActiveFilters = eventTypeFilter || correlationId || tenantId || source || timeRange !== '24h';
 
   return (
     <Card className={cn("p-4 space-y-4", className)}>

@@ -71,7 +71,7 @@ class EventBusSource {
    */
   async queryEvents(options: EventQueryOptions = {}): Promise<EventQueryResponse> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
-    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+    const isTestEnv = this.isTestEnvironment();
 
     // Return mock data if USE_MOCK_DATA is enabled (but not in tests)
     if (USE_MOCK_DATA && !isTestEnv) {
@@ -171,7 +171,7 @@ class EventBusSource {
       }
     }
 
-    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+    const isTestEnv = this.isTestEnvironment();
     if (USE_MOCK_DATA && !isTestEnv) {
       return this.getMockStatistics();
     }
@@ -207,7 +207,7 @@ class EventBusSource {
    * Get event bus status
    */
   async getStatus(): Promise<EventBusStatus> {
-    const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+    const isTestEnv = this.isTestEnvironment();
 
     if (USE_MOCK_DATA && !isTestEnv) {
       return {
@@ -391,7 +391,7 @@ class EventBusSource {
     // Use stable timestamp for test consistency
     const baseTimestamp = new Date('2024-01-15T11:00:00Z');
     const oneHourAgo = new Date(baseTimestamp.getTime() - 60 * 60 * 1000);
-    
+
     return {
       total_events: 1250,
       events_by_type: {
@@ -410,6 +410,13 @@ class EventBusSource {
       oldest_event: oneHourAgo.toISOString(),
       newest_event: baseTimestamp.toISOString(),
     };
+  }
+
+  /**
+   * Check if running in test environment
+   */
+  private isTestEnvironment(): boolean {
+    return import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
   }
 }
 

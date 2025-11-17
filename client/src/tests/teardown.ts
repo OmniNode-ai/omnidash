@@ -26,20 +26,9 @@ export async function teardown() {
     }
   }
 
-  // In CI, ensure all Node.js handles are closed
-  // This helps Vitest exit cleanly after all tests complete
-  if (process.env.CI === 'true') {
-    // Give a brief moment for any final async operations
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Force exit to prevent hanging
-    // This is necessary because some tests may leave open handles
-    // (timers, intervals, WebSocket connections, etc.)
-    if (typeof process !== 'undefined' && process.exit) {
-      console.log('[Teardown] Forcing process exit in CI environment');
-      process.exit(0);
-    }
-  }
+  // Allow Vitest to handle process exit naturally
+  // Tests should clean up their own resources (timers, intervals, connections, etc.)
+  // in afterEach/afterAll hooks to prevent hanging
 }
 
 
