@@ -14,14 +14,12 @@ import { useState } from "react";
 
 export interface EventTypeDistributionChartProps {
   events: EventBusEvent[];
-  timeRange?: '1h' | '24h' | '7d' | '30d';
   className?: string;
 }
 
-export function EventTypeDistributionChart({ 
-  events, 
-  timeRange = '24h',
-  className 
+export function EventTypeDistributionChart({
+  events,
+  className
 }: EventTypeDistributionChartProps) {
   const [selectedTenant, setSelectedTenant] = useState<string>('all');
 

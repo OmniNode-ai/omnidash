@@ -296,6 +296,20 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
               </button>
             </Badge>
           )}
+          {timeRange !== '24h' && (
+            <Badge variant="secondary" className="text-xs">
+              <Calendar className="w-3 h-3 mr-1" />
+              Time: {QUICK_TIME_RANGES.find(r => r.value === timeRange)?.label || timeRange}
+              <button
+                onClick={() => {
+                  setTimeRange('24h');
+                }}
+                className="ml-1 hover:text-destructive"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          )}
         </div>
       )}
     </Card>

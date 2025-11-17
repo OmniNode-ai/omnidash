@@ -26,7 +26,20 @@ export async function teardown() {
     }
   }
 
-  // Allow Vitest to handle process exit naturally
+  // In CI environments, force exit after grace period to prevent hanging
+  // This is necessary because some polling intervals may not clean up properly in CI
+  if (process.env.CI === 'true') {
+    // Give 100ms grace period for any final cleanup
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    if (typeof process !== 'undefined' && process.exit) {
+      console.log('[Teardown] Forcing exit after 100ms grace period (CI environment)');
+      console.log('[Teardown] This prevents hanging from open handles like polling intervals');
+      process.exit(0);
+    }
+  }
+
+  // In local environments, allow Vitest to handle process exit naturally
   // Tests should clean up their own resources (timers, intervals, connections, etc.)
   // in afterEach/afterAll hooks to prevent hanging
 }

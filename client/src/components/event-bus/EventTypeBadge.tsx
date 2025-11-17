@@ -142,22 +142,6 @@ export function EventTypeBadge({ eventType, status, onClick, className }: EventT
     </Badge>
   );
 
-  if (onClick) {
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {badge}
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="text-xs">{description}</p>
-            <p className="text-xs text-muted-foreground mt-1">Click to filter by this event type</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  }
-
   return (
     <TooltipProvider>
       <Tooltip>
@@ -166,6 +150,9 @@ export function EventTypeBadge({ eventType, status, onClick, className }: EventT
         </TooltipTrigger>
         <TooltipContent>
           <p className="text-xs">{description}</p>
+          {onClick && (
+            <p className="text-xs text-muted-foreground mt-1">Click to filter by this event type</p>
+          )}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

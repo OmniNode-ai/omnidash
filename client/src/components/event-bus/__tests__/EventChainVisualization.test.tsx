@@ -62,18 +62,17 @@ describe('EventChainVisualization', () => {
   it('should call onEventClick when event is clicked', () => {
     const onEventClick = vi.fn();
     render(
-      <EventChainVisualization 
+      <EventChainVisualization
         events={mockEvents}
         onEventClick={onEventClick}
       />
     );
 
-    // Find and click an event (simplified - actual implementation would need more specific selectors)
-    const events = screen.getAllByText(/omninode/);
-    if (events.length > 0) {
-      events[0].click();
-      expect(onEventClick).toHaveBeenCalled();
-    }
+    // Find and click an event using data-testid
+    const eventNodes = screen.getAllByTestId('event-chain-node');
+    expect(eventNodes.length).toBeGreaterThan(0);
+    eventNodes[0].click();
+    expect(onEventClick).toHaveBeenCalledWith(mockEvents[0]);
   });
 
   it('should display correlation ID when provided', () => {

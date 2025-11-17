@@ -14,6 +14,7 @@ import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/que
 import { MockBadge } from "@/components/MockBadge";
 import { useState, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export interface EventStatisticsPanelProps {
   className?: string;
@@ -72,7 +73,7 @@ export function EventStatisticsPanel({ className }: EventStatisticsPanelProps) {
   }, [statistics]);
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={cn("space-y-4", className)}>
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold">Event Statistics</h3>
         <Select value={timeRange} onValueChange={(value: '1h' | '24h' | '7d' | '30d') => setTimeRange(value)}>

@@ -70,11 +70,13 @@ describe('EnhancedEventFeed', () => {
     const onEventClick = vi.fn();
     render(<EnhancedEventFeed events={mockEvents} onEventClick={onEventClick} />);
 
-    const events = screen.getAllByText(/omninode/);
-    if (events.length > 0) {
-      await user.click(events[0]);
-      expect(onEventClick).toHaveBeenCalled();
-    }
+    // Find event using role-based selector with specific aria-label pattern
+    const eventButtons = screen.getAllByRole('button', {
+      name: /View details for event omninode\.intelligence/
+    });
+    expect(eventButtons.length).toBeGreaterThan(0);
+    await user.click(eventButtons[0]);
+    expect(onEventClick).toHaveBeenCalledWith(mockEvents[0]);
   });
 
   it('should call onCorrelationClick when correlation button is clicked', async () => {

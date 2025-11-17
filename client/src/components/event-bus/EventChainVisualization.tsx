@@ -91,6 +91,7 @@ function EventNodeComponent({
       )}
 
       <div
+        data-testid="event-chain-node"
         className={cn(
           "flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors",
           onEventClick && "cursor-pointer"
@@ -169,7 +170,7 @@ export function EventChainVisualization({
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `event-chain-${correlationId || 'all'}-${new Date().toISOString()}.json`;
+    link.download = `event-chain-${correlationId || 'all'}-${new Date().toISOString().replace(/[:]/g, '-')}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };

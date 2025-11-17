@@ -36,14 +36,40 @@ export function EventCorrelationExplorer({ className }: EventCorrelationExplorer
   };
 
   const handleShare = () => {
-    if (correlationId) {
-      const url = `${window.location.origin}${window.location.pathname}?correlation=${correlationId}`;
-      navigator.clipboard.writeText(url);
+    if (!correlationId) return;
+
+    // Guard browser APIs for SSR compatibility
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      console.warn('Share functionality not available in SSR environment');
+      return;
     }
+
+    if (!navigator.clipboard) {
+      console.warn('Clipboard API not available');
+      return;
+    }
+
+    const url = `${window.location.origin}${window.location.pathname}?correlation=${correlationId}`;
+    navigator.clipboard.writeText(url).catch((err) => {
+      console.error('Failed to copy to clipboard:', err);
+    });
   };
 
   const handleExport = () => {
-    if (events && events.length > 0) {
+    if (!events || events.length === 0) return;
+
+    // Guard browser APIs for SSR compatibility
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      console.warn('Export functionality not available in SSR environment');
+      return;
+    }
+
+    if (typeof URL === "undefined" || !URL.createObjectURL) {
+      console.warn('URL API not available');
+      return;
+    }
+
+    try {
       const dataStr = JSON.stringify(events, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(dataBlob);
@@ -52,6 +78,8 @@ export function EventCorrelationExplorer({ className }: EventCorrelationExplorer
       link.download = `correlation-${correlationId}-${new Date().toISOString()}.json`;
       link.click();
       URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export events:', err);
     }
   };
 

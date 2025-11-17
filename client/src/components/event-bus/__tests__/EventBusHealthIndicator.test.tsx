@@ -35,14 +35,14 @@ describe('EventBusHealthIndicator', () => {
     );
   };
 
-  it('should render health indicator', async () => {
+  it('should render health indicator with label when showLabel is true', async () => {
     vi.mocked(eventBusSource.getStatus).mockResolvedValueOnce({
       active: true,
       connected: true,
       status: 'running',
     });
 
-    renderWithClient(<EventBusHealthIndicator />);
+    renderWithClient(<EventBusHealthIndicator showLabel={true} />);
 
     await waitFor(() => {
       expect(screen.getByText('Running')).toBeInTheDocument();

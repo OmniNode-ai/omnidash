@@ -70,11 +70,8 @@ class EventBusSource {
    * Query events with filters
    */
   async queryEvents(options: EventQueryOptions = {}): Promise<EventQueryResponse> {
-    // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
-    const isTestEnv = this.isTestEnvironment();
-
     // Return mock data if USE_MOCK_DATA is enabled (but not in tests)
-    if (USE_MOCK_DATA && !isTestEnv) {
+    if (this.shouldUseMockData()) {
       return this.getMockEvents(options);
     }
 
@@ -171,8 +168,7 @@ class EventBusSource {
       }
     }
 
-    const isTestEnv = this.isTestEnvironment();
-    if (USE_MOCK_DATA && !isTestEnv) {
+    if (this.shouldUseMockData()) {
       return this.getMockStatistics();
     }
 
@@ -207,9 +203,7 @@ class EventBusSource {
    * Get event bus status
    */
   async getStatus(): Promise<EventBusStatus> {
-    const isTestEnv = this.isTestEnvironment();
-
-    if (USE_MOCK_DATA && !isTestEnv) {
+    if (this.shouldUseMockData()) {
       return {
         active: true,
         connected: true,
@@ -417,6 +411,14 @@ class EventBusSource {
    */
   private isTestEnvironment(): boolean {
     return import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+  }
+
+  /**
+   * Check if mock data should be used
+   * Returns true if USE_MOCK_DATA is enabled and not in test environment
+   */
+  private shouldUseMockData(): boolean {
+    return USE_MOCK_DATA && !this.isTestEnvironment();
   }
 }
 
