@@ -40,11 +40,13 @@ describe('PlatformHealth page', () => {
   it('renders loading state then populated metrics when data resolves', async () => {
     vi.mocked(platformHealthSource.fetchAll).mockResolvedValue({
       health: {
+        status: 'healthy',
+        uptime: 99.9,
         database: { name: 'PostgreSQL', status: 'healthy', uptime: '99.9%', latency_ms: 10 },
         kafka: { name: 'Kafka/Redpanda', status: 'degraded', uptime: '97.5%', latency_ms: 35 },
         services: [
-          { name: 'API Gateway', status: 'healthy', uptime: '99.0%', latency_ms: 45 },
-          { name: 'Vector Store', status: 'down', uptime: '80.0%', latency_ms: 120 },
+          { name: 'API Gateway', status: 'healthy', uptime: 99.0, latency_ms: 45 },
+          { name: 'Vector Store', status: 'down', uptime: 80.0, latency_ms: 120 },
         ],
       },
       services: {
@@ -53,6 +55,7 @@ describe('PlatformHealth page', () => {
             id: 'svc-api',
             name: 'API Gateway',
             status: 'healthy',
+            health: 'healthy',
             serviceUrl: 'https://api.local',
             serviceType: 'api',
             lastHealthCheck: new Date().toISOString(),
@@ -61,6 +64,7 @@ describe('PlatformHealth page', () => {
             id: 'svc-vector',
             name: 'Vector Store',
             status: 'down',
+            health: 'unhealthy',
             serviceUrl: 'https://vector.local',
             serviceType: 'database',
             lastHealthCheck: null,
