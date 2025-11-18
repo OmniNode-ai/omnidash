@@ -81,7 +81,7 @@ describe('EventFlow page', () => {
     const now = new Date().toISOString();
     vi.mocked(eventFlowSource.fetchEvents).mockResolvedValue({
       events: [
-        { id: 'evt-1', timestamp: now, type: 'throughput', source: 'test', data: { correlationId: 'abc123', count: 100 } },
+        { id: 'evt-1', timestamp: now, type: 'throughput', source: 'api', data: { correlationId: 'abc123', count: 100 } },
       ],
       metrics: {
         totalEvents: 1,

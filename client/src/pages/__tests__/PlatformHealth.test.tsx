@@ -56,14 +56,22 @@ describe('PlatformHealth page', () => {
       services: {
         services: [
           {
+            id: 'svc-api',
             name: 'API Gateway',
             status: 'healthy',
             health: 'healthy',
+            serviceUrl: 'https://api.local',
+            serviceType: 'api',
+            lastHealthCheck: new Date().toISOString(),
           },
           {
+            id: 'svc-vector',
             name: 'Vector Store',
             status: 'down',
-            health: 'down',
+            health: 'unhealthy',
+            serviceUrl: 'https://vector.local',
+            serviceType: 'database',
+            lastHealthCheck: null,
           },
         ],
       },
