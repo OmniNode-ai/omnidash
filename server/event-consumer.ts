@@ -3,6 +3,10 @@ import { EventEmitter } from 'events';
 import { intelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 
+const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
+const RETRY_BASE_DELAY_MS = isTestEnv ? 20 : 1000;
+const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
+
 export interface AgentMetrics {
   agent: string;
   totalRequests: number;
@@ -175,7 +179,7 @@ export class EventConsumer extends EventEmitter {
         console.log('✅ Kafka consumer connected successfully');
         return;
       } catch (error) {
-        const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+        const delay = Math.min(RETRY_BASE_DELAY_MS * Math.pow(2, attempt), RETRY_MAX_DELAY_MS);
         const remaining = maxRetries - attempt - 1;
 
         if (remaining > 0) {
