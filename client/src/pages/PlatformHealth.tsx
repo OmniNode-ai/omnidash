@@ -85,7 +85,8 @@ export default function PlatformHealth() {
     return 'server';
   };
 
-  const parseUptime = (uptimeStr?: string): number => {
+  const parseUptime = (uptimeStr?: string | number): number => {
+    if (typeof uptimeStr === 'number') return uptimeStr;
     if (!uptimeStr) return 0;
     // Parse uptime strings like "99.9%" or "100%"
     const match = uptimeStr.match(/(\d+\.?\d*)/);

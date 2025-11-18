@@ -32,9 +32,13 @@ export interface PlatformHealth {
 
 export interface PlatformServices {
   services: Array<{
+    id?: string;
     name: string;
     status: string;
     health: string;
+    serviceUrl?: string;
+    serviceType?: string;
+    lastHealthCheck?: string | null;
   }>;
 }
 

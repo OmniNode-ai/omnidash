@@ -429,9 +429,10 @@ export class EventBusDataSource extends EventEmitter {
       const conditions: SQL[] = [];
       
       if (options.event_types && options.event_types.length > 0) {
+        const eventTypes = options.event_types;
         // Use PostgreSQL ANY() with array for better performance than OR chain
         // Parameterize each value to prevent SQL injection
-        const arrayValues = options.event_types.map((_, i) => sql`${options.event_types[i]}`);
+        const arrayValues = eventTypes.map((_, i) => sql`${eventTypes[i]}`);
         // Build: event_type = ANY(ARRAY[$1, $2, $3, ...])
         // This is more efficient than OR chains for large arrays
         const arrayLiteral = sql.join(arrayValues, sql`, `);
@@ -594,20 +595,20 @@ export class EventBusDataSource extends EventEmitter {
       // Calculate events per minute
       let eventsPerMinute = 0;
       if (totalRow.oldest_event && totalRow.newest_event) {
-        const timeDiff = new Date(totalRow.newest_event).getTime() - new Date(totalRow.oldest_event).getTime();
+        const timeDiff = new Date(totalRow.newest_event as string).getTime() - new Date(totalRow.oldest_event as string).getTime();
         const minutes = timeDiff / (1000 * 60);
         if (minutes > 0) {
-          eventsPerMinute = parseInt(totalRow.total_events) / minutes;
+          eventsPerMinute = parseInt(totalRow.total_events as string) / minutes;
         }
       }
 
       return {
-        total_events: parseInt(totalRow.total_events) || 0,
+        total_events: parseInt(totalRow.total_events as string) || 0,
         events_by_type: eventsByType,
         events_by_tenant: eventsByTenant,
         events_per_minute: eventsPerMinute,
-        oldest_event: totalRow.oldest_event ? new Date(totalRow.oldest_event) : null,
-        newest_event: totalRow.newest_event ? new Date(totalRow.newest_event) : null,
+        oldest_event: totalRow.oldest_event ? new Date(totalRow.oldest_event as string) : null,
+        newest_event: totalRow.newest_event ? new Date(totalRow.newest_event as string) : null,
       };
     } catch (error) {
       console.error('[EventBusDataSource] Error getting statistics:', error);

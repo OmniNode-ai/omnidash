@@ -21,10 +21,15 @@ export interface RecentAction {
   id: string;
   agentId: string;
   agentName: string;
+  correlationId?: string;
   action: string;
   status: string;
   timestamp: string;
   duration?: number;
+  actionName?: string;
+  actionType?: string;
+  actionDetails?: any;
+  debugMode?: boolean;
 }
 
 export interface HealthStatus {

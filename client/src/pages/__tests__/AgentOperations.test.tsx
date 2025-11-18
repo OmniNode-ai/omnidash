@@ -63,14 +63,17 @@ describe('AgentOperations page', () => {
       recentActions: [
         {
           id: 'action-1',
+          agentId: 'agent-alpha',
           agentName: 'Agent Alpha',
           correlationId: 'corr-1',
+          action: 'tool_call',
+          status: 'success',
           actionName: 'Read File',
           actionType: 'tool_call',
           actionDetails: {},
           debugMode: false,
-          durationMs: 120,
-          createdAt: now,
+          duration: 120,
+          timestamp: now,
         },
       ],
       perAgentMetrics: [
@@ -143,14 +146,17 @@ describe('AgentOperations page', () => {
       recentActions: [
         {
           id: 'action-2',
+          agentId: 'agent-gamma',
           agentName: 'Agent Gamma',
           correlationId: 'corr-2',
+          action: 'analysis',
+          status: 'success',
           actionName: 'Plan Task',
           actionType: 'analysis',
           actionDetails: {},
           debugMode: false,
-          durationMs: 250,
-          createdAt: now,
+          duration: 250,
+          timestamp: now,
         },
       ],
       perAgentMetrics: [
