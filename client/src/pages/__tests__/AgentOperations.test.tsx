@@ -1,7 +1,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, beforeEach, expect, vi } from 'vitest';
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import AgentOperations from '../AgentOperations';
 import { agentOperationsSource } from '@/lib/data-sources';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -28,22 +28,24 @@ vi.mock('@/lib/data-sources', async () => {
   };
 });
 
+let queryClient: QueryClient | null = null;
+
 function renderWithClient(ui: ReactNode) {
-  const queryClient = new QueryClient({
+  queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
-        refetchInterval: false, // Disable polling in tests to prevent infinite loops
+        refetchInterval: false,
         refetchOnWindowFocus: false,
-        gcTime: 0, // Disable cache to prevent stale data issues
-        staleTime: Infinity, // Never consider data stale in tests
+        gcTime: Infinity,
+        staleTime: Infinity,
       },
     },
   });
 
-  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  const result = render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 
-  return queryClient;
+  return { queryClient, ...result };
 }
 
 describe('AgentOperations page', () => {
@@ -51,7 +53,18 @@ describe('AgentOperations page', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     localStorageMocks.getItem.mockReturnValue('24h');
+  });
+
+  afterEach(async () => {
+    if (queryClient) {
+      queryClient.clear();
+      await queryClient.cancelQueries();
+      queryClient = null;
+    }
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('shows loading indicator before data resolves and renders dashboard afterwards', async () => {
@@ -110,7 +123,8 @@ describe('AgentOperations page', () => {
       isMock: false,
     });
 
-    renderWithClient(<AgentOperations />);
+    const result = renderWithClient(<AgentOperations />);
+    queryClient = result.queryClient;
 
     expect(screen.getByText('Loading agent operations data...')).toBeInTheDocument();
 
@@ -122,19 +136,23 @@ describe('AgentOperations page', () => {
     expect(screen.getAllByText('Agent Alpha').length).toBeGreaterThan(0);
     expect(screen.getByText('Live Event Stream')).toBeInTheDocument();
     expect(vi.mocked(useWebSocket)).toHaveBeenCalled();
+
+    result.unmount();
   });
 
   it('renders error state when data fetching fails', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(agentOperationsSource.fetchAll).mockRejectedValue(new Error('backend unavailable'));
 
-    renderWithClient(<AgentOperations />);
+    const result = renderWithClient(<AgentOperations />);
+    queryClient = result.queryClient;
 
     await waitFor(() => {
       expect(screen.getByText('Failed to load agent data')).toBeInTheDocument();
     });
 
     consoleError.mockRestore();
+    result.unmount();
   });
 
   it('allows switching from active-only view to all agents', async () => {
@@ -186,7 +204,8 @@ describe('AgentOperations page', () => {
       isMock: false,
     });
 
-    renderWithClient(<AgentOperations />);
+    const result = renderWithClient(<AgentOperations />);
+    queryClient = result.queryClient;
 
     await waitFor(() => {
       expect(screen.getByText('Agent Operations')).toBeInTheDocument();
@@ -203,5 +222,7 @@ describe('AgentOperations page', () => {
 
     const gammaMatches = await screen.findAllByText('Agent Gamma');
     expect(gammaMatches.length).toBeGreaterThan(0);
+
+    result.unmount();
   });
 });

@@ -130,35 +130,28 @@ export const STATIC_QUERY_CONFIG = {
 } as const;
 
 /**
- * Helper to get polling interval, returning false in test environment to speed up tests
- * Use this instead of directly using POLLING_INTERVAL_* constants in components
- * 
- * @param interval - The polling interval in milliseconds
- * @returns The interval number, or false if in test environment
- * 
+ * Helper to get polling interval, returning `false` in test environments to disable polling.
+ * Use this instead of directly using `POLLING_INTERVAL_*` constants in components.
+ *
+ * @param interval - The polling interval in milliseconds.
+ * @returns `false` in test environments (disables polling) or the requested interval in all other environments.
+ *
  * @example
- * ```typescript
+ * ```ts
+ * import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
+ *
  * const { data } = useQuery({
- *   queryKey: ['my-query'],
- *   queryFn: fetchData,
+ *   queryKey: ['events'],
+ *   queryFn: fetchEvents,
  *   refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
  * });
  * ```
  */
 export function getPollingInterval(interval: number): number | false {
-  // Disable polling in test environment to speed up tests and avoid timeouts
-  // Check multiple reliable signals to ensure we catch all test scenarios
-  const isTestEnv = 
-    // Vitest sets this automatically
-    (typeof import.meta !== 'undefined' && 
-     (import.meta.env?.VITEST === true || 
-      import.meta.env?.VITEST === 'true' || 
-      import.meta.env?.MODE === 'test')) ||
-    // Node.js test environment
-    (typeof process !== 'undefined' && 
-     (process.env.VITEST === 'true' || 
-      process.env.NODE_ENV === 'test')) ||
-    // Vitest globals (vi, describe, it, expect, etc.)
+  // Disable polling in test environments to speed up tests and avoid timeouts
+  const isTestEnv =
+    (typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test') ||
+    (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
     (typeof globalThis !== 'undefined' && typeof (globalThis as any).vi !== 'undefined');
   
   if (isTestEnv) {

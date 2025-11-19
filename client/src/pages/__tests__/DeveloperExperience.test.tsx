@@ -10,21 +10,26 @@ vi.mock('@/hooks/useWebSocket', () => ({
   })),
 }));
 
+let queryClient: QueryClient | null = null;
+
 function renderWithClient(ui: React.ReactNode) {
-  const queryClient = new QueryClient({
+  queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
-        refetchInterval: false, // Disable polling in tests to prevent infinite loops
+        refetchInterval: false,
         refetchOnWindowFocus: false,
+        gcTime: Infinity,
+        staleTime: Infinity,
         queryFn: getQueryFn({ on401: 'throw' }),
       },
     },
   });
 
-  return render(
+  const result = render(
     <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
   );
+  return { queryClient, ...result };
 }
 
 describe('DeveloperExperience page', () => {
@@ -36,11 +41,19 @@ describe('DeveloperExperience page', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     localStorageMock.getItem.mockReturnValue('24h');
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    if (queryClient) {
+      queryClient.clear();
+      await queryClient.cancelQueries();
+      queryClient = null;
+    }
     fetchMock.mockReset();
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('renders key metrics and charts when data loads', async () => {
@@ -105,7 +118,7 @@ describe('DeveloperExperience page', () => {
 
     const { default: DeveloperExperience } = await import('../DeveloperExperience');
 
-    renderWithClient(<DeveloperExperience />);
+    const result = renderWithClient(<DeveloperExperience />);
 
     await waitFor(() => {
       expect(screen.getByText('Developer Experience')).toBeInTheDocument();
@@ -120,6 +133,8 @@ describe('DeveloperExperience page', () => {
     expect(screen.getByText('Pattern Reuse')).toBeInTheDocument();
     expect(screen.getByText('82%')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalled();
+
+    result.unmount();
   });
 
   it('renders error state when developer metrics fetch fails', async () => {
@@ -136,12 +151,14 @@ describe('DeveloperExperience page', () => {
 
     const { default: DeveloperExperience } = await import('../DeveloperExperience');
 
-    renderWithClient(<DeveloperExperience />);
+    const result = renderWithClient(<DeveloperExperience />);
 
     await waitFor(() => {
       expect(screen.getByText('Failed to load developer metrics')).toBeInTheDocument();
     });
 
     expect(screen.getByText('500: fail')).toBeInTheDocument();
+
+    result.unmount();
   });
 });

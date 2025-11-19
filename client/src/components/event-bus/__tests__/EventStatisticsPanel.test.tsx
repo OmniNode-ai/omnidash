@@ -2,7 +2,7 @@
  * Tests for EventStatisticsPanel Component
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EventStatisticsPanel } from '../EventStatisticsPanel';
@@ -19,12 +19,26 @@ describe('EventStatisticsPanel', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
     queryClient = new QueryClient({
       defaultOptions: {
-        queries: { retry: false },
+        queries: {
+          retry: false,
+          refetchInterval: false,
+          refetchOnWindowFocus: false,
+          gcTime: Infinity,
+          staleTime: Infinity,
+        },
       },
     });
-    vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   const renderWithClient = (ui: React.ReactElement) => {
@@ -45,11 +59,13 @@ describe('EventStatisticsPanel', () => {
       newest_event: new Date().toISOString(),
     });
 
-    renderWithClient(<EventStatisticsPanel />);
+    const result = renderWithClient(<EventStatisticsPanel />);
 
     await waitFor(() => {
       expect(screen.getByText('Event Statistics')).toBeInTheDocument();
     });
+
+    result.unmount();
   });
 
   it('should display statistics metrics', async () => {
@@ -62,12 +78,14 @@ describe('EventStatisticsPanel', () => {
       newest_event: new Date().toISOString(),
     });
 
-    renderWithClient(<EventStatisticsPanel />);
+    const result = renderWithClient(<EventStatisticsPanel />);
 
     await waitFor(() => {
       expect(screen.getByText('250')).toBeInTheDocument(); // Total events
       expect(screen.getByText('20.5')).toBeInTheDocument(); // Events/min
     });
+
+    result.unmount();
   });
 
   it('should handle loading state', () => {
@@ -75,19 +93,23 @@ describe('EventStatisticsPanel', () => {
       () => new Promise(() => {}) // Never resolves
     );
 
-    renderWithClient(<EventStatisticsPanel />);
+    const result = renderWithClient(<EventStatisticsPanel />);
 
     expect(screen.getByText('Event Statistics')).toBeInTheDocument();
+
+    result.unmount();
   });
 
   it('should handle error state', async () => {
     vi.mocked(eventBusSource.getStatistics).mockRejectedValueOnce(new Error('Failed'));
 
-    renderWithClient(<EventStatisticsPanel />);
+    const result = renderWithClient(<EventStatisticsPanel />);
 
     await waitFor(() => {
       expect(screen.getByText(/Failed to load statistics/)).toBeInTheDocument();
     });
+
+    result.unmount();
   });
 });
 

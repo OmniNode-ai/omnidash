@@ -2,6 +2,15 @@ import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
+// Export test utilities for standardized test patterns
+export {
+  createTestQueryClient,
+  renderWithQueryClient,
+  setupTestCleanup,
+  cleanupTest,
+  createTestLifecycle,
+} from './test-utils';
+
 // Ensure VITEST is set for test environment detection
 // Note: import.meta.env is read-only in Vite, but Vitest should set it automatically
 // We set process.env as a fallback

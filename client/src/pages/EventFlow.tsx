@@ -18,6 +18,7 @@ import { EventSearchBar } from "@/components/event-bus/EventSearchBar";
 import { EventTypeBadge } from "@/components/event-bus/EventTypeBadge";
 import { EventBusHealthIndicator } from "@/components/event-bus/EventBusHealthIndicator";
 import type { EventQueryOptions } from "@/lib/data-sources";
+import type { QueryObserverOptions } from "@tanstack/react-query";
 
 // Event stream interface matching omniarchon endpoint
 interface EventStreamItem {
@@ -32,7 +33,20 @@ interface EventStreamResponse {
   total: number;
 }
 
-export default function EventFlow() {
+type QueryBehaviorOverrides = {
+  eventBus?: Pick<QueryObserverOptions, "refetchInterval" | "refetchOnWindowFocus" | "staleTime">;
+  legacy?: Pick<QueryObserverOptions, "refetchInterval" | "refetchOnWindowFocus" | "staleTime">;
+};
+
+type EventFlowProps = {
+  /**
+   * Internal/testing hook to override query behaviour (polling, focus refetch, etc.).
+   * Production code should rely on the defaults defined here.
+   */
+  queryBehaviorOverrides?: QueryBehaviorOverrides;
+};
+
+export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {}) {
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
@@ -125,6 +139,18 @@ export default function EventFlow() {
     effectiveTimeRange.end.getTime(),
   ]);
 
+  const eventBusQueryBehavior = {
+    refetchInterval: queryBehaviorOverrides?.eventBus?.refetchInterval ?? getPollingInterval(POLLING_INTERVAL_MEDIUM),
+    refetchOnWindowFocus: queryBehaviorOverrides?.eventBus?.refetchOnWindowFocus ?? true,
+    staleTime: queryBehaviorOverrides?.eventBus?.staleTime ?? 30_000,
+  };
+
+  const legacyQueryBehavior = {
+    refetchInterval: queryBehaviorOverrides?.legacy?.refetchInterval ?? getPollingInterval(POLLING_INTERVAL_MEDIUM),
+    refetchOnWindowFocus: queryBehaviorOverrides?.legacy?.refetchOnWindowFocus ?? true,
+    staleTime: queryBehaviorOverrides?.legacy?.staleTime,
+  };
+
   const { data: eventBusData, isLoading: isLoadingBus, isError: isErrorBus, error: errorBus, dataUpdatedAt: busUpdatedAt } = useQuery({
     queryKey: eventBusQueryKey,
     queryFn: () => eventBusSource.queryEvents({
@@ -133,9 +159,9 @@ export default function EventFlow() {
       start_time: effectiveTimeRange.start,
       end_time: effectiveTimeRange.end,
     }),
-    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
-    refetchOnWindowFocus: true,
-    staleTime: 30000, // Consider data fresh for 30s
+    refetchInterval: eventBusQueryBehavior.refetchInterval,
+    refetchOnWindowFocus: eventBusQueryBehavior.refetchOnWindowFocus,
+    staleTime: eventBusQueryBehavior.staleTime,
     enabled: useEventBus,
   });
 
@@ -143,8 +169,9 @@ export default function EventFlow() {
   const { data: eventFlowData, isLoading: isLoadingOld, isError: isErrorOld, error: errorOld, dataUpdatedAt: oldUpdatedAt } = useQuery({
     queryKey: ['events', 'stream'],
     queryFn: () => eventFlowSource.fetchEvents(100),
-    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
-    refetchOnWindowFocus: true,
+    refetchInterval: legacyQueryBehavior.refetchInterval,
+    refetchOnWindowFocus: legacyQueryBehavior.refetchOnWindowFocus,
+    staleTime: legacyQueryBehavior.staleTime,
     enabled: !useEventBus,
   });
 
@@ -255,6 +282,11 @@ export default function EventFlow() {
         lag: 0, // Not available from stream
       }))
       .slice(0, 5); // Top 5 topics
+  }, [metrics.topicCounts]);
+
+  const topicShareDenominator = useMemo(() => {
+    const total = Array.from(metrics.topicCounts.values()).reduce((sum, count) => sum + count, 0);
+    return total || 1;
   }, [metrics.topicCounts]);
 
   const totalThroughput = topics.reduce((sum, t) => sum + t.messagesPerSec, 0);
@@ -396,7 +428,7 @@ export default function EventFlow() {
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div
                       className="h-full bg-status-healthy transition-all"
-                      style={{ width: `${Math.min((metrics.topicCounts.get(topic.name) || 0) / ('totalTopicCount' in metrics ? (metrics as any).totalTopicCount : metrics.totalEvents) * 100, 100)}%` }}
+                      style={{ width: `${Math.min((metrics.topicCounts.get(topic.name) || 0) / topicShareDenominator * 100, 100)}%` }}
                     />
                   </div>
                 </div>

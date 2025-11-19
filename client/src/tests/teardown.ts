@@ -13,32 +13,17 @@
  */
 
 // Default export required for Vitest globalTeardown
-export default async function() {
+export default async function globalTeardown() {
   console.log('[Teardown] Starting global teardown...');
 
-  // Clear any remaining timers
-  if (typeof globalThis !== 'undefined' && typeof (globalThis as any).vi !== 'undefined') {
-    try {
-      (globalThis as any).vi.useRealTimers();
-      (globalThis as any).vi.clearAllTimers();
-    } catch (e) {
-      // Ignore errors - vi may not be available in teardown context
-    }
-  }
+  /**
+   * Give pending microtasks a chance to flush. This mirrors Vitest's own behaviour
+   * and helps ensure that any promises scheduled during test shutdown complete
+   * before the process exits.
+   */
+  await new Promise(resolve => setTimeout(resolve, 25));
 
-  // In CI environments, force exit after grace period to prevent hanging
-  // This is necessary because some polling intervals may not clean up properly in CI
-  if (process.env.CI === 'true') {
-    console.log('[Teardown] CI environment detected, will force exit after grace period');
-
-    // Give 100ms grace period for any final cleanup
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    console.log('[Teardown] Forcing process exit to prevent hanging from open handles');
-    process.exit(0);
-  } else {
-    console.log('[Teardown] Local environment, allowing natural exit');
-  }
+  console.log('[Teardown] Complete. Allowing Vitest to exit naturally.');
 }
 
 

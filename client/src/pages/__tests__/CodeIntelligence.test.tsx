@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, beforeEach, expect, vi } from 'vitest';
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import CodeIntelligence from '../CodeIntelligence';
 import { codeIntelligenceSource } from '@/lib/data-sources';
 
@@ -20,22 +20,24 @@ vi.mock('@/lib/data-sources', async () => {
   };
 });
 
+let queryClient: QueryClient | null = null;
+
 function renderWithClient(ui: ReactNode) {
-  const queryClient = new QueryClient({
+  queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
-        refetchInterval: false, // Disable polling in tests to prevent infinite loops
+        refetchInterval: false,
         refetchOnWindowFocus: false,
-        gcTime: 0, // Disable cache to prevent stale data issues
-        staleTime: Infinity, // Never consider data stale in tests
+        gcTime: Infinity,
+        staleTime: Infinity,
       },
     },
   });
 
-  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  const result = render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 
-  return queryClient;
+  return { queryClient, ...result };
 }
 
 describe('CodeIntelligence page', () => {
@@ -43,7 +45,18 @@ describe('CodeIntelligence page', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     localStorageMocks.getItem.mockReturnValue('24h');
+  });
+
+  afterEach(async () => {
+    if (queryClient) {
+      queryClient.clear();
+      await queryClient.cancelQueries();
+      queryClient = null;
+    }
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('renders code metrics, compliance breakdown, and quality panels when data is available', async () => {
@@ -89,7 +102,8 @@ describe('CodeIntelligence page', () => {
       isMock: false,
     });
 
-    renderWithClient(<CodeIntelligence />);
+    const result = renderWithClient(<CodeIntelligence />);
+    queryClient = result.queryClient;
 
     await waitFor(() => {
       expect(screen.getByText('Code Intelligence Metrics')).toBeInTheDocument();
@@ -102,14 +116,19 @@ describe('CodeIntelligence page', () => {
     expect(screen.getByText('Node Type Breakdown')).toBeInTheDocument();
     expect(screen.getAllByText(/Code Coverage/)[0]).toBeInTheDocument();
     expect(screen.getByText('Performance Thresholds')).toBeInTheDocument();
+
+    result.unmount();
   });
 
   it('shows loading placeholders before query resolves', () => {
     vi.mocked(codeIntelligenceSource.fetchAll).mockImplementation(() => new Promise(() => {}));
 
-    renderWithClient(<CodeIntelligence />);
+    const result = renderWithClient(<CodeIntelligence />);
+    queryClient = result.queryClient;
 
     expect(screen.getAllByText('...').length).toBeGreaterThan(0);
+
+    result.unmount();
   });
 
   it('falls back to zeroed compliance summary when data is empty', async () => {
@@ -138,7 +157,8 @@ describe('CodeIntelligence page', () => {
       isMock: true,
     });
 
-    renderWithClient(<CodeIntelligence />);
+    const result = renderWithClient(<CodeIntelligence />);
+    queryClient = result.queryClient;
 
     await waitFor(() => {
       expect(screen.getByText('ONEX Compliance Coverage')).toBeInTheDocument();
@@ -146,5 +166,7 @@ describe('CodeIntelligence page', () => {
 
     expect(screen.getByText('0 files tracked')).toBeInTheDocument();
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+
+    result.unmount();
   });
 });

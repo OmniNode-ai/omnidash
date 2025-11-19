@@ -28,14 +28,18 @@ function renderWithClient(ui: React.ReactNode) {
         retry: false,
         refetchInterval: false, // Disable polling in tests to prevent infinite loops
         refetchOnWindowFocus: false,
+        gcTime: Infinity,
+        staleTime: Infinity,
         queryFn: getQueryFn({ on401: 'throw' }),
       },
     },
   });
 
-  return render(
+  const result = render(
     <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
   );
+
+  return { queryClient, ...result };
 }
 
 describe('IntelligenceOperations page', () => {
@@ -44,14 +48,23 @@ describe('IntelligenceOperations page', () => {
     getItem: ReturnType<typeof vi.fn>;
     setItem: ReturnType<typeof vi.fn>;
   };
+  let queryClient: QueryClient | null = null;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     localStorageMock.getItem.mockReturnValue('24h');
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    if (queryClient) {
+      queryClient.clear();
+      await queryClient.cancelQueries();
+      queryClient = null;
+    }
     fetchSpy.mockReset();
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   function mockFetchResponses(options: { hasRecentActions?: boolean; transformationTotal?: number } = {}) {
@@ -188,7 +201,8 @@ describe('IntelligenceOperations page', () => {
 
     const { default: IntelligenceOperations } = await import('../IntelligenceOperations');
 
-    renderWithClient(<IntelligenceOperations />);
+    const result = renderWithClient(<IntelligenceOperations />);
+    queryClient = result.queryClient;
 
     await waitFor(() => {
       expect(screen.getByText('Intelligence Operations')).toBeInTheDocument();
@@ -204,6 +218,8 @@ describe('IntelligenceOperations page', () => {
       await screen.findByText(/Read File executed by Routing Agent/i)
     ).toBeInTheDocument();
     expect(fetchSpy).toHaveBeenCalled();
+
+    result.unmount();
   });
 
   it('shows empty state when no operations are available', async () => {
@@ -233,7 +249,8 @@ describe('IntelligenceOperations page', () => {
 
     const { default: IntelligenceOperations } = await import('../IntelligenceOperations');
 
-    renderWithClient(<IntelligenceOperations />);
+    const result = renderWithClient(<IntelligenceOperations />);
+    queryClient = result.queryClient;
 
     await waitFor(() => {
       expect(screen.getByText('Intelligence Operations')).toBeInTheDocument();
@@ -242,5 +259,7 @@ describe('IntelligenceOperations page', () => {
     expect(
       screen.getByText('No operations data available for selected time range')
     ).toBeInTheDocument();
+
+    result.unmount();
   });
 });

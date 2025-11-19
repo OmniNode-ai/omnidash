@@ -2,7 +2,7 @@
  * Tests for EventBusHealthIndicator Component
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EventBusHealthIndicator } from '../EventBusHealthIndicator';
@@ -19,12 +19,26 @@ describe('EventBusHealthIndicator', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
     queryClient = new QueryClient({
       defaultOptions: {
-        queries: { retry: false },
+        queries: {
+          retry: false,
+          refetchInterval: false,
+          refetchOnWindowFocus: false,
+          gcTime: Infinity,
+          staleTime: Infinity,
+        },
       },
     });
-    vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   const renderWithClient = (ui: React.ReactElement) => {
@@ -42,11 +56,13 @@ describe('EventBusHealthIndicator', () => {
       status: 'running',
     });
 
-    renderWithClient(<EventBusHealthIndicator showLabel={true} />);
+    const result = renderWithClient(<EventBusHealthIndicator showLabel={true} />);
 
     await waitFor(() => {
       expect(screen.getByText('Running')).toBeInTheDocument();
     });
+
+    result.unmount();
   });
 
   it('should hide label when showLabel is false', async () => {
@@ -56,18 +72,20 @@ describe('EventBusHealthIndicator', () => {
       status: 'running',
     });
 
-    const { container } = renderWithClient(<EventBusHealthIndicator showLabel={false} />);
+    const result = renderWithClient(<EventBusHealthIndicator showLabel={false} />);
 
     await waitFor(() => {
       // Status badge should be visible but label text should not
       expect(screen.queryByText('Running')).not.toBeInTheDocument();
     });
-    
+
     // The badge itself should still be rendered
-    const badge = container.querySelector('[class*="badge"]');
+    const badge = result.container.querySelector('[class*="badge"]');
     expect(badge).toBeInTheDocument();
     // Verify the label text is not in the badge
     expect(badge?.textContent).not.toContain('Running');
+
+    result.unmount();
   });
 
   it('should show disconnected status', async () => {
@@ -77,11 +95,13 @@ describe('EventBusHealthIndicator', () => {
       status: 'stopped',
     });
 
-    renderWithClient(<EventBusHealthIndicator />);
+    const result = renderWithClient(<EventBusHealthIndicator />);
 
     await waitFor(() => {
       expect(screen.getByText('Stopped')).toBeInTheDocument();
     });
+
+    result.unmount();
   });
 
   it('should handle loading state', () => {
@@ -89,9 +109,11 @@ describe('EventBusHealthIndicator', () => {
       () => new Promise(() => {}) // Never resolves
     );
 
-    renderWithClient(<EventBusHealthIndicator />);
+    const result = renderWithClient(<EventBusHealthIndicator />);
 
     expect(screen.getByText('Loading...')).toBeInTheDocument();
+
+    result.unmount();
   });
 });
 
