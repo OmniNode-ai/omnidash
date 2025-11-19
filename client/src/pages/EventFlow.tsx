@@ -91,8 +91,13 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
   const startTimeMs = timeRangeDates.start.getTime();
   const endTimeMs = timeRangeDates.end.getTime();
 
+  // Calculate effective start/end times: prefer EventSearchBar filters, fallback to page-level TimeRangeSelector
+  const effectiveStartTime = eventBusFilters.start_time ?? timeRangeDates.start;
+  const effectiveEndTime = eventBusFilters.end_time ?? timeRangeDates.end;
+  const effectiveStartTimeMs = effectiveStartTime.getTime();
+  const effectiveEndTimeMs = effectiveEndTime.getTime();
+
   // Create stable query key to prevent infinite loops
-  // Time range is ALWAYS from page-level TimeRangeSelector (EventSearchBar time range is hidden)
   const eventBusQueryKey = useMemo(() => {
     return [
       'event-bus-events',
@@ -105,8 +110,8 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
       eventBusFilters.offset,
       eventBusFilters.order_by,
       eventBusFilters.order_direction,
-      startTimeMs,
-      endTimeMs,
+      effectiveStartTimeMs,
+      effectiveEndTimeMs,
     ];
   }, [
     eventBusFilters.event_types,
@@ -118,8 +123,8 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
     eventBusFilters.offset,
     eventBusFilters.order_by,
     eventBusFilters.order_direction,
-    startTimeMs,
-    endTimeMs,
+    effectiveStartTimeMs,
+    effectiveEndTimeMs,
   ]);
 
   const {
@@ -133,9 +138,9 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
     queryFn: () =>
       eventBusSource.queryEvents({
         ...eventBusFilters,
-        // Time range is ALWAYS from page-level TimeRangeSelector (single source of truth)
-        start_time: timeRangeDates.start,
-        end_time: timeRangeDates.end,
+        // Prefer EventSearchBar time range if set, otherwise use page-level TimeRangeSelector
+        start_time: effectiveStartTime,
+        end_time: effectiveEndTime,
       }),
     refetchInterval: (queryBehaviorOverrides?.eventBus?.refetchInterval ??
       getPollingInterval(POLLING_INTERVAL_MEDIUM)) as number | false,
@@ -224,8 +229,8 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
     events.forEach((e) => {
       typeCounts.set(e.event_type, (typeCounts.get(e.event_type) || 0) + 1);
     });
-    // Use extracted timestamp values
-    const windowMs = endTimeMs - startTimeMs;
+    // Use effective time range (respects EventSearchBar or falls back to page-level selector)
+    const windowMs = effectiveEndTimeMs - effectiveStartTimeMs;
     // Calculate total topic count from the actual displayed events for accurate percentages
     const totalTopicCount =
       Array.from(typeCounts.values()).reduce((sum, count) => sum + count, 0) || 1;
@@ -237,7 +242,7 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
       topicCounts: typeCounts,
       totalTopicCount, // Add this for accurate percentage calculations
     };
-  }, [eventBusData, useEventBus, startTimeMs, endTimeMs]);
+  }, [eventBusData, useEventBus, effectiveStartTimeMs, effectiveEndTimeMs]);
 
   // Use metrics and chart data from data source
   const metrics = useMemo(() => {

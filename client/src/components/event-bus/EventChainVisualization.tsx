@@ -1,17 +1,17 @@
 /**
  * Event Chain Visualization Component
- * 
+ *
  * Visual timeline showing event chains with correlation/causation relationships.
  */
 
-import React, { useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
-import { EventTypeBadge } from "./EventTypeBadge";
-import type { EventBusEvent } from "@/lib/data-sources";
-import { cn } from "@/lib/utils";
+import React, { useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
+import { EventTypeBadge } from './EventTypeBadge';
+import type { EventBusEvent } from '@/lib/data-sources';
+import { cn } from '@/lib/utils';
 
 export interface EventChainVisualizationProps {
   events: EventBusEvent[];
@@ -31,7 +31,7 @@ function buildEventTree(events: EventBusEvent[]): EventNode[] {
   const roots: EventNode[] = [];
 
   // Create nodes
-  events.forEach(event => {
+  events.forEach((event) => {
     eventMap.set(event.event_id, {
       event,
       level: 0,
@@ -40,7 +40,7 @@ function buildEventTree(events: EventBusEvent[]): EventNode[] {
   });
 
   // Build tree structure based on causation_id
-  events.forEach(event => {
+  events.forEach((event) => {
     const node = eventMap.get(event.event_id)!;
     if (event.causation_id) {
       const parent = eventMap.get(event.causation_id);
@@ -66,12 +66,12 @@ function formatTimestamp(timestamp: string): string {
   }
 }
 
-function EventNodeComponent({ 
-  node, 
+function EventNodeComponent({
+  node,
   onEventClick,
-  maxLevel = 0 
-}: { 
-  node: EventNode; 
+  maxLevel = 0,
+}: {
+  node: EventNode;
   onEventClick?: (event: EventBusEvent) => void;
   maxLevel: number;
 }) {
@@ -83,7 +83,7 @@ function EventNodeComponent({
       {node.level > 0 && (
         <div
           className="absolute left-0 top-0 w-px bg-border"
-          style={{ 
+          style={{
             left: `${indent - 20}px`,
             height: '20px',
           }}
@@ -93,8 +93,8 @@ function EventNodeComponent({
       <div
         data-testid="event-chain-node"
         className={cn(
-          "flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors",
-          onEventClick && "cursor-pointer"
+          'flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors',
+          onEventClick && 'cursor-pointer'
         )}
         style={{ marginLeft: `${indent}px` }}
         onClick={onEventClick ? () => onEventClick(node.event) : undefined}
@@ -102,9 +102,7 @@ function EventNodeComponent({
         {/* Timeline indicator */}
         <div className="flex-shrink-0 flex flex-col items-center">
           <div className="w-2 h-2 rounded-full bg-primary" />
-          {node.children.length > 0 && (
-            <div className="w-px h-full bg-border min-h-[20px]" />
-          )}
+          {node.children.length > 0 && <div className="w-px h-full bg-border min-h-[20px]" />}
         </div>
 
         {/* Event content */}
@@ -116,11 +114,14 @@ function EventNodeComponent({
             </span>
             {node.event.causation_id && (
               <Badge variant="outline" className="text-xs">
-                Causation: {node.event.causation_id.slice(0, 8)}...
+                Causation:{' '}
+                {node.event.causation_id.length > 8
+                  ? `${node.event.causation_id.slice(0, 8)}...`
+                  : node.event.causation_id}
               </Badge>
             )}
           </div>
-          
+
           {node.event.source && (
             <div className="text-xs text-muted-foreground">
               Source: <span className="font-mono">{node.event.source}</span>
@@ -146,20 +147,20 @@ function EventNodeComponent({
   );
 }
 
-export function EventChainVisualization({ 
-  events, 
+export function EventChainVisualization({
+  events,
   correlationId,
   onEventClick,
-  className 
+  className,
 }: EventChainVisualizationProps) {
   const eventTree = useMemo(() => buildEventTree(events), [events]);
   const maxLevel = useMemo(() => {
     const getMaxLevel = (nodes: EventNode[]): number => {
-      return Math.max(...nodes.map(node => 
-        node.children.length > 0 
-          ? Math.max(node.level, getMaxLevel(node.children))
-          : node.level
-      ));
+      return Math.max(
+        ...nodes.map((node) =>
+          node.children.length > 0 ? Math.max(node.level, getMaxLevel(node.children)) : node.level
+        )
+      );
     };
     return getMaxLevel(eventTree);
   }, [eventTree]);
@@ -179,9 +180,7 @@ export function EventChainVisualization({
     return (
       <Card className={className}>
         <CardContent className="p-6">
-          <p className="text-sm text-muted-foreground text-center">
-            No events in chain
-          </p>
+          <p className="text-sm text-muted-foreground text-center">No events in chain</p>
         </CardContent>
       </Card>
     );
@@ -192,7 +191,9 @@ export function EventChainVisualization({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm">
-            Event Chain {correlationId && `(${correlationId.slice(0, 8)}...)`}
+            Event Chain{' '}
+            {correlationId &&
+              `(${correlationId.length > 8 ? `${correlationId.slice(0, 8)}...` : correlationId})`}
           </CardTitle>
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="w-4 h-4 mr-1" />
@@ -215,4 +216,3 @@ export function EventChainVisualization({
     </Card>
   );
 }
-

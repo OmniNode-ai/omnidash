@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { DetailModal } from "./DetailModal";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState } from 'react';
+import { DetailModal } from './DetailModal';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Activity,
   Clock,
@@ -13,7 +13,7 @@ import {
   AlertTriangle,
   Copy,
   CheckCircle as CheckCircleIcon,
-} from "lucide-react";
+} from 'lucide-react';
 
 export interface EventAction {
   id: string;
@@ -45,12 +45,7 @@ function CopyButton({ text }: { text: string }) {
   };
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleCopy}
-      className="ml-2"
-    >
+    <Button variant="outline" size="sm" onClick={handleCopy} className="ml-2">
       {copied ? (
         <>
           <CheckCircleIcon className="w-4 h-4 mr-2" />
@@ -66,12 +61,8 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export function EventDetailModal({
-  event,
-  isOpen,
-  onClose
-}: EventDetailModalProps) {
-  const [activeTab, setActiveTab] = useState("overview");
+export function EventDetailModal({ event, isOpen, onClose }: EventDetailModalProps) {
+  const [activeTab, setActiveTab] = useState('overview');
 
   if (!event) return null;
 
@@ -83,10 +74,10 @@ export function EventDetailModal({
   };
 
   const getEventIconColor = () => {
-    if (event.status === 'failed' || event.error) return "text-red-500";
-    if (event.status === 'completed' || event.status === 'success') return "text-green-500";
-    if (event.status === 'warning') return "text-yellow-500";
-    return "text-blue-500";
+    if (event.status === 'failed' || event.error) return 'text-red-500';
+    if (event.status === 'completed' || event.status === 'success') return 'text-green-500';
+    if (event.status === 'warning') return 'text-yellow-500';
+    return 'text-blue-500';
   };
 
   const EventIcon = getEventIcon();
@@ -105,7 +96,7 @@ export function EventDetailModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Event Details"
-      subtitle={`Event ID: ${event.id.slice(0, 8)}...`}
+      subtitle={`Event ID: ${event.id.length > 8 ? `${event.id.slice(0, 8)}...` : event.id}`}
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
@@ -125,7 +116,9 @@ export function EventDetailModal({
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${iconColor}`}>
-                  {event.status ? event.status.charAt(0).toUpperCase() + event.status.slice(1) : 'Info'}
+                  {event.status
+                    ? event.status.charAt(0).toUpperCase() + event.status.slice(1)
+                    : 'Info'}
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
                   {event.error ? 'Failed with error' : 'Event processed'}
@@ -147,11 +140,11 @@ export function EventDetailModal({
                 <p className="text-sm text-muted-foreground mt-2">
                   {event.durationMs
                     ? event.durationMs < 100
-                      ? "Excellent"
+                      ? 'Excellent'
                       : event.durationMs < 500
-                      ? "Good"
-                      : "Slow"
-                    : "No duration data"}
+                        ? 'Good'
+                        : 'Slow'
+                    : 'No duration data'}
                 </p>
               </CardContent>
             </Card>
@@ -191,14 +184,20 @@ export function EventDetailModal({
               {event.debugMode && (
                 <div className="flex items-center gap-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
                   <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                  <span className="text-sm text-yellow-600 dark:text-yellow-400">Debug Mode Enabled</span>
+                  <span className="text-sm text-yellow-600 dark:text-yellow-400">
+                    Debug Mode Enabled
+                  </span>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4 text-sm pt-2 border-t">
                 <div>
                   <div className="text-muted-foreground">Correlation ID</div>
-                  <code className="text-xs">{event.correlationId.slice(0, 20)}...</code>
+                  <code className="text-xs">
+                    {event.correlationId.length > 20
+                      ? `${event.correlationId.slice(0, 20)}...`
+                      : event.correlationId}
+                  </code>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Timestamp</div>
@@ -232,16 +231,20 @@ export function EventDetailModal({
           <Card>
             <CardHeader>
               <CardTitle>Full Event Data</CardTitle>
-              <CardDescription>
-                Complete event information and action details
-              </CardDescription>
+              <CardDescription>Complete event information and action details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Basic Info */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-sm font-medium">Event Identifiers</div>
-                  <CopyButton text={JSON.stringify({ id: event.id, correlationId: event.correlationId }, null, 2)} />
+                  <CopyButton
+                    text={JSON.stringify(
+                      { id: event.id, correlationId: event.correlationId },
+                      null,
+                      2
+                    )}
+                  />
                 </div>
                 <div className="bg-muted/30 p-4 rounded-lg space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -288,15 +291,11 @@ export function EventDetailModal({
                   </div>
                   <div>
                     <span className="text-muted-foreground">Debug Mode:</span>
-                    <span className="ml-2 font-medium">
-                      {event.debugMode ? 'Yes' : 'No'}
-                    </span>
+                    <span className="ml-2 font-medium">{event.debugMode ? 'Yes' : 'No'}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Status:</span>
-                    <span className="ml-2 font-medium">
-                      {event.status || 'Unknown'}
-                    </span>
+                    <span className="ml-2 font-medium">{event.status || 'Unknown'}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Timestamp:</span>

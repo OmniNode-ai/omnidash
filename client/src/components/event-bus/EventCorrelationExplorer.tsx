@@ -1,19 +1,19 @@
 /**
  * Event Correlation Explorer Component
- * 
+ *
  * Dedicated view for exploring event correlations.
  */
 
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { EventChainVisualization } from "./EventChainVisualization";
-import { EventTypeBadge } from "./EventTypeBadge";
-import { eventBusSource } from "@/lib/data-sources";
-import { Search, Share2, Download } from "lucide-react";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { EventChainVisualization } from './EventChainVisualization';
+import { EventTypeBadge } from './EventTypeBadge';
+import { eventBusSource } from '@/lib/data-sources';
+import { Search, Share2, Download } from 'lucide-react';
 
 export interface EventCorrelationExplorerProps {
   className?: string;
@@ -23,7 +23,11 @@ export function EventCorrelationExplorer({ className }: EventCorrelationExplorer
   const [correlationId, setCorrelationId] = useState('');
   const [searchValue, setSearchValue] = useState('');
 
-  const { data: events, isLoading, isError } = useQuery({
+  const {
+    data: events,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['event-correlation', correlationId],
     queryFn: () => eventBusSource.getEventChain(correlationId),
     enabled: !!correlationId,
@@ -39,7 +43,7 @@ export function EventCorrelationExplorer({ className }: EventCorrelationExplorer
     if (!correlationId) return;
 
     // Guard browser APIs for SSR compatibility
-    if (typeof window === "undefined" || typeof navigator === "undefined") {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
       console.warn('Share functionality not available in SSR environment');
       return;
     }
@@ -59,12 +63,12 @@ export function EventCorrelationExplorer({ className }: EventCorrelationExplorer
     if (!events || events.length === 0) return;
 
     // Guard browser APIs for SSR compatibility
-    if (typeof window === "undefined" || typeof document === "undefined") {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
       console.warn('Export functionality not available in SSR environment');
       return;
     }
 
-    if (typeof URL === "undefined" || !URL.createObjectURL) {
+    if (typeof URL === 'undefined' || !URL.createObjectURL) {
       console.warn('URL API not available');
       return;
     }
@@ -108,7 +112,11 @@ export function EventCorrelationExplorer({ className }: EventCorrelationExplorer
                   <Share2 className="w-4 h-4 mr-1" />
                   Share
                 </Button>
-                <Button variant="outline" onClick={handleExport} disabled={!events || events.length === 0}>
+                <Button
+                  variant="outline"
+                  onClick={handleExport}
+                  disabled={!events || events.length === 0}
+                >
                   <Download className="w-4 h-4 mr-1" />
                   Export
                 </Button>
@@ -119,9 +127,7 @@ export function EventCorrelationExplorer({ className }: EventCorrelationExplorer
           {correlationId && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Correlation ID:</span>
-              <code className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                {correlationId}
-              </code>
+              <code className="text-xs font-mono bg-muted px-2 py-1 rounded">{correlationId}</code>
             </div>
           )}
         </CardContent>
@@ -130,7 +136,9 @@ export function EventCorrelationExplorer({ className }: EventCorrelationExplorer
       {isLoading && (
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground text-center">Loading correlation chain...</p>
+            <p className="text-sm text-muted-foreground text-center">
+              Loading correlation chain...
+            </p>
           </CardContent>
         </Card>
       )}
@@ -149,15 +157,10 @@ export function EventCorrelationExplorer({ className }: EventCorrelationExplorer
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">
-                Correlation Chain ({events.length} events)
-              </CardTitle>
+              <CardTitle className="text-sm">Correlation Chain ({events.length} events)</CardTitle>
             </CardHeader>
             <CardContent>
-              <EventChainVisualization
-                events={events}
-                correlationId={correlationId}
-              />
+              <EventChainVisualization events={events} correlationId={correlationId} />
             </CardContent>
           </Card>
 
@@ -181,7 +184,14 @@ export function EventCorrelationExplorer({ className }: EventCorrelationExplorer
                         <div>Source: {event.source}</div>
                         <div>Tenant: {event.tenant_id}</div>
                         {event.causation_id && (
-                          <div>Caused by: <code className="font-mono">{event.causation_id.slice(0, 16)}...</code></div>
+                          <div>
+                            Caused by:{' '}
+                            <code className="font-mono">
+                              {event.causation_id.length > 16
+                                ? `${event.causation_id.slice(0, 16)}...`
+                                : event.causation_id}
+                            </code>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -205,4 +215,3 @@ export function EventCorrelationExplorer({ className }: EventCorrelationExplorer
     </div>
   );
 }
-

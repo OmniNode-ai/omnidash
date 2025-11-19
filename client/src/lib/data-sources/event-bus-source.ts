@@ -1,9 +1,9 @@
 /**
  * Event Bus Data Source
- * 
+ *
  * Client-side data source for querying events from the event bus API.
  * Provides methods to query events, get statistics, and check status.
- * 
+ *
  * API Endpoints (implemented in server/event-bus-routes.ts):
  * - GET /api/event-bus/events - Query events with filters
  * - GET /api/event-bus/statistics - Get event statistics
@@ -77,7 +77,7 @@ class EventBusSource {
 
     try {
       const params = new URLSearchParams();
-      
+
       if (options.event_types && options.event_types.length > 0) {
         params.append('event_types', options.event_types.join(','));
       }
@@ -131,7 +131,7 @@ class EventBusSource {
       }
 
       const response = await fetch(`/api/event-bus/events?${params.toString()}`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch events: ${response.status} ${response.statusText}`);
       }
@@ -180,7 +180,7 @@ class EventBusSource {
       }
 
       const response = await fetch(`/api/event-bus/statistics?${params.toString()}`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch statistics: ${response.status} ${response.statusText}`);
       }
@@ -213,7 +213,7 @@ class EventBusSource {
 
     try {
       const response = await fetch('/api/event-bus/status');
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch status: ${response.status} ${response.statusText}`);
       }
@@ -248,7 +248,9 @@ class EventBusSource {
     // Allow alphanumeric, hyphens, and underscores
     const CORRELATION_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
     if (!CORRELATION_ID_REGEX.test(correlationId)) {
-      throw new Error('Invalid correlation ID format. Only alphanumeric characters, hyphens, and underscores are allowed.');
+      throw new Error(
+        'Invalid correlation ID format. Only alphanumeric characters, hyphens, and underscores are allowed.'
+      );
     }
     const result = await this.queryEvents({ correlation_id: correlationId });
     return result.events;
@@ -312,10 +314,10 @@ class EventBusSource {
 
     // Apply filters in a single pass for better performance
     let filtered = mockEvents;
-    
+
     // Filter by time range first
     if (options.start_time || options.end_time) {
-      filtered = filtered.filter(e => {
+      filtered = filtered.filter((e) => {
         const eventTime = new Date(e.timestamp).getTime();
         if (options.start_time && eventTime < options.start_time.getTime()) {
           return false;
@@ -326,11 +328,21 @@ class EventBusSource {
         return true;
       });
     }
-    
+
     // Filter by other criteria
-    if (options.event_types || options.correlation_id || options.tenant_id || options.namespace || options.source) {
-      filtered = filtered.filter(e => {
-        if (options.event_types && options.event_types.length > 0 && !options.event_types.includes(e.event_type)) {
+    if (
+      options.event_types ||
+      options.correlation_id ||
+      options.tenant_id ||
+      options.namespace ||
+      options.source
+    ) {
+      filtered = filtered.filter((e) => {
+        if (
+          options.event_types &&
+          options.event_types.length > 0 &&
+          !options.event_types.includes(e.event_type)
+        ) {
           return false;
         }
         if (options.correlation_id && e.correlation_id !== options.correlation_id) {
@@ -351,7 +363,12 @@ class EventBusSource {
 
     // Apply sorting
     if (options.order_by) {
-      const field = options.order_by === 'timestamp' ? 'timestamp' : (options.order_by === 'processed_at' ? 'processed_at' : 'timestamp');
+      const field =
+        options.order_by === 'timestamp'
+          ? 'timestamp'
+          : options.order_by === 'processed_at'
+            ? 'processed_at'
+            : 'timestamp';
       const direction = options.order_direction === 'desc' ? -1 : 1;
       filtered = [...filtered].sort((a, b) => {
         const aTime = new Date(a[field] || a.timestamp).getTime();
@@ -410,7 +427,11 @@ class EventBusSource {
    * Check if running in test environment
    */
   private isTestEnvironment(): boolean {
-    return import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
+    return (
+      import.meta.env.VITEST === true ||
+      process.env.VITEST === 'true' ||
+      process.env.NODE_ENV === 'test'
+    );
   }
 
   /**
@@ -423,4 +444,3 @@ class EventBusSource {
 }
 
 export const eventBusSource = new EventBusSource();
-
