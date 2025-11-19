@@ -1,24 +1,24 @@
-import { MetricCard } from "@/components/MetricCard";
-import { RealtimeChart } from "@/components/RealtimeChart";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
-import { ExportButton } from "@/components/ExportButton";
-import { SectionHeader } from "@/components/SectionHeader";
-import { Activity, Zap, Database, TrendingUp, Clock } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { MockBadge } from "@/components/MockBadge";
-import { ensureTimeSeries } from "@/components/mockUtils";
-import { useState, useMemo } from "react";
-import { eventFlowSource, eventBusSource, type EventBusEvent } from "@/lib/data-sources";
-import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
-import { EventStatisticsPanel } from "@/components/event-bus/EventStatisticsPanel";
-import { EventSearchBar } from "@/components/event-bus/EventSearchBar";
-import { EventTypeBadge } from "@/components/event-bus/EventTypeBadge";
-import { EventBusHealthIndicator } from "@/components/event-bus/EventBusHealthIndicator";
-import type { EventQueryOptions } from "@/lib/data-sources";
-import type { QueryObserverOptions } from "@tanstack/react-query";
+import { MetricCard } from '@/components/MetricCard';
+import { RealtimeChart } from '@/components/RealtimeChart';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { TimeRangeSelector } from '@/components/TimeRangeSelector';
+import { ExportButton } from '@/components/ExportButton';
+import { SectionHeader } from '@/components/SectionHeader';
+import { Activity, Zap, Database, TrendingUp, Clock } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { MockBadge } from '@/components/MockBadge';
+import { ensureTimeSeries } from '@/components/mockUtils';
+import { useState, useMemo } from 'react';
+import { eventFlowSource, eventBusSource, type EventBusEvent } from '@/lib/data-sources';
+import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
+import { EventStatisticsPanel } from '@/components/event-bus/EventStatisticsPanel';
+import { EventSearchBar } from '@/components/event-bus/EventSearchBar';
+import { EventTypeBadge } from '@/components/event-bus/EventTypeBadge';
+import { EventBusHealthIndicator } from '@/components/event-bus/EventBusHealthIndicator';
+import type { EventQueryOptions } from '@/lib/data-sources';
+import type { QueryObserverOptions } from '@tanstack/react-query';
 
 // Event stream interface matching omniarchon endpoint
 interface EventStreamItem {
@@ -34,8 +34,8 @@ interface EventStreamResponse {
 }
 
 type QueryBehaviorOverrides = {
-  eventBus?: Pick<QueryObserverOptions, "refetchInterval" | "refetchOnWindowFocus" | "staleTime">;
-  legacy?: Pick<QueryObserverOptions, "refetchInterval" | "refetchOnWindowFocus" | "staleTime">;
+  eventBus?: Pick<QueryObserverOptions, 'refetchInterval' | 'refetchOnWindowFocus' | 'staleTime'>;
+  legacy?: Pick<QueryObserverOptions, 'refetchInterval' | 'refetchOnWindowFocus' | 'staleTime'>;
 };
 
 type EventFlowProps = {
@@ -66,7 +66,7 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
   const timeRangeDates = useMemo(() => {
     const now = new Date();
     let start: Date;
-    
+
     switch (timeRange) {
       case '1h':
         start = new Date(now.getTime() - 60 * 60 * 1000);
@@ -83,33 +83,16 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
       default:
         start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     }
-    
+
     return { start, end: now };
   }, [timeRange]);
 
-  // Fetch events from event bus (new API)
-  // Respect time range from EventSearchBar if provided, otherwise use page-level timeRangeDates
-  // Use stable references to prevent infinite loops - compare by timestamp values, not object references
-  const effectiveTimeRange = useMemo(() => {
-    const filterStartTime = eventBusFilters.start_time?.getTime();
-    const filterEndTime = eventBusFilters.end_time?.getTime();
-    const pageStartTime = timeRangeDates.start.getTime();
-    const pageEndTime = timeRangeDates.end.getTime();
-    
-    if (filterStartTime && filterEndTime) {
-      // Return stable object reference - only create new if values actually changed
-      return { start: new Date(filterStartTime), end: new Date(filterEndTime) };
-    }
-    // Return stable reference to timeRangeDates
-    return { start: new Date(pageStartTime), end: new Date(pageEndTime) };
-  }, [
-    eventBusFilters.start_time?.getTime(), // Compare by timestamp, not object reference
-    eventBusFilters.end_time?.getTime(),
-    timeRangeDates.start.getTime(),
-    timeRangeDates.end.getTime(),
-  ]);
+  // Extract timestamp values for stable dependencies
+  const startTimeMs = timeRangeDates.start.getTime();
+  const endTimeMs = timeRangeDates.end.getTime();
 
   // Create stable query key to prevent infinite loops
+  // Time range is ALWAYS from page-level TimeRangeSelector (EventSearchBar time range is hidden)
   const eventBusQueryKey = useMemo(() => {
     return [
       'event-bus-events',
@@ -122,8 +105,8 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
       eventBusFilters.offset,
       eventBusFilters.order_by,
       eventBusFilters.order_direction,
-      effectiveTimeRange.start.getTime(),
-      effectiveTimeRange.end.getTime(),
+      startTimeMs,
+      endTimeMs,
     ];
   }, [
     eventBusFilters.event_types,
@@ -135,43 +118,50 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
     eventBusFilters.offset,
     eventBusFilters.order_by,
     eventBusFilters.order_direction,
-    effectiveTimeRange.start.getTime(),
-    effectiveTimeRange.end.getTime(),
+    startTimeMs,
+    endTimeMs,
   ]);
 
-  const eventBusQueryBehavior = {
-    refetchInterval: queryBehaviorOverrides?.eventBus?.refetchInterval ?? getPollingInterval(POLLING_INTERVAL_MEDIUM),
-    refetchOnWindowFocus: queryBehaviorOverrides?.eventBus?.refetchOnWindowFocus ?? true,
-    staleTime: queryBehaviorOverrides?.eventBus?.staleTime ?? 30_000,
-  };
-
-  const legacyQueryBehavior = {
-    refetchInterval: queryBehaviorOverrides?.legacy?.refetchInterval ?? getPollingInterval(POLLING_INTERVAL_MEDIUM),
-    refetchOnWindowFocus: queryBehaviorOverrides?.legacy?.refetchOnWindowFocus ?? true,
-    staleTime: queryBehaviorOverrides?.legacy?.staleTime,
-  };
-
-  const { data: eventBusData, isLoading: isLoadingBus, isError: isErrorBus, error: errorBus, dataUpdatedAt: busUpdatedAt } = useQuery({
+  const {
+    data: eventBusData,
+    isLoading: isLoadingBus,
+    isError: isErrorBus,
+    error: errorBus,
+    dataUpdatedAt: busUpdatedAt,
+  } = useQuery({
     queryKey: eventBusQueryKey,
-    queryFn: () => eventBusSource.queryEvents({
-      ...eventBusFilters,
-      // Use effectiveTimeRange which already respects EventSearchBar filters if provided
-      start_time: effectiveTimeRange.start,
-      end_time: effectiveTimeRange.end,
-    }),
-    refetchInterval: eventBusQueryBehavior.refetchInterval,
-    refetchOnWindowFocus: eventBusQueryBehavior.refetchOnWindowFocus,
-    staleTime: eventBusQueryBehavior.staleTime,
+    queryFn: () =>
+      eventBusSource.queryEvents({
+        ...eventBusFilters,
+        // Time range is ALWAYS from page-level TimeRangeSelector (single source of truth)
+        start_time: timeRangeDates.start,
+        end_time: timeRangeDates.end,
+      }),
+    refetchInterval: (queryBehaviorOverrides?.eventBus?.refetchInterval ??
+      getPollingInterval(POLLING_INTERVAL_MEDIUM)) as number | false,
+    refetchOnWindowFocus: (queryBehaviorOverrides?.eventBus?.refetchOnWindowFocus ?? true) as
+      | boolean
+      | 'always',
+    staleTime: (queryBehaviorOverrides?.eventBus?.staleTime ?? 30_000) as number,
     enabled: useEventBus,
   });
 
   // Fetch events with TanStack Query and polling using old data source (fallback)
-  const { data: eventFlowData, isLoading: isLoadingOld, isError: isErrorOld, error: errorOld, dataUpdatedAt: oldUpdatedAt } = useQuery({
+  const {
+    data: eventFlowData,
+    isLoading: isLoadingOld,
+    isError: isErrorOld,
+    error: errorOld,
+    dataUpdatedAt: oldUpdatedAt,
+  } = useQuery({
     queryKey: ['events', 'stream'],
     queryFn: () => eventFlowSource.fetchEvents(100),
-    refetchInterval: legacyQueryBehavior.refetchInterval,
-    refetchOnWindowFocus: legacyQueryBehavior.refetchOnWindowFocus,
-    staleTime: legacyQueryBehavior.staleTime,
+    refetchInterval: (queryBehaviorOverrides?.legacy?.refetchInterval ??
+      getPollingInterval(POLLING_INTERVAL_MEDIUM)) as number | false,
+    refetchOnWindowFocus: (queryBehaviorOverrides?.legacy?.refetchOnWindowFocus ?? true) as
+      | boolean
+      | 'always',
+    staleTime: queryBehaviorOverrides?.legacy?.staleTime as number | undefined,
     enabled: !useEventBus,
   });
 
@@ -207,18 +197,22 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
   }, [useEventBus, eventBusData]);
 
   // Transform to expected format
-  const data: EventStreamResponse = useEventBus ? {
-    events: eventBusEvents,
-    total: eventBusEvents.length,
-  } : (eventFlowData ? {
-    events: eventFlowData.events.map(e => ({
-      id: e.id,
-      type: e.type,
-      timestamp: e.timestamp,
-      data: e.data,
-    })),
-    total: eventFlowData.events.length,
-  } : { events: [], total: 0 });
+  const data: EventStreamResponse = useEventBus
+    ? {
+        events: eventBusEvents,
+        total: eventBusEvents.length,
+      }
+    : eventFlowData
+      ? {
+          events: eventFlowData.events.map((e) => ({
+            id: e.id,
+            type: e.type,
+            timestamp: e.timestamp,
+            data: e.data,
+          })),
+          total: eventFlowData.events.length,
+        }
+      : { events: [], total: 0 };
 
   // Calculate metrics from event bus data
   // Use eventBusData.count instead of events.length to avoid dependency on array reference
@@ -227,16 +221,14 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
     const events = eventBusData.events || [];
     const eventCount = eventBusData.count ?? events.length;
     const typeCounts = new Map<string, number>();
-    events.forEach(e => {
+    events.forEach((e) => {
       typeCounts.set(e.event_type, (typeCounts.get(e.event_type) || 0) + 1);
     });
-    // Use effectiveTimeRange to match the actual query time window
-    // Compare by timestamp values to prevent infinite loops
-    const startTime = effectiveTimeRange.start.getTime();
-    const endTime = effectiveTimeRange.end.getTime();
-    const windowMs = endTime - startTime;
+    // Use extracted timestamp values
+    const windowMs = endTimeMs - startTimeMs;
     // Calculate total topic count from the actual displayed events for accurate percentages
-    const totalTopicCount = Array.from(typeCounts.values()).reduce((sum, count) => sum + count, 0) || 1;
+    const totalTopicCount =
+      Array.from(typeCounts.values()).reduce((sum, count) => sum + count, 0) || 1;
     return {
       totalEvents: eventCount,
       uniqueTypes: typeCounts.size,
@@ -245,7 +237,7 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
       topicCounts: typeCounts,
       totalTopicCount, // Add this for accurate percentage calculations
     };
-  }, [eventBusData?.count, eventBusData?.events, useEventBus, effectiveTimeRange.start.getTime(), effectiveTimeRange.end.getTime()]);
+  }, [eventBusData, useEventBus, startTimeMs, endTimeMs]);
 
   // Use metrics and chart data from data source
   const metrics = useMemo(() => {
@@ -265,10 +257,14 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
   }, [useEventBus, eventBusMetrics, eventFlowData]);
 
   // Use chart data from data source (only for legacy API)
-  const throughputDataRaw = useEventBus ? [] : (eventFlowData?.chartData?.throughput || []);
-  const { data: throughputData, isMock: isThroughputMock } = ensureTimeSeries(throughputDataRaw, 10, 6);
+  const throughputDataRaw = useEventBus ? [] : eventFlowData?.chartData?.throughput || [];
+  const { data: throughputData, isMock: isThroughputMock } = ensureTimeSeries(
+    throughputDataRaw,
+    10,
+    6
+  );
 
-  const lagDataRaw = useEventBus ? [] : (eventFlowData?.chartData?.lag || []);
+  const lagDataRaw = useEventBus ? [] : eventFlowData?.chartData?.lag || [];
   const { data: lagData, isMock: isLagMock } = ensureTimeSeries(lagDataRaw, 3, 1.2);
 
   // Convert topic counts to array for display
@@ -289,8 +285,6 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
     return total || 1;
   }, [metrics.topicCounts]);
 
-  const totalThroughput = topics.reduce((sum, t) => sum + t.messagesPerSec, 0);
-
   // Format last update time
   const lastUpdateTime = new Date(dataUpdatedAt).toLocaleTimeString();
 
@@ -305,11 +299,7 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
         />
         <div className="flex items-center gap-2">
           <EventBusHealthIndicator showLabel={false} />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setUseEventBus(!useEventBus)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setUseEventBus(!useEventBus)}>
             {useEventBus ? 'Using Event Bus API' : 'Using Legacy API'}
           </Button>
         </div>
@@ -319,11 +309,12 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
         <>
           <EventSearchBar
             eventTypes={eventTypes}
+            hideTimeRange={true}
             onFilterChange={(filters) => {
-              setEventBusFilters(prev => {
+              setEventBusFilters((prev) => {
                 const next = { ...prev, ...filters };
                 // Remove undefined values so cleared filters are actually removed
-                Object.keys(next).forEach(key => {
+                Object.keys(next).forEach((key) => {
                   if (next[key as keyof typeof next] === undefined) {
                     delete next[key as keyof typeof next];
                   }
@@ -361,49 +352,61 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
       <div className="grid grid-cols-4 gap-6">
         <MetricCard
           label="Total Events"
-          value={isLoading ? "..." : metrics.totalEvents.toString()}
+          value={isLoading ? '...' : metrics.totalEvents.toString()}
           icon={Activity}
-          status={isError ? "error" : "healthy"}
+          status={isError ? 'error' : 'healthy'}
         />
         <MetricCard
           label="Event Types"
-          value={isLoading ? "..." : metrics.uniqueTypes.toString()}
+          value={isLoading ? '...' : metrics.uniqueTypes.toString()}
           icon={Database}
-          status={isError ? "error" : "healthy"}
+          status={isError ? 'error' : 'healthy'}
         />
         <MetricCard
           label="Events/min"
-          value={isLoading ? "..." : metrics.eventsPerMinute.toString()}
+          value={isLoading ? '...' : metrics.eventsPerMinute.toString()}
           icon={Zap}
-          status={isError ? "error" : "healthy"}
+          status={isError ? 'error' : 'healthy'}
         />
         <MetricCard
           label="Avg Processing"
-          value={isLoading ? "..." : `${metrics.avgProcessingTime}ms`}
+          value={isLoading ? '...' : `${metrics.avgProcessingTime}ms`}
           icon={Clock}
-          status={isError ? "error" : "healthy"}
+          status={isError ? 'error' : 'healthy'}
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        <div>
-          {isThroughputMock && <MockBadge label="MOCK DATA: Event Throughput" />}
-          <RealtimeChart
-            title="Event Throughput (by minute)"
-            data={throughputData}
-            color="hsl(var(--chart-4))"
-            showArea
-          />
+      {!useEventBus && (
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            {isThroughputMock && <MockBadge label="MOCK DATA: Event Throughput" />}
+            <RealtimeChart
+              title="Event Throughput (by minute)"
+              data={throughputData}
+              color="hsl(var(--chart-4))"
+              showArea
+            />
+          </div>
+          <div>
+            {isLagMock && <MockBadge label="MOCK DATA: Event Lag" />}
+            <RealtimeChart title="Event Lag (seconds)" data={lagData} color="hsl(var(--chart-5))" />
+          </div>
         </div>
-        <div>
-          {isLagMock && <MockBadge label="MOCK DATA: Event Lag" />}
-          <RealtimeChart
-            title="Event Lag (seconds)"
-            data={lagData}
-            color="hsl(var(--chart-5))"
-          />
-        </div>
-      </div>
+      )}
+
+      {useEventBus && (
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-base font-semibold">Throughput & Lag Metrics</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Detailed throughput and consumer lag metrics are coming soon for Event Bus mode. These
+            metrics will provide real-time visibility into event processing rates and consumer lag
+            across topics.
+          </p>
+        </Card>
+      )}
 
       {!isLoading && topics.length > 0 && (
         <Card className="p-6">
@@ -420,7 +423,10 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
                     <Badge variant="secondary">{metrics.topicCounts.get(topic.name)} events</Badge>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>Estimated rate: <span className="font-mono text-foreground">{topic.messagesPerSec}/s</span></span>
+                    <span>
+                      Estimated rate:{' '}
+                      <span className="font-mono text-foreground">{topic.messagesPerSec}/s</span>
+                    </span>
                   </div>
                 </div>
 
@@ -428,7 +434,9 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div
                       className="h-full bg-status-healthy transition-all"
-                      style={{ width: `${Math.min((metrics.topicCounts.get(topic.name) || 0) / topicShareDenominator * 100, 100)}%` }}
+                      style={{
+                        width: `${Math.min(((metrics.topicCounts.get(topic.name) || 0) / topicShareDenominator) * 100, 100)}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -461,7 +469,8 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
                     )}
                     {event.data?.correlationId && (
                       <span className="text-xs text-muted-foreground font-mono truncate">
-                        ID: {event.data.correlationId.length > 8
+                        ID:{' '}
+                        {event.data.correlationId.length > 8
                           ? `${event.data.correlationId.slice(0, 8)}...`
                           : event.data.correlationId}
                       </span>

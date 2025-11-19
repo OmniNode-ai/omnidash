@@ -6,7 +6,9 @@ import EventFlow from '../EventFlow';
 import React from 'react';
 
 vi.mock('@/components/TimeRangeSelector', () => ({
-  TimeRangeSelector: ({ value }: { value: string }) => <div data-testid="time-range-selector">{value}</div>,
+  TimeRangeSelector: ({ value }: { value: string }) => (
+    <div data-testid="time-range-selector">{value}</div>
+  ),
 }));
 
 vi.mock('@/components/event-bus/EventStatisticsPanel', () => ({
@@ -110,7 +112,11 @@ describe('EventFlow page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers(); // Ensure real timers before each test
-    localStorageMocks.getItem.mockReturnValue('24h');
+    // Mock localStorage with key-specific returns
+    localStorageMocks.getItem.mockImplementation((key) => {
+      if (key === 'dashboard-timerange') return '24h';
+      return null;
+    });
     // Reset all mocks to return empty/default values
     vi.mocked(eventBusSource.queryEvents).mockResolvedValue({
       events: [],
@@ -162,7 +168,13 @@ describe('EventFlow page', () => {
     const now = new Date().toISOString();
     vi.mocked(eventFlowSource.fetchEvents).mockResolvedValue({
       events: [
-        { id: 'evt-1', timestamp: now, type: 'throughput', source: 'api', data: { correlationId: 'abc123', count: 100 } },
+        {
+          id: 'evt-1',
+          timestamp: now,
+          type: 'throughput',
+          source: 'api',
+          data: { correlationId: 'abc123', count: 100 },
+        },
       ],
       metrics: {
         totalEvents: 1,
@@ -172,12 +184,8 @@ describe('EventFlow page', () => {
         topicCounts: new Map<string, number>([['throughput', 120]]),
       },
       chartData: {
-        throughput: [
-          { time: now, value: 10 },
-        ],
-        lag: [
-          { time: now, value: 1.5 },
-        ],
+        throughput: [{ time: now, value: 10 }],
+        lag: [{ time: now, value: 1.5 }],
       },
       isMock: false,
     });
@@ -185,9 +193,12 @@ describe('EventFlow page', () => {
     const result = renderEventFlow();
     queryClient = result.queryClient;
 
-    await waitFor(() => {
-      expect(screen.getByText('Event Flow')).toBeInTheDocument();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText('Event Flow')).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
 
     expect(screen.getByText('Total Events')).toBeInTheDocument();
     expect(screen.getByText('Event Types')).toBeInTheDocument();
@@ -208,9 +219,12 @@ describe('EventFlow page', () => {
     const result = renderEventFlow();
     queryClient = result.queryClient;
 
-    await waitFor(() => {
-      expect(screen.getByText(/Error loading events: event bus offline/)).toBeInTheDocument();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText(/Error loading events: event bus offline/)).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
 
     consoleError.mockRestore();
     result.unmount(); // Explicitly unmount component
@@ -220,11 +234,22 @@ describe('EventFlow page', () => {
     const result = renderEventFlow();
     queryClient = result.queryClient;
 
-    await waitFor(() => {
-      expect(screen.getByText('Event Flow')).toBeInTheDocument();
-    }, { timeout: 5000 });
+    // Wait for the component to render and data to be loaded
+    await waitFor(
+      () => {
+        expect(screen.getByText('Event Flow')).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
 
-    expect(screen.getByText('No events found. Waiting for new events...')).toBeInTheDocument();
+    // Verify specific empty state message is rendered
+    await waitFor(
+      () => {
+        expect(screen.getByText('No events found. Waiting for new events...')).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
+
     // Verify the empty state doesn't show "Recent Events" heading when no events
     expect(screen.queryByText(/Recent Events/)).not.toBeInTheDocument();
 

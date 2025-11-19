@@ -1,17 +1,16 @@
 /**
  * Event Payload Viewer Component
- * 
+ *
  * Syntax-highlighted JSON viewer for event payloads with search and copy functionality.
  */
 
-import React, { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Copy, CheckCircle2, Search, ChevronDown, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Copy, CheckCircle2, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export interface EventPayloadViewerProps {
   payload: Record<string, any>;
@@ -22,16 +21,16 @@ export interface EventPayloadViewerProps {
 const MAX_DEPTH = 10;
 const MAX_STRING_LENGTH = 10000;
 
-function JsonViewer({ 
-  data, 
-  searchTerm = '', 
-  level = 0, 
+function JsonViewer({
+  data,
+  searchTerm = '',
+  level = 0,
   path = '',
   collapsed,
-  onToggleCollapse
-}: { 
-  data: any; 
-  searchTerm?: string; 
+  onToggleCollapse,
+}: {
+  data: any;
+  searchTerm?: string;
   level?: number;
   path?: string;
   collapsed: Record<string, boolean>;
@@ -65,12 +64,12 @@ function JsonViewer({
       try {
         if (Array.isArray(value)) {
           // Check if any array element matches (recursive)
-          return value.some(item => matchesSearch(item));
+          return value.some((item) => matchesSearch(item));
         }
 
         // For objects, check keys and recurse into values
-        return Object.entries(value).some(([key, val]) =>
-          key.toLowerCase().includes(searchLower) || matchesSearch(val)
+        return Object.entries(value).some(
+          ([key, val]) => key.toLowerCase().includes(searchLower) || matchesSearch(val)
         );
       } catch {
         // Handle circular references or other errors gracefully
@@ -89,9 +88,10 @@ function JsonViewer({
 
   if (typeof data === 'string') {
     // Truncate very long strings to prevent performance issues
-    const displayValue = data.length > MAX_STRING_LENGTH 
-      ? `${data.slice(0, MAX_STRING_LENGTH)}... [truncated, ${data.length} chars total]`
-      : data;
+    const displayValue =
+      data.length > MAX_STRING_LENGTH
+        ? `${data.slice(0, MAX_STRING_LENGTH)}... [truncated, ${data.length} chars total]`
+        : data;
     return <span className="text-green-600">"{displayValue}"</span>;
   }
 
@@ -104,9 +104,9 @@ function JsonViewer({
   }
 
   if (Array.isArray(data)) {
-    const key = path;
+    const key = path || 'root';
     const isCollapsed = collapsed[key];
-    
+
     return (
       <div className="ml-4">
         <button
@@ -115,11 +115,7 @@ function JsonViewer({
           aria-label={isCollapsed ? 'Expand array' : 'Collapse array'}
           className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
         >
-          {isCollapsed ? (
-            <ChevronRight className="w-3 h-3" />
-          ) : (
-            <ChevronDown className="w-3 h-3" />
-          )}
+          {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           <span className="text-gray-500">[</span>
           <span className="text-gray-500">{data.length} items</span>
           <span className="text-gray-500">]</span>
@@ -129,11 +125,11 @@ function JsonViewer({
             {data.slice(0, 100).map((item, index) => (
               <div key={index} className="flex items-start gap-2">
                 <span className="text-gray-500">{index}:</span>
-                <JsonViewer 
-                  data={item} 
-                  searchTerm={searchTerm} 
-                  level={level + 1} 
-                  path={`${path}[${index}]`}
+                <JsonViewer
+                  data={item}
+                  searchTerm={searchTerm}
+                  level={level + 1}
+                  path={path ? `${path}[${index}]` : `[${index}]`}
                   collapsed={collapsed}
                   onToggleCollapse={onToggleCollapse}
                 />
@@ -152,7 +148,7 @@ function JsonViewer({
 
   if (typeof data === 'object') {
     const entries = Object.entries(data);
-    const key = path;
+    const key = path || 'root';
     const isCollapsed = collapsed[key];
 
     return (
@@ -163,26 +159,22 @@ function JsonViewer({
           aria-label={isCollapsed ? 'Expand object' : 'Collapse object'}
           className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
         >
-          {isCollapsed ? (
-            <ChevronRight className="w-3 h-3" />
-          ) : (
-            <ChevronDown className="w-3 h-3" />
-          )}
+          {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           <span className="text-gray-500">{'{'}</span>
           <span className="text-gray-500">{entries.length} keys</span>
           <span className="text-gray-500">{'}'}</span>
         </button>
         {!isCollapsed && (
           <div className="ml-4 space-y-1">
-            {entries.slice(0, 100).map(([key, value]) => (
-              <div key={key} className="flex items-start gap-2">
-                <span className="text-orange-600">"{key}"</span>
+            {entries.slice(0, 100).map(([objKey, value]) => (
+              <div key={objKey} className="flex items-start gap-2">
+                <span className="text-orange-600">"{objKey}"</span>
                 <span className="text-gray-500">:</span>
-                <JsonViewer 
-                  data={value} 
-                  searchTerm={searchTerm} 
-                  level={level + 1} 
-                  path={`${path}.${key}`}
+                <JsonViewer
+                  data={value}
+                  searchTerm={searchTerm}
+                  level={level + 1}
+                  path={path ? `${path}.${objKey}` : objKey}
                   collapsed={collapsed}
                   onToggleCollapse={onToggleCollapse}
                 />
@@ -219,7 +211,7 @@ export function EventPayloadViewer({ payload, className }: EventPayloadViewerPro
   }, []);
 
   const handleToggleCollapse = (key: string) => {
-    setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleCopy = async () => {
@@ -228,9 +220,9 @@ export function EventPayloadViewer({ payload, className }: EventPayloadViewerPro
       // Check size before copying to prevent browser hang (limit to ~1MB)
       if (jsonString.length > 1000000) {
         toast({
-          variant: "destructive",
-          title: "Payload too large",
-          description: "This payload is too large to copy. Consider downloading it instead.",
+          variant: 'destructive',
+          title: 'Payload too large',
+          description: 'This payload is too large to copy. Consider downloading it instead.',
         });
         return;
       }
@@ -247,9 +239,9 @@ export function EventPayloadViewer({ payload, className }: EventPayloadViewerPro
     } catch (error) {
       console.error('Failed to copy:', error);
       toast({
-        variant: "destructive",
-        title: "Copy failed",
-        description: "Failed to copy payload to clipboard. Please try again.",
+        variant: 'destructive',
+        title: 'Copy failed',
+        description: 'Failed to copy payload to clipboard. Please try again.',
       });
     }
   };
@@ -269,12 +261,7 @@ export function EventPayloadViewer({ payload, className }: EventPayloadViewerPro
                 className="pl-8 w-48 h-8 text-xs"
               />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopy}
-              className="h-8"
-            >
+            <Button variant="outline" size="sm" onClick={handleCopy} className="h-8">
               {copied ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 mr-1" />
@@ -293,8 +280,8 @@ export function EventPayloadViewer({ payload, className }: EventPayloadViewerPro
       <CardContent>
         <ScrollArea className="h-96 w-full">
           <pre className="text-xs font-mono">
-            <JsonViewer 
-              data={payload} 
+            <JsonViewer
+              data={payload}
               searchTerm={searchTerm}
               collapsed={collapsed}
               onToggleCollapse={handleToggleCollapse}
@@ -305,4 +292,3 @@ export function EventPayloadViewer({ payload, className }: EventPayloadViewerPro
     </Card>
   );
 }
-

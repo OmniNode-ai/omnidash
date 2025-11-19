@@ -1,30 +1,30 @@
 /**
  * Event Search & Filter Bar Component
- * 
+ *
  * Powerful search and filter component for events.
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { X, Search, Filter, Calendar } from "lucide-react";
-import { DateRangeFilter } from "@/components/DateRangeFilter";
-import type { EventQueryOptions } from "@/lib/data-sources";
+} from '@/components/ui/select';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import { X, Search, Filter, Calendar } from 'lucide-react';
+import type { EventQueryOptions } from '@/lib/data-sources';
 
 export interface EventSearchBarProps {
   onFilterChange: (filters: EventQueryOptions) => void;
   eventTypes?: string[];
   className?: string;
+  hideTimeRange?: boolean; // Hide time range control (use page-level time range instead)
 }
 
 const QUICK_TIME_RANGES = [
@@ -34,7 +34,12 @@ const QUICK_TIME_RANGES = [
   { label: 'Last month', value: '30d' },
 ] as const;
 
-export function EventSearchBar({ onFilterChange, eventTypes = [], className }: EventSearchBarProps) {
+export function EventSearchBar({
+  onFilterChange,
+  eventTypes = [],
+  className,
+  hideTimeRange = false,
+}: EventSearchBarProps) {
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('');
   const [correlationId, setCorrelationId] = useState<string>('');
   const [tenantId, setTenantId] = useState<string>('');
@@ -42,11 +47,13 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
   const [timeRange, setTimeRange] = useState<string>('24h');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Calculate time range dates
+  // Calculate time range dates (only if not hidden)
   const timeRangeDates = useMemo(() => {
+    if (hideTimeRange) return null;
+
     const now = new Date();
     let start: Date;
-    
+
     switch (timeRange) {
       case '1h':
         start = new Date(now.getTime() - 60 * 60 * 1000);
@@ -63,19 +70,23 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
       default:
         start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     }
-    
+
     return { start, end: now };
-  }, [timeRange]);
+  }, [timeRange, hideTimeRange]);
 
   // Build filter options
   const buildFilters = useCallback(() => {
     const filters: EventQueryOptions = {
-      start_time: timeRangeDates.start,
-      end_time: timeRangeDates.end,
       limit: 100,
       order_by: 'timestamp',
       order_direction: 'desc',
     };
+
+    // Only include time range if not hidden
+    if (!hideTimeRange && timeRangeDates) {
+      filters.start_time = timeRangeDates.start;
+      filters.end_time = timeRangeDates.end;
+    }
 
     if (eventTypeFilter) {
       filters.event_types = [eventTypeFilter];
@@ -91,7 +102,7 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
     }
 
     return filters;
-  }, [eventTypeFilter, correlationId, tenantId, source, timeRangeDates]);
+  }, [eventTypeFilter, correlationId, tenantId, source, timeRangeDates, hideTimeRange]);
 
   // Apply filters when they change
   const handleFilterChange = useCallback(() => {
@@ -105,27 +116,24 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
     setTenantId('');
     setSource('');
     setTimeRange('24h');
-    // Compute default time range inline to avoid stale closure
-    const now = new Date();
-    const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    onFilterChange({
-      start_time: start,
-      end_time: now,
-      limit: 100,
-      order_by: 'timestamp',
-      order_direction: 'desc',
-    });
-  }, [onFilterChange]);
+    // State changes will trigger useEffect → handleFilterChange → onFilterChange
+    // No need to call onFilterChange directly (avoids race conditions)
+  }, []);
 
   // Update filters when inputs change
   useEffect(() => {
     handleFilterChange();
   }, [handleFilterChange]);
 
-  const hasActiveFilters = eventTypeFilter || correlationId || tenantId || source || timeRange !== '24h';
+  const hasActiveFilters =
+    eventTypeFilter ||
+    correlationId ||
+    tenantId ||
+    source ||
+    (!hideTimeRange && timeRange !== '24h');
 
   return (
-    <Card className={cn("p-4 space-y-4", className)}>
+    <Card className={cn('p-4 space-y-4', className)}>
       <div className="flex items-center gap-2">
         <Search className="w-4 h-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold">Search & Filter Events</h3>
@@ -140,13 +148,23 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div
+        className={cn(
+          'grid grid-cols-1 gap-3',
+          hideTimeRange ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'
+        )}
+      >
         {/* Event Type Filter */}
         <div className="space-y-1">
-          <label htmlFor="event-type-filter" className="text-xs text-muted-foreground">Event Type</label>
-          <Select value={eventTypeFilter || 'all'} onValueChange={(value) => {
-            setEventTypeFilter(value === 'all' ? '' : value);
-          }}>
+          <label htmlFor="event-type-filter" className="text-xs text-muted-foreground">
+            Event Type
+          </label>
+          <Select
+            value={eventTypeFilter || 'all'}
+            onValueChange={(value) => {
+              setEventTypeFilter(value === 'all' ? '' : value);
+            }}
+          >
             <SelectTrigger id="event-type-filter">
               <SelectValue placeholder="All types" />
             </SelectTrigger>
@@ -163,7 +181,9 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
 
         {/* Correlation ID Search */}
         <div className="space-y-1">
-          <label htmlFor="correlation-id-filter" className="text-xs text-muted-foreground">Correlation ID</label>
+          <label htmlFor="correlation-id-filter" className="text-xs text-muted-foreground">
+            Correlation ID
+          </label>
           <Input
             id="correlation-id-filter"
             placeholder="Search by correlation ID"
@@ -175,24 +195,31 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
           />
         </div>
 
-        {/* Time Range */}
-        <div className="space-y-1">
-          <label htmlFor="time-range-filter" className="text-xs text-muted-foreground">Time Range</label>
-          <Select value={timeRange} onValueChange={(value) => {
-            setTimeRange(value);
-          }}>
-            <SelectTrigger id="time-range-filter">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {QUICK_TIME_RANGES.map((range) => (
-                <SelectItem key={range.value} value={range.value}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Time Range - only show if not hidden */}
+        {!hideTimeRange && (
+          <div className="space-y-1">
+            <label htmlFor="time-range-filter" className="text-xs text-muted-foreground">
+              Time Range
+            </label>
+            <Select
+              value={timeRange}
+              onValueChange={(value) => {
+                setTimeRange(value);
+              }}
+            >
+              <SelectTrigger id="time-range-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {QUICK_TIME_RANGES.map((range) => (
+                  <SelectItem key={range.value} value={range.value}>
+                    {range.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Clear Button */}
         <div className="flex items-end">
@@ -213,7 +240,9 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
       {showAdvanced && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t">
           <div className="space-y-1">
-            <label htmlFor="tenant-id-filter" className="text-xs text-muted-foreground">Tenant ID</label>
+            <label htmlFor="tenant-id-filter" className="text-xs text-muted-foreground">
+              Tenant ID
+            </label>
             <Input
               id="tenant-id-filter"
               placeholder="Filter by tenant"
@@ -226,7 +255,9 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="source-filter" className="text-xs text-muted-foreground">Source</label>
+            <label htmlFor="source-filter" className="text-xs text-muted-foreground">
+              Source
+            </label>
             <Input
               id="source-filter"
               placeholder="Filter by source"
@@ -259,7 +290,8 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
           )}
           {correlationId && (
             <Badge variant="secondary" className="text-xs">
-              Correlation: {correlationId.length > 16 ? `${correlationId.slice(0, 16)}...` : correlationId}
+              Correlation:{' '}
+              {correlationId.length > 16 ? `${correlationId.slice(0, 16)}...` : correlationId}
               <button
                 onClick={() => {
                   setCorrelationId('');
@@ -296,10 +328,10 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
               </button>
             </Badge>
           )}
-          {timeRange !== '24h' && (
+          {!hideTimeRange && timeRange !== '24h' && (
             <Badge variant="secondary" className="text-xs">
               <Calendar className="w-3 h-3 mr-1" />
-              Time: {QUICK_TIME_RANGES.find(r => r.value === timeRange)?.label || timeRange}
+              Time: {QUICK_TIME_RANGES.find((r) => r.value === timeRange)?.label || timeRange}
               <button
                 onClick={() => {
                   setTimeRange('24h');
@@ -315,4 +347,3 @@ export function EventSearchBar({ onFilterChange, eventTypes = [], className }: E
     </Card>
   );
 }
-
