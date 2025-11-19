@@ -177,6 +177,7 @@ describe('EventConsumer', () => {
     });
 
     it('should handle connection errors and emit error event', async () => {
+      vi.useFakeTimers();
       const connectionError = new Error('Connection failed');
       // Reject all connection attempts to exceed max retries
       mockConsumerConnect.mockRejectedValue(connectionError);
@@ -185,11 +186,15 @@ describe('EventConsumer', () => {
       consumer.on('error', errorSpy);
 
       // Should throw after exhausting retries
-      await expect(consumer.start()).rejects.toThrow('Kafka connection failed after 5 attempts');
+      const startPromise = consumer.start();
+      startPromise.catch(() => {});
+      await vi.advanceTimersByTimeAsync(1000);
+      await expect(startPromise).rejects.toThrow('Kafka connection failed after 5 attempts');
       expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({
         message: expect.stringContaining('Kafka connection failed after 5 attempts')
       }));
-    }, 20000); // Increase timeout to 20s for 5 retries with exponential backoff (1+2+4+8s)
+      vi.useRealTimers();
+    }, 2000);
   });
 
   describe('stop', () => {
@@ -532,6 +537,7 @@ describe('EventConsumer', () => {
         .mockResolvedValueOnce(undefined);
 
       const connectPromise = consumer.connectWithRetry(5);
+      connectPromise.catch(() => {});
       
       // Fast-forward through delays: 1s + 2s = 3s
       await vi.advanceTimersByTimeAsync(3000);
@@ -552,6 +558,7 @@ describe('EventConsumer', () => {
       mockConsumerConnect.mockRejectedValue(new Error('Connection refused'));
 
       const connectPromise = consumer.connectWithRetry(maxRetries);
+      connectPromise.catch(() => {});
       
       // Fast-forward through all retry delays: 1s + 2s = 3s
       await vi.advanceTimersByTimeAsync(3000);
@@ -640,6 +647,7 @@ describe('EventConsumer', () => {
     });
 
     it('should attempt reconnection on connection error during message processing', async () => {
+      vi.useFakeTimers();
       vi.clearAllMocks(); // Clear after start to track reconnection attempts
       mockConsumerConnect.mockResolvedValueOnce(undefined); // Successful reconnection
 
@@ -658,33 +666,41 @@ describe('EventConsumer', () => {
         }
       };
 
-      await eachMessageHandler(testMessage);
+      const handlerPromise = eachMessageHandler(testMessage);
+      await vi.advanceTimersByTimeAsync(1000);
+      await handlerPromise;
 
       // Should have attempted reconnection
       expect(mockConsumerConnect).toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalled();
-    }, 10000); // Increase timeout for reconnection
+      vi.useRealTimers();
+    }, 2000); // Reduced timeout because timers are faked
 
     it('should not attempt reconnection on non-connection errors', async () => {
+      vi.useFakeTimers();
       vi.clearAllMocks(); // Clear after start
 
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
       // Send malformed JSON (non-connection error)
-      await eachMessageHandler({
+      const handlerPromise = eachMessageHandler({
         topic: 'agent-actions',
         message: {
           value: Buffer.from('{ invalid json'),
         },
       });
+      await vi.advanceTimersByTimeAsync(1000);
+      await handlerPromise;
 
       // Should emit error but not attempt reconnection
       expect(errorSpy).toHaveBeenCalled();
       expect(mockConsumerConnect).not.toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
     it('should emit error if reconnection fails', async () => {
+      vi.useFakeTimers();
       vi.clearAllMocks(); // Clear after start
 
       const reconnectError = new Error('Kafka connection failed after 5 attempts: Connection failed');
@@ -705,12 +721,15 @@ describe('EventConsumer', () => {
         }
       };
 
-      await eachMessageHandler(testMessage);
+      const handlerPromise = eachMessageHandler(testMessage);
+      await vi.advanceTimersByTimeAsync(1000);
+      await handlerPromise;
 
       // Should have emitted both original error and reconnection error
       expect(errorSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
       expect(errorSpy.mock.calls[0][0].message).toContain('broker unreachable');
-    }, 20000); // Increase timeout for failed reconnection attempts
+      vi.useRealTimers();
+    }, 2000); // Reduced timeout for fake timers
   });
 
   describe('data pruning', () => {
