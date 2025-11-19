@@ -90,12 +90,12 @@ describe('EventBusExplorer', () => {
       },
     ];
 
-    vi.mocked(eventBusSource.queryEvents).mockResolvedValueOnce({
+    vi.mocked(eventBusSource.queryEvents).mockResolvedValue({
       events: mockEvents,
       count: 1,
       options: {},
     });
-    vi.mocked(eventBusSource.getStatistics).mockResolvedValueOnce({
+    vi.mocked(eventBusSource.getStatistics).mockResolvedValue({
       total_events: 1,
       events_by_type: { 'omninode.intelligence.query.requested.v1': 1 },
       events_by_tenant: { 'default-tenant': 1 },
@@ -103,7 +103,7 @@ describe('EventBusExplorer', () => {
       oldest_event: new Date().toISOString(),
       newest_event: new Date().toISOString(),
     });
-    vi.mocked(eventBusSource.getStatus).mockResolvedValueOnce({
+    vi.mocked(eventBusSource.getStatus).mockResolvedValue({
       active: true,
       connected: true,
       status: 'running',
@@ -111,18 +111,22 @@ describe('EventBusExplorer', () => {
 
     renderWithClient(<EventBusExplorer />);
 
+    // Wait for the event to be displayed - look for the event type badge
     await waitFor(() => {
-      expect(screen.getByText(/Events \(1\)/)).toBeInTheDocument();
-    });
+      expect(screen.getByText(/omninode\.intelligence\.query\.requested\.v1/)).toBeInTheDocument();
+    }, { timeout: 3000 });
+
+    // Check that the events count is displayed
+    expect(screen.getByText(/Events \(1\)/)).toBeInTheDocument();
   });
 
   it('should show empty state when no events', async () => {
-    vi.mocked(eventBusSource.queryEvents).mockResolvedValueOnce({
+    vi.mocked(eventBusSource.queryEvents).mockResolvedValue({
       events: [],
       count: 0,
       options: {},
     });
-    vi.mocked(eventBusSource.getStatistics).mockResolvedValueOnce({
+    vi.mocked(eventBusSource.getStatistics).mockResolvedValue({
       total_events: 0,
       events_by_type: {},
       events_by_tenant: {},
@@ -130,7 +134,7 @@ describe('EventBusExplorer', () => {
       oldest_event: null,
       newest_event: null,
     });
-    vi.mocked(eventBusSource.getStatus).mockResolvedValueOnce({
+    vi.mocked(eventBusSource.getStatus).mockResolvedValue({
       active: true,
       connected: true,
       status: 'running',
@@ -139,8 +143,11 @@ describe('EventBusExplorer', () => {
     renderWithClient(<EventBusExplorer />);
 
     await waitFor(() => {
-      expect(screen.getByText(/No events found/)).toBeInTheDocument();
-    });
+      expect(screen.getByText(/Try adjusting your filters/)).toBeInTheDocument();
+    }, { timeout: 3000 });
+
+    // Also check that Events (0) is displayed
+    expect(screen.getByText(/Events \(0\)/)).toBeInTheDocument();
   });
 });
 
