@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { DetailModal } from "./DetailModal";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState } from 'react';
+import { DetailModal } from './DetailModal';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Target,
   Clock,
@@ -13,7 +13,7 @@ import {
   ChevronUp,
   Copy,
   CheckCircle,
-} from "lucide-react";
+} from 'lucide-react';
 
 export interface RoutingDecision {
   id: string;
@@ -39,16 +39,15 @@ interface RoutingDecisionDetailModalProps {
 
 function ExpandableContent({
   fullContent,
-  maxLength = 300
+  maxLength = 300,
 }: {
   fullContent: string;
-  maxLength?: number
+  maxLength?: number;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const shouldTruncate = fullContent.length > maxLength;
-  const displayText = isExpanded || !shouldTruncate
-    ? fullContent
-    : fullContent.slice(0, maxLength) + "...";
+  const displayText =
+    isExpanded || !shouldTruncate ? fullContent : fullContent.slice(0, maxLength) + '...';
 
   return (
     <div className="space-y-2">
@@ -91,12 +90,7 @@ function CopyButton({ text }: { text: string }) {
   };
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleCopy}
-      className="ml-2"
-    >
+    <Button variant="outline" size="sm" onClick={handleCopy} className="ml-2">
       {copied ? (
         <>
           <CheckCircle className="w-4 h-4 mr-2" />
@@ -115,24 +109,26 @@ function CopyButton({ text }: { text: string }) {
 export function RoutingDecisionDetailModal({
   decision,
   isOpen,
-  onClose
+  onClose,
 }: RoutingDecisionDetailModalProps) {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState('overview');
 
   if (!decision) return null;
 
   const confidencePercent = (decision.confidenceScore * 100).toFixed(1);
   const confidenceColor =
-    decision.confidenceScore >= 0.9 ? "text-green-500" :
-    decision.confidenceScore >= 0.75 ? "text-blue-500" :
-    "text-yellow-500";
+    decision.confidenceScore >= 0.9
+      ? 'text-green-500'
+      : decision.confidenceScore >= 0.75
+        ? 'text-blue-500'
+        : 'text-yellow-500';
 
   return (
     <DetailModal
       isOpen={isOpen}
       onClose={onClose}
       title="Routing Decision Details"
-      subtitle={`Decision ID: ${decision.id.slice(0, 8)}...`}
+      subtitle={`Decision ID: ${decision.id.length > 8 ? `${decision.id.slice(0, 8)}...` : decision.id}`}
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -152,13 +148,13 @@ export function RoutingDecisionDetailModal({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`text-3xl font-bold ${confidenceColor}`}>
-                  {confidencePercent}%
-                </div>
+                <div className={`text-3xl font-bold ${confidenceColor}`}>{confidencePercent}%</div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {decision.confidenceScore >= 0.9 ? "Very High Confidence" :
-                   decision.confidenceScore >= 0.75 ? "High Confidence" :
-                   "Medium Confidence"}
+                  {decision.confidenceScore >= 0.9
+                    ? 'Very High Confidence'
+                    : decision.confidenceScore >= 0.75
+                      ? 'High Confidence'
+                      : 'Medium Confidence'}
                 </p>
               </CardContent>
             </Card>
@@ -173,9 +169,11 @@ export function RoutingDecisionDetailModal({
               <CardContent>
                 <div className="text-3xl font-bold">{decision.routingTimeMs}ms</div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {decision.routingTimeMs < 50 ? "Excellent" :
-                   decision.routingTimeMs < 100 ? "Good" :
-                   "Average"}
+                  {decision.routingTimeMs < 50
+                    ? 'Excellent'
+                    : decision.routingTimeMs < 100
+                      ? 'Good'
+                      : 'Average'}
                 </p>
               </CardContent>
             </Card>
@@ -197,7 +195,9 @@ export function RoutingDecisionDetailModal({
                     {decision.selectedAgent}
                   </Badge>
                   <Badge variant="outline">
-                    {decision.routingStrategy.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    {decision.routingStrategy
+                      .replace(/_/g, ' ')
+                      .replace(/\b\w/g, (l) => l.toUpperCase())}
                   </Badge>
                 </div>
               </div>
@@ -205,16 +205,18 @@ export function RoutingDecisionDetailModal({
               {decision.reasoning && (
                 <div>
                   <div className="text-sm font-medium mb-2">Routing Reasoning</div>
-                  <div className="text-sm bg-muted/50 p-3 rounded-lg">
-                    {decision.reasoning}
-                  </div>
+                  <div className="text-sm bg-muted/50 p-3 rounded-lg">{decision.reasoning}</div>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-muted-foreground">Correlation ID</div>
-                  <code className="text-xs">{decision.correlationId.slice(0, 16)}...</code>
+                  <code className="text-xs">
+                    {decision.correlationId.length > 16
+                      ? `${decision.correlationId.slice(0, 16)}...`
+                      : decision.correlationId}
+                  </code>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Timestamp</div>
@@ -267,9 +269,7 @@ export function RoutingDecisionDetailModal({
                     <div className="text-sm font-medium">Router Analysis</div>
                     <CopyButton text={decision.reasoning} />
                   </div>
-                  <div className="text-sm bg-muted/50 p-4 rounded-lg">
-                    {decision.reasoning}
-                  </div>
+                  <div className="text-sm bg-muted/50 p-4 rounded-lg">{decision.reasoning}</div>
                 </div>
               )}
 
@@ -318,7 +318,9 @@ export function RoutingDecisionDetailModal({
                 <div className="space-y-3">
                   {decision.alternatives.map((alt, idx) => {
                     const altConfidencePercent = (alt.confidence * 100).toFixed(1);
-                    const difference = ((decision.confidenceScore - alt.confidence) * 100).toFixed(1);
+                    const difference = ((decision.confidenceScore - alt.confidence) * 100).toFixed(
+                      1
+                    );
 
                     return (
                       <div
@@ -352,11 +354,17 @@ export function RoutingDecisionDetailModal({
 
               {decision.alternatives && decision.alternatives.length > 0 && (
                 <div className="mt-4 p-4 bg-muted/30 rounded-lg">
-                  <div className="text-sm font-medium mb-2">Why was {decision.selectedAgent} chosen?</div>
+                  <div className="text-sm font-medium mb-2">
+                    Why was {decision.selectedAgent} chosen?
+                  </div>
                   <p className="text-sm text-muted-foreground">
-                    {decision.selectedAgent} had the highest confidence score of {confidencePercent}%,
-                    which was {((decision.confidenceScore - (decision.alternatives[0]?.confidence || 0)) * 100).toFixed(1)}%
-                    higher than the next best alternative.
+                    {decision.selectedAgent} had the highest confidence score of {confidencePercent}
+                    %, which was{' '}
+                    {(
+                      (decision.confidenceScore - (decision.alternatives[0]?.confidence || 0)) *
+                      100
+                    ).toFixed(1)}
+                    % higher than the next best alternative.
                   </p>
                 </div>
               )}

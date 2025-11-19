@@ -44,6 +44,7 @@ router.get('/events', async (req, res) => {
       tenant_id: req.query.tenant_id as string | undefined,
       namespace: req.query.namespace as string | undefined,
       correlation_id: req.query.correlation_id as string | undefined,
+      source: req.query.source as string | undefined,
       start_time: parseDate(req.query.start_time as string | undefined),
       end_time: parseDate(req.query.end_time as string | undefined),
       limit: parseIntSafe(req.query.limit as string | undefined, 100, 1000), // Max 1000

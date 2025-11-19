@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { DetailModal } from "./DetailModal";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { DetailModal } from './DetailModal';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   CheckCircle,
   XCircle,
@@ -13,8 +13,8 @@ import {
   Code,
   ChevronDown,
   ChevronUp,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ExecutionTrace {
   correlationId: string;
@@ -74,11 +74,7 @@ function ExpandableJSON({ data, label }: { data: any; label: string }) {
         className="w-full justify-between"
       >
         <span className="text-sm font-medium">{label}</span>
-        {isExpanded ? (
-          <ChevronUp className="w-4 h-4" />
-        ) : (
-          <ChevronDown className="w-4 h-4" />
-        )}
+        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </Button>
       {isExpanded && (
         <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
@@ -105,10 +101,14 @@ export function AgentExecutionTraceModal({
   correlationId,
   agentName,
 }: AgentExecutionTraceModalProps) {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Fetch execution trace
-  const { data: trace, isLoading, error } = useQuery<ExecutionTrace>({
+  const {
+    data: trace,
+    isLoading,
+    error,
+  } = useQuery<ExecutionTrace>({
     queryKey: ['execution-trace', correlationId],
     queryFn: async () => {
       const response = await fetch(`/api/intelligence/execution/${correlationId}`);
@@ -127,7 +127,7 @@ export function AgentExecutionTraceModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Agent Execution Trace"
-      subtitle={`${agentName} • ${correlationId.slice(0, 8)}...`}
+      subtitle={`${agentName} • ${correlationId.length > 8 ? `${correlationId.slice(0, 8)}...` : correlationId}`}
     >
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
@@ -142,9 +142,7 @@ export function AgentExecutionTraceModal({
           </p>
         </div>
       ) : !trace ? (
-        <div className="text-center py-8 text-muted-foreground">
-          No execution data found
-        </div>
+        <div className="text-center py-8 text-muted-foreground">No execution data found</div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
@@ -272,7 +270,9 @@ export function AgentExecutionTraceModal({
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Routing Time</div>
-                    <div className="font-medium">{formatDuration(trace.routingDecision.routingTimeMs)}</div>
+                    <div className="font-medium">
+                      {formatDuration(trace.routingDecision.routingTimeMs)}
+                    </div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Strategy</div>
@@ -303,13 +303,17 @@ export function AgentExecutionTraceModal({
                       {trace.routingDecision.capabilityConfidence !== null && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Capability:</span>
-                          <span>{(trace.routingDecision.capabilityConfidence * 100).toFixed(1)}%</span>
+                          <span>
+                            {(trace.routingDecision.capabilityConfidence * 100).toFixed(1)}%
+                          </span>
                         </div>
                       )}
                       {trace.routingDecision.historicalConfidence !== null && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Historical:</span>
-                          <span>{(trace.routingDecision.historicalConfidence * 100).toFixed(1)}%</span>
+                          <span>
+                            {(trace.routingDecision.historicalConfidence * 100).toFixed(1)}%
+                          </span>
                         </div>
                       )}
                     </div>
@@ -320,20 +324,23 @@ export function AgentExecutionTraceModal({
                 {trace.routingDecision.reasoning && (
                   <div className="pt-3 border-t">
                     <div className="text-sm font-medium mb-2">Reasoning</div>
-                    <p className="text-sm text-muted-foreground">{trace.routingDecision.reasoning}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {trace.routingDecision.reasoning}
+                    </p>
                   </div>
                 )}
 
                 {/* Alternatives */}
-                {trace.routingDecision.alternatives && trace.routingDecision.alternatives.length > 0 && (
-                  <div className="pt-3 border-t">
-                    <div className="text-sm font-medium mb-2">Alternative Agents Considered</div>
-                    <ExpandableJSON
-                      data={trace.routingDecision.alternatives}
-                      label={`${trace.routingDecision.alternatives.length} alternatives`}
-                    />
-                  </div>
-                )}
+                {trace.routingDecision.alternatives &&
+                  trace.routingDecision.alternatives.length > 0 && (
+                    <div className="pt-3 border-t">
+                      <div className="text-sm font-medium mb-2">Alternative Agents Considered</div>
+                      <ExpandableJSON
+                        data={trace.routingDecision.alternatives}
+                        label={`${trace.routingDecision.alternatives.length} alternatives`}
+                      />
+                    </div>
+                  )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -364,10 +371,7 @@ export function AgentExecutionTraceModal({
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <ExpandableJSON
-                        data={action.actionDetails}
-                        label="View Action Details"
-                      />
+                      <ExpandableJSON data={action.actionDetails} label="View Action Details" />
                     </CardContent>
                   </Card>
                 ))}
@@ -399,10 +403,12 @@ export function AgentExecutionTraceModal({
                           {formatTimestamp(trace.routingDecision.timestamp)}
                         </span>
                       </div>
-                      <div className="text-sm font-medium">Agent Selected: {trace.routingDecision.selectedAgent}</div>
+                      <div className="text-sm font-medium">
+                        Agent Selected: {trace.routingDecision.selectedAgent}
+                      </div>
                       <div className="text-xs text-muted-foreground">
-                        {formatDuration(trace.routingDecision.routingTimeMs)} •
-                        {' '}{(trace.routingDecision.confidenceScore * 100).toFixed(1)}% confidence
+                        {formatDuration(trace.routingDecision.routingTimeMs)} •{' '}
+                        {(trace.routingDecision.confidenceScore * 100).toFixed(1)}% confidence
                       </div>
                     </div>
                   </div>
@@ -436,13 +442,17 @@ export function AgentExecutionTraceModal({
                   {/* End Event */}
                   <div className="flex gap-4">
                     <div className="flex flex-col items-center">
-                      <div className={`w-3 h-3 rounded-full ${
-                        trace.summary.status === 'success' ? 'bg-green-500' : 'bg-red-500'
-                      }`} />
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          trace.summary.status === 'success' ? 'bg-green-500' : 'bg-red-500'
+                        }`}
+                      />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <Badge variant={trace.summary.status === 'success' ? 'default' : 'destructive'}>
+                        <Badge
+                          variant={trace.summary.status === 'success' ? 'default' : 'destructive'}
+                        >
                           {trace.summary.status.toUpperCase()}
                         </Badge>
                         <span className="text-xs text-muted-foreground">

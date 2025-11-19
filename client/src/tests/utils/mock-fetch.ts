@@ -63,10 +63,19 @@ export function setupFetchMock(
   async function getBodyText(response: Response): Promise<string> {
     if (!bodyTextCache.has(response)) {
       // Clone the response before reading to avoid "Body is unusable" errors
-      const cloned = response.clone();
-      const text = await cloned.text();
-      bodyTextCache.set(response, text);
-      return text;
+      // Check if clone method exists (Response objects have it, but plain objects don't)
+      if (typeof response.clone === 'function') {
+        const cloned = response.clone();
+        const text = await cloned.text();
+        bodyTextCache.set(response, text);
+        return text;
+      } else {
+        // For non-Response objects, try to get body text directly
+        // This handles cases where a plain object is passed instead of a Response
+        const text = JSON.stringify(response);
+        bodyTextCache.set(response, text);
+        return text;
+      }
     }
     return bodyTextCache.get(response)!;
   }
@@ -79,6 +88,21 @@ export function setupFetchMock(
         if (url.includes(pattern)) {
           if (response instanceof Error) {
             throw response;
+          }
+          // Handle plain objects that aren't Response instances
+          if (!(response instanceof Response)) {
+            // If it's a plain object with ok/status, create a proper Response
+            if (typeof response === 'object' && 'ok' in response && 'status' in response) {
+              const status = (response as any).status || 500;
+              const statusText = (response as any).statusText || 'Internal Server Error';
+              return new Response(null, { status, statusText });
+            }
+            // Otherwise, try to serialize it as JSON
+            return new Response(JSON.stringify(response), {
+              status: 200,
+              statusText: 'OK',
+              headers: { 'Content-Type': 'application/json' },
+            });
           }
           // Get body text (cached) and create new Response each time to allow multiple reads
           const bodyText = await getBodyText(response);

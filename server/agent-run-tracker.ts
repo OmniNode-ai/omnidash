@@ -40,7 +40,10 @@ export class AgentRunTracker {
     };
 
     agentRuns.push(run);
-    console.log(`Recorded agent run: ${run.agentId} (${run.withIntelligence ? 'with' : 'without'} intelligence)`);
+    // Only log in non-test environments to avoid flooding test output
+    if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+      console.log(`Recorded agent run: ${run.agentId} (${run.withIntelligence ? 'with' : 'without'} intelligence)`);
+    }
     
     return run;
   }
@@ -346,7 +349,10 @@ export class AgentRunTracker {
       }
     }
 
-    console.log(`Generated ${agentRuns.length} mock agent runs (${totalDays} days, balanced distribution)`);
+    // Only log in non-test environments to avoid flooding test output
+    if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+      console.log(`Generated ${agentRuns.length} mock agent runs (${totalDays} days, balanced distribution)`);
+    }
   }
 
   /**

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, beforeEach, vi } from 'vitest';
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
+import type { ReactNode } from 'react';
 import PlatformHealth from '../PlatformHealth';
 import { platformHealthSource } from '@/lib/data-sources';
 
@@ -19,14 +20,22 @@ vi.mock('@/lib/data-sources', async () => {
   };
 });
 
-function createQueryClient() {
-  return new QueryClient({
+let queryClient: QueryClient | null = null;
+
+function renderWithClient(ui: ReactNode) {
+  queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
+        refetchInterval: false,
+        refetchOnWindowFocus: false,
+        gcTime: Infinity,
+        staleTime: Infinity,
       },
     },
   });
+  const result = render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  return { queryClient, ...result };
 }
 
 describe('PlatformHealth page', () => {
@@ -34,7 +43,18 @@ describe('PlatformHealth page', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     localStorageMocks.getItem.mockReturnValue('24h');
+  });
+
+  afterEach(async () => {
+    if (queryClient) {
+      queryClient.clear();
+      await queryClient.cancelQueries();
+      queryClient = null;
+    }
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('renders loading state then populated metrics when data resolves', async () => {
@@ -74,13 +94,7 @@ describe('PlatformHealth page', () => {
       isMock: false,
     });
 
-    const queryClient = createQueryClient();
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <PlatformHealth />
-      </QueryClientProvider>
-    );
+    const result = renderWithClient(<PlatformHealth />);
 
     expect(screen.getByText('Loading platform health data...')).toBeInTheDocument();
 
@@ -92,19 +106,15 @@ describe('PlatformHealth page', () => {
     expect(screen.getByText('Avg Latency')).toBeInTheDocument();
     expect(screen.getAllByText('API Gateway')[0]).toBeInTheDocument();
     expect(localStorageMocks.setItem).not.toHaveBeenCalled();
+
+    result.unmount();
   });
 
   it('shows error banner when data fetching fails', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(platformHealthSource.fetchAll).mockRejectedValue(new Error('network down'));
 
-    const queryClient = createQueryClient();
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <PlatformHealth />
-      </QueryClientProvider>
-    );
+    const result = renderWithClient(<PlatformHealth />);
 
     await waitFor(() => {
       expect(
@@ -113,5 +123,6 @@ describe('PlatformHealth page', () => {
     });
 
     consoleError.mockRestore();
+    result.unmount();
   });
 });

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Ensure NODE_ENV and VITEST are set for these tests
+process.env.NODE_ENV = 'test';
+process.env.VITEST = 'true';
+
 const connectMock = vi.fn();
 const sendMock = vi.fn();
 const disconnectMock = vi.fn();
@@ -34,6 +38,7 @@ describe('MockEventGenerator', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers(); // Clean up timers after each test
     vi.restoreAllMocks();
   });
 
@@ -59,6 +64,8 @@ describe('MockEventGenerator', () => {
   });
 
   it('clears interval and disconnects on stop', async () => {
+    vi.useFakeTimers();
+    
     const generator = new MockEventGenerator();
 
     // Simulate running state
@@ -69,5 +76,7 @@ describe('MockEventGenerator', () => {
 
     expect(disconnectMock).toHaveBeenCalled();
     expect((generator as any).intervalId).toBeUndefined();
+    
+    vi.useRealTimers();
   });
 });

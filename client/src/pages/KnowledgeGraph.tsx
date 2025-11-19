@@ -9,7 +9,7 @@ import { useState } from "react";
 import { MockBadge } from "@/components/MockBadge";
 import { useQuery } from "@tanstack/react-query";
 import { knowledgeGraphSource } from "@/lib/data-sources";
-import { POLLING_INTERVAL_VERY_SLOW } from "@/lib/constants/query-config";
+import { POLLING_INTERVAL_VERY_SLOW, getPollingInterval } from "@/lib/constants/query-config";
 
 // Graph data interfaces from omniarchon endpoint
 interface GraphNode {
@@ -62,7 +62,7 @@ export default function KnowledgeGraph() {
   const { data: graphDataResult, isLoading } = useQuery({
     queryKey: ['knowledge-graph', timeRange],
     queryFn: () => knowledgeGraphSource.fetchGraph(timeRange, 1000),
-    refetchInterval: POLLING_INTERVAL_VERY_SLOW,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_VERY_SLOW),
   });
 
   // Transform to expected format

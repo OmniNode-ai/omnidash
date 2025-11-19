@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, beforeEach, vi } from 'vitest';
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import PatternLearning from '../PatternLearning';
 import { patternLearningSource } from '@/lib/data-sources';
 
@@ -25,18 +25,24 @@ vi.mock('@/lib/data-sources', async () => {
   };
 });
 
+let queryClient: QueryClient | null = null;
+
 function renderWithClient(ui: ReactNode) {
-  const queryClient = new QueryClient({
+  queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
+        refetchInterval: false,
+        refetchOnWindowFocus: false,
+        gcTime: Infinity,
+        staleTime: Infinity,
       },
     },
   });
 
-  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  const result = render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 
-  return queryClient;
+  return { queryClient, ...result };
 }
 
 describe('PatternLearning page', () => {
@@ -44,7 +50,18 @@ describe('PatternLearning page', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     localStorageMocks.getItem.mockReturnValue('24h');
+  });
+
+  afterEach(async () => {
+    if (queryClient) {
+      queryClient.clear();
+      await queryClient.cancelQueries();
+      queryClient = null;
+    }
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('renders pattern metrics, charts, and lists when data loads', async () => {
@@ -89,7 +106,8 @@ describe('PatternLearning page', () => {
       { language: 'python', count: 8, percentage: 40 },
     ]);
 
-    renderWithClient(<PatternLearning />);
+    const result = renderWithClient(<PatternLearning />);
+    queryClient = result.queryClient;
 
     await waitFor(() => {
       expect(screen.getByText('Pattern Learning Metrics')).toBeInTheDocument();
@@ -101,6 +119,8 @@ describe('PatternLearning page', () => {
     expect(screen.getByText('Filter Patterns')).toBeInTheDocument();
     expect(screen.getByText('Auth Gateway Handler')).toBeInTheDocument();
     expect(screen.getByText('Async Retry Wrapper')).toBeInTheDocument();
+
+    result.unmount();
   });
 
   it('shows loading screen when summary or pattern list queries are pending', () => {
@@ -111,9 +131,12 @@ describe('PatternLearning page', () => {
     vi.mocked(patternLearningSource.fetchDiscovery).mockResolvedValue({ data: [], isMock: false });
     vi.mocked(patternLearningSource.fetchLanguageBreakdown).mockResolvedValue([]);
 
-    renderWithClient(<PatternLearning />);
+    const result = renderWithClient(<PatternLearning />);
+    queryClient = result.queryClient;
 
     expect(screen.getByText('Loading pattern data...')).toBeInTheDocument();
+
+    result.unmount();
   });
 
   it('renders error state when summary query fails', async () => {
@@ -125,12 +148,15 @@ describe('PatternLearning page', () => {
     vi.mocked(patternLearningSource.fetchDiscovery).mockResolvedValue({ data: [], isMock: false });
     vi.mocked(patternLearningSource.fetchLanguageBreakdown).mockResolvedValue([]);
 
-    renderWithClient(<PatternLearning />);
+    const result = renderWithClient(<PatternLearning />);
+    queryClient = result.queryClient;
 
     await waitFor(() => {
       expect(screen.getByText('Failed to load pattern data')).toBeInTheDocument();
     });
 
     consoleError.mockRestore();
+
+    result.unmount();
   });
 });

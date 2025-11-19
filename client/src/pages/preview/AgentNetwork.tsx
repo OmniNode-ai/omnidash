@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { agentNetworkSource } from "@/lib/data-sources";
+import { getPollingInterval } from "@/lib/constants/query-config";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +56,7 @@ export default function AgentNetwork() {
   const { data: networkData, isLoading: queryLoading } = useQuery({
     queryKey: ['agent-network'],
     queryFn: () => agentNetworkSource.fetchAll(),
-    refetchInterval: 60000,
+    refetchInterval: getPollingInterval(60000),
   });
 
   const agentsData = networkData?.agents;

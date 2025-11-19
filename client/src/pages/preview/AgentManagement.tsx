@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { agentManagementSource } from "@/lib/data-sources";
+import { getPollingInterval } from "@/lib/constants/query-config";
 import { MockDataBadge } from "@/components/MockDataBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +64,7 @@ export default function AgentManagement() {
   const { data: managementData, isLoading } = useQuery({
     queryKey: ['agent-management', timeRange],
     queryFn: () => agentManagementSource.fetchAll(timeRange),
-    refetchInterval: 60000,
+    refetchInterval: getPollingInterval(60000),
     refetchIntervalInBackground: true,
   });
 
@@ -77,7 +78,7 @@ export default function AgentManagement() {
   const { data: agentPerformanceResult, isLoading: agentsLoading } = useQuery({
     queryKey: ['agent-performance', timeRange],
     queryFn: () => intelligenceAnalyticsSource.fetchAgentPerformance(timeRange),
-    refetchInterval: 60000,
+    refetchInterval: getPollingInterval(60000),
   });
   const agentPerformance = agentPerformanceResult?.data;
   const usingMockAgents = agentPerformanceResult?.isMock || false;

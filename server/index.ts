@@ -108,8 +108,9 @@ app.use((req, res, next) => {
       // In development mode, start mock generator if Kafka is not available
       // Skip in test environment to prevent hanging tests
       if (
-        app.get('env') === 'development' && 
+        app.get('env') === 'development' &&
         process.env.NODE_ENV !== 'test' &&
+        !process.env.VITEST &&
         process.env.ENABLE_MOCK_EVENTS !== 'false'
       ) {
         log('🔧 Starting mock event generator (development mode)');
@@ -132,6 +133,7 @@ app.use((req, res, next) => {
     if (
       app.get('env') === 'development' && 
       process.env.NODE_ENV !== 'test' &&
+      !process.env.VITEST &&
       process.env.ENABLE_MOCK_EVENTS !== 'false'
     ) {
       try {

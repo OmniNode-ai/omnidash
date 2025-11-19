@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { architectureNetworksSource } from "@/lib/data-sources";
-import { POLLING_INTERVAL_SLOW } from "@/lib/constants/query-config";
+import { POLLING_INTERVAL_SLOW, getPollingInterval } from "@/lib/constants/query-config";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,7 @@ export default function ArchitectureNetworks() {
   const { data: architectureData, isLoading } = useQuery({
     queryKey: ['architecture-networks', timeRange],
     queryFn: () => architectureNetworksSource.fetchAll(timeRange),
-    refetchInterval: POLLING_INTERVAL_SLOW,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
 
   // Transform to expected formats
