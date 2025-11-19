@@ -13,4 +13,5 @@ export { knowledgeGraphSource, type GraphNode, type GraphEdge } from './knowledg
 export { eventFlowSource, type Event } from './event-flow-source';
 export { platformHealthSource, type PlatformHealth, type PlatformServices } from './platform-health-source';
 export { architectureNetworksSource, type ArchitectureSummary, type ArchitectureNode, type ArchitectureEdge, type KnowledgeEntity, type EventFlow } from './architecture-networks-source';
+export { eventBusSource, type EventBusEvent, type EventQueryOptions, type EventStatistics, type EventBusStatus } from './event-bus-source';
 

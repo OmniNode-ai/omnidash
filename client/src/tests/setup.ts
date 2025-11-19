@@ -2,9 +2,35 @@ import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
+// Export test utilities for standardized test patterns
+export {
+  createTestQueryClient,
+  renderWithQueryClient,
+  setupTestCleanup,
+  cleanupTest,
+  createTestLifecycle,
+} from './test-utils';
+
+// Ensure VITEST is set for test environment detection
+// Note: import.meta.env is read-only in Vite, but Vitest should set it automatically
+// We set process.env as a fallback
+if (typeof process !== 'undefined') {
+  process.env.VITEST = 'true';
+  process.env.NODE_ENV = 'test';
+}
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();
+  // Clear all timers to prevent hanging
+  if (typeof globalThis !== 'undefined' && typeof (globalThis as any).vi !== 'undefined') {
+    // Vitest is available, ensure timers are cleared
+    try {
+      (globalThis as any).vi.useRealTimers();
+    } catch (e) {
+      // Ignore errors
+    }
+  }
 });
 
 // Mock ResizeObserver for Recharts and other components

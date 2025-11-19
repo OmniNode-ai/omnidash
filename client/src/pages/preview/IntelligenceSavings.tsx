@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { MockDataBadge } from "@/components/MockDataBadge";
 import { useQuery } from "@tanstack/react-query";
 import { intelligenceSavingsSource, intelligenceAnalyticsSource } from "@/lib/data-sources";
+import { getPollingInterval } from "@/lib/constants/query-config";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -148,14 +149,14 @@ export default function IntelligenceSavings() {
       }
       return intelligenceSavingsSource.fetchAll(timeRange);
     },
-    refetchInterval: 60000,
+    refetchInterval: getPollingInterval(60000),
   });
 
   // Fetch intelligence operations metrics
   const { data: intelligenceMetricsData, isLoading: intelligenceLoading } = useQuery({
     queryKey: ['intelligence-metrics', timeRange],
     queryFn: () => intelligenceAnalyticsSource.fetchMetrics(timeRange),
-    refetchInterval: 60000,
+    refetchInterval: getPollingInterval(60000),
   });
 
   const savingsMetrics = savingsData?.metrics;

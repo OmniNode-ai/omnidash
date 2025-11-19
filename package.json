@@ -9,7 +9,10 @@
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "npm run kill-port && PORT=3000 NODE_ENV=production node dist/index.js",
     "check": "tsc",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "test": "vitest",
+    "test:ci": "vitest run --no-coverage --reporter=verbose",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:snapshots": "playwright test",
@@ -22,7 +25,8 @@
     "seed-events:continuous": "tsx server/mock-event-generator.ts --continuous",
     "check-topics": "tsx scripts/check-kafka-topics.ts",
     "clean:screenshots": "bash scripts/clean-screenshots.sh",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "prepare": "husky"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -95,6 +99,8 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
     "@playwright/test": "^1.56.1",
     "@replit/vite-plugin-cartographer": "^0.4.0",
     "@replit/vite-plugin-dev-banner": "^0.1.1",
@@ -115,15 +121,25 @@
     "@types/react-dom": "^18.3.1",
     "@types/supertest": "^6.0.3",
     "@types/ws": "^8.5.13",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
     "@vitejs/plugin-react": "^4.7.0",
     "@vitest/coverage-v8": "^2.1.9",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.4",
     "esbuild": "^0.25.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-vitest": "^0.5.4",
+    "husky": "^9.1.7",
     "jsdom": "^25.0.1",
+    "lint-staged": "^16.2.6",
     "patch-package": "^8.0.1",
     "playwright": "^1.56.1",
     "postcss": "^8.4.47",
+    "prettier": "^3.6.2",
     "supertest": "^7.1.4",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.5",
@@ -133,5 +149,11 @@
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix --max-warnings 10",
+      "prettier --write"
+    ]
   }
 }

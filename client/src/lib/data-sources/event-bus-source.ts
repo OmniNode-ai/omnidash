@@ -1,0 +1,446 @@
+/**
+ * Event Bus Data Source
+ *
+ * Client-side data source for querying events from the event bus API.
+ * Provides methods to query events, get statistics, and check status.
+ *
+ * API Endpoints (implemented in server/event-bus-routes.ts):
+ * - GET /api/event-bus/events - Query events with filters
+ * - GET /api/event-bus/statistics - Get event statistics
+ * - GET /api/event-bus/status - Get data source status
+ */
+
+import { USE_MOCK_DATA } from '../mock-data/config';
+
+export interface EventBusEvent {
+  event_type: string;
+  event_id: string;
+  timestamp: string;
+  tenant_id: string;
+  namespace: string;
+  source: string;
+  correlation_id?: string;
+  causation_id?: string;
+  schema_ref: string;
+  payload: Record<string, unknown>;
+  topic: string;
+  partition: number;
+  offset: string;
+  processed_at: string;
+  stored_at?: string;
+}
+
+export interface EventQueryOptions {
+  event_types?: string[];
+  tenant_id?: string;
+  namespace?: string;
+  correlation_id?: string;
+  source?: string;
+  start_time?: Date;
+  end_time?: Date;
+  limit?: number;
+  offset?: number;
+  order_by?: 'timestamp' | 'processed_at';
+  order_direction?: 'asc' | 'desc';
+}
+
+export interface EventStatistics {
+  total_events: number;
+  events_by_type: Record<string, number>;
+  events_by_tenant: Record<string, number>;
+  events_per_minute: number;
+  oldest_event: string | null;
+  newest_event: string | null;
+}
+
+export interface EventBusStatus {
+  active: boolean;
+  connected: boolean;
+  status: 'running' | 'stopped' | 'unknown' | 'error';
+}
+
+export interface EventQueryResponse {
+  events: EventBusEvent[];
+  count: number;
+  options: EventQueryOptions;
+}
+
+class EventBusSource {
+  /**
+   * Query events with filters
+   */
+  async queryEvents(options: EventQueryOptions = {}): Promise<EventQueryResponse> {
+    // Return mock data if USE_MOCK_DATA is enabled (but not in tests)
+    if (this.shouldUseMockData()) {
+      return this.getMockEvents(options);
+    }
+
+    try {
+      const params = new URLSearchParams();
+
+      if (options.event_types && options.event_types.length > 0) {
+        params.append('event_types', options.event_types.join(','));
+      }
+      if (options.tenant_id) {
+        params.append('tenant_id', options.tenant_id);
+      }
+      if (options.namespace) {
+        params.append('namespace', options.namespace);
+      }
+      if (options.correlation_id) {
+        params.append('correlation_id', options.correlation_id);
+      }
+      if (options.source) {
+        params.append('source', options.source);
+      }
+      if (options.start_time) {
+        // Validate date before appending
+        if (isNaN(options.start_time.getTime())) {
+          console.warn('Invalid start_time provided, skipping');
+        } else {
+          params.append('start_time', options.start_time.toISOString());
+        }
+      }
+      if (options.end_time) {
+        // Validate date before appending
+        if (isNaN(options.end_time.getTime())) {
+          console.warn('Invalid end_time provided, skipping');
+        } else {
+          params.append('end_time', options.end_time.toISOString());
+        }
+      }
+      if (options.limit) {
+        // Validate limit to prevent DoS attacks (1-1000 range)
+        if (options.limit < 1 || options.limit > 1000) {
+          throw new Error('Limit must be between 1 and 1000');
+        }
+        params.append('limit', options.limit.toString());
+      }
+      if (options.offset) {
+        // Validate offset to prevent negative values
+        if (options.offset < 0) {
+          throw new Error('Offset must be non-negative');
+        }
+        params.append('offset', options.offset.toString());
+      }
+      if (options.order_by) {
+        params.append('order_by', options.order_by);
+      }
+      if (options.order_direction) {
+        params.append('order_direction', options.order_direction);
+      }
+
+      const response = await fetch(`/api/event-bus/events?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch events: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        events: data.events || [],
+        count: data.count || 0,
+        options: data.options || options,
+      };
+    } catch (error) {
+      // In production, throw errors instead of silently falling back to mock data
+      const isProduction = import.meta.env.PROD === true || import.meta.env.MODE === 'production';
+      if (isProduction && !USE_MOCK_DATA) {
+        console.error('Failed to fetch events from event bus in production', error);
+        throw error;
+      }
+      console.warn('Failed to fetch events from event bus, using mock data', error);
+      return this.getMockEvents(options);
+    }
+  }
+
+  /**
+   * Get event statistics
+   */
+  async getStatistics(timeRange?: { start: Date; end: Date }): Promise<EventStatistics> {
+    // Validate time range dates if provided (similar to queryEvents)
+    if (timeRange) {
+      if (isNaN(timeRange.start.getTime())) {
+        throw new Error('Invalid start date provided');
+      }
+      if (isNaN(timeRange.end.getTime())) {
+        throw new Error('Invalid end date provided');
+      }
+    }
+
+    if (this.shouldUseMockData()) {
+      return this.getMockStatistics();
+    }
+
+    try {
+      const params = new URLSearchParams();
+      if (timeRange) {
+        params.append('start', timeRange.start.toISOString());
+        params.append('end', timeRange.end.toISOString());
+      }
+
+      const response = await fetch(`/api/event-bus/statistics?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch statistics: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      // In production, throw errors instead of silently falling back to mock data
+      const isProduction = import.meta.env.PROD === true || import.meta.env.MODE === 'production';
+      if (isProduction && !USE_MOCK_DATA) {
+        console.error('Failed to fetch statistics from event bus in production', error);
+        throw error;
+      }
+      console.warn('Failed to fetch statistics from event bus, using mock data', error);
+      return this.getMockStatistics();
+    }
+  }
+
+  /**
+   * Get event bus status
+   */
+  async getStatus(): Promise<EventBusStatus> {
+    if (this.shouldUseMockData()) {
+      return {
+        active: true,
+        connected: true,
+        status: 'running',
+      };
+    }
+
+    try {
+      const response = await fetch('/api/event-bus/status');
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch status: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      // In production, return 'unknown' status instead of 'stopped' when API is unreachable
+      const isProduction = import.meta.env.PROD === true || import.meta.env.MODE === 'production';
+      if (isProduction && !USE_MOCK_DATA) {
+        console.error('Failed to fetch event bus status in production', error);
+        return {
+          active: false,
+          connected: false,
+          status: 'unknown' as const,
+        };
+      }
+      console.warn('Failed to fetch event bus status, using mock data', error);
+      return {
+        active: false,
+        connected: false,
+        status: 'unknown' as const,
+      };
+    }
+  }
+
+  /**
+   * Get event chain by correlation_id
+   */
+  async getEventChain(correlationId: string): Promise<EventBusEvent[]> {
+    // Validate correlation ID format to prevent injection attacks
+    // Allow alphanumeric, hyphens, and underscores
+    const CORRELATION_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
+    if (!CORRELATION_ID_REGEX.test(correlationId)) {
+      throw new Error(
+        'Invalid correlation ID format. Only alphanumeric characters, hyphens, and underscores are allowed.'
+      );
+    }
+    const result = await this.queryEvents({ correlation_id: correlationId });
+    return result.events;
+  }
+
+  /**
+   * Generate mock events for development/testing
+   * Uses stable IDs and timestamps to prevent regeneration on each call
+   */
+  private getMockEvents(options: EventQueryOptions): EventQueryResponse {
+    // Use fixed base timestamp to ensure stable mock data
+    const baseTimestamp = new Date('2024-01-15T10:00:00Z').getTime();
+    const mockEvents: EventBusEvent[] = [
+      {
+        event_type: 'omninode.intelligence.query.requested.v1',
+        event_id: 'evt-mock-001',
+        timestamp: new Date(baseTimestamp - 60000).toISOString(),
+        tenant_id: 'default-tenant',
+        namespace: 'development',
+        source: 'omniarchon',
+        correlation_id: 'corr-123',
+        schema_ref: 'registry://omninode/intelligence/query_requested/v1',
+        payload: { query: 'find authentication patterns', user_id: 'user-123' },
+        topic: 'default-tenant.omninode.intelligence.v1',
+        partition: 0,
+        offset: '100',
+        processed_at: new Date(baseTimestamp - 60000).toISOString(),
+      },
+      {
+        event_type: 'omninode.intelligence.query.completed.v1',
+        event_id: 'evt-mock-002',
+        timestamp: new Date(baseTimestamp - 50000).toISOString(),
+        tenant_id: 'default-tenant',
+        namespace: 'development',
+        source: 'omniarchon',
+        correlation_id: 'corr-123',
+        causation_id: 'evt-mock-001',
+        schema_ref: 'registry://omninode/intelligence/query_completed/v1',
+        payload: { results: 5, duration_ms: 120 },
+        topic: 'default-tenant.omninode.intelligence.v1',
+        partition: 0,
+        offset: '101',
+        processed_at: new Date(baseTimestamp - 50000).toISOString(),
+      },
+      {
+        event_type: 'omninode.agent.execution.started.v1',
+        event_id: 'evt-mock-003',
+        timestamp: new Date(baseTimestamp - 40000).toISOString(),
+        tenant_id: 'default-tenant',
+        namespace: 'development',
+        source: 'polymorphic-agent',
+        correlation_id: 'corr-456',
+        schema_ref: 'registry://omninode/agent/execution_started/v1',
+        payload: { agent_id: 'agent-api-architect', task: 'code-review' },
+        topic: 'default-tenant.omninode.agent.v1',
+        partition: 0,
+        offset: '200',
+        processed_at: new Date(baseTimestamp - 40000).toISOString(),
+      },
+    ];
+
+    // Apply filters in a single pass for better performance
+    let filtered = mockEvents;
+
+    // Filter by time range first
+    if (options.start_time || options.end_time) {
+      filtered = filtered.filter((e) => {
+        const eventTime = new Date(e.timestamp).getTime();
+        if (options.start_time && eventTime < options.start_time.getTime()) {
+          return false;
+        }
+        if (options.end_time && eventTime > options.end_time.getTime()) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    // Filter by other criteria
+    if (
+      options.event_types ||
+      options.correlation_id ||
+      options.tenant_id ||
+      options.namespace ||
+      options.source
+    ) {
+      filtered = filtered.filter((e) => {
+        if (
+          options.event_types &&
+          options.event_types.length > 0 &&
+          !options.event_types.includes(e.event_type)
+        ) {
+          return false;
+        }
+        if (options.correlation_id && e.correlation_id !== options.correlation_id) {
+          return false;
+        }
+        if (options.tenant_id && e.tenant_id !== options.tenant_id) {
+          return false;
+        }
+        if (options.namespace && e.namespace !== options.namespace) {
+          return false;
+        }
+        if (options.source && e.source !== options.source) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    // Apply sorting
+    if (options.order_by) {
+      const field =
+        options.order_by === 'timestamp'
+          ? 'timestamp'
+          : options.order_by === 'processed_at'
+            ? 'processed_at'
+            : 'timestamp';
+      const direction = options.order_direction === 'desc' ? -1 : 1;
+      filtered = [...filtered].sort((a, b) => {
+        const aTime = new Date(a[field] || a.timestamp).getTime();
+        const bTime = new Date(b[field] || b.timestamp).getTime();
+        return (aTime - bTime) * direction;
+      });
+    }
+
+    // Calculate total count before pagination for proper UI display
+    const totalCount = filtered.length;
+
+    // Apply offset and limit (offset first, then limit)
+    if (options.offset) {
+      filtered = filtered.slice(options.offset);
+    }
+    if (options.limit) {
+      filtered = filtered.slice(0, options.limit);
+    }
+
+    return {
+      events: filtered,
+      count: totalCount, // Return total matching count, not paginated slice length
+      options,
+    };
+  }
+
+  /**
+   * Generate mock statistics
+   */
+  private getMockStatistics(): EventStatistics {
+    // Use stable timestamp for test consistency
+    const baseTimestamp = new Date('2024-01-15T11:00:00Z');
+    const oneHourAgo = new Date(baseTimestamp.getTime() - 60 * 60 * 1000);
+
+    return {
+      total_events: 1250,
+      events_by_type: {
+        'omninode.intelligence.query.requested.v1': 150,
+        'omninode.intelligence.query.completed.v1': 145,
+        'omninode.agent.execution.started.v1': 200,
+        'omninode.agent.execution.completed.v1': 195,
+        'omninode.code.pattern.discovered.v1': 100,
+        'omninode.metadata.artifact.created.v1': 80,
+      },
+      events_by_tenant: {
+        'default-tenant': 1200,
+        'tenant-2': 50,
+      },
+      events_per_minute: 20.8,
+      oldest_event: oneHourAgo.toISOString(),
+      newest_event: baseTimestamp.toISOString(),
+    };
+  }
+
+  /**
+   * Check if running in test environment
+   */
+  private isTestEnvironment(): boolean {
+    return (
+      import.meta.env.VITEST === true ||
+      process.env.VITEST === 'true' ||
+      process.env.NODE_ENV === 'test'
+    );
+  }
+
+  /**
+   * Check if mock data should be used
+   * Returns true if USE_MOCK_DATA is enabled and not in test environment
+   */
+  private shouldUseMockData(): boolean {
+    return USE_MOCK_DATA && !this.isTestEnvironment();
+  }
+}
+
+export const eventBusSource = new EventBusSource();

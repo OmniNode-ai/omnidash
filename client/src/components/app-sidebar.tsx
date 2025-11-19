@@ -1,4 +1,4 @@
-import { Bot, Network, Zap, Code, Activity, Database, Server, Users, ChevronRight, MessageSquare, Search, Eye, BarChart3, Settings, Shield, FileText, TrendingUp, Layers, Target, Calculator, BookOpen } from "lucide-react";
+import { Bot, Network, Zap, Code, Activity, Database, Server, Users, ChevronRight, MessageSquare, Search, Eye, BarChart3, Settings, Shield, FileText, TrendingUp, Layers, Target, Calculator, BookOpen, Radio } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -61,6 +61,11 @@ const tools = [
     title: "Correlation Trace",
     url: "/trace",
     icon: Search,
+  },
+  {
+    title: "Event Bus Explorer",
+    url: "/event-bus",
+    icon: Radio,
   },
 ];
 

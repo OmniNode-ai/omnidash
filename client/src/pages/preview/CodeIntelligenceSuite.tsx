@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getPollingInterval } from "@/lib/constants/query-config";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -85,7 +86,7 @@ export default function CodeIntelligenceSuite() {
     queryKey: ['code-compliance', timeRange],
     queryFn: () => codeIntelligenceSource.fetchCompliance(timeRange),
     retry: false,
-    refetchInterval: 60000,
+    refetchInterval: getPollingInterval(60000),
   });
   
   // Transform compliance data to code metrics format
@@ -104,7 +105,7 @@ export default function CodeIntelligenceSuite() {
     queryKey: ['pattern-summary', timeRange],
     queryFn: () => codeIntelligenceSource.fetchPatternSummary(),
     retry: false,
-    refetchInterval: 60000,
+    refetchInterval: getPollingInterval(60000),
   });
   const patternSummary = patternSummaryResult?.data;
 
@@ -115,7 +116,7 @@ export default function CodeIntelligenceSuite() {
       throw new Error('Tech debt endpoint not available');
     },
     retry: false,
-    refetchInterval: 60000,
+    refetchInterval: getPollingInterval(60000),
   });
   
   // Determine which data sources are using mock data

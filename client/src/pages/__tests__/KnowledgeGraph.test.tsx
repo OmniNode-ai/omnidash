@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, beforeEach, vi } from 'vitest';
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import KnowledgeGraph from '../KnowledgeGraph';
 import { knowledgeGraphSource } from '@/lib/data-sources';
 
@@ -9,6 +9,8 @@ type LocalStorageMock = {
   getItem: ReturnType<typeof vi.fn>;
   setItem: ReturnType<typeof vi.fn>;
 };
+
+let queryClient: QueryClient | null = null;
 
 vi.mock('@/lib/data-sources', async () => {
   const actual = await vi.importActual<typeof import('@/lib/data-sources')>('@/lib/data-sources');
@@ -21,17 +23,21 @@ vi.mock('@/lib/data-sources', async () => {
 });
 
 function renderWithClient(ui: ReactNode) {
-  const queryClient = new QueryClient({
+  queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
+        refetchInterval: false,
+        refetchOnWindowFocus: false,
+        gcTime: Infinity,
+        staleTime: Infinity,
       },
     },
   });
 
-  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  const result = render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 
-  return queryClient;
+  return { queryClient, ...result };
 }
 
 describe('KnowledgeGraph page', () => {
@@ -39,7 +45,18 @@ describe('KnowledgeGraph page', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     localStorageMocks.getItem.mockReturnValue('24h');
+  });
+
+  afterEach(async () => {
+    if (queryClient) {
+      queryClient.clear();
+      await queryClient.cancelQueries();
+      queryClient = null;
+    }
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('shows loading state before graph data resolves', async () => {
@@ -49,13 +66,16 @@ describe('KnowledgeGraph page', () => {
       isMock: false,
     });
 
-    renderWithClient(<KnowledgeGraph />);
+    const result = renderWithClient(<KnowledgeGraph />);
+    queryClient = result.queryClient;
 
     expect(screen.getByText('Loading...')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText('Knowledge Graph')).toBeInTheDocument();
     });
+
+    result.unmount();
   });
 
   it('renders metrics when graph data is available', async () => {
@@ -72,7 +92,8 @@ describe('KnowledgeGraph page', () => {
       isMock: false,
     });
 
-    renderWithClient(<KnowledgeGraph />);
+    const result = renderWithClient(<KnowledgeGraph />);
+    queryClient = result.queryClient;
 
     await waitFor(() => {
       expect(screen.getByText(/Interactive exploration of 3 nodes/)).toBeInTheDocument();
@@ -82,6 +103,8 @@ describe('KnowledgeGraph page', () => {
     expect(screen.getByText('Total Edges')).toBeInTheDocument();
     expect(screen.getByText('Connected Components')).toBeInTheDocument();
     expect(screen.getByText('Graph Density')).toBeInTheDocument();
+
+    result.unmount();
   });
 
   it('falls back to mock visualization when graph is empty', async () => {
@@ -91,7 +114,8 @@ describe('KnowledgeGraph page', () => {
       isMock: false,
     });
 
-    renderWithClient(<KnowledgeGraph />);
+    const result = renderWithClient(<KnowledgeGraph />);
+    queryClient = result.queryClient;
 
     await waitFor(() => {
       expect(screen.getByText('Knowledge Graph')).toBeInTheDocument();
@@ -99,5 +123,7 @@ describe('KnowledgeGraph page', () => {
 
     expect(screen.getByText('MOCK DATA: Knowledge Graph')).toBeInTheDocument();
     expect(screen.getByText('MOCK DATA: Relationship Types')).toBeInTheDocument();
+
+    result.unmount();
   });
 });

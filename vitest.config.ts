@@ -8,6 +8,12 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./client/src/tests/setup.ts'],
+    // Global teardown to ensure clean exit in CI
+    globalTeardown: './client/src/tests/teardown.ts',
+    // Test timeout to prevent hanging tests
+    testTimeout: 10000, // 10 seconds per test
+    hookTimeout: 10000, // 10 seconds for hooks
+    teardownTimeout: 5000, // 5 seconds for teardown
     // Exclude Playwright snapshot tests (they use test.describe from @playwright/test)
     exclude: [
       '**/node_modules/**',
@@ -24,6 +30,7 @@ export default defineConfig({
         singleThread: false,
         maxThreads: 2,  // Max 2 worker threads
         minThreads: 1,
+        isolate: true, // Isolate each test file for better cleanup
       },
     },
     // Run tests sequentially within files to reduce CPU load

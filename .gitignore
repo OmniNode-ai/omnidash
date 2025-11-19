@@ -4,6 +4,7 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+tmp/
 
 # Test outputs (not test source files)
 coverage/

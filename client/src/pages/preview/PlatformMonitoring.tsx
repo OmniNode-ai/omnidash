@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { platformMonitoringSource } from "@/lib/data-sources";
-import { POLLING_INTERVAL_MEDIUM } from "@/lib/constants/query-config";
+import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
 import type { SystemStatus, DeveloperMetrics, Incident } from "@/lib/data-sources/platform-monitoring-source";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +52,7 @@ export default function PlatformMonitoring() {
   const { data: monitoringData, isLoading } = useQuery({
     queryKey: ['platform-monitoring', timeRange],
     queryFn: () => platformMonitoringSource.fetchAll(timeRange),
-    refetchInterval: POLLING_INTERVAL_MEDIUM,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
 
   const systemStatus = monitoringData?.systemStatus;
