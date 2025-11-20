@@ -49,7 +49,7 @@ describe('EventFlowSource', () => {
     });
 
     it('should return mock data when API fails', async () => {
-      setupFetchMock(new Map([['/api/intelligence/events', createMockFetchError('Server error')]]));
+      setupFetchMock(new Map([['/api/intelligence/events', createMockFetchError()]]));
 
       const result = await eventFlowSource.fetchEvents(100);
 

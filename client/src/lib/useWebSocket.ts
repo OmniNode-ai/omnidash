@@ -24,6 +24,7 @@ export function useWebSocket(
   const [error, setError] = useState<Error | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const shouldReconnectRef = useRef(true);
 
   const connect = useCallback(() => {
     try {
@@ -54,10 +55,12 @@ export function useWebSocket(
       ws.onclose = () => {
         setConnected(false);
 
-        // Attempt reconnection after 5 seconds
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
-        }, 5000);
+        // Attempt reconnection after 5 seconds (only if component is still mounted)
+        if (shouldReconnectRef.current) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connect();
+          }, 5000);
+        }
       };
 
       ws.onerror = (event) => {
@@ -83,7 +86,8 @@ export function useWebSocket(
     connect();
 
     return () => {
-      // Cleanup on unmount
+      // Cleanup on unmount - prevent reconnection
+      shouldReconnectRef.current = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }

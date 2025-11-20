@@ -51,7 +51,7 @@ export function QualityGatePanel({ gates }: QualityGatePanelProps) {
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold font-mono text-status-healthy">
-            {Math.round((passedCount / totalCount) * 100)}%
+            {totalCount === 0 ? 0 : Math.round((passedCount / totalCount) * 100)}%
           </div>
           <div className="text-xs text-muted-foreground">Success Rate</div>
         </div>

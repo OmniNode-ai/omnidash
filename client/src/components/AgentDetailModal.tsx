@@ -58,7 +58,6 @@ interface AgentDetailModalProps {
   agent: AgentPerformance | null;
   isOpen: boolean;
   onClose: () => void;
-  onNavigate?: (type: string, id: string) => void;
 }
 
 function ExpandableContent({

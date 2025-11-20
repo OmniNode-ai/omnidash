@@ -192,13 +192,10 @@ export default function IntelligenceOperations() {
             ],
           });
           queryClient.invalidateQueries({
-            queryKey: [
-              'http://localhost:3000/api/intelligence/metrics/operations-per-minute',
-              timeRange,
-            ],
+            queryKey: ['agent-operations-full', timeRange],
           });
           queryClient.invalidateQueries({
-            queryKey: ['http://localhost:3000/api/intelligence/metrics/quality-impact', timeRange],
+            queryKey: ['http://localhost:3000/api/intelligence/documents/top-accessed', timeRange],
           });
           break;
       }
@@ -208,9 +205,14 @@ export default function IntelligenceOperations() {
 
   // Fetch manifest injection health data (updated via WebSocket)
   const { data: healthData, isLoading: healthLoading } = useQuery<ManifestInjectionHealth>({
-    queryKey: [
-      `http://localhost:3000/api/intelligence/health/manifest-injection?timeWindow=${timeRange}`,
-    ],
+    queryKey: ['http://localhost:3000/api/intelligence/health/manifest-injection', timeRange],
+    queryFn: async () => {
+      const response = await fetch(
+        `http://localhost:3000/api/intelligence/health/manifest-injection?timeWindow=${timeRange}`
+      );
+      if (!response.ok) throw new Error('Failed to fetch manifest injection health');
+      return response.json();
+    },
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
 
@@ -236,9 +238,14 @@ export default function IntelligenceOperations() {
 
   // Fetch top accessed documents
   const { data: topDocumentsData } = useQuery<TopAccessedDocument[]>({
-    queryKey: [
-      `http://localhost:3000/api/intelligence/documents/top-accessed?timeWindow=${timeRange}&limit=10`,
-    ],
+    queryKey: ['http://localhost:3000/api/intelligence/documents/top-accessed', timeRange],
+    queryFn: async () => {
+      const response = await fetch(
+        `http://localhost:3000/api/intelligence/documents/top-accessed?timeWindow=${timeRange}&limit=10`
+      );
+      if (!response.ok) throw new Error('Failed to fetch top documents');
+      return response.json();
+    },
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
 

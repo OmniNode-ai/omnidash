@@ -117,7 +117,7 @@ function logFallback(
       break;
     case 'debug':
     default:
-      console.warn(message, { fieldName, context, usedLabel, fallbackIndex });
+      console.debug(message, { fieldName, context, usedLabel, fallbackIndex });
       break;
   }
 }
@@ -281,7 +281,7 @@ export function ensureEnvVar(varName: string, fallback: string, level: LogLevel 
       break;
     case 'debug':
     default:
-      console.warn(message);
+      console.debug(message);
       break;
   }
 

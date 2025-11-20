@@ -1,5 +1,7 @@
 #!/usr/bin/env tsx
 
+/* eslint-disable no-console */
+
 /**
  * Seed Kafka Events Script
  *
@@ -81,11 +83,11 @@ function generateAgentAction(correlationId: string) {
 }
 
 async function seedEvents(count: number = 10) {
-  console.warn(`\n🌱 Seeding ${count} test events to Kafka topics...\n`);
+  console.log(`\n🌱 Seeding ${count} test events to Kafka topics...\n`);
 
   try {
     await producer.connect();
-    console.warn('✅ Producer connected to Kafka\n');
+    console.log('✅ Producer connected to Kafka\n');
 
     const messages: Array<{ topic: string; key: string; value: string }> = [];
 
@@ -113,7 +115,7 @@ async function seedEvents(count: number = 10) {
     }
 
     // Send all messages in batches
-    console.warn(
+    console.log(
       `📤 Publishing ${messages.length} events (${count} routing decisions + actions)...`
     );
 
@@ -124,18 +126,18 @@ async function seedEvents(count: number = 10) {
       });
     }
 
-    console.warn('\n✅ All events published successfully!\n');
-    console.warn('📊 Summary:');
-    console.warn(`   - Routing decisions: ${count}`);
-    console.warn(`   - Agent actions: ${messages.length - count}`);
-    console.warn(`   - Total events: ${messages.length}`);
-    console.warn('\n💡 Check the dashboard at http://localhost:3000 to see the data\n');
+    console.log('\n✅ All events published successfully!\n');
+    console.log('📊 Summary:');
+    console.log(`   - Routing decisions: ${count}`);
+    console.log(`   - Agent actions: ${messages.length - count}`);
+    console.log(`   - Total events: ${messages.length}`);
+    console.log('\n💡 Check the dashboard at http://localhost:3000 to see the data\n');
   } catch (error) {
     console.error('❌ Error seeding events:', error);
     throw error;
   } finally {
     await producer.disconnect();
-    console.warn('👋 Producer disconnected\n');
+    console.log('👋 Producer disconnected\n');
   }
 }
 

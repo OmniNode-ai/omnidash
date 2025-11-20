@@ -1,5 +1,7 @@
 #!/usr/bin/env tsx
 
+/* eslint-disable no-console */
+
 /**
  * Kafka Topic Checker
  *
@@ -28,60 +30,60 @@ async function checkTopics() {
 
   try {
     await admin.connect();
-    console.warn('✅ Connected to Kafka\n');
+    console.log('✅ Connected to Kafka\n');
 
     // Fetch topic metadata
-    console.warn('📊 Topic Information:\n');
+    console.log('📊 Topic Information:\n');
     const topics = await admin.fetchTopicMetadata({ topics: TOPICS_TO_CHECK });
 
     for (const topic of topics.topics) {
-      console.warn(`Topic: ${topic.name}`);
-      console.warn(`  Partitions: ${topic.partitions.length}`);
+      console.log(`Topic: ${topic.name}`);
+      console.log(`  Partitions: ${topic.partitions.length}`);
 
       for (const partition of topic.partitions) {
-        console.warn(`    Partition ${partition.partitionId}:`);
-        console.warn(`      Leader: ${partition.leader}`);
-        console.warn(`      Replicas: ${partition.replicas.join(', ')}`);
-        console.warn(`      ISR: ${partition.isr.join(', ')}`);
+        console.log(`    Partition ${partition.partitionId}:`);
+        console.log(`      Leader: ${partition.leader}`);
+        console.log(`      Replicas: ${partition.replicas.join(', ')}`);
+        console.log(`      ISR: ${partition.isr.join(', ')}`);
       }
 
       // Fetch topic offsets (high water mark = number of messages)
       const offsets = await admin.fetchTopicOffsets(topic.name);
       const totalMessages = offsets.reduce((sum, o) => sum + parseInt(o.high), 0);
-      console.warn(`  📬 Total messages: ${totalMessages}\n`);
+      console.log(`  📬 Total messages: ${totalMessages}\n`);
     }
 
     // Check consumer group offsets
-    console.warn(`\n👥 Consumer Group: ${CONSUMER_GROUP}\n`);
+    console.log(`\n👥 Consumer Group: ${CONSUMER_GROUP}\n`);
     try {
       const groups = await admin.describeGroups([CONSUMER_GROUP]);
       const group = groups.groups[0];
 
       if (group) {
-        console.warn(`  State: ${group.state}`);
-        console.warn(`  Protocol: ${group.protocol}`);
-        console.warn(`  Members: ${group.members.length}`);
+        console.log(`  State: ${group.state}`);
+        console.log(`  Protocol: ${group.protocol}`);
+        console.log(`  Members: ${group.members.length}`);
 
         for (const member of group.members) {
-          console.warn(`    - ${member.memberId.substring(0, 40)}...`);
+          console.log(`    - ${member.memberId.substring(0, 40)}...`);
         }
 
         // Fetch consumer group offsets
-        console.warn('\n  📖 Consumer Offsets:\n');
+        console.log('\n  📖 Consumer Offsets:\n');
         const offsets = await admin.fetchOffsets({
           groupId: CONSUMER_GROUP,
           topics: TOPICS_TO_CHECK,
         });
 
         for (const topic of offsets) {
-          console.warn(`  ${topic.topic}:`);
+          console.log(`  ${topic.topic}:`);
           for (const partition of topic.partitions) {
             const offset = partition.offset === '-1' ? 'No offset' : partition.offset;
-            console.warn(`    Partition ${partition.partition}: ${offset}`);
+            console.log(`    Partition ${partition.partition}: ${offset}`);
           }
         }
       } else {
-        console.warn('  ⚠️ Consumer group not found');
+        console.log('  ⚠️ Consumer group not found');
       }
     } catch (_error) {
       console.error(
@@ -90,7 +92,7 @@ async function checkTopics() {
       );
     }
 
-    console.warn('\n✅ Topic check complete\n');
+    console.log('\n✅ Topic check complete\n');
   } catch (error) {
     console.error('❌ Error checking topics:', error);
     throw error;

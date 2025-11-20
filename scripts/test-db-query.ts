@@ -1,4 +1,6 @@
 #!/usr/bin/env tsx
+/* eslint-disable no-console */
+
 /**
  * Test script to query agent_actions table and understand actionType values
  */
@@ -18,10 +20,10 @@ const pool = new Pool({ connectionString });
 const db = drizzle(pool);
 
 async function main() {
-  console.warn('Connecting to database...');
+  console.log('Connecting to database...');
 
   // 1. Check distinct action types
-  console.warn('\n=== DISTINCT ACTION TYPES ===');
+  console.log('\n=== DISTINCT ACTION TYPES ===');
   const actionTypes = await db.execute(sql`
     SELECT DISTINCT action_type, COUNT(*) as count
     FROM agent_actions
@@ -29,10 +31,10 @@ async function main() {
     ORDER BY count DESC
     LIMIT 20
   `);
-  console.warn(JSON.stringify(actionTypes.rows, null, 2));
+  console.log(JSON.stringify(actionTypes.rows, null, 2));
 
   // 2. Check success/error distribution by agent
-  console.warn('\n=== SUCCESS/ERROR DISTRIBUTION BY AGENT ===');
+  console.log('\n=== SUCCESS/ERROR DISTRIBUTION BY AGENT ===');
   const agentStats = await db.execute(sql`
     SELECT
       agent_name,
@@ -47,10 +49,10 @@ async function main() {
     ORDER BY total DESC
     LIMIT 10
   `);
-  console.warn(JSON.stringify(agentStats.rows, null, 2));
+  console.log(JSON.stringify(agentStats.rows, null, 2));
 
   // 3. Check total unique agents
-  console.warn('\n=== TOTAL STATS (24h) ===');
+  console.log('\n=== TOTAL STATS (24h) ===');
   const totalStats = await db.execute(sql`
     SELECT
       COUNT(DISTINCT agent_name) as unique_agents,
@@ -58,10 +60,10 @@ async function main() {
     FROM agent_actions
     WHERE created_at > NOW() - INTERVAL '24 hours'
   `);
-  console.warn(JSON.stringify(totalStats.rows, null, 2));
+  console.log(JSON.stringify(totalStats.rows, null, 2));
 
   // 4. Sample recent actions
-  console.warn('\n=== SAMPLE RECENT ACTIONS ===');
+  console.log('\n=== SAMPLE RECENT ACTIONS ===');
   const recentActions = await db.execute(sql`
     SELECT
       agent_name,
@@ -72,20 +74,20 @@ async function main() {
     ORDER BY created_at DESC
     LIMIT 10
   `);
-  console.warn(JSON.stringify(recentActions.rows, null, 2));
+  console.log(JSON.stringify(recentActions.rows, null, 2));
 
   // 5. Check for quality score data
-  console.warn('\n=== CHECKING FOR QUALITY SCORE DATA ===');
+  console.log('\n=== CHECKING FOR QUALITY SCORE DATA ===');
   const qualityCheck = await db.execute(sql`
     SELECT column_name, data_type
     FROM information_schema.columns
     WHERE table_name = 'agent_actions'
     ORDER BY ordinal_position
   `);
-  console.warn(JSON.stringify(qualityCheck.rows, null, 2));
+  console.log(JSON.stringify(qualityCheck.rows, null, 2));
 
   await pool.end();
-  console.warn('\nDone!');
+  console.log('\nDone!');
 }
 
 main().catch(console.error);

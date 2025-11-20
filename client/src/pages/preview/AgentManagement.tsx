@@ -459,12 +459,6 @@ export default function AgentManagement() {
           setIsAgentModalOpen(false);
           setSelectedAgent(null);
         }}
-        onNavigate={(_type, _id) => {
-          // Dismiss current modal, then navigate to new one
-          setIsAgentModalOpen(false);
-          setSelectedAgent(null);
-          // TODO: Open new modal based on type and id
-        }}
       />
 
       {/* Configure Modal */}

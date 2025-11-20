@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PostgresAdapter } from '../db-adapter';
 import { intelligenceDb } from '../storage';
 import * as schema from '@shared/intelligence-schema';

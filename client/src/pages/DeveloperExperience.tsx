@@ -82,7 +82,9 @@ export default function DeveloperExperience() {
         case 'WORKFLOW_COMPLETED':
         case 'AGENT_ACTION_CREATED':
           queryClient.invalidateQueries({
-            queryKey: ['http://localhost:8053/api/intelligence/developer/metrics', timeRange],
+            queryKey: [
+              `http://localhost:8053/api/intelligence/developer/metrics?timeWindow=${timeRange}`,
+            ],
           });
           break;
         case 'INITIAL_STATE':

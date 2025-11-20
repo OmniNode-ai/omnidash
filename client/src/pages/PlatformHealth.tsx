@@ -2,7 +2,6 @@ import { MetricCard } from '@/components/MetricCard';
 import { ServiceStatusGrid } from '@/components/ServiceStatusGrid';
 import { RealtimeChart } from '@/components/RealtimeChart';
 import { EventFeed } from '@/components/EventFeed';
-import { DrillDownModal } from '@/components/DrillDownModal';
 import { TimeRangeSelector } from '@/components/TimeRangeSelector';
 import { ExportButton } from '@/components/ExportButton';
 import { SectionHeader } from '@/components/SectionHeader';
@@ -39,8 +38,6 @@ interface ServiceRegistryEntry {
 }
 
 export default function PlatformHealth() {
-  const [selectedService] = useState<any>(null);
-  const [panelOpen, setPanelOpen] = useState(false);
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
@@ -393,15 +390,6 @@ export default function PlatformHealth() {
           )}
         </>
       )}
-
-      <DrillDownModal
-        open={panelOpen}
-        onOpenChange={setPanelOpen}
-        title={selectedService?.name || 'Service Details'}
-        data={selectedService || {}}
-        type="service"
-        variant="modal"
-      />
     </div>
   );
 }

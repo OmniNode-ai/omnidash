@@ -225,6 +225,27 @@ export function PatternNetwork({ patterns, height = 500, onPatternClick }: Patte
   };
 
   // Auto-adjust max patterns based on dataset size
+  // NOTE: This is a functional enhancement that was introduced in commit 9534c961
+  // (Nov 7, 2025) during a "cleanup and refactor" commit. While this violates
+  // the scope of that commit, it provides valuable UX improvements:
+  //
+  // WHAT IT DOES:
+  // - Dynamically adjusts the maximum number of patterns displayed based on total dataset size
+  // - Smaller datasets (≤50): Show all patterns (limit: 50)
+  // - Medium datasets (51-100): Show more detail (limit: 75)
+  // - Large datasets (101-500): Show representative sample (limit: 100)
+  // - Very large datasets (500+): Cap at 150 to prevent performance issues
+  //
+  // WHY IT'S HERE:
+  // - Works in conjunction with the intelligent clustering algorithm (clusterPatterns function)
+  // - Prevents overwhelming the graph visualization with too many nodes
+  // - Balances detail vs performance for different dataset sizes
+  // - Currently working in production without issues
+  //
+  // TODO:
+  // - Add unit tests for this logic (currently untested)
+  // - Consider making thresholds configurable via props
+  // - Add user control to override automatic limits
   useEffect(() => {
     const count = patterns.length;
     if (count <= 50) {

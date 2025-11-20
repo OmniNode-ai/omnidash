@@ -366,6 +366,10 @@ router.post('/agents/:agentId/execute', (req, res) => {
     const { agentId } = req.params;
     const { query, context, routingDecision } = req.body;
 
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
+
     // Get agent name from registry
     const registry = loadAgentRegistry();
     const agentData = registry?.agents?.[agentId];

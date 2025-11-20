@@ -1,4 +1,6 @@
 #!/usr/bin/env tsx
+/* eslint-disable no-console */
+
 /**
  * Test script to check agent_routing_decisions table for success tracking
  */
@@ -18,20 +20,20 @@ const pool = new Pool({ connectionString });
 const db = drizzle(pool);
 
 async function main() {
-  console.warn('Connecting to database...');
+  console.log('Connecting to database...');
 
   // 1. Check routing decisions schema
-  console.warn('\n=== ROUTING DECISIONS SCHEMA ===');
+  console.log('\n=== ROUTING DECISIONS SCHEMA ===');
   const schema = await db.execute(sql`
     SELECT column_name, data_type
     FROM information_schema.columns
     WHERE table_name = 'agent_routing_decisions'
     ORDER BY ordinal_position
   `);
-  console.warn(JSON.stringify(schema.rows, null, 2));
+  console.log(JSON.stringify(schema.rows, null, 2));
 
   // 2. Check for recent routing decisions
-  console.warn('\n=== RECENT ROUTING DECISIONS (24h) ===');
+  console.log('\n=== RECENT ROUTING DECISIONS (24h) ===');
   const recentDecisions = await db.execute(sql`
     SELECT
       selected_agent,
@@ -42,10 +44,10 @@ async function main() {
     ORDER BY created_at DESC
     LIMIT 10
   `);
-  console.warn(JSON.stringify(recentDecisions.rows, null, 2));
+  console.log(JSON.stringify(recentDecisions.rows, null, 2));
 
   // 3. Check confidence distribution
-  console.warn('\n=== CONFIDENCE DISTRIBUTION BY AGENT (7d) ===');
+  console.log('\n=== CONFIDENCE DISTRIBUTION BY AGENT (7d) ===');
   const successRates = await db.execute(sql`
     SELECT
       selected_agent,
@@ -59,10 +61,10 @@ async function main() {
     ORDER BY total_requests DESC
     LIMIT 10
   `);
-  console.warn(JSON.stringify(successRates.rows, null, 2));
+  console.log(JSON.stringify(successRates.rows, null, 2));
 
   // 4. Check total stats
-  console.warn('\n=== TOTAL ROUTING DECISIONS (7d) ===');
+  console.log('\n=== TOTAL ROUTING DECISIONS (7d) ===');
   const totalStats = await db.execute(sql`
     SELECT
       COUNT(*) as total_decisions,
@@ -71,10 +73,10 @@ async function main() {
     FROM agent_routing_decisions
     WHERE created_at > NOW() - INTERVAL '7 days'
   `);
-  console.warn(JSON.stringify(totalStats.rows, null, 2));
+  console.log(JSON.stringify(totalStats.rows, null, 2));
 
   await pool.end();
-  console.warn('\nDone!');
+  console.log('\nDone!');
 }
 
 main().catch(console.error);

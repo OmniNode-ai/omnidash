@@ -71,8 +71,7 @@ export default function EventBusExplorer() {
     const types = new Set<string>();
     events.forEach((event) => types.add(event.event_type));
     return Array.from(types).sort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events.length]);
+  }, [events]);
 
   const handleEventClick = (event: EventBusEvent) => {
     setSelectedEvent(event);

@@ -10,32 +10,6 @@ import { Code, Zap, Download, AlertTriangle, CheckCircle } from 'lucide-react';
 
 import type { RefactoringOpportunity } from '@/pages/preview/TechDebtAnalysis';
 
-interface _RefactoringOpportunity {
-  id: string;
-  title: string;
-  description: string;
-  impact: 'low' | 'medium' | 'high' | 'critical';
-  effort: 'low' | 'medium' | 'high' | 'extreme';
-  timeEstimate: string;
-  costSavings: number;
-  complexity: number;
-  files: string[];
-  patterns: string[];
-  suggestedApproach: string;
-  risks: string[];
-  benefits: string[];
-  dependencies: string[];
-  testCoverage: number;
-  lastModified: string;
-  author: string;
-  priority: number;
-  category: string;
-  technicalDebt: number;
-  maintainability: number;
-  performance: number;
-  security: number;
-}
-
 interface TechDebtDetailModalProps {
   opportunity: RefactoringOpportunity | null;
   isOpen: boolean;

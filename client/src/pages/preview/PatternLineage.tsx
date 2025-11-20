@@ -391,7 +391,7 @@ const PatternLineage: React.FC = () => {
           <Label htmlFor="search">Search:</Label>
           <Input
             id="search"
-            placeholder="_Search patterns..."
+            placeholder="Search patterns..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-64"

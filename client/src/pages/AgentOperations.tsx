@@ -321,39 +321,49 @@ export default function AgentOperations() {
   // Memoize events to prevent recalculation
   const eventsAll = useMemo(() => {
     return (
-      actions?.map((action) => ({
-        id: action.id,
-        type: 'info' as const,
-        message: `${action.agentName}: ${action.actionName}`,
-        timestamp: new Date(action.createdAt).toLocaleTimeString(),
-        source: action.agentName,
-      })) || []
+      actions?.map((action) => {
+        const eventDate = new Date(action.createdAt);
+        return {
+          id: action.id,
+          type: 'info' as const,
+          message: `${action.agentName}: ${action.actionName}`,
+          // Format timestamp for display with date and time
+          timestamp: eventDate.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          }),
+          // Keep original datetime for accurate filtering
+          createdAt: action.createdAt,
+          source: action.agentName,
+        };
+      }) || []
     );
   }, [actions]);
 
   const eventsFiltered = useMemo(() => {
     if (!eventsAll.length) return eventsAll;
-    // rudimentary filter by days based on preset
+    // Filter by date range using actual event timestamps
     const now = Date.now();
     let cutoff = 0;
     if (eventsRange.preset === '24h') cutoff = now - 24 * 60 * 60 * 1000;
     else if (eventsRange.preset === '7d') cutoff = now - 7 * 24 * 60 * 60 * 1000;
     else if (eventsRange.preset === '30d') cutoff = now - 30 * 24 * 60 * 60 * 1000;
     else if (eventsRange.preset === 'custom' && eventsRange.start && eventsRange.end) {
-      // keep within custom range
+      // Keep events within custom range
       const startMs = new Date(eventsRange.start).getTime();
       const endMs = new Date(eventsRange.end).getTime() + 24 * 60 * 60 * 1000;
       return eventsAll.filter((e) => {
-        const nowDay = new Date().toDateString();
-        const full = new Date(`${nowDay} ${e.timestamp}`).getTime();
-        return full >= startMs && full <= endMs;
+        const eventMs = new Date(e.createdAt).getTime();
+        return eventMs >= startMs && eventMs <= endMs;
       });
     }
     if (cutoff > 0) {
       return eventsAll.filter((e) => {
-        const nowDay = new Date().toDateString();
-        const full = new Date(`${nowDay} ${e.timestamp}`).getTime();
-        return full >= cutoff;
+        const eventMs = new Date(e.createdAt).getTime();
+        return eventMs >= cutoff;
       });
     }
     return eventsAll;

@@ -370,6 +370,9 @@ router.post('/runs', (req, res) => {
 
   const runData = result.data;
 
+  // Record the run in the tracker
+  AgentRunTracker.recordRun(runData);
+
   // In a real implementation, this would save to database
   console.log('Recording agent run:', runData);
 

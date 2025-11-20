@@ -315,7 +315,11 @@ class AgentManagementDataSource {
               id: fallbackChain('id', { context: 'executions' }, [
                 { value: action.id, label: 'id field' },
                 { value: action.correlationId, label: 'correlationId field', level: 'warn' },
-                { value: '', label: 'empty string', level: 'error' },
+                {
+                  value: `unknown-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  label: 'generated placeholder',
+                  level: 'error',
+                },
               ]),
               agentId: withFallback('agentName', action.agentName, 'unknown', {
                 id: action.id,

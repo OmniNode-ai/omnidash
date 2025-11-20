@@ -29,8 +29,8 @@ export interface EventStatisticsPanelProps {
 export function EventStatisticsPanel({ className }: EventStatisticsPanelProps) {
   const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
 
-  // Calculate time range
-  const timeRangeDates = useMemo(() => {
+  // Helper function to calculate fresh time range on each query
+  const getTimeRangeDates = () => {
     const now = new Date();
     let start: Date;
 
@@ -50,7 +50,7 @@ export function EventStatisticsPanel({ className }: EventStatisticsPanelProps) {
     }
 
     return { start, end: now };
-  }, [timeRange]);
+  };
 
   const {
     data: statistics,
@@ -58,7 +58,7 @@ export function EventStatisticsPanel({ className }: EventStatisticsPanelProps) {
     isError,
   } = useQuery({
     queryKey: ['event-bus-statistics', timeRange],
-    queryFn: () => eventBusSource.getStatistics(timeRangeDates),
+    queryFn: () => eventBusSource.getStatistics(getTimeRangeDates()),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     refetchOnWindowFocus: true,
     staleTime: 30000, // Consider data fresh for 30s
