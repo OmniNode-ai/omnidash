@@ -1,13 +1,19 @@
-import { useState } from "react";
-import { MockDataBadge } from "@/components/MockDataBadge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useState } from 'react';
+import { MockDataBadge } from '@/components/MockDataBadge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  BarChart3,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   TrendingUp,
   TrendingDown,
   Activity,
@@ -19,12 +25,9 @@ import {
   CheckCircle,
   CheckCircle2,
   XCircle,
-  Brain,
   Shield,
-  DollarSign,
   Layers,
   Database,
-  Cpu,
   AlertCircle,
   Lightbulb,
   BarChart,
@@ -32,10 +35,9 @@ import {
   Copy,
   Code,
   ArrowRight,
-  Eye
-} from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { getSuccessRateVariant } from "@/lib/utils";
+  Eye,
+} from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import {
   LineChart as RechartsLineChart,
   Line,
@@ -45,15 +47,15 @@ import {
   Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceLine
+  ReferenceLine,
 } from 'recharts';
 
 interface EnhancedAnalyticsProps {
   timeRange?: string;
 }
 
-export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps) {
-  const [activeSection, setActiveSection] = useState("performance");
+export function EnhancedAnalytics({ timeRange = '24h' }: EnhancedAnalyticsProps) {
+  const [activeSection, setActiveSection] = useState('performance');
   const [expandedRepo, setExpandedRepo] = useState<string | null>(null);
 
   // Mock data for demonstration
@@ -64,26 +66,54 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
     activeUsers: 23,
     errorRate: 1.5,
     throughput: 52.3,
-    aiModelCosts: 234.50,
+    aiModelCosts: 234.5,
     codeQualityScore: 87,
     securityScore: 95,
-    testCoverage: 92
+    testCoverage: 92,
   };
 
   // AI Model Performance Data
-  const aiModelPerformance = [
-    { model: "Claude-3.5-Sonnet", requests: 456, avgResponseTime: 1.2, cost: 89.50, successRate: 98.8, tokens: 125000 },
-    { model: "Mixtral-8x7B", requests: 234, avgResponseTime: 2.1, cost: 45.20, successRate: 96.5, tokens: 89000 },
-    { model: "DeepSeek-Coder", requests: 189, avgResponseTime: 0.8, cost: 32.10, successRate: 99.2, tokens: 67000 },
-    { model: "GPT-4", requests: 156, avgResponseTime: 1.5, cost: 67.70, successRate: 97.8, tokens: 98000 }
+  const _aiModelPerformance = [
+    {
+      model: 'Claude-3.5-Sonnet',
+      requests: 456,
+      avgResponseTime: 1.2,
+      cost: 89.5,
+      successRate: 98.8,
+      tokens: 125000,
+    },
+    {
+      model: 'Mixtral-8x7B',
+      requests: 234,
+      avgResponseTime: 2.1,
+      cost: 45.2,
+      successRate: 96.5,
+      tokens: 89000,
+    },
+    {
+      model: 'DeepSeek-Coder',
+      requests: 189,
+      avgResponseTime: 0.8,
+      cost: 32.1,
+      successRate: 99.2,
+      tokens: 67000,
+    },
+    {
+      model: 'GPT-4',
+      requests: 156,
+      avgResponseTime: 1.5,
+      cost: 67.7,
+      successRate: 97.8,
+      tokens: 98000,
+    },
   ];
 
   // Predictive Analytics Data
-  const predictions = [
-    { metric: "CPU Usage", current: 65, predicted: 78, confidence: 0.85, trend: "increasing" },
-    { metric: "Memory Usage", current: 78, predicted: 82, confidence: 0.92, trend: "increasing" },
-    { metric: "Response Time", current: 45, predicted: 52, confidence: 0.78, trend: "increasing" },
-    { metric: "Error Rate", current: 1.5, predicted: 2.1, confidence: 0.88, trend: "increasing" }
+  const _predictions = [
+    { metric: 'CPU Usage', current: 65, predicted: 78, confidence: 0.85, trend: 'increasing' },
+    { metric: 'Memory Usage', current: 78, predicted: 82, confidence: 0.92, trend: 'increasing' },
+    { metric: 'Response Time', current: 45, predicted: 52, confidence: 0.78, trend: 'increasing' },
+    { metric: 'Error Rate', current: 1.5, predicted: 2.1, confidence: 0.88, trend: 'increasing' },
   ];
 
   // Forecast data for trend graphs
@@ -164,7 +194,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       deviation: 46,
       detectedAt: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
       severity: 'high',
-      machine: 'prod-server-03'
+      machine: 'prod-server-03',
     },
     {
       id: '2',
@@ -175,7 +205,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       deviation: 17,
       detectedAt: new Date(Date.now() - 45 * 60 * 1000), // 45 minutes ago
       severity: 'medium',
-      machine: 'prod-server-01'
+      machine: 'prod-server-01',
     },
     {
       id: '3',
@@ -186,7 +216,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       deviation: 608,
       detectedAt: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
       severity: 'high',
-      machine: 'api-gateway-02'
+      machine: 'api-gateway-02',
     },
     {
       id: '4',
@@ -197,13 +227,13 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       deviation: 23,
       detectedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
       severity: 'medium',
-      machine: 'db-server-01'
-    }
+      machine: 'db-server-01',
+    },
   ];
 
   // Filter out 'normal' status items - only show problems
   const anomalies = allAnomalies
-    .filter(a => a.status !== 'normal')
+    .filter((a) => a.status !== 'normal')
     .sort((a, b) => {
       // Sort by severity: high > medium > low
       const severityOrder = { high: 3, medium: 2, low: 1 };
@@ -213,126 +243,150 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
   // Code Quality Metrics (removed Security Vulnerabilities - it's in the Security & Coverage section)
   const codeQualityDetails = [
     {
-      metric: "Cyclomatic Complexity",
+      metric: 'Cyclomatic Complexity',
       value: 12,
       threshold: 15,
-      status: "good",
+      status: 'good',
       ranges: [
-        { label: "Excellent", range: "< 5", description: "Simple, easy to maintain" },
-        { label: "Good", range: "5-10", description: "Acceptable complexity" },
-        { label: "Fair", range: "10-15", description: "Consider refactoring" },
-        { label: "Poor", range: "> 15", description: "High risk, needs refactoring" }
-      ]
+        { label: 'Excellent', range: '< 5', description: 'Simple, easy to maintain' },
+        { label: 'Good', range: '5-10', description: 'Acceptable complexity' },
+        { label: 'Fair', range: '10-15', description: 'Consider refactoring' },
+        { label: 'Poor', range: '> 15', description: 'High risk, needs refactoring' },
+      ],
     },
     {
-      metric: "Code Duplication",
+      metric: 'Code Duplication',
       value: 8,
       threshold: 10,
-      status: "good",
+      status: 'good',
       ranges: [
-        { label: "Excellent", range: "< 3%", description: "Minimal duplication" },
-        { label: "Good", range: "3-5%", description: "Acceptable duplication" },
-        { label: "Fair", range: "5-10%", description: "Moderate duplication" },
-        { label: "Poor", range: "> 10%", description: "High duplication, extract shared code" }
-      ]
+        { label: 'Excellent', range: '< 3%', description: 'Minimal duplication' },
+        { label: 'Good', range: '3-5%', description: 'Acceptable duplication' },
+        { label: 'Fair', range: '5-10%', description: 'Moderate duplication' },
+        { label: 'Poor', range: '> 10%', description: 'High duplication, extract shared code' },
+      ],
     },
     {
-      metric: "Technical Debt",
+      metric: 'Technical Debt',
       value: 23,
       threshold: 30,
-      status: "warning",
+      status: 'warning',
       ranges: [
-        { label: "Excellent", range: "< 10 days", description: "Low technical debt" },
-        { label: "Good", range: "10-20 days", description: "Manageable debt" },
-        { label: "Fair", range: "20-30 days", description: "Moderate debt, plan refactoring" },
-        { label: "Poor", range: "> 30 days", description: "High debt, urgent refactoring needed" }
-      ]
+        { label: 'Excellent', range: '< 10 days', description: 'Low technical debt' },
+        { label: 'Good', range: '10-20 days', description: 'Manageable debt' },
+        { label: 'Fair', range: '20-30 days', description: 'Moderate debt, plan refactoring' },
+        { label: 'Poor', range: '> 30 days', description: 'High debt, urgent refactoring needed' },
+      ],
     },
     {
-      metric: "Test Coverage",
+      metric: 'Test Coverage',
       value: 92,
       threshold: 80,
-      status: "excellent",
+      status: 'excellent',
       ranges: [
-        { label: "Excellent", range: "> 90%", description: "Outstanding coverage" },
-        { label: "Good", range: "80-90%", description: "Good coverage" },
-        { label: "Fair", range: "70-80%", description: "Adequate coverage" },
-        { label: "Poor", range: "< 70%", description: "Insufficient coverage" }
-      ]
+        { label: 'Excellent', range: '> 90%', description: 'Outstanding coverage' },
+        { label: 'Good', range: '80-90%', description: 'Good coverage' },
+        { label: 'Fair', range: '70-80%', description: 'Adequate coverage' },
+        { label: 'Poor', range: '< 70%', description: 'Insufficient coverage' },
+      ],
     },
     {
-      metric: "Performance Issues",
+      metric: 'Performance Issues',
       value: 5,
       threshold: 10,
-      status: "good",
+      status: 'good',
       ranges: [
-        { label: "Excellent", range: "0-2", description: "No significant issues" },
-        { label: "Good", range: "3-5", description: "Minor issues" },
-        { label: "Fair", range: "6-10", description: "Some optimization needed" },
-        { label: "Poor", range: "> 10", description: "Significant performance problems" }
-      ]
-    }
+        { label: 'Excellent', range: '0-2', description: 'No significant issues' },
+        { label: 'Good', range: '3-5', description: 'Minor issues' },
+        { label: 'Fair', range: '6-10', description: 'Some optimization needed' },
+        { label: 'Poor', range: '> 10', description: 'Significant performance problems' },
+      ],
+    },
   ];
 
   // Top Improvement Opportunities
   const improvementOpportunities = [
     {
       icon: Target,
-      iconColor: "text-orange-500",
-      title: "Reduce Cyclomatic Complexity",
-      impact: "High Impact",
-      impactVariant: "destructive" as const,
-      description: "12 functions exceed complexity threshold. Refactoring these would improve maintainability by 23%.",
-      current: "12.3",
-      target: "8.5"
+      iconColor: 'text-orange-500',
+      title: 'Reduce Cyclomatic Complexity',
+      impact: 'High Impact',
+      impactVariant: 'destructive' as const,
+      description:
+        '12 functions exceed complexity threshold. Refactoring these would improve maintainability by 23%.',
+      current: '12.3',
+      target: '8.5',
     },
     {
       icon: Copy,
-      iconColor: "text-blue-500",
-      title: "Eliminate Code Duplication",
-      impact: "Medium Impact",
-      impactVariant: "default" as const,
-      description: "5 duplicate code blocks found. Extracting to shared utilities would reduce codebase by 8%.",
-      current: "8.2%",
-      target: "3.0%"
+      iconColor: 'text-blue-500',
+      title: 'Eliminate Code Duplication',
+      impact: 'Medium Impact',
+      impactVariant: 'default' as const,
+      description:
+        '5 duplicate code blocks found. Extracting to shared utilities would reduce codebase by 8%.',
+      current: '8.2%',
+      target: '3.0%',
     },
     {
       icon: Code,
-      iconColor: "text-purple-500",
-      title: "Address Technical Debt",
-      impact: "Medium Impact",
-      impactVariant: "default" as const,
-      description: "23 days of technical debt accumulated. Focus on refactoring legacy authentication module.",
-      current: "23 days",
-      target: "15 days"
+      iconColor: 'text-purple-500',
+      title: 'Address Technical Debt',
+      impact: 'Medium Impact',
+      impactVariant: 'default' as const,
+      description:
+        '23 days of technical debt accumulated. Focus on refactoring legacy authentication module.',
+      current: '23 days',
+      target: '15 days',
     },
     {
       icon: Zap,
-      iconColor: "text-yellow-500",
-      title: "Optimize Performance Bottlenecks",
-      impact: "Low Impact",
-      impactVariant: "secondary" as const,
-      description: "5 performance issues identified. Optimizing database queries could improve response time by 15%.",
-      current: "5 issues",
-      target: "2 issues"
-    }
+      iconColor: 'text-yellow-500',
+      title: 'Optimize Performance Bottlenecks',
+      impact: 'Low Impact',
+      impactVariant: 'secondary' as const,
+      description:
+        '5 performance issues identified. Optimizing database queries could improve response time by 15%.',
+      current: '5 issues',
+      target: '2 issues',
+    },
   ];
 
   // Resource Optimization Recommendations
   const optimizationRecommendations = [
-    { type: "cost", title: "Switch to Mixtral for Code Generation", impact: "Save $45/month", priority: "high" },
-    { type: "performance", title: "Enable Response Caching", impact: "Reduce latency by 30%", priority: "medium" },
-    { type: "scaling", title: "Add 2 more instances", impact: "Handle 40% more load", priority: "low" },
-    { type: "efficiency", title: "Optimize Database Queries", impact: "Reduce CPU usage by 15%", priority: "medium" }
+    {
+      type: 'cost',
+      title: 'Switch to Mixtral for Code Generation',
+      impact: 'Save $45/month',
+      priority: 'high',
+    },
+    {
+      type: 'performance',
+      title: 'Enable Response Caching',
+      impact: 'Reduce latency by 30%',
+      priority: 'medium',
+    },
+    {
+      type: 'scaling',
+      title: 'Add 2 more instances',
+      impact: 'Handle 40% more load',
+      priority: 'low',
+    },
+    {
+      type: 'efficiency',
+      title: 'Optimize Database Queries',
+      impact: 'Reduce CPU usage by 15%',
+      priority: 'medium',
+    },
   ];
 
   const performanceTrends = [
-    { time: "00:00", requests: 45, responseTime: 42, errors: 1 },
-    { time: "04:00", requests: 32, responseTime: 38, errors: 0 },
-    { time: "08:00", requests: 89, responseTime: 45, errors: 2 },
-    { time: "12:00", requests: 156, responseTime: 48, errors: 3 },
-    { time: "16:00", requests: 203, responseTime: 52, errors: 1 },
-    { time: "20:00", requests: 178, responseTime: 46, errors: 2 },
+    { time: '00:00', requests: 45, responseTime: 42, errors: 1 },
+    { time: '04:00', requests: 32, responseTime: 38, errors: 0 },
+    { time: '08:00', requests: 89, responseTime: 45, errors: 2 },
+    { time: '12:00', requests: 156, responseTime: 48, errors: 3 },
+    { time: '16:00', requests: 203, responseTime: 52, errors: 1 },
+    { time: '20:00', requests: 178, responseTime: 46, errors: 2 },
   ];
 
   // Routing metrics
@@ -367,7 +421,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       responseTimePercent: 15,
       successRateIncrease: 8.2,
       usageCount: 1245,
-      impactScore: 92
+      impactScore: 92,
     },
     {
       id: '2',
@@ -378,7 +432,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       responseTimePercent: 12,
       successRateIncrease: 6.5,
       usageCount: 1089,
-      impactScore: 88
+      impactScore: 88,
     },
     {
       id: '3',
@@ -389,7 +443,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       responseTimePercent: 18,
       successRateIncrease: 4.3,
       usageCount: 876,
-      impactScore: 85
+      impactScore: 85,
     },
     {
       id: '4',
@@ -400,7 +454,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       responseTimePercent: 23,
       successRateIncrease: 5.1,
       usageCount: 654,
-      impactScore: 81
+      impactScore: 81,
     },
     {
       id: '5',
@@ -411,7 +465,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       responseTimePercent: 8,
       successRateIncrease: 3.8,
       usageCount: 432,
-      impactScore: 74
+      impactScore: 74,
     },
   ];
 
@@ -425,7 +479,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       storageUsed: 450,
       storageTotal: 1000,
       networkIO: 2.3,
-      status: 'healthy' as const
+      status: 'healthy' as const,
     },
     {
       machine: 'prod-api-02',
@@ -435,7 +489,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       storageUsed: 520,
       storageTotal: 1000,
       networkIO: 1.8,
-      status: 'healthy' as const
+      status: 'healthy' as const,
     },
     {
       machine: 'prod-worker-01',
@@ -445,7 +499,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       storageUsed: 780,
       storageTotal: 1000,
       networkIO: 4.2,
-      status: 'warning' as const
+      status: 'warning' as const,
     },
     {
       machine: 'prod-db-01',
@@ -455,7 +509,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       storageUsed: 1800,
       storageTotal: 2000,
       networkIO: 5.1,
-      status: 'healthy' as const
+      status: 'healthy' as const,
     },
     {
       machine: 'prod-cache-01',
@@ -465,16 +519,16 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       storageUsed: 150,
       storageTotal: 500,
       networkIO: 3.5,
-      status: 'healthy' as const
+      status: 'healthy' as const,
     },
   ];
 
-  const topAgents = [
-    { name: "agent-performance", requests: 234, successRate: 99.2, avgTime: 38 },
-    { name: "agent-database", requests: 189, successRate: 97.8, avgTime: 52 },
-    { name: "agent-debug", requests: 156, successRate: 96.5, avgTime: 67 },
-    { name: "agent-api", requests: 134, successRate: 98.9, avgTime: 41 },
-    { name: "agent-security", requests: 98, successRate: 99.5, avgTime: 29 },
+  const _topAgents = [
+    { name: 'agent-performance', requests: 234, successRate: 99.2, avgTime: 38 },
+    { name: 'agent-database', requests: 189, successRate: 97.8, avgTime: 52 },
+    { name: 'agent-debug', requests: 156, successRate: 96.5, avgTime: 67 },
+    { name: 'agent-api', requests: 134, successRate: 98.9, avgTime: 41 },
+    { name: 'agent-security', requests: 98, successRate: 99.5, avgTime: 29 },
   ];
 
   // Repository metrics with quick win opportunities
@@ -487,10 +541,25 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       qualityScore: 87,
       securityGrade: 'A',
       quickWins: [
-        { action: 'Add 8 more tests', impact: 'Increase coverage from 92% to 95%', effort: 'low', estimatedTime: '2 hours' },
-        { action: 'Fix ESLint warnings', impact: 'Improve quality score to 90', effort: 'low', estimatedTime: '1 hour' },
-        { action: 'Update dependencies', impact: 'Security score to 98%', effort: 'medium', estimatedTime: '3 hours' }
-      ]
+        {
+          action: 'Add 8 more tests',
+          impact: 'Increase coverage from 92% to 95%',
+          effort: 'low',
+          estimatedTime: '2 hours',
+        },
+        {
+          action: 'Fix ESLint warnings',
+          impact: 'Improve quality score to 90',
+          effort: 'low',
+          estimatedTime: '1 hour',
+        },
+        {
+          action: 'Update dependencies',
+          impact: 'Security score to 98%',
+          effort: 'medium',
+          estimatedTime: '3 hours',
+        },
+      ],
     },
     {
       id: 'omniarchon',
@@ -500,10 +569,25 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       qualityScore: 82,
       securityGrade: 'B+',
       quickWins: [
-        { action: 'Add 15 integration tests', impact: 'Coverage from 78% to 85%', effort: 'medium', estimatedTime: '4 hours' },
-        { action: 'Fix 3 high-severity vulnerabilities', impact: 'Security grade to A-', effort: 'high', estimatedTime: '6 hours' },
-        { action: 'Refactor duplicate code', impact: 'Quality score to 85', effort: 'medium', estimatedTime: '3 hours' }
-      ]
+        {
+          action: 'Add 15 integration tests',
+          impact: 'Coverage from 78% to 85%',
+          effort: 'medium',
+          estimatedTime: '4 hours',
+        },
+        {
+          action: 'Fix 3 high-severity vulnerabilities',
+          impact: 'Security grade to A-',
+          effort: 'high',
+          estimatedTime: '6 hours',
+        },
+        {
+          action: 'Refactor duplicate code',
+          impact: 'Quality score to 85',
+          effort: 'medium',
+          estimatedTime: '3 hours',
+        },
+      ],
     },
     {
       id: 'omnibase_core',
@@ -513,10 +597,25 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       qualityScore: 90,
       securityGrade: 'A-',
       quickWins: [
-        { action: 'Add 10 edge case tests', impact: 'Coverage from 85% to 90%', effort: 'medium', estimatedTime: '3 hours' },
-        { action: 'Document public APIs', impact: 'Quality score to 93', effort: 'low', estimatedTime: '2 hours' },
-        { action: 'Enable strict TypeScript', impact: 'Quality score to 94', effort: 'medium', estimatedTime: '4 hours' }
-      ]
+        {
+          action: 'Add 10 edge case tests',
+          impact: 'Coverage from 85% to 90%',
+          effort: 'medium',
+          estimatedTime: '3 hours',
+        },
+        {
+          action: 'Document public APIs',
+          impact: 'Quality score to 93',
+          effort: 'low',
+          estimatedTime: '2 hours',
+        },
+        {
+          action: 'Enable strict TypeScript',
+          impact: 'Quality score to 94',
+          effort: 'medium',
+          estimatedTime: '4 hours',
+        },
+      ],
     },
     {
       id: 'omniclaude',
@@ -526,10 +625,25 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       qualityScore: 85,
       securityGrade: 'A-',
       quickWins: [
-        { action: 'Add 12 unit tests', impact: 'Coverage from 82% to 88%', effort: 'low', estimatedTime: '3 hours' },
-        { action: 'Remove deprecated APIs', impact: 'Quality score to 88', effort: 'medium', estimatedTime: '5 hours' },
-        { action: 'Add input validation', impact: 'Security score to 93%', effort: 'low', estimatedTime: '2 hours' }
-      ]
+        {
+          action: 'Add 12 unit tests',
+          impact: 'Coverage from 82% to 88%',
+          effort: 'low',
+          estimatedTime: '3 hours',
+        },
+        {
+          action: 'Remove deprecated APIs',
+          impact: 'Quality score to 88',
+          effort: 'medium',
+          estimatedTime: '5 hours',
+        },
+        {
+          action: 'Add input validation',
+          impact: 'Security score to 93%',
+          effort: 'low',
+          estimatedTime: '2 hours',
+        },
+      ],
     },
     {
       id: 'omninode_bridge',
@@ -539,19 +653,34 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       qualityScore: 89,
       securityGrade: 'A',
       quickWins: [
-        { action: 'Add 7 error handling tests', impact: 'Coverage from 88% to 92%', effort: 'low', estimatedTime: '2 hours' },
-        { action: 'Optimize database queries', impact: 'Quality score to 92', effort: 'medium', estimatedTime: '4 hours' },
-        { action: 'Add request rate limiting', impact: 'Security score to 96%', effort: 'low', estimatedTime: '2 hours' }
-      ]
-    }
+        {
+          action: 'Add 7 error handling tests',
+          impact: 'Coverage from 88% to 92%',
+          effort: 'low',
+          estimatedTime: '2 hours',
+        },
+        {
+          action: 'Optimize database queries',
+          impact: 'Quality score to 92',
+          effort: 'medium',
+          estimatedTime: '4 hours',
+        },
+        {
+          action: 'Add request rate limiting',
+          impact: 'Security score to 96%',
+          effort: 'low',
+          estimatedTime: '2 hours',
+        },
+      ],
+    },
   ];
 
-  const qualityMetrics = [
-    { metric: "Code Quality", value: 87, trend: "+5%", status: "improving" },
-    { metric: "Test Coverage", value: 92, trend: "+2%", status: "excellent" },
-    { metric: "Performance", value: 78, trend: "-1%", status: "needs_attention" },
-    { metric: "Security", value: 95, trend: "+3%", status: "excellent" },
-    { metric: "Maintainability", value: 83, trend: "+4%", status: "good" },
+  const _qualityMetrics = [
+    { metric: 'Code Quality', value: 87, trend: '+5%', status: 'improving' },
+    { metric: 'Test Coverage', value: 92, trend: '+2%', status: 'excellent' },
+    { metric: 'Performance', value: 78, trend: '-1%', status: 'needs_attention' },
+    { metric: 'Security', value: 95, trend: '+3%', status: 'excellent' },
+    { metric: 'Maintainability', value: 83, trend: '+4%', status: 'good' },
   ];
 
   return (
@@ -574,7 +703,9 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{systemMetrics.totalRequests.toLocaleString()}</div>
+                <div className="text-2xl font-bold">
+                  {systemMetrics.totalRequests.toLocaleString()}
+                </div>
                 <div className="flex items-center text-xs text-muted-foreground">
                   <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
                   +12.5% from last {timeRange}
@@ -631,41 +762,41 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
       <div className="space-y-4">
         <div className="flex gap-2 mb-4">
           <Button
-            variant={activeSection === "performance" ? "default" : "outline"}
+            variant={activeSection === 'performance' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setActiveSection("performance")}
+            onClick={() => setActiveSection('performance')}
           >
             <BarChart className="w-4 h-4 mr-2" />
             Performance
           </Button>
           <Button
-            variant={activeSection === "quality" ? "default" : "outline"}
+            variant={activeSection === 'quality' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setActiveSection("quality")}
+            onClick={() => setActiveSection('quality')}
           >
             <Shield className="w-4 h-4 mr-2" />
             Quality
           </Button>
-          <Button 
-            variant={activeSection === "predictions" ? "default" : "outline"} 
+          <Button
+            variant={activeSection === 'predictions' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setActiveSection("predictions")}
+            onClick={() => setActiveSection('predictions')}
           >
             <Eye className="w-4 h-4 mr-2" />
             Predictions
           </Button>
-          <Button 
-            variant={activeSection === "optimization" ? "default" : "outline"} 
+          <Button
+            variant={activeSection === 'optimization' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setActiveSection("optimization")}
+            onClick={() => setActiveSection('optimization')}
           >
             <Lightbulb className="w-4 h-4 mr-2" />
             Optimization
           </Button>
-          <Button 
-            variant={activeSection === "routing" ? "default" : "outline"} 
+          <Button
+            variant={activeSection === 'routing' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setActiveSection("routing")}
+            onClick={() => setActiveSection('routing')}
           >
             <Zap className="w-4 h-4 mr-2" />
             Routing & Patterns
@@ -673,7 +804,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
         </div>
 
         {/* Performance Section */}
-        {activeSection === "performance" && (
+        {activeSection === 'performance' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Performance Trends Chart */}
@@ -745,7 +876,9 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
               <Card>
                 <CardHeader>
                   <CardTitle>Distributed System Health</CardTitle>
-                  <CardDescription>Real-time resource utilization across infrastructure</CardDescription>
+                  <CardDescription>
+                    Real-time resource utilization across infrastructure
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -769,7 +902,9 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                             console.warn('Show machine details:', machine.machine);
                           }}
                         >
-                          <TableCell className="font-mono text-sm font-medium">{machine.machine}</TableCell>
+                          <TableCell className="font-mono text-sm font-medium">
+                            {machine.machine}
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Progress value={machine.cpuPercent} className="w-20" />
@@ -800,11 +935,15 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                           </TableCell>
                           <TableCell className="text-sm">{machine.networkIO} GB/s</TableCell>
                           <TableCell>
-                            <Badge variant={
-                              machine.status === 'healthy' ? 'default' :
-                              machine.status === 'warning' ? 'secondary' :
-                              'destructive'
-                            }>
+                            <Badge
+                              variant={
+                                machine.status === 'healthy'
+                                  ? 'default'
+                                  : machine.status === 'warning'
+                                    ? 'secondary'
+                                    : 'destructive'
+                              }
+                            >
                               {machine.status.charAt(0).toUpperCase() + machine.status.slice(1)}
                             </Badge>
                           </TableCell>
@@ -818,9 +957,8 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
           </div>
         )}
 
-
         {/* Quality Section */}
-        {activeSection === "quality" && (
+        {activeSection === 'quality' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Code Quality Details */}
@@ -848,7 +986,8 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                                   <div className="space-y-1 text-xs">
                                     {metric.ranges.map((range, idx) => (
                                       <p key={idx}>
-                                        <strong>{range.label}:</strong> {range.range} ({range.description})
+                                        <strong>{range.label}:</strong> {range.range} (
+                                        {range.description})
                                       </p>
                                     ))}
                                   </div>
@@ -859,9 +998,11 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                               <span className="text-sm font-bold">{metric.value}</span>
                               <Badge
                                 variant={
-                                  metric.status === "excellent" ? "default" :
-                                  metric.status === "good" ? "secondary" :
-                                  "destructive"
+                                  metric.status === 'excellent'
+                                    ? 'default'
+                                    : metric.status === 'good'
+                                      ? 'secondary'
+                                      : 'destructive'
                                 }
                               >
                                 {metric.status}
@@ -873,7 +1014,9 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                               value={(metric.value / metric.threshold) * 100}
                               className="flex-1"
                             />
-                            <span className="text-xs text-muted-foreground">/{metric.threshold}</span>
+                            <span className="text-xs text-muted-foreground">
+                              /{metric.threshold}
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -889,7 +1032,9 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                     <Database className="w-5 h-5" />
                     Security & Coverage by Repository
                   </CardTitle>
-                  <CardDescription>Click on a repository to see improvement opportunities</CardDescription>
+                  <CardDescription>
+                    Click on a repository to see improvement opportunities
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -907,7 +1052,9 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                           <TableRow
                             key={repo.id}
                             className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => setExpandedRepo(expandedRepo === repo.id ? null : repo.id)}
+                            onClick={() =>
+                              setExpandedRepo(expandedRepo === repo.id ? null : repo.id)
+                            }
                           >
                             <TableCell className="font-mono text-sm font-medium">
                               <div className="flex items-center gap-2">
@@ -923,11 +1070,15 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                               <div className="flex items-center gap-2">
                                 <Progress value={repo.securityScore} className="w-20" />
                                 <span className="text-sm font-bold">{repo.securityScore}%</span>
-                                <Badge variant={
-                                  repo.securityGrade.startsWith('A') ? 'default' :
-                                  repo.securityGrade.startsWith('B') ? 'secondary' :
-                                  'destructive'
-                                }>
+                                <Badge
+                                  variant={
+                                    repo.securityGrade.startsWith('A')
+                                      ? 'default'
+                                      : repo.securityGrade.startsWith('B')
+                                        ? 'secondary'
+                                        : 'destructive'
+                                  }
+                                >
                                   {repo.securityGrade}
                                 </Badge>
                               </div>
@@ -957,20 +1108,29 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                                   </div>
                                   <div className="space-y-2">
                                     {repo.quickWins.map((win, idx) => (
-                                      <div key={idx} className="flex items-start gap-3 p-3 border rounded-lg bg-background">
+                                      <div
+                                        key={idx}
+                                        className="flex items-start gap-3 p-3 border rounded-lg bg-background"
+                                      >
                                         <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
                                         <div className="flex-1">
                                           <div className="flex items-center justify-between mb-1">
                                             <span className="font-medium">{win.action}</span>
-                                            <Badge variant={
-                                              win.effort === 'low' ? 'default' :
-                                              win.effort === 'medium' ? 'secondary' :
-                                              'destructive'
-                                            }>
+                                            <Badge
+                                              variant={
+                                                win.effort === 'low'
+                                                  ? 'default'
+                                                  : win.effort === 'medium'
+                                                    ? 'secondary'
+                                                    : 'destructive'
+                                              }
+                                            >
                                               {win.effort} effort
                                             </Badge>
                                           </div>
-                                          <p className="text-sm text-muted-foreground mb-2">{win.impact}</p>
+                                          <p className="text-sm text-muted-foreground mb-2">
+                                            {win.impact}
+                                          </p>
                                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                             <Clock className="h-3 w-3" />
                                             <span>Est. time: {win.estimatedTime}</span>
@@ -1013,7 +1173,9 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>Current: {opportunity.current}</span>
                           <ArrowRight className="h-3 w-3" />
-                          <span className="text-green-600 font-medium">Target: {opportunity.target}</span>
+                          <span className="text-green-600 font-medium">
+                            Target: {opportunity.target}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1025,7 +1187,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
         )}
 
         {/* Predictions Section */}
-        {activeSection === "predictions" && (
+        {activeSection === 'predictions' && (
           <div className="space-y-4">
             {/* Predictive Analytics - Forecast Graphs */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1039,10 +1201,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                   <ResponsiveContainer width="100%" height={250}>
                     <RechartsLineChart data={cpuForecastData}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis
-                        dataKey="date"
-                        className="text-xs"
-                      />
+                      <XAxis dataKey="date" className="text-xs" />
                       <YAxis
                         className="text-xs"
                         domain={[0, 100]}
@@ -1050,12 +1209,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                       />
                       <RechartsTooltip />
                       <Legend />
-                      <ReferenceLine
-                        y={80}
-                        stroke="orange"
-                        strokeDasharray="5 5"
-                        label="Warning"
-                      />
+                      <ReferenceLine y={80} stroke="orange" strokeDasharray="5 5" label="Warning" />
                       <Line
                         type="monotone"
                         dataKey="actual"
@@ -1104,10 +1258,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                   <ResponsiveContainer width="100%" height={250}>
                     <RechartsLineChart data={memoryForecastData}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis
-                        dataKey="date"
-                        className="text-xs"
-                      />
+                      <XAxis dataKey="date" className="text-xs" />
                       <YAxis
                         className="text-xs"
                         domain={[0, 100]}
@@ -1115,12 +1266,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                       />
                       <RechartsTooltip />
                       <Legend />
-                      <ReferenceLine
-                        y={85}
-                        stroke="red"
-                        strokeDasharray="5 5"
-                        label="Critical"
-                      />
+                      <ReferenceLine y={85} stroke="red" strokeDasharray="5 5" label="Critical" />
                       <Line
                         type="monotone"
                         dataKey="actual"
@@ -1169,10 +1315,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                   <ResponsiveContainer width="100%" height={250}>
                     <RechartsLineChart data={errorRateForecastData}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis
-                        dataKey="date"
-                        className="text-xs"
-                      />
+                      <XAxis dataKey="date" className="text-xs" />
                       <YAxis
                         className="text-xs"
                         domain={[0, 5]}
@@ -1234,10 +1377,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                   <ResponsiveContainer width="100%" height={250}>
                     <RechartsLineChart data={responseTimeForecastData}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis
-                        dataKey="date"
-                        className="text-xs"
-                      />
+                      <XAxis dataKey="date" className="text-xs" />
                       <YAxis
                         className="text-xs"
                         domain={[0, 100]}
@@ -1245,12 +1385,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                       />
                       <RechartsTooltip />
                       <Legend />
-                      <ReferenceLine
-                        y={60}
-                        stroke="orange"
-                        strokeDasharray="5 5"
-                        label="Target"
-                      />
+                      <ReferenceLine y={60} stroke="orange" strokeDasharray="5 5" label="Target" />
                       <Line
                         type="monotone"
                         dataKey="actual"
@@ -1303,7 +1438,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                       </CardTitle>
                       <CardDescription>Active alerts and detected anomalies</CardDescription>
                     </div>
-                    <Badge variant={anomalies.length > 0 ? "destructive" : "default"}>
+                    <Badge variant={anomalies.length > 0 ? 'destructive' : 'default'}>
                       {anomalies.length} Active
                     </Badge>
                   </div>
@@ -1321,12 +1456,25 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                     <div className="space-y-3">
                       {anomalies.map((anomaly) => {
                         const statusConfig = {
-                          critical: { icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/20' },
-                          warning: { icon: AlertCircle, color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' },
-                          error: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-600/10 border-red-600/20' }
+                          critical: {
+                            icon: AlertTriangle,
+                            color: 'text-red-500',
+                            bg: 'bg-red-500/10 border-red-500/20',
+                          },
+                          warning: {
+                            icon: AlertCircle,
+                            color: 'text-orange-500',
+                            bg: 'bg-orange-500/10 border-orange-500/20',
+                          },
+                          error: {
+                            icon: XCircle,
+                            color: 'text-red-600',
+                            bg: 'bg-red-600/10 border-red-600/20',
+                          },
                         };
 
-                        const config = statusConfig[anomaly.status as 'critical' | 'warning' | 'error'];
+                        const config =
+                          statusConfig[anomaly.status as 'critical' | 'warning' | 'error'];
                         const Icon = config.icon;
 
                         return (
@@ -1336,14 +1484,20 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                               <div className="flex-1">
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="font-semibold">{anomaly.metric}</div>
-                                  <Badge variant={anomaly.status === 'critical' ? 'destructive' : 'outline'}>
+                                  <Badge
+                                    variant={
+                                      anomaly.status === 'critical' ? 'destructive' : 'outline'
+                                    }
+                                  >
                                     {anomaly.severity.toUpperCase()}
                                   </Badge>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4 text-sm mb-2">
                                   <div>
                                     <span className="text-muted-foreground">Current: </span>
-                                    <span className={`font-medium ${config.color}`}>{anomaly.currentValue}</span>
+                                    <span className={`font-medium ${config.color}`}>
+                                      {anomaly.currentValue}
+                                    </span>
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground">Expected: </span>
@@ -1359,7 +1513,8 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                                   </div>
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Detected {formatDistanceToNow(anomaly.detectedAt, { addSuffix: true })}
+                                  Detected{' '}
+                                  {formatDistanceToNow(anomaly.detectedAt, { addSuffix: true })}
                                 </div>
                               </div>
                             </div>
@@ -1375,7 +1530,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
         )}
 
         {/* Routing & Patterns Section */}
-        {activeSection === "routing" && (
+        {activeSection === 'routing' && (
           <div className="space-y-4">
             {/* Routing Accuracy & Cache Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1391,10 +1546,15 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">
                         <div className="space-y-2 text-xs">
-                          <p><strong>Routing Accuracy:</strong> Percentage of queries correctly routed to optimal agent</p>
+                          <p>
+                            <strong>Routing Accuracy:</strong> Percentage of queries correctly
+                            routed to optimal agent
+                          </p>
                           <div className="pt-2 border-t">
                             <p>Fallback rate: {routingMetrics.fallbackRate}%</p>
-                            <p className="text-muted-foreground">Lower fallback rate indicates better routing decisions</p>
+                            <p className="text-muted-foreground">
+                              Lower fallback rate indicates better routing decisions
+                            </p>
                           </div>
                         </div>
                       </TooltipContent>
@@ -1410,7 +1570,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                   <Progress value={routingMetrics.accuracy} className="mt-2" />
                 </CardContent>
               </Card>
-              
+
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <TooltipProvider>
@@ -1423,7 +1583,9 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">
                         <div className="space-y-2 text-xs">
-                          <p><strong>What's being cached:</strong></p>
+                          <p>
+                            <strong>What's being cached:</strong>
+                          </p>
                           <ul className="list-disc pl-4 space-y-1">
                             <li>Agent routing decisions (45% of hits)</li>
                             <li>Pattern lookup results (30% of hits)</li>
@@ -1442,10 +1604,10 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                   <Database className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{routingMetrics.cacheHitRate.toFixed(1)}%</div>
-                  <p className="text-xs text-muted-foreground">
-                    Target: 80%+
-                  </p>
+                  <div className="text-2xl font-bold">
+                    {routingMetrics.cacheHitRate.toFixed(1)}%
+                  </div>
+                  <p className="text-xs text-muted-foreground">Target: 80%+</p>
                   <Progress value={routingMetrics.cacheHitRate} className="mt-2" />
                 </CardContent>
               </Card>
@@ -1462,11 +1624,16 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">
                         <div className="space-y-2 text-xs">
-                          <p><strong>Routing Time:</strong> Average time to select optimal agent for query</p>
+                          <p>
+                            <strong>Routing Time:</strong> Average time to select optimal agent for
+                            query
+                          </p>
                           <div className="pt-2 border-t">
                             <p>p95 percentile: {routingMetrics.avgRoutingTime * 2}ms</p>
                             <p>Target: &lt; 20ms</p>
-                            <p className="text-muted-foreground">Includes pattern matching, confidence scoring, and selection</p>
+                            <p className="text-muted-foreground">
+                              Includes pattern matching, confidence scoring, and selection
+                            </p>
                           </div>
                         </div>
                       </TooltipContent>
@@ -1493,19 +1660,27 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">{routingMetrics.patternInjectionUplift}%</div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {routingMetrics.patternInjectionUplift}%
+                      </div>
                       <div className="text-sm text-muted-foreground">Token Reduction</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{patternUplift.avgResponseTimeImprovement}%</div>
+                      <div className="text-2xl font-bold text-blue-600">
+                        {patternUplift.avgResponseTimeImprovement}%
+                      </div>
                       <div className="text-sm text-muted-foreground">Response Time Improvement</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">{patternUplift.avgSuccessRateIncrease}%</div>
+                      <div className="text-2xl font-bold text-purple-600">
+                        {patternUplift.avgSuccessRateIncrease}%
+                      </div>
                       <div className="text-sm text-muted-foreground">Success Rate Increase</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600">{patternUplift.totalPatternsInjected.toLocaleString()}</div>
+                      <div className="text-2xl font-bold text-orange-600">
+                        {patternUplift.totalPatternsInjected.toLocaleString()}
+                      </div>
                       <div className="text-sm text-muted-foreground">Total Injections</div>
                     </div>
                   </div>
@@ -1528,21 +1703,29 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                           <CardContent>
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
-                                <span className="text-2xl font-bold text-green-600">+{agent.uplift}%</span>
+                                <span className="text-2xl font-bold text-green-600">
+                                  +{agent.uplift}%
+                                </span>
                                 <Badge variant="secondary">Performance Uplift</Badge>
                               </div>
                               <div className="text-sm space-y-1.5">
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Tokens Saved:</span>
-                                  <span className="font-medium">{Math.round(agent.uplift * 30)} tokens/run</span>
+                                  <span className="font-medium">
+                                    {Math.round(agent.uplift * 30)} tokens/run
+                                  </span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Patterns Used:</span>
-                                  <span className="font-medium">{Math.round(agent.uplift / 3)} patterns</span>
+                                  <span className="font-medium">
+                                    {Math.round(agent.uplift / 3)} patterns
+                                  </span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Runs Affected:</span>
-                                  <span className="font-medium">{Math.round(agent.uplift * 6)} runs</span>
+                                  <span className="font-medium">
+                                    {Math.round(agent.uplift * 6)} runs
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -1559,7 +1742,9 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
             <Card>
               <CardHeader>
                 <CardTitle>Pattern Impact Analysis</CardTitle>
-                <CardDescription>Detailed breakdown of individual pattern contributions to performance improvements</CardDescription>
+                <CardDescription>
+                  Detailed breakdown of individual pattern contributions to performance improvements
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -1621,7 +1806,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
         )}
 
         {/* Optimization Section */}
-        {activeSection === "optimization" && (
+        {activeSection === 'optimization' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Optimization Recommendations */}
@@ -1639,11 +1824,13 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                       <div key={index} className="border rounded-lg p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <h4 className="font-medium">{rec.title}</h4>
-                          <Badge 
+                          <Badge
                             variant={
-                              rec.priority === "high" ? "destructive" : 
-                              rec.priority === "medium" ? "secondary" : 
-                              "outline"
+                              rec.priority === 'high'
+                                ? 'destructive'
+                                : rec.priority === 'medium'
+                                  ? 'secondary'
+                                  : 'outline'
                             }
                           >
                             {rec.priority}
@@ -1651,8 +1838,12 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                         </div>
                         <p className="text-sm text-muted-foreground">{rec.impact}</p>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline">Apply</Button>
-                          <Button size="sm" variant="ghost">Learn More</Button>
+                          <Button size="sm" variant="outline">
+                            Apply
+                          </Button>
+                          <Button size="sm" variant="ghost">
+                            Learn More
+                          </Button>
                         </div>
                       </div>
                     ))}

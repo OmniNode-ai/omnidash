@@ -1,52 +1,28 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { platformMonitoringSource } from "@/lib/data-sources";
-import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
-import type { SystemStatus, Incident } from "@/lib/data-sources/platform-monitoring-source";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Shield, 
-  Server, 
-  Users, 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle, 
-  Clock,
-  Database,
-  Network,
-  Cpu,
-  HardDrive,
-  Wifi,
-  Zap,
-  TrendingUp,
-  TrendingDown,
-  Eye,
-  Settings,
-  RefreshCw,
-  Bell,
-  BarChart3,
-  Target,
-  Code,
-  GitBranch,
-  MessageSquare
-} from "lucide-react";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { platformMonitoringSource } from '@/lib/data-sources';
+import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
+import type {
+  SystemStatus as _SystemStatus,
+  Incident as _Incident,
+} from '@/lib/data-sources/platform-monitoring-source';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Shield, Server, Users, AlertTriangle, Settings, RefreshCw, Bell } from 'lucide-react';
 
 // Import existing components
-import SystemHealth from "./SystemHealth";
-import PlatformHealth from "../PlatformHealth";
-import DeveloperExperience from "../DeveloperExperience";
+import PlatformHealth from '../PlatformHealth';
+import DeveloperExperience from '../DeveloperExperience';
 
 // Types imported from data source
-import type { ServiceStatus } from "@/lib/data-sources/platform-monitoring-source";
+import type { ServiceStatus as _ServiceStatus } from '@/lib/data-sources/platform-monitoring-source';
 
 export default function PlatformMonitoring() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [timeRange, setTimeRange] = useState("24h");
+  const [activeTab, setActiveTab] = useState('overview');
+  const [timeRange, _setTimeRange] = useState('24h');
 
   // Use centralized data source
   const { data: monitoringData, isLoading } = useQuery({
@@ -61,21 +37,31 @@ export default function PlatformMonitoring() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "healthy": return "text-green-600 bg-green-100";
-      case "degraded": return "text-yellow-600 bg-yellow-100";
-      case "critical": return "text-red-600 bg-red-100";
-      case "maintenance": return "text-blue-600 bg-blue-100";
-      default: return "text-gray-600 bg-gray-100";
+      case 'healthy':
+        return 'text-green-600 bg-green-100';
+      case 'degraded':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'critical':
+        return 'text-red-600 bg-red-100';
+      case 'maintenance':
+        return 'text-blue-600 bg-blue-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case "low": return "text-blue-600 bg-blue-100";
-      case "medium": return "text-yellow-600 bg-yellow-100";
-      case "high": return "text-orange-600 bg-orange-100";
-      case "critical": return "text-red-600 bg-red-100";
-      default: return "text-gray-600 bg-gray-100";
+      case 'low':
+        return 'text-blue-600 bg-blue-100';
+      case 'medium':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'high':
+        return 'text-orange-600 bg-orange-100';
+      case 'critical':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
   };
 
@@ -134,16 +120,21 @@ export default function PlatformMonitoring() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${
-                    systemStatus?.overall === 'healthy' ? 'bg-green-500' :
-                    systemStatus?.overall === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}></div>
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      systemStatus?.overall === 'healthy'
+                        ? 'bg-green-500'
+                        : systemStatus?.overall === 'degraded'
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                    }`}
+                  ></div>
                   <span className="text-2xl font-bold capitalize">
-                    {systemStatus?.overall || "Unknown"}
+                    {systemStatus?.overall || 'Unknown'}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Uptime: {systemStatus?.uptime?.toFixed(2) || "0"}%
+                  Uptime: {systemStatus?.uptime?.toFixed(2) || '0'}%
                 </p>
               </CardContent>
             </Card>
@@ -155,7 +146,7 @@ export default function PlatformMonitoring() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {systemStatus?.services?.filter(s => s.status === 'healthy').length || 0}
+                  {systemStatus?.services?.filter((s) => s.status === 'healthy').length || 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   of {systemStatus?.services?.length || 0} total services
@@ -169,9 +160,7 @@ export default function PlatformMonitoring() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {developerMetrics?.activeDevelopers || 0}
-                </div>
+                <div className="text-2xl font-bold">{developerMetrics?.activeDevelopers || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   of {developerMetrics?.totalDevelopers || 0} total developers
                 </p>
@@ -185,10 +174,11 @@ export default function PlatformMonitoring() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {incidents?.filter(i => i.status !== 'resolved' && i.status !== 'closed').length || 0}
+                  {incidents?.filter((i) => i.status !== 'resolved' && i.status !== 'closed')
+                    .length || 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {incidents?.filter(i => i.severity === 'critical').length || 0} critical
+                  {incidents?.filter((i) => i.severity === 'critical').length || 0} critical
                 </p>
               </CardContent>
             </Card>
@@ -204,13 +194,22 @@ export default function PlatformMonitoring() {
               <CardContent>
                 <div className="space-y-3">
                   {systemStatus?.services?.slice(0, 5).map((service, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
                       <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${
-                          service.status === 'healthy' ? 'bg-green-500' :
-                          service.status === 'degraded' ? 'bg-yellow-500' :
-                          service.status === 'critical' ? 'bg-red-500' : 'bg-blue-500'
-                        }`}></div>
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            service.status === 'healthy'
+                              ? 'bg-green-500'
+                              : service.status === 'degraded'
+                                ? 'bg-yellow-500'
+                                : service.status === 'critical'
+                                  ? 'bg-red-500'
+                                  : 'bg-blue-500'
+                          }`}
+                        ></div>
                         <div>
                           <div className="font-medium text-sm">{service.name}</div>
                           <div className="text-xs text-muted-foreground">
@@ -235,17 +234,26 @@ export default function PlatformMonitoring() {
               <CardContent>
                 <div className="space-y-3">
                   {incidents?.slice(0, 5).map((incident) => (
-                    <div key={incident.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div
+                      key={incident.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
                       <div className="flex items-center gap-3">
-                        <AlertTriangle className={`w-4 h-4 ${
-                          incident.severity === 'critical' ? 'text-red-500' :
-                          incident.severity === 'high' ? 'text-orange-500' :
-                          incident.severity === 'medium' ? 'text-yellow-500' : 'text-blue-500'
-                        }`} />
+                        <AlertTriangle
+                          className={`w-4 h-4 ${
+                            incident.severity === 'critical'
+                              ? 'text-red-500'
+                              : incident.severity === 'high'
+                                ? 'text-orange-500'
+                                : incident.severity === 'medium'
+                                  ? 'text-yellow-500'
+                                  : 'text-blue-500'
+                          }`}
+                        />
                         <div>
                           <div className="font-medium text-sm">{incident.title}</div>
                           <div className="text-xs text-muted-foreground">
-                            {incident.affectedServices.join(", ")} • {incident.startTime}
+                            {incident.affectedServices.join(', ')} • {incident.startTime}
                           </div>
                         </div>
                       </div>
@@ -253,9 +261,7 @@ export default function PlatformMonitoring() {
                         <Badge variant="outline" className={getSeverityColor(incident.severity)}>
                           {incident.severity}
                         </Badge>
-                        <Badge variant="outline">
-                          {incident.status}
-                        </Badge>
+                        <Badge variant="outline">{incident.status}</Badge>
                       </div>
                     </div>
                   ))}
@@ -273,19 +279,27 @@ export default function PlatformMonitoring() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{developerMetrics?.avgCommitsPerDay || 0}</div>
+                  <div className="text-2xl font-bold">
+                    {developerMetrics?.avgCommitsPerDay || 0}
+                  </div>
                   <div className="text-xs text-muted-foreground">Commits/Day</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{developerMetrics?.avgPullRequestsPerDay || 0}</div>
+                  <div className="text-2xl font-bold">
+                    {developerMetrics?.avgPullRequestsPerDay || 0}
+                  </div>
                   <div className="text-xs text-muted-foreground">PRs/Day</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{developerMetrics?.avgCodeReviewTime || 0}h</div>
+                  <div className="text-2xl font-bold">
+                    {developerMetrics?.avgCodeReviewTime || 0}h
+                  </div>
                   <div className="text-xs text-muted-foreground">Avg Review Time</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{developerMetrics?.codeQualityScore || 0}/10</div>
+                  <div className="text-2xl font-bold">
+                    {developerMetrics?.codeQualityScore || 0}/10
+                  </div>
                   <div className="text-xs text-muted-foreground">Quality Score</div>
                 </div>
               </div>
@@ -301,7 +315,9 @@ export default function PlatformMonitoring() {
           <Card>
             <CardHeader>
               <CardTitle>Service Monitoring</CardTitle>
-              <CardDescription>Detailed status and performance of all platform services</CardDescription>
+              <CardDescription>
+                Detailed status and performance of all platform services
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -331,7 +347,7 @@ export default function PlatformMonitoring() {
                         </Badge>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Uptime</div>
@@ -340,10 +356,9 @@ export default function PlatformMonitoring() {
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Dependencies</div>
                         <div className="text-sm">
-                          {service.dependencies.length > 0 
-                            ? service.dependencies.join(", ")
-                            : "None"
-                          }
+                          {service.dependencies.length > 0
+                            ? service.dependencies.join(', ')
+                            : 'None'}
                         </div>
                       </div>
                     </div>
@@ -370,11 +385,17 @@ export default function PlatformMonitoring() {
                   <div key={incident.id} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <AlertTriangle className={`w-5 h-5 ${
-                          incident.severity === 'critical' ? 'text-red-500' :
-                          incident.severity === 'high' ? 'text-orange-500' :
-                          incident.severity === 'medium' ? 'text-yellow-500' : 'text-blue-500'
-                        }`} />
+                        <AlertTriangle
+                          className={`w-5 h-5 ${
+                            incident.severity === 'critical'
+                              ? 'text-red-500'
+                              : incident.severity === 'high'
+                                ? 'text-orange-500'
+                                : incident.severity === 'medium'
+                                  ? 'text-yellow-500'
+                                  : 'text-blue-500'
+                          }`}
+                        />
                         <div>
                           <div className="font-medium">{incident.title}</div>
                           <div className="text-sm text-muted-foreground">
@@ -387,18 +408,16 @@ export default function PlatformMonitoring() {
                         <Badge variant="outline" className={getSeverityColor(incident.severity)}>
                           {incident.severity}
                         </Badge>
-                        <Badge variant="outline">
-                          {incident.status}
-                        </Badge>
+                        <Badge variant="outline">{incident.status}</Badge>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <div className="text-sm text-muted-foreground">
                         <strong>Description:</strong> {incident.description}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        <strong>Affected Services:</strong> {incident.affectedServices.join(", ")}
+                        <strong>Affected Services:</strong> {incident.affectedServices.join(', ')}
                       </div>
                       {incident.assignee && (
                         <div className="text-sm text-muted-foreground">

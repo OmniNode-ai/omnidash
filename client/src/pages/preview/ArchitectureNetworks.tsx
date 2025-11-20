@@ -1,42 +1,26 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { architectureNetworksSource } from "@/lib/data-sources";
-import { POLLING_INTERVAL_SLOW, getPollingInterval } from "@/lib/constants/query-config";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Network, 
-  Database, 
-  Activity, 
-  Layers,
-  Eye,
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { architectureNetworksSource } from '@/lib/data-sources';
+import { POLLING_INTERVAL_SLOW, getPollingInterval } from '@/lib/constants/query-config';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Network,
+  Database,
+  Activity,
   Settings,
   Search,
-  Filter,
-  Workflow,
   GitBranch,
-  Server,
-  Zap,
-  Cpu,
-  HardDrive,
-  Wifi,
-  Users,
-  BookOpen,
-  Code,
-  Target,
-  TrendingUp,
-  Clock,
-  AlertTriangle,
-  CheckCircle
-} from "lucide-react";
+  CheckCircle,
+} from 'lucide-react';
 
 // Import existing components
-import NodeNetworkComposer from "./NodeNetworkComposer";
-import KnowledgeGraph from "../KnowledgeGraph";
-import EventFlow from "../EventFlow";
+import NodeNetworkComposer from './NodeNetworkComposer';
+import KnowledgeGraph from '../KnowledgeGraph';
+import EventFlow from '../EventFlow';
 
 // Mock data interfaces
 interface ArchitectureSummary {
@@ -54,7 +38,7 @@ interface NodeGroup {
   id: string;
   name: string;
   type: string;
-  status: "healthy" | "degraded" | "critical" | "maintenance";
+  status: 'healthy' | 'degraded' | 'critical' | 'maintenance';
   nodes: number;
   connections: number;
   latency: number;
@@ -86,38 +70,42 @@ interface EventFlowData {
 }
 
 export default function ArchitectureNetworks() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [timeRange, setTimeRange] = useState("24h");
+  const [activeTab, setActiveTab] = useState('overview');
+  const [_timeRange, _setTimeRange] = useState('24h');
 
   // Use centralized data source
   const { data: architectureData, isLoading } = useQuery({
-    queryKey: ['architecture-networks', timeRange],
-    queryFn: () => architectureNetworksSource.fetchAll(timeRange),
+    queryKey: ['architecture-networks', _timeRange],
+    queryFn: () => architectureNetworksSource.fetchAll(_timeRange),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
 
   // Transform to expected formats
-  const architectureSummary: ArchitectureSummary = architectureData?.summary ? {
-    totalNodes: architectureData.summary.totalNodes || 0,
-    activeNodes: (architectureData.summary as any).activeNodes ?? (architectureData.summary.totalNodes || 0),
-    totalConnections: architectureData.summary.totalEdges || 0,
-    networkHealth: (architectureData.summary as any).networkHealth ?? 95,
-    avgLatency: (architectureData.summary as any).avgLatency ?? 45,
-    dataFlow: (architectureData.summary as any).dataFlow ?? 1200,
-    knowledgeEntities: (architectureData.knowledgeEntities || []).length,
-    eventThroughput: (architectureData.summary as any).eventThroughput ?? 250,
-  } : {
-    totalNodes: 0,
-    activeNodes: 0,
-    totalConnections: 0,
-    networkHealth: 0,
-    avgLatency: 0,
-    dataFlow: 0,
-    knowledgeEntities: 0,
-    eventThroughput: 0,
-  };
+  const architectureSummary: ArchitectureSummary = architectureData?.summary
+    ? {
+        totalNodes: architectureData.summary.totalNodes || 0,
+        activeNodes:
+          (architectureData.summary as any).activeNodes ??
+          (architectureData.summary.totalNodes || 0),
+        totalConnections: architectureData.summary.totalEdges || 0,
+        networkHealth: (architectureData.summary as any).networkHealth ?? 95,
+        avgLatency: (architectureData.summary as any).avgLatency ?? 45,
+        dataFlow: (architectureData.summary as any).dataFlow ?? 1200,
+        knowledgeEntities: (architectureData.knowledgeEntities || []).length,
+        eventThroughput: (architectureData.summary as any).eventThroughput ?? 250,
+      }
+    : {
+        totalNodes: 0,
+        activeNodes: 0,
+        totalConnections: 0,
+        networkHealth: 0,
+        avgLatency: 0,
+        dataFlow: 0,
+        knowledgeEntities: 0,
+        eventThroughput: 0,
+      };
 
-  const nodeGroups: NodeGroup[] = (architectureData?.nodes || []).map(n => ({
+  const nodeGroups: NodeGroup[] = (architectureData?.nodes || []).map((n) => ({
     id: n.id,
     name: n.name,
     type: n.type,
@@ -129,37 +117,46 @@ export default function ArchitectureNetworks() {
     children: (n as any).children ?? [],
   }));
 
-  const knowledgeEntities: KnowledgeEntity[] = (architectureData?.knowledgeEntities || []).map(e => ({
-    id: e.id,
-    name: e.name,
-    type: e.type,
-    connections: (e as any).connections ?? 0,
-    lastUpdated: (e as any).lastUpdated ?? new Date().toISOString(),
-    confidence: (e as any).confidence ?? 0.9,
-    usage: (e as any).usage ?? 0,
-  }));
+  const knowledgeEntities: KnowledgeEntity[] = (architectureData?.knowledgeEntities || []).map(
+    (e) => ({
+      id: e.id,
+      name: e.name,
+      type: e.type,
+      connections: (e as any).connections ?? 0,
+      lastUpdated: (e as any).lastUpdated ?? new Date().toISOString(),
+      confidence: (e as any).confidence ?? 0.9,
+      usage: (e as any).usage ?? 0,
+    })
+  );
 
-  const eventFlowData: EventFlowData = architectureData?.eventFlow ? {
-    totalEvents: (architectureData.eventFlow.events || []).length,
-    eventsPerSecond: (architectureData.eventFlow as any).eventsPerSecond ?? 10,
-    avgProcessingTime: (architectureData.eventFlow as any).avgProcessingTime ?? 50,
-    errorRate: (architectureData.eventFlow as any).errorRate ?? 0.5,
-    topEventTypes: (architectureData.eventFlow as any).topEventTypes ?? [],
-  } : {
-    totalEvents: 0,
-    eventsPerSecond: 0,
-    avgProcessingTime: 0,
-    errorRate: 0,
-    topEventTypes: [],
-  };
+  const eventFlowData: EventFlowData = architectureData?.eventFlow
+    ? {
+        totalEvents: (architectureData.eventFlow.events || []).length,
+        eventsPerSecond: (architectureData.eventFlow as any).eventsPerSecond ?? 10,
+        avgProcessingTime: (architectureData.eventFlow as any).avgProcessingTime ?? 50,
+        errorRate: (architectureData.eventFlow as any).errorRate ?? 0.5,
+        topEventTypes: (architectureData.eventFlow as any).topEventTypes ?? [],
+      }
+    : {
+        totalEvents: 0,
+        eventsPerSecond: 0,
+        avgProcessingTime: 0,
+        errorRate: 0,
+        topEventTypes: [],
+      };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "healthy": return "text-green-600 bg-green-100";
-      case "degraded": return "text-yellow-600 bg-yellow-100";
-      case "critical": return "text-red-600 bg-red-100";
-      case "maintenance": return "text-blue-600 bg-blue-100";
-      default: return "text-gray-600 bg-gray-100";
+      case 'healthy':
+        return 'text-green-600 bg-green-100';
+      case 'degraded':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'critical':
+        return 'text-red-600 bg-red-100';
+      case 'maintenance':
+        return 'text-blue-600 bg-blue-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
   };
 
@@ -213,9 +210,7 @@ export default function ArchitectureNetworks() {
                 <Network className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {architectureSummary?.totalNodes || 0}
-                </div>
+                <div className="text-2xl font-bold">{architectureSummary?.totalNodes || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {architectureSummary?.activeNodes || 0} active
                 </p>
@@ -229,10 +224,14 @@ export default function ArchitectureNetworks() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {architectureSummary?.totalConnections?.toLocaleString() || "0"}
+                  {architectureSummary?.totalConnections?.toLocaleString() || '0'}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Network density: {((architectureSummary?.totalConnections || 0) / (architectureSummary?.totalNodes || 1)).toFixed(1)}
+                  Network density:{' '}
+                  {(
+                    (architectureSummary?.totalConnections || 0) /
+                    (architectureSummary?.totalNodes || 1)
+                  ).toFixed(1)}
                 </p>
               </CardContent>
             </Card>
@@ -244,7 +243,7 @@ export default function ArchitectureNetworks() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {architectureSummary?.networkHealth?.toFixed(1) || "0"}%
+                  {architectureSummary?.networkHealth?.toFixed(1) || '0'}%
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Avg latency: {architectureSummary?.avgLatency || 0}ms
@@ -259,7 +258,7 @@ export default function ArchitectureNetworks() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {architectureSummary?.knowledgeEntities?.toLocaleString() || "0"}
+                  {architectureSummary?.knowledgeEntities?.toLocaleString() || '0'}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {eventFlowData?.eventsPerSecond || 0} events/sec
@@ -278,13 +277,22 @@ export default function ArchitectureNetworks() {
               <CardContent>
                 <div className="space-y-4">
                   {nodeGroups?.slice(0, 5).map((group) => (
-                    <div key={group.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div
+                      key={group.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
                       <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${
-                          group.status === 'healthy' ? 'bg-green-500' :
-                          group.status === 'degraded' ? 'bg-yellow-500' :
-                          group.status === 'critical' ? 'bg-red-500' : 'bg-blue-500'
-                        }`}></div>
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            group.status === 'healthy'
+                              ? 'bg-green-500'
+                              : group.status === 'degraded'
+                                ? 'bg-yellow-500'
+                                : group.status === 'critical'
+                                  ? 'bg-red-500'
+                                  : 'bg-blue-500'
+                          }`}
+                        ></div>
                         <div>
                           <div className="font-medium text-sm">{group.name}</div>
                           <div className="text-xs text-muted-foreground">
@@ -360,7 +368,7 @@ export default function ArchitectureNetworks() {
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span>Error Rate</span>
-                      <span>{(eventFlowData?.errorRate * 100)?.toFixed(2) || "0"}%</span>
+                      <span>{(eventFlowData?.errorRate * 100)?.toFixed(2) || '0'}%</span>
                     </div>
                     <Progress value={eventFlowData?.errorRate * 100 || 0} className="h-2" />
                   </div>
@@ -381,11 +389,15 @@ export default function ArchitectureNetworks() {
                         <Activity className="w-4 h-4 text-primary" />
                         <div>
                           <div className="font-medium text-sm">{eventType.type}</div>
-                          <div className="text-xs text-muted-foreground">{eventType.count} events</div>
+                          <div className="text-xs text-muted-foreground">
+                            {eventType.count} events
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-medium">{Math.max(0, Math.min(100, eventType.percentage)).toFixed(1)}%</div>
+                        <div className="text-sm font-medium">
+                          {Math.max(0, Math.min(100, eventType.percentage)).toFixed(1)}%
+                        </div>
                         <div className="text-xs text-muted-foreground">of total</div>
                       </div>
                     </div>
@@ -400,15 +412,20 @@ export default function ArchitectureNetworks() {
           <Card>
             <CardHeader>
               <CardTitle>Node Network Visualization</CardTitle>
-              <CardDescription>Interactive network graph showing system architecture and dependencies</CardDescription>
+              <CardDescription>
+                Interactive network graph showing system architecture and dependencies
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-96 border rounded-lg flex items-center justify-center bg-muted/50">
                 <div className="text-center">
                   <Network className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Network visualization would be rendered here</p>
+                  <p className="text-muted-foreground">
+                    Network visualization would be rendered here
+                  </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Interactive graph showing {architectureSummary?.totalNodes || 0} nodes and {architectureSummary?.totalConnections || 0} connections
+                    Interactive graph showing {architectureSummary?.totalNodes || 0} nodes and{' '}
+                    {architectureSummary?.totalConnections || 0} connections
                   </p>
                 </div>
               </div>

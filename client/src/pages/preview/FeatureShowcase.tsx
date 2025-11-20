@@ -1,27 +1,20 @@
-import { useState } from "react";
-import { useDemoMode } from "@/contexts/DemoModeContext";
-import { MockDataBadge } from "@/components/MockDataBadge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Eye, 
-  Star, 
-  Zap, 
-  Shield, 
-  BarChart3, 
-  Settings, 
+import { useState } from 'react';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Star,
+  Zap,
+  Shield,
+  BarChart3,
+  Settings,
   Bell,
-  Download,
-  Upload,
   Search,
-  Filter,
-  RefreshCw,
   Play,
   Pause,
-  RotateCcw,
   CheckCircle,
   AlertTriangle,
   Info,
@@ -31,33 +24,27 @@ import {
   Brain,
   Lightbulb,
   Layers,
-  Cpu,
-  HardDrive,
-  Wifi,
   Target,
   Users,
   Globe,
-  Lock,
-  Unlock,
   Database,
   PieChart,
-  LineChart,
   Workflow,
   FileText,
   Code,
-  ScrollText,
-  HardDrive as HardDriveIcon,
-  Database as DatabaseIcon,
-  Activity
-} from "lucide-react";
+  Activity,
+  RotateCcw,
+  Wifi,
+  RefreshCw,
+} from 'lucide-react';
 
 export default function FeatureShowcase() {
   const { isDemoMode } = useDemoMode();
   const [activeDemo, setActiveDemo] = useState<string | null>(null);
   const [demoProgress, setDemoProgress] = useState(0);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  
+  const [_searchTerm, _setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
   // Mock tickets for Intelligent Ticketing System demo
   const mockTickets = [
     {
@@ -69,7 +56,7 @@ export default function FeatureShowcase() {
       timeDecay: 45,
       agentRequests: 12,
       status: 'In Progress',
-      assignee: 'Agent Alpha'
+      assignee: 'Agent Alpha',
     },
     {
       id: 'TICK-002',
@@ -80,7 +67,7 @@ export default function FeatureShowcase() {
       timeDecay: 38,
       agentRequests: 8,
       status: 'Open',
-      assignee: 'Unassigned'
+      assignee: 'Unassigned',
     },
     {
       id: 'TICK-003',
@@ -91,8 +78,8 @@ export default function FeatureShowcase() {
       timeDecay: 52,
       agentRequests: 5,
       status: 'Review',
-      assignee: 'Agent Beta'
-    }
+      assignee: 'Agent Beta',
+    },
   ];
 
   // Header
@@ -101,300 +88,329 @@ export default function FeatureShowcase() {
 
   const features = [
     {
-      id: "real-time-monitoring",
-      title: "Real-Time Monitoring",
-      description: "Live monitoring of system metrics with WebSocket updates",
-      status: "available",
-      category: "Monitoring",
+      id: 'real-time-monitoring',
+      title: 'Real-Time Monitoring',
+      description: 'Live monitoring of system metrics with WebSocket updates',
+      status: 'available',
+      category: 'Monitoring',
       icon: BarChart3,
       demo: {
-        description: "Watch live metrics update in real-time",
+        description: 'Watch live metrics update in real-time',
         steps: [
-          "Connect to WebSocket stream",
-          "Display live data updates",
-          "Show performance trends",
-          "Alert on threshold breaches"
-        ]
-      }
+          'Connect to WebSocket stream',
+          'Display live data updates',
+          'Show performance trends',
+          'Alert on threshold breaches',
+        ],
+      },
     },
     {
-      id: "ai-model-performance",
-      title: "AI Model Performance Dashboard",
-      description: "Real-time monitoring and comparison of AI model performance across different providers",
-      status: "available",
-      category: "AI & ML",
+      id: 'ai-model-performance',
+      title: 'AI Model Performance Dashboard',
+      description:
+        'Real-time monitoring and comparison of AI model performance across different providers',
+      status: 'available',
+      category: 'AI & ML',
       icon: Brain,
       demo: {
-        description: "Compare AI models side by side",
+        description: 'Compare AI models side by side',
         steps: [
-          "Load model performance data",
-          "Compare response times",
-          "Analyze cost per request",
-          "View success rate trends"
-        ]
-      }
+          'Load model performance data',
+          'Compare response times',
+          'Analyze cost per request',
+          'View success rate trends',
+        ],
+      },
     },
     {
-      id: "predictive-analytics",
-      title: "Predictive Analytics Engine",
-      description: "ML-powered system behavior forecasting and anomaly detection",
-      status: "beta",
-      category: "Analytics",
+      id: 'predictive-analytics',
+      title: 'Predictive Analytics Engine',
+      description: 'ML-powered system behavior forecasting and anomaly detection',
+      status: 'beta',
+      category: 'Analytics',
       icon: Zap,
       demo: {
-        description: "See how AI predicts system behavior",
+        description: 'See how AI predicts system behavior',
         steps: [
-          "Analyze historical patterns",
-          "Generate predictions",
-          "Detect anomalies",
-          "Provide recommendations"
-        ]
-      }
+          'Analyze historical patterns',
+          'Generate predictions',
+          'Detect anomalies',
+          'Provide recommendations',
+        ],
+      },
     },
     {
-      id: "code-quality-gates",
-      title: "Automated Code Quality Gates",
-      description: "AI-powered code quality monitoring with real-time feedback and automated suggestions",
-      status: "beta",
-      category: "Development",
+      id: 'code-quality-gates',
+      title: 'Automated Code Quality Gates',
+      description:
+        'AI-powered code quality monitoring with real-time feedback and automated suggestions',
+      status: 'beta',
+      category: 'Development',
       icon: Code,
       demo: {
-        description: "Experience automated code quality monitoring",
+        description: 'Experience automated code quality monitoring',
         steps: [
-          "Scan code repository",
-          "Analyze code quality metrics",
-          "Generate improvement suggestions",
-          "Apply automated fixes"
-        ]
-      }
+          'Scan code repository',
+          'Analyze code quality metrics',
+          'Generate improvement suggestions',
+          'Apply automated fixes',
+        ],
+      },
     },
     {
-      id: "custom-dashboard-builder",
-      title: "Custom Dashboard Builder",
-      description: "Drag-and-drop dashboard creation system for personalized data visualization",
-      status: "available",
-      category: "Visualization",
+      id: 'custom-dashboard-builder',
+      title: 'Custom Dashboard Builder',
+      description: 'Drag-and-drop dashboard creation system for personalized data visualization',
+      status: 'available',
+      category: 'Visualization',
       icon: PieChart,
       demo: {
-        description: "Build your own custom dashboards",
+        description: 'Build your own custom dashboards',
         steps: [
-          "Drag widgets onto canvas",
-          "Configure data sources",
-          "Customize visualizations",
-          "Save and share dashboard"
-        ]
-      }
+          'Drag widgets onto canvas',
+          'Configure data sources',
+          'Customize visualizations',
+          'Save and share dashboard',
+        ],
+      },
     },
     {
-      id: "security-compliance-center",
-      title: "Security & Compliance Center",
-      description: "Comprehensive security monitoring and compliance reporting system",
-      status: "coming-soon",
-      category: "Security",
+      id: 'security-compliance-center',
+      title: 'Security & Compliance Center',
+      description: 'Comprehensive security monitoring and compliance reporting system',
+      status: 'coming-soon',
+      category: 'Security',
       icon: Shield,
       demo: {
-        description: "Experience enhanced security features",
+        description: 'Experience enhanced security features',
         steps: [
-          "Configure 2FA settings",
-          "Set up IP whitelisting",
-          "Enable audit logging",
-          "Monitor security events"
-        ]
-      }
+          'Configure 2FA settings',
+          'Set up IP whitelisting',
+          'Enable audit logging',
+          'Monitor security events',
+        ],
+      },
     },
     {
-      id: "agent-workflow-builder",
-      title: "Agent Workflow Builder",
-      description: "N8N-style workflow builder with all available nodes for agent orchestration",
-      status: "planned",
-      category: "Workflow",
+      id: 'agent-workflow-builder',
+      title: 'Agent Workflow Builder',
+      description: 'N8N-style workflow builder with all available nodes for agent orchestration',
+      status: 'planned',
+      category: 'Workflow',
       icon: Workflow,
       demo: {
-        description: "Build complex agent workflows visually",
+        description: 'Build complex agent workflows visually',
         steps: [
-          "Drag workflow nodes",
-          "Connect agent actions",
-          "Configure triggers",
-          "Deploy and test workflow"
-        ]
-      }
+          'Drag workflow nodes',
+          'Connect agent actions',
+          'Configure triggers',
+          'Deploy and test workflow',
+        ],
+      },
     },
     {
-      id: "code-graph-ui",
-      title: "Code Graph UI",
-      description: "Interactive visualization of code dependencies with searchable and zoomable interface",
-      status: "planned",
-      category: "Development",
+      id: 'code-graph-ui',
+      title: 'Code Graph UI',
+      description:
+        'Interactive visualization of code dependencies with searchable and zoomable interface',
+      status: 'planned',
+      category: 'Development',
       icon: Layers,
       demo: {
-        description: "Explore code dependencies visually",
+        description: 'Explore code dependencies visually',
         steps: [
-          "Load codebase structure",
-          "Navigate dependency graph",
-          "Search for specific components",
-          "Identify orphaned code"
-        ]
-      }
+          'Load codebase structure',
+          'Navigate dependency graph',
+          'Search for specific components',
+          'Identify orphaned code',
+        ],
+      },
     },
     {
-      id: "context-graph",
-      title: "Context Graph",
-      description: "Visualization of most used context in the system with temporal change tracking",
-      status: "planned",
-      category: "Analytics",
+      id: 'context-graph',
+      title: 'Context Graph',
+      description: 'Visualization of most used context in the system with temporal change tracking',
+      status: 'planned',
+      category: 'Analytics',
       icon: Target,
       demo: {
-        description: "Track context usage over time",
+        description: 'Track context usage over time',
         steps: [
-          "Load context usage data",
-          "Visualize context relationships",
-          "Track changes over time",
-          "Identify optimization opportunities"
-        ]
-      }
+          'Load context usage data',
+          'Visualize context relationships',
+          'Track changes over time',
+          'Identify optimization opportunities',
+        ],
+      },
     },
     {
-      id: "test-intelligence",
-      title: "Test Intelligence System",
-      description: "AI-powered test generation and coverage analysis with automated optimization",
-      status: "coming-soon",
-      category: "Testing",
+      id: 'test-intelligence',
+      title: 'Test Intelligence System',
+      description: 'AI-powered test generation and coverage analysis with automated optimization',
+      status: 'coming-soon',
+      category: 'Testing',
       icon: CheckCircle,
       demo: {
-        description: "Automatically generate and optimize tests",
+        description: 'Automatically generate and optimize tests',
         steps: [
-          "Analyze code changes",
-          "Generate test cases",
-          "Run coverage analysis",
-          "Optimize test suite"
-        ]
-      }
+          'Analyze code changes',
+          'Generate test cases',
+          'Run coverage analysis',
+          'Optimize test suite',
+        ],
+      },
     },
     {
-      id: "resource-optimization",
-      title: "Resource Optimization Engine",
-      description: "AI-powered cost and performance optimization recommendations",
-      status: "beta",
-      category: "Optimization",
+      id: 'resource-optimization',
+      title: 'Resource Optimization Engine',
+      description: 'AI-powered cost and performance optimization recommendations',
+      status: 'beta',
+      category: 'Optimization',
       icon: Lightbulb,
       demo: {
-        description: "Get AI-powered optimization suggestions",
+        description: 'Get AI-powered optimization suggestions',
         steps: [
-          "Analyze current resource usage",
-          "Identify optimization opportunities",
-          "Generate recommendations",
-          "Apply optimizations automatically"
-        ]
-      }
+          'Analyze current resource usage',
+          'Identify optimization opportunities',
+          'Generate recommendations',
+          'Apply optimizations automatically',
+        ],
+      },
     },
     {
-      id: "collaboration-hub",
-      title: "Collaboration Hub",
-      description: "Team collaboration and knowledge management system with shared workflows",
-      status: "planned",
-      category: "Collaboration",
+      id: 'collaboration-hub',
+      title: 'Collaboration Hub',
+      description: 'Team collaboration and knowledge management system with shared workflows',
+      status: 'planned',
+      category: 'Collaboration',
       icon: Users,
       demo: {
-        description: "Explore team collaboration features",
+        description: 'Explore team collaboration features',
         steps: [
-          "Create shared dashboards",
-          "Add team annotations",
-          "Set up alerts",
-          "Generate reports"
-        ]
-      }
+          'Create shared dashboards',
+          'Add team annotations',
+          'Set up alerts',
+          'Generate reports',
+        ],
+      },
     },
     {
-      id: "integration-marketplace",
-      title: "Integration Marketplace",
-      description: "Plugin system and third-party tool integration platform",
-      status: "planned",
-      category: "Integration",
+      id: 'integration-marketplace',
+      title: 'Integration Marketplace',
+      description: 'Plugin system and third-party tool integration platform',
+      status: 'planned',
+      category: 'Integration',
       icon: Globe,
       demo: {
-        description: "Discover and install integrations",
+        description: 'Discover and install integrations',
         steps: [
-          "Browse available plugins",
-          "Preview integration features",
-          "Install and configure",
-          "Test integration functionality"
-        ]
-      }
+          'Browse available plugins',
+          'Preview integration features',
+          'Install and configure',
+          'Test integration functionality',
+        ],
+      },
     },
     {
-      id: "mobile-app",
-      title: "Mobile Application",
-      description: "Mobile-optimized monitoring and management application with offline capabilities",
-      status: "planned",
-      category: "Mobile",
+      id: 'mobile-app',
+      title: 'Mobile Application',
+      description:
+        'Mobile-optimized monitoring and management application with offline capabilities',
+      status: 'planned',
+      category: 'Mobile',
       icon: Wifi,
       demo: {
-        description: "Experience mobile monitoring features",
+        description: 'Experience mobile monitoring features',
         steps: [
-          "View mobile-optimized dashboards",
-          "Receive push notifications",
-          "Use voice commands",
-          "Access offline features"
-        ]
-      }
+          'View mobile-optimized dashboards',
+          'Receive push notifications',
+          'Use voice commands',
+          'Access offline features',
+        ],
+      },
     },
     {
-      id: "intelligent-ticketing-system",
-      title: "Intelligent Ticketing System",
-      description: "AI-powered ticketing system with RSD prioritization, workflow orchestration, and JIRA integration",
-      status: "available",
-      category: "Workflow",
+      id: 'intelligent-ticketing-system',
+      title: 'Intelligent Ticketing System',
+      description:
+        'AI-powered ticketing system with RSD prioritization, workflow orchestration, and JIRA integration',
+      status: 'available',
+      category: 'Workflow',
       icon: FileText,
       demo: {
-        description: "Experience intelligent ticket management with RSD prioritization",
+        description: 'Experience intelligent ticket management with RSD prioritization',
         steps: [
-          "Create new ticket with AI assistance",
-          "View RSD priority calculation",
-          "Watch workflow orchestration",
-          "Test JIRA integration"
-        ]
-      }
-    }
+          'Create new ticket with AI assistance',
+          'View RSD priority calculation',
+          'Watch workflow orchestration',
+          'Test JIRA integration',
+        ],
+      },
+    },
   ];
 
-  const categories = ["All", "AI & ML", "Analytics", "Development", "Visualization", "Security", "Workflow", "Testing", "Optimization", "Collaboration", "Integration", "Mobile"];
+  const categories = [
+    'All',
+    'AI & ML',
+    'Analytics',
+    'Development',
+    'Visualization',
+    'Security',
+    'Workflow',
+    'Testing',
+    'Optimization',
+    'Collaboration',
+    'Integration',
+    'Mobile',
+  ];
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredFeatures = features.filter(feature => {
-    const matchesCategory = selectedCategory === "All" || feature.category === selectedCategory;
-    const matchesSearch = feature.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         feature.description.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredFeatures = features.filter((feature) => {
+    const matchesCategory = selectedCategory === 'All' || feature.category === selectedCategory;
+    const matchesSearch =
+      feature.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      feature.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "available": return "bg-green-500";
-      case "beta": return "bg-yellow-500";
-      case "coming-soon": return "bg-blue-500";
-      case "planned": return "bg-gray-500";
-      default: return "bg-gray-500";
+      case 'available':
+        return 'bg-green-500';
+      case 'beta':
+        return 'bg-yellow-500';
+      case 'coming-soon':
+        return 'bg-blue-500';
+      case 'planned':
+        return 'bg-gray-500';
+      default:
+        return 'bg-gray-500';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "available": return "Available";
-      case "beta": return "Beta";
-      case "coming-soon": return "Coming Soon";
-      case "planned": return "Planned";
-      default: return "Unknown";
+      case 'available':
+        return 'Available';
+      case 'beta':
+        return 'Beta';
+      case 'coming-soon':
+        return 'Coming Soon';
+      case 'planned':
+        return 'Planned';
+      default:
+        return 'Unknown';
     }
   };
 
   const startDemo = (featureId: string) => {
     setActiveDemo(featureId);
     setDemoProgress(0);
-    
+
     // Simulate demo progress
     const interval = setInterval(() => {
-      setDemoProgress(prev => {
+      setDemoProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
           return 100;
@@ -433,10 +449,10 @@ export default function FeatureShowcase() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Play className="w-5 h-5" />
-              Live Demo: {features.find(f => f.id === activeDemo)?.title}
+              Live Demo: {features.find((f) => f.id === activeDemo)?.title}
             </CardTitle>
             <CardDescription>
-              {features.find(f => f.id === activeDemo)?.demo.description}
+              {features.find((f) => f.id === activeDemo)?.demo.description}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -445,22 +461,30 @@ export default function FeatureShowcase() {
                 <div>
                   <h4 className="font-medium mb-2">Demo Steps</h4>
                   <div className="space-y-2">
-                    {features.find(f => f.id === activeDemo)?.demo.steps.map((step, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                          index * 25 < demoProgress ? 'bg-green-500 text-white' : 'bg-muted'
-                        }`}>
-                          {index * 25 < demoProgress ? <CheckCircle className="w-4 h-4" /> : index + 1}
+                    {features
+                      .find((f) => f.id === activeDemo)
+                      ?.demo.steps.map((step, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                              index * 25 < demoProgress ? 'bg-green-500 text-white' : 'bg-muted'
+                            }`}
+                          >
+                            {index * 25 < demoProgress ? (
+                              <CheckCircle className="w-4 h-4" />
+                            ) : (
+                              index + 1
+                            )}
+                          </div>
+                          <span className="text-sm">{step}</span>
                         </div>
-                        <span className="text-sm">{step}</span>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </div>
                 <div>
                   <h4 className="font-medium mb-2">Live Preview</h4>
                   <div className="border rounded-lg p-4 bg-muted/50 min-h-[300px]">
-                    {activeDemo === "real-time-monitoring" && (
+                    {activeDemo === 'real-time-monitoring' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">System Metrics</h5>
@@ -474,19 +498,27 @@ export default function FeatureShowcase() {
                             <div className="text-sm text-muted-foreground">CPU Usage</div>
                             <div className="text-2xl font-bold text-blue-600">67%</div>
                             <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                              <div className="bg-blue-600 h-2 rounded-full" style={{width: '67%'}}></div>
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{ width: '67%' }}
+                              ></div>
                             </div>
                           </div>
                           <div className="bg-card rounded p-3 shadow">
                             <div className="text-sm text-muted-foreground">Memory</div>
                             <div className="text-2xl font-bold text-green-600">4.2GB</div>
                             <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                              <div className="bg-green-600 h-2 rounded-full" style={{width: '42%'}}></div>
+                              <div
+                                className="bg-green-600 h-2 rounded-full"
+                                style={{ width: '42%' }}
+                              ></div>
                             </div>
                           </div>
                         </div>
                         <div className="bg-card rounded p-3 shadow">
-                          <div className="text-sm text-muted-foreground mb-2">Active Connections</div>
+                          <div className="text-sm text-muted-foreground mb-2">
+                            Active Connections
+                          </div>
                           <div className="flex items-center gap-2">
                             <div className="text-2xl font-bold">1,247</div>
                             <div className="text-sm text-green-600">+23 in last minute</div>
@@ -495,7 +527,7 @@ export default function FeatureShowcase() {
                       </div>
                     )}
 
-                    {activeDemo === "ai-model-performance" && (
+                    {activeDemo === 'ai-model-performance' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">AI Model Comparison</h5>
@@ -539,7 +571,7 @@ export default function FeatureShowcase() {
                       </div>
                     )}
 
-                    {activeDemo === "predictive-analytics" && (
+                    {activeDemo === 'predictive-analytics' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">Predictive Analysis Dashboard</h5>
@@ -547,23 +579,33 @@ export default function FeatureShowcase() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="bg-card rounded p-3 shadow">
-                            <div className="text-sm text-muted-foreground mb-2">System Load Forecast</div>
+                            <div className="text-sm text-muted-foreground mb-2">
+                              System Load Forecast
+                            </div>
                             <div className="h-20 bg-gradient-to-r from-blue-100 to-blue-200 rounded flex items-end">
                               <div className="w-full h-3/4 bg-blue-500 rounded-t opacity-80"></div>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-1">Predicted: 85% in 2 hours</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Predicted: 85% in 2 hours
+                            </div>
                           </div>
                           <div className="bg-card rounded p-3 shadow">
-                            <div className="text-sm text-muted-foreground mb-2">Anomaly Detection</div>
+                            <div className="text-sm text-muted-foreground mb-2">
+                              Anomaly Detection
+                            </div>
                             <div className="flex items-center gap-2">
                               <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                               <span className="text-sm font-medium">3 anomalies detected</span>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-1">Last: 15 minutes ago</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Last: 15 minutes ago
+                            </div>
                           </div>
                         </div>
                         <div className="bg-card rounded p-3 shadow">
-                          <div className="text-sm text-muted-foreground mb-2">AI Recommendations</div>
+                          <div className="text-sm text-muted-foreground mb-2">
+                            AI Recommendations
+                          </div>
                           <div className="space-y-1">
                             <div className="text-xs flex items-center gap-2">
                               <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
@@ -582,7 +624,7 @@ export default function FeatureShowcase() {
                       </div>
                     )}
 
-                    {activeDemo === "intelligent-ticketing-system" && (
+                    {activeDemo === 'intelligent-ticketing-system' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">RSD Priority Engine</h5>
@@ -593,38 +635,62 @@ export default function FeatureShowcase() {
                             <div key={ticket.id} className="bg-card rounded p-4 shadow border">
                               <div className="flex items-center justify-between mb-3">
                                 <span className="font-medium">{ticket.title}</span>
-                                <Badge variant={ticket.priority > 100 ? "destructive" : ticket.priority > 70 ? "default" : "secondary"}>
+                                <Badge
+                                  variant={
+                                    ticket.priority > 100
+                                      ? 'destructive'
+                                      : ticket.priority > 70
+                                        ? 'default'
+                                        : 'secondary'
+                                  }
+                                >
                                   Priority: {ticket.priority}
                                 </Badge>
                               </div>
                               <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                   <span className="text-muted-foreground">Dependency Score:</span>
-                                  <span className="ml-2 font-semibold text-red-600">{ticket.dependencyScore}/100</span>
+                                  <span className="ml-2 font-semibold text-red-600">
+                                    {ticket.dependencyScore}/100
+                                  </span>
                                 </div>
                                 <div>
                                   <span className="text-muted-foreground">Failure Impact:</span>
-                                  <span className="ml-2 font-semibold text-orange-600">{ticket.failureImpact}/100</span>
+                                  <span className="ml-2 font-semibold text-orange-600">
+                                    {ticket.failureImpact}/100
+                                  </span>
                                 </div>
                                 <div>
                                   <span className="text-muted-foreground">Time Decay:</span>
-                                  <span className="ml-2 font-semibold text-yellow-600">{ticket.timeDecay}/100</span>
+                                  <span className="ml-2 font-semibold text-yellow-600">
+                                    {ticket.timeDecay}/100
+                                  </span>
                                 </div>
                                 <div>
                                   <span className="text-muted-foreground">Agent Requests:</span>
-                                  <span className="ml-2 font-semibold text-blue-600">{ticket.agentRequests}</span>
+                                  <span className="ml-2 font-semibold text-blue-600">
+                                    {ticket.agentRequests}
+                                  </span>
                                 </div>
                               </div>
                               <div className="mt-3 pt-3 border-t">
                                 <div className="flex items-center gap-2">
-                                  <div className={`w-2 h-2 rounded-full ${
-                                    ticket.status === 'In Progress' ? 'bg-green-500' :
-                                    ticket.status === 'Review' ? 'bg-yellow-500' : 'bg-gray-400'
-                                  }`}></div>
+                                  <div
+                                    className={`w-2 h-2 rounded-full ${
+                                      ticket.status === 'In Progress'
+                                        ? 'bg-green-500'
+                                        : ticket.status === 'Review'
+                                          ? 'bg-yellow-500'
+                                          : 'bg-gray-400'
+                                    }`}
+                                  ></div>
                                   <span className="text-sm text-muted-foreground">
-                                    {ticket.status} {ticket.assignee !== 'Unassigned' && `• ${ticket.assignee}`}
+                                    {ticket.status}{' '}
+                                    {ticket.assignee !== 'Unassigned' && `• ${ticket.assignee}`}
                                   </span>
-                                  <Badge variant="outline" className="ml-auto text-xs">{ticket.status}</Badge>
+                                  <Badge variant="outline" className="ml-auto text-xs">
+                                    {ticket.status}
+                                  </Badge>
                                 </div>
                               </div>
                             </div>
@@ -633,8 +699,7 @@ export default function FeatureShowcase() {
                       </div>
                     )}
 
-
-                    {activeDemo === "agent-workflow-builder" && (
+                    {activeDemo === 'agent-workflow-builder' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">N8N-Style Workflow</h5>
@@ -674,7 +739,7 @@ export default function FeatureShowcase() {
                       </div>
                     )}
 
-                    {activeDemo === "code-graph-ui" && (
+                    {activeDemo === 'code-graph-ui' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">Code Dependency Graph</h5>
@@ -698,14 +763,16 @@ export default function FeatureShowcase() {
                             </div>
                           </div>
                           <div className="mt-4 text-center">
-                            <div className="text-sm text-muted-foreground">Orphaned Files Detected:</div>
+                            <div className="text-sm text-muted-foreground">
+                              Orphaned Files Detected:
+                            </div>
                             <div className="font-semibold text-red-600">2 files</div>
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {activeDemo === "context-graph" && (
+                    {activeDemo === 'context-graph' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">Context Usage Over Time</h5>
@@ -717,7 +784,10 @@ export default function FeatureShowcase() {
                               <span className="font-medium">Authentication Context</span>
                               <div className="flex items-center gap-2">
                                 <div className="w-16 bg-gray-200 rounded-full h-2">
-                                  <div className="bg-blue-600 h-2 rounded-full" style={{width: '85%'}}></div>
+                                  <div
+                                    className="bg-blue-600 h-2 rounded-full"
+                                    style={{ width: '85%' }}
+                                  ></div>
                                 </div>
                                 <span className="text-sm text-blue-600">85%</span>
                               </div>
@@ -726,7 +796,10 @@ export default function FeatureShowcase() {
                               <span className="font-medium">User Management Context</span>
                               <div className="flex items-center gap-2">
                                 <div className="w-16 bg-gray-200 rounded-full h-2">
-                                  <div className="bg-green-600 h-2 rounded-full" style={{width: '72%'}}></div>
+                                  <div
+                                    className="bg-green-600 h-2 rounded-full"
+                                    style={{ width: '72%' }}
+                                  ></div>
                                 </div>
                                 <span className="text-sm text-green-600">72%</span>
                               </div>
@@ -735,7 +808,10 @@ export default function FeatureShowcase() {
                               <span className="font-medium">API Gateway Context</span>
                               <div className="flex items-center gap-2">
                                 <div className="w-16 bg-gray-200 rounded-full h-2">
-                                  <div className="bg-purple-600 h-2 rounded-full" style={{width: '58%'}}></div>
+                                  <div
+                                    className="bg-purple-600 h-2 rounded-full"
+                                    style={{ width: '58%' }}
+                                  ></div>
                                 </div>
                                 <span className="text-sm text-purple-600">58%</span>
                               </div>
@@ -745,7 +821,7 @@ export default function FeatureShowcase() {
                       </div>
                     )}
 
-                    {activeDemo === "code-quality-gates" && (
+                    {activeDemo === 'code-quality-gates' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">Code Quality Gates</h5>
@@ -757,7 +833,10 @@ export default function FeatureShowcase() {
                               <span className="font-medium">Code Coverage</span>
                               <div className="flex items-center gap-2">
                                 <div className="w-16 bg-gray-200 rounded-full h-2">
-                                  <div className="bg-green-600 h-2 rounded-full" style={{width: '87%'}}></div>
+                                  <div
+                                    className="bg-green-600 h-2 rounded-full"
+                                    style={{ width: '87%' }}
+                                  ></div>
                                 </div>
                                 <span className="text-sm text-green-600">87%</span>
                               </div>
@@ -773,7 +852,10 @@ export default function FeatureShowcase() {
                               <span className="font-medium">Performance Score</span>
                               <div className="flex items-center gap-2">
                                 <div className="w-16 bg-gray-200 rounded-full h-2">
-                                  <div className="bg-yellow-600 h-2 rounded-full" style={{width: '72%'}}></div>
+                                  <div
+                                    className="bg-yellow-600 h-2 rounded-full"
+                                    style={{ width: '72%' }}
+                                  ></div>
                                 </div>
                                 <span className="text-sm text-yellow-600">72/100</span>
                               </div>
@@ -784,15 +866,19 @@ export default function FeatureShowcase() {
                           <div className="text-sm">
                             <div className="font-medium mb-1">AI Suggestions:</div>
                             <div className="space-y-1">
-                              <div className="text-xs">• Add error handling to user authentication</div>
-                              <div className="text-xs">• Optimize database queries in payment service</div>
+                              <div className="text-xs">
+                                • Add error handling to user authentication
+                              </div>
+                              <div className="text-xs">
+                                • Optimize database queries in payment service
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {activeDemo === "custom-dashboard-builder" && (
+                    {activeDemo === 'custom-dashboard-builder' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">Drag & Drop Builder</h5>
@@ -832,7 +918,7 @@ export default function FeatureShowcase() {
                       </div>
                     )}
 
-                    {activeDemo === "security-compliance-center" && (
+                    {activeDemo === 'security-compliance-center' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">Security & Compliance</h5>
@@ -863,14 +949,16 @@ export default function FeatureShowcase() {
                             <div className="font-medium mb-1">Recent Scans:</div>
                             <div className="space-y-1">
                               <div className="text-xs">• OWASP Top 10: Passed</div>
-                              <div className="text-xs">• Dependency Check: 2 vulnerabilities found</div>
+                              <div className="text-xs">
+                                • Dependency Check: 2 vulnerabilities found
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {activeDemo === "test-intelligence" && (
+                    {activeDemo === 'test-intelligence' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">AI Test Generation</h5>
@@ -882,7 +970,10 @@ export default function FeatureShowcase() {
                               <span className="font-medium">Test Coverage</span>
                               <div className="flex items-center gap-2">
                                 <div className="w-16 bg-gray-200 rounded-full h-2">
-                                  <div className="bg-green-600 h-2 rounded-full" style={{width: '92%'}}></div>
+                                  <div
+                                    className="bg-green-600 h-2 rounded-full"
+                                    style={{ width: '92%' }}
+                                  ></div>
                                 </div>
                                 <span className="text-sm text-green-600">92%</span>
                               </div>
@@ -902,14 +993,16 @@ export default function FeatureShowcase() {
                             <div className="font-medium mb-1">AI Suggestions:</div>
                             <div className="space-y-1">
                               <div className="text-xs">• Add edge case test for null input</div>
-                              <div className="text-xs">• Generate performance test for large datasets</div>
+                              <div className="text-xs">
+                                • Generate performance test for large datasets
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {activeDemo === "resource-optimization" && (
+                    {activeDemo === 'resource-optimization' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">Resource Optimization</h5>
@@ -935,7 +1028,9 @@ export default function FeatureShowcase() {
                           <div className="text-sm">
                             <div className="font-medium mb-1">Recommendations:</div>
                             <div className="space-y-1">
-                              <div className="text-xs">• Scale down 3 over-provisioned instances</div>
+                              <div className="text-xs">
+                                • Scale down 3 over-provisioned instances
+                              </div>
                               <div className="text-xs">• Enable auto-scaling for API gateway</div>
                             </div>
                           </div>
@@ -943,7 +1038,7 @@ export default function FeatureShowcase() {
                       </div>
                     )}
 
-                    {activeDemo === "collaboration-hub" && (
+                    {activeDemo === 'collaboration-hub' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">Team Collaboration</h5>
@@ -957,9 +1052,13 @@ export default function FeatureShowcase() {
                               </div>
                               <div>
                                 <div className="font-medium">Sarah Chen</div>
-                                <div className="text-sm text-muted-foreground">Working on auth service</div>
+                                <div className="text-sm text-muted-foreground">
+                                  Working on auth service
+                                </div>
                               </div>
-                              <Badge variant="outline" className="ml-auto">Online</Badge>
+                              <Badge variant="outline" className="ml-auto">
+                                Online
+                              </Badge>
                             </div>
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -967,9 +1066,13 @@ export default function FeatureShowcase() {
                               </div>
                               <div>
                                 <div className="font-medium">Mike Rodriguez</div>
-                                <div className="text-sm text-muted-foreground">Reviewing PR #142</div>
+                                <div className="text-sm text-muted-foreground">
+                                  Reviewing PR #142
+                                </div>
                               </div>
-                              <Badge variant="outline" className="ml-auto">Away</Badge>
+                              <Badge variant="outline" className="ml-auto">
+                                Away
+                              </Badge>
                             </div>
                           </div>
                         </div>
@@ -986,7 +1089,7 @@ export default function FeatureShowcase() {
                       </div>
                     )}
 
-                    {activeDemo === "integration-marketplace" && (
+                    {activeDemo === 'integration-marketplace' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">Integration Marketplace</h5>
@@ -1001,7 +1104,9 @@ export default function FeatureShowcase() {
                                 </div>
                                 <div>
                                   <div className="font-medium">PostgreSQL Connector</div>
-                                  <div className="text-sm text-muted-foreground">Database integration</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    Database integration
+                                  </div>
                                 </div>
                               </div>
                               <Badge variant="default">Installed</Badge>
@@ -1013,10 +1118,14 @@ export default function FeatureShowcase() {
                                 </div>
                                 <div>
                                   <div className="font-medium">Slack Notifications</div>
-                                  <div className="text-sm text-muted-foreground">Alert integration</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    Alert integration
+                                  </div>
                                 </div>
                               </div>
-                              <Button size="sm" variant="outline">Install</Button>
+                              <Button size="sm" variant="outline">
+                                Install
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -1034,7 +1143,7 @@ export default function FeatureShowcase() {
                       </div>
                     )}
 
-                    {activeDemo === "mobile-app" && (
+                    {activeDemo === 'mobile-app' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h5 className="font-semibold">Mobile Dashboard</h5>
@@ -1046,7 +1155,9 @@ export default function FeatureShowcase() {
                               <span className="font-medium">System Status</span>
                               <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <span className="text-sm text-green-600">All Systems Operational</span>
+                                <span className="text-sm text-green-600">
+                                  All Systems Operational
+                                </span>
                               </div>
                             </div>
                             <div className="flex items-center justify-between">
@@ -1063,7 +1174,9 @@ export default function FeatureShowcase() {
                           <div className="text-sm">
                             <div className="font-medium mb-1">Mobile Features:</div>
                             <div className="space-y-1">
-                              <div className="text-xs">• Push notifications for critical alerts</div>
+                              <div className="text-xs">
+                                • Push notifications for critical alerts
+                              </div>
                               <div className="text-xs">• Offline mode with cached data</div>
                             </div>
                           </div>
@@ -1071,29 +1184,43 @@ export default function FeatureShowcase() {
                       </div>
                     )}
 
-                    {!["real-time-monitoring", "ai-model-performance", "predictive-analytics", "code-quality-gates", "intelligent-ticketing-system", "agent-workflow-builder", "code-graph-ui", "context-graph", "custom-dashboard-builder", "security-compliance-center", "test-intelligence", "resource-optimization", "collaboration-hub", "integration-marketplace", "mobile-app"].includes(activeDemo) && (
+                    {![
+                      'real-time-monitoring',
+                      'ai-model-performance',
+                      'predictive-analytics',
+                      'code-quality-gates',
+                      'intelligent-ticketing-system',
+                      'agent-workflow-builder',
+                      'code-graph-ui',
+                      'context-graph',
+                      'custom-dashboard-builder',
+                      'security-compliance-center',
+                      'test-intelligence',
+                      'resource-optimization',
+                      'collaboration-hub',
+                      'integration-marketplace',
+                      'mobile-app',
+                    ].includes(activeDemo) && (
                       <div className="space-y-2">
                         <div className="h-4 bg-primary/20 rounded animate-pulse" />
                         <div className="h-4 bg-primary/20 rounded animate-pulse w-3/4" />
                         <div className="h-4 bg-primary/20 rounded animate-pulse w-1/2" />
                       </div>
                     )}
-                    
+
                     <div className="mt-4 text-sm text-muted-foreground">
-                      {demoProgress < 25 && "Initializing demo..."}
-                      {demoProgress >= 25 && demoProgress < 50 && "Loading data..."}
-                      {demoProgress >= 50 && demoProgress < 75 && "Processing..."}
-                      {demoProgress >= 75 && demoProgress < 100 && "Finalizing..."}
-                      {demoProgress >= 100 && "Demo complete!"}
+                      {demoProgress < 25 && 'Initializing demo...'}
+                      {demoProgress >= 25 && demoProgress < 50 && 'Loading data...'}
+                      {demoProgress >= 50 && demoProgress < 75 && 'Processing...'}
+                      {demoProgress >= 75 && demoProgress < 100 && 'Finalizing...'}
+                      {demoProgress >= 100 && 'Demo complete!'}
                     </div>
                   </div>
                 </div>
               </div>
               <div className="flex items-center justify-between pt-4 border-t">
                 <div className="flex items-center gap-4">
-                  <div className="text-sm text-muted-foreground">
-                    Progress: {demoProgress}%
-                  </div>
+                  <div className="text-sm text-muted-foreground">Progress: {demoProgress}%</div>
                   <Progress value={demoProgress} className="w-32" />
                 </div>
                 <div className="flex gap-2">
@@ -1136,7 +1263,7 @@ export default function FeatureShowcase() {
               {categories.map((category) => (
                 <Button
                   key={category}
-                  variant={selectedCategory === category ? "default" : "outline"}
+                  variant={selectedCategory === category ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedCategory(category)}
                 >
@@ -1160,7 +1287,7 @@ export default function FeatureShowcase() {
                   </div>
                   <div>
                     <CardTitle className="text-lg">{feature.title}</CardTitle>
-                    <Badge 
+                    <Badge
                       className={`text-white ${getStatusColor(feature.status)}`}
                       variant="default"
                     >
@@ -1169,9 +1296,7 @@ export default function FeatureShowcase() {
                   </div>
                 </div>
               </div>
-              <CardDescription className="mt-2">
-                {feature.description}
-              </CardDescription>
+              <CardDescription className="mt-2">{feature.description}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -1180,10 +1305,10 @@ export default function FeatureShowcase() {
                   <span>Status: {getStatusText(feature.status)}</span>
                 </div>
 
-                {feature.status === "available" && (
+                {feature.status === 'available' && (
                   <div className="space-y-2">
-                    <Button 
-                      className="w-full" 
+                    <Button
+                      className="w-full"
                       onClick={() => startDemo(feature.id)}
                       disabled={activeDemo === feature.id}
                     >
@@ -1191,7 +1316,11 @@ export default function FeatureShowcase() {
                         <>
                           <Pause className="w-4 h-4 mr-2" />
                           Running Demo...
-                          {isDemoMode && <Badge variant="secondary" className="ml-2">Demo Mode</Badge>}
+                          {isDemoMode && (
+                            <Badge variant="secondary" className="ml-2">
+                              Demo Mode
+                            </Badge>
+                          )}
                         </>
                       ) : (
                         <>
@@ -1200,7 +1329,7 @@ export default function FeatureShowcase() {
                         </>
                       )}
                     </Button>
-                    
+
                     {activeDemo === feature.id && (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
@@ -1208,12 +1337,7 @@ export default function FeatureShowcase() {
                           <span>{demoProgress}%</span>
                         </div>
                         <Progress value={demoProgress} className="w-full" />
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={stopDemo}
-                          className="w-full"
-                        >
+                        <Button variant="outline" size="sm" onClick={stopDemo} className="w-full">
                           <RotateCcw className="w-4 h-4 mr-2" />
                           Stop Demo
                         </Button>
@@ -1222,7 +1346,7 @@ export default function FeatureShowcase() {
                   </div>
                 )}
 
-                {feature.status === "beta" && (
+                {feature.status === 'beta' && (
                   <Alert>
                     <Info className="h-4 w-4" />
                     <AlertDescription>
@@ -1231,11 +1355,9 @@ export default function FeatureShowcase() {
                   </Alert>
                 )}
 
-                {feature.status === "coming-soon" && (
+                {feature.status === 'coming-soon' && (
                   <div className="text-center py-4">
-                    <div className="text-sm text-muted-foreground mb-2">
-                      Expected: Q1 2025
-                    </div>
+                    <div className="text-sm text-muted-foreground mb-2">Expected: Q1 2025</div>
                     <Button variant="outline" disabled className="w-full">
                       <Clock className="w-4 h-4 mr-2" />
                       Coming Soon
@@ -1243,11 +1365,9 @@ export default function FeatureShowcase() {
                   </div>
                 )}
 
-                {feature.status === "planned" && (
+                {feature.status === 'planned' && (
                   <div className="text-center py-4">
-                    <div className="text-sm text-muted-foreground mb-2">
-                      In planning phase
-                    </div>
+                    <div className="text-sm text-muted-foreground mb-2">In planning phase</div>
                     <Button variant="outline" disabled className="w-full">
                       <Settings className="w-4 h-4 mr-2" />
                       Planned
@@ -1267,14 +1387,11 @@ export default function FeatureShowcase() {
         ))}
       </div>
 
-
       {/* Feature Roadmap */}
       <Card>
         <CardHeader>
           <CardTitle>Feature Roadmap</CardTitle>
-          <CardDescription>
-            Timeline of upcoming features and improvements
-          </CardDescription>
+          <CardDescription>Timeline of upcoming features and improvements</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -1310,7 +1427,8 @@ export default function FeatureShowcase() {
               <div>
                 <div className="font-medium">Q3 2025 - Planned</div>
                 <div className="text-sm text-muted-foreground">
-                  Agent Workflow Builder, Code Graph UI, Context Graph, Collaboration Hub, Integration Marketplace, Mobile App
+                  Agent Workflow Builder, Code Graph UI, Context Graph, Collaboration Hub,
+                  Integration Marketplace, Mobile App
                 </div>
               </div>
             </div>
@@ -1322,9 +1440,7 @@ export default function FeatureShowcase() {
       <Card>
         <CardHeader>
           <CardTitle>Share Your Feedback</CardTitle>
-          <CardDescription>
-            Help us prioritize features and improve the platform
-          </CardDescription>
+          <CardDescription>Help us prioritize features and improve the platform</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
