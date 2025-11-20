@@ -1,11 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { AlertPill } from "@/components/AlertPill";
-import { useDemoMode } from "@/contexts/DemoModeContext";
+import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { AlertPill } from '@/components/AlertPill';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 interface Alert {
   id: string;
-  level: "critical" | "warning";
+  level: 'critical' | 'warning';
   message: string;
   timestamp: string;
 }
@@ -17,7 +17,7 @@ interface AlertsResponse {
 export function AlertBanner() {
   const { isDemoMode } = useDemoMode();
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(() => {
-    const stored = localStorage.getItem("dismissedAlerts");
+    const stored = localStorage.getItem('dismissedAlerts');
     try {
       return stored ? new Set(JSON.parse(stored)) : new Set();
     } catch {
@@ -27,7 +27,7 @@ export function AlertBanner() {
 
   // In demo mode, don't fetch real alerts
   const { data, isLoading } = useQuery<AlertsResponse>({
-    queryKey: ["/api/intelligence/alerts/active"],
+    queryKey: ['/api/intelligence/alerts/active'],
     refetchInterval: isDemoMode ? false : 30000, // 30 seconds
     staleTime: 30000, // Consider stale after 30 seconds
     enabled: !isDemoMode, // Disable in demo mode
@@ -35,7 +35,7 @@ export function AlertBanner() {
 
   // Save dismissed alerts to localStorage
   useEffect(() => {
-    localStorage.setItem("dismissedAlerts", JSON.stringify(Array.from(dismissedAlerts)));
+    localStorage.setItem('dismissedAlerts', JSON.stringify(Array.from(dismissedAlerts)));
   }, [dismissedAlerts]);
 
   // In demo mode, show no alerts (or seed benign ones if needed)
@@ -44,9 +44,7 @@ export function AlertBanner() {
   }
 
   // Filter out dismissed alerts using unique IDs
-  const activeAlerts = data?.alerts?.filter(
-    (alert) => !dismissedAlerts.has(alert.id)
-  ) || [];
+  const activeAlerts = data?.alerts?.filter((alert) => !dismissedAlerts.has(alert.id)) || [];
 
   // Don't render if no active alerts
   if (isLoading || activeAlerts.length === 0) {

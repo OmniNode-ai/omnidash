@@ -56,9 +56,7 @@ export class DeveloperExperienceMockData {
 
     const workflows = agentNames.map((agent_name) => {
       const total_workflows = Gen.randomInt(20, 200);
-      const successful_workflows = Math.floor(
-        total_workflows * Gen.randomFloat(0.85, 0.98)
-      );
+      const successful_workflows = Math.floor(total_workflows * Gen.randomFloat(0.85, 0.98));
       return {
         agent_name,
         total_workflows,

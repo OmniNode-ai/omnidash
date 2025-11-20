@@ -1,16 +1,12 @@
-import { Info } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+import { Info } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 
 interface SectionHeaderProps {
   title: string;
   description: string;
   details?: string;
-  level?: "h1" | "h2" | "h3";
+  level?: 'h1' | 'h2' | 'h3';
   className?: string;
 }
 
@@ -18,15 +14,15 @@ export function SectionHeader({
   title,
   description,
   details,
-  level = "h2",
-  className = "",
+  level = 'h2',
+  className = '',
 }: SectionHeaderProps) {
   const HeaderTag = level;
 
   const headerSizeClasses = {
-    h1: "text-3xl font-bold",
-    h2: "text-2xl font-bold",
-    h3: "text-xl font-semibold",
+    h1: 'text-3xl font-bold',
+    h2: 'text-2xl font-bold',
+    h3: 'text-xl font-semibold',
   };
 
   return (

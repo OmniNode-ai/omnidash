@@ -1,9 +1,9 @@
 /**
  * Event Bus Mock Generator
- * 
+ *
  * Simulates Kafka events by generating realistic event chains following the event catalog.
  * Can be used in development mode to populate EventBusDataSource without requiring Kafka.
- * 
+ *
  * Features:
  * - Generates events matching event catalog patterns
  * - Creates realistic event chains (requested → started → completed/failed)
@@ -56,11 +56,13 @@ export class EventBusMockGenerator {
   /**
    * Start generating events
    */
-  async start(options: {
-    continuous?: boolean;
-    interval_ms?: number;
-    initialChains?: number;
-  } = {}): Promise<void> {
+  async start(
+    options: {
+      continuous?: boolean;
+      interval_ms?: number;
+      initialChains?: number;
+    } = {}
+  ): Promise<void> {
     // Prevent multiple overlapping start() calls
     // Set isRunning immediately after check to prevent race conditions
     if (this.isRunning) {
@@ -88,9 +90,11 @@ export class EventBusMockGenerator {
     }
 
     if (continuous) {
-      console.log(`[EventBusMockGenerator] Starting continuous event generation (every ${interval_ms}ms)...`);
+      console.log(
+        `[EventBusMockGenerator] Starting continuous event generation (every ${interval_ms}ms)...`
+      );
       this.intervalId = setInterval(() => {
-        this.generateRandomEventChain().catch(err => {
+        this.generateRandomEventChain().catch((err) => {
           console.error('[EventBusMockGenerator] Error generating event chain:', err);
         });
       }, interval_ms);
@@ -612,10 +616,9 @@ export class EventBusMockGenerator {
    * Sleep helper
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
 // Export singleton instance
 export const eventBusMockGenerator = new EventBusMockGenerator();
-

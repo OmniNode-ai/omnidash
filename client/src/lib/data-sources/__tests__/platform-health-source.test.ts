@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { platformHealthSource } from '../platform-health-source';
 import type { PlatformHealth, PlatformServices } from '../platform-health-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 describe('PlatformHealthSource', () => {
   beforeEach(() => {
@@ -56,14 +60,12 @@ describe('PlatformHealthSource', () => {
 
       expect(result.isMock).toBe(false);
       expect(result.data.status).toBe('degraded');
-      expect(result.data.services.every(s => s.latency === undefined)).toBe(true);
+      expect(result.data.services.every((s) => s.latency === undefined)).toBe(true);
     });
 
     it('should return mock data when API returns 500 error', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/health', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/platform/health', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await platformHealthSource.fetchHealth('24h');
@@ -82,9 +84,7 @@ describe('PlatformHealthSource', () => {
 
     it('should return mock data when API returns 404 error', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/health', createMockResponse(null, { status: 404 })],
-        ])
+        new Map([['/api/intelligence/platform/health', createMockResponse(null, { status: 404 })]])
       );
 
       const result = await platformHealthSource.fetchHealth('1h');
@@ -96,9 +96,7 @@ describe('PlatformHealthSource', () => {
 
     it('should return mock data when fetch throws network error', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/health', new Error('Network failure')],
-        ])
+        new Map([['/api/intelligence/platform/health', new Error('Network failure')]])
       );
 
       const result = await platformHealthSource.fetchHealth('24h');
@@ -142,9 +140,7 @@ describe('PlatformHealthSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/health', createMockResponse(mockHealth)],
-        ])
+        new Map([['/api/intelligence/platform/health', createMockResponse(mockHealth)]])
       );
 
       const result = await platformHealthSource.fetchHealth('24h');
@@ -167,9 +163,7 @@ describe('PlatformHealthSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/services', createMockResponse(mockServices)],
-        ])
+        new Map([['/api/intelligence/platform/services', createMockResponse(mockServices)]])
       );
 
       const result = await platformHealthSource.fetchServices();
@@ -186,9 +180,7 @@ describe('PlatformHealthSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/services', createMockResponse(mockServices)],
-        ])
+        new Map([['/api/intelligence/platform/services', createMockResponse(mockServices)]])
       );
 
       const result = await platformHealthSource.fetchServices();
@@ -225,14 +217,12 @@ describe('PlatformHealthSource', () => {
 
       expect(result.isMock).toBe(true);
       expect(result.data.services).toBeDefined();
-      expect(result.data.services.every(s => s.status && s.health && s.name)).toBe(true);
+      expect(result.data.services.every((s) => s.status && s.health && s.name)).toBe(true);
     });
 
     it('should return mock data when fetch throws error', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/services', new Error('Connection refused')],
-        ])
+        new Map([['/api/intelligence/platform/services', new Error('Connection refused')]])
       );
 
       const result = await platformHealthSource.fetchServices();
@@ -251,16 +241,14 @@ describe('PlatformHealthSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/services', createMockResponse(mockServices)],
-        ])
+        new Map([['/api/intelligence/platform/services', createMockResponse(mockServices)]])
       );
 
       const result = await platformHealthSource.fetchServices();
 
       expect(result.isMock).toBe(false);
-      expect(result.data.services.find(s => s.name === 'Service B')?.status).toBe('degraded');
-      expect(result.data.services.find(s => s.name === 'Service C')?.status).toBe('unhealthy');
+      expect(result.data.services.find((s) => s.name === 'Service B')?.status).toBe('degraded');
+      expect(result.data.services.find((s) => s.name === 'Service C')?.status).toBe('unhealthy');
     });
   });
 
@@ -298,9 +286,7 @@ describe('PlatformHealthSource', () => {
 
     it('should mark isMock as true if health API fails', async () => {
       const mockServices: PlatformServices = {
-        services: [
-          { name: 'API Gateway', status: 'healthy', health: 'up' },
-        ],
+        services: [{ name: 'API Gateway', status: 'healthy', health: 'up' }],
       };
 
       setupFetchMock(
@@ -412,8 +398,12 @@ describe('PlatformHealthSource', () => {
 
       // Verify the correct endpoints were called
       const calls = fetchSpy.mock.calls;
-      expect(calls.some(call => call[0].includes('/api/intelligence/platform/health'))).toBe(true);
-      expect(calls.some(call => call[0].includes('/api/intelligence/platform/services'))).toBe(true);
+      expect(calls.some((call) => call[0].includes('/api/intelligence/platform/health'))).toBe(
+        true
+      );
+      expect(calls.some((call) => call[0].includes('/api/intelligence/platform/services'))).toBe(
+        true
+      );
     });
 
     it('should correctly propagate isMock false when both APIs succeed', async () => {
@@ -457,11 +447,7 @@ describe('PlatformHealthSource', () => {
     });
 
     it('should handle network timeout for health endpoint', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/health', new Error('Timeout')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/platform/health', new Error('Timeout')]]));
 
       const result = await platformHealthSource.fetchHealth('24h');
 
@@ -474,11 +460,7 @@ describe('PlatformHealthSource', () => {
     });
 
     it('should handle network timeout for services endpoint', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/services', new Error('Timeout')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/platform/services', new Error('Timeout')]]));
 
       const result = await platformHealthSource.fetchServices();
 
@@ -517,9 +499,7 @@ describe('PlatformHealthSource', () => {
 
     it('should handle response with status code 503', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/health', createMockResponse(null, { status: 503 })],
-        ])
+        new Map([['/api/intelligence/platform/health', createMockResponse(null, { status: 503 })]])
       );
 
       const result = await platformHealthSource.fetchHealth('24h');
@@ -551,15 +531,11 @@ describe('PlatformHealthSource', () => {
       const mockHealth: PlatformHealth = {
         status: 'healthy',
         uptime: 99.5,
-        services: [
-          { name: 'Test Service', status: 'up', latency: 20 },
-        ],
+        services: [{ name: 'Test Service', status: 'up', latency: 20 }],
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/health', createMockResponse(mockHealth)],
-        ])
+        new Map([['/api/intelligence/platform/health', createMockResponse(mockHealth)]])
       );
 
       const result = await platformHealthSource.fetchHealth('24h');
@@ -574,15 +550,11 @@ describe('PlatformHealthSource', () => {
 
     it('should return valid PlatformServices structure from API', async () => {
       const mockServices: PlatformServices = {
-        services: [
-          { name: 'Test Service', status: 'healthy', health: 'up' },
-        ],
+        services: [{ name: 'Test Service', status: 'healthy', health: 'up' }],
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/services', createMockResponse(mockServices)],
-        ])
+        new Map([['/api/intelligence/platform/services', createMockResponse(mockServices)]])
       );
 
       const result = await platformHealthSource.fetchServices();
@@ -596,9 +568,7 @@ describe('PlatformHealthSource', () => {
 
     it('should return valid mock fallback structure for health', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/platform/health', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/platform/health', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await platformHealthSource.fetchHealth('24h');

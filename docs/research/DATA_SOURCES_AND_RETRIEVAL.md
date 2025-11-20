@@ -30,6 +30,7 @@ This guide summarizes live data sources (PostgreSQL, Kafka, Memgraph, Qdrant), r
 ### PostgreSQL (Intelligence DB)
 
 **Connection Details:**
+
 - Host: `192.168.86.200` (from host) or `omninode-bridge-postgres` (from Docker network)
 - Port: `5436` (external) → `5432` (container)
 - Database: `omninode_bridge`
@@ -37,6 +38,7 @@ This guide summarizes live data sources (PostgreSQL, Kafka, Memgraph, Qdrant), r
 - Password: See `.env` file (never commit passwords to git)
 
 **Environment Variables in `.env`:**
+
 ```bash
 # IMPORTANT: Replace <your_password> with actual password from .env file
 # NOTE: POSTGRES_* variables are the canonical configuration (as of 2025-11-12)
@@ -55,11 +57,13 @@ POSTGRES_PASSWORD=<your_password>
 ### Qdrant (Vector DB)
 
 **Connection Details:**
+
 - Host: `localhost` (from host) or `archon-qdrant` (from Docker network)
 - Port: `6333` (HTTP API), `6334` (gRPC)
 - URL: `http://localhost:6333`
 
 **Available Collections:**
+
 - `quality_vectors` - Code quality embeddings
 - `workflow_events` - Workflow pattern vectors
 - `test_patterns` - Test pattern embeddings
@@ -69,12 +73,14 @@ POSTGRES_PASSWORD=<your_password>
 - `execution_patterns` - Execution pattern vectors
 
 **Status:** ✅ Accessible. Direct integration not yet implemented in Omnidash (placeholder in `server/intelligence-routes.ts`). Can be accessed via:
+
 - Direct HTTP API: `http://localhost:6333/collections/{collection_name}/points/search`
 - Via Omniarchon APIs (recommended for pattern similarity)
 
 ### Memgraph (Knowledge Graph)
 
 **Connection Details:**
+
 - Access via Omniarchon Intelligence service (HTTP API)
 - Direct Bolt connection: `bolt://memgraph:7687` (internal Docker network only)
 - Service URL: `http://localhost:8053`
@@ -86,17 +92,20 @@ POSTGRES_PASSWORD=<your_password>
 ### Kafka/Redpanda (Event Bus)
 
 **Connection Details:**
+
 - Host: `192.168.86.200`
 - Port: `19092` (external), `9092` (internal Docker network)
 - Broker: `192.168.86.200:9092`
 
 **Environment Variables:**
+
 ```bash
 KAFKA_BROKERS=192.168.86.200:9092
 KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:9092
 ```
 
 **Active Topics:**
+
 - `agent-routing-decisions` - Routing decision events
 - `agent-transformation-events` - Agent transformation events
 - `router-performance-metrics` - Router performance metrics
@@ -154,6 +163,7 @@ KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:9092
 ## Current Integration Status (2025-10-31)
 
 ### ✅ Fully Integrated (Live Data)
+
 1. **Intelligence Event Adapter**
    - Kafka-based request/response pattern for code analysis
    - Endpoint: `/api/intelligence/analysis/patterns`
@@ -178,10 +188,12 @@ KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:9092
    - Status: ✅ Partial (live with fallback)
 
 ### ⚠️ Partially Integrated
+
 - **Intelligence Analytics**: Live endpoint attempted but may need backend transformation
 - **Pattern Lineage**: Backend route exists, frontend may need wiring update
 
 ### 📋 Still Using Mock Data (Next Steps)
+
 - Feature Showcase demos (using interactive mockups)
 - Some intelligence metrics endpoints (fallbacks in place)
 
@@ -190,6 +202,7 @@ KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:9092
 ### PostgreSQL Tables (39 tables available)
 
 **Agent Execution & Routing:**
+
 - `agent_routing_decisions` - Routing decision history
 - `agent_actions` - Agent action events
 - `agent_manifest_injections` - Pattern injection events
@@ -197,12 +210,14 @@ KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:9092
 - `v_agent_execution_trace` - View of execution traces
 
 **Pattern & Code Intelligence:**
+
 - `pattern_lineage_nodes` - Pattern node metadata
 - `pattern_lineage_edges` - Pattern relationships
 - `code_patterns` - Discovered code patterns
 - `pattern_quality_scores` - Quality metrics
 
 **Performance & Metrics:**
+
 - `router_performance_metrics` - Router performance data
 - `agent_performance_summary` - Aggregated agent metrics
 
@@ -215,7 +230,7 @@ KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:9092
      // In intelligence-routes.ts or component
      const performanceArray = Object.entries(overview).map(([agentId, metrics]) => ({
        agentId,
-       ...metrics
+       ...metrics,
      }));
      ```
 
@@ -272,8 +287,8 @@ const response = await fetch('http://localhost:6333/collections/code_patterns/po
   body: JSON.stringify({
     vector: embeddingVector, // 768-dim from embedding model
     limit: 10,
-    with_payload: true
-  })
+    with_payload: true,
+  }),
 });
 const results = await response.json();
 ```
@@ -314,5 +329,3 @@ Omnidash consumes Kafka events via `server/event-consumer.ts` for real-time upda
 - `server/db-adapter.ts` - PostgreSQL CRUD adapter
 - `shared/intelligence-schema.ts`
 - Scripts: `scripts/test-db-query.ts`, `scripts/test-routing-decisions.ts`
-
-

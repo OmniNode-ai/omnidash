@@ -11,6 +11,7 @@
 This review identified **4 critical UX issues** across the Intelligence Analytics dashboard that impact usability, information architecture, and data display. All issues have visual documentation via Playwright screenshots and concrete implementation recommendations.
 
 **Priority Breakdown**:
+
 - 🔴 **Critical (P0)**: 1 issue - Data display bug
 - 🟡 **High (P1)**: 2 issues - Information architecture & navigation
 - 🟢 **Medium (P2)**: 1 issue - Visual consistency
@@ -20,12 +21,14 @@ This review identified **4 critical UX issues** across the Intelligence Analytic
 ## Issue #1: Cost & Savings Tab - Needs Major Redesign 🟡 P1
 
 ### Screenshots
+
 - `intelligence-analytics-cost-savings-tab.png` - Full tab view
 - `intelligence-analytics-cost-savings-efficiency-metrics.png` - Bottom section with progress bars
 
 ### Current State Analysis
 
 **What's Currently Shown**:
+
 1. **Cost Savings Breakdown** (4 metric cards)
    - Total Savings: $76.17
    - Daily Savings: $2.54
@@ -50,6 +53,7 @@ This review identified **4 critical UX issues** across the Intelligence Analytic
 ### Problems Identified
 
 #### 1.1 Cost Savings Cards Missing from Overview Tab
+
 **Issue**: The Daily/Weekly/Monthly savings cards ONLY appear in "Cost & Savings" tab. They should ALSO appear in the "Overview" tab as "Cost Savings Highlights".
 
 **Current**: Overview tab shows generic "Total Savings" card but NOT the Daily/Weekly/Monthly breakdown.
@@ -59,15 +63,18 @@ This review identified **4 critical UX issues** across the Intelligence Analytic
 **Fix**: ✅ Already implemented correctly! The code shows these cards in both places. No action needed.
 
 #### 1.2 Overall Efficiency Metrics - Just Progress Bars
+
 **Issue**: The "Overall Efficiency Metrics" section shows 3 large numbers with progress bars but lacks contextual detail.
 
 **Problems**:
+
 - No explanation of what "efficiency gain" means
 - No breakdown of WHERE the gains come from (token reduction? compute offload? caching?)
 - Progress bars don't add much value (what's 100%? what's the baseline?)
 - Feels like a summary card, not a detailed "Cost & Savings" analysis
 
 **Recommendation**:
+
 - Add expandable/collapsible sections showing breakdown:
   - Token reduction: 34%
   - Local compute offload: 12%
@@ -78,9 +85,11 @@ This review identified **4 critical UX issues** across the Intelligence Analytic
 - Consider replacing progress bars with stacked bar chart showing contribution of each optimization type
 
 #### 1.3 Token Savings - Needs Breakdown
+
 **Issue**: Shows "404 tokens/run" saved but doesn't explain WHERE those tokens were saved.
 
 **Missing Detail**:
+
 - Pattern caching: X tokens/run
 - Local model offloading: Y tokens/run
 - Optimized routing: Z tokens/run
@@ -89,9 +98,11 @@ This review identified **4 critical UX issues** across the Intelligence Analytic
 **Recommendation**: Add expandable detail panel under "Token Savings" showing breakdown by optimization type.
 
 #### 1.4 Compute Savings - Needs Breakdown
+
 **Issue**: Same as token savings - shows "1.2 units/run" but no breakdown.
 
 **Missing Detail**:
+
 - Reduced API calls: X units
 - Local processing: Y units
 - Caching: Z units
@@ -99,22 +110,26 @@ This review identified **4 critical UX issues** across the Intelligence Analytic
 **Recommendation**: Add expandable detail panel under "Compute Savings".
 
 #### 1.5 Cost Savings Cards - Need More Detail
+
 **Issue**: Daily/Weekly/Monthly cards show single dollar amounts but lack breakdown.
 
 **Current**: "$2.54 Daily Savings" with subtitle "Average daily cost reduction"
 
 **Missing**:
+
 - Breakdown by category (tokens, compute, API calls)
 - Trend indicator (up/down from previous period)
 - Clickable to see daily breakdown
 - Comparison to baseline
 
 **Recommendation**:
+
 - Add small trend indicator (up/down arrow with %)
 - Make cards clickable to drill down into daily/weekly/monthly details
 - Add mini sparkline showing trend over last 7 days
 
 #### 1.6 Need to Reconsider Entire UI
+
 **Recommendation**: The "Cost & Savings" tab feels like it's showing HIGH-LEVEL metrics when it should show DETAILED breakdowns. Consider:
 
 **New Structure Proposal**:
@@ -146,11 +161,13 @@ Cost & Savings Tab
 ## Issue #2: Enhanced Analytics - Redundant Heading 🟢 P2
 
 ### Screenshot
+
 - `intelligence-analytics-advanced-analytics-tab.png`
 
 ### Problem
 
 **Current State**:
+
 ```
 [Tab Bar: Overview | Intelligence | Cost & Savings | Advanced Analytics]
                                                       ↑ selected
@@ -162,6 +179,7 @@ Advanced analytics and insights for the OmniNode platform
 ```
 
 **Issue**: The tab is called "Advanced Analytics", but the heading underneath says "Enhanced Analytics". This is:
+
 1. Inconsistent naming (Advanced vs Enhanced)
 2. Redundant (user already knows what tab they're on)
 3. Wastes vertical space
@@ -169,6 +187,7 @@ Advanced analytics and insights for the OmniNode platform
 ### Recommendation
 
 **Option A - Remove Heading** (Preferred):
+
 ```typescript
 // Remove lines 451-454 in EnhancedAnalytics.tsx
 // Delete this entire section:
@@ -188,6 +207,7 @@ If the heading serves a purpose (e.g., the page can be embedded elsewhere), chan
 
 **Option C - Use Different Heading**:
 Replace with a more specific heading like:
+
 - "Performance Metrics & Predictions"
 - "Deep-Dive Analytics"
 - "Advanced Insights"
@@ -199,17 +219,20 @@ Replace with a more specific heading like:
 ## Issue #3: Time Range Controls - Should Be Global 🟡 P1
 
 ### Screenshots
+
 - `intelligence-analytics-advanced-analytics-tab.png` - Shows time controls ONLY on Advanced Analytics tab
 - `intelligence-analytics-overview-no-time-controls.png` - Shows Overview tab WITHOUT time controls
 
 ### Problem
 
 **Current State**:
+
 - Time selection controls (1H, 24H, 7D, 30D, Custom)
 - Action buttons (Refresh, Export, Filter)
 - **Location**: ONLY on "Advanced Analytics" tab
 
 **Issue**: These controls are tab-specific, but they SHOULD be global because:
+
 1. Time range affects ALL tabs (Overview, Intelligence, Cost & Savings, Advanced Analytics)
 2. Users expect consistency - if they select "7D", they want to see 7-day data across ALL tabs
 3. Users have to navigate to "Advanced Analytics" just to change time range
@@ -218,6 +241,7 @@ Replace with a more specific heading like:
 ### Current Implementation
 
 In `IntelligenceAnalytics.tsx`:
+
 - State: `const [timeRange, setTimeRange] = useState("30d");` (line 56)
 - Used in queries: `queryKey: ['intelligence-metrics', timeRange]` (line 60)
 - Time controls: ONLY rendered in `EnhancedAnalytics` component
@@ -227,6 +251,7 @@ In `IntelligenceAnalytics.tsx`:
 **Promote Time Controls to Global Level**:
 
 **New Layout**:
+
 ```
 ┌──────────────────────────────────────────────────────────┐
 │ Intelligence Analytics                    Configure │ Export Report │
@@ -280,6 +305,7 @@ In `IntelligenceAnalytics.tsx`:
 ```
 
 **Benefits**:
+
 - Consistent time range across all tabs
 - One-click time range switching from any tab
 - Better user experience and discoverability
@@ -292,6 +318,7 @@ In `IntelligenceAnalytics.tsx`:
 ## Issue #4: Time Saved Showing 0.0 Hours 🔴 P0
 
 ### Screenshots
+
 - `intelligence-analytics-cost-savings-efficiency-metrics.png` - Shows "0.0h Time Saved"
 
 ### Problem
@@ -301,6 +328,7 @@ In `IntelligenceAnalytics.tsx`:
 ### Root Cause Analysis
 
 **Code Location**: `IntelligenceAnalytics.tsx` lines 823-825
+
 ```typescript
 <div className="text-3xl font-bold text-blue-600 mb-2">
   {((savingsMetrics?.timeSaved || 0) / 3600).toFixed(1)}h
@@ -308,11 +336,13 @@ In `IntelligenceAnalytics.tsx`:
 ```
 
 **Data Source**: `intelligence-savings-source.ts` line 101
+
 ```typescript
 timeSaved: 128,  // This is in SECONDS
 ```
 
 **The Math**:
+
 - Mock data: `timeSaved = 128` (seconds)
 - Display calculation: `128 / 3600 = 0.0355...` hours
 - Formatted: `.toFixed(1)` → `"0.0h"`
@@ -324,6 +354,7 @@ timeSaved: 128,  // This is in SECONDS
 **Data Issue**: The mock data has an unrealistically small value. If we're claiming $76.17 in savings and 693 intelligence operations, we should have saved more than 2 minutes of time!
 
 **Calculation Check**:
+
 - If 693 operations saved 0.4 seconds each = 277 seconds = 0.077 hours (still shows as 0.0h)
 - If 693 operations saved 10 seconds each = 6930 seconds = 1.9 hours (shows as 1.9h) ✅
 - If 693 operations saved 1 minute each = 41,580 seconds = 11.5 hours (shows as 11.5h) ✅
@@ -333,7 +364,9 @@ timeSaved: 128,  // This is in SECONDS
 ### Solutions
 
 #### Solution 1: Fix Mock Data (Recommended)
+
 **Change** `intelligence-savings-source.ts` line 101:
+
 ```typescript
 timeSaved: 45000,  // 45,000 seconds = 12.5 hours (realistic for 693 ops)
 ```
@@ -341,7 +374,9 @@ timeSaved: 45000,  // 45,000 seconds = 12.5 hours (realistic for 693 ops)
 **Rationale**: Aligns with the demo script's $45K savings and 693 operations. If each operation saves an average of 1 minute, that's 11.5 hours total.
 
 #### Solution 2: Smart Unit Display
+
 **Change display logic** to automatically switch between hours/minutes:
+
 ```typescript
 const formatTimeSaved = (seconds: number) => {
   const hours = seconds / 3600;
@@ -359,20 +394,27 @@ const formatTimeSaved = (seconds: number) => {
 ```
 
 **Result**:
+
 - 128 seconds → "2.1min"
 - 45,000 seconds → "12.5h"
 
 #### Solution 3: Increase Decimal Places
+
 ```typescript
-{((savingsMetrics?.timeSaved || 0) / 3600).toFixed(2)}h
+{
+  ((savingsMetrics?.timeSaved || 0) / 3600).toFixed(2);
+}
+h;
 ```
 
 **Result**:
+
 - 128 seconds → "0.04h" (not great, still looks broken)
 
 ### Recommendation
 
 **Implement Solution 1 + Solution 2**:
+
 1. Fix mock data to realistic value (45,000 seconds = 12.5 hours)
 2. Add smart unit display logic to handle edge cases
 3. Add tooltip explaining methodology: "Time saved = (response time with intelligence) - (estimated response time without intelligence), aggregated across all operations"
@@ -382,6 +424,7 @@ const formatTimeSaved = (seconds: number) => {
 ## Implementation Priority
 
 ### P0 - Critical (Do Immediately)
+
 1. **Issue #4**: Fix "0.0h Time Saved" display
    - Update mock data: `timeSaved: 45000`
    - Add smart unit formatting
@@ -390,6 +433,7 @@ const formatTimeSaved = (seconds: number) => {
    - **Files**: `intelligence-savings-source.ts`, `IntelligenceAnalytics.tsx`
 
 ### P1 - High (Next Sprint)
+
 2. **Issue #3**: Promote time controls to global level
    - Move controls above tab bar
    - Ensure all tabs respect time range
@@ -405,6 +449,7 @@ const formatTimeSaved = (seconds: number) => {
    - **Files**: `IntelligenceAnalytics.tsx`, new components
 
 ### P2 - Medium (Future Enhancement)
+
 4. **Issue #2**: Remove redundant "Enhanced Analytics" heading
    - Delete heading section
    - Adjust spacing

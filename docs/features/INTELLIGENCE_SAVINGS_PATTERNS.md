@@ -4,19 +4,18 @@
 
 ```typescript
 // ✅ CORRECT - Used consistently throughout (50+ instances)
-formatCurrency(savingsMetrics?.totalSavings || 0)
-formatCurrency(savingsMetrics?.dailySavings || 0)
-formatCurrency(savingsMetrics?.weeklySavings || 0)
-formatCurrency(savingsMetrics?.monthlySavings || 0)
-formatCurrency(agent.withIntelligence.cost)
-formatCurrency(agent.withoutIntelligence.cost)
-formatCurrency(day.withIntelligence.cost)
-formatCurrency(provider.savingsAmount)
+formatCurrency(savingsMetrics?.totalSavings || 0);
+formatCurrency(savingsMetrics?.dailySavings || 0);
+formatCurrency(savingsMetrics?.weeklySavings || 0);
+formatCurrency(savingsMetrics?.monthlySavings || 0);
+formatCurrency(agent.withIntelligence.cost);
+formatCurrency(agent.withoutIntelligence.cost);
+formatCurrency(day.withIntelligence.cost);
+formatCurrency(provider.savingsAmount);
 formatCurrency(model.cost)
-
 // ❌ NOT FOUND - No instances of manual formatting
-`$${value.toFixed(2)}`  // Not used
-"$" + value             // Not used
+`$${value.toFixed(2)}`; // Not used
+'$' + value; // Not used
 ```
 
 ## Icon Sizing Examples (✅ All Standardized)
@@ -70,6 +69,7 @@ formatCurrency(model.cost)
 ## Section Pattern with Custom Headers (⚠️ Cannot Use DashboardSection)
 
 ### Pattern 1: Badge in Header
+
 ```typescript
 // Lines 275-332
 <Card>
@@ -91,6 +91,7 @@ formatCurrency(model.cost)
 ```
 
 ### Pattern 2: Tooltip in Header
+
 ```typescript
 // Lines 335-419
 <Card>
@@ -121,6 +122,7 @@ formatCurrency(model.cost)
 ```
 
 ### Pattern 3: Icon in Header + Custom Background
+
 ```typescript
 // Lines 528-597
 <Card className="col-span-full bg-blue-500/5 border-blue-500/20">
@@ -183,6 +185,7 @@ formatCurrency(model.cost)
 ## Other Well-Structured Patterns
 
 ### Expandable Table Rows (Lines 720-804)
+
 ```typescript
 <tr
   className={`cursor-pointer ${index % 2 === 0 ? "bg-background hover:bg-muted/30" : "bg-muted/50 hover:bg-muted/70"}`}
@@ -214,6 +217,7 @@ formatCurrency(model.cost)
 ```
 
 ### Sortable Table Headers (Lines 1277-1378)
+
 ```typescript
 const [sortColumn, setSortColumn] = useState<keyof UnifiedModelData | 'usagePercentage'>('cost');
 const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -243,6 +247,7 @@ const handleSort = (column: keyof UnifiedModelData | 'usagePercentage') => {
 ```
 
 ### Progress Bars with Color Coding (Lines 1000-1016)
+
 ```typescript
 {providerSavings?.map((provider, index) => {
   const colors = [
@@ -275,6 +280,7 @@ const handleSort = (column: keyof UnifiedModelData | 'usagePercentage') => {
 ## Summary
 
 All patterns are either:
+
 1. ✅ Already standardized (currency, icons, grids)
 2. ⚠️ Intentionally custom (compact cards, custom headers)
 3. ✅ Well-structured (tables, sorting, expansion)

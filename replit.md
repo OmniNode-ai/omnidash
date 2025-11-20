@@ -17,6 +17,7 @@ Preferred communication style: Simple, everyday language.
 **UI Framework**: Implements shadcn/ui component library (New York style variant) with Radix UI primitives for accessible, composable components. Uses Tailwind CSS for styling with a custom design system based on IBM's Carbon Design System principles.
 
 **Design System Philosophy**: Carbon Design System approach optimized for data-dense enterprise applications with emphasis on:
+
 - Information density over white space to maximize data visibility
 - IBM Plex Sans/Mono font family for UI and monospace metrics
 - Scanability and quick comprehension for monitoring scenarios
@@ -26,6 +27,7 @@ Preferred communication style: Simple, everyday language.
 **State Management**: TanStack Query (React Query) v5 for server state management with custom query client configuration. Local component state managed with React hooks. Theme state managed through custom ThemeProvider context (dark/light mode support).
 
 **Routing Structure**: Eight main dashboard routes representing different aspects of the platform:
+
 - `/` - AI Agent Operations (52 specialized agents)
 - `/patterns` - Pattern Learning (25,000+ patterns)
 - `/intelligence` - Intelligence Operations (168+ operations)
@@ -37,6 +39,7 @@ Preferred communication style: Simple, everyday language.
 - `/chat` - AI Query Assistant (natural language queries)
 
 **Component Architecture**: Modular component design with reusable visualization components:
+
 - MetricCard: Key performance indicators with trend indicators
 - AgentStatusGrid: Real-time agent status monitoring
 - RealtimeChart: Time-series data visualization (Recharts)
@@ -56,7 +59,8 @@ Preferred communication style: Simple, everyday language.
 
 **Storage Interface**: Abstract storage interface (IStorage) with in-memory implementation (MemStorage) for user management. Designed to be swappable with database-backed implementations.
 
-**Build Process**: 
+**Build Process**:
+
 - Frontend: Vite builds to `dist/public`
 - Backend: esbuild bundles server code to `dist` with ESM format
 - Production: Serves static frontend files and API routes from single Express server
@@ -80,37 +84,44 @@ Preferred communication style: Simple, everyday language.
 ### External Dependencies
 
 **UI Component Libraries**:
-- @radix-ui/* - 20+ primitive components for accessible UI
+
+- @radix-ui/\* - 20+ primitive components for accessible UI
 - shadcn/ui - Component system built on Radix primitives
 - class-variance-authority - Type-safe component variants
 - tailwindcss - Utility-first CSS framework
 
 **Data Visualization**:
+
 - recharts - Composable charting library for React
 - embla-carousel-react - Carousel/slider component
 
 **Forms & Validation**:
+
 - react-hook-form - Form state management
 - @hookform/resolvers - Form validation resolvers
 - zod - TypeScript-first schema validation
 - drizzle-zod - Drizzle schema to Zod conversion
 
 **Styling & Utilities**:
+
 - clsx & tailwind-merge - Conditional class merging
 - date-fns - Date manipulation and formatting
 - lucide-react - Icon library
 
 **Database & ORM**:
+
 - @neondatabase/serverless - Neon PostgreSQL serverless driver
 - drizzle-orm - TypeScript ORM
 - drizzle-kit - Schema migration toolkit
 
 **Development Tools**:
-- @replit/vite-plugin-* - Replit-specific development plugins
+
+- @replit/vite-plugin-\* - Replit-specific development plugins
 - tsx - TypeScript execution for Node.js
 - esbuild - JavaScript bundler for production
 
 **Routing & Navigation**:
+
 - wouter - Minimalist routing for React
 - TanStack Query - Server state management
 
@@ -121,6 +132,7 @@ Preferred communication style: Simple, everyday language.
 **Mock Data Strategy**: Dashboards currently use client-side generated mock data with setTimeout-based updates to simulate real-time behavior. This allows frontend development and testing without backend implementation. Production implementation would replace with WebSocket or Server-Sent Events for real-time updates.
 
 **Monorepo Structure**: Single repository with clear separation:
+
 - `client/` - React frontend application
 - `server/` - Express backend API
 - `shared/` - Shared TypeScript types and schemas
@@ -132,7 +144,8 @@ Preferred communication style: Simple, everyday language.
 
 **Theme System**: CSS custom properties for theming with automatic dark/light mode support. Separate color tokens for light and dark modes defined in index.css.
 
-**Performance Considerations**: 
+**Performance Considerations**:
+
 - Chart data limited to recent time windows (typically 20 data points)
 - Virtual scrolling for large lists (ScrollArea component)
 - Lazy loading considerations for dashboard components

@@ -35,6 +35,7 @@ Or simply remove the line entirely to use the default (false).
 ### Configuration (`config.ts`)
 
 The central configuration file that:
+
 - Exports the `USE_MOCK_DATA` flag (reads from `VITE_USE_MOCK_DATA` environment variable)
 - Provides the `MockDataGenerator` utility class with helper methods for generating realistic data
 
@@ -42,16 +43,16 @@ The central configuration file that:
 
 Each dashboard has its own dedicated mock data generator:
 
-| Generator | File | Dashboard |
-|-----------|------|-----------|
-| `AgentOperationsMockData` | `agent-operations-mock.ts` | Agent Operations Dashboard |
-| `PatternLearningMockData` | `pattern-learning-mock.ts` | Pattern Learning Dashboard |
+| Generator                        | File                              | Dashboard                         |
+| -------------------------------- | --------------------------------- | --------------------------------- |
+| `AgentOperationsMockData`        | `agent-operations-mock.ts`        | Agent Operations Dashboard        |
+| `PatternLearningMockData`        | `pattern-learning-mock.ts`        | Pattern Learning Dashboard        |
 | `IntelligenceOperationsMockData` | `intelligence-operations-mock.ts` | Intelligence Operations Dashboard |
-| `EventFlowMockData` | `event-flow-mock.ts` | Event Flow Dashboard |
-| `CodeIntelligenceMockData` | `code-intelligence-mock.ts` | Code Intelligence Dashboard |
-| `KnowledgeGraphMockData` | `knowledge-graph-mock.ts` | Knowledge Graph Dashboard |
-| `PlatformHealthMockData` | `platform-health-mock.ts` | Platform Health Dashboard |
-| `DeveloperExperienceMockData` | `developer-experience-mock.ts` | Developer Experience Dashboard |
+| `EventFlowMockData`              | `event-flow-mock.ts`              | Event Flow Dashboard              |
+| `CodeIntelligenceMockData`       | `code-intelligence-mock.ts`       | Code Intelligence Dashboard       |
+| `KnowledgeGraphMockData`         | `knowledge-graph-mock.ts`         | Knowledge Graph Dashboard         |
+| `PlatformHealthMockData`         | `platform-health-mock.ts`         | Platform Health Dashboard         |
+| `DeveloperExperienceMockData`    | `developer-experience-mock.ts`    | Developer Experience Dashboard    |
 
 ### Data Sources Integration
 
@@ -84,32 +85,32 @@ The `MockDataGenerator` class provides helpful utilities for generating realisti
 import { MockDataGenerator as Gen } from './config';
 
 // Generate random integers
-Gen.randomInt(10, 100) // Random number between 10 and 100
+Gen.randomInt(10, 100); // Random number between 10 and 100
 
 // Generate random floats
-Gen.randomFloat(0.5, 1.0, 2) // Random float between 0.5 and 1.0, 2 decimal places
+Gen.randomFloat(0.5, 1.0, 2); // Random float between 0.5 and 1.0, 2 decimal places
 
 // Pick random items
-Gen.randomItem(['foo', 'bar', 'baz']) // Random item from array
-Gen.randomItems(['a', 'b', 'c', 'd'], 2) // Pick 2 random items
+Gen.randomItem(['foo', 'bar', 'baz']); // Random item from array
+Gen.randomItems(['a', 'b', 'c', 'd'], 2); // Pick 2 random items
 
 // Generate timestamps
-Gen.pastTimestamp(60) // Timestamp 0-60 minutes ago
+Gen.pastTimestamp(60); // Timestamp 0-60 minutes ago
 
 // Generate time series data
-Gen.generateTimeSeries(20, 0, 100, 1) // 20 data points, values 0-100, 1 minute intervals
+Gen.generateTimeSeries(20, 0, 100, 1); // 20 data points, values 0-100, 1 minute intervals
 
 // Generate IDs and names
-Gen.uuid() // Generate UUID
-Gen.agentName() // Generate realistic agent name
-Gen.filePath() // Generate realistic file path
-Gen.repositoryName() // Generate repository name
-Gen.programmingLanguage() // Random programming language
+Gen.uuid(); // Generate UUID
+Gen.agentName(); // Generate realistic agent name
+Gen.filePath(); // Generate realistic file path
+Gen.repositoryName(); // Generate repository name
+Gen.programmingLanguage(); // Random programming language
 
 // Generate statuses with weighted probabilities
-Gen.status(0.8) // 80% success, 15% warning, 5% error
-Gen.healthStatus() // healthy, degraded, or down
-Gen.trend() // up, down, or stable
+Gen.status(0.8); // 80% success, 15% warning, 5% error
+Gen.healthStatus(); // healthy, degraded, or down
+Gen.trend(); // up, down, or stable
 ```
 
 ## Example: Creating Mock Data
@@ -184,6 +185,7 @@ All mock data generators create realistic data that matches production patterns:
 ### Time Series Data
 
 Chart data includes realistic time series with:
+
 - Configurable data point count
 - Realistic value ranges
 - Proper time intervals (minutes, hours, days)
@@ -192,6 +194,7 @@ Chart data includes realistic time series with:
 ### Weighted Probabilities
 
 Status generation uses weighted probabilities to match production distributions:
+
 - **Success Rate**: 80-95% (configurable)
 - **Health Status**: 85% healthy, 10% degraded, 5% down
 - **Trends**: 40% up, 10% down, 50% stable
@@ -199,6 +202,7 @@ Status generation uses weighted probabilities to match production distributions:
 ### Comprehensive Coverage
 
 Mock data includes all fields expected by dashboard components:
+
 - Summary metrics
 - Recent activity/actions
 - Health status
@@ -211,11 +215,13 @@ Mock data includes all fields expected by dashboard components:
 ### Testing with Mock Data
 
 1. Enable mock data in your environment:
+
    ```bash
    echo "VITE_USE_MOCK_DATA=true" >> .env.local
    ```
 
 2. Start the development server:
+
    ```bash
    npm run dev
    ```
@@ -246,6 +252,7 @@ The mock data system also serves as a fallback when APIs are unavailable. To tes
 When adding a new dashboard or data source:
 
 1. Create a new mock data generator file:
+
    ```typescript
    // client/src/lib/mock-data/my-dashboard-mock.ts
    import { MockDataGenerator as Gen } from './config';
@@ -258,11 +265,13 @@ When adding a new dashboard or data source:
    ```
 
 2. Export from `index.ts`:
+
    ```typescript
    export { MyDashboardMockData } from './my-dashboard-mock';
    ```
 
 3. Update data source to use mock data:
+
    ```typescript
    import { USE_MOCK_DATA, MyDashboardMockData } from '../mock-data';
 
@@ -284,16 +293,19 @@ To update existing mock data:
 ## Benefits
 
 ### Development
+
 - **No Backend Required**: Develop and test frontend without running backend services
 - **Consistent Data**: Same data structure across team members
 - **Fast Iteration**: No API latency during development
 
 ### Testing
+
 - **Reliable Tests**: Consistent mock data for testing
 - **Edge Cases**: Easily test error states, edge cases, and unusual data
 - **Reproducible**: Same data every time for debugging
 
 ### Demos
+
 - **Professional**: Show dashboards with realistic, production-like data
 - **Offline**: Run demos without internet or backend connectivity
 - **Controlled**: Control exactly what data is displayed
@@ -303,6 +315,7 @@ To update existing mock data:
 ### Mock Data Not Showing
 
 1. Check environment variable is set:
+
    ```bash
    grep VITE_USE_MOCK_DATA .env .env.local
    ```

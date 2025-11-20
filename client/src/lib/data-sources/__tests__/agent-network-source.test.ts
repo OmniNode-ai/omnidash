@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { agentNetworkSource } from '../agent-network-source';
 import type { Agent, RoutingDecision } from '../agent-network-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 describe('AgentNetworkSource', () => {
   beforeEach(() => {
@@ -16,11 +20,7 @@ describe('AgentNetworkSource', () => {
         { id: 'agent-2', name: 'Agent Two', category: 'Category B', description: 'Second agent' },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse(mockAgents)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse(mockAgents)]]));
 
       const result = await agentNetworkSource.fetchAgents();
 
@@ -30,11 +30,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should return empty array when API returns non-array data', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse({ agents: 'invalid' })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse({ agents: 'invalid' })]]));
 
       const result = await agentNetworkSource.fetchAgents();
 
@@ -43,11 +39,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should return mock data when API fails with error status', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse(null, { status: 500 })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse(null, { status: 500 })]]));
 
       const result = await agentNetworkSource.fetchAgents();
 
@@ -59,11 +51,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should return mock data when fetch throws network error', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', new Error('Network error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', new Error('Network error')]]));
 
       const result = await agentNetworkSource.fetchAgents();
 
@@ -77,11 +65,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should return empty array when API returns empty array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse([])]]));
 
       const result = await agentNetworkSource.fetchAgents();
 
@@ -95,11 +79,7 @@ describe('AgentNetworkSource', () => {
         { id: 'agent-2', name: 'Agent Two' },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse(minimalAgents)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse(minimalAgents)]]));
 
       const result = await agentNetworkSource.fetchAgents();
 
@@ -110,11 +90,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should handle null response from API', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse(null)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse(null)]]));
 
       const result = await agentNetworkSource.fetchAgents();
 
@@ -123,11 +99,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should handle undefined response from API as parse error', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse(undefined)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse(undefined)]]));
 
       const result = await agentNetworkSource.fetchAgents();
 
@@ -144,11 +116,7 @@ describe('AgentNetworkSource', () => {
         description: `Description for agent ${i}`,
       }));
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse(largeAgentList)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse(largeAgentList)]]));
 
       const result = await agentNetworkSource.fetchAgents();
 
@@ -162,15 +130,16 @@ describe('AgentNetworkSource', () => {
   describe('fetchRoutingDecisions', () => {
     it('should return routing decisions from API with isMock: false', async () => {
       const mockRoutingDecisions: RoutingDecision[] = [
-        { fromAgent: 'agent-1', toAgent: 'agent-2', confidence: 0.95, reason: 'High confidence routing' },
-        { toAgent: 'agent-3', confidence: 0.80, reason: 'Initial routing' },
+        {
+          fromAgent: 'agent-1',
+          toAgent: 'agent-2',
+          confidence: 0.95,
+          reason: 'High confidence routing',
+        },
+        { toAgent: 'agent-3', confidence: 0.8, reason: 'Initial routing' },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing', createMockResponse(mockRoutingDecisions)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing', createMockResponse(mockRoutingDecisions)]]));
 
       const result = await agentNetworkSource.fetchRoutingDecisions();
 
@@ -181,9 +150,7 @@ describe('AgentNetworkSource', () => {
 
     it('should return empty array when API returns non-array data', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/agents/routing', createMockResponse({ routing: 'invalid' })],
-        ])
+        new Map([['/api/agents/routing', createMockResponse({ routing: 'invalid' })]])
       );
 
       const result = await agentNetworkSource.fetchRoutingDecisions();
@@ -193,11 +160,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should return mock data when API fails with error status', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing', createMockResponse(null, { status: 404 })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing', createMockResponse(null, { status: 404 })]]));
 
       const result = await agentNetworkSource.fetchRoutingDecisions();
 
@@ -206,11 +169,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should return mock data when fetch throws network error', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing', new Error('Connection refused')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing', new Error('Connection refused')]]));
 
       const result = await agentNetworkSource.fetchRoutingDecisions();
 
@@ -219,11 +178,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should return empty array when API returns empty array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing', createMockResponse([])]]));
 
       const result = await agentNetworkSource.fetchRoutingDecisions();
 
@@ -238,9 +193,7 @@ describe('AgentNetworkSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/agents/routing', createMockResponse(minimalRoutingDecisions)],
-        ])
+        new Map([['/api/agents/routing', createMockResponse(minimalRoutingDecisions)]])
       );
 
       const result = await agentNetworkSource.fetchRoutingDecisions();
@@ -254,14 +207,10 @@ describe('AgentNetworkSource', () => {
 
     it('should handle routing decision without fromAgent', async () => {
       const routingDecisions: RoutingDecision[] = [
-        { toAgent: 'agent-1', confidence: 0.90, reason: 'Direct routing' },
+        { toAgent: 'agent-1', confidence: 0.9, reason: 'Direct routing' },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing', createMockResponse(routingDecisions)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing', createMockResponse(routingDecisions)]]));
 
       const result = await agentNetworkSource.fetchRoutingDecisions();
 
@@ -271,11 +220,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should handle null response from API', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing', createMockResponse(null)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing', createMockResponse(null)]]));
 
       const result = await agentNetworkSource.fetchRoutingDecisions();
 
@@ -284,11 +229,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should handle undefined response from API as parse error', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing', createMockResponse(undefined)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing', createMockResponse(undefined)]]));
 
       const result = await agentNetworkSource.fetchRoutingDecisions();
 
@@ -305,11 +246,7 @@ describe('AgentNetworkSource', () => {
         reason: `Routing decision ${i}`,
       }));
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing', createMockResponse(largeRoutingList)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing', createMockResponse(largeRoutingList)]]));
 
       const result = await agentNetworkSource.fetchRoutingDecisions();
 
@@ -344,9 +281,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should set isMock to true if agents API fails', async () => {
-      const mockRoutingDecisions: RoutingDecision[] = [
-        { toAgent: 'agent-1', confidence: 0.90 },
-      ];
+      const mockRoutingDecisions: RoutingDecision[] = [{ toAgent: 'agent-1', confidence: 0.9 }];
 
       setupFetchMock(
         new Map([
@@ -363,9 +298,7 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should set isMock to true if routing API fails', async () => {
-      const mockAgents: Agent[] = [
-        { id: 'agent-1', name: 'Agent One' },
-      ];
+      const mockAgents: Agent[] = [{ id: 'agent-1', name: 'Agent One' }];
 
       setupFetchMock(
         new Map([
@@ -412,16 +345,13 @@ describe('AgentNetworkSource', () => {
     });
 
     it('should fetch agents and routing decisions in parallel', async () => {
-      const mockAgents: Agent[] = [
-        { id: 'agent-1', name: 'Agent One' },
-      ];
+      const mockAgents: Agent[] = [{ id: 'agent-1', name: 'Agent One' }];
 
-      const mockRoutingDecisions: RoutingDecision[] = [
-        { toAgent: 'agent-1' },
-      ];
+      const mockRoutingDecisions: RoutingDecision[] = [{ toAgent: 'agent-1' }];
 
       const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const url =
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
         if (url.includes('/api/agents/agents')) {
           return createMockResponse(mockAgents);
@@ -500,12 +430,22 @@ describe('AgentNetworkSource', () => {
   describe('Integration Tests', () => {
     it('should handle complete success scenario', async () => {
       const mockAgents: Agent[] = [
-        { id: 'polymorphic-agent', name: 'Polymorphic Agent', category: 'Code Generation', description: 'Generates code' },
+        {
+          id: 'polymorphic-agent',
+          name: 'Polymorphic Agent',
+          category: 'Code Generation',
+          description: 'Generates code',
+        },
         { id: 'test-agent', name: 'Test Agent', category: 'Testing', description: 'Creates tests' },
       ];
 
       const mockRoutingDecisions: RoutingDecision[] = [
-        { fromAgent: 'polymorphic-agent', toAgent: 'test-agent', confidence: 0.95, reason: 'Code generation completed' },
+        {
+          fromAgent: 'polymorphic-agent',
+          toAgent: 'test-agent',
+          confidence: 0.95,
+          reason: 'Code generation completed',
+        },
       ];
 
       setupFetchMock(

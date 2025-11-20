@@ -1,5 +1,11 @@
-import { memo } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { memo } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface TimeRangeSelectorProps {
   value: string;
@@ -10,7 +16,10 @@ interface TimeRangeSelectorProps {
  * TimeRangeSelector component for selecting time windows.
  * Memoized to prevent unnecessary re-renders when parent state changes.
  */
-export const TimeRangeSelector = memo(function TimeRangeSelector({ value, onChange }: TimeRangeSelectorProps) {
+export const TimeRangeSelector = memo(function TimeRangeSelector({
+  value,
+  onChange,
+}: TimeRangeSelectorProps) {
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-32">

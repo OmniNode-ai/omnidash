@@ -3,6 +3,7 @@
 ## Problem
 
 Vitest tests were hanging in CI environments, causing 10-minute timeouts. This is a common issue when:
+
 - Polling intervals aren't disabled in tests
 - Timers aren't cleaned up properly
 - Async operations don't complete
@@ -15,6 +16,7 @@ We've implemented a repository-level fix with multiple layers:
 ### 1. Global Teardown (`client/src/tests/teardown.ts`)
 
 A global teardown hook that:
+
 - Clears all remaining timers
 - Forces clean exit in CI environments
 - Ensures no open handles prevent process exit
@@ -22,6 +24,7 @@ A global teardown hook that:
 ### 2. Test Setup Cleanup (`client/src/tests/setup.ts`)
 
 Enhanced `afterEach` hook that:
+
 - Clears React Testing Library cleanup
 - Resets all timers after each test
 - Prevents timer accumulation
@@ -29,22 +32,25 @@ Enhanced `afterEach` hook that:
 ### 3. Polling Interval Helper (`client/src/lib/constants/query-config.ts`)
 
 The `getPollingInterval()` helper:
+
 - Automatically disables polling in test environments
 - Detects test environment via multiple signals
 - Prevents infinite polling loops in tests
 
 **Usage:**
+
 ```typescript
 // ❌ Bad - polling runs in tests
-refetchInterval: POLLING_INTERVAL_MEDIUM
+refetchInterval: POLLING_INTERVAL_MEDIUM;
 
 // ✅ Good - polling disabled in tests
-refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM)
+refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM);
 ```
 
 ### 4. CI-Specific Test Command
 
 The `test:ci` npm script:
+
 - Uses `vitest run` (one-shot mode, exits after completion)
 - Disables coverage (faster, prevents hangs)
 - Uses verbose reporter for better debugging
@@ -52,6 +58,7 @@ The `test:ci` npm script:
 ### 5. Vitest Configuration
 
 Optimized `vitest.config.ts`:
+
 - Test isolation enabled (`isolate: true`)
 - Proper timeout settings
 - Thread pool limits to prevent resource exhaustion
@@ -105,6 +112,7 @@ vi.mock('@/lib/data-sources', () => ({
 If tests still hang:
 
 1. **Check for open handles:**
+
    ```bash
    node --trace-warnings test.js
    ```
@@ -130,4 +138,3 @@ If tests still hang:
 - `client/src/tests/teardown.ts` - Global teardown hook
 - `client/src/lib/constants/query-config.ts` - Polling interval helper
 - `.github/workflows/test.yml` - CI workflow configuration
-

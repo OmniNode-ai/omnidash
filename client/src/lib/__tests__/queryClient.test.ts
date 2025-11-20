@@ -21,4 +21,3 @@ describe('queryClient', () => {
     expect(options.mutations?.retry).toBe(false);
   });
 });
-

@@ -89,10 +89,7 @@ class AgentNetworkSource {
   }
 
   async fetchAll(): Promise<AgentNetworkData> {
-    const [agents, routing] = await Promise.all([
-      this.fetchAgents(),
-      this.fetchRoutingDecisions(),
-    ]);
+    const [agents, routing] = await Promise.all([this.fetchAgents(), this.fetchRoutingDecisions()]);
 
     return {
       agents: agents.data,
@@ -103,10 +100,3 @@ class AgentNetworkSource {
 }
 
 export const agentNetworkSource = new AgentNetworkSource();
-
-
-
-
-
-
-

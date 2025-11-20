@@ -10,6 +10,7 @@
 The IntelligenceSavings component shows **good currency formatting and icon standardization**, but has **limited opportunities for DashboardSection conversion** due to custom header requirements in most sections.
 
 ### Quick Findings
+
 ✅ **Currency Formatting**: Consistent use of `formatCurrency()` throughout
 ✅ **Icon Sizing**: Standardized at `h-4 w-4` and `h-5 w-5`
 ⚠️ **DashboardSection**: Limited applicability due to custom headers
@@ -26,12 +27,12 @@ All dollar amounts consistently use the `formatCurrency()` utility function:
 
 ```typescript
 // Lines 359, 372, 385, 398, 653, 658, 737-739, 762-788, 796, 811-817, 934, 965-966, 1006, 1058, 1196, 1405-1408, 1432, 1439, etc.
-formatCurrency(savingsMetrics?.totalSavings || 0)
-formatCurrency(savingsMetrics?.dailySavings || 0)
-formatCurrency(agent.withIntelligence.cost)
-formatCurrency(day.withIntelligence.cost)
-formatCurrency(provider.savingsAmount)
-formatCurrency(model.cost)
+formatCurrency(savingsMetrics?.totalSavings || 0);
+formatCurrency(savingsMetrics?.dailySavings || 0);
+formatCurrency(agent.withIntelligence.cost);
+formatCurrency(day.withIntelligence.cost);
+formatCurrency(provider.savingsAmount);
+formatCurrency(model.cost);
 ```
 
 **Recommendation**: ✅ No changes needed
@@ -65,12 +66,13 @@ formatCurrency(model.cost)
 All major sections have custom header content that isn't supported by DashboardSection's current API:
 
 #### Section 1: Intelligence Operations (Lines 275-332)
+
 ```tsx
 <Card>
   <CardHeader>
     <div className="flex items-center gap-2">
       <CardTitle>Intelligence Operations</CardTitle>
-      <Badge variant="outline">Real-time</Badge>  {/* Custom badge */}
+      <Badge variant="outline">Real-time</Badge> {/* Custom badge */}
     </div>
   </CardHeader>
   <CardContent>
@@ -84,12 +86,15 @@ All major sections have custom header content that isn't supported by DashboardS
 **Issue**: DashboardSection.title expects `string`, but this section needs a Badge inline.
 
 #### Section 2: Cost Savings Breakdown (Lines 335-419)
+
 ```tsx
 <Card>
   <CardHeader>
     <div className="flex items-center gap-2">
       <CardTitle>Cost Savings Breakdown</CardTitle>
-      <Tooltip>  {/* Custom tooltip icon */}
+      <Tooltip>
+        {' '}
+        {/* Custom tooltip icon */}
         <TooltipTrigger asChild>
           <Info className="h-4 w-4 text-muted-foreground cursor-help" />
         </TooltipTrigger>
@@ -108,14 +113,16 @@ All major sections have custom header content that isn't supported by DashboardS
 **Issue**: DashboardSection doesn't support inline Tooltip icons in header.
 
 #### Section 3: Token Usage Comparison (Lines 423-481)
+
 Not a section wrapper - this is an individual Card with custom content layout.
 
 #### Section 4: How We Calculate Token Savings (Lines 528-597)
+
 ```tsx
 <Card className="col-span-full bg-blue-500/5 border-blue-500/20">
   <CardHeader className="pb-3">
     <CardTitle className="text-base flex items-center gap-2">
-      <Lightbulb className="h-5 w-5 text-blue-500" />  {/* Custom icon */}
+      <Lightbulb className="h-5 w-5 text-blue-500" /> {/* Custom icon */}
       How We Calculate Token Savings
     </CardTitle>
   </CardHeader>
@@ -135,11 +142,12 @@ Remove Badges, Tooltips, and Icons to fit DashboardSection API - **loses functio
 
 **Option C: Enhance DashboardSection** (Future work)
 Modify DashboardSection to accept:
+
 ```typescript
 interface DashboardSectionProps {
-  title: string | ReactNode;  // Allow custom header content
-  headerActions?: ReactNode;  // For badges, tooltips, etc.
-  className?: string;  // For custom backgrounds
+  title: string | ReactNode; // Allow custom header content
+  headerActions?: ReactNode; // For badges, tooltips, etc.
+  className?: string; // For custom backgrounds
 }
 ```
 
@@ -150,6 +158,7 @@ interface DashboardSectionProps {
 ## 4. Nested Metric Cards ⚠️ NON-STANDARD PATTERN
 
 ### Current Pattern (Used 13+ times)
+
 ```tsx
 <Card>
   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -158,14 +167,13 @@ interface DashboardSectionProps {
   </CardHeader>
   <CardContent>
     <div className="text-2xl font-bold">$24,580</div>
-    <p className="text-xs text-muted-foreground">
-      Total cost savings achieved
-    </p>
+    <p className="text-xs text-muted-foreground">Total cost savings achieved</p>
   </CardContent>
 </Card>
 ```
 
 ### Standard MetricCard Pattern
+
 ```tsx
 <MetricCard
   label="Total Savings"
@@ -177,24 +185,26 @@ interface DashboardSectionProps {
 
 ### Key Differences
 
-| Aspect | Current Nested Cards | Standard MetricCard |
-|--------|---------------------|---------------------|
-| **Label Style** | `text-sm font-medium` | `text-xs uppercase tracking-wide` |
-| **Value Size** | `text-2xl font-bold` | `text-4xl font-bold font-mono` |
-| **Description** | Always visible below value | Tooltip on hover |
-| **Icon Background** | None | Colored background box with status |
-| **Padding** | Custom via CardHeader/Content | Standardized `p-6` |
+| Aspect              | Current Nested Cards          | Standard MetricCard                |
+| ------------------- | ----------------------------- | ---------------------------------- |
+| **Label Style**     | `text-sm font-medium`         | `text-xs uppercase tracking-wide`  |
+| **Value Size**      | `text-2xl font-bold`          | `text-4xl font-bold font-mono`     |
+| **Description**     | Always visible below value    | Tooltip on hover                   |
+| **Icon Background** | None                          | Colored background box with status |
+| **Padding**         | Custom via CardHeader/Content | Standardized `p-6`                 |
 
 ### Recommendation for Nested Cards
 
 **Option A: Keep As-Is** (Recommended)
 The compact design (`text-2xl` values, inline descriptions) is intentional for high-density savings dashboards. Converting to MetricCard would:
+
 - Make cards 60% larger (text-4xl values)
 - Hide descriptions in tooltips (worse UX for financial data)
 - Add unnecessary icon backgrounds
 
 **Option B: Create Compact Variant**
 If standardization is critical, create `<MetricCard variant="compact">` that:
+
 - Uses `text-2xl` for values
 - Supports visible `description` prop (not just tooltip)
 - Removes icon background box
@@ -232,6 +242,7 @@ Use standard MetricCard and accept larger cards + tooltip-only descriptions.
 ### Immediate Changes: NONE ✅
 
 All identified patterns are either:
+
 1. **Already standardized** (currency, icons, grids)
 2. **Intentionally custom** (compact metric cards for financial data)
 3. **Blocked by API limitations** (DashboardSection doesn't support custom headers)
@@ -239,6 +250,7 @@ All identified patterns are either:
 ### Future Enhancements (Separate Work)
 
 1. **Enhance DashboardSection** to support:
+
    ```typescript
    <DashboardSection
      title="Intelligence Operations"
@@ -264,21 +276,25 @@ All identified patterns are either:
 ## Test Results
 
 ### Currency Formatting
+
 - ✅ All amounts use `formatCurrency()`
 - ✅ No hardcoded dollar signs with manual formatting
 - ✅ Consistent decimal handling
 
 ### Icon Sizing
+
 - ✅ 50+ icons all use `h-4 w-4`
 - ✅ Emphasis icons use `h-5 w-5`
 - ✅ Decorative dots use `h-3 w-3`
 
 ### Component Structure
+
 - ✅ TypeScript compiles without errors
 - ✅ All props correctly typed
 - ✅ No missing imports
 
 ### Visual Consistency
+
 - ✅ Spacing: `gap-4` throughout
 - ✅ Card padding: Consistent via CardContent
 - ✅ Typography hierarchy: Maintained across all metrics
@@ -290,6 +306,7 @@ All identified patterns are either:
 **Status**: ✅ **COMPONENT ALREADY WELL-STANDARDIZED**
 
 The IntelligenceSavings component demonstrates excellent adherence to coding standards:
+
 - Currency formatting is perfect
 - Icon sizing is consistent
 - Grid layouts follow best practices

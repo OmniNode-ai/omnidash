@@ -28,12 +28,14 @@ test.describe('Agent Operations Dashboard', () => {
 
   test('should match metrics grid snapshot', async ({ page }) => {
     // Wait for metrics to load
-    await page.waitForSelector('[data-testid="metric-card"]', {
-      timeout: 5000,
-    }).catch(() => {
-      // Fallback: wait for any card-like containers
-      return page.waitForSelector('.rounded-lg.border', { timeout: 5000 });
-    });
+    await page
+      .waitForSelector('[data-testid="metric-card"]', {
+        timeout: 5000,
+      })
+      .catch(() => {
+        // Fallback: wait for any card-like containers
+        return page.waitForSelector('.rounded-lg.border', { timeout: 5000 });
+      });
 
     const metricsSection = page.locator('main');
     await expect(metricsSection).toHaveScreenshot('agent-operations-metrics.png');

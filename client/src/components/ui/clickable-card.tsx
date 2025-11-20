@@ -1,6 +1,6 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Card } from "./card";
+import * as React from 'react';
+import { cn } from '@/lib/utils';
+import { Card } from './card';
 
 /**
  * ClickableCard Component
@@ -78,7 +78,7 @@ const ClickableCard = React.forwardRef<HTMLDivElement, ClickableCardProps>(
       if (disabled) return;
 
       // Trigger on Enter or Space
-      if (event.key === "Enter" || event.key === " ") {
+      if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         if (href) {
           window.location.href = href;
@@ -93,21 +93,22 @@ const ClickableCard = React.forwardRef<HTMLDivElement, ClickableCardProps>(
         ref={ref}
         className={cn(
           // Base interactive styles
-          "cursor-pointer transition-all duration-200 ease-in-out",
+          'cursor-pointer transition-all duration-200 ease-in-out',
           // Hover effects - scale up and enhance shadow/border
-          "hover:shadow-lg hover:scale-[1.02] hover:border-primary/50",
+          'hover:shadow-lg hover:scale-[1.02] hover:border-primary/50',
           // Focus styles for keyboard navigation
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
           // Active state - scale down for press feedback
-          "active:scale-[0.98]",
+          'active:scale-[0.98]',
           // Disabled state
-          disabled && "opacity-50 cursor-not-allowed hover:shadow-sm hover:scale-100 hover:border-card-border",
+          disabled &&
+            'opacity-50 cursor-not-allowed hover:shadow-sm hover:scale-100 hover:border-card-border',
           className
         )}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         tabIndex={disabled ? -1 : 0}
-        role={href ? "link" : "button"}
+        role={href ? 'link' : 'button'}
         aria-disabled={disabled}
         {...props}
       >
@@ -117,6 +118,6 @@ const ClickableCard = React.forwardRef<HTMLDivElement, ClickableCardProps>(
   }
 );
 
-ClickableCard.displayName = "ClickableCard";
+ClickableCard.displayName = 'ClickableCard';
 
 export { ClickableCard };

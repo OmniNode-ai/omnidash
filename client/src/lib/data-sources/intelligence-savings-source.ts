@@ -132,7 +132,9 @@ class IntelligenceSavingsDataSource {
     };
   }
 
-  async fetchAgentComparisons(timeRange: string): Promise<{ data: AgentComparison[]; isMock: boolean }> {
+  async fetchAgentComparisons(
+    timeRange: string
+  ): Promise<{ data: AgentComparison[]; isMock: boolean }> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
 
@@ -141,25 +143,61 @@ class IntelligenceSavingsDataSource {
       return {
         data: [
           {
-            agentId: "polymorphic-agent",
-            agentName: "Polymorphic Agent",
-            withIntelligence: { avgTokens: 2500, avgCompute: 0.8, avgTime: 1.2, successRate: 95, cost: 0.045 },
-            withoutIntelligence: { avgTokens: 4500, avgCompute: 1.5, avgTime: 2.5, successRate: 88, cost: 0.082 },
-            savings: { tokens: 2000, compute: 0.7, time: 1.3, cost: 0.037, percentage: 45.1 }
+            agentId: 'polymorphic-agent',
+            agentName: 'Polymorphic Agent',
+            withIntelligence: {
+              avgTokens: 2500,
+              avgCompute: 0.8,
+              avgTime: 1.2,
+              successRate: 95,
+              cost: 0.045,
+            },
+            withoutIntelligence: {
+              avgTokens: 4500,
+              avgCompute: 1.5,
+              avgTime: 2.5,
+              successRate: 88,
+              cost: 0.082,
+            },
+            savings: { tokens: 2000, compute: 0.7, time: 1.3, cost: 0.037, percentage: 45.1 },
           },
           {
-            agentId: "code-reviewer",
-            agentName: "Code Reviewer",
-            withIntelligence: { avgTokens: 3200, avgCompute: 1.1, avgTime: 2.1, successRate: 92, cost: 0.062 },
-            withoutIntelligence: { avgTokens: 5100, avgCompute: 1.8, avgTime: 3.8, successRate: 85, cost: 0.098 },
-            savings: { tokens: 1900, compute: 0.7, time: 1.7, cost: 0.036, percentage: 36.7 }
+            agentId: 'code-reviewer',
+            agentName: 'Code Reviewer',
+            withIntelligence: {
+              avgTokens: 3200,
+              avgCompute: 1.1,
+              avgTime: 2.1,
+              successRate: 92,
+              cost: 0.062,
+            },
+            withoutIntelligence: {
+              avgTokens: 5100,
+              avgCompute: 1.8,
+              avgTime: 3.8,
+              successRate: 85,
+              cost: 0.098,
+            },
+            savings: { tokens: 1900, compute: 0.7, time: 1.7, cost: 0.036, percentage: 36.7 },
           },
           {
-            agentId: "test-generator",
-            agentName: "Test Generator",
-            withIntelligence: { avgTokens: 2800, avgCompute: 0.9, avgTime: 3.2, successRate: 89, cost: 0.051 },
-            withoutIntelligence: { avgTokens: 4200, avgCompute: 1.4, avgTime: 5.5, successRate: 82, cost: 0.079 },
-            savings: { tokens: 1400, compute: 0.5, time: 2.3, cost: 0.028, percentage: 35.4 }
+            agentId: 'test-generator',
+            agentName: 'Test Generator',
+            withIntelligence: {
+              avgTokens: 2800,
+              avgCompute: 0.9,
+              avgTime: 3.2,
+              successRate: 89,
+              cost: 0.051,
+            },
+            withoutIntelligence: {
+              avgTokens: 4200,
+              avgCompute: 1.4,
+              avgTime: 5.5,
+              successRate: 82,
+              cost: 0.079,
+            },
+            savings: { tokens: 1400, compute: 0.5, time: 2.3, cost: 0.028, percentage: 35.4 },
           },
         ],
         isMock: true,
@@ -182,25 +220,61 @@ class IntelligenceSavingsDataSource {
     return {
       data: [
         {
-          agentId: "polymorphic-agent",
-          agentName: "Polymorphic Agent",
-          withIntelligence: { avgTokens: 2500, avgCompute: 0.8, avgTime: 1.2, successRate: 95, cost: 0.045 },
-          withoutIntelligence: { avgTokens: 4500, avgCompute: 1.5, avgTime: 2.5, successRate: 88, cost: 0.082 },
-          savings: { tokens: 2000, compute: 0.7, time: 1.3, cost: 0.037, percentage: 45.1 }
+          agentId: 'polymorphic-agent',
+          agentName: 'Polymorphic Agent',
+          withIntelligence: {
+            avgTokens: 2500,
+            avgCompute: 0.8,
+            avgTime: 1.2,
+            successRate: 95,
+            cost: 0.045,
+          },
+          withoutIntelligence: {
+            avgTokens: 4500,
+            avgCompute: 1.5,
+            avgTime: 2.5,
+            successRate: 88,
+            cost: 0.082,
+          },
+          savings: { tokens: 2000, compute: 0.7, time: 1.3, cost: 0.037, percentage: 45.1 },
         },
         {
-          agentId: "code-reviewer",
-          agentName: "Code Reviewer",
-          withIntelligence: { avgTokens: 3200, avgCompute: 1.1, avgTime: 2.1, successRate: 92, cost: 0.062 },
-          withoutIntelligence: { avgTokens: 5100, avgCompute: 1.8, avgTime: 3.8, successRate: 85, cost: 0.098 },
-          savings: { tokens: 1900, compute: 0.7, time: 1.7, cost: 0.036, percentage: 36.7 }
+          agentId: 'code-reviewer',
+          agentName: 'Code Reviewer',
+          withIntelligence: {
+            avgTokens: 3200,
+            avgCompute: 1.1,
+            avgTime: 2.1,
+            successRate: 92,
+            cost: 0.062,
+          },
+          withoutIntelligence: {
+            avgTokens: 5100,
+            avgCompute: 1.8,
+            avgTime: 3.8,
+            successRate: 85,
+            cost: 0.098,
+          },
+          savings: { tokens: 1900, compute: 0.7, time: 1.7, cost: 0.036, percentage: 36.7 },
         },
         {
-          agentId: "test-generator",
-          agentName: "Test Generator",
-          withIntelligence: { avgTokens: 2800, avgCompute: 0.9, avgTime: 3.2, successRate: 89, cost: 0.051 },
-          withoutIntelligence: { avgTokens: 4200, avgCompute: 1.4, avgTime: 5.5, successRate: 82, cost: 0.079 },
-          savings: { tokens: 1400, compute: 0.5, time: 2.3, cost: 0.028, percentage: 35.4 }
+          agentId: 'test-generator',
+          agentName: 'Test Generator',
+          withIntelligence: {
+            avgTokens: 2800,
+            avgCompute: 0.9,
+            avgTime: 3.2,
+            successRate: 89,
+            cost: 0.051,
+          },
+          withoutIntelligence: {
+            avgTokens: 4200,
+            avgCompute: 1.4,
+            avgTime: 5.5,
+            successRate: 82,
+            cost: 0.079,
+          },
+          savings: { tokens: 1400, compute: 0.5, time: 2.3, cost: 0.028, percentage: 35.4 },
         },
       ],
       isMock: true,
@@ -328,7 +402,9 @@ class IntelligenceSavingsDataSource {
     return { data, isMock: true };
   }
 
-  async fetchProviderSavings(timeRange: string): Promise<{ data: ProviderSavings[]; isMock: boolean }> {
+  async fetchProviderSavings(
+    timeRange: string
+  ): Promise<{ data: ProviderSavings[]; isMock: boolean }> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
 
@@ -506,10 +582,7 @@ class IntelligenceSavingsDataSource {
  */
 export function formatTimeSaved(seconds: number): string {
   const hours = seconds / 3600;
-  return hours < 0.1
-    ? `${(seconds / 60).toFixed(1)}min`
-    : `${hours.toFixed(1)}h`;
+  return hours < 0.1 ? `${(seconds / 60).toFixed(1)}min` : `${hours.toFixed(1)}h`;
 }
 
 export const intelligenceSavingsSource = new IntelligenceSavingsDataSource();
-

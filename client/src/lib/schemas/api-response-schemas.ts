@@ -85,9 +85,11 @@ export const discoveredPatternSchema = z.object({
   name: z.string(),
   file_path: z.string(),
   createdAt: z.string(),
-  metadata: z.object({
-    createdAt: z.string(),
-  }).optional(),
+  metadata: z
+    .object({
+      createdAt: z.string(),
+    })
+    .optional(),
 });
 
 export const patternSummarySchema = z.object({
@@ -312,17 +314,21 @@ export const platformServicesSchema = z.object({
 // Knowledge Graph Schemas
 // ===========================
 
-export const graphNodeSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  type: z.string(),
-}).passthrough(); // Allow additional properties
+export const graphNodeSchema = z
+  .object({
+    id: z.string(),
+    label: z.string(),
+    type: z.string(),
+  })
+  .passthrough(); // Allow additional properties
 
-export const graphEdgeSchema = z.object({
-  source: z.string(),
-  target: z.string(),
-  type: z.string().optional(),
-}).passthrough(); // Allow additional properties
+export const graphEdgeSchema = z
+  .object({
+    source: z.string(),
+    target: z.string(),
+    type: z.string().optional(),
+  })
+  .passthrough(); // Allow additional properties
 
 export const knowledgeGraphDataSchema = z.object({
   nodes: z.array(graphNodeSchema),
@@ -394,11 +400,7 @@ export function safeParseResponse<T>(
  * Parse API response or throw validation error
  * Use when validation failure should prevent further processing
  */
-export function parseResponse<T>(
-  schema: z.ZodSchema<T>,
-  data: unknown,
-  context: string
-): T {
+export function parseResponse<T>(schema: z.ZodSchema<T>, data: unknown, context: string): T {
   try {
     return schema.parse(data);
   } catch (error) {

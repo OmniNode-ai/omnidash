@@ -7,6 +7,7 @@ Added comprehensive mock data support for the Agent Registry screen's "Recent Ag
 ## Changes Made
 
 ### 1. Created Mock Data Generator
+
 **File**: `client/src/lib/mock-data/agent-registry-mock.ts`
 
 - **New TypeScript interface**: `RecentActivity` with all required fields
@@ -25,12 +26,14 @@ Added comprehensive mock data support for the Agent Registry screen's "Recent Ag
   - 20% of actions in debug mode
 
 ### 2. Updated Mock Data Index
+
 **File**: `client/src/lib/mock-data/index.ts`
 
 - Added export for `AgentRegistryMockData`
 - Maintains consistency with existing mock data pattern
 
 ### 3. Enhanced Data Source
+
 **File**: `client/src/lib/data-sources/agent-registry-source.ts`
 
 - Added import for mock data: `USE_MOCK_DATA` and `AgentRegistryMockData`
@@ -43,6 +46,7 @@ Added comprehensive mock data support for the Agent Registry screen's "Recent Ag
   - Returns both data and `isMock` flag for debugging
 
 ### 4. Updated Component
+
 **File**: `client/src/pages/preview/AgentRegistry.tsx`
 
 - Changed from direct API fetch to using data source method
@@ -55,26 +59,27 @@ Added comprehensive mock data support for the Agent Registry screen's "Recent Ag
 
 ```typescript
 interface RecentActivity {
-  id: string;                    // UUID
-  correlationId: string;         // UUID for tracing
-  agentName: string;             // e.g., "agent-api", "agent-frontend"
-  actionType: string;            // "tool_call", "decision", "execution", etc.
-  actionName: string;            // "Read", "Edit", "Route Selection", etc.
-  description: string;           // Human-readable description
+  id: string; // UUID
+  correlationId: string; // UUID for tracing
+  agentName: string; // e.g., "agent-api", "agent-frontend"
+  actionType: string; // "tool_call", "decision", "execution", etc.
+  actionName: string; // "Read", "Edit", "Route Selection", etc.
+  description: string; // Human-readable description
   status: 'success' | 'error' | 'warning' | 'in_progress';
-  timestamp: string;             // ISO timestamp
-  createdAt: string;             // ISO timestamp
-  duration: number;              // Duration in milliseconds
-  durationMs: number;            // Same as duration
-  target?: string;               // File path, command, or pattern
-  actionDetails?: any;           // Additional action metadata
-  debugMode?: boolean;           // Debug flag
+  timestamp: string; // ISO timestamp
+  createdAt: string; // ISO timestamp
+  duration: number; // Duration in milliseconds
+  durationMs: number; // Same as duration
+  target?: string; // File path, command, or pattern
+  actionDetails?: any; // Additional action metadata
+  debugMode?: boolean; // Debug flag
 }
 ```
 
 ## Mock Data Features
 
 ### Agent Names (15 total)
+
 - agent-api
 - agent-frontend
 - agent-database
@@ -92,6 +97,7 @@ interface RecentActivity {
 - agent-integration
 
 ### Action Types & Names
+
 - **tool_call**: Read, Write, Edit, Bash, Grep, Glob
 - **decision**: Route Selection, Strategy Choice, Validation, Approval
 - **execution**: Code Generation, Test Execution, Deployment, Analysis
@@ -99,24 +105,28 @@ interface RecentActivity {
 - **success**: Task Complete, Validation Passed, Tests Passed, Deploy Success
 
 ### Status Distribution
+
 - 75% Success
 - 10% Warning
 - 10% Error
 - 5% In Progress
 
 ### Timestamps
+
 - All within last 24 hours
 - Sorted by most recent first
 
 ## Environment Configuration
 
 **Enable Mock Data**:
+
 ```bash
 # In .env file
 VITE_USE_MOCK_DATA=true
 ```
 
 **Use Real API**:
+
 ```bash
 # In .env file
 VITE_USE_MOCK_DATA=false

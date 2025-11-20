@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { StatusLegend } from "@/components/StatusLegend";
-import { MockDataBadge } from "@/components/MockDataBadge";
-import { ReactNode } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { StatusLegend } from '@/components/StatusLegend';
+import { MockDataBadge } from '@/components/MockDataBadge';
+import { ReactNode } from 'react';
 
 interface DashboardSectionProps {
   /**
@@ -65,7 +65,7 @@ export function DashboardSection({
   showStatusLegend = false,
   showMockBadge = false,
   children,
-  className = "",
+  className = '',
 }: DashboardSectionProps) {
   return (
     <Card className={className}>
@@ -87,9 +87,7 @@ export function DashboardSection({
         </div>
       </CardHeader>
 
-      <CardContent>
-        {children}
-      </CardContent>
+      <CardContent>{children}</CardContent>
     </Card>
   );
 }

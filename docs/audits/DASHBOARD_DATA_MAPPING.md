@@ -7,23 +7,24 @@
 
 ## Quick Reference Table
 
-| Dashboard | Primary Tables | Kafka Topics | Views | Status |
-|-----------|---------------|--------------|-------|--------|
-| Agent Operations | `agent_routing_decisions`, `agent_actions` | `agent-routing-decisions`, `agent-actions` | `v_agent_execution_trace` | ✅ Ready |
-| Pattern Learning | `agent_intelligence_usage`, `agent_manifest_injections` | N/A | `v_intelligence_effectiveness` | ✅ Ready |
-| Intelligence Operations | `agent_manifest_injections`, `agent_prompts` | N/A | `v_manifest_injection_performance` | ✅ Ready |
-| Code Intelligence | `agent_file_operations`, `agent_intelligence_usage` | N/A | `v_file_operation_history` | ✅ Ready |
-| Event Flow | `agent_actions`, `v_agent_execution_trace` | `agent-actions`, `agent-routing-decisions` | `v_agent_execution_trace` | ⚠️ Partial |
-| Knowledge Graph | `agent_intelligence_usage` | N/A | `v_intelligence_effectiveness` | ⚠️ External (Memgraph) |
-| Platform Health | `agent_routing_decisions`, `router_performance_metrics` | `router-performance-metrics` | `v_routing_decision_accuracy` | ✅ Ready |
-| Developer Experience | `agent_routing_decisions`, `agent_manifest_injections` | N/A | `v_agent_execution_trace` | ✅ Derivable |
-| Chat | `agent_prompts` | N/A | N/A | ⚠️ New Feature |
+| Dashboard               | Primary Tables                                          | Kafka Topics                               | Views                              | Status                 |
+| ----------------------- | ------------------------------------------------------- | ------------------------------------------ | ---------------------------------- | ---------------------- |
+| Agent Operations        | `agent_routing_decisions`, `agent_actions`              | `agent-routing-decisions`, `agent-actions` | `v_agent_execution_trace`          | ✅ Ready               |
+| Pattern Learning        | `agent_intelligence_usage`, `agent_manifest_injections` | N/A                                        | `v_intelligence_effectiveness`     | ✅ Ready               |
+| Intelligence Operations | `agent_manifest_injections`, `agent_prompts`            | N/A                                        | `v_manifest_injection_performance` | ✅ Ready               |
+| Code Intelligence       | `agent_file_operations`, `agent_intelligence_usage`     | N/A                                        | `v_file_operation_history`         | ✅ Ready               |
+| Event Flow              | `agent_actions`, `v_agent_execution_trace`              | `agent-actions`, `agent-routing-decisions` | `v_agent_execution_trace`          | ⚠️ Partial             |
+| Knowledge Graph         | `agent_intelligence_usage`                              | N/A                                        | `v_intelligence_effectiveness`     | ⚠️ External (Memgraph) |
+| Platform Health         | `agent_routing_decisions`, `router_performance_metrics` | `router-performance-metrics`               | `v_routing_decision_accuracy`      | ✅ Ready               |
+| Developer Experience    | `agent_routing_decisions`, `agent_manifest_injections`  | N/A                                        | `v_agent_execution_trace`          | ✅ Derivable           |
+| Chat                    | `agent_prompts`                                         | N/A                                        | N/A                                | ⚠️ New Feature         |
 
 ---
 
 ## Dashboard 1: Agent Operations (`/`)
 
 **Current Mock Data**:
+
 - 52 AI agents monitoring
 - Agent status (active/idle/error)
 - Actions per agent
@@ -33,6 +34,7 @@
 ### Data Sources
 
 **Primary Table**: `agent_routing_decisions`
+
 ```sql
 -- Agent selection frequency (last 24h)
 SELECT
@@ -49,6 +51,7 @@ ORDER BY times_selected DESC;
 ```
 
 **Secondary Table**: `agent_actions`
+
 ```sql
 -- Agent activity metrics
 SELECT
@@ -65,6 +68,7 @@ GROUP BY agent_name;
 ```
 
 **Kafka Topics**:
+
 - `agent-routing-decisions` - Real-time agent selection events
 - `agent-actions` - Real-time tool call events
 
@@ -119,6 +123,7 @@ interface LiveStats {
 ### Component Updates
 
 **Replace**:
+
 ```typescript
 // OLD: Mock data
 const agentData = useMemo(() => generateMockAgents(52), []);
@@ -126,7 +131,7 @@ const agentData = useMemo(() => generateMockAgents(52), []);
 // NEW: Real data
 const { data: agentData } = useQuery({
   queryKey: ['agents', 'summary'],
-  queryFn: () => fetch('/api/intelligence/agents/summary').then(r => r.json()),
+  queryFn: () => fetch('/api/intelligence/agents/summary').then((r) => r.json()),
   refetchInterval: 5000,
 });
 ```
@@ -136,6 +141,7 @@ const { data: agentData } = useQuery({
 ## Dashboard 2: Pattern Learning (`/patterns`)
 
 **Current Mock Data**:
+
 - 25,000+ code patterns
 - Pattern usage frequency
 - Confidence scores
@@ -144,6 +150,7 @@ const { data: agentData } = useQuery({
 ### Data Sources
 
 **Primary Table**: `agent_intelligence_usage`
+
 ```sql
 -- Top patterns by usage
 SELECT
@@ -166,6 +173,7 @@ LIMIT 100;
 ```
 
 **Secondary Table**: `agent_manifest_injections`
+
 ```sql
 -- Pattern discovery trends
 SELECT
@@ -220,6 +228,7 @@ interface DiscoveryTimeline {
 ## Dashboard 3: Intelligence Operations (`/intelligence`)
 
 **Current Mock Data**:
+
 - 168+ AI operations
 - Query performance
 - Cache hit rates
@@ -228,6 +237,7 @@ interface DiscoveryTimeline {
 ### Data Sources
 
 **Primary Table**: `agent_manifest_injections`
+
 ```sql
 -- Manifest injection performance
 SELECT
@@ -248,6 +258,7 @@ ORDER BY total_injections DESC;
 ```
 
 **Secondary Table**: `agent_prompts`
+
 ```sql
 -- Prompt and instruction statistics
 SELECT
@@ -284,14 +295,14 @@ interface OperationsBreakdown {
   totalOperations: number;
   bySource: {
     'archon-intelligence': number;
-    'fallback': number;
+    fallback: number;
   };
   bySection: {
-    'patterns': number;
-    'infrastructure': number;
-    'models': number;
-    'schemas': number;
-    'debug_intelligence': number;
+    patterns: number;
+    infrastructure: number;
+    models: number;
+    schemas: number;
+    debug_intelligence: number;
   };
   performanceMetrics: {
     avgQueryTime: number;
@@ -306,6 +317,7 @@ interface OperationsBreakdown {
 ## Dashboard 4: Code Intelligence (`/code`)
 
 **Current Mock Data**:
+
 - Semantic search results
 - Quality gates status
 - Code analysis metrics
@@ -313,6 +325,7 @@ interface OperationsBreakdown {
 ### Data Sources
 
 **Primary Table**: `agent_file_operations`
+
 ```sql
 -- File operation statistics
 SELECT
@@ -352,6 +365,7 @@ LIMIT 50;
 ```
 
 **Secondary Table**: `agent_intelligence_usage`
+
 ```sql
 -- Pattern application to files
 SELECT
@@ -407,6 +421,7 @@ interface MostModifiedFile {
 ## Dashboard 5: Event Flow (`/events`)
 
 **Current Mock Data**:
+
 - Kafka event processing
 - Consumer lag
 - Event timeline
@@ -414,6 +429,7 @@ interface MostModifiedFile {
 ### Data Sources
 
 **Primary View**: `v_agent_execution_trace`
+
 ```sql
 -- Complete execution traces (workflow visualization)
 SELECT
@@ -437,6 +453,7 @@ LIMIT 100;
 ```
 
 **Trace Detail Function**:
+
 ```sql
 -- Get complete trace by correlation_id
 SELECT * FROM get_complete_trace('correlation-id-here');
@@ -444,6 +461,7 @@ SELECT * FROM get_complete_trace('correlation-id-here');
 ```
 
 **Secondary Table**: `agent_actions`
+
 ```sql
 -- Action timeline for specific correlation
 SELECT
@@ -458,6 +476,7 @@ ORDER BY created_at;
 ```
 
 **Kafka Topics** (for real-time):
+
 - `agent-actions` - Real-time action stream
 - `agent-routing-decisions` - Real-time routing stream
 - `router-performance-metrics` - Performance events
@@ -527,6 +546,7 @@ interface DetailedTrace {
 ## Dashboard 6: Knowledge Graph (`/knowledge`)
 
 **Current Mock Data**:
+
 - Code relationship visualization
 - Dependency graphs
 - Pattern relationships
@@ -534,6 +554,7 @@ interface DetailedTrace {
 ### Data Sources
 
 **Primary Table**: `agent_intelligence_usage`
+
 ```sql
 -- Pattern relationship graph (co-occurrence)
 WITH pattern_pairs AS (
@@ -557,6 +578,7 @@ LIMIT 100;
 ```
 
 **External Source**: Memgraph (graph database)
+
 - **Connection**: `bolt://localhost:7687`
 - **Purpose**: Code relationship graphs, dependency tracking
 - **Integration**: Requires Memgraph connector library
@@ -610,6 +632,7 @@ interface KnowledgeGraph {
 ## Dashboard 7: Platform Health (`/health`)
 
 **Current Mock Data**:
+
 - System health monitoring
 - Service status
 - Error tracking
@@ -618,6 +641,7 @@ interface KnowledgeGraph {
 ### Data Sources
 
 **Primary Query**: Derive health score from routing metrics
+
 ```sql
 -- System health score calculation
 WITH metrics AS (
@@ -650,6 +674,7 @@ FROM metrics;
 ```
 
 **Error Tracking**:
+
 ```sql
 -- Recent errors
 SELECT
@@ -667,6 +692,7 @@ LIMIT 20;
 ```
 
 **Performance Degradation**:
+
 ```sql
 -- Detect performance degradation
 WITH hourly_metrics AS (
@@ -735,6 +761,7 @@ interface HealthTrend {
 ## Dashboard 8: Developer Experience (`/developer`)
 
 **Current Mock Data**:
+
 - Workflow metrics
 - Time saved
 - Automation stats
@@ -826,6 +853,7 @@ interface AutomationStats {
 ## Dashboard 9: Chat Interface (`/chat`)
 
 **Current Mock Data**:
+
 - AI query assistant
 - Conversation history
 
@@ -848,6 +876,7 @@ LIMIT 100;
 ```
 
 **Recommendation**: Chat interface is likely a **new feature** not currently tracked by OmniClaude. Consider:
+
 1. Creating new chat-specific tables in omnidash database
 2. Or integrating with `agent_prompts` as read-only conversation history viewer
 
@@ -856,16 +885,19 @@ LIMIT 100;
 ## Implementation Priority
 
 ### Phase 1 (Week 1) - High Impact
+
 1. ✅ **Agent Operations** - Core dashboard, high usage
 2. ✅ **Platform Health** - Critical for monitoring
 3. ✅ **Intelligence Operations** - Shows system performance
 
 ### Phase 2 (Week 2) - Medium Impact
+
 4. ✅ **Pattern Learning** - Unique value, medium complexity
 5. ✅ **Code Intelligence** - File operations tracking
 6. ✅ **Event Flow** - Execution traces
 
 ### Phase 3 (Week 3+) - Lower Priority
+
 7. ⚠️ **Knowledge Graph** - Requires Memgraph integration
 8. ✅ **Developer Experience** - Derived metrics, lower priority
 9. ⚠️ **Chat** - New feature, no existing data
@@ -875,6 +907,7 @@ LIMIT 100;
 ## Summary Checklist
 
 ### Ready to Integrate (✅)
+
 - [x] Agent Operations - `agent_routing_decisions`, `agent_actions`
 - [x] Pattern Learning - `agent_intelligence_usage`
 - [x] Intelligence Operations - `agent_manifest_injections`, `agent_prompts`
@@ -883,10 +916,12 @@ LIMIT 100;
 - [x] Developer Experience - Derived from execution data
 
 ### Partial Data (⚠️)
+
 - [ ] Event Flow - Available via views, real-time via Kafka
 - [ ] Knowledge Graph - Requires Memgraph connector
 
 ### New Feature (🆕)
+
 - [ ] Chat - No existing data, build separately
 
 ---

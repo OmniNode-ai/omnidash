@@ -1,14 +1,20 @@
-import React, { useEffect, useState } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { AlertCircle } from "lucide-react";
+import React, { useEffect, useState } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { AlertCircle } from 'lucide-react';
 
-export type PresetRange = "24h" | "7d" | "30d" | "custom";
+export type PresetRange = '24h' | '7d' | '30d' | 'custom';
 
 export interface DateRangeValue {
   preset: PresetRange;
   start?: string; // ISO date
-  end?: string;   // ISO date
+  end?: string; // ISO date
 }
 
 interface DateRangeFilterProps {
@@ -32,15 +38,15 @@ function validateDateRange(start?: string, end?: string): string | null {
 
   // Check for invalid dates
   if (isNaN(startDate.getTime())) {
-    return "Start date is invalid";
+    return 'Start date is invalid';
   }
   if (isNaN(endDate.getTime())) {
-    return "End date is invalid";
+    return 'End date is invalid';
   }
 
   // Ensure end date is on or after start date
   if (endDate < startDate) {
-    return "End date must be on or after start date";
+    return 'End date must be on or after start date';
   }
 
   return null;
@@ -51,7 +57,7 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
 
   // Validate whenever dates change
   useEffect(() => {
-    if (value.preset === "custom") {
+    if (value.preset === 'custom') {
       const error = validateDateRange(value.start, value.end);
       setValidationError(error);
     } else {
@@ -70,7 +76,12 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
-        <Select value={value.preset} onValueChange={(v) => onChange({ preset: v as PresetRange, start: undefined, end: undefined })}>
+        <Select
+          value={value.preset}
+          onValueChange={(v) =>
+            onChange({ preset: v as PresetRange, start: undefined, end: undefined })
+          }
+        >
           <SelectTrigger className="h-8 w-[120px]">
             <SelectValue />
           </SelectTrigger>
@@ -81,24 +92,24 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
             <SelectItem value="custom">Custom…</SelectItem>
           </SelectContent>
         </Select>
-        {value.preset === "custom" && (
+        {value.preset === 'custom' && (
           <div className="flex items-center gap-2">
             <Input
               type="date"
-              value={value.start || ""}
+              value={value.start || ''}
               onChange={(e) => handleStartChange(e.target.value)}
               className={`h-8 w-[150px] ${validationError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
               aria-invalid={!!validationError}
-              aria-describedby={validationError ? "date-range-error" : undefined}
+              aria-describedby={validationError ? 'date-range-error' : undefined}
             />
             <span className="text-xs text-muted-foreground">to</span>
             <Input
               type="date"
-              value={value.end || ""}
+              value={value.end || ''}
               onChange={(e) => handleEndChange(e.target.value)}
               className={`h-8 w-[150px] ${validationError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
               aria-invalid={!!validationError}
-              aria-describedby={validationError ? "date-range-error" : undefined}
+              aria-describedby={validationError ? 'date-range-error' : undefined}
             />
           </div>
         )}
@@ -117,5 +128,3 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
     </div>
   );
 }
-
-

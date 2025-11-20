@@ -2,10 +2,10 @@
 import { config } from 'dotenv';
 config();
 
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-import { drizzle } from "drizzle-orm/node-postgres";
-import pkg from "pg";
+import { type User, type InsertUser } from '@shared/schema';
+import { randomUUID } from 'crypto';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pkg from 'pg';
 const { Pool } = pkg;
 
 // modify the interface with any CRUD methods
@@ -29,9 +29,7 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    return Array.from(this.users.values()).find((user) => user.username === username);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {

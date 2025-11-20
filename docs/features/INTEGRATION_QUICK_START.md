@@ -16,15 +16,15 @@ OmniClaude has **34+ PostgreSQL tables** and **8 Kafka topics** tracking compreh
 
 ## Data Availability Checklist
 
-| Dashboard | Data Source | Status | Tables/Topics |
-|-----------|-------------|--------|---------------|
-| **Agent Operations** | ✅ Available | Production | `agent_routing_decisions`, `agent_actions` |
-| **Pattern Learning** | ✅ Available | Production | `agent_intelligence_usage`, `agent_manifest_injections` |
-| **Intelligence Operations** | ✅ Available | Production | `agent_manifest_injections`, `agent_prompts` |
-| **Code Intelligence** | ✅ Available | Production | `agent_file_operations`, `agent_intelligence_usage` |
-| **Event Flow** | ⚠️ Partial | Kafka only | Topics: `agent-actions`, `agent-routing-decisions` |
-| **Knowledge Graph** | ⚠️ External | Memgraph | Need Memgraph connector (port 7687) |
-| **Platform Health** | ✅ Derivable | From routing data | `agent_routing_decisions`, `router_performance_metrics` |
+| Dashboard                   | Data Source  | Status            | Tables/Topics                                           |
+| --------------------------- | ------------ | ----------------- | ------------------------------------------------------- |
+| **Agent Operations**        | ✅ Available | Production        | `agent_routing_decisions`, `agent_actions`              |
+| **Pattern Learning**        | ✅ Available | Production        | `agent_intelligence_usage`, `agent_manifest_injections` |
+| **Intelligence Operations** | ✅ Available | Production        | `agent_manifest_injections`, `agent_prompts`            |
+| **Code Intelligence**       | ✅ Available | Production        | `agent_file_operations`, `agent_intelligence_usage`     |
+| **Event Flow**              | ⚠️ Partial   | Kafka only        | Topics: `agent-actions`, `agent-routing-decisions`      |
+| **Knowledge Graph**         | ⚠️ External  | Memgraph          | Need Memgraph connector (port 7687)                     |
+| **Platform Health**         | ✅ Derivable | From routing data | `agent_routing_decisions`, `router_performance_metrics` |
 
 ---
 
@@ -33,6 +33,7 @@ OmniClaude has **34+ PostgreSQL tables** and **8 Kafka topics** tracking compreh
 ### Step 1: Database Connection (5 min)
 
 **Verify credentials in omnidash/.env**:
+
 ```bash
 # These should already be set from shared infrastructure
 DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge"
@@ -42,6 +43,7 @@ POSTGRES_DATABASE=omninode_bridge
 ```
 
 **Test connection**:
+
 ```bash
 source .env
 psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DATABASE -c "SELECT COUNT(*) FROM agent_routing_decisions;"
@@ -56,7 +58,16 @@ Expected output: A number (likely 1,408+ records).
 **Create `shared/intelligence-schema.ts`**:
 
 ```typescript
-import { pgTable, uuid, text, integer, numeric, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  integer,
+  numeric,
+  boolean,
+  timestamp,
+  jsonb,
+} from 'drizzle-orm/pg-core';
 
 // Core tables for omnidash integration
 export const agentRoutingDecisions = pgTable('agent_routing_decisions', {
@@ -103,7 +114,11 @@ export const agentManifestInjections = pgTable('agent_manifest_injections', {
 ```typescript
 import { Router } from 'express';
 import { db } from './db';
-import { agentRoutingDecisions, agentActions, agentManifestInjections } from '../shared/intelligence-schema';
+import {
+  agentRoutingDecisions,
+  agentActions,
+  agentManifestInjections,
+} from '../shared/intelligence-schema';
 import { desc, gte, sql, count, avg } from 'drizzle-orm';
 
 const router = Router();
@@ -112,8 +127,7 @@ const router = Router();
 router.get('/api/intelligence/agents/summary', async (req, res) => {
   try {
     const timeRange = req.query.range || '24h';
-    const interval = timeRange === '1h' ? '1 hour' :
-                     timeRange === '7d' ? '7 days' : '24 hours';
+    const interval = timeRange === '1h' ? '1 hour' : timeRange === '7d' ? '7 days' : '24 hours';
 
     const summary = await db
       .select({
@@ -138,8 +152,7 @@ router.get('/api/intelligence/agents/summary', async (req, res) => {
 router.get('/api/intelligence/routing/metrics', async (req, res) => {
   try {
     const timeRange = req.query.range || '24h';
-    const interval = timeRange === '1h' ? '1 hour' :
-                     timeRange === '7d' ? '7 days' : '24 hours';
+    const interval = timeRange === '1h' ? '1 hour' : timeRange === '7d' ? '7 days' : '24 hours';
 
     const metrics = await db
       .select({
@@ -153,9 +166,8 @@ router.get('/api/intelligence/routing/metrics', async (req, res) => {
       .where(gte(agentRoutingDecisions.createdAt, sql`now() - interval '${sql.raw(interval)}'`));
 
     const result = metrics[0];
-    const successRate = result.totalValidated > 0
-      ? (result.successCount / result.totalValidated) * 100
-      : 0;
+    const successRate =
+      result.totalValidated > 0 ? (result.successCount / result.totalValidated) * 100 : 0;
 
     res.json({
       ...result,
@@ -188,6 +200,7 @@ export default router;
 ```
 
 **Import in `server/index.ts`**:
+
 ```typescript
 import intelligenceRoutes from './intelligence-routes';
 
@@ -202,6 +215,7 @@ app.use(intelligenceRoutes);
 **Example: AgentOperations Dashboard**
 
 **Before (mock data)**:
+
 ```typescript
 const agentSummary = useMemo(() => {
   return Array.from({ length: 52 }, (_, i) => ({
@@ -212,6 +226,7 @@ const agentSummary = useMemo(() => {
 ```
 
 **After (real data)**:
+
 ```typescript
 const { data: agentSummary, isLoading } = useQuery({
   queryKey: ['intelligence', 'agents', 'summary', '24h'],
@@ -229,6 +244,7 @@ if (isLoading) {
 ```
 
 **Similar pattern for routing metrics**:
+
 ```typescript
 const { data: routingMetrics } = useQuery({
   queryKey: ['intelligence', 'routing', 'metrics', '24h'],
@@ -256,6 +272,7 @@ const { data: routingMetrics } = useQuery({
 ## Essential SQL Queries
 
 ### Agent Activity Summary
+
 ```sql
 SELECT
     agent_name,
@@ -271,6 +288,7 @@ LIMIT 20;
 ```
 
 ### Routing Performance
+
 ```sql
 SELECT
     COUNT(*) as total_decisions,
@@ -282,6 +300,7 @@ WHERE created_at > NOW() - INTERVAL '24 hours';
 ```
 
 ### Pattern Usage
+
 ```sql
 SELECT
     intelligence_name,
@@ -300,23 +319,28 @@ LIMIT 25;
 ## Dashboard-Specific Endpoints
 
 ### Agent Operations
+
 - `GET /api/intelligence/agents/summary` - Agent activity summary
 - `GET /api/intelligence/routing/metrics` - Routing performance
 - `GET /api/intelligence/routing/recent` - Recent routing decisions
 
 ### Pattern Learning
+
 - `GET /api/intelligence/patterns/usage` - Pattern application stats
 - `GET /api/intelligence/patterns/trending` - Trending patterns
 
 ### Intelligence Operations
+
 - `GET /api/intelligence/manifests/performance` - Manifest query performance
 - `GET /api/intelligence/manifests/recent` - Recent manifest injections
 
 ### Code Intelligence
+
 - `GET /api/intelligence/files/operations` - File operation statistics
 - `GET /api/intelligence/files/most-modified` - Most modified files
 
 ### Event Flow
+
 - `GET /api/intelligence/traces/:correlationId` - Complete execution trace
 - `GET /api/intelligence/traces/recent` - Recent execution traces
 
@@ -325,11 +349,13 @@ LIMIT 25;
 ## Testing Your Integration
 
 ### 1. Test Database Connection
+
 ```bash
 curl http://localhost:3000/api/intelligence/routing/metrics
 ```
 
 Expected response:
+
 ```json
 {
   "totalDecisions": 1408,
@@ -342,11 +368,13 @@ Expected response:
 ```
 
 ### 2. Test Agent Summary
+
 ```bash
 curl http://localhost:3000/api/intelligence/agents/summary
 ```
 
 Expected response:
+
 ```json
 [
   {
@@ -361,6 +389,7 @@ Expected response:
 ```
 
 ### 3. Check Data Freshness
+
 ```sql
 -- In psql
 SELECT MAX(created_at) as latest_data
@@ -376,6 +405,7 @@ Should show recent timestamp (within last few minutes if system is active).
 ### Database Connection Issues
 
 **Error: "password authentication failed"**
+
 ```bash
 # Solution: Check .env has correct password from omniclaude
 grep POSTGRES_PASSWORD /Volumes/PRO-G40/Code/omniclaude/.env
@@ -383,6 +413,7 @@ grep POSTGRES_PASSWORD /Volumes/PRO-G40/Code/omniclaude/.env
 ```
 
 **Error: "relation does not exist"**
+
 ```bash
 # Solution: Verify database name is correct
 psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "\dt"
@@ -392,6 +423,7 @@ psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "\dt"
 ### API Errors
 
 **Error: "Failed to fetch agent summary"**
+
 ```typescript
 // Solution: Check server logs
 console.error('Error fetching agent summary:', error);
@@ -399,6 +431,7 @@ console.error('Error fetching agent summary:', error);
 ```
 
 **Error: "Data is empty/null"**
+
 ```sql
 -- Solution: Verify data exists
 SELECT COUNT(*) FROM agent_routing_decisions WHERE created_at > NOW() - INTERVAL '24 hours';
@@ -408,6 +441,7 @@ SELECT COUNT(*) FROM agent_routing_decisions WHERE created_at > NOW() - INTERVAL
 ### Data Quality Issues
 
 **Metrics seem stale**:
+
 ```bash
 # Check when omniclaude last wrote data
 psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "
@@ -420,6 +454,7 @@ FROM agent_routing_decisions;
 ```
 
 If data is old:
+
 1. Check if omniclaude agent_actions_consumer is running
 2. Verify Kafka topics have recent messages
 3. Check consumer logs for errors

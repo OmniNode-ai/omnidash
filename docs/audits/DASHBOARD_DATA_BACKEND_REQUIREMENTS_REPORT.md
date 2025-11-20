@@ -85,6 +85,7 @@
 - **Owner**: Agent Execution Framework Team
 - **Priority**: **MEDIUM**
 - **Validation Query**:
+
 ```sql
 -- Check if success/error events exist for all routing decisions
 SELECT
@@ -142,6 +143,7 @@ HAVING COUNT(r.id) > COUNT(CASE WHEN a.action_type IN ('success', 'error') THEN 
 - **Required Fix**: Change label to clarify time window
 - **File**: `/client/src/pages/AgentOperations.tsx:184`
 - **Fix**:
+
 ```tsx
 // FROM:
 <MetricCard
@@ -160,6 +162,7 @@ HAVING COUNT(r.id) > COUNT(CASE WHEN a.action_type IN ('success', 'error') THEN 
   tooltip="Agents with activity in last 24 hours"
 />
 ```
+
 - **Effort**: 5 minutes
 - **Priority**: **HIGH** (misleading users)
 
@@ -171,6 +174,7 @@ HAVING COUNT(r.id) > COUNT(CASE WHEN a.action_type IN ('success', 'error') THEN 
 - **Required Fix**: Transform quality in frontend
 - **File**: `/client/src/pages/PatternLearning.tsx:175-179`
 - **Fix**:
+
 ```tsx
 // FROM:
 patterns={(patterns || []).map(p => ({
@@ -187,6 +191,7 @@ patterns={(patterns || []).map(p => ({
   trend: p.trendPercentage
 }))}
 ```
+
 - **Effort**: 2 minutes
 - **Priority**: **MEDIUM**
 
@@ -205,7 +210,7 @@ patterns={(patterns || []).map(p => ({
        label="Avg Response Time"
        value={`${Math.round(avgResponseTime)}ms`}
        icon={Clock}
-       status={avgResponseTime < 100 ? "healthy" : "warning"}
+       status={avgResponseTime < 100 ? 'healthy' : 'warning'}
        tooltip="Target: < 100ms"
      />
      ```
@@ -222,6 +227,7 @@ patterns={(patterns || []).map(p => ({
 - **Required Fix**: Add legend component
 - **File**: `/client/src/pages/AgentOperations.tsx:224-234`
 - **Fix**:
+
 ```tsx
 // Add before AgentStatusGrid component:
 <Card className="p-4 mb-4">
@@ -242,6 +248,7 @@ patterns={(patterns || []).map(p => ({
   </div>
 </Card>
 ```
+
 - **Effort**: 30 minutes
 - **Priority**: **LOW** (nice-to-have)
 
@@ -268,22 +275,25 @@ patterns={(patterns || []).map(p => ({
 - **Temporary Fix**: Add message explaining data limitation
 - **File**: `/client/src/pages/PatternLearning.tsx:159-167`
 - **Fix**:
+
 ```tsx
 <RealtimeChart
   title="Average Quality Score"
-  data={(qualityData || []).map(d => ({
+  data={(qualityData || []).map((d) => ({
     time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    value: d.avgQuality * 100
+    value: d.avgQuality * 100,
   }))}
   color="hsl(var(--chart-3))"
   footer={
     // Check if all values are same (flat line)
-    qualityData && qualityData.every(d => Math.abs(d.avgQuality - qualityData[0].avgQuality) < 0.01)
-      ? "⚠ Quality tracking not yet enabled - showing baseline"
+    qualityData &&
+    qualityData.every((d) => Math.abs(d.avgQuality - qualityData[0].avgQuality) < 0.01)
+      ? '⚠ Quality tracking not yet enabled - showing baseline'
       : undefined
   }
 />
 ```
+
 - **Effort**: 30 minutes
 - **Priority**: **LOW** (blocked on backend)
 

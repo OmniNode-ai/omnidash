@@ -7,14 +7,17 @@ Fixed visual issues with text rendering in the UnifiedGraph component used by Pa
 ## Problems Fixed
 
 ### 1. Text Overflow
+
 - **Before**: Text extended beyond circle boundaries or was cut off
 - **After**: Text properly fits inside circles with adequate padding
 
 ### 2. Insufficient Padding
+
 - **Before**: No padding between text and circle edge
 - **After**: Minimum 12px padding from circle edge to text
 
 ### 3. Inconsistent Node Sizing
+
 - **Before**: Default node size was 8px (too small)
 - **After**: Default node size is 30px with documented recommended ranges
 
@@ -23,6 +26,7 @@ Fixed visual issues with text rendering in the UnifiedGraph component used by Pa
 ### New Helper Function: `calculateTextDisplay()`
 
 Added intelligent text fitting algorithm that:
+
 - Calculates available width accounting for padding (12px on each side)
 - Scales font size proportionally to node radius (28% of radius)
 - Uses min/max font size constraints (10-14px for normal nodes, 8px+ for small nodes)
@@ -33,10 +37,10 @@ Added intelligent text fitting algorithm that:
 ### Constants
 
 ```typescript
-const MIN_FONT_SIZE = 10;        // Minimum readable font size
-const MAX_FONT_SIZE = 14;        // Maximum font size
-const NODE_PADDING = 12;         // Padding between text and edge
-const CHAR_WIDTH_RATIO = 0.6;    // Character width estimation
+const MIN_FONT_SIZE = 10; // Minimum readable font size
+const MAX_FONT_SIZE = 14; // Maximum font size
+const NODE_PADDING = 12; // Padding between text and edge
+const CHAR_WIDTH_RATIO = 0.6; // Character width estimation
 ```
 
 ### Node Size Recommendations
@@ -53,10 +57,12 @@ Documented in `GraphNode` interface:
 Both Canvas and SVG rendering modes now use the new `calculateTextDisplay()` helper:
 
 **Canvas Mode**: Lines 345-360
+
 - Uses helper to calculate fontSize and displayText
 - Maintains white text on colored background
 
 **SVG Mode**: Lines 603-648
+
 - Uses helper for consistent text rendering
 - Shows full label on hover when truncated
 - Proper centering with textAnchor="middle"
@@ -73,6 +79,7 @@ Both Canvas and SVG rendering modes now use the new `calculateTextDisplay()` hel
 ## Testing Instructions
 
 1. **Start the development server**:
+
    ```bash
    PORT=3000 npm run dev
    ```
@@ -107,12 +114,14 @@ Both Canvas and SVG rendering modes now use the new `calculateTextDisplay()` hel
 ## Before/After Comparison
 
 ### Before
+
 - Text calculation: `maxChars = Math.floor(radius / 3)` (inaccurate)
 - Font size: `Math.max(8, Math.min(12, radius * 0.3))` (too large for small nodes)
 - Padding: None
 - Default size: 8px (too small)
 
 ### After
+
 - Text calculation: Character-width-based with padding consideration
 - Font size: Dynamic scaling with proper min/max (10-14px, 8px for tiny nodes)
 - Padding: 12px minimum from edge

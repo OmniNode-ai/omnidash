@@ -42,18 +42,14 @@ describe('EventStatisticsPanel', () => {
   });
 
   const renderWithClient = (ui: React.ReactElement) => {
-    return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>
-    );
+    return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
   };
 
   it('should render statistics panel', async () => {
     vi.mocked(eventBusSource.getStatistics).mockResolvedValueOnce({
       total_events: 100,
-      events_by_type: { 'type1': 50 },
-      events_by_tenant: { 'tenant1': 100 },
+      events_by_type: { type1: 50 },
+      events_by_tenant: { tenant1: 100 },
       events_per_minute: 10,
       oldest_event: new Date().toISOString(),
       newest_event: new Date().toISOString(),
@@ -71,8 +67,8 @@ describe('EventStatisticsPanel', () => {
   it('should display statistics metrics', async () => {
     vi.mocked(eventBusSource.getStatistics).mockResolvedValueOnce({
       total_events: 250,
-      events_by_type: { 'type1': 150, 'type2': 100 },
-      events_by_tenant: { 'tenant1': 200, 'tenant2': 50 },
+      events_by_type: { type1: 150, type2: 100 },
+      events_by_tenant: { tenant1: 200, tenant2: 50 },
       events_per_minute: 20.5,
       oldest_event: new Date().toISOString(),
       newest_event: new Date().toISOString(),
@@ -112,4 +108,3 @@ describe('EventStatisticsPanel', () => {
     result.unmount();
   });
 });
-

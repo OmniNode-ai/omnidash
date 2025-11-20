@@ -12,66 +12,66 @@ This document defines the standard icon vocabulary for the Omnidash application.
 
 ## Color Conventions
 
-| Color | Usage | CSS Class | Example Use Cases |
-|-------|-------|-----------|------------------|
-| **Green** | Success, growth, healthy | `text-status-healthy` or `bg-status-healthy` | Success rates, new items, healthy services |
-| **Yellow** | Warnings, degraded | `text-status-warning` or `bg-status-warning` | Warnings, degraded performance, attention needed |
-| **Red** | Errors, critical | `text-status-error` or `bg-status-error` | Errors, failures, down services |
-| **Blue** | Neutral, info | `text-primary` or `bg-primary` | General metrics, information |
+| Color      | Usage                    | CSS Class                                    | Example Use Cases                                |
+| ---------- | ------------------------ | -------------------------------------------- | ------------------------------------------------ |
+| **Green**  | Success, growth, healthy | `text-status-healthy` or `bg-status-healthy` | Success rates, new items, healthy services       |
+| **Yellow** | Warnings, degraded       | `text-status-warning` or `bg-status-warning` | Warnings, degraded performance, attention needed |
+| **Red**    | Errors, critical         | `text-status-error` or `bg-status-error`     | Errors, failures, down services                  |
+| **Blue**   | Neutral, info            | `text-primary` or `bg-primary`               | General metrics, information                     |
 
 ## Icon Vocabulary
 
 ### Activity & Status Icons
 
-| Icon | Name | When to Use | Example Metrics |
-|------|------|------------|----------------|
-| `STANDARD_ICONS.active` | Activity | Active processes, running agents, live activity | "Active Agents", "Running Now", pulse animations |
-| `STANDARD_ICONS.speed` | Zap | Speed, throughput, operations per second | "Events/min", "Operations/Min" |
-| `STANDARD_ICONS.trending` | TrendingUp | Growth, trending up, new items | "New Today", "Trending Patterns", growth metrics |
-| `STANDARD_ICONS.success` | CheckCircle | Success, completion, passing quality gates | "Success Rate", "Tests Passed", completion status |
-| `STANDARD_ICONS.warning` | AlertTriangle | Warnings, attention needed, degraded | "Code Smells", "Active Alerts", warnings |
-| `STANDARD_ICONS.error` | AlertCircle | Errors, failures, critical issues | Error counts, failed operations |
-| `STANDARD_ICONS.time` | Clock | Time, duration, latency | "Avg Response Time", "Avg Latency", duration metrics |
+| Icon                      | Name          | When to Use                                     | Example Metrics                                      |
+| ------------------------- | ------------- | ----------------------------------------------- | ---------------------------------------------------- |
+| `STANDARD_ICONS.active`   | Activity      | Active processes, running agents, live activity | "Active Agents", "Running Now", pulse animations     |
+| `STANDARD_ICONS.speed`    | Zap           | Speed, throughput, operations per second        | "Events/min", "Operations/Min"                       |
+| `STANDARD_ICONS.trending` | TrendingUp    | Growth, trending up, new items                  | "New Today", "Trending Patterns", growth metrics     |
+| `STANDARD_ICONS.success`  | CheckCircle   | Success, completion, passing quality gates      | "Success Rate", "Tests Passed", completion status    |
+| `STANDARD_ICONS.warning`  | AlertTriangle | Warnings, attention needed, degraded            | "Code Smells", "Active Alerts", warnings             |
+| `STANDARD_ICONS.error`    | AlertCircle   | Errors, failures, critical issues               | Error counts, failed operations                      |
+| `STANDARD_ICONS.time`     | Clock         | Time, duration, latency                         | "Avg Response Time", "Avg Latency", duration metrics |
 
 ### Infrastructure Icons
 
-| Icon | Name | When to Use | Example Metrics |
-|------|------|------------|----------------|
-| `STANDARD_ICONS.server` | Server | Server instances, microservices | "Services Online", backend services |
-| `STANDARD_ICONS.database` | Database | Database systems, storage | "Total Patterns", database operations |
-| `STANDARD_ICONS.network` | Network | Connections, relationships | Network graphs, connection metrics |
-| `STANDARD_ICONS.web` | Globe | Web services, external APIs | External API calls, internet services |
+| Icon                      | Name     | When to Use                     | Example Metrics                       |
+| ------------------------- | -------- | ------------------------------- | ------------------------------------- |
+| `STANDARD_ICONS.server`   | Server   | Server instances, microservices | "Services Online", backend services   |
+| `STANDARD_ICONS.database` | Database | Database systems, storage       | "Total Patterns", database operations |
+| `STANDARD_ICONS.network`  | Network  | Connections, relationships      | Network graphs, connection metrics    |
+| `STANDARD_ICONS.web`      | Globe    | Web services, external APIs     | External API calls, internet services |
 
 ### Development Icons
 
-| Icon | Name | When to Use | Example Metrics |
-|------|------|------------|----------------|
-| `STANDARD_ICONS.code` | Code | Code files, development work | "Code Generated", development metrics |
-| `STANDARD_ICONS.codeFile` | FileCode | Individual code files | "Files Analyzed", file-level metrics |
-| `STANDARD_ICONS.cpu` | Cpu | Processing, computational work | CPU usage, processing metrics |
-| `STANDARD_ICONS.gauge` | Gauge | Performance metrics, measurements | "Avg Complexity", performance scores |
-| `STANDARD_ICONS.security` | Shield | Security, compliance | "Security Issues", compliance metrics |
+| Icon                      | Name     | When to Use                       | Example Metrics                       |
+| ------------------------- | -------- | --------------------------------- | ------------------------------------- |
+| `STANDARD_ICONS.code`     | Code     | Code files, development work      | "Code Generated", development metrics |
+| `STANDARD_ICONS.codeFile` | FileCode | Individual code files             | "Files Analyzed", file-level metrics  |
+| `STANDARD_ICONS.cpu`      | Cpu      | Processing, computational work    | CPU usage, processing metrics         |
+| `STANDARD_ICONS.gauge`    | Gauge    | Performance metrics, measurements | "Avg Complexity", performance scores  |
+| `STANDARD_ICONS.security` | Shield   | Security, compliance              | "Security Issues", compliance metrics |
 
 ### Quality & Team Icons
 
-| Icon | Name | When to Use | Example Metrics |
-|------|------|------------|----------------|
-| `STANDARD_ICONS.award` | Award | Quality, achievements | "Avg Quality", "Pattern Reuse", awards |
-| `STANDARD_ICONS.users` | Users | Human users, developers | "Active Developers", team metrics |
-| `STANDARD_ICONS.bot` | Bot | AI agents, automated processes | Agent counts, bot activity |
-| `STANDARD_ICONS.target` | Target | Goals, targets, thresholds | Target metrics, goal tracking |
-| `STANDARD_ICONS.search` | Search | Search, discovery, queries | "Semantic Search", query metrics |
+| Icon                    | Name   | When to Use                    | Example Metrics                        |
+| ----------------------- | ------ | ------------------------------ | -------------------------------------- |
+| `STANDARD_ICONS.award`  | Award  | Quality, achievements          | "Avg Quality", "Pattern Reuse", awards |
+| `STANDARD_ICONS.users`  | Users  | Human users, developers        | "Active Developers", team metrics      |
+| `STANDARD_ICONS.bot`    | Bot    | AI agents, automated processes | Agent counts, bot activity             |
+| `STANDARD_ICONS.target` | Target | Goals, targets, thresholds     | Target metrics, goal tracking          |
+| `STANDARD_ICONS.search` | Search | Search, discovery, queries     | "Semantic Search", query metrics       |
 
 ### UI & Navigation Icons
 
-| Icon | Name | When to Use |
-|------|------|------------|
-| `STANDARD_ICONS.download` | Download | Export, download functionality |
-| `STANDARD_ICONS.close` | X | Close, remove, delete actions |
-| `STANDARD_ICONS.info` | Info | Information, help, details |
-| `STANDARD_ICONS.chevronRight` | ChevronRight | Navigation, expansion |
-| `STANDARD_ICONS.chevronDown` | ChevronDown | Dropdowns, collapse |
-| `STANDARD_ICONS.arrowRight` | ArrowRight | Flow, progression |
+| Icon                          | Name         | When to Use                    |
+| ----------------------------- | ------------ | ------------------------------ |
+| `STANDARD_ICONS.download`     | Download     | Export, download functionality |
+| `STANDARD_ICONS.close`        | X            | Close, remove, delete actions  |
+| `STANDARD_ICONS.info`         | Info         | Information, help, details     |
+| `STANDARD_ICONS.chevronRight` | ChevronRight | Navigation, expansion          |
+| `STANDARD_ICONS.chevronDown`  | ChevronDown  | Dropdowns, collapse            |
+| `STANDARD_ICONS.arrowRight`   | ArrowRight   | Flow, progression              |
 
 ## Migration Guide
 
@@ -244,7 +244,7 @@ Example:
 
 ```typescript
 // In standardIcons.ts
-import { NewIcon } from "lucide-react";
+import { NewIcon } from 'lucide-react';
 
 export const ACTIVITY_ICONS = {
   // ... existing icons

@@ -33,15 +33,11 @@ describe('AgentExecutionTracker', () => {
         'test query'
       );
 
-      const updated = AgentExecutionTracker.updateExecutionStatus(
-        execution.id,
-        'completed',
-        {
-          success: true,
-          output: 'test output',
-          qualityScore: 0.9,
-        }
-      );
+      const updated = AgentExecutionTracker.updateExecutionStatus(execution.id, 'completed', {
+        success: true,
+        output: 'test output',
+        qualityScore: 0.9,
+      });
 
       expect(updated).not.toBeNull();
       expect(updated?.status).toBe('completed');
@@ -51,10 +47,7 @@ describe('AgentExecutionTracker', () => {
     });
 
     it('should return null for non-existent execution', () => {
-      const result = AgentExecutionTracker.updateExecutionStatus(
-        'non-existent-id',
-        'completed'
-      );
+      const result = AgentExecutionTracker.updateExecutionStatus('non-existent-id', 'completed');
 
       expect(result).toBeNull();
     });
@@ -90,7 +83,7 @@ describe('AgentExecutionTracker', () => {
       const executions = AgentExecutionTracker.getExecutionsForAgent('agent-1');
 
       expect(Array.isArray(executions)).toBe(true);
-      expect(executions.every(e => e.agentId === 'agent-1')).toBe(true);
+      expect(executions.every((e) => e.agentId === 'agent-1')).toBe(true);
     });
 
     it('should respect limit parameter', () => {
@@ -279,4 +272,3 @@ describe('AgentExecutionTracker', () => {
     });
   });
 });
-

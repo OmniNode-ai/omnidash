@@ -72,7 +72,7 @@ describe('EnhancedEventFeed', () => {
 
     // Find event using role-based selector with specific aria-label pattern
     const eventButtons = screen.getAllByRole('button', {
-      name: /View details for event omninode\.intelligence/
+      name: /View details for event omninode\.intelligence/,
     });
     expect(eventButtons.length).toBeGreaterThan(0);
     await user.click(eventButtons[0]);
@@ -90,4 +90,3 @@ describe('EnhancedEventFeed', () => {
     expect(onCorrelationClick).toHaveBeenCalledWith('corr-123');
   });
 });
-

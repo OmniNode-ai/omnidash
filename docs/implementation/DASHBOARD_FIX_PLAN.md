@@ -1,6 +1,7 @@
 # Dashboard Fix Plan - YC Demo Readiness
 
 ## Status Overview
+
 ✅ = Already implemented | 🔄 = In progress | ❌ = Needs work | 🚫 = Excluded from demo
 
 ---
@@ -8,6 +9,7 @@
 ## 🔴 CRITICAL - Must Fix Before Demo
 
 ### Global / Demo Mode
+
 - ❌ **Add Demo Mode toggle** - Hide error banners, seed KPIs, animate charts, watermark 'Demo Data'
   - Location: Header component or global context
   - Action: Create `DemoModeProvider` context + toggle in header
@@ -23,6 +25,7 @@
   - Files: All dashboard components with trend comparisons
 
 ### Agent Management
+
 - ❌ **Overview: Seed realistic totals**
   - Need: requests/day ~1200, success rate ~94%, avg response ~1.2s
   - Action: Update `agent-management-source.ts` mock data to match script metrics
@@ -34,6 +37,7 @@
   - File: `client/src/lib/data-sources/agent-management-source.ts` (RoutingStats mock)
 
 ### Code Intelligence Suite
+
 - ❌ **Overview: Show "Proven Patterns" as hero metric**
   - Current: Shows "Total Patterns" first
   - Action: Reorder metrics, make "Proven Patterns" the primary card
@@ -50,6 +54,7 @@
   - Files: `client/src/components/PatternDetailModal.tsx`, `client/src/pages/PatternLearning.tsx`
 
 ### Intelligence Analytics
+
 - ❌ **Overview: Align KPIs with script**
   - Need: Success ~94%, Response ~1.2s, Savings ~$45k, Token Reduction ~34%
   - Action: Update mock data in `intelligence-analytics-source.ts` and `intelligence-savings-source.ts`
@@ -60,6 +65,7 @@
 ## 🟡 HIGH PRIORITY - Important for Demo Flow
 
 ### Code Intelligence Suite
+
 - ❌ **Pattern Discovery: Add "Inject to Agent" CTA**
   - Action: Add dropdown button on pattern cards (Cursor/Claude/Copilot options)
   - File: `client/src/components/TopPatternsList.tsx` or pattern cards
@@ -86,6 +92,7 @@
   - File: `client/src/pages/preview/TechDebtAnalysis.tsx`
 
 ### Intelligence Analytics
+
 - ❌ **Agent Performance: Replace vague "Efficiency" with "Cost per Success" and "p95 latency"**
   - Action: Update metrics display, add calculations
   - File: `client/src/pages/preview/IntelligenceAnalytics.tsx`
@@ -103,6 +110,7 @@
 ## 🟢 MEDIUM PRIORITY - Polish & UX
 
 ### Global
+
 - ❌ **Add click affordances**
   - Action: Add `cursor-pointer`, hover states, focus outlines to all clickable elements
   - Files: All card/button/row components
@@ -112,6 +120,7 @@
   - Files: All modal components (PatternDetailModal, AgentDetailModal, etc.)
 
 ### Platform Monitoring
+
 - 🚫 **System Health tab is broken** - EXCLUDED from YC script
   - Action: Either fix or hide from sidebar during demo
   - File: `client/src/pages/preview/SystemHealth.tsx`
@@ -129,6 +138,7 @@
   - File: Platform Monitoring
 
 ### Architecture & Networks
+
 - ❌ **Node Networks: Seed small topology (6-8 nodes, 10-12 edges)**
   - Action: Update mock data in Architecture Networks
   - File: `client/src/pages/preview/ArchitectureNetworks.tsx`
@@ -146,6 +156,7 @@
   - File: `client/src/pages/preview/NodeNetworkComposer.tsx`
 
 ### Developer Tools
+
 - ❌ **Remove duplicate Query Assistant and Correlation Trace tabs**
   - Current: These exist as both sidebar tools AND tabs in Developer Tools
   - Action: Remove from Developer Tools, keep only global routes `/chat` and `/trace`
@@ -156,6 +167,7 @@
   - File: `client/src/pages/preview/DeveloperTools.tsx`
 
 ### Tools
+
 - ❌ **AI Query Assistant: Preload 3 smart prompts and answers**
   - Action: Seed chat history with realistic Q&A pairs with timestamps
   - File: `client/src/pages/Chat.tsx`
@@ -165,6 +177,7 @@
   - File: `client/src/pages/CorrelationTrace.tsx`
 
 ### Contract Builder
+
 - ❌ **History: Seed 1-2 prior contracts**
   - Action: Add mock contract history
   - File: Contract Builder component
@@ -174,6 +187,7 @@
   - File: Contract Builder component
 
 ### Feature Showcase
+
 - ❌ **Add 2-3 mock tickets to Intelligent Ticketing**
   - Action: Seed tickets in demo
   - File: `client/src/pages/preview/FeatureShowcase.tsx`
@@ -191,6 +205,7 @@
 ## 📋 Implementation Priority Order
 
 ### Phase 1: Critical Blockers (Do First)
+
 1. Demo Mode toggle + context provider
 2. Neutralize error banners in demo mode
 3. Fix AlertBanner to hide in demo mode
@@ -200,6 +215,7 @@
 7. Align Intelligence Analytics KPIs with script
 
 ### Phase 2: Demo Flow Essentials
+
 8. Reorder Code Intelligence metrics (Proven Patterns first)
 9. Stub Pattern Discovery endpoint
 10. Add "Inject to Agent" CTA on patterns
@@ -208,6 +224,7 @@
 13. Update Agent Performance metrics
 
 ### Phase 3: Polish & Credibility
+
 14. Add click affordances globally
 15. Fix modal styling
 16. Seed mock data for Platform Monitoring services/incidents
@@ -217,6 +234,7 @@
 20. Seed Contract Builder history
 
 ### Phase 4: Nice-to-Have
+
 21. Query Usage Metrics card
 22. Advanced Analytics routing/cache metrics
 23. Feature Showcase tickets and animation polish
@@ -239,6 +257,3 @@
 - **Mock Data Badges**: May want to hide these in demo mode (add to Demo Mode toggle)
 - **Error States**: All error states should show graceful fallbacks in demo mode
 - **Loading States**: Should be minimal/fast in demo mode (consider instant display)
-
-
-

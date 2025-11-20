@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { developerToolsSource } from '../developer-tools-source';
 import type { DeveloperActivity, ToolUsage, QueryHistory } from '../developer-tools-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 describe('DeveloperToolsSource', () => {
   beforeEach(() => {
@@ -22,11 +26,7 @@ describe('DeveloperToolsSource', () => {
         ],
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/developer/activity', createMockResponse(mockActivity)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/developer/activity', createMockResponse(mockActivity)]]));
 
       const result = await developerToolsSource.fetchActivity('24h');
 
@@ -49,9 +49,7 @@ describe('DeveloperToolsSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/developer/activity?timeRange=7d', createMockResponse(mockActivity)],
-        ])
+        new Map([['/api/developer/activity?timeRange=7d', createMockResponse(mockActivity)]])
       );
 
       await developerToolsSource.fetchActivity('7d');
@@ -63,9 +61,7 @@ describe('DeveloperToolsSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/developer/activity', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/developer/activity', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await developerToolsSource.fetchActivity('24h');
@@ -79,11 +75,7 @@ describe('DeveloperToolsSource', () => {
     });
 
     it('should return mock data when network error occurs', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/developer/activity', new Error('Network error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/developer/activity', new Error('Network error')]]));
 
       const result = await developerToolsSource.fetchActivity('24h');
 
@@ -101,11 +93,7 @@ describe('DeveloperToolsSource', () => {
         topTools: [],
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/developer/activity', createMockResponse(mockActivity)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/developer/activity', createMockResponse(mockActivity)]]));
 
       const result = await developerToolsSource.fetchActivity('24h');
 
@@ -133,11 +121,7 @@ describe('DeveloperToolsSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/tools/usage', createMockResponse(mockToolUsage)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/tools/usage', createMockResponse(mockToolUsage)]]));
 
       const result = await developerToolsSource.fetchToolUsage('24h');
 
@@ -151,11 +135,7 @@ describe('DeveloperToolsSource', () => {
     });
 
     it('should include timeRange parameter in API request', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/tools/usage?timeRange=30d', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/tools/usage?timeRange=30d', createMockResponse([])]]));
 
       await developerToolsSource.fetchToolUsage('30d');
 
@@ -165,11 +145,7 @@ describe('DeveloperToolsSource', () => {
     });
 
     it('should return mock data when API fails', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/tools/usage', createMockResponse(null, { status: 500 })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/tools/usage', createMockResponse(null, { status: 500 })]]));
 
       const result = await developerToolsSource.fetchToolUsage('24h');
 
@@ -183,11 +159,7 @@ describe('DeveloperToolsSource', () => {
     });
 
     it('should return mock data when network error occurs', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/tools/usage', new Error('Network error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/tools/usage', new Error('Network error')]]));
 
       const result = await developerToolsSource.fetchToolUsage('24h');
 
@@ -197,11 +169,7 @@ describe('DeveloperToolsSource', () => {
     });
 
     it('should handle empty tool usage array from API', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/tools/usage', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/tools/usage', createMockResponse([])]]));
 
       const result = await developerToolsSource.fetchToolUsage('24h');
 
@@ -220,11 +188,7 @@ describe('DeveloperToolsSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/tools/usage', createMockResponse(mockToolUsage)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/tools/usage', createMockResponse(mockToolUsage)]]));
 
       const result = await developerToolsSource.fetchToolUsage('24h');
 
@@ -257,11 +221,7 @@ describe('DeveloperToolsSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/developer/queries', createMockResponse(mockQueryHistory)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/developer/queries', createMockResponse(mockQueryHistory)]]));
 
       const result = await developerToolsSource.fetchQueryHistory('24h', 10);
 
@@ -276,37 +236,27 @@ describe('DeveloperToolsSource', () => {
 
     it('should use default limit of 10 when not specified', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/developer/queries?timeRange=24h&limit=10', createMockResponse([])],
-        ])
+        new Map([['/api/developer/queries?timeRange=24h&limit=10', createMockResponse([])]])
       );
 
       await developerToolsSource.fetchQueryHistory('24h');
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('limit=10')
-      );
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=10'));
     });
 
     it('should include custom limit parameter in API request', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/developer/queries?timeRange=24h&limit=20', createMockResponse([])],
-        ])
+        new Map([['/api/developer/queries?timeRange=24h&limit=20', createMockResponse([])]])
       );
 
       await developerToolsSource.fetchQueryHistory('24h', 20);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('limit=20')
-      );
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=20'));
     });
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/developer/queries', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/developer/queries', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await developerToolsSource.fetchQueryHistory('24h', 10);
@@ -316,11 +266,7 @@ describe('DeveloperToolsSource', () => {
     });
 
     it('should return mock data when network error occurs', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/developer/queries', new Error('Network error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/developer/queries', new Error('Network error')]]));
 
       const result = await developerToolsSource.fetchQueryHistory('24h');
 
@@ -329,11 +275,7 @@ describe('DeveloperToolsSource', () => {
     });
 
     it('should handle empty query history from API', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/developer/queries', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/developer/queries', createMockResponse([])]]));
 
       const result = await developerToolsSource.fetchQueryHistory('24h', 5);
 
@@ -353,11 +295,7 @@ describe('DeveloperToolsSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/developer/queries', createMockResponse(mockQueryHistory)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/developer/queries', createMockResponse(mockQueryHistory)]]));
 
       const result = await developerToolsSource.fetchQueryHistory('24h');
 
@@ -373,9 +311,7 @@ describe('DeveloperToolsSource', () => {
         activeSessions: 15,
         avgResponseTime: 150,
         satisfactionScore: 8.5,
-        topTools: [
-          { name: 'Query Assistant', usage: 200, satisfaction: 9.0 },
-        ],
+        topTools: [{ name: 'Query Assistant', usage: 200, satisfaction: 9.0 }],
       };
 
       const mockToolUsage: ToolUsage[] = [
@@ -471,9 +407,7 @@ describe('DeveloperToolsSource', () => {
 
       await developerToolsSource.fetchAll('7d');
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('timeRange=7d')
-      );
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('timeRange=7d'));
     });
 
     it('should use default limit of 10 for query history in fetchAll', async () => {
@@ -487,9 +421,7 @@ describe('DeveloperToolsSource', () => {
 
       await developerToolsSource.fetchAll('24h');
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('limit=10')
-      );
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=10'));
     });
 
     it('should combine isMock flags correctly with OR logic', async () => {
@@ -519,7 +451,12 @@ describe('DeveloperToolsSource', () => {
       setupFetchMock(
         new Map([
           ['/api/developer/activity', createMockResponse(null, { status: 500 })],
-          ['/api/tools/usage', createMockResponse([{ toolName: 'Test', usageCount: 1, avgRating: 5, lastUsed: '', category: 'Test' }])],
+          [
+            '/api/tools/usage',
+            createMockResponse([
+              { toolName: 'Test', usageCount: 1, avgRating: 5, lastUsed: '', category: 'Test' },
+            ]),
+          ],
           ['/api/developer/queries', createMockResponse(null, { status: 500 })],
         ])
       );

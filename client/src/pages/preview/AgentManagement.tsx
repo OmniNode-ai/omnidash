@@ -1,35 +1,28 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { agentManagementSource } from "@/lib/data-sources";
-import { getPollingInterval } from "@/lib/constants/query-config";
-import { MockDataBadge } from "@/components/MockDataBadge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Bot,
-  Activity,
-  Settings,
-  Play,
-  Target,
-  Clock
-} from "lucide-react";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { agentManagementSource } from '@/lib/data-sources';
+import { getPollingInterval } from '@/lib/constants/query-config';
+import { MockDataBadge } from '@/components/MockDataBadge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Bot, Activity, Settings, Play, Target, Clock } from 'lucide-react';
 
 // Import existing components
-import AgentRegistry from "./AgentRegistry";
-import AgentOperations from "../AgentOperations";
-import { RoutingDecisionDetailModal } from "@/components/RoutingDecisionDetailModal";
-import { AgentDetailModal } from "@/components/AgentDetailModal";
-import { intelligenceAnalyticsSource } from "@/lib/data-sources/intelligence-analytics-source";
-import type { AgentPerformance } from "@/lib/data-sources/intelligence-analytics-source";
+import AgentRegistry from './AgentRegistry';
+import AgentOperations from '../AgentOperations';
+import { RoutingDecisionDetailModal } from '@/components/RoutingDecisionDetailModal';
+import { AgentDetailModal } from '@/components/AgentDetailModal';
+import { intelligenceAnalyticsSource } from '@/lib/data-sources/intelligence-analytics-source';
+import type { AgentPerformance } from '@/lib/data-sources/intelligence-analytics-source';
 
 // Types imported from data source
 type RoutingDecision = import('@/lib/data-sources/agent-management-source').RoutingDecision;
 
 export default function AgentManagement() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [timeRange] = useState("24h");
+  const [activeTab, setActiveTab] = useState('overview');
+  const [timeRange] = useState('24h');
   const [selectedDecision, setSelectedDecision] = useState<RoutingDecision | null>(null);
   const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false);
@@ -83,18 +76,11 @@ export default function AgentManagement() {
         </div>
         <div className="flex items-center gap-2">
           {usingMockData && <MockDataBadge />}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsConfigureModalOpen(true)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setIsConfigureModalOpen(true)}>
             <Settings className="w-4 h-4 mr-2" />
             Configure
           </Button>
-          <Button
-            size="sm"
-            onClick={() => setIsExecuteModalOpen(true)}
-          >
+          <Button size="sm" onClick={() => setIsExecuteModalOpen(true)}>
             <Play className="w-4 h-4 mr-2" />
             Execute Agent
           </Button>
@@ -126,9 +112,7 @@ export default function AgentManagement() {
                     <Bot className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
-                      {agentSummary?.totalAgents || 0}
-                    </div>
+                    <div className="text-2xl font-bold">{agentSummary?.totalAgents || 0}</div>
                     <p className="text-xs text-muted-foreground">
                       {agentSummary?.activeAgents || 0} active
                     </p>
@@ -142,10 +126,12 @@ export default function AgentManagement() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {agentSummary?.totalRuns?.toLocaleString() || "0"}
+                      {agentSummary?.totalRuns?.toLocaleString() || '0'}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {agentSummary?.totalRuns ? `${agentSummary.totalRuns.toLocaleString()} total executions` : "No executions yet"}
+                      {agentSummary?.totalRuns
+                        ? `${agentSummary.totalRuns.toLocaleString()} total executions`
+                        : 'No executions yet'}
                     </p>
                   </CardContent>
                 </Card>
@@ -160,7 +146,9 @@ export default function AgentManagement() {
                       {Math.max(0, Math.min(100, agentSummary?.successRate || 0)).toFixed(1)}%
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {agentSummary?.totalRuns ? `Based on ${agentSummary.totalRuns.toLocaleString()} runs` : "No data available"}
+                      {agentSummary?.totalRuns
+                        ? `Based on ${agentSummary.totalRuns.toLocaleString()} runs`
+                        : 'No data available'}
                     </p>
                   </CardContent>
                 </Card>
@@ -172,10 +160,14 @@ export default function AgentManagement() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {agentSummary?.avgExecutionTime ? `${agentSummary.avgExecutionTime.toFixed(1)}s` : "0s"}
+                      {agentSummary?.avgExecutionTime
+                        ? `${agentSummary.avgExecutionTime.toFixed(1)}s`
+                        : '0s'}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {agentSummary?.avgExecutionTime ? `Weighted average across all agents` : "No execution data"}
+                      {agentSummary?.avgExecutionTime
+                        ? `Weighted average across all agents`
+                        : 'No execution data'}
                     </p>
                   </CardContent>
                 </Card>
@@ -196,7 +188,9 @@ export default function AgentManagement() {
           <Card>
             <CardHeader>
               <CardTitle>Routing Metrics</CardTitle>
-              <CardDescription>Key performance indicators for agent routing decisions</CardDescription>
+              <CardDescription>
+                Key performance indicators for agent routing decisions
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -204,7 +198,7 @@ export default function AgentManagement() {
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-3xl font-bold text-green-600">
-                        {routingStats?.accuracy?.toFixed(1) || "0"}%
+                        {routingStats?.accuracy?.toFixed(1) || '0'}%
                       </div>
                       <div className="text-sm text-muted-foreground">Routing Accuracy</div>
                     </div>
@@ -214,7 +208,7 @@ export default function AgentManagement() {
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-3xl font-bold text-blue-600">
-                        {routingStats?.avgRoutingTime?.toFixed(0) || "0"}ms
+                        {routingStats?.avgRoutingTime?.toFixed(0) || '0'}ms
                       </div>
                       <div className="text-sm text-muted-foreground">Avg Routing Time</div>
                     </div>
@@ -224,7 +218,7 @@ export default function AgentManagement() {
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-3xl font-bold text-purple-600">
-                        {routingStats?.totalDecisions?.toLocaleString() || "0"}
+                        {routingStats?.totalDecisions?.toLocaleString() || '0'}
                       </div>
                       <div className="text-sm text-muted-foreground">Total Decisions</div>
                     </div>
@@ -269,10 +263,16 @@ export default function AgentManagement() {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Average Confidence</span>
                     <span className="text-2xl font-bold text-green-600">
-                      {routingStats?.avgConfidence ? (routingStats.avgConfidence * 100).toFixed(1) : "0"}%
+                      {routingStats?.avgConfidence
+                        ? (routingStats.avgConfidence * 100).toFixed(1)
+                        : '0'}
+                      %
                     </span>
                   </div>
-                  <Progress value={routingStats?.avgConfidence ? routingStats.avgConfidence * 100 : 0} className="h-2" />
+                  <Progress
+                    value={routingStats?.avgConfidence ? routingStats.avgConfidence * 100 : 0}
+                    className="h-2"
+                  />
                 </div>
                 <div className="p-4 border rounded-lg">
                   <div className="flex items-center justify-between mb-2">
@@ -281,9 +281,7 @@ export default function AgentManagement() {
                       {routingStats?.avgRoutingTime || 0}ms
                     </span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Target: &lt;100ms
-                  </div>
+                  <div className="text-xs text-muted-foreground">Target: &lt;100ms</div>
                 </div>
               </div>
             </CardContent>
@@ -326,7 +324,8 @@ export default function AgentManagement() {
                       <div className="flex-1">
                         <div className="font-medium">{decision.userRequest}</div>
                         <div className="text-sm text-muted-foreground">
-                          Routed to {decision.selectedAgent} with {(decision.confidenceScore * 100).toFixed(1)}% confidence
+                          Routed to {decision.selectedAgent} with{' '}
+                          {(decision.confidenceScore * 100).toFixed(1)}% confidence
                         </div>
                         {decision.createdAt && (
                           <div className="text-xs text-muted-foreground mt-1">
@@ -336,7 +335,9 @@ export default function AgentManagement() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <div className="text-sm font-medium">{(decision.confidenceScore * 100).toFixed(1)}%</div>
+                          <div className="text-sm font-medium">
+                            {(decision.confidenceScore * 100).toFixed(1)}%
+                          </div>
                           <div className="text-xs text-muted-foreground">Confidence</div>
                         </div>
                         <div className="text-right">
@@ -380,15 +381,21 @@ export default function AgentManagement() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <div className="text-sm font-medium">${(agent.costPerSuccess || 0.045).toFixed(3)}</div>
+                          <div className="text-sm font-medium">
+                            ${(agent.costPerSuccess || 0.045).toFixed(3)}
+                          </div>
                           <div className="text-xs text-muted-foreground">Cost/Success</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-medium">{(agent.p95Latency || 1450).toFixed(0)}ms</div>
+                          <div className="text-sm font-medium">
+                            {(agent.p95Latency || 1450).toFixed(0)}ms
+                          </div>
                           <div className="text-xs text-muted-foreground">p95 Latency</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-medium">{agent.totalRuns.toLocaleString()}</div>
+                          <div className="text-sm font-medium">
+                            {agent.totalRuns.toLocaleString()}
+                          </div>
                           <div className="text-xs text-muted-foreground">Total Runs</div>
                         </div>
                       </div>
@@ -397,18 +404,33 @@ export default function AgentManagement() {
                     <div className="grid grid-cols-3 gap-4">
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Quality Score</div>
-                        <Progress value={Math.max(0, Math.min(100, agent.avgQualityScore * 10))} className="h-2" />
-                        <div className="text-xs text-muted-foreground mt-1">{agent.avgQualityScore.toFixed(1)}/10</div>
+                        <Progress
+                          value={Math.max(0, Math.min(100, agent.avgQualityScore * 10))}
+                          className="h-2"
+                        />
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {agent.avgQualityScore.toFixed(1)}/10
+                        </div>
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Efficiency</div>
-                        <Progress value={Math.max(0, Math.min(100, agent.efficiency))} className="h-2" />
-                        <div className="text-xs text-muted-foreground mt-1">{Math.max(0, Math.min(100, agent.efficiency)).toFixed(1)}%</div>
+                        <Progress
+                          value={Math.max(0, Math.min(100, agent.efficiency))}
+                          className="h-2"
+                        />
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {Math.max(0, Math.min(100, agent.efficiency)).toFixed(1)}%
+                        </div>
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Popularity</div>
-                        <Progress value={Math.max(0, Math.min(100, agent.popularity))} className="h-2" />
-                        <div className="text-xs text-muted-foreground mt-1">{Math.max(0, Math.min(100, agent.popularity)).toFixed(1)}%</div>
+                        <Progress
+                          value={Math.max(0, Math.min(100, agent.popularity))}
+                          className="h-2"
+                        />
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {Math.max(0, Math.min(100, agent.popularity)).toFixed(1)}%
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -455,11 +477,7 @@ export default function AgentManagement() {
           <div className="relative z-10 w-[600px] bg-background rounded-2xl shadow-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Agent Configuration</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsConfigureModalOpen(false)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setIsConfigureModalOpen(false)}>
                 ✕
               </Button>
             </div>
@@ -475,13 +493,7 @@ export default function AgentManagement() {
               </div>
               <div>
                 <label className="text-sm font-medium">Confidence Threshold</label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  defaultValue="75"
-                  className="w-full mt-1"
-                />
+                <input type="range" min="0" max="100" defaultValue="75" className="w-full mt-1" />
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
                   <span>0%</span>
                   <span>50%</span>
@@ -500,10 +512,7 @@ export default function AgentManagement() {
                 <Button className="flex-1" onClick={() => setIsConfigureModalOpen(false)}>
                   Save Configuration
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsConfigureModalOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setIsConfigureModalOpen(false)}>
                   Cancel
                 </Button>
               </div>
@@ -522,11 +531,7 @@ export default function AgentManagement() {
           <div className="relative z-10 w-[700px] bg-background rounded-2xl shadow-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Execute Agent</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsExecuteModalOpen(false)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setIsExecuteModalOpen(false)}>
                 ✕
               </Button>
             </div>
@@ -563,10 +568,7 @@ export default function AgentManagement() {
                   <Play className="w-4 h-4 mr-2" />
                   Execute
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsExecuteModalOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setIsExecuteModalOpen(false)}>
                   Cancel
                 </Button>
               </div>

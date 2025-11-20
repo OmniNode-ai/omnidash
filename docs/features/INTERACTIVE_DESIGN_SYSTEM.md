@@ -47,23 +47,23 @@ We now have **4 standard utility classes** for all interactive elements. Use the
 **Use For**: Agent cards, pattern cards, drill-down surfaces
 
 **What It Does**:
+
 - Hover: Subtle elevation + border glow + 2px lift
 - Active: Stronger elevation + slight scale down
 - Focus: Blue ring (keyboard navigation)
 
 **Example**:
-```tsx
-import { Card } from "@/components/ui/card";
 
-<Card
-  className="clickable-card p-6"
-  onClick={handleClick}
->
+```tsx
+import { Card } from '@/components/ui/card';
+
+<Card className="clickable-card p-6" onClick={handleClick}>
   Card content
-</Card>
+</Card>;
 ```
 
 **Visual Result**:
+
 - Cursor changes to pointer
 - Hovers with blue border glow
 - Lifts slightly on hover
@@ -76,22 +76,22 @@ import { Card } from "@/components/ui/card";
 **Use For**: Table rows, log entries, dense lists
 
 **What It Does**:
+
 - Hover: Light background color
 - Active: Slightly darker background
 - Focus: Inset ring (doesn't break table alignment)
 
 **Example**:
+
 ```tsx
-<TableRow
-  className="clickable-row"
-  onClick={() => setSelectedRow(row)}
->
+<TableRow className="clickable-row" onClick={() => setSelectedRow(row)}>
   <TableCell>{row.name}</TableCell>
   <TableCell>{row.value}</TableCell>
 </TableRow>
 ```
 
 **Visual Result**:
+
 - Subtle background highlight on hover
 - No shadows (keeps table clean)
 - Inset focus ring for keyboard navigation
@@ -103,16 +103,15 @@ import { Card } from "@/components/ui/card";
 **Use For**: Dropdown items, sidebar navigation, filter chips
 
 **What It Does**:
+
 - Hover: Background + text color change
 - Active: Slightly darker background
 - Focus: Standard ring
 
 **Example**:
+
 ```tsx
-<DropdownMenuItem
-  className="clickable-list-item"
-  onClick={() => handleSelect(item)}
->
+<DropdownMenuItem className="clickable-list-item" onClick={() => handleSelect(item)}>
   {item.label}
 </DropdownMenuItem>
 ```
@@ -124,16 +123,15 @@ import { Card } from "@/components/ui/card";
 **Use For**: Small icons, badges, inline actions
 
 **What It Does**:
+
 - Hover: Opacity to 80%
 - Active: No visual change (intentionally subtle)
 - Focus: Standard ring
 
 **Example**:
+
 ```tsx
-<Badge
-  className="clickable-subtle"
-  onClick={() => removeTag(tag)}
->
+<Badge className="clickable-subtle" onClick={() => removeTag(tag)}>
   {tag} <X className="w-3 h-3 ml-1" />
 </Badge>
 ```
@@ -163,10 +161,7 @@ Add `.clickable-disabled` to any interactive element that should appear disabled
 
 ```tsx
 <Card
-  className={cn(
-    "clickable-card",
-    isDisabled && "clickable-disabled"
-  )}
+  className={cn('clickable-card', isDisabled && 'clickable-disabled')}
   onClick={isDisabled ? undefined : handleClick}
 >
   Content
@@ -178,6 +173,7 @@ Add `.clickable-disabled` to any interactive element that should appear disabled
 ## Accessibility Built-In
 
 All 4 patterns include:
+
 - ✅ Cursor pointer indicator
 - ✅ Smooth transitions (200ms for cards, 150ms for rows)
 - ✅ Focus-visible ring for keyboard navigation
@@ -186,16 +182,16 @@ All 4 patterns include:
 **For non-semantic elements** (divs, spans), add keyboard support:
 
 ```tsx
-import { createKeyboardHandler, getInteractiveAriaProps } from "@/lib/utils/interactive-classes";
+import { createKeyboardHandler, getInteractiveAriaProps } from '@/lib/utils/interactive-classes';
 
 <div
   className="clickable-card"
   onClick={handleClick}
   onKeyDown={createKeyboardHandler(handleClick)}
-  {...getInteractiveAriaProps({ role: "button" })}
+  {...getInteractiveAriaProps({ role: 'button' })}
 >
   Content
-</div>
+</div>;
 ```
 
 ---
@@ -239,9 +235,7 @@ The utility already includes hover effects. Adding more creates conflicts.
 
 ```tsx
 // BAD - Visual only, not actually clickable
-<Card className="clickable-card">
-  Read-only content
-</Card>
+<Card className="clickable-card">Read-only content</Card>
 ```
 
 If it doesn't have `onClick` or `href`, don't make it look clickable.
@@ -273,6 +267,7 @@ If it doesn't have `onClick` or `href`, don't make it look clickable.
 ### AgentStatusGrid (Good Example)
 
 **Before**:
+
 ```tsx
 <Card
   className="hover-elevate active-elevate-2 cursor-pointer transition-all"
@@ -281,11 +276,9 @@ If it doesn't have `onClick` or `href`, don't make it look clickable.
 ```
 
 **After**:
+
 ```tsx
-<Card
-  className="clickable-card"
-  onClick={() => onAgentClick?.(agent)}
-/>
+<Card className="clickable-card" onClick={() => onAgentClick?.(agent)} />
 ```
 
 Same visual effect, cleaner code, includes focus states.
@@ -293,28 +286,26 @@ Same visual effect, cleaner code, includes focus states.
 ### DataTable (Row Selection)
 
 **Before**:
+
 ```tsx
 <TableHead
   className={cn(
     column.className,
-    column.sortable && "cursor-pointer select-none hover:bg-muted/50"
+    column.sortable && 'cursor-pointer select-none hover:bg-muted/50'
   )}
 />
 ```
 
 **After**:
+
 ```tsx
-<TableHead
-  className={cn(
-    column.className,
-    column.sortable && "clickable-row select-none"
-  )}
-/>
+<TableHead className={cn(column.className, column.sortable && 'clickable-row select-none')} />
 ```
 
 ### ChatInterface (Message Selection)
 
 **Before**:
+
 ```tsx
 <div
   className="p-3 rounded-lg cursor-pointer hover-elevate active-elevate-2 border"
@@ -323,6 +314,7 @@ Same visual effect, cleaner code, includes focus states.
 ```
 
 **After**:
+
 ```tsx
 <div
   className="clickable-card p-3 rounded-lg border"
@@ -353,7 +345,7 @@ For each interactive element:
 
 ```javascript
 // Paste in browser console
-document.querySelectorAll('[onclick], [role="button"]').forEach(el => {
+document.querySelectorAll('[onclick], [role="button"]').forEach((el) => {
   const style = window.getComputedStyle(el);
   if (style.cursor !== 'pointer') {
     console.warn('Missing cursor-pointer:', el);
@@ -366,16 +358,19 @@ document.querySelectorAll('[onclick], [role="button"]').forEach(el => {
 ## When to Ask for Help
 
 **Not sure which pattern to use?**
+
 - Cards/large surfaces → `clickable-card`
 - Rows/dense lists → `clickable-row`
 - When in doubt → `clickable-card`
 
 **Need a custom interaction?**
+
 - Check if it can be solved with utility combinations
 - If truly unique, document why inline classes are needed
 - Consider adding a new utility class if pattern repeats
 
 **Accessibility concerns?**
+
 - Use `createKeyboardHandler()` helper for divs/spans
 - Add appropriate ARIA attributes with `getInteractiveAriaProps()`
 - Test with keyboard-only navigation (Tab, Enter, Space)

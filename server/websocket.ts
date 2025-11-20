@@ -16,7 +16,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
   const wss = new WebSocketServer({
     server: httpServer,
-    path: '/ws'
+    path: '/ws',
   });
 
   // Track connected clients with their preferences
@@ -72,10 +72,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
   }, HEARTBEAT_INTERVAL_MS);
 
   // Helper function to register EventConsumer listeners with cleanup tracking
-  const registerEventListener = <T extends any[]>(
-    event: string,
-    handler: (...args: T) => void
-  ) => {
+  const registerEventListener = <T extends any[]>(event: string, handler: (...args: T) => void) => {
     eventConsumer.on(event, handler);
     eventListeners.push({ event, handler });
   };
@@ -85,7 +82,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
     const message = JSON.stringify({
       type,
       data,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     clients.forEach((clientData, ws) => {
@@ -117,10 +114,14 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
   registerEventListener('error', (error) => {
     console.error('EventConsumer error:', error);
-    broadcast('ERROR', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, 'errors');
+    broadcast(
+      'ERROR',
+      {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      },
+      'errors'
+    );
   });
 
   registerEventListener('connected', () => {
@@ -143,29 +144,33 @@ export function setupWebSocket(httpServer: HTTPServer) {
       subscriptions: new Set(['all']), // Subscribe to all by default
       lastPing: new Date(),
       isAlive: true,
-      missedPings: 0
+      missedPings: 0,
     };
 
     clients.set(ws, clientData);
 
     // Send welcome message
-    ws.send(JSON.stringify({
-      type: 'CONNECTED',
-      message: 'Connected to Omnidash real-time event stream',
-      timestamp: new Date().toISOString()
-    }));
+    ws.send(
+      JSON.stringify({
+        type: 'CONNECTED',
+        message: 'Connected to Omnidash real-time event stream',
+        timestamp: new Date().toISOString(),
+      })
+    );
 
     // Send initial state
-    ws.send(JSON.stringify({
-      type: 'INITIAL_STATE',
-      data: {
-        metrics: eventConsumer.getAgentMetrics(),
-        recentActions: eventConsumer.getRecentActions(),
-        routingDecisions: eventConsumer.getRoutingDecisions(),
-        health: eventConsumer.getHealthStatus()
-      },
-      timestamp: new Date().toISOString()
-    }));
+    ws.send(
+      JSON.stringify({
+        type: 'INITIAL_STATE',
+        data: {
+          metrics: eventConsumer.getAgentMetrics(),
+          recentActions: eventConsumer.getRecentActions(),
+          routingDecisions: eventConsumer.getRoutingDecisions(),
+          health: eventConsumer.getHealthStatus(),
+        },
+        timestamp: new Date().toISOString(),
+      })
+    );
 
     // Handle pong responses
     ws.on('pong', () => {
@@ -193,27 +198,31 @@ export function setupWebSocket(httpServer: HTTPServer) {
             break;
           case 'getState':
             // Send current state on demand
-            ws.send(JSON.stringify({
-              type: 'CURRENT_STATE',
-              data: {
-                metrics: eventConsumer.getAgentMetrics(),
-                recentActions: eventConsumer.getRecentActions(),
-                routingDecisions: eventConsumer.getRoutingDecisions(),
-                health: eventConsumer.getHealthStatus()
-              },
-              timestamp: new Date().toISOString()
-            }));
+            ws.send(
+              JSON.stringify({
+                type: 'CURRENT_STATE',
+                data: {
+                  metrics: eventConsumer.getAgentMetrics(),
+                  recentActions: eventConsumer.getRecentActions(),
+                  routingDecisions: eventConsumer.getRoutingDecisions(),
+                  health: eventConsumer.getHealthStatus(),
+                },
+                timestamp: new Date().toISOString(),
+              })
+            );
             break;
           default:
             console.log('Unknown action:', message.action);
         }
       } catch (error) {
         console.error('Error parsing client message:', error);
-        ws.send(JSON.stringify({
-          type: 'ERROR',
-          message: 'Invalid message format',
-          timestamp: new Date().toISOString()
-        }));
+        ws.send(
+          JSON.stringify({
+            type: 'ERROR',
+            message: 'Invalid message format',
+            timestamp: new Date().toISOString(),
+          })
+        );
       }
     });
 
@@ -237,15 +246,17 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     const topicArray = Array.isArray(topics) ? topics : [topics];
 
-    topicArray.forEach(topic => {
+    topicArray.forEach((topic) => {
       client.subscriptions.add(topic);
     });
 
-    ws.send(JSON.stringify({
-      type: 'SUBSCRIPTION_UPDATED',
-      subscriptions: Array.from(client.subscriptions),
-      timestamp: new Date().toISOString()
-    }));
+    ws.send(
+      JSON.stringify({
+        type: 'SUBSCRIPTION_UPDATED',
+        subscriptions: Array.from(client.subscriptions),
+        timestamp: new Date().toISOString(),
+      })
+    );
 
     console.log('Client subscriptions updated:', Array.from(client.subscriptions));
   }
@@ -257,7 +268,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     const topicArray = Array.isArray(topics) ? topics : [topics];
 
-    topicArray.forEach(topic => {
+    topicArray.forEach((topic) => {
       client.subscriptions.delete(topic);
     });
 
@@ -266,11 +277,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
       client.subscriptions.add('all');
     }
 
-    ws.send(JSON.stringify({
-      type: 'SUBSCRIPTION_UPDATED',
-      subscriptions: Array.from(client.subscriptions),
-      timestamp: new Date().toISOString()
-    }));
+    ws.send(
+      JSON.stringify({
+        type: 'SUBSCRIPTION_UPDATED',
+        subscriptions: Array.from(client.subscriptions),
+        timestamp: new Date().toISOString(),
+      })
+    );
 
     console.log('Client subscriptions updated:', Array.from(client.subscriptions));
   }

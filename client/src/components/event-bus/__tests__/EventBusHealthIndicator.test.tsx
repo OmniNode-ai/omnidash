@@ -42,11 +42,7 @@ describe('EventBusHealthIndicator', () => {
   });
 
   const renderWithClient = (ui: React.ReactElement) => {
-    return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>
-    );
+    return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
   };
 
   it('should render health indicator with label when showLabel is true', async () => {
@@ -116,4 +112,3 @@ describe('EventBusHealthIndicator', () => {
     result.unmount();
   });
 });
-

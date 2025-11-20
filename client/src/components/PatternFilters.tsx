@@ -1,8 +1,14 @@
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-import { Search, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Search, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface PatternFiltersProps {
   searchQuery: string;
@@ -23,7 +29,7 @@ export function PatternFilters({
   minQuality,
   onQualityChange,
   minUsage,
-  onUsageChange
+  onUsageChange,
 }: PatternFiltersProps) {
   const activeFiltersCount =
     (searchQuery ? 1 : 0) +
@@ -89,9 +95,7 @@ export function PatternFilters({
 
         {/* Quality Filter */}
         <div>
-          <label className="text-sm font-medium mb-2 block">
-            Min Quality: {minQuality}%
-          </label>
+          <label className="text-sm font-medium mb-2 block">Min Quality: {minQuality}%</label>
           <Slider
             value={[minQuality]}
             onValueChange={([value]) => onQualityChange(value)}
@@ -108,9 +112,7 @@ export function PatternFilters({
 
         {/* Usage Filter */}
         <div>
-          <label className="text-sm font-medium mb-2 block">
-            Min Usage: {minUsage}x
-          </label>
+          <label className="text-sm font-medium mb-2 block">Min Usage: {minUsage}x</label>
           <Slider
             value={[minUsage]}
             onValueChange={([value]) => onUsageChange(value)}
@@ -132,7 +134,8 @@ export function PatternFilters({
           <span className="text-xs text-muted-foreground">Active filters:</span>
           {searchQuery && (
             <span className="inline-flex items-center px-2 py-1 bg-primary/10 text-primary rounded text-xs">
-              Search: "{searchQuery.substring(0, 20)}{searchQuery.length > 20 ? '...' : ''}"
+              Search: "{searchQuery.substring(0, 20)}
+              {searchQuery.length > 20 ? '...' : ''}"
             </span>
           )}
           {patternType !== 'all' && (

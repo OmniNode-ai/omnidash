@@ -4,27 +4,28 @@
 
 ## Data Source Status at a Glance
 
-| Data Source | Records | Status | Dashboard Target | Effort | Priority |
-|-------------|---------|--------|------------------|--------|----------|
-| **agent_routing_decisions** | 209/24h | ✅ Production | Agent Operations | 1h | ⭐⭐⭐ |
-| **agent_actions** | 205/24h | ✅ Production | Agent Operations | 1h | ⭐⭐⭐ |
-| **pattern_lineage_nodes** | 1,033 | ✅ Production | Pattern Learning | 2h | ⭐⭐⭐ |
-| **pattern_lineage_events** | 30 MB | ✅ Production | Pattern Learning | 3h | ⭐⭐ |
-| **document_metadata** | 33 docs | ✅ Production | Code Intelligence | 3h | ⭐⭐ |
-| **task_completion_metrics** | 1 | ⚠️ Low volume | Developer Experience | 2h | ⭐⭐ |
-| **metadata_stamps** | 1 | ⚠️ Low volume | Code Intelligence | 2h | ⭐⭐ |
-| **workflow_state** | 536 KB | ⚠️ Unknown | Agent Operations | 6h | ⭐ |
-| **node_registrations** | 264 KB | ⚠️ Unknown | Platform Health | 2h | ⭐⭐ |
-| **agent_execution_logs** | 0/24h | ❌ No data | Agent Operations | 4h | ⭐ |
-| **document_freshness** | 0 | ❌ No data | Platform Health | 2h* | ⭐⭐ |
-| **pattern_quality_metrics** | 0 | ❌ No data | Intelligence Ops | 3h* | ⭐⭐ |
-| **pattern_pr_intelligence** | 0 | ❌ No data | Pattern Learning | 4h* | ⭐⭐ |
+| Data Source                 | Records | Status        | Dashboard Target     | Effort | Priority |
+| --------------------------- | ------- | ------------- | -------------------- | ------ | -------- |
+| **agent_routing_decisions** | 209/24h | ✅ Production | Agent Operations     | 1h     | ⭐⭐⭐   |
+| **agent_actions**           | 205/24h | ✅ Production | Agent Operations     | 1h     | ⭐⭐⭐   |
+| **pattern_lineage_nodes**   | 1,033   | ✅ Production | Pattern Learning     | 2h     | ⭐⭐⭐   |
+| **pattern_lineage_events**  | 30 MB   | ✅ Production | Pattern Learning     | 3h     | ⭐⭐     |
+| **document_metadata**       | 33 docs | ✅ Production | Code Intelligence    | 3h     | ⭐⭐     |
+| **task_completion_metrics** | 1       | ⚠️ Low volume | Developer Experience | 2h     | ⭐⭐     |
+| **metadata_stamps**         | 1       | ⚠️ Low volume | Code Intelligence    | 2h     | ⭐⭐     |
+| **workflow_state**          | 536 KB  | ⚠️ Unknown    | Agent Operations     | 6h     | ⭐       |
+| **node_registrations**      | 264 KB  | ⚠️ Unknown    | Platform Health      | 2h     | ⭐⭐     |
+| **agent_execution_logs**    | 0/24h   | ❌ No data    | Agent Operations     | 4h     | ⭐       |
+| **document_freshness**      | 0       | ❌ No data    | Platform Health      | 2h\*   | ⭐⭐     |
+| **pattern_quality_metrics** | 0       | ❌ No data    | Intelligence Ops     | 3h\*   | ⭐⭐     |
+| **pattern_pr_intelligence** | 0       | ❌ No data    | Pattern Learning     | 4h\*   | ⭐⭐     |
 
-*Effort assumes data becomes available
+\*Effort assumes data becomes available
 
 ## Quick Win Implementations (Total: ~12h)
 
 ### 1. Routing Strategy Breakdown (1h) ⭐⭐⭐
+
 **Dashboard**: Agent Operations
 **Endpoint**: `/api/intelligence/routing/strategies`
 **Data**: `agent_routing_decisions.routing_strategy`
@@ -39,6 +40,7 @@ GROUP BY routing_strategy
 ```
 
 ### 2. Task Completion Velocity (2h) ⭐⭐
+
 **Dashboard**: Developer Experience
 **Endpoint**: `/api/intelligence/tasks/velocity`
 **Data**: `task_completion_metrics`
@@ -50,6 +52,7 @@ GET /api/intelligence/tasks/velocity?timeWindow=7d
 ```
 
 ### 3. ONEX Stamp Coverage (2h) ⭐⭐
+
 **Dashboard**: Code Intelligence
 **Endpoint**: `/api/intelligence/stamps/coverage`
 **Data**: `metadata_stamps`
@@ -64,6 +67,7 @@ FROM metadata_stamps ms
 ```
 
 ### 4. Document Access Ranking (3h) ⭐⭐
+
 **Dashboard**: Code Intelligence
 **Endpoint**: `/api/intelligence/documents/popular`
 **Data**: `document_metadata.access_count`
@@ -79,6 +83,7 @@ LIMIT 10
 ```
 
 ### 5. Node Service Registry (2h) ⭐⭐
+
 **Dashboard**: Platform Health
 **Endpoint**: `/api/intelligence/nodes/health`
 **Data**: `node_registrations`
@@ -92,6 +97,7 @@ ORDER BY last_heartbeat DESC
 ```
 
 ### 6. Pattern Language Breakdown (2h) ⭐⭐⭐
+
 **Dashboard**: Pattern Learning
 **Endpoint**: `/api/intelligence/patterns/by-language`
 **Data**: `pattern_lineage_nodes.language`
@@ -108,21 +114,25 @@ ORDER BY count DESC
 ## Medium Complexity Integrations (Total: ~18h)
 
 ### 7. Agent Execution Quality (4h) ⭐
+
 **Dashboard**: Agent Operations
 **Data**: `agent_execution_logs` (awaiting data)
 **Requires**: Join with `agent_routing_decisions` on `correlation_id`
 
 ### 8. Document Dependency Graph (5h) ⭐
+
 **Dashboard**: Knowledge Graph
 **Data**: `document_dependencies` + `document_metadata`
 **Visualization**: Force-directed graph using D3.js
 
 ### 9. Workflow State Viewer (6h) ⭐
+
 **Dashboard**: Agent Operations
 **Data**: `workflow_state` + `workflow_projection`
 **Requires**: Understanding workflow state schema
 
 ### 10. Pattern Discovery Timeline (3h) ⭐⭐
+
 **Dashboard**: Pattern Learning
 **Data**: `pattern_lineage_events` (30 MB)
 **Visualization**: Timeline showing pattern evolution
@@ -168,6 +178,7 @@ interface ApiResponse<T> {
 ## Dashboard Mapping
 
 ### Agent Operations (6 new integrations)
+
 1. Routing strategy breakdown (pie chart)
 2. Top agents by confidence (table)
 3. Agent execution quality trends (line chart) - awaiting data
@@ -176,21 +187,25 @@ interface ApiResponse<T> {
 6. Recent agent actions (timeline) - already done
 
 ### Pattern Learning (3 new integrations)
+
 1. Language/type breakdown (stacked bar)
 2. Pattern discovery timeline (timeline) - medium complexity
 3. PR mention tracking (table) - awaiting data
 
 ### Code Intelligence (3 new integrations)
+
 1. ONEX stamp coverage (metric card)
 2. Document access ranking (table)
 3. Quality gate results (table) - awaiting data
 
 ### Platform Health (3 new integrations)
+
 1. Node service registry (status grid)
 2. Document freshness alerts (alert banner) - awaiting data
 3. Kafka publish metrics (metric cards)
 
 ### Developer Experience (2 new integrations)
+
 1. Task completion velocity (line chart)
 2. Workflow completion rates (metric cards) - medium complexity
 
@@ -227,6 +242,7 @@ interface ApiResponse<T> {
 ### Code Patterns to Follow
 
 **Backend Route Example**:
+
 ```typescript
 intelligenceRouter.get('/routing/strategies', async (req, res) => {
   try {
@@ -245,21 +261,20 @@ intelligenceRouter.get('/routing/strategies', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: { message: error.message }
+      error: { message: error.message },
     });
   }
 });
 ```
 
 **Frontend Hook Example**:
+
 ```typescript
 export function useRoutingStrategies(timeWindow: string = '24h') {
   return useQuery({
     queryKey: ['routing-strategies', timeWindow],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/intelligence/routing/strategies?timeWindow=${timeWindow}`
-      );
+      const res = await fetch(`/api/intelligence/routing/strategies?timeWindow=${timeWindow}`);
       if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
     },
@@ -271,6 +286,7 @@ export function useRoutingStrategies(timeWindow: string = '24h') {
 ## Testing Queries
 
 ### Verify Data Exists
+
 ```bash
 # Check routing strategies
 PGPASSWORD='<your_password>' psql -h 192.168.86.200 -p 5436 \
@@ -293,6 +309,7 @@ PGPASSWORD='<your_password>' psql -h 192.168.86.200 -p 5436 \
 ```
 
 ### Test Endpoints
+
 ```bash
 # Agent routing strategies
 curl http://localhost:3000/api/intelligence/routing/strategies
