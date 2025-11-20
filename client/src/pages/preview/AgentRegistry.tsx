@@ -2,47 +2,25 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { agentRegistrySource } from "@/lib/data-sources";
 import { getPollingInterval } from "@/lib/constants/query-config";
-import type { AgentDefinition as ImportedAgentDefinition } from "@/lib/data-sources/agent-registry-source";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import { AgentRegistryDetailModal } from "@/components/AgentRegistryDetailModal";
 import { AgentExecutionTraceModal } from "@/components/AgentExecutionTraceModal";
 import {
   Search,
-  Filter,
   Bot,
-  Zap,
   Code,
-  Database,
-  Shield,
-  Settings,
-  Activity,
-  TrendingUp,
-  Clock,
-  Target,
-  Network,
-  Users,
-  Star,
   ArrowRight,
   Play,
-  Pause,
-  RotateCcw,
   Eye,
   BarChart3,
-  Layers,
-  GitFork,
-  Brain,
-  Cpu,
-  Database as DbIcon,
   Server,
-  FileText,
   TestTube,
-  Wrench,
   BookOpen,
+  Layers,
   Workflow
 } from "lucide-react";
 
@@ -168,9 +146,6 @@ export default function AgentRegistry() {
   });
 
   const agentsData = registryData?.agents;
-  const categoriesData = registryData?.categories;
-  const performanceData = registryData?.performance;
-  const routingData = registryData?.routing;
 
   // Fetch recent actions for Recent Activity section
   const { data: recentActionsData } = useQuery({
@@ -244,16 +219,6 @@ export default function AgentRegistry() {
       case "beta": return "bg-blue-100 text-blue-800";
       default: return "bg-gray-100 text-gray-800";
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   if (registryError) {

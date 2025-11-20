@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { TechDebtDetailModal } from "@/components/TechDebtDetailModal";
 import { SavingsTooltip } from "@/components/SavingsTooltip";
 import { DuplicateDetailModal } from "@/components/DuplicateDetailModal";

@@ -766,7 +766,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => {
                             // TODO: Add machine drill-down
-                            console.log('Show machine details:', machine.machine);
+                            console.warn('Show machine details:', machine.machine);
                           }}
                         >
                           <TableCell className="font-mono text-sm font-medium">{machine.machine}</TableCell>
@@ -1518,7 +1518,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                           className="cursor-pointer hover:border-primary transition-colors"
                           onClick={() => {
                             // TODO: Add drill-down modal
-                            console.log('Show details for:', agent.agent);
+                            console.warn('Show details for:', agent.agent);
                           }}
                         >
                           <CardHeader className="pb-3">
@@ -1580,7 +1580,7 @@ export function EnhancedAnalytics({ timeRange = "24h" }: EnhancedAnalyticsProps)
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => {
                           // TODO: Add pattern drill-down
-                          console.log('Show pattern details:', pattern.name);
+                          console.warn('Show pattern details:', pattern.name);
                         }}
                       >
                         <TableCell className="font-medium">{pattern.name}</TableCell>

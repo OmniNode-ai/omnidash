@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { platformMonitoringSource } from "@/lib/data-sources";
 import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
-import type { SystemStatus, DeveloperMetrics, Incident } from "@/lib/data-sources/platform-monitoring-source";
+import type { SystemStatus, Incident } from "@/lib/data-sources/platform-monitoring-source";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

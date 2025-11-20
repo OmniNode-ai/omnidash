@@ -589,7 +589,7 @@ export default function FeatureShowcase() {
                           <Badge variant="default">Calculating</Badge>
                         </div>
                         <div className="space-y-3">
-                          {mockTickets.map((ticket, index) => (
+                          {mockTickets.map((ticket) => (
                             <div key={ticket.id} className="bg-card rounded p-4 shadow border">
                               <div className="flex items-center justify-between mb-3">
                                 <span className="font-medium">{ticket.title}</span>

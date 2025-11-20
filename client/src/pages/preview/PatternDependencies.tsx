@@ -447,7 +447,7 @@ const PatternDependencies: React.FC = () => {
           <Label htmlFor="search">Search:</Label>
           <Input
             id="search"
-            placeholder="Search patterns..."
+            placeholder="_Search patterns..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-64"

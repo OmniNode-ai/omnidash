@@ -342,7 +342,7 @@ const PatternLineage: React.FC = () => {
   }), []);
 
   // Convert pattern evolution to graph format for tree view
-  const graphNodes: GraphNode[] = selectedPatternData?.versions.map((version, index) => ({
+  const graphNodes: GraphNode[] = selectedPatternData?.versions.map((version) => ({
     id: `${selectedPattern}-${version.version}`,
     label: `v${version.version}`,
     type: version.status,
@@ -394,7 +394,7 @@ const PatternLineage: React.FC = () => {
           <Label htmlFor="search">Search:</Label>
           <Input
             id="search"
-            placeholder="Search patterns..."
+            placeholder="_Search patterns..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-64"

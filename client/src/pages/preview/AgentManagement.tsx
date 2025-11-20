@@ -4,36 +4,16 @@ import { agentManagementSource } from "@/lib/data-sources";
 import { getPollingInterval } from "@/lib/constants/query-config";
 import { MockDataBadge } from "@/components/MockDataBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Bot,
-  Network,
   Activity,
-  BarChart3,
-  Eye,
   Settings,
   Play,
-  Pause,
-  RotateCcw,
-  Search,
-  Filter,
   Target,
-  TrendingUp,
-  Clock,
-  Users,
-  Zap,
-  Code,
-  TestTube,
-  Server,
-  BookOpen,
-  Layers,
-  Workflow,
-  Brain,
-  Cpu,
-  Database
+  Clock
 } from "lucide-react";
 
 // Import existing components
@@ -45,14 +25,11 @@ import { intelligenceAnalyticsSource } from "@/lib/data-sources/intelligence-ana
 import type { AgentPerformance } from "@/lib/data-sources/intelligence-analytics-source";
 
 // Types imported from data source
-type AgentSummary = import('@/lib/data-sources/agent-management-source').AgentSummary;
-type AgentExecution = import('@/lib/data-sources/agent-management-source').AgentExecution;
-type RoutingStats = import('@/lib/data-sources/agent-management-source').RoutingStats;
 type RoutingDecision = import('@/lib/data-sources/agent-management-source').RoutingDecision;
 
 export default function AgentManagement() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [timeRange, setTimeRange] = useState("24h");
+  const [timeRange] = useState("24h");
   const [selectedDecision, setSelectedDecision] = useState<RoutingDecision | null>(null);
   const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false);
@@ -70,12 +47,11 @@ export default function AgentManagement() {
 
   const agentSummary = managementData?.summary;
   const routingStats = managementData?.routingStats;
-  const recentExecutions = managementData?.recentExecutions;
   const recentDecisions = managementData?.recentDecisions || [];
   const usingMockData = managementData?.isMock || false;
 
   // Fetch agent performance data
-  const { data: agentPerformanceResult, isLoading: agentsLoading } = useQuery({
+  const { data: agentPerformanceResult } = useQuery({
     queryKey: ['agent-performance', timeRange],
     queryFn: () => intelligenceAnalyticsSource.fetchAgentPerformance(timeRange),
     refetchInterval: getPollingInterval(60000),
@@ -84,17 +60,6 @@ export default function AgentManagement() {
   const usingMockAgents = agentPerformanceResult?.isMock || false;
 
   const initialLoading = isLoading && !managementData;
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      // Higher contrast in dark mode: dimmer bg, brighter text
-      case "completed": return "text-green-400 bg-green-900/30 border border-green-700/40";
-      case "executing": return "text-blue-400 bg-blue-900/30 border border-blue-700/40";
-      case "failed": return "text-red-400 bg-red-900/30 border border-red-700/40";
-      case "pending": return "text-yellow-400 bg-yellow-900/30 border border-yellow-700/40";
-      default: return "text-muted-foreground bg-muted border border-border/60";
-    }
-  };
 
   if (initialLoading) {
     return (
@@ -472,7 +437,7 @@ export default function AgentManagement() {
           setIsAgentModalOpen(false);
           setSelectedAgent(null);
         }}
-        onNavigate={(type, id) => {
+        onNavigate={(_type, _id) => {
           // Dismiss current modal, then navigate to new one
           setIsAgentModalOpen(false);
           setSelectedAgent(null);

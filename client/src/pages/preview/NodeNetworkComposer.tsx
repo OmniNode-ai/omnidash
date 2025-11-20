@@ -187,10 +187,10 @@ export default function NodeNetworkComposer() {
 
   const handleConnectionMove = useCallback((e: React.MouseEvent) => {
     if (!connectingFromNodeId) return;
-    
+
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
-    
+
     setConnectionPreview({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   }, [connectingFromNodeId]);
 
@@ -361,7 +361,7 @@ export default function NodeNetworkComposer() {
                   handleNodeMouseMove(e);
                   handleConnectionMove(e);
                 }}
-                onMouseUp={(e) => {
+                onMouseUp={() => {
                   // If we're connecting but not over a node, cancel the connection
                   if (connectingFromNodeId) {
                     setConnectingFromNodeId(null);

@@ -8,11 +8,11 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Settings, 
-  Save, 
-  RefreshCw, 
-  Download, 
+import {
+  Settings,
+  Save,
+  RefreshCw,
+  Download,
   Upload,
   Bell,
   Shield,
@@ -20,27 +20,9 @@ import {
   Database,
   Globe,
   Palette,
-  Keyboard,
   Eye,
-  EyeOff,
-  AlertTriangle,
-  CheckCircle,
   Brain,
-  Lightbulb,
-  Layers,
-  Cpu,
-  HardDrive,
-  Wifi,
-  BarChart3,
-  PieChart,
-  LineChart,
-  Target,
-  Users,
-  Lock,
-  Unlock,
-  Play,
-  Pause,
-  RotateCcw
+  Lightbulb
 } from "lucide-react";
 
 export default function AdvancedSettings() {
@@ -147,7 +129,7 @@ export default function AdvancedSettings() {
   };
 
   const handleSave = () => {
-    console.log("Saving settings:", settings);
+    // TODO: Implement settings save functionality
     setHasUnsavedChanges(false);
   };
 
@@ -229,8 +211,9 @@ export default function AdvancedSettings() {
           const importedSettings = JSON.parse(e.target?.result as string);
           setSettings(importedSettings);
           setHasUnsavedChanges(true);
-        } catch (error) {
-          console.error('Error importing settings:', error);
+        } catch {
+          // TODO: Show error notification to user
+          // Error importing settings
         }
       };
       reader.readAsText(file);

@@ -166,7 +166,7 @@ export default function AgentNetwork() {
     }
 
     // Transform live agent data to nodes
-    let nodes: AgentNode[] = agents.map((agent: any, index: number) => {
+    let nodes: AgentNode[] = agents.map((agent: any) => {
       return {
         id: agent.id || agent.name,
         name: agent.name || agent.id,
@@ -227,7 +227,7 @@ export default function AgentNetwork() {
     setNodes(nodes);
     setConnections(connections);
     setIsLoading(false);
-  }, [agentsData, routingData, queryLoading]);
+  }, [agentsData, routingData, queryLoading, networkData?.isMock]);
 
   const usingMockData = networkData?.isMock || !agentsData || agentsData.length === 0;
 

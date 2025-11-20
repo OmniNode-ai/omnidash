@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { MockDataBadge } from "@/components/MockDataBadge";
 import { useQuery } from "@tanstack/react-query";
 import { intelligenceSavingsSource, intelligenceAnalyticsSource } from "@/lib/data-sources";
@@ -10,27 +10,22 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   TrendingUp,
-  TrendingDown,
   DollarSign,
   Zap,
   Brain,
   Clock,
-  BarChart3,
   Activity,
   Target,
-  ArrowUpRight,
-  ArrowDownRight,
-  Calculator,
-  Cpu,
-  Database,
-  Network,
   Info,
   CheckCircle2,
-  Gauge,
   ChevronDown,
   ChevronRight,
   CalendarIcon,
-  Lightbulb
+  Lightbulb,
+  Cpu,
+  Database,
+  ArrowDownRight,
+  ArrowUpRight
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Calendar } from "@/components/ui/calendar";
@@ -137,6 +132,8 @@ export default function IntelligenceSavings() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [sortColumn, setSortColumn] = React.useState<'model' | 'requests' | 'avgResponseTime' | 'successRate' | 'cost' | 'tokens' | 'usagePercentage' | 'savingsAmount' | 'costPerRequest' | 'tokensOffloaded' | 'avgCostPerToken' | 'runsCount' | 'costPerToken'>('cost');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
 
   // Use centralized data source
   const { data: savingsData, isLoading } = useQuery({
@@ -153,7 +150,7 @@ export default function IntelligenceSavings() {
   });
 
   // Fetch intelligence operations metrics
-  const { data: intelligenceMetricsData, isLoading: intelligenceLoading } = useQuery({
+  const { data: intelligenceMetricsData } = useQuery({
     queryKey: ['intelligence-metrics', timeRange],
     queryFn: () => intelligenceAnalyticsSource.fetchMetrics(timeRange),
     refetchInterval: getPollingInterval(60000),
@@ -166,10 +163,6 @@ export default function IntelligenceSavings() {
   const usingMockData = savingsData?.isMock || false;
   const intelligenceMetrics = intelligenceMetricsData?.data;
   const usingMockIntelligence = intelligenceMetricsData?.isMock || false;
-
-  const metricsLoading = isLoading && !savingsMetrics;
-  const agentsLoading = isLoading && agentComparisons.length === 0;
-  const timeseriesLoading = isLoading && timeSeriesData.length === 0;
 
   // Data is now managed by TanStack Query, no need for local state
 
@@ -1151,9 +1144,6 @@ export default function IntelligenceSavings() {
                   ...model,
                   usagePercentage: (model.requests / totalRequests) * 100
                 }));
-
-                const [sortColumn, setSortColumn] = React.useState<keyof UnifiedModelData | 'usagePercentage'>('cost');
-                const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
 
                 const handleSort = (column: keyof UnifiedModelData | 'usagePercentage') => {
                   if (sortColumn === column) {
