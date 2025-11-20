@@ -27,7 +27,7 @@ afterEach(() => {
     // Vitest is available, ensure timers are cleared
     try {
       (globalThis as any).vi.useRealTimers();
-    } catch (e) {
+    } catch {
       // Ignore errors
     }
   }

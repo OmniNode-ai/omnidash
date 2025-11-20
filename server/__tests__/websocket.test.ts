@@ -142,10 +142,16 @@ async function connectAndCollect(port: number): Promise<{
   return { ws, messages };
 }
 
-// TODO(omnidash-394): Re-enable once global test suite finishes within CI timeout.
-// Full WebSocket integration suite spins up real HTTP + WS servers and still causes
-// Vitest to report open handles when thousands of other tests run. Temporarily skipping
-// to unblock CI until we migrate these to lighter-weight unit tests.
+/**
+ * TODO(omnidash-394): Re-enable once global test suite finishes within CI timeout.
+ *
+ * Full WebSocket integration suite spins up real HTTP + WS servers and still causes
+ * Vitest to report open handles when thousands of other tests run. Temporarily skipping
+ * to unblock CI until we migrate these to lighter-weight unit tests.
+ *
+ * This is intentionally disabled - not a code issue.
+ */
+// eslint-disable-next-line vitest/no-disabled-tests
 describe.skip('WebSocket Server', () => {
   let httpServer: HTTPServer | null;
   let wss: WebSocket.Server | null;
