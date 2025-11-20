@@ -1,18 +1,18 @@
 /**
  * PostgreSQL CRUD Adapter
- * 
+ *
  * Provides full CRUD functionality for PostgreSQL tables using Drizzle ORM.
  * Supports both direct database access and event bus integration.
- * 
+ *
  * Design:
  * - Direct access: Fast, synchronous queries for dashboard APIs
  * - Event bus: Async, decoupled operations for write-heavy workloads
  * - Graceful fallback: Event bus failures fall back to direct DB
- * 
+ *
  * Usage:
  *   const adapter = new PostgresAdapter();
  *   await adapter.connect();
- *   
+ *
  *   // CRUD operations
  *   const rows = await adapter.query('agent_actions', { limit: 100 });
  *   const newRow = await adapter.insert('agent_actions', { agent_name: 'test', ... });
@@ -20,9 +20,7 @@
  *   await adapter.delete('agent_actions', { id: '123' });
  */
 
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import { eq, and, or, gte, lte, desc, asc, sql, SQL, inArray } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, asc, sql, SQL, inArray } from 'drizzle-orm';
 import { intelligenceDb } from './storage';
 import * as schema from '@shared/intelligence-schema';
 
@@ -36,7 +34,9 @@ function ensureNumeric(
 ): number {
   const num = typeof value === 'string' ? parseFloat(value) : value;
   if (typeof num !== 'number' || isNaN(num)) {
-    console.warn(`[DataTransform] Invalid numeric value for '${fieldName}' in ${context.context}: ${value}, using fallback ${fallback}`);
+    console.warn(
+      `[DataTransform] Invalid numeric value for '${fieldName}' in ${context.context}: ${value}, using fallback ${fallback}`
+    );
     return fallback;
   }
   return num;
@@ -64,7 +64,7 @@ export interface DeleteOptions {
 
 /**
  * PostgreSQL CRUD Adapter
- * 
+ *
  * Provides direct database access with Drizzle ORM and optional event bus integration.
  */
 export class PostgresAdapter {
@@ -86,7 +86,7 @@ export class PostgresAdapter {
 
   /**
    * Query records from a table
-   * 
+   *
    * @param tableName - Table name (must exist in schema)
    * @param options - Query options (limit, offset, where, orderBy)
    * @returns Array of matching records
@@ -111,9 +111,10 @@ export class PostgresAdapter {
     if (options.orderBy) {
       const column = this.getColumn(table, options.orderBy.column);
       if (column) {
-        query = options.orderBy.direction === 'desc'
-          ? query.orderBy(desc(column as any)) as any
-          : query.orderBy(asc(column as any)) as any;
+        query =
+          options.orderBy.direction === 'desc'
+            ? (query.orderBy(desc(column as any)) as any)
+            : (query.orderBy(asc(column as any)) as any);
       }
     } else {
       // Default: order by created_at or id descending
@@ -136,24 +137,32 @@ export class PostgresAdapter {
 
     // Apply column selection
     if (options.select && options.select.length > 0) {
-      const columns = options.select.map(col => this.getColumn(table, col)).filter(Boolean);
+      const columns = options.select.map((col) => this.getColumn(table, col)).filter(Boolean);
       if (columns.length > 0) {
-        query = this.db.select({ ...columns.reduce((acc, col, i) => ({ ...acc, [options.select![i]]: col }), {}) }).from(table) as any;
+        query = this.db
+          .select({
+            ...columns.reduce((acc, col, i) => ({ ...acc, [options.select![i]]: col }), {}),
+          })
+          .from(table) as any;
       }
     }
 
-    return await query as T[];
+    return (await query) as T[];
   }
 
   /**
    * Insert a new record
-   * 
+   *
    * @param tableName - Table name
    * @param data - Record data
    * @param options - Insert options (returning columns)
    * @returns Inserted record(s)
    */
-  async insert<T = any>(tableName: string, data: Partial<T>, options: InsertOptions = {}): Promise<T | T[]> {
+  async insert<T = any>(
+    tableName: string,
+    data: Partial<T>,
+    _options: InsertOptions = {}
+  ): Promise<T | T[]> {
     const table = this.getTable(tableName);
     if (!table) {
       throw new Error(`Table ${tableName} not found in schema`);
@@ -168,7 +177,10 @@ export class PostgresAdapter {
       (data as any).updatedAt = now;
     }
 
-    const result = await this.db.insert(table).values(data as any).returning();
+    const result = await this.db
+      .insert(table)
+      .values(data as any)
+      .returning();
     const rows = Array.isArray(result) ? result : [];
 
     if (rows.length === 1) {
@@ -179,7 +191,7 @@ export class PostgresAdapter {
 
   /**
    * Update records matching conditions
-   * 
+   *
    * @param tableName - Table name
    * @param where - Where conditions
    * @param data - Update data
@@ -190,7 +202,7 @@ export class PostgresAdapter {
     tableName: string,
     where: Record<string, any>,
     data: Partial<T>,
-    options: UpdateOptions = {}
+    _options: UpdateOptions = {}
   ): Promise<T | T[]> {
     const table = this.getTable(tableName);
     if (!table) {
@@ -222,7 +234,7 @@ export class PostgresAdapter {
 
   /**
    * Delete records matching conditions
-   * 
+   *
    * @param tableName - Table name
    * @param where - Where conditions
    * @param options - Delete options (returning columns)
@@ -231,7 +243,7 @@ export class PostgresAdapter {
   async delete<T = any>(
     tableName: string,
     where: Record<string, any>,
-    options: DeleteOptions = {}
+    _options: DeleteOptions = {}
   ): Promise<T | T[]> {
     const table = this.getTable(tableName);
     if (!table) {
@@ -257,7 +269,7 @@ export class PostgresAdapter {
 
   /**
    * Upsert (insert or update) a record
-   * 
+   *
    * @param tableName - Table name
    * @param data - Record data
    * @param conflictColumns - Columns to check for conflicts (for ON CONFLICT)
@@ -283,7 +295,7 @@ export class PostgresAdapter {
     }
 
     // Build conflict columns for ON CONFLICT clause
-    const conflictCols = conflictColumns.map(col => this.getColumn(table, col)).filter(Boolean);
+    const conflictCols = conflictColumns.map((col) => this.getColumn(table, col)).filter(Boolean);
     if (conflictCols.length === 0) {
       throw new Error(`Conflict columns not found in table ${tableName}`);
     }
@@ -304,7 +316,7 @@ export class PostgresAdapter {
 
   /**
    * Count records matching conditions
-   * 
+   *
    * @param tableName - Table name
    * @param where - Where conditions (optional)
    * @returns Count of matching records
@@ -326,12 +338,7 @@ export class PostgresAdapter {
 
     const result = await query;
     const count = result[0]?.count;
-    return ensureNumeric(
-      'count',
-      count,
-      0,
-      { context: `count-query-${tableName}` }
-    );
+    return ensureNumeric('count', count, 0, { context: `count-query-${tableName}` });
   }
 
   /**
@@ -341,9 +348,9 @@ export class PostgresAdapter {
    * @param params - Query parameters
    * @returns Query results
    */
-  async executeRaw<T = any>(sqlQuery: string, params?: any[]): Promise<T[]> {
+  async executeRaw<T = any>(sqlQuery: string, _params?: any[]): Promise<T[]> {
     const result = await this.db.execute(sql.raw(sqlQuery));
-    return Array.isArray(result) ? result as T[] : [];
+    return Array.isArray(result) ? (result as T[]) : [];
   }
 
   // Helper methods
@@ -351,13 +358,13 @@ export class PostgresAdapter {
   private getTable(tableName: string): any {
     // Map table names to schema exports
     const tableMap: Record<string, any> = {
-      'agent_routing_decisions': schema.agentRoutingDecisions,
-      'agent_actions': schema.agentActions,
-      'agent_manifest_injections': schema.agentManifestInjections,
-      'agent_transformation_events': schema.agentTransformationEvents,
+      agent_routing_decisions: schema.agentRoutingDecisions,
+      agent_actions: schema.agentActions,
+      agent_manifest_injections: schema.agentManifestInjections,
+      agent_transformation_events: schema.agentTransformationEvents,
       // 'error_events': schema.errorEvents, // TODO: Add errorEvents table to schema when needed
-      'pattern_lineage_nodes': schema.patternLineageNodes,
-      'pattern_lineage_edges': schema.patternLineageEdges,
+      pattern_lineage_nodes: schema.patternLineageNodes,
+      pattern_lineage_edges: schema.patternLineageEdges,
       // Add more tables as needed
     };
 
@@ -417,4 +424,3 @@ export class PostgresAdapter {
 
 // Export singleton instance
 export const dbAdapter = new PostgresAdapter();
-

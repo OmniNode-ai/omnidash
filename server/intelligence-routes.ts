@@ -2,8 +2,20 @@ import { Router } from 'express';
 import { intelligenceEvents } from './intelligence-event-adapter';
 import { eventConsumer } from './event-consumer';
 import { intelligenceDb } from './storage';
-import { agentManifestInjections, patternLineageNodes, patternLineageEdges, patternQualityMetrics, agentTransformationEvents, agentRoutingDecisions, agentActions, onexComplianceStamps, documentMetadata, nodeServiceRegistry, taskCompletionMetrics } from '../shared/intelligence-schema';
-import { sql, desc, gte, eq, or, and, inArray, isNull } from 'drizzle-orm';
+import {
+  agentManifestInjections,
+  patternLineageNodes,
+  patternLineageEdges,
+  patternQualityMetrics,
+  agentTransformationEvents,
+  agentRoutingDecisions,
+  agentActions,
+  onexComplianceStamps,
+  documentMetadata,
+  nodeServiceRegistry,
+  taskCompletionMetrics,
+} from '../shared/intelligence-schema';
+import { sql, desc, gte, eq, or, and, inArray } from 'drizzle-orm';
 import { checkAllServices } from './service-health';
 
 export const intelligenceRouter = Router();
@@ -25,7 +37,10 @@ intelligenceRouter.get('/events/test/patterns', async (req, res) => {
     if ((intelligenceEvents as any).started !== true) {
       await intelligenceEvents.start();
     }
-    const result = await intelligenceEvents.requestPatternDiscovery({ sourcePath, language }, timeout);
+    const result = await intelligenceEvents.requestPatternDiscovery(
+      { sourcePath, language },
+      timeout
+    );
     return res.json({ ok: true, result });
   } catch (err: any) {
     return res.status(500).json({ ok: false, error: err?.message || String(err) });
@@ -55,25 +70,23 @@ intelligenceRouter.get('/analysis/patterns', async (req, res) => {
     const sourcePath = (req.query.path as string) || 'node_*_effect.py';
     const language = (req.query.lang as string) || 'python';
     const timeoutParam = req.query.timeout as string | undefined;
-    const timeoutMs = timeoutParam ? Math.max(1000, Math.min(60000, parseInt(timeoutParam, 10) || 0)) : 6000;
+    const timeoutMs = timeoutParam
+      ? Math.max(1000, Math.min(60000, parseInt(timeoutParam, 10) || 0))
+      : 6000;
 
     if ((intelligenceEvents as any).started !== true) {
       await intelligenceEvents.start();
     }
 
-    const result = await intelligenceEvents.requestPatternDiscovery({ sourcePath, language }, timeoutMs);
+    const result = await intelligenceEvents.requestPatternDiscovery(
+      { sourcePath, language },
+      timeoutMs
+    );
     return res.json({ patterns: result?.patterns || [], meta: { sourcePath, language } });
   } catch (err: any) {
     return res.status(502).json({ message: err?.message || 'Pattern discovery failed' });
   }
 });
-
-interface PatternSummary {
-  totalPatterns: number;
-  newPatternsToday: number;
-  avgQualityScore: number;
-  activeLearningCount: number;
-}
 
 interface PatternTrend {
   period: string;
@@ -168,12 +181,6 @@ interface RoutingStrategyBreakdown {
   percentage: number;
 }
 
-interface LanguageBreakdown {
-  language: string;
-  count: number;
-  percentage: number;
-}
-
 /**
  * GET /api/intelligence/agents/summary
  * Returns agent performance metrics from in-memory event consumer
@@ -191,26 +198,27 @@ interface LanguageBreakdown {
 intelligenceRouter.get('/agents/summary', async (req, res) => {
   try {
     const timeWindow = (req.query.timeWindow as string) || '24h';
-    
+
     // Disable caching for real-time data
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
+      Pragma: 'no-cache',
+      Expires: '0',
     });
-    
+
     const metrics = eventConsumer.getAgentMetrics();
     if (Array.isArray(metrics) && metrics.length > 0) {
       console.log(`[API] Returning ${metrics.length} agents from event consumer`);
       return res.json(metrics);
     }
-    
+
     console.log(`[API] Event consumer metrics empty, falling back to database query`);
 
     // Fallback: query PostgreSQL directly when event stream is empty
-    const interval = timeWindow === '7d' ? "7 days" : timeWindow === '30d' ? "30 days" : "24 hours";
-    const rowsResult = await intelligenceDb.execute(sql.raw(
-      `
+    const interval = timeWindow === '7d' ? '7 days' : timeWindow === '30d' ? '30 days' : '24 hours';
+    const rowsResult = await intelligenceDb.execute(
+      sql.raw(
+        `
       SELECT
         COALESCE(ard.selected_agent, aa.agent_name) AS agent,
         COUNT(DISTINCT COALESCE(aa.id, ard.id)) AS total_requests,
@@ -226,19 +234,18 @@ intelligenceRouter.get('/agents/summary', async (req, res) => {
       ORDER BY total_requests DESC
       LIMIT 50;
       `
-    ));
+      )
+    );
 
     // Handle different return types from Drizzle
-    const rows = Array.isArray(rowsResult) 
-      ? rowsResult 
-      : (rowsResult?.rows || rowsResult || []);
+    const rows = Array.isArray(rowsResult) ? rowsResult : rowsResult?.rows || rowsResult || [];
 
-    const transformed = (rows as any[]).map(r => {
+    const transformed = (rows as any[]).map((r) => {
       const totalRequests = Number(r.total_requests || 0);
       const avgConfidence = Number(r.avg_confidence || 0);
       // Use confidence as proxy for success rate if no explicit success tracking
       const successRate = avgConfidence > 0 ? avgConfidence : null;
-      
+
       return {
         agent: r.agent || 'unknown',
         totalRequests,
@@ -254,7 +261,7 @@ intelligenceRouter.get('/agents/summary', async (req, res) => {
     console.error('Error fetching agent summary:', error);
     res.status(500).json({
       error: 'Failed to fetch agent summary',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -283,10 +290,7 @@ intelligenceRouter.get('/agents/summary', async (req, res) => {
  */
 intelligenceRouter.get('/actions/recent', async (req, res) => {
   try {
-    const limit = Math.min(
-      parseInt(req.query.limit as string) || 100,
-      1000
-    );
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
 
     const actionsMem = eventConsumer.getRecentActions();
     if (Array.isArray(actionsMem) && actionsMem.length > 0) {
@@ -298,21 +302,21 @@ intelligenceRouter.get('/actions/recent', async (req, res) => {
 
     // Fallback: pull most recent actions from PostgreSQL
     try {
-      const rowsResult = await intelligenceDb.execute(sql.raw(
-        `
+      const rowsResult = await intelligenceDb.execute(
+        sql.raw(
+          `
         SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
         FROM agent_actions
         ORDER BY created_at DESC
         LIMIT ${limit};
         `
-      ));
+        )
+      );
 
       // Handle different return types from Drizzle
-      const rows = Array.isArray(rowsResult)
-        ? rowsResult
-        : (rowsResult?.rows || rowsResult || []);
+      const rows = Array.isArray(rowsResult) ? rowsResult : rowsResult?.rows || rowsResult || [];
 
-      const transformed = (rows as any[]).map(r => ({
+      const transformed = (rows as any[]).map((r) => ({
         id: r.id,
         correlationId: r.correlation_id,
         agentName: r.agent_name,
@@ -325,7 +329,10 @@ intelligenceRouter.get('/actions/recent', async (req, res) => {
       }));
       return res.json(transformed);
     } catch (dbError) {
-      console.log('[API] Database query failed, using mock data:', dbError instanceof Error ? dbError.message : 'Unknown error');
+      console.log(
+        '[API] Database query failed, using mock data:',
+        dbError instanceof Error ? dbError.message : 'Unknown error'
+      );
       // Fall through to mock data below
     }
 
@@ -394,7 +401,7 @@ intelligenceRouter.get('/actions/recent', async (req, res) => {
     console.error('Error in /actions/recent endpoint:', error);
     res.status(500).json({
       error: 'Failed to fetch recent actions',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -416,10 +423,7 @@ intelligenceRouter.get('/agents/:agent/actions', async (req, res) => {
   try {
     const { agent } = req.params;
     const timeWindow = (req.query.timeWindow as string) || '1h';
-    const limit = Math.min(
-      parseInt(req.query.limit as string) || 100,
-      1000
-    );
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
 
     const actions = eventConsumer.getActionsByAgent(agent, timeWindow).slice(0, limit);
     res.json(actions);
@@ -427,7 +431,7 @@ intelligenceRouter.get('/agents/:agent/actions', async (req, res) => {
     console.error('Error fetching agent actions:', error);
     res.status(500).json({
       error: 'Failed to fetch agent actions',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -453,9 +457,14 @@ intelligenceRouter.get('/agents/routing-strategy', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '24 hours';
+    const interval =
+      timeWindow === '24h'
+        ? '24 hours'
+        : timeWindow === '7d'
+          ? '7 days'
+          : timeWindow === '30d'
+            ? '30 days'
+            : '24 hours';
 
     // Query routing decisions grouped by strategy
     const strategyData = await intelligenceDb
@@ -472,7 +481,7 @@ intelligenceRouter.get('/agents/routing-strategy', async (req, res) => {
     const total = strategyData.reduce((sum, s) => sum + s.count, 0);
 
     // Format response with percentages
-    const formattedData: RoutingStrategyBreakdown[] = strategyData.map(s => ({
+    const formattedData: RoutingStrategyBreakdown[] = strategyData.map((s) => ({
       strategy: s.strategy,
       count: s.count,
       percentage: total > 0 ? parseFloat(((s.count / total) * 100).toFixed(1)) : 0,
@@ -483,7 +492,7 @@ intelligenceRouter.get('/agents/routing-strategy', async (req, res) => {
     console.error('Error fetching routing strategy breakdown:', error);
     res.status(500).json({
       error: 'Failed to fetch routing strategy breakdown',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -515,19 +524,18 @@ intelligenceRouter.get('/agents/routing-strategy', async (req, res) => {
  */
 intelligenceRouter.get('/routing/decisions', async (req, res) => {
   try {
-    const limit = Math.min(
-      parseInt(req.query.limit as string) || 100,
-      1000
-    );
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
     const agentFilter = req.query.agent as string;
     const minConfidence = req.query.minConfidence
       ? parseFloat(req.query.minConfidence as string)
       : undefined;
 
-    const decisions = eventConsumer.getRoutingDecisions({
-      agent: agentFilter,
-      minConfidence,
-    }).slice(0, limit);
+    const decisions = eventConsumer
+      .getRoutingDecisions({
+        agent: agentFilter,
+        minConfidence,
+      })
+      .slice(0, limit);
 
     console.log(`[API] Returning ${decisions.length} routing decisions from event consumer`);
     res.json(decisions);
@@ -535,7 +543,7 @@ intelligenceRouter.get('/routing/decisions', async (req, res) => {
     console.error('Error fetching routing decisions:', error);
     res.status(500).json({
       error: 'Failed to fetch routing decisions',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -561,7 +569,7 @@ intelligenceRouter.get('/health', async (req, res) => {
     res.status(503).json({
       status: 'unhealthy',
       error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -578,7 +586,7 @@ intelligenceRouter.get('/health', async (req, res) => {
 intelligenceRouter.get('/patterns/discovery', async (req, res) => {
   try {
     const limit = parseInt((req.query.limit as string) || '10', 10);
-    
+
     // Check if table exists first - if not, return mock data
     try {
       await intelligenceDb.execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
@@ -588,18 +596,38 @@ intelligenceRouter.get('/patterns/discovery', async (req, res) => {
       if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
         console.log('⚠ pattern_lineage_nodes table does not exist - returning mock data');
         const mockPatterns = [
-          { name: 'OAuth Authentication Flow', file_path: '/src/auth/oauth_handler.py', createdAt: new Date().toISOString() },
-          { name: 'Database Connection Pool', file_path: '/src/db/pool.py', createdAt: new Date(Date.now() - 3600000).toISOString() },
-          { name: 'Error Handling Middleware', file_path: '/src/middleware/errors.py', createdAt: new Date(Date.now() - 7200000).toISOString() },
-          { name: 'API Rate Limiter', file_path: '/src/utils/rate_limiter.py', createdAt: new Date(Date.now() - 10800000).toISOString() },
-          { name: 'Caching Strategy', file_path: '/src/cache/strategy.py', createdAt: new Date(Date.now() - 14400000).toISOString() },
+          {
+            name: 'OAuth Authentication Flow',
+            file_path: '/src/auth/oauth_handler.py',
+            createdAt: new Date().toISOString(),
+          },
+          {
+            name: 'Database Connection Pool',
+            file_path: '/src/db/pool.py',
+            createdAt: new Date(Date.now() - 3600000).toISOString(),
+          },
+          {
+            name: 'Error Handling Middleware',
+            file_path: '/src/middleware/errors.py',
+            createdAt: new Date(Date.now() - 7200000).toISOString(),
+          },
+          {
+            name: 'API Rate Limiter',
+            file_path: '/src/utils/rate_limiter.py',
+            createdAt: new Date(Date.now() - 10800000).toISOString(),
+          },
+          {
+            name: 'Caching Strategy',
+            file_path: '/src/cache/strategy.py',
+            createdAt: new Date(Date.now() - 14400000).toISOString(),
+          },
         ];
         return res.json(mockPatterns.slice(0, limit));
       }
       // If it's a different error, re-throw it
       throw tableError;
     }
-    
+
     // Try to get real patterns from pattern_lineage_nodes
     const recentPatterns = await intelligenceDb
       .select({
@@ -612,30 +640,64 @@ intelligenceRouter.get('/patterns/discovery', async (req, res) => {
       .limit(limit);
 
     if (recentPatterns.length > 0) {
-      return res.json(recentPatterns.map(p => ({
-        name: p.name || 'Unnamed Pattern',
-        file_path: p.file_path || 'Unknown',
-        createdAt: p.createdAt,
-      })));
+      return res.json(
+        recentPatterns.map((p) => ({
+          name: p.name || 'Unnamed Pattern',
+          file_path: p.file_path || 'Unknown',
+          createdAt: p.createdAt,
+        }))
+      );
     }
 
     // Fallback mock data for demo
     const mockPatterns = [
-      { name: 'OAuth Authentication Flow', file_path: '/src/auth/oauth_handler.py', createdAt: new Date().toISOString() },
-      { name: 'Database Connection Pool', file_path: '/src/db/pool.py', createdAt: new Date(Date.now() - 3600000).toISOString() },
-      { name: 'Error Handling Middleware', file_path: '/src/middleware/errors.py', createdAt: new Date(Date.now() - 7200000).toISOString() },
-      { name: 'API Rate Limiter', file_path: '/src/utils/rate_limiter.py', createdAt: new Date(Date.now() - 10800000).toISOString() },
-      { name: 'Caching Strategy', file_path: '/src/cache/strategy.py', createdAt: new Date(Date.now() - 14400000).toISOString() },
+      {
+        name: 'OAuth Authentication Flow',
+        file_path: '/src/auth/oauth_handler.py',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        name: 'Database Connection Pool',
+        file_path: '/src/db/pool.py',
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+      {
+        name: 'Error Handling Middleware',
+        file_path: '/src/middleware/errors.py',
+        createdAt: new Date(Date.now() - 7200000).toISOString(),
+      },
+      {
+        name: 'API Rate Limiter',
+        file_path: '/src/utils/rate_limiter.py',
+        createdAt: new Date(Date.now() - 10800000).toISOString(),
+      },
+      {
+        name: 'Caching Strategy',
+        file_path: '/src/cache/strategy.py',
+        createdAt: new Date(Date.now() - 14400000).toISOString(),
+      },
     ];
-    
+
     res.json(mockPatterns.slice(0, limit));
   } catch (error) {
     console.error('Error fetching pattern discovery:', error);
     // Return mock data on error
     res.json([
-      { name: 'OAuth Authentication Flow', file_path: '/src/auth/oauth_handler.py', createdAt: new Date().toISOString() },
-      { name: 'Database Connection Pool', file_path: '/src/db/pool.py', createdAt: new Date(Date.now() - 3600000).toISOString() },
-      { name: 'Error Handling Middleware', file_path: '/src/middleware/errors.py', createdAt: new Date(Date.now() - 7200000).toISOString() },
+      {
+        name: 'OAuth Authentication Flow',
+        file_path: '/src/auth/oauth_handler.py',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        name: 'Database Connection Pool',
+        file_path: '/src/db/pool.py',
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+      {
+        name: 'Error Handling Middleware',
+        file_path: '/src/middleware/errors.py',
+        createdAt: new Date(Date.now() - 7200000).toISOString(),
+      },
     ]);
   }
 });
@@ -692,7 +754,7 @@ intelligenceRouter.get('/patterns/summary', async (req, res) => {
     console.error('Error fetching pattern summary:', error);
     res.status(500).json({
       error: 'Failed to fetch pattern summary',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -749,7 +811,7 @@ intelligenceRouter.get('/patterns/recent', async (req, res) => {
     console.error('Error fetching recent patterns:', error);
     res.status(500).json({
       error: 'Failed to fetch recent patterns',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -790,9 +852,14 @@ intelligenceRouter.get('/patterns/trends', async (req, res) => {
     }
 
     // Determine time interval and truncation
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '7 days';
+    const interval =
+      timeWindow === '24h'
+        ? '24 hours'
+        : timeWindow === '7d'
+          ? '7 days'
+          : timeWindow === '30d'
+            ? '30 days'
+            : '7 days';
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -810,7 +877,7 @@ intelligenceRouter.get('/patterns/trends', async (req, res) => {
       .groupBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${patternLineageNodes.createdAt})`)
       .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${patternLineageNodes.createdAt}) DESC`);
 
-    const formattedTrends: PatternTrend[] = trends.map(t => ({
+    const formattedTrends: PatternTrend[] = trends.map((t) => ({
       period: t.period,
       manifestsGenerated: t.manifestsGenerated,
       avgPatternsPerManifest: parseFloat(t.avgPatternsPerManifest?.toString() || '0'),
@@ -822,7 +889,7 @@ intelligenceRouter.get('/patterns/trends', async (req, res) => {
     console.error('Error fetching pattern trends:', error);
     res.status(500).json({
       error: 'Failed to fetch pattern trends',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -863,10 +930,7 @@ intelligenceRouter.get('/patterns/list', async (req, res) => {
       throw tableError;
     }
 
-    const limit = Math.min(
-      parseInt(req.query.limit as string) || 50,
-      200
-    );
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const offset = parseInt(req.query.offset as string) || 0;
 
     // Get code patterns from pattern_lineage_nodes with quality metrics
@@ -897,20 +961,18 @@ intelligenceRouter.get('/patterns/list', async (req, res) => {
       OFFSET ${offset}
     `);
 
-    const formattedPatterns: PatternListItem[] = patterns.rows.map((p, index) => {
+    const formattedPatterns: PatternListItem[] = patterns.rows.map((p) => {
       // Use real quality score from database when available, otherwise fall back to language-based heuristic
-      const quality = p.qualityScore !== null
-        ? p.qualityScore
-        : (p.language === 'python' ? 0.87 : 0.82);
+      const quality =
+        p.qualityScore !== null ? p.qualityScore : p.language === 'python' ? 0.87 : 0.82;
 
       // All patterns have usage of 1 since they're unique discoveries
       const usage = 1;
 
-      // Calculate realistic trend based on pattern age and position
+      // Calculate realistic trend based on pattern age
       // Newer patterns = positive trend (growth), older = negative trend (declining usage)
       const createdAt = p.createdAt ? new Date(p.createdAt) : new Date();
       const ageInHours = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
-      const position = index / patterns.rows.length;
 
       let trend: 'up' | 'down' | 'stable';
       let trendPercentage: number;
@@ -926,7 +988,8 @@ intelligenceRouter.get('/patterns/list', async (req, res) => {
         trendPercentage = Math.floor(5 + Math.random() * 10); // 5-15%
       }
       // Middle-aged patterns (2-7 days) are stable
-      else if (ageInHours < 168) { // 7 days
+      else if (ageInHours < 168) {
+        // 7 days
         trend = 'stable';
         trendPercentage = Math.floor(-2 + Math.random() * 4); // -2 to +2%
       }
@@ -954,7 +1017,7 @@ intelligenceRouter.get('/patterns/list', async (req, res) => {
     console.error('Error fetching pattern list:', error);
     res.status(500).json({
       error: 'Failed to fetch pattern list',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -983,16 +1046,9 @@ intelligenceRouter.get('/patterns/quality-trends', async (req, res) => {
     const hoursMap: Record<string, number> = {
       '24h': 24,
       '7d': 168,
-      '30d': 720
+      '30d': 720,
     };
     const hours = hoursMap[timeWindow] || 168;
-
-    // Determine time interval and truncation for database fallback
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '7 days';
-
-    const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Try to fetch from Omniarchon intelligence service first
     const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
@@ -1004,7 +1060,7 @@ intelligenceRouter.get('/patterns/quality-trends', async (req, res) => {
         {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(5000) // 5 second timeout
+          signal: AbortSignal.timeout(5000), // 5 second timeout
         }
       );
 
@@ -1012,8 +1068,14 @@ intelligenceRouter.get('/patterns/quality-trends', async (req, res) => {
         const omniarchonData = await omniarchonResponse.json();
 
         // Check if Omniarchon has actual data (not just insufficient_data response)
-        if (omniarchonData.success && omniarchonData.snapshots_count > 0 && omniarchonData.snapshots) {
-          console.log(`✓ Using real data from Omniarchon (${omniarchonData.snapshots_count} snapshots)`);
+        if (
+          omniarchonData.success &&
+          omniarchonData.snapshots_count > 0 &&
+          omniarchonData.snapshots
+        ) {
+          console.log(
+            `✓ Using real data from Omniarchon (${omniarchonData.snapshots_count} snapshots)`
+          );
 
           // Transform Omniarchon response to match frontend expectations
           const formattedTrends = omniarchonData.snapshots.map((snapshot: any) => ({
@@ -1033,7 +1095,8 @@ intelligenceRouter.get('/patterns/quality-trends', async (req, res) => {
       }
     } catch (omniarchonError) {
       // Return empty array instead of falling back to mock data
-      console.warn('⚠ Failed to fetch from Omniarchon - returning empty array:',
+      console.warn(
+        '⚠ Failed to fetch from Omniarchon - returning empty array:',
         omniarchonError instanceof Error ? omniarchonError.message : 'Unknown error'
       );
       return res.json([]);
@@ -1042,7 +1105,7 @@ intelligenceRouter.get('/patterns/quality-trends', async (req, res) => {
     console.error('Error fetching quality trends:', error);
     res.status(500).json({
       error: 'Failed to fetch quality trends',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -1088,7 +1151,7 @@ intelligenceRouter.get('/patterns/performance', async (req, res) => {
       .groupBy(agentManifestInjections.generationSource)
       .orderBy(sql`COUNT(*) DESC`);
 
-    const formattedPerformance: PatternPerformance[] = performance.map(p => ({
+    const formattedPerformance: PatternPerformance[] = performance.map((p) => ({
       generationSource: p.generationSource,
       totalManifests: p.totalManifests,
       avgTotalMs: parseFloat(p.avgTotalMs?.toString() || '0'),
@@ -1103,7 +1166,7 @@ intelligenceRouter.get('/patterns/performance', async (req, res) => {
     console.error('Error fetching pattern performance:', error);
     res.status(500).json({
       error: 'Failed to fetch pattern performance',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -1147,11 +1210,13 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
 
     if (patternIdsParam) {
       // Query parameters might be string pattern IDs (e.g., "pattern-23") or UUIDs
-      const inputIds = patternIdsParam.split(',').map(id => id.trim());
+      const inputIds = patternIdsParam.split(',').map((id) => id.trim());
 
       // Check if they look like UUIDs (contain dashes and are 36 chars) or pattern IDs
-      const looksLikeUuids = inputIds.every(id =>
-        id.length === 36 && id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+      const looksLikeUuids = inputIds.every(
+        (id) =>
+          id.length === 36 &&
+          id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
       );
 
       if (looksLikeUuids) {
@@ -1163,7 +1228,7 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
           .select({ id: patternLineageNodes.id })
           .from(patternLineageNodes)
           .where(inArray(patternLineageNodes.patternId, inputIds));
-        nodeUuids = nodes.map(n => n.id);
+        nodeUuids = nodes.map((n) => n.id);
       }
     } else {
       // Get top 50 most recent patterns
@@ -1172,7 +1237,7 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
         .from(patternLineageNodes)
         .orderBy(desc(patternLineageNodes.createdAt))
         .limit(50);
-      nodeUuids = topPatterns.map(p => p.id);
+      nodeUuids = topPatterns.map((p) => p.id);
     }
 
     // Return empty array if no patterns found
@@ -1197,7 +1262,7 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
         )
       );
 
-    const relationships: PatternRelationship[] = realEdges.map(e => ({
+    const relationships: PatternRelationship[] = realEdges.map((e) => ({
       source: e.source,
       target: e.target,
       type: e.type,
@@ -1261,7 +1326,7 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
     console.error('Error fetching pattern relationships:', error);
     res.status(500).json({
       error: 'Failed to fetch pattern relationships',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -1301,13 +1366,6 @@ intelligenceRouter.get('/patterns/by-language', async (req, res) => {
       throw tableError;
     }
 
-    const timeWindow = (req.query.timeWindow as string) || '7d';
-
-    // Determine time interval
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '7 days';
-
     // Query pattern_lineage_nodes grouped by language
     const languageData = await intelligenceDb
       .select({
@@ -1324,7 +1382,7 @@ intelligenceRouter.get('/patterns/by-language', async (req, res) => {
     console.error('Error fetching language breakdown:', error);
     res.status(500).json({
       error: 'Failed to fetch language breakdown',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -1365,9 +1423,14 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '24 hours';
+    const interval =
+      timeWindow === '24h'
+        ? '24 hours'
+        : timeWindow === '7d'
+          ? '7 days'
+          : timeWindow === '30d'
+            ? '30 days'
+            : '24 hours';
 
     // Get summary statistics
     const [summaryResult] = await intelligenceDb
@@ -1415,20 +1478,22 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
 
     // Build unique nodes from flows
     const nodeSet = new Set<string>();
-    transformationFlows.forEach(flow => {
+    transformationFlows.forEach((flow) => {
       nodeSet.add(flow.source);
       nodeSet.add(flow.target);
     });
 
-    const nodes: TransformationNode[] = Array.from(nodeSet).map(agentName => ({
+    const nodes: TransformationNode[] = Array.from(nodeSet).map((agentName) => ({
       id: agentName,
-      label: agentName.replace('agent-', '').split('-').map(
-        word => word.charAt(0).toUpperCase() + word.slice(1)
-      ).join(' '),
+      label: agentName
+        .replace('agent-', '')
+        .split('-')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' '),
     }));
 
     // Build links for Sankey diagram
-    const links: TransformationLink[] = transformationFlows.map(flow => ({
+    const links: TransformationLink[] = transformationFlows.map((flow) => ({
       source: flow.source,
       target: flow.target,
       value: flow.value,
@@ -1440,13 +1505,18 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
       totalTransformations: summaryResult?.totalTransformations || 0,
       uniqueSourceAgents: summaryResult?.uniqueSourceAgents || 0,
       uniqueTargetAgents: summaryResult?.uniqueTargetAgents || 0,
-      avgTransformationTimeMs: parseFloat(summaryResult?.avgTransformationTimeMs?.toString() || '0'),
+      avgTransformationTimeMs: parseFloat(
+        summaryResult?.avgTransformationTimeMs?.toString() || '0'
+      ),
       successRate: parseFloat(summaryResult?.successRate?.toString() || '1.0'),
-      mostCommonTransformation: mostCommonResult.length > 0 ? {
-        source: mostCommonResult[0].source,
-        target: mostCommonResult[0].target,
-        count: mostCommonResult[0].count,
-      } : null,
+      mostCommonTransformation:
+        mostCommonResult.length > 0
+          ? {
+              source: mostCommonResult[0].source,
+              target: mostCommonResult[0].target,
+              count: mostCommonResult[0].count,
+            }
+          : null,
     };
 
     res.json({
@@ -1460,7 +1530,7 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
     console.error('Error fetching transformation summary:', error);
     res.status(500).json({
       error: 'Failed to fetch transformation summary',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -1507,7 +1577,7 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
     if (!uuidRegex.test(correlationId)) {
       res.status(400).json({
         error: 'Invalid correlation ID format',
-        message: 'Correlation ID must be a valid UUID'
+        message: 'Correlation ID must be a valid UUID',
       });
       return;
     }
@@ -1547,28 +1617,29 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
 
     // Get routing decisions if any manifests have routing_decision_id
     const routingDecisionIds = manifests
-      .filter(m => m.routingDecisionId)
-      .map(m => m.routingDecisionId as string);
+      .filter((m) => m.routingDecisionId)
+      .map((m) => m.routingDecisionId as string);
 
-    const routingDecisions = routingDecisionIds.length > 0
-      ? await intelligenceDb
-          .select({
-            id: agentRoutingDecisions.id,
-            selectedAgent: agentRoutingDecisions.selectedAgent,
-            confidenceScore: agentRoutingDecisions.confidenceScore,
-            routingStrategy: agentRoutingDecisions.routingStrategy,
-            userRequest: agentRoutingDecisions.userRequest,
-            reasoning: agentRoutingDecisions.reasoning,
-            alternatives: agentRoutingDecisions.alternatives,
-            routingTimeMs: agentRoutingDecisions.routingTimeMs,
-            createdAt: agentRoutingDecisions.createdAt,
-          })
-          .from(agentRoutingDecisions)
-          .where(inArray(agentRoutingDecisions.id, routingDecisionIds))
-      : [];
+    const routingDecisions =
+      routingDecisionIds.length > 0
+        ? await intelligenceDb
+            .select({
+              id: agentRoutingDecisions.id,
+              selectedAgent: agentRoutingDecisions.selectedAgent,
+              confidenceScore: agentRoutingDecisions.confidenceScore,
+              routingStrategy: agentRoutingDecisions.routingStrategy,
+              userRequest: agentRoutingDecisions.userRequest,
+              reasoning: agentRoutingDecisions.reasoning,
+              alternatives: agentRoutingDecisions.alternatives,
+              routingTimeMs: agentRoutingDecisions.routingTimeMs,
+              createdAt: agentRoutingDecisions.createdAt,
+            })
+            .from(agentRoutingDecisions)
+            .where(inArray(agentRoutingDecisions.id, routingDecisionIds))
+        : [];
 
     // Transform routing decisions into events
-    const routingEvents = routingDecisions.map(d => ({
+    const routingEvents = routingDecisions.map((d) => ({
       id: d.id,
       eventType: 'routing' as const,
       timestamp: d.createdAt?.toISOString() || new Date().toISOString(),
@@ -1584,7 +1655,7 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
     }));
 
     // Transform actions into events
-    const actionEvents = actions.map(a => ({
+    const actionEvents = actions.map((a) => ({
       id: a.id,
       eventType: 'action' as const,
       timestamp: a.createdAt?.toISOString() || new Date().toISOString(),
@@ -1598,7 +1669,7 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
     }));
 
     // Transform manifests into events
-    const manifestEvents = manifests.map(m => ({
+    const manifestEvents = manifests.map((m) => ({
       id: m.id,
       eventType: 'manifest' as const,
       timestamp: m.createdAt?.toISOString() || new Date().toISOString(),
@@ -1634,7 +1705,7 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
     console.error('Error fetching trace:', error);
     res.status(500).json({
       error: 'Failed to fetch trace',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -1692,9 +1763,8 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
 
     const totalInjections = metricsResult?.totalInjections || 0;
     const successfulInjections = metricsResult?.successfulInjections || 0;
-    const successRate = totalInjections > 0
-      ? parseFloat((successfulInjections / totalInjections).toFixed(4))
-      : 1.0;
+    const successRate =
+      totalInjections > 0 ? parseFloat((successfulInjections / totalInjections).toFixed(4)) : 1.0;
     const avgLatencyMs = parseFloat(metricsResult?.avgLatencyMs?.toString() || '0');
 
     // Query 2: Failed injections by error type
@@ -1716,8 +1786,7 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
           gte(agentManifestInjections.createdAt, twentyFourHoursAgo),
           eq(agentManifestInjections.agentExecutionSuccess, false)
         )
-      )
-      .groupBy(sql`
+      ).groupBy(sql`
         CASE
           WHEN ${agentManifestInjections.isFallback} = TRUE THEN 'fallback_used'
           WHEN ${agentManifestInjections.debugIntelligenceFailures} > 0 THEN 'intelligence_failure'
@@ -1725,7 +1794,7 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
         END
       `);
 
-    const failedInjections = failedInjectionsQuery.map(f => ({
+    const failedInjections = failedInjectionsQuery.map((f) => ({
       errorType: f.errorType,
       count: f.count,
       lastOccurrence: f.lastOccurrence,
@@ -1748,9 +1817,15 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
       .where(gte(agentManifestInjections.createdAt, twentyFourHoursAgo));
 
     const manifestSizeStats = {
-      avgSizeKb: parseFloat((parseFloat(sizeStatsResult?.avgSizeBytes?.toString() || '0') / 1024).toFixed(2)),
-      minSizeKb: parseFloat((parseFloat(sizeStatsResult?.minSizeBytes?.toString() || '0') / 1024).toFixed(2)),
-      maxSizeKb: parseFloat((parseFloat(sizeStatsResult?.maxSizeBytes?.toString() || '0') / 1024).toFixed(2)),
+      avgSizeKb: parseFloat(
+        (parseFloat(sizeStatsResult?.avgSizeBytes?.toString() || '0') / 1024).toFixed(2)
+      ),
+      minSizeKb: parseFloat(
+        (parseFloat(sizeStatsResult?.minSizeBytes?.toString() || '0') / 1024).toFixed(2)
+      ),
+      maxSizeKb: parseFloat(
+        (parseFloat(sizeStatsResult?.maxSizeBytes?.toString() || '0') / 1024).toFixed(2)
+      ),
     };
 
     // Query 4: Latency trend (hourly for last 24h)
@@ -1765,7 +1840,7 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
       .groupBy(sql`DATE_TRUNC('hour', ${agentManifestInjections.createdAt})`)
       .orderBy(sql`DATE_TRUNC('hour', ${agentManifestInjections.createdAt}) DESC`);
 
-    const latencyTrend = latencyTrendQuery.map(t => ({
+    const latencyTrend = latencyTrendQuery.map((t) => ({
       period: t.period,
       avgLatencyMs: parseFloat(t.avgLatencyMs?.toString() || '0'),
       count: t.count,
@@ -1809,7 +1884,10 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
       }
     } catch (omniarchonError) {
       serviceHealth.omniarchon = { status: 'down' };
-      console.warn('Omniarchon health check failed:', omniarchonError instanceof Error ? omniarchonError.message : 'Unknown error');
+      console.warn(
+        'Omniarchon health check failed:',
+        omniarchonError instanceof Error ? omniarchonError.message : 'Unknown error'
+      );
     }
 
     // Qdrant health check
@@ -1830,7 +1908,7 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     console.error('Error fetching manifest injection health:', error);
     res.status(500).json({
       error: 'Failed to fetch manifest injection health',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -1860,9 +1938,14 @@ intelligenceRouter.get('/metrics/operations-per-minute', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval and truncation
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '24 hours';
+    const interval =
+      timeWindow === '24h'
+        ? '24 hours'
+        : timeWindow === '7d'
+          ? '7 days'
+          : timeWindow === '30d'
+            ? '30 days'
+            : '24 hours';
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -1891,7 +1974,7 @@ intelligenceRouter.get('/metrics/operations-per-minute', async (req, res) => {
       )
       .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt}) DESC`);
 
-    const formattedData = operationsData.map(d => ({
+    const formattedData = operationsData.map((d) => ({
       period: d.period,
       operationsPerMinute: parseFloat(d.operationsPerMinute?.toString() || '0'),
       actionType: d.actionType,
@@ -1902,7 +1985,7 @@ intelligenceRouter.get('/metrics/operations-per-minute', async (req, res) => {
     console.error('Error fetching operations per minute:', error);
     res.status(500).json({
       error: 'Failed to fetch operations per minute',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -1931,14 +2014,19 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
     const hoursMap: Record<string, number> = {
       '24h': 24,
       '7d': 168,
-      '30d': 720
+      '30d': 720,
     };
     const hours = hoursMap[timeWindow] || 24;
 
     // Determine time interval and truncation for database fallback
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '24 hours';
+    const interval =
+      timeWindow === '24h'
+        ? '24 hours'
+        : timeWindow === '7d'
+          ? '7 days'
+          : timeWindow === '30d'
+            ? '30 days'
+            : '24 hours';
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -1946,21 +2034,20 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
     const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
 
     try {
-      const omniarchonResponse = await fetch(
-        `${omniarchonUrl}/api/quality-impact?hours=${hours}`,
-        {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(5000) // 5 second timeout
-        }
-      );
+      const omniarchonResponse = await fetch(`${omniarchonUrl}/api/quality-impact?hours=${hours}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(5000), // 5 second timeout
+      });
 
       if (omniarchonResponse.ok) {
         const omniarchonData = await omniarchonResponse.json();
 
         // Check if Omniarchon has actual data
         if (omniarchonData.success && omniarchonData.impacts && omniarchonData.impacts.length > 0) {
-          console.log(`✓ Using real quality impact data from Omniarchon (${omniarchonData.impacts.length} data points)`);
+          console.log(
+            `✓ Using real quality impact data from Omniarchon (${omniarchonData.impacts.length} data points)`
+          );
 
           // Transform Omniarchon response to match frontend expectations
           const formattedImpacts = omniarchonData.impacts.map((impact: any) => ({
@@ -1974,10 +2061,13 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
           console.log('⚠ Omniarchon has no quality impact data yet - falling back to database');
         }
       } else {
-        console.log(`⚠ Omniarchon returned ${omniarchonResponse.status} - falling back to database`);
+        console.log(
+          `⚠ Omniarchon returned ${omniarchonResponse.status} - falling back to database`
+        );
       }
     } catch (omniarchonError) {
-      console.warn('⚠ Failed to fetch from Omniarchon - falling back to database:',
+      console.warn(
+        '⚠ Failed to fetch from Omniarchon - falling back to database:',
         omniarchonError instanceof Error ? omniarchonError.message : 'Unknown error'
       );
     }
@@ -2010,9 +2100,11 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
       .from(agentManifestInjections)
       .where(sql`${agentManifestInjections.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
       .groupBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentManifestInjections.createdAt})`)
-      .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentManifestInjections.createdAt}) DESC`);
+      .orderBy(
+        sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentManifestInjections.createdAt}) DESC`
+      );
 
-    const formattedImpacts = qualityImpactData.map(d => ({
+    const formattedImpacts = qualityImpactData.map((d) => ({
       period: d.period,
       avgQualityImprovement: parseFloat(d.avgQualityImprovement?.toString() || '0'),
       manifestsImproved: d.manifestsImproved,
@@ -2023,7 +2115,7 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
     console.error('Error fetching quality impact:', error);
     res.status(500).json({
       error: 'Failed to fetch quality impact',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2068,29 +2160,29 @@ intelligenceRouter.get('/developer/workflows', async (req, res) => {
         completions: sql<number>`COUNT(*)::int`,
       })
       .from(agentActions)
-      .where(sql`
+      .where(
+        sql`
         ${agentActions.createdAt} > NOW() - INTERVAL '14 days' AND
         ${agentActions.createdAt} <= NOW() - INTERVAL '7 days'
-      `)
+      `
+      )
       .groupBy(agentActions.actionType);
 
     // Create lookup for previous period
-    const previousLookup = new Map(
-      previousWorkflows.map(w => [w.actionType, w.completions])
-    );
+    const previousLookup = new Map(previousWorkflows.map((w) => [w.actionType, w.completions]));
 
     // Map action types to friendly names
     const actionTypeNames: Record<string, string> = {
-      'tool_call': 'Code Generation',
-      'decision': 'Decision Making',
-      'error': 'Error Handling',
-      'success': 'Task Completion',
-      'validation': 'Code Validation',
-      'analysis': 'Code Analysis',
+      tool_call: 'Code Generation',
+      decision: 'Decision Making',
+      error: 'Error Handling',
+      success: 'Task Completion',
+      validation: 'Code Validation',
+      analysis: 'Code Analysis',
     };
 
     // Format results with trends
-    const formattedWorkflows = workflows.map(w => {
+    const formattedWorkflows = workflows.map((w) => {
       const currentCompletions = w.completions;
       const previousCompletions = previousLookup.get(w.actionType) || 0;
 
@@ -2106,9 +2198,7 @@ intelligenceRouter.get('/developer/workflows', async (req, res) => {
 
       // Format average time
       const avgMs = parseFloat(w.avgDurationMs?.toString() || '0');
-      const avgTime = avgMs >= 1000
-        ? `${(avgMs / 1000).toFixed(1)}s`
-        : `${Math.round(avgMs)}ms`;
+      const avgTime = avgMs >= 1000 ? `${(avgMs / 1000).toFixed(1)}s` : `${Math.round(avgMs)}ms`;
 
       return {
         id: w.actionType,
@@ -2124,7 +2214,7 @@ intelligenceRouter.get('/developer/workflows', async (req, res) => {
     console.error('Error fetching developer workflows:', error);
     res.status(500).json({
       error: 'Failed to fetch developer workflows',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2149,9 +2239,14 @@ intelligenceRouter.get('/developer/velocity', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval and truncation
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '24 hours';
+    const interval =
+      timeWindow === '24h'
+        ? '24 hours'
+        : timeWindow === '7d'
+          ? '7 days'
+          : timeWindow === '30d'
+            ? '30 days'
+            : '24 hours';
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -2167,7 +2262,7 @@ intelligenceRouter.get('/developer/velocity', async (req, res) => {
       .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt}) ASC`);
 
     // Format time labels and velocity values
-    const formattedVelocity = velocityData.map(v => {
+    const formattedVelocity = velocityData.map((v) => {
       const timestamp = new Date(v.period);
       let timeLabel: string;
 
@@ -2193,7 +2288,7 @@ intelligenceRouter.get('/developer/velocity', async (req, res) => {
     console.error('Error fetching developer velocity:', error);
     res.status(500).json({
       error: 'Failed to fetch developer velocity',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2218,9 +2313,14 @@ intelligenceRouter.get('/developer/productivity', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval and truncation
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '24 hours';
+    const interval =
+      timeWindow === '24h'
+        ? '24 hours'
+        : timeWindow === '7d'
+          ? '7 days'
+          : timeWindow === '30d'
+            ? '30 days'
+            : '24 hours';
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -2242,7 +2342,7 @@ intelligenceRouter.get('/developer/productivity', async (req, res) => {
       .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt}) ASC`);
 
     // Calculate productivity score and format
-    const formattedProductivity = productivityData.map(p => {
+    const formattedProductivity = productivityData.map((p) => {
       const timestamp = new Date(p.period);
       let timeLabel: string;
 
@@ -2273,7 +2373,7 @@ intelligenceRouter.get('/developer/productivity', async (req, res) => {
     console.error('Error fetching developer productivity:', error);
     res.status(500).json({
       error: 'Failed to fetch developer productivity',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2300,9 +2400,14 @@ intelligenceRouter.get('/developer/task-velocity', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '7d';
 
     // Determine time interval and truncation
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '7 days';
+    const interval =
+      timeWindow === '24h'
+        ? '24 hours'
+        : timeWindow === '7d'
+          ? '7 days'
+          : timeWindow === '30d'
+            ? '30 days'
+            : '7 days';
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -2320,18 +2425,23 @@ intelligenceRouter.get('/developer/task-velocity', async (req, res) => {
       .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${taskCompletionMetrics.createdAt}) ASC`);
 
     // Format response with tasks per day calculation
-    const formattedVelocity = velocityData.map(v => {
+    const formattedVelocity = velocityData.map((v) => {
       const timestamp = new Date(v.period);
-      const dateLabel = timeWindow === '24h'
-        ? timestamp.toISOString().split('T')[0] + ' ' + timestamp.getHours().toString().padStart(2, '0') + ':00'
-        : timestamp.toISOString().split('T')[0];
+      const dateLabel =
+        timeWindow === '24h'
+          ? timestamp.toISOString().split('T')[0] +
+            ' ' +
+            timestamp.getHours().toString().padStart(2, '0') +
+            ':00'
+          : timestamp.toISOString().split('T')[0];
 
       // Calculate tasks per day
       // For hourly: tasks in that hour
       // For daily: tasks in that day
-      const tasksPerDay = timeWindow === '24h'
-        ? parseFloat((v.tasksCompleted * 24).toFixed(1)) // Extrapolate hour to full day
-        : v.tasksCompleted;
+      const tasksPerDay =
+        timeWindow === '24h'
+          ? parseFloat((v.tasksCompleted * 24).toFixed(1)) // Extrapolate hour to full day
+          : v.tasksCompleted;
 
       return {
         date: dateLabel,
@@ -2346,7 +2456,7 @@ intelligenceRouter.get('/developer/task-velocity', async (req, res) => {
     console.error('Error fetching task velocity:', error);
     res.status(500).json({
       error: 'Failed to fetch task velocity',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2378,22 +2488,19 @@ intelligenceRouter.get('/developer/task-velocity', async (req, res) => {
  */
 intelligenceRouter.get('/transformations/recent', async (req, res) => {
   try {
-    const limit = Math.min(
-      parseInt(req.query.limit as string) || 50,
-      500
-    );
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 500);
 
     const transformations = eventConsumer.getRecentTransformations(limit);
 
     res.json({
       transformations,
-      total: transformations.length
+      total: transformations.length,
     });
   } catch (error) {
     console.error('Error fetching recent transformations:', error);
     res.status(500).json({
       error: 'Failed to fetch recent transformations',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2430,10 +2537,7 @@ intelligenceRouter.get('/transformations/recent', async (req, res) => {
  */
 intelligenceRouter.get('/performance/metrics', async (req, res) => {
   try {
-    const limit = Math.min(
-      parseInt(req.query.limit as string) || 100,
-      1000
-    );
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
 
     const metrics = eventConsumer.getPerformanceMetrics(limit);
     const stats = eventConsumer.getPerformanceStats();
@@ -2441,13 +2545,13 @@ intelligenceRouter.get('/performance/metrics', async (req, res) => {
     res.json({
       metrics,
       stats,
-      total: metrics.length
+      total: metrics.length,
     });
   } catch (error) {
     console.error('Error fetching performance metrics:', error);
     res.status(500).json({
       error: 'Failed to fetch performance metrics',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2478,7 +2582,7 @@ intelligenceRouter.get('/performance/summary', async (req, res) => {
     console.error('Error fetching performance summary:', error);
     res.status(500).json({
       error: 'Failed to fetch performance summary',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2511,15 +2615,17 @@ intelligenceRouter.get('/performance/summary', async (req, res) => {
 intelligenceRouter.get('/documents/top-accessed', async (req, res) => {
   try {
     const timeWindow = (req.query.timeWindow as string) || '7d';
-    const limit = Math.min(
-      parseInt(req.query.limit as string) || 10,
-      50
-    );
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
 
     // Determine time interval for filtering
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '7 days';
+    const interval =
+      timeWindow === '24h'
+        ? '24 hours'
+        : timeWindow === '7d'
+          ? '7 days'
+          : timeWindow === '30d'
+            ? '30 days'
+            : '7 days';
 
     // Get top accessed documents (ordered by access_count)
     const topDocuments = await intelligenceDb
@@ -2546,7 +2652,7 @@ intelligenceRouter.get('/documents/top-accessed', async (req, res) => {
 
     // Get previous period access counts for trend calculation
     // (For now, we'll use a simple heuristic based on access_count and recency)
-    const documentsWithTrends = topDocuments.map((doc, index) => {
+    const documentsWithTrends = topDocuments.map((doc) => {
       // Calculate trend based on access count and recency
       // Higher access count + recent access = up trend
       // Lower access count or old access = down trend
@@ -2561,8 +2667,9 @@ intelligenceRouter.get('/documents/top-accessed', async (req, res) => {
 
         if (hoursSinceAccess < 24) {
           trend = 'up';
-          trendPercentage = Math.floor(10 + (doc.accessCount * 2)); // 10-50% based on count
-        } else if (hoursSinceAccess < 168) { // 7 days
+          trendPercentage = Math.floor(10 + doc.accessCount * 2); // 10-50% based on count
+        } else if (hoursSinceAccess < 168) {
+          // 7 days
           trend = 'stable';
           trendPercentage = Math.floor(-2 + Math.random() * 4); // -2 to +2%
         } else {
@@ -2591,7 +2698,7 @@ intelligenceRouter.get('/documents/top-accessed', async (req, res) => {
     console.error('Error fetching top accessed documents:', error);
     res.status(500).json({
       error: 'Failed to fetch top accessed documents',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2637,9 +2744,14 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval
-    const interval = timeWindow === '24h' ? '24 hours' :
-                     timeWindow === '7d' ? '7 days' :
-                     timeWindow === '30d' ? '30 days' : '24 hours';
+    const interval =
+      timeWindow === '24h'
+        ? '24 hours'
+        : timeWindow === '7d'
+          ? '7 days'
+          : timeWindow === '30d'
+            ? '30 days'
+            : '24 hours';
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -2650,7 +2762,11 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
       // Table doesn't exist (PostgreSQL error code 42P01 = undefined_table)
       // Return empty/default data structure instead of error
       const errorCode = tableError?.code || tableError?.errno || '';
-      if (errorCode === '42P01' || errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
+      if (
+        errorCode === '42P01' ||
+        errorCode === '42P01' ||
+        tableError?.message?.includes('does not exist')
+      ) {
         return res.json({
           summary: {
             totalFiles: 0,
@@ -2699,9 +2815,8 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
     const compliantFiles = summaryResult?.compliantFiles || 0;
     const nonCompliantFiles = summaryResult?.nonCompliantFiles || 0;
     const pendingFiles = summaryResult?.pendingFiles || 0;
-    const compliancePercentage = totalFiles > 0
-      ? parseFloat(((compliantFiles / totalFiles) * 100).toFixed(1))
-      : 0;
+    const compliancePercentage =
+      totalFiles > 0 ? parseFloat(((compliantFiles / totalFiles) * 100).toFixed(1)) : 0;
 
     const summary = {
       totalFiles,
@@ -2722,7 +2837,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
       .where(sql`${onexComplianceStamps.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
       .groupBy(onexComplianceStamps.complianceStatus);
 
-    const statusBreakdown = statusBreakdownQuery.map(s => ({
+    const statusBreakdown = statusBreakdownQuery.map((s) => ({
       status: s.status,
       count: s.count,
       percentage: totalFiles > 0 ? parseFloat(((s.count / totalFiles) * 100).toFixed(1)) : 0,
@@ -2748,13 +2863,12 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
       )
       .groupBy(onexComplianceStamps.nodeType);
 
-    const nodeTypeBreakdown = nodeTypeBreakdownQuery.map(n => ({
+    const nodeTypeBreakdown = nodeTypeBreakdownQuery.map((n) => ({
       nodeType: n.nodeType || 'unknown',
       compliantCount: n.compliantCount,
       totalCount: n.totalCount,
-      percentage: n.totalCount > 0
-        ? parseFloat(((n.compliantCount / n.totalCount) * 100).toFixed(1))
-        : 0,
+      percentage:
+        n.totalCount > 0 ? parseFloat(((n.compliantCount / n.totalCount) * 100).toFixed(1)) : 0,
     }));
 
     // Get compliance trend over time
@@ -2773,11 +2887,10 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
       .groupBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${onexComplianceStamps.createdAt})`)
       .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${onexComplianceStamps.createdAt}) ASC`);
 
-    const trend = trendQuery.map(t => ({
+    const trend = trendQuery.map((t) => ({
       period: t.period,
-      compliancePercentage: t.totalFiles > 0
-        ? parseFloat(((t.compliantFiles / t.totalFiles) * 100).toFixed(1))
-        : 0,
+      compliancePercentage:
+        t.totalFiles > 0 ? parseFloat(((t.compliantFiles / t.totalFiles) * 100).toFixed(1)) : 0,
       totalFiles: t.totalFiles,
     }));
 
@@ -2791,8 +2904,12 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
     // Check if error is about missing table (42P01) - return empty data instead of 500
     const errorCode = error?.code || error?.errno || '';
     const errorMessage = error?.message || error?.toString() || '';
-    
-    if (errorCode === '42P01' || errorMessage.includes('does not exist') || errorMessage.includes('relation')) {
+
+    if (
+      errorCode === '42P01' ||
+      errorMessage.includes('does not exist') ||
+      errorMessage.includes('relation')
+    ) {
       return res.json({
         summary: {
           totalFiles: 0,
@@ -2807,11 +2924,11 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
         trend: [],
       });
     }
-    
+
     console.error('Error fetching ONEX compliance data:', error);
     res.status(500).json({
       error: 'Failed to fetch ONEX compliance data',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2853,7 +2970,7 @@ intelligenceRouter.get('/platform/services', async (req, res) => {
       .orderBy(nodeServiceRegistry.serviceName);
 
     // Format response
-    const formattedServices = services.map(s => ({
+    const formattedServices = services.map((s) => ({
       id: s.id,
       serviceName: s.serviceName,
       serviceUrl: s.serviceUrl,
@@ -2867,7 +2984,7 @@ intelligenceRouter.get('/platform/services', async (req, res) => {
     console.error('Error fetching platform services:', error);
     res.status(500).json({
       error: 'Failed to fetch platform services',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -2995,7 +3112,7 @@ intelligenceRouter.get('/execution/:correlationId', async (req, res) => {
             reasoning: 'Frontend component modification task',
             triggerConfidence: 0.91,
             contextConfidence: 0.85,
-            capabilityConfidence: 0.90,
+            capabilityConfidence: 0.9,
             historicalConfidence: null,
           },
           actions: [
@@ -3012,7 +3129,12 @@ intelligenceRouter.get('/execution/:correlationId', async (req, res) => {
               id: 'mock-action-2-2',
               actionType: 'tool_call',
               actionName: 'Edit',
-              actionDetails: { file: '/components/Dashboard.tsx', changes: 5, linesAdded: 12, linesRemoved: 7 },
+              actionDetails: {
+                file: '/components/Dashboard.tsx',
+                changes: 5,
+                linesAdded: 12,
+                linesRemoved: 7,
+              },
               durationMs: 120,
               timestamp: new Date(Date.now() - 599924).toISOString(),
               status: 'success',
@@ -3048,7 +3170,11 @@ intelligenceRouter.get('/execution/:correlationId', async (req, res) => {
               id: 'mock-action-3',
               actionType: 'decision',
               actionName: 'Schema Analysis',
-              actionDetails: { tables: ['users', 'sessions'], strategy: 'incremental', risk: 'low' },
+              actionDetails: {
+                tables: ['users', 'sessions'],
+                strategy: 'incremental',
+                risk: 'low',
+              },
               durationMs: 230,
               timestamp: new Date(Date.now() - 899952).toISOString(),
               status: 'success',
@@ -3088,7 +3214,7 @@ intelligenceRouter.get('/execution/:correlationId', async (req, res) => {
     if (!routingDecision || routingDecision.length === 0) {
       return res.status(404).json({
         error: 'Execution not found',
-        message: `No execution found for correlation ID: ${correlationId}`
+        message: `No execution found for correlation ID: ${correlationId}`,
       });
     }
 
@@ -3096,12 +3222,12 @@ intelligenceRouter.get('/execution/:correlationId', async (req, res) => {
 
     // Build summary
     const totalActions = actions.length;
-    const totalDuration = actions.reduce((sum, a) => sum + (a.durationMs || 0), 0) + (decision.routingTimeMs || 0);
+    const totalDuration =
+      actions.reduce((sum, a) => sum + (a.durationMs || 0), 0) + (decision.routingTimeMs || 0);
     const startTime = decision.createdAt;
-    const endTime = actions.length > 0
-      ? actions[actions.length - 1].createdAt
-      : decision.createdAt;
-    const status = decision.executionSucceeded ?? decision.actualSuccess ?? true ? 'success' : 'failed';
+    const endTime = actions.length > 0 ? actions[actions.length - 1].createdAt : decision.createdAt;
+    const status =
+      (decision.executionSucceeded ?? decision.actualSuccess ?? true) ? 'success' : 'failed';
 
     // Format response
     const response = {
@@ -3116,12 +3242,20 @@ intelligenceRouter.get('/execution/:correlationId', async (req, res) => {
         actualSuccess: decision.executionSucceeded ?? decision.actualSuccess,
         alternatives: decision.alternatives || [],
         reasoning: decision.reasoning,
-        triggerConfidence: decision.triggerConfidence ? parseFloat(decision.triggerConfidence.toString()) : null,
-        contextConfidence: decision.contextConfidence ? parseFloat(decision.contextConfidence.toString()) : null,
-        capabilityConfidence: decision.capabilityConfidence ? parseFloat(decision.capabilityConfidence.toString()) : null,
-        historicalConfidence: decision.historicalConfidence ? parseFloat(decision.historicalConfidence.toString()) : null,
+        triggerConfidence: decision.triggerConfidence
+          ? parseFloat(decision.triggerConfidence.toString())
+          : null,
+        contextConfidence: decision.contextConfidence
+          ? parseFloat(decision.contextConfidence.toString())
+          : null,
+        capabilityConfidence: decision.capabilityConfidence
+          ? parseFloat(decision.capabilityConfidence.toString())
+          : null,
+        historicalConfidence: decision.historicalConfidence
+          ? parseFloat(decision.historicalConfidence.toString())
+          : null,
       },
-      actions: actions.map(action => ({
+      actions: actions.map((action) => ({
         id: action.id,
         actionType: action.actionType,
         actionName: action.actionName,
@@ -3136,7 +3270,7 @@ intelligenceRouter.get('/execution/:correlationId', async (req, res) => {
         status,
         startTime,
         endTime,
-      }
+      },
     };
 
     res.json(response);
@@ -3144,7 +3278,7 @@ intelligenceRouter.get('/execution/:correlationId', async (req, res) => {
     console.error('Error fetching execution trace:', error);
     res.status(500).json({
       error: 'Failed to fetch execution trace',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -3152,7 +3286,7 @@ intelligenceRouter.get('/execution/:correlationId', async (req, res) => {
 intelligenceRouter.get('/services/health', async (req, res) => {
   try {
     const healthChecks = await checkAllServices();
-    const allUp = healthChecks.every(check => check.status === 'up');
+    const allUp = healthChecks.every((check) => check.status === 'up');
     const statusCode = allUp ? 200 : 503;
 
     res.status(statusCode).json({
@@ -3161,9 +3295,9 @@ intelligenceRouter.get('/services/health', async (req, res) => {
       services: healthChecks,
       summary: {
         total: healthChecks.length,
-        up: healthChecks.filter(c => c.status === 'up').length,
-        down: healthChecks.filter(c => c.status === 'down').length,
-        warning: healthChecks.filter(c => c.status === 'warning').length,
+        up: healthChecks.filter((c) => c.status === 'up').length,
+        down: healthChecks.filter((c) => c.status === 'down').length,
+        warning: healthChecks.filter((c) => c.status === 'warning').length,
       },
     });
   } catch (error) {
@@ -3203,12 +3337,12 @@ intelligenceRouter.get('/agents/:agentName/details', async (req, res) => {
 
     // Get agent metrics
     const metrics = eventConsumer.getAgentMetrics();
-    const agentMetric = metrics.find(m => m.agent === agentName);
+    const agentMetric = metrics.find((m) => m.agent === agentName);
 
     if (!agentMetric) {
       return res.status(404).json({
         error: 'Agent not found',
-        message: `No data found for agent: ${agentName}`
+        message: `No data found for agent: ${agentName}`,
       });
     }
 
@@ -3217,29 +3351,38 @@ intelligenceRouter.get('/agents/:agentName/details', async (req, res) => {
 
     // Calculate metrics
     const totalActions = actions.length;
-    const successfulActions = actions.filter(a => a.actionDetails && typeof a.actionDetails === 'object' && 'success' in a.actionDetails && a.actionDetails.success === true).length;
+    const successfulActions = actions.filter(
+      (a) =>
+        a.actionDetails &&
+        typeof a.actionDetails === 'object' &&
+        'success' in a.actionDetails &&
+        a.actionDetails.success === true
+    ).length;
     const successRate = totalActions > 0 ? (successfulActions / totalActions) * 100 : 0;
 
     // Get average response time
-    const actionDurations = actions.filter(a => a.durationMs).map(a => a.durationMs!);
-    const avgResponseTime = actionDurations.length > 0
-      ? actionDurations.reduce((sum, d) => sum + d, 0) / actionDurations.length
-      : 0;
+    const actionDurations = actions.filter((a) => a.durationMs).map((a) => a.durationMs!);
+    const avgResponseTime =
+      actionDurations.length > 0
+        ? actionDurations.reduce((sum, d) => sum + d, 0) / actionDurations.length
+        : 0;
 
     // Determine current status
     const recentActions = actions.slice(0, 5);
-    const hasRecentErrors = recentActions.some(a => a.actionDetails && typeof a.actionDetails === 'object' && 'error' in a.actionDetails);
-    const status = hasRecentErrors ? 'error' : (totalActions > 0 ? 'active' : 'idle');
+    const hasRecentErrors = recentActions.some(
+      (a) => a.actionDetails && typeof a.actionDetails === 'object' && 'error' in a.actionDetails
+    );
+    const status = hasRecentErrors ? 'error' : totalActions > 0 ? 'active' : 'idle';
 
     // Get current task (most recent action)
     const currentAction = actions[0];
     const currentTask = currentAction?.actionType || null;
 
     // Format recent activity
-    const recentActivity = recentActions.map(action => ({
+    const recentActivity = recentActions.map((action) => ({
       id: action.id,
       timestamp: action.createdAt,
-      description: `${action.actionType}: ${action.actionName || 'Unknown'}${action.actionDetails && typeof action.actionDetails === 'object' && 'error' in action.actionDetails ? ' (failed)' : ''}`
+      description: `${action.actionType}: ${action.actionName || 'Unknown'}${action.actionDetails && typeof action.actionDetails === 'object' && 'error' in action.actionDetails ? ' (failed)' : ''}`,
     }));
 
     const response = {
@@ -3254,7 +3397,7 @@ intelligenceRouter.get('/agents/:agentName/details', async (req, res) => {
         totalRequests: agentMetric.totalRequests,
         avgConfidence: agentMetric.avgConfidence,
         avgRoutingTime: agentMetric.avgRoutingTime,
-      }
+      },
     };
 
     res.json(response);
@@ -3262,7 +3405,7 @@ intelligenceRouter.get('/agents/:agentName/details', async (req, res) => {
     console.error('Error fetching agent details:', error);
     res.status(500).json({
       error: 'Failed to fetch agent details',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -3297,7 +3440,7 @@ intelligenceRouter.get('/patterns/:patternId/details', async (req, res) => {
     if (!pattern || pattern.length === 0) {
       return res.status(404).json({
         error: 'Pattern not found',
-        message: `No pattern found with ID: ${patternId}`
+        message: `No pattern found with ID: ${patternId}`,
       });
     }
 
@@ -3312,15 +3455,33 @@ intelligenceRouter.get('/patterns/:patternId/details', async (req, res) => {
       .limit(10);
 
     // Calculate quality score
-    const qualityScore = qualityMetrics.length > 0
-      ? qualityMetrics[0].qualityScore
-      : 0;
+    const qualityScore = qualityMetrics.length > 0 ? qualityMetrics[0].qualityScore : 0;
 
     // Calculate trend (compare recent vs older quality)
     let trend = 0;
     if (qualityMetrics.length >= 2) {
-      const recentAvg = qualityMetrics.slice(0, 5).reduce((sum, m) => sum + (typeof m.qualityScore === 'string' ? parseFloat(m.qualityScore) : (m.qualityScore || 0)), 0) / Math.min(5, qualityMetrics.length);
-      const olderAvg = qualityMetrics.slice(5).reduce((sum, m) => sum + (typeof m.qualityScore === 'string' ? parseFloat(m.qualityScore) : (m.qualityScore || 0)), 0) / Math.max(1, qualityMetrics.length - 5);
+      const recentAvg =
+        qualityMetrics
+          .slice(0, 5)
+          .reduce(
+            (sum, m) =>
+              sum +
+              (typeof m.qualityScore === 'string'
+                ? parseFloat(m.qualityScore)
+                : m.qualityScore || 0),
+            0
+          ) / Math.min(5, qualityMetrics.length);
+      const olderAvg =
+        qualityMetrics
+          .slice(5)
+          .reduce(
+            (sum, m) =>
+              sum +
+              (typeof m.qualityScore === 'string'
+                ? parseFloat(m.qualityScore)
+                : m.qualityScore || 0),
+            0
+          ) / Math.max(1, qualityMetrics.length - 5);
       trend = recentAvg - olderAvg;
     }
 
@@ -3337,7 +3498,10 @@ intelligenceRouter.get('/patterns/:patternId/details', async (req, res) => {
       .limit(10);
 
     // Extract metadata from patternData.metadata if available
-    const metadata = typeof patternData.metadata === 'object' && patternData.metadata !== null ? patternData.metadata as any : {};
+    const metadata =
+      typeof patternData.metadata === 'object' && patternData.metadata !== null
+        ? (patternData.metadata as any)
+        : {};
 
     const response = {
       id: patternData.id,
@@ -3347,11 +3511,11 @@ intelligenceRouter.get('/patterns/:patternId/details', async (req, res) => {
       category: metadata.patternCategory || patternData.patternType || 'uncategorized',
       description: metadata.description || '',
       trend: Math.round(trend * 100) / 100,
-      usageExamples: usageExamples.map(ex => ({
+      usageExamples: usageExamples.map((ex) => ({
         id: ex.project,
         project: ex.project?.substring(0, 8) || 'Unknown',
-        module: ex.module || 'Unknown'
-      }))
+        module: ex.module || 'Unknown',
+      })),
     };
 
     res.json(response);
@@ -3359,7 +3523,7 @@ intelligenceRouter.get('/patterns/:patternId/details', async (req, res) => {
     console.error('Error fetching pattern details:', error);
     res.status(500).json({
       error: 'Failed to fetch pattern details',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -3383,22 +3547,22 @@ intelligenceRouter.get('/services/:serviceName/details', async (req, res) => {
 
     // Get health check for specific service
     const healthChecks = await checkAllServices();
-    const serviceHealth = healthChecks.find(check =>
-      check.service.toLowerCase() === serviceName.toLowerCase()
+    const serviceHealth = healthChecks.find(
+      (check) => check.service.toLowerCase() === serviceName.toLowerCase()
     );
 
     if (!serviceHealth) {
       return res.status(404).json({
         error: 'Service not found',
-        message: `No service found with name: ${serviceName}`
+        message: `No service found with name: ${serviceName}`,
       });
     }
 
     // Map status to drill-down format
     const statusMap = {
-      'up': 'healthy',
-      'down': 'down',
-      'warning': 'degraded'
+      up: 'healthy',
+      down: 'down',
+      warning: 'degraded',
     };
 
     const response = {
@@ -3407,7 +3571,7 @@ intelligenceRouter.get('/services/:serviceName/details', async (req, res) => {
       uptime: serviceHealth.status === 'up' ? 99.9 : 0, // Placeholder - would need historical data
       responseTime: (serviceHealth as any).responseTime || 0,
       lastCheck: new Date().toISOString(),
-      details: serviceHealth.details
+      details: serviceHealth.details,
     };
 
     res.json(response);
@@ -3415,7 +3579,7 @@ intelligenceRouter.get('/services/:serviceName/details', async (req, res) => {
     console.error('Error fetching service details:', error);
     res.status(500).json({
       error: 'Failed to fetch service details',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

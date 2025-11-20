@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PostgresAdapter } from '../db-adapter';
 import { intelligenceDb } from '../storage';
 import * as schema from '@shared/intelligence-schema';
@@ -125,7 +125,7 @@ describe('DatabaseAdapter - Security (SQL Injection Prevention)', () => {
 
   it('handles SQL injection attempts in array values (IN clause)', async () => {
     const maliciousArrayFilter = {
-      agentName: ["'; DROP TABLE users; --", "' OR '1'='1", "normal_value"],
+      agentName: ["'; DROP TABLE users; --", "' OR '1'='1", 'normal_value'],
     };
 
     const chain = createMockQueryChain([]);
@@ -257,9 +257,9 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
     });
 
     it('throws error for invalid table name', async () => {
-      await expect(
-        adapter.query('invalid_table_name', { limit: 10 })
-      ).rejects.toThrow('Table invalid_table_name not found in schema');
+      await expect(adapter.query('invalid_table_name', { limit: 10 })).rejects.toThrow(
+        'Table invalid_table_name not found in schema'
+      );
     });
 
     it('handles empty result set', async () => {
@@ -274,13 +274,15 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
 
   describe('insert()', () => {
     it('inserts record with automatic timestamp generation', async () => {
-      const mockResult = [{
-        id: '123',
-        agentName: 'test-agent',
-        actionType: 'tool_call',
-        actionName: 'read_file',
-        createdAt: new Date(),
-      }];
+      const mockResult = [
+        {
+          id: '123',
+          agentName: 'test-agent',
+          actionType: 'tool_call',
+          actionName: 'read_file',
+          createdAt: new Date(),
+        },
+      ];
 
       // Capture the data passed to values()
       let capturedData: any;
@@ -322,25 +324,32 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
       const chain = createMockQueryChain(mockResult);
       vi.mocked(intelligenceDb).insert.mockReturnValue(chain);
 
-      const result = await adapter.insert('agent_actions', { agentName: 'test', correlationId: '123', actionType: 'test', actionName: 'test' });
+      const result = await adapter.insert('agent_actions', {
+        agentName: 'test',
+        correlationId: '123',
+        actionType: 'test',
+        actionName: 'test',
+      });
 
       // Should return array when multiple rows
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('throws error for invalid table name', async () => {
-      await expect(
-        adapter.insert('invalid_table', { field: 'value' })
-      ).rejects.toThrow('Table invalid_table not found in schema');
+      await expect(adapter.insert('invalid_table', { field: 'value' })).rejects.toThrow(
+        'Table invalid_table not found in schema'
+      );
     });
   });
 
   describe('update()', () => {
     it('updates record (agent_actions table does not have updatedAt)', async () => {
-      const mockResult = [{
-        id: '123',
-        agentName: 'updated-agent',
-      }];
+      const mockResult = [
+        {
+          id: '123',
+          agentName: 'updated-agent',
+        },
+      ];
 
       // Capture the data passed to set()
       let capturedData: any;
@@ -372,9 +381,9 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
     });
 
     it('requires WHERE condition for safety', async () => {
-      await expect(
-        adapter.update('agent_actions', {}, { agentName: 'updated' })
-      ).rejects.toThrow('Update requires at least one where condition for safety');
+      await expect(adapter.update('agent_actions', {}, { agentName: 'updated' })).rejects.toThrow(
+        'Update requires at least one where condition for safety'
+      );
     });
 
     it('throws error for invalid table name', async () => {
@@ -398,26 +407,28 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
     });
 
     it('requires WHERE condition for safety', async () => {
-      await expect(
-        adapter.delete('agent_actions', {})
-      ).rejects.toThrow('Delete requires at least one where condition for safety');
+      await expect(adapter.delete('agent_actions', {})).rejects.toThrow(
+        'Delete requires at least one where condition for safety'
+      );
     });
 
     it('throws error for invalid table name', async () => {
-      await expect(
-        adapter.delete('invalid_table', { id: '123' })
-      ).rejects.toThrow('Table invalid_table not found in schema');
+      await expect(adapter.delete('invalid_table', { id: '123' })).rejects.toThrow(
+        'Table invalid_table not found in schema'
+      );
     });
   });
 
   describe('upsert()', () => {
     it('performs upsert with conflict resolution on id', async () => {
-      const mockResult = [{
-        id: '123',
-        agentName: 'upserted-agent',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }];
+      const mockResult = [
+        {
+          id: '123',
+          agentName: 'upserted-agent',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
 
       const chain = createMockQueryChain(mockResult);
       vi.mocked(intelligenceDb).insert.mockReturnValue(chain);
@@ -429,7 +440,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
           agentName: 'upserted-agent',
           correlationId: '456',
           actionType: 'tool',
-          actionName: 'test'
+          actionName: 'test',
         },
         ['id']
       );
@@ -445,9 +456,9 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
     });
 
     it('throws error for invalid table name', async () => {
-      await expect(
-        adapter.upsert('invalid_table', { field: 'value' }, ['id'])
-      ).rejects.toThrow('Table invalid_table not found in schema');
+      await expect(adapter.upsert('invalid_table', { field: 'value' }, ['id'])).rejects.toThrow(
+        'Table invalid_table not found in schema'
+      );
     });
   });
 
@@ -485,9 +496,9 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
     });
 
     it('throws error for invalid table name', async () => {
-      await expect(
-        adapter.count('invalid_table')
-      ).rejects.toThrow('Table invalid_table not found in schema');
+      await expect(adapter.count('invalid_table')).rejects.toThrow(
+        'Table invalid_table not found in schema'
+      );
     });
   });
 
@@ -692,9 +703,9 @@ describe('DatabaseAdapter - Error Handling', () => {
 
     vi.mocked(intelligenceDb).select.mockReturnValue(mockChain as any);
 
-    await expect(
-      adapter.query('agent_actions', { limit: 10 })
-    ).rejects.toThrow('Connection refused');
+    await expect(adapter.query('agent_actions', { limit: 10 })).rejects.toThrow(
+      'Connection refused'
+    );
   });
 
   it('handles query execution errors', async () => {
@@ -720,9 +731,9 @@ describe('DatabaseAdapter - Error Handling', () => {
 
     vi.mocked(intelligenceDb).select.mockReturnValue(mockChain);
 
-    await expect(
-      adapter.query('agent_actions', { limit: 10 })
-    ).rejects.toThrow('Query execution failed');
+    await expect(adapter.query('agent_actions', { limit: 10 })).rejects.toThrow(
+      'Query execution failed'
+    );
   });
 
   it('handles insert errors', async () => {
@@ -731,7 +742,12 @@ describe('DatabaseAdapter - Error Handling', () => {
     vi.mocked(intelligenceDb).insert.mockReturnValue(chain);
 
     await expect(
-      adapter.insert('agent_actions', { agentName: 'test', correlationId: '123', actionType: 'test', actionName: 'test' })
+      adapter.insert('agent_actions', {
+        agentName: 'test',
+        correlationId: '123',
+        actionType: 'test',
+        actionName: 'test',
+      })
     ).rejects.toThrow('Insert failed');
   });
 
@@ -750,9 +766,7 @@ describe('DatabaseAdapter - Error Handling', () => {
     chain.returning.mockRejectedValue(new Error('Delete failed'));
     vi.mocked(intelligenceDb).delete.mockReturnValue(chain);
 
-    await expect(
-      adapter.delete('agent_actions', { id: '123' })
-    ).rejects.toThrow('Delete failed');
+    await expect(adapter.delete('agent_actions', { id: '123' })).rejects.toThrow('Delete failed');
   });
 });
 
@@ -802,7 +816,6 @@ describe('DatabaseAdapter - Additional Methods', () => {
   describe('count', () => {
     it('should count all records when no where clause', async () => {
       const mockResult = [{ count: 42 }];
-      const chain = createMockQueryChain(mockResult);
       // count() uses select({ count: ... }).from(), so we need to mock select to return chainable object
       vi.mocked(intelligenceDb.select).mockReturnValue({
         from: vi.fn().mockResolvedValue(mockResult),
@@ -840,7 +853,9 @@ describe('DatabaseAdapter - Additional Methods', () => {
     });
 
     it('should throw error for invalid table name', async () => {
-      await expect(adapter.count('invalid_table')).rejects.toThrow('Table invalid_table not found in schema');
+      await expect(adapter.count('invalid_table')).rejects.toThrow(
+        'Table invalid_table not found in schema'
+      );
     });
   });
 
@@ -854,12 +869,16 @@ describe('DatabaseAdapter - Additional Methods', () => {
       };
       vi.mocked(intelligenceDb.insert).mockReturnValue(chain as any);
 
-      const result = await adapter.upsert('agent_actions', {
-        id: '123',
-        agentName: 'test-agent',
-        actionType: 'test',
-        actionName: 'test',
-      }, ['id']);
+      const result = await adapter.upsert(
+        'agent_actions',
+        {
+          id: '123',
+          agentName: 'test-agent',
+          actionType: 'test',
+          actionName: 'test',
+        },
+        ['id']
+      );
 
       expect(result).toBeDefined();
       expect(intelligenceDb.insert).toHaveBeenCalled();
@@ -867,24 +886,20 @@ describe('DatabaseAdapter - Additional Methods', () => {
     });
 
     it('should throw error for invalid table name', async () => {
-      await expect(
-        adapter.upsert('invalid_table', { id: '123' }, ['id'])
-      ).rejects.toThrow('Table invalid_table not found in schema');
+      await expect(adapter.upsert('invalid_table', { id: '123' }, ['id'])).rejects.toThrow(
+        'Table invalid_table not found in schema'
+      );
     });
 
     it('should throw error when conflict columns not found', async () => {
-      const mockResult = [{ id: '123' }];
-      const { chain } = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb.insert).mockReturnValue(chain);
-
       // Mock getColumn to return null (column not found)
       const adapterAny = adapter as any;
       const originalGetColumn = adapterAny.getColumn;
       adapterAny.getColumn = vi.fn(() => null);
 
-      await expect(
-        adapter.upsert('agent_actions', { id: '123' }, ['nonexistent'])
-      ).rejects.toThrow('Conflict columns not found');
+      await expect(adapter.upsert('agent_actions', { id: '123' }, ['nonexistent'])).rejects.toThrow(
+        'Conflict columns not found'
+      );
 
       adapterAny.getColumn = originalGetColumn;
     });

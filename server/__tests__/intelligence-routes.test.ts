@@ -92,9 +92,7 @@ describe('Intelligence Routes', () => {
     it('should use default table if not specified', async () => {
       vi.mocked(dbAdapter.count).mockResolvedValue(10);
 
-      const response = await request(app)
-        .get('/api/intelligence/db/test/count')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/db/test/count').expect(200);
 
       expect(response.body.table).toBe('agent_actions');
     });
@@ -102,9 +100,7 @@ describe('Intelligence Routes', () => {
     it('should handle errors gracefully', async () => {
       vi.mocked(dbAdapter.count).mockRejectedValue(new Error('Database error'));
 
-      const response = await request(app)
-        .get('/api/intelligence/db/test/count')
-        .expect(500);
+      const response = await request(app).get('/api/intelligence/db/test/count').expect(500);
 
       expect(response.body).toHaveProperty('ok', false);
       expect(response.body).toHaveProperty('error');
@@ -117,9 +113,7 @@ describe('Intelligence Routes', () => {
         patterns: [{ id: '1', name: 'Test Pattern' }],
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/analysis/patterns')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/analysis/patterns').expect(200);
 
       expect(response.body).toHaveProperty('patterns');
       expect(response.body).toHaveProperty('meta');
@@ -145,9 +139,7 @@ describe('Intelligence Routes', () => {
         new Error('Pattern discovery failed')
       );
 
-      const response = await request(app)
-        .get('/api/intelligence/analysis/patterns')
-        .expect(502);
+      const response = await request(app).get('/api/intelligence/analysis/patterns').expect(502);
 
       expect(response.body).toHaveProperty('message');
     });
@@ -168,9 +160,7 @@ describe('Intelligence Routes', () => {
         },
       ] as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/services/health')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/services/health').expect(200);
 
       expect(response.body).toHaveProperty('services');
       expect(response.body).toHaveProperty('overallStatus');
@@ -184,9 +174,7 @@ describe('Intelligence Routes', () => {
     it('should handle errors gracefully', async () => {
       vi.mocked(checkAllServices).mockRejectedValue(new Error('Health check failed'));
 
-      const response = await request(app)
-        .get('/api/intelligence/services/health')
-        .expect(500);
+      const response = await request(app).get('/api/intelligence/services/health').expect(500);
 
       expect(response.body).toHaveProperty('error');
     });
@@ -203,9 +191,7 @@ describe('Intelligence Routes', () => {
         },
       ] as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/agents/summary')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/agents/summary').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThan(0);
@@ -229,17 +215,14 @@ describe('Intelligence Routes', () => {
       expect(Array.isArray(response.body)).toBe(true);
     });
 
+    // eslint-disable-next-line vitest/expect-expect
     it('should handle different time windows', async () => {
       vi.mocked(eventConsumer.getAgentMetrics).mockReturnValue([]);
       vi.mocked(intelligenceDb.execute).mockResolvedValue([]);
 
-      await request(app)
-        .get('/api/intelligence/agents/summary?timeWindow=7d')
-        .expect(200);
+      await request(app).get('/api/intelligence/agents/summary?timeWindow=7d').expect(200);
 
-      await request(app)
-        .get('/api/intelligence/agents/summary?timeWindow=30d')
-        .expect(200);
+      await request(app).get('/api/intelligence/agents/summary?timeWindow=30d').expect(200);
     });
   });
 
@@ -254,9 +237,7 @@ describe('Intelligence Routes', () => {
         },
       ] as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/actions/recent')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/actions/recent').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
@@ -281,9 +262,7 @@ describe('Intelligence Routes', () => {
         routingDecisions: 8,
       } as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/health')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/health').expect(200);
 
       expect(response.body).toHaveProperty('status');
       expect(response.body.status).toBe('healthy');
@@ -294,9 +273,7 @@ describe('Intelligence Routes', () => {
         throw new Error('Health check failed');
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/health')
-        .expect(503);
+      const response = await request(app).get('/api/intelligence/health').expect(503);
 
       expect(response.body).toHaveProperty('status', 'unhealthy');
       expect(response.body).toHaveProperty('error');
@@ -307,19 +284,19 @@ describe('Intelligence Routes', () => {
     it('should return pattern summary', async () => {
       // Mock the table existence check to succeed
       vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
-      
+
       // Mock the select query result
       vi.mocked(intelligenceDb.select).mockReturnValue({
-        from: vi.fn().mockResolvedValue([{
-          total_patterns: 100,
-          languages: 3,
-          unique_executions: 50,
-        }]),
+        from: vi.fn().mockResolvedValue([
+          {
+            total_patterns: 100,
+            languages: 3,
+            unique_executions: 50,
+          },
+        ]),
       } as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/patterns/summary')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/patterns/summary').expect(200);
 
       expect(response.body).toHaveProperty('total_patterns');
       expect(response.body.total_patterns).toBe(100);
@@ -332,9 +309,7 @@ describe('Intelligence Routes', () => {
       // Use mockRejectedValueOnce for the first execute call (table check)
       vi.mocked(intelligenceDb.execute).mockRejectedValueOnce(tableError);
 
-      const response = await request(app)
-        .get('/api/intelligence/patterns/summary')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/patterns/summary').expect(200);
 
       expect(response.body).toHaveProperty('total_patterns', 0);
       expect(response.body).toHaveProperty('languages', 0);
@@ -348,9 +323,7 @@ describe('Intelligence Routes', () => {
         from: vi.fn().mockRejectedValue(new Error('Database connection error')),
       } as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/patterns/summary')
-        .expect(500);
+      const response = await request(app).get('/api/intelligence/patterns/summary').expect(500);
 
       expect(response.body).toHaveProperty('error');
     });
@@ -419,6 +392,7 @@ describe('Intelligence Routes', () => {
       expect(Array.isArray(response.body)).toBe(true);
     });
 
+    // eslint-disable-next-line vitest/expect-expect
     it('should accept timeWindow parameter', async () => {
       vi.mocked(intelligenceDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -430,9 +404,7 @@ describe('Intelligence Routes', () => {
         }),
       } as any);
 
-      await request(app)
-        .get('/api/intelligence/agents/routing-strategy?timeWindow=7d')
-        .expect(200);
+      await request(app).get('/api/intelligence/agents/routing-strategy?timeWindow=7d').expect(200);
     });
   });
 
@@ -446,9 +418,7 @@ describe('Intelligence Routes', () => {
         },
       ] as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/routing/decisions')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/routing/decisions').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
@@ -479,7 +449,7 @@ describe('Intelligence Routes', () => {
     it('should return recent patterns', async () => {
       // Mock table existence check
       vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
-      
+
       vi.mocked(intelligenceDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockReturnValue({
@@ -519,7 +489,7 @@ describe('Intelligence Routes', () => {
     it('should return pattern trends', async () => {
       // Mock table existence check
       vi.mocked(intelligenceDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
-      
+
       // Mock the trends query
       vi.mocked(intelligenceDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -550,9 +520,7 @@ describe('Intelligence Routes', () => {
       (tableError as any).code = '42P01';
       vi.mocked(intelligenceDb.execute).mockRejectedValue(tableError);
 
-      const response = await request(app)
-        .get('/api/intelligence/patterns/trends')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/patterns/trends').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBe(0);
@@ -563,16 +531,18 @@ describe('Intelligence Routes', () => {
     it('should return pattern list', async () => {
       vi.mocked(intelligenceDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
       vi.mocked(intelligenceDb.execute).mockResolvedValueOnce({
-        rows: [{
-          id: 'test-id',
-          name: 'TestPattern',
-          patternType: 'function',
-          language: 'python',
-          filePath: '/test/path.py',
-          createdAt: new Date().toISOString(),
-          qualityScore: 0.85,
-          qualityConfidence: 0.9,
-        }],
+        rows: [
+          {
+            id: 'test-id',
+            name: 'TestPattern',
+            patternType: 'function',
+            language: 'python',
+            filePath: '/test/path.py',
+            createdAt: new Date().toISOString(),
+            qualityScore: 0.85,
+            qualityConfidence: 0.9,
+          },
+        ],
       } as any);
 
       const response = await request(app)
@@ -587,9 +557,7 @@ describe('Intelligence Routes', () => {
       (tableError as any).code = '42P01';
       vi.mocked(intelligenceDb.execute).mockRejectedValue(tableError);
 
-      const response = await request(app)
-        .get('/api/intelligence/patterns/list')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/patterns/list').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBe(0);
@@ -659,9 +627,7 @@ describe('Intelligence Routes', () => {
         }),
       } as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/patterns/performance')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/patterns/performance').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
@@ -670,15 +636,12 @@ describe('Intelligence Routes', () => {
   describe('GET /api/intelligence/patterns/relationships', () => {
     it('should return pattern relationships', async () => {
       vi.mocked(intelligenceDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
-      
+
       // Mock the top patterns query (when no patternIdsParam)
       vi.mocked(intelligenceDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([
-              { id: 'pattern-1' },
-              { id: 'pattern-2' },
-            ]),
+            limit: vi.fn().mockResolvedValue([{ id: 'pattern-1' }, { id: 'pattern-2' }]),
           }),
         }),
       } as any);
@@ -686,9 +649,11 @@ describe('Intelligence Routes', () => {
       // Mock the edges query
       vi.mocked(intelligenceDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([
-            { source: 'pattern-1', target: 'pattern-2', type: 'modified_from', weight: '1.0' },
-          ]),
+          where: vi
+            .fn()
+            .mockResolvedValue([
+              { source: 'pattern-1', target: 'pattern-2', type: 'modified_from', weight: '1.0' },
+            ]),
         }),
       } as any);
 
@@ -760,9 +725,9 @@ describe('Intelligence Routes', () => {
           where: vi.fn().mockReturnValue({
             groupBy: vi.fn().mockReturnValue({
               orderBy: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue([
-                  { source: 'agent-a', target: 'agent-b', count: 13 },
-                ]),
+                limit: vi
+                  .fn()
+                  .mockResolvedValue([{ source: 'agent-a', target: 'agent-b', count: 13 }]),
               }),
             }),
           }),
@@ -833,9 +798,7 @@ describe('Intelligence Routes', () => {
           }),
         } as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/developer/workflows')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/developer/workflows').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body[0]).toMatchObject({
@@ -855,9 +818,7 @@ describe('Intelligence Routes', () => {
         throw new Error('workflow error');
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/developer/workflows')
-        .expect(500);
+      const response = await request(app).get('/api/intelligence/developer/workflows').expect(500);
 
       expect(response.body).toHaveProperty('error', 'Failed to fetch developer workflows');
     });
@@ -898,9 +859,7 @@ describe('Intelligence Routes', () => {
         throw new Error('velocity error');
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/developer/velocity')
-        .expect(500);
+      const response = await request(app).get('/api/intelligence/developer/velocity').expect(500);
 
       expect(response.body).toHaveProperty('error', 'Failed to fetch developer velocity');
     });
@@ -1037,9 +996,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/performance/metrics', () => {
     it('should return metrics with stats', async () => {
-      const metrics = [
-        { id: 'm1', routingDurationMs: 45 },
-      ];
+      const metrics = [{ id: 'm1', routingDurationMs: 45 }];
       const stats = {
         avgRoutingDurationMs: 45,
         cacheHitRate: 0.5,
@@ -1072,9 +1029,7 @@ describe('Intelligence Routes', () => {
         throw new Error('metrics error');
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/performance/metrics')
-        .expect(500);
+      const response = await request(app).get('/api/intelligence/performance/metrics').expect(500);
 
       expect(response.body).toHaveProperty('error', 'Failed to fetch performance metrics');
     });
@@ -1091,9 +1046,7 @@ describe('Intelligence Routes', () => {
       };
       vi.mocked(eventConsumer.getPerformanceStats).mockReturnValue(stats as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/performance/summary')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/performance/summary').expect(200);
 
       expect(response.body).toEqual(stats);
 
@@ -1111,9 +1064,7 @@ describe('Intelligence Routes', () => {
         throw new Error('summary failure');
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/performance/summary')
-        .expect(500);
+      const response = await request(app).get('/api/intelligence/performance/summary').expect(500);
 
       expect(response.body).toHaveProperty('error', 'Failed to fetch performance summary');
     });
@@ -1145,18 +1096,16 @@ describe('Intelligence Routes', () => {
         .mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
-              groupBy: vi.fn().mockResolvedValue([
-                { status: 'active', count: 12 },
-              ]),
+              groupBy: vi.fn().mockResolvedValue([{ status: 'active', count: 12 }]),
             }),
           }),
         } as any)
         .mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
-              groupBy: vi.fn().mockResolvedValue([
-                { nodeType: 'effect', totalCount: 10, compliantCount: 8 },
-              ]),
+              groupBy: vi
+                .fn()
+                .mockResolvedValue([{ nodeType: 'effect', totalCount: 10, compliantCount: 8 }]),
             }),
           }),
         } as any)
@@ -1215,9 +1164,7 @@ describe('Intelligence Routes', () => {
       tableError.code = '42P01';
       vi.mocked(intelligenceDb.execute).mockRejectedValueOnce(tableError);
 
-      const response = await request(app)
-        .get('/api/intelligence/code/compliance')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/code/compliance').expect(200);
 
       expect(response.body.summary.totalFiles).toBe(0);
       expect(response.body.statusBreakdown).toEqual([]);
@@ -1226,9 +1173,7 @@ describe('Intelligence Routes', () => {
     it('should handle compliance errors', async () => {
       vi.mocked(intelligenceDb.execute).mockRejectedValueOnce(new Error('db unavailable'));
 
-      const response = await request(app)
-        .get('/api/intelligence/code/compliance')
-        .expect(500);
+      const response = await request(app).get('/api/intelligence/code/compliance').expect(500);
 
       expect(response.body).toHaveProperty('error', 'Failed to fetch ONEX compliance data');
     });
@@ -1254,9 +1199,7 @@ describe('Intelligence Routes', () => {
         }),
       } as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/platform/services')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/platform/services').expect(200);
 
       expect(response.body).toEqual([
         {
@@ -1281,9 +1224,7 @@ describe('Intelligence Routes', () => {
         }),
       } as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/platform/services')
-        .expect(500);
+      const response = await request(app).get('/api/intelligence/platform/services').expect(500);
 
       expect(response.body).toHaveProperty('error', 'Failed to fetch platform services');
 
@@ -1345,9 +1286,7 @@ describe('Intelligence Routes', () => {
           }),
         } as any);
 
-      const response = await request(app)
-        .get('/api/intelligence/execution/real-corr')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/execution/real-corr').expect(200);
 
       expect(response.body).toMatchObject({
         correlationId: 'real-corr',
@@ -1362,14 +1301,13 @@ describe('Intelligence Routes', () => {
     });
 
     it('should return 404 when execution not found', async () => {
-      vi.mocked(intelligenceDb.select)
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([]),
-            }),
+      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
           }),
-        } as any);
+        }),
+      } as any);
 
       const response = await request(app)
         .get('/api/intelligence/execution/missing-corr')
@@ -1447,11 +1385,13 @@ describe('Intelligence Routes', () => {
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
               orderBy: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue([
-                  { qualityScore: 0.9 },
-                  { qualityScore: 0.8 },
-                  { qualityScore: 0.7 },
-                ]),
+                limit: vi
+                  .fn()
+                  .mockResolvedValue([
+                    { qualityScore: 0.9 },
+                    { qualityScore: 0.8 },
+                    { qualityScore: 0.7 },
+                  ]),
               }),
             }),
           }),
@@ -1459,9 +1399,7 @@ describe('Intelligence Routes', () => {
         .mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                { project: 'agent-api', module: 'module-a' },
-              ]),
+              limit: vi.fn().mockResolvedValue([{ project: 'agent-api', module: 'module-a' }]),
             }),
           }),
         } as any);
@@ -1482,14 +1420,13 @@ describe('Intelligence Routes', () => {
     });
 
     it('should return 404 when pattern does not exist', async () => {
-      vi.mocked(intelligenceDb.select)
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([]),
-            }),
+      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
           }),
-        } as any);
+        }),
+      } as any);
 
       const response = await request(app)
         .get('/api/intelligence/patterns/unknown/details')
@@ -1534,7 +1471,7 @@ describe('Intelligence Routes', () => {
   describe('GET /api/intelligence/trace/:correlationId', () => {
     it('should return trace data for valid correlation ID', async () => {
       const correlationId = '123e4567-e89b-12d3-a456-426614174000';
-      
+
       // Mock actions query
       vi.mocked(intelligenceDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
@@ -1600,40 +1537,9 @@ describe('Intelligence Routes', () => {
     });
 
     it('should return 400 for invalid correlation ID format', async () => {
-      const response = await request(app)
-        .get('/api/intelligence/trace/invalid-id')
-        .expect(400);
+      const response = await request(app).get('/api/intelligence/trace/invalid-id').expect(400);
 
       expect(response.body).toHaveProperty('error', 'Invalid correlation ID format');
     });
   });
-
-  describe('GET /api/intelligence/analysis/patterns', () => {
-    it('should return pattern analysis', async () => {
-      vi.mocked(intelligenceEvents.start).mockResolvedValue(undefined);
-      vi.mocked(intelligenceEvents.requestPatternDiscovery).mockResolvedValue({
-        patterns: [{ name: 'test-pattern' }],
-      } as any);
-
-      const response = await request(app)
-        .get('/api/intelligence/analysis/patterns?path=test.py&lang=python')
-        .expect(200);
-
-      expect(response.body).toHaveProperty('patterns');
-      expect(response.body).toHaveProperty('meta');
-      expect(intelligenceEvents.requestPatternDiscovery).toHaveBeenCalled();
-    });
-
-    it('should handle errors gracefully', async () => {
-      vi.mocked(intelligenceEvents.start).mockResolvedValue(undefined);
-      vi.mocked(intelligenceEvents.requestPatternDiscovery).mockRejectedValue(new Error('Discovery failed'));
-
-      const response = await request(app)
-        .get('/api/intelligence/analysis/patterns')
-        .expect(502);
-
-      expect(response.body).toHaveProperty('message');
-    });
-  });
 });
-
