@@ -1,18 +1,18 @@
-import { MetricCard } from "@/components/MetricCard";
-import { ServiceStatusGrid } from "@/components/ServiceStatusGrid";
-import { RealtimeChart } from "@/components/RealtimeChart";
-import { EventFeed } from "@/components/EventFeed";
-import { DrillDownModal } from "@/components/DrillDownModal";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
-import { ExportButton } from "@/components/ExportButton";
-import { SectionHeader } from "@/components/SectionHeader";
-import { Server, Activity, AlertTriangle, Clock } from "lucide-react";
-import { useState } from "react";
-import { MockBadge } from "@/components/MockBadge";
-import { ensureTimeSeries } from "@/components/mockUtils";
-import { useQuery } from "@tanstack/react-query";
-import { platformHealthSource } from "@/lib/data-sources";
-import { HEALTH_QUERY_CONFIG } from "@/lib/constants/query-config";
+import { MetricCard } from '@/components/MetricCard';
+import { ServiceStatusGrid } from '@/components/ServiceStatusGrid';
+import { RealtimeChart } from '@/components/RealtimeChart';
+import { EventFeed } from '@/components/EventFeed';
+import { DrillDownModal } from '@/components/DrillDownModal';
+import { TimeRangeSelector } from '@/components/TimeRangeSelector';
+import { ExportButton } from '@/components/ExportButton';
+import { SectionHeader } from '@/components/SectionHeader';
+import { Server, Activity, AlertTriangle, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { MockBadge } from '@/components/MockBadge';
+import { ensureTimeSeries } from '@/components/mockUtils';
+import { useQuery } from '@tanstack/react-query';
+import { platformHealthSource } from '@/lib/data-sources';
+import { HEALTH_QUERY_CONFIG } from '@/lib/constants/query-config';
 
 // TypeScript interfaces for platform health endpoint
 interface ServiceHealth {
@@ -39,7 +39,7 @@ interface ServiceRegistryEntry {
 }
 
 export default function PlatformHealth() {
-  const [selectedService, setSelectedService] = useState<any>(null);
+  const [selectedService] = useState<any>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
@@ -51,7 +51,11 @@ export default function PlatformHealth() {
   };
 
   // Use centralized data source
-  const { data: healthDataResult, isLoading, error } = useQuery({
+  const {
+    data: healthDataResult,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['platform-health', timeRange],
     queryFn: () => platformHealthSource.fetchAll(timeRange),
     ...HEALTH_QUERY_CONFIG,
@@ -59,24 +63,37 @@ export default function PlatformHealth() {
   });
 
   // Transform to expected format
-  const healthData: PlatformHealthResponse | null = healthDataResult?.health ? {
-    database: (healthDataResult.health as any).database || { name: 'Database', status: 'down' as const },
-    kafka: (healthDataResult.health as any).kafka || { name: 'Kafka', status: 'down' as const },
-    services: (healthDataResult.health as any).services || [],
-  } : null;
+  const healthData: PlatformHealthResponse | null = healthDataResult?.health
+    ? {
+        database: (healthDataResult.health as any).database || {
+          name: 'Database',
+          status: 'down' as const,
+        },
+        kafka: (healthDataResult.health as any).kafka || { name: 'Kafka', status: 'down' as const },
+        services: (healthDataResult.health as any).services || [],
+      }
+    : null;
 
-  const serviceRegistry: ServiceRegistryEntry[] = (healthDataResult?.services?.services || []).map((s: any) => ({
-    id: s.id || `service-${s.name}`,
-    serviceName: s.name || s.serviceName || 'Unknown',
-    serviceUrl: s.url || s.serviceUrl || '',
-    serviceType: s.type || s.serviceType || 'unknown',
-    healthStatus: (s.status || s.healthStatus || 'unhealthy') as 'healthy' | 'degraded' | 'unhealthy',
-    lastHealthCheck: s.lastHealthCheck || null,
-  }));
+  const serviceRegistry: ServiceRegistryEntry[] = (healthDataResult?.services?.services || []).map(
+    (s: any) => ({
+      id: s.id || `service-${s.name}`,
+      serviceName: s.name || s.serviceName || 'Unknown',
+      serviceUrl: s.url || s.serviceUrl || '',
+      serviceType: s.type || s.serviceType || 'unknown',
+      healthStatus: (s.status || s.healthStatus || 'unhealthy') as
+        | 'healthy'
+        | 'degraded'
+        | 'unhealthy',
+      lastHealthCheck: s.lastHealthCheck || null,
+    })
+  );
 
   // Map health data to service status format for display
-  const getIconForService = (serviceName: string): "server" | "database" | "api" | "web" => {
-    if (serviceName.toLowerCase().includes('database') || serviceName.toLowerCase().includes('postgres')) {
+  const getIconForService = (serviceName: string): 'server' | 'database' | 'api' | 'web' => {
+    if (
+      serviceName.toLowerCase().includes('database') ||
+      serviceName.toLowerCase().includes('postgres')
+    ) {
       return 'database';
     }
     if (serviceName.toLowerCase().includes('kafka')) {
@@ -97,47 +114,55 @@ export default function PlatformHealth() {
   const services: Array<{
     id: string;
     name: string;
-    status: "healthy" | "degraded" | "down";
+    status: 'healthy' | 'degraded' | 'down';
     uptime: number;
     responseTime: number;
-    icon: "server" | "database" | "api" | "web";
-  }> = healthData ? [
-    {
-      id: 'database',
-      name: healthData.database.name,
-      status: healthData.database.status,
-      uptime: parseUptime(healthData.database.uptime),
-      responseTime: healthData.database.latency_ms || 0,
-      icon: 'database',
-    },
-    {
-      id: 'kafka',
-      name: healthData.kafka.name,
-      status: healthData.kafka.status,
-      uptime: parseUptime(healthData.kafka.uptime),
-      responseTime: healthData.kafka.latency_ms || 0,
-      icon: 'api',
-    },
-    ...healthData.services.map((service, idx) => ({
-      id: `service-${idx}`,
-      name: service.name,
-      status: service.status,
-      uptime: parseUptime(service.uptime),
-      responseTime: service.latency_ms || 0,
-      icon: getIconForService(service.name),
-    })),
-  ] : [];
+    icon: 'server' | 'database' | 'api' | 'web';
+  }> = healthData
+    ? [
+        {
+          id: 'database',
+          name: healthData.database.name,
+          status: healthData.database.status,
+          uptime: parseUptime(healthData.database.uptime),
+          responseTime: healthData.database.latency_ms || 0,
+          icon: 'database',
+        },
+        {
+          id: 'kafka',
+          name: healthData.kafka.name,
+          status: healthData.kafka.status,
+          uptime: parseUptime(healthData.kafka.uptime),
+          responseTime: healthData.kafka.latency_ms || 0,
+          icon: 'api',
+        },
+        ...healthData.services.map((service, idx) => ({
+          id: `service-${idx}`,
+          name: service.name,
+          status: service.status,
+          uptime: parseUptime(service.uptime),
+          responseTime: service.latency_ms || 0,
+          icon: getIconForService(service.name),
+        })),
+      ]
+    : [];
 
   // Generate mock CPU/Memory data for now (can be replaced with real metrics later)
   const cpuDataEnsured = ensureTimeSeries(undefined, 55, 15);
   const memoryDataEnsured = ensureTimeSeries(undefined, 65, 12);
 
   // Generate events based on health status changes
-  const events: Array<{ id: string; type: 'info' | 'warning' | 'error' | 'success'; message: string; timestamp: string; source: string }> = [];
+  const events: Array<{
+    id: string;
+    type: 'info' | 'warning' | 'error' | 'success';
+    message: string;
+    timestamp: string;
+    source: string;
+  }> = [];
   if (healthData) {
-    const allServicesHealthy = services.every(s => s.status === 'healthy');
-    const degradedServices = services.filter(s => s.status === 'degraded');
-    const downServices = services.filter(s => s.status === 'down');
+    const allServicesHealthy = services.every((s) => s.status === 'healthy');
+    const degradedServices = services.filter((s) => s.status === 'degraded');
+    const downServices = services.filter((s) => s.status === 'down');
 
     if (downServices.length > 0) {
       downServices.forEach((service, idx) => {
@@ -174,16 +199,22 @@ export default function PlatformHealth() {
     }
   }
 
-  const healthyServices = services.filter(s => s.status === 'healthy').length;
-  const avgUptime = services.length > 0 ? (services.reduce((sum, s) => sum + s.uptime, 0) / services.length).toFixed(1) : '0.0';
+  const healthyServices = services.filter((s) => s.status === 'healthy').length;
+  const avgUptime =
+    services.length > 0
+      ? (services.reduce((sum, s) => sum + s.uptime, 0) / services.length).toFixed(1)
+      : '0.0';
 
   // Calculate average latency across all services
-  const avgLatency = services.length > 0
-    ? Math.round(services.reduce((sum, s) => sum + s.responseTime, 0) / services.length)
-    : 0;
+  const avgLatency =
+    services.length > 0
+      ? Math.round(services.reduce((sum, s) => sum + s.responseTime, 0) / services.length)
+      : 0;
 
   // Count active alerts (services that are down or degraded)
-  const activeAlerts = services.filter(s => s.status === 'down' || s.status === 'degraded').length;
+  const activeAlerts = services.filter(
+    (s) => s.status === 'down' || s.status === 'degraded'
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -197,7 +228,14 @@ export default function PlatformHealth() {
         <div className="flex items-center gap-4">
           <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
           <ExportButton
-            data={{ services, healthData, cpuData: cpuDataEnsured.data, memoryData: memoryDataEnsured.data, events, metrics: { healthyServices, avgUptime, avgLatency, activeAlerts } }}
+            data={{
+              services,
+              healthData,
+              cpuData: cpuDataEnsured.data,
+              memoryData: memoryDataEnsured.data,
+              events,
+              metrics: { healthyServices, avgUptime, avgLatency, activeAlerts },
+            }}
             filename={`platform-health-${timeRange}-${new Date().toISOString().split('T')[0]}`}
             disabled={isLoading || !!error}
           />
@@ -212,7 +250,8 @@ export default function PlatformHealth() {
 
       {error && (
         <div className="bg-destructive/10 border border-destructive rounded-lg p-4 text-destructive">
-          <strong>Error loading health data:</strong> {error instanceof Error ? error.message : 'Unknown error'}
+          <strong>Error loading health data:</strong>{' '}
+          {error instanceof Error ? error.message : 'Unknown error'}
         </div>
       )}
 
@@ -223,25 +262,37 @@ export default function PlatformHealth() {
               label="Services Online"
               value={`${healthyServices}/${services.length}`}
               icon={Server}
-              status={healthyServices === services.length ? "healthy" : healthyServices > 0 ? "warning" : "error"}
+              status={
+                healthyServices === services.length
+                  ? 'healthy'
+                  : healthyServices > 0
+                    ? 'warning'
+                    : 'error'
+              }
             />
             <MetricCard
               label="Avg Uptime"
               value={`${avgUptime}%`}
               icon={Activity}
-              status={parseFloat(avgUptime) >= 99 ? "healthy" : parseFloat(avgUptime) >= 95 ? "warning" : "error"}
+              status={
+                parseFloat(avgUptime) >= 99
+                  ? 'healthy'
+                  : parseFloat(avgUptime) >= 95
+                    ? 'warning'
+                    : 'error'
+              }
             />
             <MetricCard
               label="Active Alerts"
               value={activeAlerts.toString()}
               icon={AlertTriangle}
-              status={activeAlerts === 0 ? "healthy" : activeAlerts <= 2 ? "warning" : "error"}
+              status={activeAlerts === 0 ? 'healthy' : activeAlerts <= 2 ? 'warning' : 'error'}
             />
             <MetricCard
               label="Avg Latency"
               value={`${avgLatency}ms`}
               icon={Clock}
-              status={avgLatency < 100 ? "healthy" : avgLatency < 500 ? "warning" : "error"}
+              status={avgLatency < 100 ? 'healthy' : avgLatency < 500 ? 'warning' : 'error'}
             />
           </div>
 
@@ -287,17 +338,19 @@ export default function PlatformHealth() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {serviceRegistry.map((service) => {
                     // Map health status to color
-                    const statusColor = service.healthStatus === 'healthy'
-                      ? 'text-green-500'
-                      : service.healthStatus === 'degraded'
-                      ? 'text-yellow-500'
-                      : 'text-red-500';
+                    const statusColor =
+                      service.healthStatus === 'healthy'
+                        ? 'text-green-500'
+                        : service.healthStatus === 'degraded'
+                          ? 'text-yellow-500'
+                          : 'text-red-500';
 
-                    const statusBg = service.healthStatus === 'healthy'
-                      ? 'bg-green-500/10'
-                      : service.healthStatus === 'degraded'
-                      ? 'bg-yellow-500/10'
-                      : 'bg-red-500/10';
+                    const statusBg =
+                      service.healthStatus === 'healthy'
+                        ? 'bg-green-500/10'
+                        : service.healthStatus === 'degraded'
+                          ? 'bg-yellow-500/10'
+                          : 'bg-red-500/10';
 
                     // Format last health check time
                     const lastCheck = service.lastHealthCheck
@@ -311,7 +364,9 @@ export default function PlatformHealth() {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="font-medium text-sm">{service.serviceName}</h3>
-                          <div className={`px-2 py-1 rounded-full text-xs font-medium ${statusBg} ${statusColor}`}>
+                          <div
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${statusBg} ${statusColor}`}
+                          >
                             {service.healthStatus}
                           </div>
                         </div>
@@ -342,7 +397,7 @@ export default function PlatformHealth() {
       <DrillDownModal
         open={panelOpen}
         onOpenChange={setPanelOpen}
-        title={selectedService?.name || "Service Details"}
+        title={selectedService?.name || 'Service Details'}
         data={selectedService || {}}
         type="service"
         variant="modal"

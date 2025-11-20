@@ -1,13 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type {
-  PatternSummary,
-  PatternTrend,
-  QualityTrend,
-  Pattern,
-  LanguageBreakdown,
-  DiscoveredPattern,
-} from '../pattern-learning-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import type { Pattern } from '../pattern-learning-source';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 // Mock the USE_MOCK_DATA flag to false so we can test real API paths
 vi.mock('../../mock-data', () => ({
@@ -19,37 +16,45 @@ vi.mock('../../mock-data', () => ({
       avgQualityScore: 0.8,
       activeLearningCount: 10,
     })),
-    generateTrends: vi.fn((count: number) => Array(count).fill({
-      period: new Date().toISOString(),
-      manifestsGenerated: 10,
-      avgPatternsPerManifest: 5,
-      avgQueryTimeMs: 100,
-    })),
-    generateQualityTrends: vi.fn((count: number) => Array(count).fill({
-      period: new Date().toISOString(),
-      avgQuality: 0.8,
-      manifestCount: 10,
-    })),
-    generatePatternList: vi.fn((limit: number) => Array(limit).fill({
-      id: 'pattern-1',
-      name: 'Pattern',
-      description: 'Description',
-      quality: 0.8,
-      usage: 10,
-      trend: 'stable' as const,
-      trendPercentage: 0,
-      category: 'Category',
-      language: 'TypeScript',
-    })),
+    generateTrends: vi.fn((count: number) =>
+      Array(count).fill({
+        period: new Date().toISOString(),
+        manifestsGenerated: 10,
+        avgPatternsPerManifest: 5,
+        avgQueryTimeMs: 100,
+      })
+    ),
+    generateQualityTrends: vi.fn((count: number) =>
+      Array(count).fill({
+        period: new Date().toISOString(),
+        avgQuality: 0.8,
+        manifestCount: 10,
+      })
+    ),
+    generatePatternList: vi.fn((limit: number) =>
+      Array(limit).fill({
+        id: 'pattern-1',
+        name: 'Pattern',
+        description: 'Description',
+        quality: 0.8,
+        usage: 10,
+        trend: 'stable' as const,
+        trendPercentage: 0,
+        category: 'Category',
+        language: 'TypeScript',
+      })
+    ),
     generateLanguageBreakdown: vi.fn(() => [
       { language: 'TypeScript', count: 100, percentage: 50 },
       { language: 'JavaScript', count: 100, percentage: 50 },
     ]),
-    generateDiscoveredPatterns: vi.fn((limit: number) => Array(limit).fill({
-      name: 'Pattern',
-      file_path: '/path/to/pattern.ts',
-      createdAt: new Date().toISOString(),
-    })),
+    generateDiscoveredPatterns: vi.fn((limit: number) =>
+      Array(limit).fill({
+        name: 'Pattern',
+        file_path: '/path/to/pattern.ts',
+        createdAt: new Date().toISOString(),
+      })
+    ),
   },
 }));
 
@@ -71,9 +76,7 @@ describe('PatternLearningSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchSummary('24h');
@@ -93,9 +96,7 @@ describe('PatternLearningSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchSummary('24h');
@@ -110,9 +111,7 @@ describe('PatternLearningSource', () => {
       const mockApiResponse = {};
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchSummary('24h');
@@ -125,9 +124,7 @@ describe('PatternLearningSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/summary', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/patterns/summary', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await patternLearningSource.fetchSummary('24h');
@@ -155,17 +152,11 @@ describe('PatternLearningSource', () => {
 
       await patternLearningSource.fetchSummary('7d');
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('timeWindow=7d')
-      );
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('timeWindow=7d'));
     });
 
     it('should handle network errors gracefully', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/summary', new Error('Network error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/patterns/summary', new Error('Network error')]]));
 
       const result = await patternLearningSource.fetchSummary('24h');
 
@@ -193,9 +184,7 @@ describe('PatternLearningSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/trends', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/trends', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchTrends('24h');
@@ -218,9 +207,7 @@ describe('PatternLearningSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/trends', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/trends', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchTrends('24h');
@@ -238,9 +225,7 @@ describe('PatternLearningSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/trends', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/trends', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchTrends('24h');
@@ -255,11 +240,7 @@ describe('PatternLearningSource', () => {
     });
 
     it('should return mock data when API returns empty array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/trends', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/patterns/trends', createMockResponse([])]]));
 
       const result = await patternLearningSource.fetchTrends('24h');
 
@@ -269,9 +250,7 @@ describe('PatternLearningSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/trends', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/patterns/trends', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await patternLearningSource.fetchTrends('24h');
@@ -336,9 +315,7 @@ describe('PatternLearningSource', () => {
 
     it('should return mock data when API returns empty array', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/quality-trends', createMockResponse([])],
-        ])
+        new Map([['/api/intelligence/patterns/quality-trends', createMockResponse([])]])
       );
 
       const result = await patternLearningSource.fetchQualityTrends('24h');
@@ -390,9 +367,7 @@ describe('PatternLearningSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/list', createMockResponse(mockPatterns)],
-        ])
+        new Map([['/api/intelligence/patterns/list', createMockResponse(mockPatterns)]])
       );
 
       const result = await patternLearningSource.fetchPatternList(50, '24h');
@@ -412,17 +387,11 @@ describe('PatternLearningSource', () => {
 
       await patternLearningSource.fetchPatternList(10, '24h');
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('limit=10')
-      );
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=10'));
     });
 
     it('should return mock data when API returns empty array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/list', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/patterns/list', createMockResponse([])]]));
 
       const result = await patternLearningSource.fetchPatternList(50, '24h');
 
@@ -431,9 +400,7 @@ describe('PatternLearningSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/list', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/patterns/list', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await patternLearningSource.fetchPatternList(25, '24h');
@@ -454,9 +421,7 @@ describe('PatternLearningSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchLanguageBreakdown('24h');
@@ -486,9 +451,7 @@ describe('PatternLearningSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchLanguageBreakdown('24h');
@@ -499,14 +462,10 @@ describe('PatternLearningSource', () => {
     });
 
     it('should handle missing language field with unknown', async () => {
-      const mockApiResponse = [
-        { pattern_count: 100 },
-      ];
+      const mockApiResponse = [{ pattern_count: 100 }];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchLanguageBreakdown('24h');
@@ -517,14 +476,10 @@ describe('PatternLearningSource', () => {
     });
 
     it('should handle zero total with zero percentages', async () => {
-      const mockApiResponse = [
-        { language: 'TypeScript', pattern_count: 0 },
-      ];
+      const mockApiResponse = [{ language: 'TypeScript', pattern_count: 0 }];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchLanguageBreakdown('24h');
@@ -533,11 +488,7 @@ describe('PatternLearningSource', () => {
     });
 
     it('should return mock data when API returns empty array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/by-language', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/patterns/by-language', createMockResponse([])]]));
 
       const result = await patternLearningSource.fetchLanguageBreakdown('24h');
 
@@ -576,9 +527,7 @@ describe('PatternLearningSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/discovery', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/discovery', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchDiscovery(8);
@@ -593,16 +542,12 @@ describe('PatternLearningSource', () => {
 
     it('should handle limit parameter', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/discovery?limit=5', createMockResponse([])],
-        ])
+        new Map([['/api/intelligence/patterns/discovery?limit=5', createMockResponse([])]])
       );
 
       await patternLearningSource.fetchDiscovery(5);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('limit=5')
-      );
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=5'));
     });
 
     it('should return mock data with isMock flag true when API fails', async () => {
@@ -623,9 +568,7 @@ describe('PatternLearningSource', () => {
 
     it('should return mock data when API throws error', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/discovery', new Error('Network error')],
-        ])
+        new Map([['/api/intelligence/patterns/discovery', new Error('Network error')]])
       );
 
       const result = await patternLearningSource.fetchDiscovery(8);
@@ -644,9 +587,7 @@ describe('PatternLearningSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/discovery', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/discovery', createMockResponse(mockApiResponse)]])
       );
 
       const result = await patternLearningSource.fetchDiscovery(1);
@@ -664,11 +605,7 @@ describe('PatternLearningSource', () => {
         headers: { 'Content-Type': 'application/json' },
       });
 
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/trends', malformedResponse],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/patterns/trends', malformedResponse]]));
 
       const result = await patternLearningSource.fetchTrends('24h');
 
@@ -692,16 +629,12 @@ describe('PatternLearningSource', () => {
 
       await patternLearningSource.fetchSummary(); // No parameter, should default to '24h'
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('timeWindow=24h')
-      );
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('timeWindow=24h'));
     });
 
     it('should handle 404 responses gracefully', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/list', createMockResponse(null, { status: 404 })],
-        ])
+        new Map([['/api/intelligence/patterns/list', createMockResponse(null, { status: 404 })]])
       );
 
       const result = await patternLearningSource.fetchPatternList(10, '24h');

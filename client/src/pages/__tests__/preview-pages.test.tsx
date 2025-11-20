@@ -6,7 +6,9 @@ vi.mock('@/contexts/DemoModeContext', () => ({
 }));
 
 vi.mock('@/components/MockDataBadge', () => ({
-  MockDataBadge: ({ label }: { label?: string }) => <span data-testid="mock-badge">{label ?? 'Mock Data'}</span>,
+  MockDataBadge: ({ label }: { label?: string }) => (
+    <span data-testid="mock-badge">{label ?? 'Mock Data'}</span>
+  ),
 }));
 
 vi.mock('@/components/ui/card', () => ({
@@ -122,29 +124,6 @@ import SystemHealth from '../preview/SystemHealth';
 import DuplicateDetection from '../preview/DuplicateDetection';
 import PatternDependencies from '../preview/PatternDependencies';
 
-beforeAll(() => {
-  class ResizeObserver {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-  (window as any).ResizeObserver = ResizeObserver;
-  if (!navigator.clipboard) {
-    (navigator as any).clipboard = { writeText: vi.fn() };
-  }
-  Object.defineProperty(window, 'matchMedia', {
-    writable: true,
-    value: vi.fn().mockImplementation(() => ({
-      matches: false,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  });
-});
-
 const PREVIEW_COMPONENTS = [
   { name: 'EnhancedAnalytics', Component: EnhancedAnalytics },
   { name: 'TechDebtAnalysis', Component: TechDebtAnalysis },
@@ -159,7 +138,30 @@ const PREVIEW_COMPONENTS = [
 ];
 
 describe('Preview pages', () => {
-  PREVIEW_COMPONENTS.forEach(({ name, Component }) => {
+  beforeAll(() => {
+    class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    (window as any).ResizeObserver = ResizeObserver;
+    if (!navigator.clipboard) {
+      (navigator as any).clipboard = { writeText: vi.fn() };
+    }
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: false,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+  });
+
+  describe.each(PREVIEW_COMPONENTS)('$name', ({ name, Component }) => {
     it(`renders ${name} without crashing`, () => {
       const { container } = render(<Component />);
       expect(container.firstChild).toBeTruthy();

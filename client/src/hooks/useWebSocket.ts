@@ -65,7 +65,9 @@ export function useWebSocket({
   debug = false,
 }: UseWebSocketOptions = {}): UseWebSocketReturn {
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
+  const [connectionStatus, setConnectionStatus] = useState<
+    'connecting' | 'connected' | 'disconnected' | 'error'
+  >('disconnected');
   const [error, setError] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -79,30 +81,45 @@ export function useWebSocket({
   const connectionTimestampRef = useRef<number>(0);
 
   // Default to current host with /ws path
-  const wsUrl = url || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+  const wsUrl =
+    url || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
-  const log = useCallback((...args: any[]) => {
-    if (debug) {
-      console.log('[WebSocket]', ...args);
-    }
-  }, [debug]);
+  const log = useCallback(
+    (...args: any[]) => {
+      if (debug) {
+        // Debug logging - intentionally using console.log for development debugging
+        // eslint-disable-next-line no-console
+        console.log('[WebSocket]', ...args);
+      }
+    },
+    [debug]
+  );
 
-  const send = useCallback((message: any) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
-      log('Sent message:', message);
-    } else {
-      console.warn('[WebSocket] Cannot send message - WebSocket not connected');
-    }
-  }, [log]);
+  const send = useCallback(
+    (message: any) => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify(message));
+        log('Sent message:', message);
+      } else {
+        console.warn('[WebSocket] Cannot send message - WebSocket not connected');
+      }
+    },
+    [log]
+  );
 
-  const subscribe = useCallback((topics: string[]) => {
-    send({ action: 'subscribe', topics });
-  }, [send]);
+  const subscribe = useCallback(
+    (topics: string[]) => {
+      send({ action: 'subscribe', topics });
+    },
+    [send]
+  );
 
-  const unsubscribe = useCallback((topics: string[]) => {
-    send({ action: 'unsubscribe', topics });
-  }, [send]);
+  const unsubscribe = useCallback(
+    (topics: string[]) => {
+      send({ action: 'unsubscribe', topics });
+    },
+    [send]
+  );
 
   const reconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -110,6 +127,7 @@ export function useWebSocket({
     }
     reconnectCountRef.current = 0;
     connect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const connect = useCallback(() => {
@@ -202,7 +220,11 @@ export function useWebSocket({
         if (disconnectDelay > 0) {
           log(`Delaying disconnect UI update for ${disconnectDelay}ms to prevent flickering`);
           disconnectTimeoutRef.current = setTimeout(() => {
-            if (!mountedRef.current || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            if (
+              !mountedRef.current ||
+              !wsRef.current ||
+              wsRef.current.readyState !== WebSocket.OPEN
+            ) {
               setIsConnected(false);
               setConnectionStatus('disconnected');
             }
@@ -221,7 +243,9 @@ export function useWebSocket({
             30000 // Max 30 seconds
           );
 
-          log(`Reconnecting in ${delay}ms (attempt ${reconnectCountRef.current + 1}/${reconnectAttempts})`);
+          log(
+            `Reconnecting in ${delay}ms (attempt ${reconnectCountRef.current + 1}/${reconnectAttempts})`
+          );
 
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectCountRef.current++;

@@ -27,12 +27,10 @@ export function useWebSocket(
 
   const connect = useCallback(() => {
     try {
-      console.log('Connecting to WebSocket:', url);
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('WebSocket connected');
         setConnected(true);
         setError(null);
       };
@@ -47,19 +45,17 @@ export function useWebSocket(
           }
 
           setLastMessage(message);
-          setMessages(prev => [...prev.slice(-99), message]); // Keep last 100 messages
+          setMessages((prev) => [...prev.slice(-99), message]); // Keep last 100 messages
         } catch (err) {
           console.error('Error parsing WebSocket message:', err);
         }
       };
 
       ws.onclose = () => {
-        console.log('WebSocket disconnected');
         setConnected(false);
 
         // Attempt reconnection after 5 seconds
         reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('Attempting to reconnect...');
           connect();
         }, 5000);
       };
@@ -114,9 +110,7 @@ export function useWebSocketTopic(topic: string): {
 } {
   const { messages, lastMessage, connected } = useWebSocket();
 
-  const filteredMessages = messages
-    .filter(msg => msg.topic === topic)
-    .map(msg => msg.event);
+  const filteredMessages = messages.filter((msg) => msg.topic === topic).map((msg) => msg.event);
 
   const filteredLastMessage = lastMessage?.topic === topic ? lastMessage.event : null;
 

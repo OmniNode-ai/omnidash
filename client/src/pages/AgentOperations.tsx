@@ -1,28 +1,26 @@
-import { MetricCard } from "@/components/MetricCard";
-import { AgentStatusGrid } from "@/components/AgentStatusGrid";
-import { RealtimeChart } from "@/components/RealtimeChart";
-import { MockBadge } from "@/components/MockBadge";
-import { ensureTimeSeries } from "@/components/mockUtils";
-import { EventFeed } from "@/components/EventFeed";
-import { DrillDownModal } from "@/components/DrillDownModal";
-import { StatusLegend } from "@/components/StatusLegend";
-import { EventDetailModal, EventAction } from "@/components/EventDetailModal";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
-import { ExportButton } from "@/components/ExportButton";
-import { SectionHeader } from "@/components/SectionHeader";
-import { Activity, Cpu, CheckCircle, Clock } from "lucide-react";
-import { Module, ModuleHeader, ModuleBody } from "@/components/Module";
-import { Pager } from "@/components/Pager";
-import { DateRangeFilter, DateRangeValue } from "@/components/DateRangeFilter";
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useWebSocket } from "@/hooks/useWebSocket";
-import { agentOperationsSource } from "@/lib/data-sources";
-import type { HealthStatus } from "@/lib/data-sources/agent-operations-source";
+import { MetricCard } from '@/components/MetricCard';
+import { AgentStatusGrid } from '@/components/AgentStatusGrid';
+import { RealtimeChart } from '@/components/RealtimeChart';
+import { MockBadge } from '@/components/MockBadge';
+import { ensureTimeSeries } from '@/components/mockUtils';
+import { EventFeed } from '@/components/EventFeed';
+import { DrillDownModal } from '@/components/DrillDownModal';
+import { StatusLegend } from '@/components/StatusLegend';
+import { EventDetailModal, EventAction } from '@/components/EventDetailModal';
+import { TimeRangeSelector } from '@/components/TimeRangeSelector';
+import { SectionHeader } from '@/components/SectionHeader';
+import { Activity, CheckCircle, Clock } from 'lucide-react';
+import { Module, ModuleHeader, ModuleBody } from '@/components/Module';
+import { Pager } from '@/components/Pager';
+import { DateRangeFilter, DateRangeValue } from '@/components/DateRangeFilter';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { agentOperationsSource } from '@/lib/data-sources';
 import {
   REALTIME_QUERY_CONFIG,
   QUERY_INVALIDATION_THROTTLE_MS,
-} from "@/lib/constants/query-config";
+} from '@/lib/constants/query-config';
 
 // TypeScript interfaces for API responses
 interface AgentMetrics {
@@ -54,7 +52,9 @@ export default function AgentOperations() {
   const [selectedEvent, setSelectedEvent] = useState<EventAction | null>(null);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [chartData, setChartData] = useState<Array<{ time: string; value: number }>>([]);
-  const [performanceChartData, setPerformanceChartData] = useState<Array<{ time: string; value: number }>>([]);
+  const [performanceChartData, setPerformanceChartData] = useState<
+    Array<{ time: string; value: number }>
+  >([]);
   const [showActiveOnly, setShowActiveOnly] = useState(true);
   const [timeRange, setTimeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
@@ -66,16 +66,19 @@ export default function AgentOperations() {
   // Throttle query invalidations to prevent excessive re-renders
   const lastInvalidationRef = useRef<{ [key: string]: number }>({});
 
-  const throttledInvalidate = useCallback((queryKey: string[]) => {
-    const key = queryKey.join(':');
-    const now = Date.now();
-    const lastTime = lastInvalidationRef.current[key] || 0;
+  const throttledInvalidate = useCallback(
+    (queryKey: string[]) => {
+      const key = queryKey.join(':');
+      const now = Date.now();
+      const lastTime = lastInvalidationRef.current[key] || 0;
 
-    if (now - lastTime > QUERY_INVALIDATION_THROTTLE_MS) {
-      lastInvalidationRef.current[key] = now;
-      queryClient.invalidateQueries({ queryKey });
-    }
-  }, [queryClient]);
+      if (now - lastTime > QUERY_INVALIDATION_THROTTLE_MS) {
+        lastInvalidationRef.current[key] = now;
+        queryClient.invalidateQueries({ queryKey });
+      }
+    },
+    [queryClient]
+  );
 
   const handleTimeRangeChange = useCallback((value: string) => {
     setTimeRange(value);
@@ -83,35 +86,42 @@ export default function AgentOperations() {
   }, []);
 
   // WebSocket for real-time updates with throttled invalidations
-  const { isConnected, connectionStatus } = useWebSocket({
-    onMessage: useCallback((message: { type: string; data?: any; message?: string; timestamp: string }) => {
-      // Throttled query invalidations to prevent excessive re-renders
-      switch (message.type) {
-        case 'AGENT_METRIC_UPDATE':
-          throttledInvalidate([`/api/intelligence/agents/summary`]);
-          break;
-        case 'AGENT_ACTION':
-          throttledInvalidate([`/api/intelligence/actions/recent`]);
-          break;
-        case 'ROUTING_DECISION':
-          // Routing decisions affect metrics
-          throttledInvalidate([`/api/intelligence/agents/summary`]);
-          break;
-        case 'INITIAL_STATE':
-          // Refresh all data on initial state (no throttle for initial state)
-          queryClient.invalidateQueries();
-          break;
-        case 'CONSUMER_STATUS':
-          // Only invalidate health if status actually changed (reduce noise)
-          throttledInvalidate(['/api/intelligence/health']);
-          break;
-      }
-    }, [throttledInvalidate, queryClient]),
+  useWebSocket({
+    onMessage: useCallback(
+      (message: { type: string; data?: any; message?: string; timestamp: string }) => {
+        // Throttled query invalidations to prevent excessive re-renders
+        switch (message.type) {
+          case 'AGENT_METRIC_UPDATE':
+            throttledInvalidate([`/api/intelligence/agents/summary`]);
+            break;
+          case 'AGENT_ACTION':
+            throttledInvalidate([`/api/intelligence/actions/recent`]);
+            break;
+          case 'ROUTING_DECISION':
+            // Routing decisions affect metrics
+            throttledInvalidate([`/api/intelligence/agents/summary`]);
+            break;
+          case 'INITIAL_STATE':
+            // Refresh all data on initial state (no throttle for initial state)
+            queryClient.invalidateQueries();
+            break;
+          case 'CONSUMER_STATUS':
+            // Only invalidate health if status actually changed (reduce noise)
+            throttledInvalidate(['/api/intelligence/health']);
+            break;
+        }
+      },
+      [throttledInvalidate, queryClient]
+    ),
     debug: false,
   });
 
   // Use centralized data source
-  const { data: operationsData, isLoading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useQuery({
+  const {
+    data: operationsData,
+    isLoading: metricsLoading,
+    error: metricsError,
+  } = useQuery({
     queryKey: ['agent-operations', timeRange],
     queryFn: () => agentOperationsSource.fetchAll(timeRange),
     ...REALTIME_QUERY_CONFIG,
@@ -131,13 +141,17 @@ export default function AgentOperations() {
       }));
     }
     // Fallback to aggregate summary (single "all" agent)
-    return operationsData?.summary ? [{
-      agent: 'all',
-      totalRequests: operationsData.summary.totalRuns,
-      successRate: operationsData.summary.successRate,
-      avgRoutingTime: operationsData.summary.avgExecutionTime,
-      avgConfidence: null,
-    }] : [];
+    return operationsData?.summary
+      ? [
+          {
+            agent: 'all',
+            totalRequests: operationsData.summary.totalRuns,
+            successRate: operationsData.summary.successRate,
+            avgRoutingTime: operationsData.summary.avgExecutionTime,
+            avgConfidence: null,
+          },
+        ]
+      : [];
   }, [operationsData?.summary, operationsData?.perAgentMetrics]);
 
   const actions: AgentAction[] = useMemo(() => {
@@ -157,7 +171,6 @@ export default function AgentOperations() {
     }));
   }, [operationsData?.recentActions]);
 
-  const health = operationsData?.health;
   const actionsLoading = metricsLoading;
   const actionsError = metricsError;
 
@@ -178,9 +191,12 @@ export default function AgentOperations() {
     }
 
     // Count actions per minute
-    actions.forEach(action => {
+    actions.forEach((action) => {
       const actionTime = new Date(action.createdAt);
-      const timeLabel = actionTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      const timeLabel = actionTime.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
       if (minuteBuckets.has(timeLabel)) {
         minuteBuckets.set(timeLabel, minuteBuckets.get(timeLabel)! + 1);
       }
@@ -212,21 +228,26 @@ export default function AgentOperations() {
     }
 
     // Sum execution times per minute
-    actions.forEach(action => {
+    actions.forEach((action) => {
       const actionTime = new Date(action.createdAt);
-      const timeLabel = actionTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      const timeLabel = actionTime.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
       if (minuteBuckets.has(timeLabel)) {
         const entry = minuteBuckets.get(timeLabel)!;
         entry.total += 1;
-        entry.totalDurationMs += (action.durationMs || 0);
+        entry.totalDurationMs += action.durationMs || 0;
       }
     });
 
     // Calculate average execution time per minute (in milliseconds)
-    const perfData = Array.from(minuteBuckets.entries()).map(([time, { total, totalDurationMs }]) => ({
-      time,
-      value: total > 0 ? Math.round(totalDurationMs / total) : 0,
-    }));
+    const perfData = Array.from(minuteBuckets.entries()).map(
+      ([time, { total, totalDurationMs }]) => ({
+        time,
+        value: total > 0 ? Math.round(totalDurationMs / total) : 0,
+      })
+    );
 
     setPerformanceChartData(perfData);
   }, [actions]);
@@ -236,14 +257,17 @@ export default function AgentOperations() {
     setPanelOpen(true);
   }, []);
 
-  const handleEventClick = useCallback((event: any) => {
-    // Find the corresponding action from the actions array
-    const action = actions?.find(a => a.id === event.id);
-    if (action) {
-      setSelectedEvent(action);
-      setEventModalOpen(true);
-    }
-  }, [actions]);
+  const handleEventClick = useCallback(
+    (event: any) => {
+      // Find the corresponding action from the actions array
+      const action = actions?.find((a) => a.id === event.id);
+      if (action) {
+        setSelectedEvent(action);
+        setEventModalOpen(true);
+      }
+    },
+    [actions]
+  );
 
   // Use summary from data source instead of calculating here
   const aggregatedMetrics = useMemo(() => {
@@ -257,43 +281,54 @@ export default function AgentOperations() {
 
   // Memoize agent grid data to prevent recalculation
   const agents = useMemo(() => {
-    return metrics?.map((metric) => {
-      // Use confidence score as quality proxy (displayed in agent grid bottom boxes)
-      // Clamp quality to 0-100%
-      const quality = Math.max(0, Math.min(100, Math.round((metric.avgConfidence || 0) * 100)));
-      // Clamp success rate to 0-100%
-      const rawRate = (metric.successRate || 0);
-      const successRate = Math.max(0, Math.min(100, Math.round(rawRate <= 1 ? rawRate * 100 : rawRate)));
+    return (
+      metrics?.map((metric) => {
+        // Use confidence score as quality proxy (displayed in agent grid bottom boxes)
+        // Clamp quality to 0-100%
+        const quality = Math.max(0, Math.min(100, Math.round((metric.avgConfidence || 0) * 100)));
+        // Clamp success rate to 0-100%
+        const rawRate = metric.successRate || 0;
+        const successRate = Math.max(
+          0,
+          Math.min(100, Math.round(rawRate <= 1 ? rawRate * 100 : rawRate))
+        );
 
-      return {
-        id: metric.agent,
-        name: metric.agent,
-        status: successRate > 90 ? 'active' as const :
-                successRate > 70 ? 'idle' as const : 'error' as const,
-        currentTask: undefined,
-        successRate,
-        quality,
-        responseTime: Math.round(metric.avgRoutingTime || 0),
-        tasksCompleted: metric.totalRequests,
-      };
-    }) || [];
+        return {
+          id: metric.agent,
+          name: metric.agent,
+          status:
+            successRate > 90
+              ? ('active' as const)
+              : successRate > 70
+                ? ('idle' as const)
+                : ('error' as const),
+          currentTask: undefined,
+          successRate,
+          quality,
+          responseTime: Math.round(metric.avgRoutingTime || 0),
+          tasksCompleted: metric.totalRequests,
+        };
+      }) || []
+    );
   }, [metrics]);
 
   // Visible agents: Active only vs All
   const visibleAgents = useMemo(() => {
     if (!agents?.length) return agents || [];
-    return showActiveOnly ? agents.filter(a => a.status === 'active') : agents;
+    return showActiveOnly ? agents.filter((a) => a.status === 'active') : agents;
   }, [agents, showActiveOnly]);
 
   // Memoize events to prevent recalculation
   const eventsAll = useMemo(() => {
-    return actions?.map(action => ({
-      id: action.id,
-      type: 'info' as const,
-      message: `${action.agentName}: ${action.actionName}`,
-      timestamp: new Date(action.createdAt).toLocaleTimeString(),
-      source: action.agentName,
-    })) || [];
+    return (
+      actions?.map((action) => ({
+        id: action.id,
+        type: 'info' as const,
+        message: `${action.agentName}: ${action.actionName}`,
+        timestamp: new Date(action.createdAt).toLocaleTimeString(),
+        source: action.agentName,
+      })) || []
+    );
   }, [actions]);
 
   const eventsFiltered = useMemo(() => {
@@ -308,15 +343,14 @@ export default function AgentOperations() {
       // keep within custom range
       const startMs = new Date(eventsRange.start).getTime();
       const endMs = new Date(eventsRange.end).getTime() + 24 * 60 * 60 * 1000;
-      return eventsAll.filter(e => {
-        const t = new Date(`1970-01-01T${e.timestamp}`).getTime(); // fallback: treat as today
+      return eventsAll.filter((e) => {
         const nowDay = new Date().toDateString();
         const full = new Date(`${nowDay} ${e.timestamp}`).getTime();
         return full >= startMs && full <= endMs;
       });
     }
     if (cutoff > 0) {
-      return eventsAll.filter(e => {
+      return eventsAll.filter((e) => {
         const nowDay = new Date().toDateString();
         const full = new Date(`${nowDay} ${e.timestamp}`).getTime();
         return full >= cutoff;
@@ -387,14 +421,14 @@ export default function AgentOperations() {
           label="Avg Response Time"
           value={`${Math.round(aggregatedMetrics.avgResponseTime)}ms`}
           icon={Clock}
-          status={aggregatedMetrics.avgResponseTime < 100 ? "healthy" : "warning"}
+          status={aggregatedMetrics.avgResponseTime < 100 ? 'healthy' : 'warning'}
           tooltip="Target: < 100ms"
         />
         <MetricCard
           label="Success Rate"
           value={`${Math.max(0, Math.min(100, Math.round(aggregatedMetrics.avgSuccessRate <= 1 ? aggregatedMetrics.avgSuccessRate * 100 : aggregatedMetrics.avgSuccessRate)))}%`}
           icon={CheckCircle}
-          status={aggregatedMetrics.avgSuccessRate > 0.9 ? "healthy" : "warning"}
+          status={aggregatedMetrics.avgSuccessRate > 0.9 ? 'healthy' : 'warning'}
           tooltip="Target: > 90%"
         />
       </div>
@@ -486,13 +520,22 @@ export default function AgentOperations() {
             left={<span className="ty-title">Live Event Stream</span>}
             right={
               <>
-                <DateRangeFilter value={eventsRange} onChange={(v) => { setEventsRange(v); setEventsPage(1); }} />
+                <DateRangeFilter
+                  value={eventsRange}
+                  onChange={(v) => {
+                    setEventsRange(v);
+                    setEventsPage(1);
+                  }}
+                />
                 <Pager
                   page={eventsPage}
                   pageSize={eventsPageSize}
                   totalItems={eventsFiltered.length}
                   onPageChange={setEventsPage}
-                  onPageSizeChange={(n) => { setEventsPageSize(n); setEventsPage(1); }}
+                  onPageSizeChange={(n) => {
+                    setEventsPageSize(n);
+                    setEventsPage(1);
+                  }}
                 />
               </>
             }
@@ -506,7 +549,7 @@ export default function AgentOperations() {
       <DrillDownModal
         open={panelOpen}
         onOpenChange={setPanelOpen}
-        title={selectedAgent?.name || "Agent Details"}
+        title={selectedAgent?.name || 'Agent Details'}
         data={selectedAgent || {}}
         type="agent"
         variant="modal"

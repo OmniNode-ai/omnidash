@@ -1,28 +1,28 @@
 /**
  * Event Bus Explorer Page
- * 
+ *
  * Dedicated dashboard for exploring and analyzing events from the event bus.
  */
 
-import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { SectionHeader } from "@/components/SectionHeader";
-import { ExportButton } from "@/components/ExportButton";
-import { eventBusSource, type EventBusEvent, type EventQueryOptions } from "@/lib/data-sources";
-import { EventSearchBar } from "@/components/event-bus/EventSearchBar";
-import { EventStatisticsPanel } from "@/components/event-bus/EventStatisticsPanel";
-import { EventChainVisualization } from "@/components/event-bus/EventChainVisualization";
-import { EventTypeBadge } from "@/components/event-bus/EventTypeBadge";
-import { EventPayloadViewer } from "@/components/event-bus/EventPayloadViewer";
-import { EventBusHealthIndicator } from "@/components/event-bus/EventBusHealthIndicator";
-import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
-import { X } from "lucide-react";
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { SectionHeader } from '@/components/SectionHeader';
+import { ExportButton } from '@/components/ExportButton';
+import { eventBusSource, type EventBusEvent, type EventQueryOptions } from '@/lib/data-sources';
+import { EventSearchBar } from '@/components/event-bus/EventSearchBar';
+import { EventStatisticsPanel } from '@/components/event-bus/EventStatisticsPanel';
+import { EventChainVisualization } from '@/components/event-bus/EventChainVisualization';
+import { EventTypeBadge } from '@/components/event-bus/EventTypeBadge';
+import { EventPayloadViewer } from '@/components/event-bus/EventPayloadViewer';
+import { EventBusHealthIndicator } from '@/components/event-bus/EventBusHealthIndicator';
+import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { X } from 'lucide-react';
 
 export default function EventBusExplorer() {
   const [filters, setFilters] = useState<EventQueryOptions>({
@@ -34,7 +34,12 @@ export default function EventBusExplorer() {
   const [selectedCorrelationId, setSelectedCorrelationId] = useState<string | null>(null);
 
   // Fetch events
-  const { data: eventsData, isLoading, isError, error, dataUpdatedAt } = useQuery({
+  const {
+    data: eventsData,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ['event-bus-events', filters],
     queryFn: async () => {
       const result = await eventBusSource.queryEvents(filters);
@@ -48,9 +53,10 @@ export default function EventBusExplorer() {
   // Fetch event chain if correlation ID is selected
   const { data: chainData, isLoading: isChainLoading } = useQuery({
     queryKey: ['event-bus-chain', selectedCorrelationId],
-    queryFn: () => selectedCorrelationId 
-      ? eventBusSource.getEventChain(selectedCorrelationId)
-      : Promise.resolve([]),
+    queryFn: () =>
+      selectedCorrelationId
+        ? eventBusSource.getEventChain(selectedCorrelationId)
+        : Promise.resolve([]),
     enabled: !!selectedCorrelationId,
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     refetchOnWindowFocus: true,
@@ -63,9 +69,10 @@ export default function EventBusExplorer() {
   // Get unique event types for filter dropdown
   const eventTypes = useMemo(() => {
     const types = new Set<string>();
-    events.forEach(event => types.add(event.event_type));
+    events.forEach((event) => types.add(event.event_type));
     return Array.from(types).sort();
-  }, [events]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events.length]);
 
   const handleEventClick = (event: EventBusEvent) => {
     setSelectedEvent(event);
@@ -95,10 +102,7 @@ export default function EventBusExplorer() {
       </div>
 
       {/* Search and Filter Bar */}
-      <EventSearchBar
-        eventTypes={eventTypes}
-        onFilterChange={setFilters}
-      />
+      <EventSearchBar eventTypes={eventTypes} onFilterChange={setFilters} />
 
       {/* Statistics Panel */}
       <EventStatisticsPanel />
@@ -129,9 +133,7 @@ export default function EventBusExplorer() {
       {/* Events List */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-semibold">
-            Events ({events.length})
-          </h3>
+          <h3 className="text-base font-semibold">Events ({events.length})</h3>
           <ExportButton
             data={events as unknown as Record<string, unknown>[]}
             filename={`event-bus-events-${new Date().toISOString().split('T')[0]}`}
@@ -188,14 +190,16 @@ export default function EventBusExplorer() {
                             handleCorrelationClick(event.correlation_id!);
                           }}
                         >
-                          Chain: {event.correlation_id.length > 8
+                          Chain:{' '}
+                          {event.correlation_id.length > 8
                             ? `${event.correlation_id.slice(0, 8)}...`
                             : event.correlation_id}
                         </Button>
                       )}
                       {event.causation_id && (
                         <Badge variant="outline" className="text-xs font-mono">
-                          Caused by: {event.causation_id.length > 8
+                          Caused by:{' '}
+                          {event.causation_id.length > 8
                             ? `${event.causation_id.slice(0, 8)}...`
                             : event.causation_id}
                         </Badge>
@@ -208,7 +212,10 @@ export default function EventBusExplorer() {
                       <div>
                         <span className="font-medium">Tenant:</span> {event.tenant_id}
                         {event.namespace && (
-                          <> • <span className="font-medium">Namespace:</span> {event.namespace}</>
+                          <>
+                            {' '}
+                            • <span className="font-medium">Namespace:</span> {event.namespace}
+                          </>
                         )}
                       </div>
                     </div>
@@ -226,11 +233,7 @@ export default function EventBusExplorer() {
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Event Details</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedEvent(null)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setSelectedEvent(null)}>
                 <X className="w-4 h-4" />
               </Button>
             </DialogTitle>
@@ -249,7 +252,9 @@ export default function EventBusExplorer() {
                   </Card>
                   <Card className="p-4">
                     <div className="text-sm font-medium mb-2">Timestamp</div>
-                    <div className="text-xs">{new Date(selectedEvent.timestamp).toLocaleString()}</div>
+                    <div className="text-xs">
+                      {new Date(selectedEvent.timestamp).toLocaleString()}
+                    </div>
                   </Card>
                   <Card className="p-4">
                     <div className="text-sm font-medium mb-2">Source</div>
@@ -285,4 +290,3 @@ export default function EventBusExplorer() {
     </div>
   );
 }
-

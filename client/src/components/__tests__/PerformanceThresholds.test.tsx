@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { PerformanceThresholds } from '../PerformanceThresholds';
@@ -36,7 +36,7 @@ describe('PerformanceThresholds', () => {
 
   it('should render all thresholds', () => {
     render(<PerformanceThresholds thresholds={mockThresholds} />);
-    
+
     expect(screen.getByText('CPU Usage')).toBeInTheDocument();
     expect(screen.getByText('Memory Usage')).toBeInTheDocument();
     expect(screen.getByText('Disk Usage')).toBeInTheDocument();
@@ -44,7 +44,7 @@ describe('PerformanceThresholds', () => {
 
   it('should display current and max values', () => {
     render(<PerformanceThresholds thresholds={mockThresholds} />);
-    
+
     expect(screen.getByText('75 / 100 %')).toBeInTheDocument();
     expect(screen.getByText('50 / 100 %')).toBeInTheDocument();
     expect(screen.getByText('92 / 100 %')).toBeInTheDocument();
@@ -62,9 +62,9 @@ describe('PerformanceThresholds', () => {
         critical: 90,
       },
     ];
-    
+
     render(<PerformanceThresholds thresholds={criticalThreshold} />);
-    
+
     expect(screen.getByText('Critical Test')).toBeInTheDocument();
     expect(screen.getByText('95 / 100 %')).toBeInTheDocument();
   });
@@ -81,9 +81,9 @@ describe('PerformanceThresholds', () => {
         critical: 90,
       },
     ];
-    
+
     render(<PerformanceThresholds thresholds={warningThreshold} />);
-    
+
     expect(screen.getByText('Warning Test')).toBeInTheDocument();
   });
 
@@ -99,15 +99,15 @@ describe('PerformanceThresholds', () => {
         critical: 90,
       },
     ];
-    
+
     render(<PerformanceThresholds thresholds={normalThreshold} />);
-    
+
     expect(screen.getByText('Normal Test')).toBeInTheDocument();
   });
 
   it('should calculate percentage correctly', () => {
     render(<PerformanceThresholds thresholds={mockThresholds} />);
-    
+
     // CPU: 75/100 = 75%
     // Memory: 50/100 = 50%
     // Disk: 92/100 = 92%
@@ -124,17 +124,16 @@ describe('PerformanceThresholds', () => {
         unit: '%',
       },
     ];
-    
+
     render(<PerformanceThresholds thresholds={simpleThresholds} />);
-    
+
     expect(screen.getByText('Simple Metric')).toBeInTheDocument();
     expect(screen.getByText('50 / 100 %')).toBeInTheDocument();
   });
 
   it('should handle empty thresholds array', () => {
     render(<PerformanceThresholds thresholds={[]} />);
-    
+
     expect(screen.getByText('Performance Thresholds')).toBeInTheDocument();
   });
 });
-

@@ -1,48 +1,35 @@
-import React from "react";
-import { DetailModal } from "./DetailModal";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { 
-  Activity, 
-  TrendingUp, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  Server, 
-  Database,
-  Code,
-  Eye,
-  Settings,
-  Download,
-  RefreshCw
-} from "lucide-react";
+import React from 'react';
+import { DetailModal } from './DetailModal';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Clock, Settings, Download, RefreshCw } from 'lucide-react';
 
 interface DrillDownModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   data: Record<string, any>;
-  type?: "agent" | "pattern" | "service" | "gate" | "generic";
-  variant?: "modal" | "side-panel";
+  type?: 'agent' | 'pattern' | 'service' | 'gate' | 'generic';
+  variant?: 'modal' | 'side-panel';
 }
 
-export function DrillDownModal({ 
-  open, 
-  onOpenChange, 
-  title, 
-  data, 
-  type = "generic",
-  variant = "modal" 
+export function DrillDownModal({
+  open,
+  onOpenChange,
+  title,
+  data,
+  type = 'generic',
+  variant = 'modal',
 }: DrillDownModalProps) {
   const handleClose = () => onOpenChange(false);
 
   const renderContent = () => {
     switch (type) {
-      case "agent":
+      case 'agent':
         return (
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
@@ -55,13 +42,15 @@ export function DrillDownModal({
               <div className="grid grid-cols-2 gap-4">
                 <Card className="p-4">
                   <div className="text-xs text-muted-foreground mb-1">Status</div>
-                  <Badge variant={data.status === "active" ? "default" : "secondary"}>
+                  <Badge variant={data.status === 'active' ? 'default' : 'secondary'}>
                     {data.status}
                   </Badge>
                 </Card>
                 <Card className="p-4">
                   <div className="text-xs text-muted-foreground mb-1">Success Rate</div>
-                  <div className="text-2xl font-bold font-mono">{Math.max(0, Math.min(100, data.successRate))}%</div>
+                  <div className="text-2xl font-bold font-mono">
+                    {Math.max(0, Math.min(100, data.successRate))}%
+                  </div>
                 </Card>
               </div>
 
@@ -80,8 +69,8 @@ export function DrillDownModal({
                 <h4 className="text-sm font-semibold mb-3">Current Status</h4>
                 <div className="p-3 rounded-lg bg-muted">
                   <div className="text-sm">
-                    <span className="text-muted-foreground">Current Task:</span>{" "}
-                    <span className="font-medium">{data.currentTask || "Idle"}</span>
+                    <span className="text-muted-foreground">Current Task:</span>{' '}
+                    <span className="font-medium">{data.currentTask || 'Idle'}</span>
                   </div>
                 </div>
               </div>
@@ -101,11 +90,13 @@ export function DrillDownModal({
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Success Rate</span>
-                    <span className="font-mono text-sm">{Math.max(0, Math.min(100, data.successRate))}%</span>
+                    <span className="font-mono text-sm">
+                      {Math.max(0, Math.min(100, data.successRate))}%
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Uptime</span>
-                    <span className="font-mono text-sm">{data.uptime || "99.9"}%</span>
+                    <span className="font-mono text-sm">{data.uptime || '99.9'}%</span>
                   </div>
                 </div>
               </div>
@@ -134,7 +125,7 @@ export function DrillDownModal({
           </Tabs>
         );
 
-      case "pattern":
+      case 'pattern':
         return (
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
@@ -147,11 +138,22 @@ export function DrillDownModal({
               <div className="grid grid-cols-2 gap-4">
                 <Card className="p-4">
                   <div className="text-xs text-muted-foreground mb-1">Quality Score</div>
-                  <div className="text-2xl font-bold font-mono">{Math.max(0, Math.min(100, (data.quality || 0) <= 1 ? (data.quality || 0) * 100 : (data.quality || 0))).toFixed(1)}%</div>
+                  <div className="text-2xl font-bold font-mono">
+                    {Math.max(
+                      0,
+                      Math.min(
+                        100,
+                        (data.quality || 0) <= 1 ? (data.quality || 0) * 100 : data.quality || 0
+                      )
+                    ).toFixed(1)}
+                    %
+                  </div>
                 </Card>
                 <Card className="p-4">
                   <div className="text-xs text-muted-foreground mb-1">Usage Count</div>
-                  <div className="text-2xl font-bold font-mono">{data.usage || data.usageCount}x</div>
+                  <div className="text-2xl font-bold font-mono">
+                    {data.usage || data.usageCount}x
+                  </div>
                 </Card>
               </div>
 
@@ -162,8 +164,11 @@ export function DrillDownModal({
                 </Card>
                 <Card className="p-4">
                   <div className="text-xs text-muted-foreground mb-1">Trend</div>
-                  <div className={`text-lg font-semibold ${data.trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {data.trend > 0 ? '+' : ''}{data.trend}%
+                  <div
+                    className={`text-lg font-semibold ${data.trend > 0 ? 'text-green-500' : 'text-red-500'}`}
+                  >
+                    {data.trend > 0 ? '+' : ''}
+                    {data.trend}%
                   </div>
                 </Card>
               </div>
@@ -186,8 +191,11 @@ export function DrillDownModal({
                   {data.trend !== undefined && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Trend</span>
-                      <span className={`font-mono text-sm ${data.trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {data.trend > 0 ? '+' : ''}{data.trend}%
+                      <span
+                        className={`font-mono text-sm ${data.trend > 0 ? 'text-green-500' : 'text-red-500'}`}
+                      >
+                        {data.trend > 0 ? '+' : ''}
+                        {data.trend}%
                       </span>
                     </div>
                   )}
@@ -215,7 +223,7 @@ export function DrillDownModal({
           </Tabs>
         );
 
-      case "service":
+      case 'service':
         return (
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
@@ -227,7 +235,7 @@ export function DrillDownModal({
               <div className="grid grid-cols-2 gap-4">
                 <Card className="p-4">
                   <div className="text-xs text-muted-foreground mb-1">Status</div>
-                  <Badge variant={data.status === "healthy" ? "default" : "destructive"}>
+                  <Badge variant={data.status === 'healthy' ? 'default' : 'destructive'}>
                     {data.status}
                   </Badge>
                 </Card>
@@ -282,28 +290,32 @@ export function DrillDownModal({
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              {Object.entries(data).slice(0, 4).map(([key, value]) => (
-                <Card key={key} className="p-4">
-                  <div className="text-xs text-muted-foreground mb-1 capitalize">
-                    {key.replace(/([A-Z])/g, ' $1').trim()}
-                  </div>
-                  <div className="text-lg font-semibold font-mono">{String(value)}</div>
-                </Card>
-              ))}
+              {Object.entries(data)
+                .slice(0, 4)
+                .map(([key, value]) => (
+                  <Card key={key} className="p-4">
+                    <div className="text-xs text-muted-foreground mb-1 capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    </div>
+                    <div className="text-lg font-semibold font-mono">{String(value)}</div>
+                  </Card>
+                ))}
             </div>
-            
+
             {Object.entries(data).length > 4 && (
               <div>
                 <h4 className="text-sm font-semibold mb-3">Additional Details</h4>
                 <div className="space-y-2">
-                  {Object.entries(data).slice(4).map(([key, value]) => (
-                    <div key={key} className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground capitalize">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </span>
-                      <span className="text-sm font-mono">{String(value)}</span>
-                    </div>
-                  ))}
+                  {Object.entries(data)
+                    .slice(4)
+                    .map(([key, value]) => (
+                      <div key={key} className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground capitalize">
+                          {key.replace(/([A-Z])/g, ' $1').trim()}
+                        </span>
+                        <span className="text-sm font-mono">{String(value)}</span>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}
@@ -313,9 +325,15 @@ export function DrillDownModal({
   };
 
   // If variant is side-panel, use the old Sheet-based approach
-  if (variant === "side-panel") {
-    const { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } = require("@/components/ui/sheet");
-    
+  if (variant === 'side-panel') {
+    const {
+      Sheet,
+      SheetContent,
+      SheetDescription,
+      SheetHeader,
+      SheetTitle,
+    } = require('@/components/ui/sheet');
+
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-[400px] sm:w-[540px]">
@@ -323,9 +341,7 @@ export function DrillDownModal({
             <SheetTitle>{title}</SheetTitle>
             <SheetDescription>Detailed information and metrics</SheetDescription>
           </SheetHeader>
-          <div className="mt-6">
-            {renderContent()}
-          </div>
+          <div className="mt-6">{renderContent()}</div>
         </SheetContent>
       </Sheet>
     );
@@ -341,7 +357,7 @@ export function DrillDownModal({
     >
       <div className="space-y-4">
         {renderContent()}
-        
+
         {/* Action buttons */}
         <Separator />
         <div className="flex gap-2 pt-4">

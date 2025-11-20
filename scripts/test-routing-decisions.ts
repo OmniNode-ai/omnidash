@@ -10,27 +10,28 @@ import { sql } from 'drizzle-orm';
 
 config();
 
-const connectionString = process.env.DATABASE_URL ||
+const connectionString =
+  process.env.DATABASE_URL ||
   `postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge`;
 
 const pool = new Pool({ connectionString });
 const db = drizzle(pool);
 
 async function main() {
-  console.log('Connecting to database...');
+  console.warn('Connecting to database...');
 
   // 1. Check routing decisions schema
-  console.log('\n=== ROUTING DECISIONS SCHEMA ===');
+  console.warn('\n=== ROUTING DECISIONS SCHEMA ===');
   const schema = await db.execute(sql`
     SELECT column_name, data_type
     FROM information_schema.columns
     WHERE table_name = 'agent_routing_decisions'
     ORDER BY ordinal_position
   `);
-  console.table(schema.rows);
+  console.warn(JSON.stringify(schema.rows, null, 2));
 
   // 2. Check for recent routing decisions
-  console.log('\n=== RECENT ROUTING DECISIONS (24h) ===');
+  console.warn('\n=== RECENT ROUTING DECISIONS (24h) ===');
   const recentDecisions = await db.execute(sql`
     SELECT
       selected_agent,
@@ -41,10 +42,10 @@ async function main() {
     ORDER BY created_at DESC
     LIMIT 10
   `);
-  console.table(recentDecisions.rows);
+  console.warn(JSON.stringify(recentDecisions.rows, null, 2));
 
   // 3. Check confidence distribution
-  console.log('\n=== CONFIDENCE DISTRIBUTION BY AGENT (7d) ===');
+  console.warn('\n=== CONFIDENCE DISTRIBUTION BY AGENT (7d) ===');
   const successRates = await db.execute(sql`
     SELECT
       selected_agent,
@@ -58,10 +59,10 @@ async function main() {
     ORDER BY total_requests DESC
     LIMIT 10
   `);
-  console.table(successRates.rows);
+  console.warn(JSON.stringify(successRates.rows, null, 2));
 
   // 4. Check total stats
-  console.log('\n=== TOTAL ROUTING DECISIONS (7d) ===');
+  console.warn('\n=== TOTAL ROUTING DECISIONS (7d) ===');
   const totalStats = await db.execute(sql`
     SELECT
       COUNT(*) as total_decisions,
@@ -70,10 +71,10 @@ async function main() {
     FROM agent_routing_decisions
     WHERE created_at > NOW() - INTERVAL '7 days'
   `);
-  console.table(totalStats.rows);
+  console.warn(JSON.stringify(totalStats.rows, null, 2));
 
   await pool.end();
-  console.log('\nDone!');
+  console.warn('\nDone!');
 }
 
 main().catch(console.error);

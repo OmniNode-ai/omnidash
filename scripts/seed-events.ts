@@ -53,7 +53,7 @@ function generateRoutingDecision(correlationId: string) {
     selected_agent: randomItem(AGENT_NAMES),
     confidence_score: 0.7 + Math.random() * 0.3, // 0.7-1.0
     routing_strategy: randomItem(ROUTING_STRATEGIES),
-    alternatives: AGENT_NAMES.slice(0, 2).map(name => ({
+    alternatives: AGENT_NAMES.slice(0, 2).map((name) => ({
       agent: name,
       confidence: 0.5 + Math.random() * 0.3,
     })),
@@ -81,11 +81,11 @@ function generateAgentAction(correlationId: string) {
 }
 
 async function seedEvents(count: number = 10) {
-  console.log(`\n🌱 Seeding ${count} test events to Kafka topics...\n`);
+  console.warn(`\n🌱 Seeding ${count} test events to Kafka topics...\n`);
 
   try {
     await producer.connect();
-    console.log('✅ Producer connected to Kafka\n');
+    console.warn('✅ Producer connected to Kafka\n');
 
     const messages: Array<{ topic: string; key: string; value: string }> = [];
 
@@ -113,7 +113,9 @@ async function seedEvents(count: number = 10) {
     }
 
     // Send all messages in batches
-    console.log(`📤 Publishing ${messages.length} events (${count} routing decisions + actions)...`);
+    console.warn(
+      `📤 Publishing ${messages.length} events (${count} routing decisions + actions)...`
+    );
 
     for (const msg of messages) {
       await producer.send({
@@ -122,18 +124,18 @@ async function seedEvents(count: number = 10) {
       });
     }
 
-    console.log('\n✅ All events published successfully!\n');
-    console.log('📊 Summary:');
-    console.log(`   - Routing decisions: ${count}`);
-    console.log(`   - Agent actions: ${messages.length - count}`);
-    console.log(`   - Total events: ${messages.length}`);
-    console.log('\n💡 Check the dashboard at http://localhost:3000 to see the data\n');
+    console.warn('\n✅ All events published successfully!\n');
+    console.warn('📊 Summary:');
+    console.warn(`   - Routing decisions: ${count}`);
+    console.warn(`   - Agent actions: ${messages.length - count}`);
+    console.warn(`   - Total events: ${messages.length}`);
+    console.warn('\n💡 Check the dashboard at http://localhost:3000 to see the data\n');
   } catch (error) {
     console.error('❌ Error seeding events:', error);
     throw error;
   } finally {
     await producer.disconnect();
-    console.log('👋 Producer disconnected\n');
+    console.warn('👋 Producer disconnected\n');
   }
 }
 

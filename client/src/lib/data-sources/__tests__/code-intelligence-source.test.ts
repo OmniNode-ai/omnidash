@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { codeIntelligenceSource } from '../code-intelligence-source';
-import type { CodeAnalysisData, ComplianceData, PatternSummary } from '../code-intelligence-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import type { CodeAnalysisData, ComplianceData } from '../code-intelligence-source';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 describe('CodeIntelligenceDataSource', () => {
   beforeEach(() => {
@@ -27,9 +31,7 @@ describe('CodeIntelligenceDataSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/code/analysis', createMockResponse(mockAnalysis)],
-        ])
+        new Map([['/api/intelligence/code/analysis', createMockResponse(mockAnalysis)]])
       );
 
       const result = await codeIntelligenceSource.fetchCodeAnalysis('24h');
@@ -44,7 +46,10 @@ describe('CodeIntelligenceDataSource', () => {
     it('should return mock data when API fails', async () => {
       setupFetchMock(
         new Map([
-          ['http://localhost:8053/api/intelligence/code/analysis', createMockResponse(null, { status: 500 })],
+          [
+            'http://localhost:8053/api/intelligence/code/analysis',
+            createMockResponse(null, { status: 500 }),
+          ],
         ])
       );
 
@@ -66,9 +71,7 @@ describe('CodeIntelligenceDataSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/code/analysis', createMockResponse(mockAnalysis)],
-        ])
+        new Map([['/api/intelligence/code/analysis', createMockResponse(mockAnalysis)]])
       );
 
       const result = await codeIntelligenceSource.fetchCodeAnalysis('24h');
@@ -144,9 +147,7 @@ describe('CodeIntelligenceDataSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/code/compliance', createMockResponse(mockCompliance)],
-        ])
+        new Map([['/api/intelligence/code/compliance', createMockResponse(mockCompliance)]])
       );
 
       const result = await codeIntelligenceSource.fetchCompliance('24h');
@@ -161,9 +162,7 @@ describe('CodeIntelligenceDataSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/code/compliance', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/code/compliance', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await codeIntelligenceSource.fetchCompliance('24h');
@@ -190,9 +189,7 @@ describe('CodeIntelligenceDataSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/code/compliance', createMockResponse(mockCompliance)],
-        ])
+        new Map([['/api/intelligence/code/compliance', createMockResponse(mockCompliance)]])
       );
 
       const result = await codeIntelligenceSource.fetchCompliance('24h');
@@ -210,9 +207,7 @@ describe('CodeIntelligenceDataSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/code/compliance', createMockResponse(invalidData)],
-        ])
+        new Map([['/api/intelligence/code/compliance', createMockResponse(invalidData)]])
       );
 
       const result = await codeIntelligenceSource.fetchCompliance('24h');
@@ -227,9 +222,7 @@ describe('CodeIntelligenceDataSource', () => {
 
     it('should handle network errors', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/code/compliance', new Error('Connection refused')],
-        ])
+        new Map([['/api/intelligence/code/compliance', new Error('Connection refused')]])
       );
 
       const result = await codeIntelligenceSource.fetchCompliance('7d');
@@ -250,9 +243,7 @@ describe('CodeIntelligenceDataSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)]])
       );
 
       const result = await codeIntelligenceSource.fetchPatternSummary();
@@ -271,9 +262,7 @@ describe('CodeIntelligenceDataSource', () => {
       const mockApiResponse = {};
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)]])
       );
 
       const result = await codeIntelligenceSource.fetchPatternSummary();
@@ -287,9 +276,7 @@ describe('CodeIntelligenceDataSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/summary', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/patterns/summary', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await codeIntelligenceSource.fetchPatternSummary();
@@ -303,11 +290,7 @@ describe('CodeIntelligenceDataSource', () => {
     });
 
     it('should include top patterns in mock data', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/summary', new Error('Network error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/patterns/summary', new Error('Network error')]]));
 
       const result = await codeIntelligenceSource.fetchPatternSummary();
 
@@ -329,9 +312,7 @@ describe('CodeIntelligenceDataSource', () => {
       };
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)]])
       );
 
       const result = await codeIntelligenceSource.fetchPatternSummary();
@@ -434,4 +415,3 @@ describe('CodeIntelligenceDataSource', () => {
     });
   });
 });
-

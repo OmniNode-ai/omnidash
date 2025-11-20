@@ -104,9 +104,7 @@ function logFallback(
   usedLabel: string,
   fallbackIndex: number
 ): void {
-  const contextStr = context.id
-    ? `${context.context} [id: ${context.id}]`
-    : context.context;
+  const contextStr = context.id ? `${context.context} [id: ${context.id}]` : context.context;
 
   const message = `[DataTransform] Fallback used for '${fieldName}' in ${contextStr}: using ${usedLabel} (fallback #${fallbackIndex + 1})`;
 
@@ -119,7 +117,7 @@ function logFallback(
       break;
     case 'debug':
     default:
-      console.debug(message, { fieldName, context, usedLabel, fallbackIndex });
+      console.warn(message, { fieldName, context, usedLabel, fallbackIndex });
       break;
   }
 }
@@ -171,7 +169,7 @@ export function ensureArray<T>(
 ): T[] {
   if (Array.isArray(array)) {
     if (array.length === 0) {
-      console.debug(`[DataTransform] Empty array for '${fieldName}' in ${context.context}`);
+      console.warn(`[DataTransform] Empty array for '${fieldName}' in ${context.context}`);
     }
     return array;
   }
@@ -202,18 +200,24 @@ export function ensureNumeric(
 
   // Check if valid number
   if (typeof num !== 'number' || isNaN(num)) {
-    console.warn(`[DataTransform] Invalid numeric value for '${fieldName}' in ${context.context}: ${value}, using fallback ${fallback}`);
+    console.warn(
+      `[DataTransform] Invalid numeric value for '${fieldName}' in ${context.context}: ${value}, using fallback ${fallback}`
+    );
     return fallback;
   }
 
   // Check bounds
   if (options.min !== undefined && num < options.min) {
-    console.warn(`[DataTransform] Value for '${fieldName}' in ${context.context} below minimum: ${num} < ${options.min}, clamping to ${options.min}`);
+    console.warn(
+      `[DataTransform] Value for '${fieldName}' in ${context.context} below minimum: ${num} < ${options.min}, clamping to ${options.min}`
+    );
     return options.min;
   }
 
   if (options.max !== undefined && num > options.max) {
-    console.warn(`[DataTransform] Value for '${fieldName}' in ${context.context} above maximum: ${num} > ${options.max}, clamping to ${options.max}`);
+    console.warn(
+      `[DataTransform] Value for '${fieldName}' in ${context.context} above maximum: ${num} > ${options.max}, clamping to ${options.max}`
+    );
     return options.max;
   }
 
@@ -239,7 +243,9 @@ export function ensureString(
 ): string {
   if (typeof value === 'string') {
     if (!allowEmpty && value.trim() === '') {
-      console.warn(`[DataTransform] Empty string for '${fieldName}' in ${context.context}, using fallback "${fallback}"`);
+      console.warn(
+        `[DataTransform] Empty string for '${fieldName}' in ${context.context}, using fallback "${fallback}"`
+      );
       return fallback;
     }
     return value;
@@ -257,11 +263,7 @@ export function ensureString(
  * @param level - Log level when fallback is used (default: 'warn')
  * @returns Environment variable value or fallback
  */
-export function ensureEnvVar(
-  varName: string,
-  fallback: string,
-  level: LogLevel = 'warn'
-): string {
+export function ensureEnvVar(varName: string, fallback: string, level: LogLevel = 'warn'): string {
   const value = import.meta.env[varName];
 
   if (value !== undefined && value !== null && value !== '') {
@@ -279,7 +281,7 @@ export function ensureEnvVar(
       break;
     case 'debug':
     default:
-      console.debug(message);
+      console.warn(message);
       break;
   }
 

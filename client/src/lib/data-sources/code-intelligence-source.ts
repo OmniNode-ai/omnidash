@@ -1,5 +1,5 @@
 import { USE_MOCK_DATA } from '../mock-data/config';
-import { fallbackChain, ensureNumeric, ensureEnvVar } from '../defensive-transform-logger';
+import { ensureNumeric, ensureEnvVar } from '../defensive-transform-logger';
 import {
   codeAnalysisDataSchema,
   complianceDataSchema,
@@ -81,7 +81,9 @@ class CodeIntelligenceDataSource {
         'http://localhost:8053',
         'debug'
       );
-      const response = await fetch(`${omniarchonUrl}/api/intelligence/code/analysis?timeWindow=${timeRange}`);
+      const response = await fetch(
+        `${omniarchonUrl}/api/intelligence/code/analysis?timeWindow=${timeRange}`
+      );
       if (response.ok) {
         const rawData = await response.json();
         // Validate API response with Zod schema
@@ -125,9 +127,9 @@ class CodeIntelligenceDataSource {
             avgComplianceScore: 0.85,
           },
           statusBreakdown: [
-            { status: "compliant", count: 120, percentage: 80.0 },
-            { status: "non_compliant", count: 25, percentage: 16.7 },
-            { status: "pending", count: 5, percentage: 3.3 },
+            { status: 'compliant', count: 120, percentage: 80.0 },
+            { status: 'non_compliant', count: 25, percentage: 16.7 },
+            { status: 'pending', count: 5, percentage: 3.3 },
           ],
           nodeTypeBreakdown: [],
           trend: [],
@@ -162,9 +164,9 @@ class CodeIntelligenceDataSource {
           avgComplianceScore: 0.85,
         },
         statusBreakdown: [
-          { status: "compliant", count: 120, percentage: 80.0 },
-          { status: "non_compliant", count: 25, percentage: 16.7 },
-          { status: "pending", count: 5, percentage: 3.3 },
+          { status: 'compliant', count: 120, percentage: 80.0 },
+          { status: 'non_compliant', count: 25, percentage: 16.7 },
+          { status: 'pending', count: 5, percentage: 3.3 },
         ],
         nodeTypeBreakdown: [],
         trend: [],
@@ -187,9 +189,27 @@ class CodeIntelligenceDataSource {
           usageCount: 1247,
           recentDiscoveries: 3,
           topPatterns: [
-            { id: '1', name: 'OAuth Authentication', category: 'Security', quality: 0.95, usage: 45 },
-            { id: '2', name: 'Database Connection Pool', category: 'Data', quality: 0.92, usage: 32 },
-            { id: '3', name: 'Error Handling Middleware', category: 'Error', quality: 0.89, usage: 28 },
+            {
+              id: '1',
+              name: 'OAuth Authentication',
+              category: 'Security',
+              quality: 0.95,
+              usage: 45,
+            },
+            {
+              id: '2',
+              name: 'Database Connection Pool',
+              category: 'Data',
+              quality: 0.92,
+              usage: 32,
+            },
+            {
+              id: '3',
+              name: 'Error Handling Middleware',
+              category: 'Error',
+              quality: 0.89,
+              usage: 28,
+            },
           ],
         },
         isMock: true,
@@ -205,31 +225,20 @@ class CodeIntelligenceDataSource {
         if (data) {
           return {
             data: {
-              totalPatterns: ensureNumeric(
-                'totalPatterns',
-                data.totalPatterns,
-                0,
-                { context: 'pattern-summary' }
-              ),
-              activePatterns: ensureNumeric(
-                'activeLearningCount',
-                data.activeLearningCount,
-                0,
-                { context: 'pattern-summary' }
-              ),
-              qualityScore: ensureNumeric(
-                'avgQualityScore',
-                data.avgQualityScore,
-                0,
-                { context: 'pattern-summary' }
-              ) * 10,
+              totalPatterns: ensureNumeric('totalPatterns', data.totalPatterns, 0, {
+                context: 'pattern-summary',
+              }),
+              activePatterns: ensureNumeric('activeLearningCount', data.activeLearningCount, 0, {
+                context: 'pattern-summary',
+              }),
+              qualityScore:
+                ensureNumeric('avgQualityScore', data.avgQualityScore, 0, {
+                  context: 'pattern-summary',
+                }) * 10,
               usageCount: 0,
-              recentDiscoveries: ensureNumeric(
-                'newPatternsToday',
-                data.newPatternsToday,
-                0,
-                { context: 'pattern-summary' }
-              ),
+              recentDiscoveries: ensureNumeric('newPatternsToday', data.newPatternsToday, 0, {
+                context: 'pattern-summary',
+              }),
               topPatterns: [],
             },
             isMock: false,
@@ -239,11 +248,20 @@ class CodeIntelligenceDataSource {
         // This handles cases where API returns empty object or missing fields
         return {
           data: {
-            totalPatterns: ensureNumeric('totalPatterns', rawData?.totalPatterns, 0, { context: 'pattern-summary' }),
-            activePatterns: ensureNumeric('activeLearningCount', rawData?.activeLearningCount, 0, { context: 'pattern-summary' }),
-            qualityScore: ensureNumeric('avgQualityScore', rawData?.avgQualityScore, 0, { context: 'pattern-summary' }) * 10,
+            totalPatterns: ensureNumeric('totalPatterns', rawData?.totalPatterns, 0, {
+              context: 'pattern-summary',
+            }),
+            activePatterns: ensureNumeric('activeLearningCount', rawData?.activeLearningCount, 0, {
+              context: 'pattern-summary',
+            }),
+            qualityScore:
+              ensureNumeric('avgQualityScore', rawData?.avgQualityScore, 0, {
+                context: 'pattern-summary',
+              }) * 10,
             usageCount: 0,
-            recentDiscoveries: ensureNumeric('newPatternsToday', rawData?.newPatternsToday, 0, { context: 'pattern-summary' }),
+            recentDiscoveries: ensureNumeric('newPatternsToday', rawData?.newPatternsToday, 0, {
+              context: 'pattern-summary',
+            }),
             topPatterns: [],
           },
           isMock: false,
@@ -263,7 +281,13 @@ class CodeIntelligenceDataSource {
         topPatterns: [
           { id: '1', name: 'OAuth Authentication', category: 'Security', quality: 0.95, usage: 45 },
           { id: '2', name: 'Database Connection Pool', category: 'Data', quality: 0.92, usage: 32 },
-          { id: '3', name: 'Error Handling Middleware', category: 'Error', quality: 0.89, usage: 28 },
+          {
+            id: '3',
+            name: 'Error Handling Middleware',
+            category: 'Error',
+            quality: 0.89,
+            usage: 28,
+          },
         ],
       },
       isMock: true,
@@ -300,4 +324,3 @@ export interface PatternSummary {
 }
 
 export const codeIntelligenceSource = new CodeIntelligenceDataSource();
-
