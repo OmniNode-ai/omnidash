@@ -56,18 +56,11 @@ export function createTestQueryClient(): QueryClient {
  * @param options - Additional render options (excluding wrapper)
  * @returns Render result with queryClient instance for cleanup
  */
-export function renderWithQueryClient(
-  ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>
-) {
+export function renderWithQueryClient(ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) {
   const queryClient = createTestQueryClient();
 
   function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   }
 
   const result = render(ui, { wrapper: Wrapper, ...options });

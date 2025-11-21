@@ -1,16 +1,12 @@
-import React from "react";
-import { DetailModal } from "./DetailModal";
-import { SavingsTooltip } from "@/components/SavingsTooltip";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import {
-  Code,
-  Zap,
-  Download
-} from "lucide-react";
+import React from 'react';
+import { DetailModal } from './DetailModal';
+import { SavingsTooltip } from '@/components/SavingsTooltip';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Code, Zap, Download } from 'lucide-react';
 
 interface DuplicateFile {
   path: string;
@@ -52,11 +48,16 @@ export function DuplicateDetailModal({ duplicate, isOpen, onClose }: DuplicateDe
 
   const getSeverityBadgeVariant = (severity: string) => {
     switch (severity) {
-      case "low": return "default";
-      case "medium": return "secondary";
-      case "high": return "destructive";
-      case "critical": return "destructive";
-      default: return "outline";
+      case 'low':
+        return 'default';
+      case 'medium':
+        return 'secondary';
+      case 'high':
+        return 'destructive';
+      case 'critical':
+        return 'destructive';
+      default:
+        return 'outline';
     }
   };
 
@@ -83,7 +84,9 @@ export function DuplicateDetailModal({ duplicate, isOpen, onClose }: DuplicateDe
             </Card>
             <Card className="p-4">
               <div className="text-xs text-muted-foreground mb-1">Total Lines</div>
-              <div className="text-2xl font-bold font-mono">{duplicate.totalLines.toLocaleString()}</div>
+              <div className="text-2xl font-bold font-mono">
+                {duplicate.totalLines.toLocaleString()}
+              </div>
             </Card>
           </div>
 
@@ -95,7 +98,10 @@ export function DuplicateDetailModal({ duplicate, isOpen, onClose }: DuplicateDe
                   <span>{Math.max(0, Math.min(100, duplicate.similarity || 0)).toFixed(1)}%</span>
                   <span className="text-muted-foreground">High</span>
                 </div>
-                <Progress value={Math.max(0, Math.min(100, duplicate.similarity || 0))} className="h-2" />
+                <Progress
+                  value={Math.max(0, Math.min(100, duplicate.similarity || 0))}
+                  className="h-2"
+                />
               </div>
             </Card>
             <Card className="p-4">
@@ -182,13 +188,18 @@ export function DuplicateDetailModal({ duplicate, isOpen, onClose }: DuplicateDe
             </div>
 
             <div>
-              <h4 className="text-sm font-semibold mb-3"><SavingsTooltip>Estimated Savings</SavingsTooltip></h4>
+              <h4 className="text-sm font-semibold mb-3">
+                <SavingsTooltip>Estimated Savings</SavingsTooltip>
+              </h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <SavingsTooltip>Cost Savings</SavingsTooltip>
                   <span className="font-mono">${duplicate.estimatedSavings.toLocaleString()}</span>
                 </div>
-                <Progress value={Math.min(duplicate.estimatedSavings / 10000 * 100, 100)} className="h-2" />
+                <Progress
+                  value={Math.min((duplicate.estimatedSavings / 10000) * 100, 100)}
+                  className="h-2"
+                />
               </div>
             </div>
 
@@ -213,29 +224,35 @@ export function DuplicateDetailModal({ duplicate, isOpen, onClose }: DuplicateDe
                   <span className="text-xs font-semibold text-primary">1</span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm">Extract common functionality into a shared utility function or class</p>
+                  <p className="text-sm">
+                    Extract common functionality into a shared utility function or class
+                  </p>
                 </div>
               </div>
             </Card>
-            
+
             <Card className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-xs font-semibold text-primary">2</span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm">Consider using design patterns like Factory or Strategy to reduce duplication</p>
+                  <p className="text-sm">
+                    Consider using design patterns like Factory or Strategy to reduce duplication
+                  </p>
                 </div>
               </div>
             </Card>
-            
+
             <Card className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-xs font-semibold text-primary">3</span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm">Implement proper inheritance hierarchy to share common behavior</p>
+                  <p className="text-sm">
+                    Implement proper inheritance hierarchy to share common behavior
+                  </p>
                 </div>
               </div>
             </Card>

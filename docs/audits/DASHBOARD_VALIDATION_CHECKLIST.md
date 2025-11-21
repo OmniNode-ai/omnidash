@@ -10,6 +10,7 @@
 ## Pre-Validation Setup
 
 ### Environment Checklist
+
 - [ ] Backend server running (`npm run dev`)
 - [ ] Database accessible (PostgreSQL at 192.168.86.200:5436)
 - [ ] Intelligence service running (Archon at http://localhost:8053)
@@ -17,6 +18,7 @@
 - [ ] Browser DevTools open (Console + Network tabs)
 
 ### Quick Health Check
+
 ```bash
 # 1. Check database connectivity
 psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "SELECT COUNT(*) FROM pattern_lineage_nodes;"
@@ -43,13 +45,14 @@ curl http://localhost:8053/health
 - [ ] **Language identifiers present** for most patterns
 
 **How to verify**:
+
 1. Open dashboard: http://localhost:3000/pattern-learning
 2. Inspect Top Patterns List (right panel)
 3. Check first 10 pattern names
 4. Confirm no filenames visible
 
 **Expected**: All pattern names are descriptive (e.g., "Error Handling with Retry Logic")
-**Fail if**: Any pattern shows filename (e.g., "__init__.py", "utils.py")
+**Fail if**: Any pattern shows filename (e.g., "**init**.py", "utils.py")
 
 ---
 
@@ -65,27 +68,30 @@ curl http://localhost:8053/health
 - [ ] **Non-Python patterns NOT always 0.82** (language-agnostic scoring)
 
 **How to verify**:
+
 1. Open browser DevTools → Network tab
 2. Find request: `GET /api/intelligence/patterns/list`
 3. Check response JSON quality values
 4. Calculate statistics:
    ```javascript
    // In browser console
-   const patterns = await fetch('/api/intelligence/patterns/list?limit=50').then(r => r.json());
-   const qualities = patterns.map(p => p.quality);
+   const patterns = await fetch('/api/intelligence/patterns/list?limit=50').then((r) => r.json());
+   const qualities = patterns.map((p) => p.quality);
    console.log('Min:', Math.min(...qualities));
    console.log('Max:', Math.max(...qualities));
-   console.log('Avg:', qualities.reduce((a,b) => a+b) / qualities.length);
+   console.log('Avg:', qualities.reduce((a, b) => a + b) / qualities.length);
    console.log('Unique values:', new Set(qualities).size);
    ```
 
 **Expected**:
+
 - Unique values: >10
 - Min quality: 0.50-0.70
 - Max quality: 0.90-1.00
 - Avg quality: 0.75-0.85
 
 **Fail if**:
+
 - All values are 0.85 ± 0.02 (hardcoded)
 - Only 2 unique values: 0.87 and 0.82 (language-based hardcoding)
 - Unique values < 5 (insufficient variation)
@@ -103,25 +109,28 @@ curl http://localhost:8053/health
 - [ ] **Top 10 patterns sorted by usage** show decreasing values
 
 **How to verify**:
+
 1. Check Top Patterns List in dashboard
 2. Verify usage counts next to each pattern
 3. Run console check:
    ```javascript
-   const patterns = await fetch('/api/intelligence/patterns/list?limit=50').then(r => r.json());
-   const usages = patterns.map(p => p.usage);
+   const patterns = await fetch('/api/intelligence/patterns/list?limit=50').then((r) => r.json());
+   const usages = patterns.map((p) => p.usage);
    console.log('Min:', Math.min(...usages));
    console.log('Max:', Math.max(...usages));
    console.log('Unique values:', new Set(usages).size);
-   console.log('Usage > 1:', usages.filter(u => u > 1).length);
+   console.log('Usage > 1:', usages.filter((u) => u > 1).length);
    ```
 
 **Expected**:
+
 - Unique values: >15
 - Min usage: 0-1
 - Max usage: >10
 - Patterns with usage > 1: >30%
 
 **Fail if**:
+
 - All values = 1 (hardcoded)
 - No patterns with usage > 1 (no usage tracking)
 - Max usage = 1 (usage tracking not working)
@@ -137,6 +146,7 @@ curl http://localhost:8053/health
 - [ ] **Summary quality ≈ list quality average** (within 0.05)
 
 **How to verify**:
+
 1. Check "Avg Quality" metric card (top row)
 2. Change time range (24h → 7d → 30d)
 3. Verify quality score changes
@@ -147,11 +157,13 @@ curl http://localhost:8053/health
    ```
 
 **Expected**:
+
 - Summary quality varies by time range
 - Summary quality ≠ 0.85 exactly
 - Summary matches calculated average from pattern list
 
 **Fail if**:
+
 - Summary quality always = 0.85
 - Summary quality never changes
 - Summary quality disconnected from pattern list
@@ -169,6 +181,7 @@ curl http://localhost:8053/health
 - [ ] **No JavaScript errors** in console
 
 **How to verify**:
+
 1. Hard refresh page (Cmd+Shift+R / Ctrl+Shift+F5)
 2. Watch loading spinner
 3. Check console for errors
@@ -186,6 +199,7 @@ curl http://localhost:8053/health
 - [ ] **Close button** works correctly
 
 **How to verify**:
+
 1. Click any pattern node in network visualization
 2. Verify drill-down panel slides in from right
 3. Check all detail fields populated
@@ -203,6 +217,7 @@ curl http://localhost:8053/health
 - [ ] **Clear filters** resets to all patterns
 
 **How to verify**:
+
 1. Type "async" in search box
 2. Set quality slider to 80%
 3. Set usage slider to 5
@@ -220,6 +235,7 @@ curl http://localhost:8053/health
 - [ ] **Discovery rate chart** updates
 
 **How to verify**:
+
 1. Select "24h" time range
 2. Note pattern count
 3. Select "7d" time range
@@ -239,6 +255,7 @@ curl http://localhost:8053/health
 - [ ] `GET /api/intelligence/patterns/relationships` - Returns 200
 
 **How to verify**:
+
 ```bash
 curl -I http://localhost:3000/api/intelligence/patterns/summary
 curl -I http://localhost:3000/api/intelligence/patterns/list
@@ -257,6 +274,7 @@ curl -I http://localhost:3000/api/intelligence/patterns/relationships?patterns=i
 - [ ] **Empty dataset** → Shows "No patterns" message
 
 **How to verify**:
+
 1. Stop database: `docker stop archon-bridge`
 2. Refresh dashboard
 3. Verify error message displayed (not white screen)
@@ -274,6 +292,7 @@ curl -I http://localhost:3000/api/intelligence/patterns/relationships?patterns=i
 - [ ] **No duplicate requests** (polling doesn't stack)
 
 **How to verify**:
+
 1. Open Network tab → Filter by XHR
 2. Watch for repeated requests
 3. Note timestamp intervals
@@ -292,12 +311,14 @@ curl -I http://localhost:3000/api/intelligence/patterns/relationships?patterns=i
 - [ ] **Search/filter** updates instantly (<100ms)
 
 **How to verify**:
+
 1. Open DevTools → Performance tab
 2. Record page load
 3. Check "Load" event timing
 4. Run Lighthouse audit
 
 **Expected**:
+
 - First Contentful Paint (FCP): <1.5s
 - Largest Contentful Paint (LCP): <2.5s
 - Time to Interactive (TTI): <3.0s
@@ -313,6 +334,7 @@ curl -I http://localhost:3000/api/intelligence/patterns/relationships?patterns=i
 - [ ] **Network bandwidth** reasonable (<5MB initial load)
 
 **How to verify**:
+
 1. Open DevTools → Performance Monitor
 2. Use dashboard for 5 minutes
 3. Check memory stays stable
@@ -354,6 +376,7 @@ curl -I http://localhost:3000/api/intelligence/patterns/relationships?patterns=i
 - [ ] **Mobile** (375x667) - Single column
 
 **How to verify**:
+
 1. Open DevTools → Device Toolbar
 2. Test different viewport sizes
 3. Verify no horizontal scrolling
@@ -372,6 +395,7 @@ curl -I http://localhost:3000/api/intelligence/patterns/relationships?patterns=i
 - [ ] **Bidirectional relationships** consistent
 
 **How to verify**:
+
 ```bash
 curl 'http://localhost:3000/api/intelligence/patterns/relationships?patterns=id1,id2,id3' | jq
 ```
@@ -426,9 +450,9 @@ All checks must pass before production deployment:
 - [ ] **All "Data Integrity" checks pass** (Section 6)
 - [ ] **All "Regression Testing" checks pass** (Section 7)
 
-**Status**: ______________________
-**Tested By**: ______________________
-**Date**: ______________________
+**Status**: **********\_\_**********
+**Tested By**: **********\_\_**********
+**Date**: **********\_\_**********
 
 ---
 
@@ -437,22 +461,27 @@ All checks must pass before production deployment:
 ### Common Issues
 
 **Issue**: All quality scores = 0.85
+
 - **Cause**: Backend still using hardcoded values
 - **Fix**: Check `/server/intelligence-routes.ts` line 315, 444
 
 **Issue**: All usage counts = 1
+
 - **Cause**: Usage tracking not implemented
 - **Fix**: Check `/server/intelligence-routes.ts` line 447
 
 **Issue**: Pattern list shows filenames
+
 - **Cause**: `patternName` field contains filepath instead of descriptive name
 - **Fix**: Update pattern extraction logic to use descriptive names
 
 **Issue**: No patterns shown
+
 - **Cause**: Database empty or connection failed
 - **Fix**: Check `pattern_lineage_nodes` table has data
 
 **Issue**: Charts not rendering
+
 - **Cause**: Chart library not loaded or data format incorrect
 - **Fix**: Check browser console for errors, verify API response format
 
@@ -468,32 +497,32 @@ describe('Pattern Learning Dashboard Validation', () => {
     const patterns = await fetchPatterns();
 
     // No filenames like __init__.py
-    expect(patterns.every(p => !p.name.includes('.py'))).toBe(true);
-    expect(patterns.every(p => !p.name.includes('.ts'))).toBe(true);
+    expect(patterns.every((p) => !p.name.includes('.py'))).toBe(true);
+    expect(patterns.every((p) => !p.name.includes('.ts'))).toBe(true);
 
     // Has real pattern names
-    expect(patterns.some(p =>
-      p.name.includes('Pattern') ||
-      p.name.includes('Manager') ||
-      p.name.includes('Handler')
-    )).toBe(true);
+    expect(
+      patterns.some(
+        (p) =>
+          p.name.includes('Pattern') || p.name.includes('Manager') || p.name.includes('Handler')
+      )
+    ).toBe(true);
   });
 
   test('should show varied quality scores', async () => {
     const patterns = await fetchPatterns();
 
     // Not all hardcoded to 0.85
-    const uniqueScores = new Set(patterns.map(p => p.quality));
+    const uniqueScores = new Set(patterns.map((p) => p.quality));
     expect(uniqueScores.size).toBeGreaterThan(5);
 
     // All scores in valid range
-    expect(patterns.every(p =>
-      p.quality >= 0 && p.quality <= 1
-    )).toBe(true);
+    expect(patterns.every((p) => p.quality >= 0 && p.quality <= 1)).toBe(true);
 
     // Has variation (standard deviation > 0.05)
     const avg = patterns.reduce((sum, p) => sum + p.quality, 0) / patterns.length;
-    const variance = patterns.reduce((sum, p) => sum + Math.pow(p.quality - avg, 2), 0) / patterns.length;
+    const variance =
+      patterns.reduce((sum, p) => sum + Math.pow(p.quality - avg, 2), 0) / patterns.length;
     const stdDev = Math.sqrt(variance);
     expect(stdDev).toBeGreaterThan(0.05);
   });
@@ -502,12 +531,12 @@ describe('Pattern Learning Dashboard Validation', () => {
     const patterns = await fetchPatterns();
 
     // Not all hardcoded to 1
-    const usageCounts = patterns.map(p => p.usage);
+    const usageCounts = patterns.map((p) => p.usage);
     expect(Math.max(...usageCounts)).toBeGreaterThan(1);
 
     // Has variation (some popular, some rare)
-    expect(usageCounts.filter(u => u > 5).length).toBeGreaterThan(0);
-    expect(usageCounts.filter(u => u <= 2).length).toBeGreaterThan(0);
+    expect(usageCounts.filter((u) => u > 5).length).toBeGreaterThan(0);
+    expect(usageCounts.filter((u) => u <= 2).length).toBeGreaterThan(0);
   });
 
   test('should display pattern relationships', async () => {
@@ -518,7 +547,7 @@ describe('Pattern Learning Dashboard Validation', () => {
     expect(relationships.length).toBeGreaterThan(0);
 
     // Check relationship structure
-    relationships.forEach(rel => {
+    relationships.forEach((rel) => {
       expect(rel).toHaveProperty('source');
       expect(rel).toHaveProperty('target');
       expect(rel).toHaveProperty('type');
@@ -531,6 +560,7 @@ describe('Pattern Learning Dashboard Validation', () => {
 ```
 
 **Run tests**:
+
 ```bash
 npm test -- pattern_learning_validation
 ```

@@ -1,20 +1,24 @@
 # Potential Savings Tooltip Implementation
 
 ## Overview
+
 Added tooltips to all "Potential Savings", "Cost Savings", and "Estimated Savings" labels throughout the Tech Debt Analysis and Duplicate Detection features to explain how these calculations are derived.
 
 ## Implementation Details
 
 ### 1. Created Reusable Component
+
 **File**: `client/src/components/SavingsTooltip.tsx`
 
 A reusable React component that:
+
 - Displays an info icon (ℹ️) next to savings labels
 - Shows a tooltip on hover with detailed calculation methodology
 - Uses Radix UI Tooltip component (already in project via shadcn/ui)
 - Accepts custom text and className props for flexibility
 
 **Tooltip Content**:
+
 - **How Potential Savings are Calculated:**
   - Time to refactor × Developer hourly rate × Number of occurrences
   - Includes estimated maintenance cost reduction over time
@@ -24,22 +28,30 @@ A reusable React component that:
 ### 2. Updated Components
 
 #### Tech Debt Analysis Page
+
 **File**: `client/src/pages/preview/TechDebtAnalysis.tsx`
+
 - **Line 597**: Added tooltip to "Potential Savings" in Refactoring Opportunities section
 
 #### Duplicate Detection Page
+
 **File**: `client/src/pages/preview/DuplicateDetection.tsx`
+
 - **Line 563**: Added tooltip to "Potential Savings" in Detection view
 - **Line 795**: Added tooltip to "Estimated Savings" in Refactoring Plans view
 - **Line 900**: Added tooltip to "Potential Savings" card title in Analytics view
 
 #### Tech Debt Detail Modal
+
 **File**: `client/src/components/TechDebtDetailModal.tsx`
+
 - **Line 131**: Added tooltip to "Cost Savings" in Overview tab
 - **Line 271**: Added tooltip to "Estimated Savings" in Impact tab
 
 #### Duplicate Detail Modal
+
 **File**: `client/src/components/DuplicateDetailModal.tsx`
+
 - **Line 159**: Added tooltip to "Estimated Savings" in Code tab
 - **Line 185**: Added tooltip to "Estimated Savings" section heading in Impact tab
 - **Line 188**: Added tooltip to "Cost Savings" label in Impact tab
@@ -47,12 +59,14 @@ A reusable React component that:
 ## Visual Design
 
 ### Tooltip Appearance
+
 - **Icon**: Small info icon (3×3) next to label text
 - **Icon Color**: Muted foreground by default, transitions to foreground on hover
 - **Cursor**: Help cursor on hover to indicate interactivity
 - **Tooltip Style**: Matches existing design system with proper z-index, border, background, and animations
 
 ### Layout
+
 ```
 Potential Savings ℹ️
      └── Hover → Tooltip appears with calculation details
@@ -109,6 +123,7 @@ The tooltip explains that Potential Savings are calculated using:
 **Formula**: `Time × Rate × Occurrences + Maintenance Savings`
 
 **Example**:
+
 - 2-3 days refactor = 16-24 hours
 - @ $150-200/hr = $2,400-4,800 per instance
 - × 12 files = $28,800-57,600

@@ -76,14 +76,17 @@ export class EventConsumer extends EventEmitter {
   private pruneTimer?: NodeJS.Timeout;
 
   // In-memory aggregations
-  private agentMetrics = new Map<string, {
-    count: number;
-    totalRoutingTime: number;
-    totalConfidence: number;
-    successCount: number;
-    errorCount: number;
-    lastSeen: Date;
-  }>();
+  private agentMetrics = new Map<
+    string,
+    {
+      count: number;
+      totalRoutingTime: number;
+      totalConfidence: number;
+      successCount: number;
+      errorCount: number;
+      lastSeen: Date;
+    }
+  >();
 
   private recentActions: AgentAction[] = [];
   private maxActions = 100;
@@ -119,7 +122,8 @@ export class EventConsumer extends EventEmitter {
 
     // Get brokers from environment variable
     // If not configured, create a dummy Kafka instance that will fail validation
-    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092';
+    const brokers =
+      process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092';
 
     this.kafka = new Kafka({
       brokers: brokers.split(','),
@@ -186,11 +190,15 @@ export class EventConsumer extends EventEmitter {
           console.warn(`⚠️ Kafka connection failed (attempt ${attempt + 1}/${maxRetries})`);
           console.warn(`   Error: ${error instanceof Error ? error.message : String(error)}`);
           console.warn(`   Retrying in ${delay}ms... (${remaining} attempts remaining)`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
         } else {
           console.error('❌ Kafka consumer failed after max retries');
-          console.error(`   Final error: ${error instanceof Error ? error.message : String(error)}`);
-          throw new Error(`Kafka connection failed after ${maxRetries} attempts: ${error instanceof Error ? error.message : String(error)}`);
+          console.error(
+            `   Final error: ${error instanceof Error ? error.message : String(error)}`
+          );
+          throw new Error(
+            `Kafka connection failed after ${maxRetries} attempts: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       }
     }
@@ -222,7 +230,7 @@ export class EventConsumer extends EventEmitter {
           'agent-routing-decisions',
           'agent-transformation-events',
           'router-performance-metrics',
-          'agent-actions'
+          'agent-actions',
         ],
         fromBeginning: true, // Reprocess historical events to populate metrics
       });
@@ -235,19 +243,27 @@ export class EventConsumer extends EventEmitter {
 
             switch (topic) {
               case 'agent-routing-decisions':
-                console.log(`[EventConsumer] Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`);
+                console.log(
+                  `[EventConsumer] Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`
+                );
                 this.handleRoutingDecision(event);
                 break;
               case 'agent-actions':
-                console.log(`[EventConsumer] Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`);
+                console.log(
+                  `[EventConsumer] Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`
+                );
                 this.handleAgentAction(event);
                 break;
               case 'agent-transformation-events':
-                console.log(`[EventConsumer] Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`);
+                console.log(
+                  `[EventConsumer] Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`
+                );
                 this.handleTransformationEvent(event);
                 break;
               case 'router-performance-metrics':
-                console.log(`[EventConsumer] Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`);
+                console.log(
+                  `[EventConsumer] Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
+                );
                 this.handlePerformanceMetric(event);
                 break;
             }
@@ -256,10 +272,12 @@ export class EventConsumer extends EventEmitter {
             this.emit('error', error); // Emit error event
 
             // If error suggests connection issue, attempt reconnection
-            if (error instanceof Error &&
-                (error.message.includes('connection') ||
-                 error.message.includes('broker') ||
-                 error.message.includes('network'))) {
+            if (
+              error instanceof Error &&
+              (error.message.includes('connection') ||
+                error.message.includes('broker') ||
+                error.message.includes('network'))
+            ) {
               console.warn('⚠️ Connection error detected, attempting reconnection...');
               try {
                 await this.connectWithRetry();
@@ -291,17 +309,19 @@ export class EventConsumer extends EventEmitter {
   private async preloadFromDatabase() {
     try {
       // Load recent actions
-      const actionsResult = await intelligenceDb.execute(sql.raw(`
+      const actionsResult = await intelligenceDb.execute(
+        sql.raw(`
         SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
         FROM agent_actions
         ORDER BY created_at DESC
         LIMIT 200;
-      `));
+      `)
+      );
 
       // Handle different return types from Drizzle
-      const actionsRows = Array.isArray(actionsResult) 
-        ? actionsResult 
-        : (actionsResult?.rows || actionsResult || []);
+      const actionsRows = Array.isArray(actionsResult)
+        ? actionsResult
+        : actionsResult?.rows || actionsResult || [];
 
       if (Array.isArray(actionsRows)) {
         actionsRows.forEach((r: any) => {
@@ -324,7 +344,8 @@ export class EventConsumer extends EventEmitter {
       }
 
       // Seed agent metrics using routing decisions + actions
-      const metricsResult = await intelligenceDb.execute(sql.raw(`
+      const metricsResult = await intelligenceDb.execute(
+        sql.raw(`
         SELECT COALESCE(ard.selected_agent, aa.agent_name) AS agent,
                COUNT(aa.id) AS total_requests,
                AVG(COALESCE(ard.routing_time_ms, aa.duration_ms, 0)) AS avg_routing_time,
@@ -337,12 +358,13 @@ export class EventConsumer extends EventEmitter {
         GROUP BY COALESCE(ard.selected_agent, aa.agent_name)
         ORDER BY total_requests DESC
         LIMIT 100;
-      `));
+      `)
+      );
 
       // Handle different return types from Drizzle
       const metricsRows = Array.isArray(metricsResult)
         ? metricsResult
-        : (metricsResult?.rows || metricsResult || []);
+        : metricsResult?.rows || metricsResult || [];
 
       if (Array.isArray(metricsRows)) {
         metricsRows.forEach((r: any) => {
@@ -391,7 +413,9 @@ export class EventConsumer extends EventEmitter {
     existing.lastSeen = new Date();
 
     this.agentMetrics.set(agent, existing);
-    console.log(`[EventConsumer] Updated metrics for ${agent}: ${existing.count} requests, avg confidence ${(existing.totalConfidence / existing.count).toFixed(2)}`);
+    console.log(
+      `[EventConsumer] Updated metrics for ${agent}: ${existing.count} requests, avg confidence ${(existing.totalConfidence / existing.count).toFixed(2)}`
+    );
 
     // Cleanup old entries (older than 24h)
     this.cleanupOldMetrics();
@@ -438,7 +462,9 @@ export class EventConsumer extends EventEmitter {
     };
 
     this.recentActions.unshift(action);
-    console.log(`[EventConsumer] Added action to queue: ${action.actionName} (${action.agentName}), queue size: ${this.recentActions.length}`);
+    console.log(
+      `[EventConsumer] Added action to queue: ${action.actionName} (${action.agentName}), queue size: ${this.recentActions.length}`
+    );
 
     // Track success/error rates per agent
     if (action.agentName && (action.actionType === 'success' || action.actionType === 'error')) {
@@ -460,7 +486,9 @@ export class EventConsumer extends EventEmitter {
       existing.lastSeen = new Date();
       this.agentMetrics.set(action.agentName, existing);
 
-      console.log(`[EventConsumer] Updated ${action.agentName} success/error: ${existing.successCount}/${existing.errorCount}`);
+      console.log(
+        `[EventConsumer] Updated ${action.agentName} success/error: ${existing.successCount}/${existing.errorCount}`
+      );
 
       // Emit metric update since success rate changed
       this.emit('metricUpdate', this.getAgentMetrics());
@@ -481,14 +509,17 @@ export class EventConsumer extends EventEmitter {
       correlationId: event.correlation_id || event.correlationId,
       sourceAgent: event.source_agent || event.sourceAgent,
       targetAgent: event.target_agent || event.targetAgent,
-      transformationDurationMs: event.transformation_duration_ms || event.transformationDurationMs || 0,
+      transformationDurationMs:
+        event.transformation_duration_ms || event.transformationDurationMs || 0,
       success: event.success ?? true,
       confidenceScore: event.confidence_score || event.confidenceScore || 0,
       createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
     };
 
     this.recentTransformations.unshift(transformation);
-    console.log(`[EventConsumer] Added transformation to queue: ${transformation.sourceAgent} → ${transformation.targetAgent}, queue size: ${this.recentTransformations.length}`);
+    console.log(
+      `[EventConsumer] Added transformation to queue: ${transformation.sourceAgent} → ${transformation.targetAgent}, queue size: ${this.recentTransformations.length}`
+    );
 
     // Keep only last N transformations
     if (this.recentTransformations.length > this.maxTransformations) {
@@ -508,7 +539,8 @@ export class EventConsumer extends EventEmitter {
         routingDurationMs: event.routing_duration_ms || event.routingDurationMs || 0,
         cacheHit: event.cache_hit ?? event.cacheHit ?? false,
         candidatesEvaluated: event.candidates_evaluated || event.candidatesEvaluated || 0,
-        triggerMatchStrategy: event.trigger_match_strategy || event.triggerMatchStrategy || 'unknown',
+        triggerMatchStrategy:
+          event.trigger_match_strategy || event.triggerMatchStrategy || 'unknown',
         createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
       };
 
@@ -560,7 +592,7 @@ export class EventConsumer extends EventEmitter {
 
     // Prune recent actions
     const actionsBefore = this.recentActions.length;
-    this.recentActions = this.recentActions.filter(action => {
+    this.recentActions = this.recentActions.filter((action) => {
       const timestamp = new Date(action.createdAt).getTime();
       return timestamp > cutoff;
     });
@@ -568,7 +600,7 @@ export class EventConsumer extends EventEmitter {
 
     // Prune routing decisions
     const decisionsBefore = this.routingDecisions.length;
-    this.routingDecisions = this.routingDecisions.filter(decision => {
+    this.routingDecisions = this.routingDecisions.filter((decision) => {
       const timestamp = new Date(decision.createdAt).getTime();
       return timestamp > cutoff;
     });
@@ -576,7 +608,7 @@ export class EventConsumer extends EventEmitter {
 
     // Prune transformations
     const transformationsBefore = this.recentTransformations.length;
-    this.recentTransformations = this.recentTransformations.filter(transformation => {
+    this.recentTransformations = this.recentTransformations.filter((transformation) => {
       const timestamp = new Date(transformation.createdAt).getTime();
       return timestamp > cutoff;
     });
@@ -584,16 +616,19 @@ export class EventConsumer extends EventEmitter {
 
     // Prune performance metrics
     const metricsBefore = this.performanceMetrics.length;
-    this.performanceMetrics = this.performanceMetrics.filter(metric => {
+    this.performanceMetrics = this.performanceMetrics.filter((metric) => {
       const timestamp = new Date(metric.createdAt).getTime();
       return timestamp > cutoff;
     });
     const metricsRemoved = metricsBefore - this.performanceMetrics.length;
 
     // Log pruning statistics if anything was removed
-    const totalRemoved = actionsRemoved + decisionsRemoved + transformationsRemoved + metricsRemoved;
+    const totalRemoved =
+      actionsRemoved + decisionsRemoved + transformationsRemoved + metricsRemoved;
     if (totalRemoved > 0) {
-      console.log(`🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics (total: ${totalRemoved})`);
+      console.log(
+        `🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics (total: ${totalRemoved})`
+      );
     }
   }
 
@@ -603,33 +638,35 @@ export class EventConsumer extends EventEmitter {
     // Extended window to show historical data (was 5 minutes, now 24 hours)
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    return Array.from(this.agentMetrics.entries())
-      // Filter to only agents active in last 24 hours
-      .filter(([_, data]) => data.lastSeen >= twentyFourHoursAgo)
-      .map(([agent, data]) => {
-        // Calculate success rate if we have success/error events
-        const totalOutcomes = data.successCount + data.errorCount;
-        let successRate: number | null = null;
+    return (
+      Array.from(this.agentMetrics.entries())
+        // Filter to only agents active in last 24 hours
+        .filter(([_, data]) => data.lastSeen >= twentyFourHoursAgo)
+        .map(([agent, data]) => {
+          // Calculate success rate if we have success/error events
+          const totalOutcomes = data.successCount + data.errorCount;
+          let successRate: number | null = null;
 
-        if (totalOutcomes > 0) {
-          // Use actual success/error tracking if available
-          successRate = data.successCount / totalOutcomes;
-        } else {
-          // Fallback: Use confidence score as proxy for success rate
-          // High confidence (>0.85) = likely successful routing
-          const avgConfidence = data.totalConfidence / data.count;
-          successRate = avgConfidence; // Direct mapping: 0.85 confidence = 85% success rate
-        }
+          if (totalOutcomes > 0) {
+            // Use actual success/error tracking if available
+            successRate = data.successCount / totalOutcomes;
+          } else {
+            // Fallback: Use confidence score as proxy for success rate
+            // High confidence (>0.85) = likely successful routing
+            const avgConfidence = data.totalConfidence / data.count;
+            successRate = avgConfidence; // Direct mapping: 0.85 confidence = 85% success rate
+          }
 
-        return {
-          agent,
-          totalRequests: data.count,
-          successRate,
-          avgRoutingTime: data.totalRoutingTime / data.count,
-          avgConfidence: data.totalConfidence / data.count,
-          lastSeen: data.lastSeen,
-        };
-      });
+          return {
+            agent,
+            totalRequests: data.count,
+            successRate,
+            avgRoutingTime: data.totalRoutingTime / data.count,
+            avgConfidence: data.totalConfidence / data.count,
+            lastSeen: data.lastSeen,
+          };
+        })
+    );
   }
 
   getRecentActions(limit?: number): AgentAction[] {
@@ -659,22 +696,19 @@ export class EventConsumer extends EventEmitter {
     const since = new Date(Date.now() - windowMs);
 
     return this.recentActions.filter(
-      action => action.agentName === agentName && action.createdAt >= since
+      (action) => action.agentName === agentName && action.createdAt >= since
     );
   }
 
-  getRoutingDecisions(filters?: {
-    agent?: string;
-    minConfidence?: number;
-  }): RoutingDecision[] {
+  getRoutingDecisions(filters?: { agent?: string; minConfidence?: number }): RoutingDecision[] {
     let decisions = this.routingDecisions;
 
     if (filters?.agent) {
-      decisions = decisions.filter(d => d.selectedAgent === filters.agent);
+      decisions = decisions.filter((d) => d.selectedAgent === filters.agent);
     }
 
     if (filters?.minConfidence !== undefined) {
-      decisions = decisions.filter(d => d.confidenceScore >= filters.minConfidence!);
+      decisions = decisions.filter((d) => d.confidenceScore >= filters.minConfidence!);
     }
 
     return decisions;

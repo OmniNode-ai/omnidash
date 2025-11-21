@@ -51,13 +51,20 @@ export class AgentRegistryMockData {
     { type: 'decision', names: ['Route Selection', 'Strategy Choice', 'Validation', 'Approval'] },
     { type: 'execution', names: ['Code Generation', 'Test Execution', 'Deployment', 'Analysis'] },
     { type: 'error', names: ['Timeout', 'Parse Error', 'Connection Failed', 'Invalid Input'] },
-    { type: 'success', names: ['Task Complete', 'Validation Passed', 'Tests Passed', 'Deploy Success'] },
+    {
+      type: 'success',
+      names: ['Task Complete', 'Validation Passed', 'Tests Passed', 'Deploy Success'],
+    },
   ];
 
   /**
    * Generate action descriptions based on type
    */
-  private static generateDescription(actionType: string, actionName: string, target?: string): string {
+  private static generateDescription(
+    actionType: string,
+    actionName: string,
+    target?: string
+  ): string {
     const descriptions: Record<string, string[]> = {
       Read: [
         `Read file ${target || 'source file'}`,
@@ -133,7 +140,13 @@ export class AgentRegistryMockData {
       return Gen.filePath();
     }
     if (actionName === 'Bash') {
-      const commands = ['npm test', 'npm run build', 'git status', 'docker compose up', 'pnpm install'];
+      const commands = [
+        'npm test',
+        'npm run build',
+        'git status',
+        'docker compose up',
+        'pnpm install',
+      ];
       return Gen.randomItem(commands);
     }
     if (actionName === 'Grep') {
@@ -165,22 +178,26 @@ export class AgentRegistryMockData {
       else if (rand < 0.95) status = 'error';
       else status = 'in_progress';
 
-      const durationMs = status === 'in_progress'
-        ? 0
-        : Gen.randomInt(
-            actionType === 'tool_call' ? 50 : 100,
-            actionType === 'execution' ? 5000 : 2000
-          );
+      const durationMs =
+        status === 'in_progress'
+          ? 0
+          : Gen.randomInt(
+              actionType === 'tool_call' ? 50 : 100,
+              actionType === 'execution' ? 5000 : 2000
+            );
 
       const timestamp = Gen.pastTimestamp(24 * 60); // Within last 24 hours
       const createdAt = timestamp;
 
-      const actionDetails = actionType === 'tool_call' ? {
-        tool: actionName,
-        target: target || 'N/A',
-      } : {
-        action: actionName,
-      };
+      const actionDetails =
+        actionType === 'tool_call'
+          ? {
+              tool: actionName,
+              target: target || 'N/A',
+            }
+          : {
+              action: actionName,
+            };
 
       activities.push({
         id: Gen.uuid(),
@@ -218,9 +235,7 @@ export class AgentRegistryMockData {
    */
   static generateActivitiesForAgent(agentName: string, count: number = 10): RecentActivity[] {
     const activities = this.generateRecentActivities(count * 2); // Generate more to filter
-    return activities
-      .filter(a => a.agentName === agentName)
-      .slice(0, count);
+    return activities.filter((a) => a.agentName === agentName).slice(0, count);
   }
 
   /**
@@ -231,8 +246,6 @@ export class AgentRegistryMockData {
     count: number = 10
   ): RecentActivity[] {
     const activities = this.generateRecentActivities(count * 3); // Generate more to filter
-    return activities
-      .filter(a => a.status === status)
-      .slice(0, count);
+    return activities.filter((a) => a.status === status).slice(0, count);
   }
 }

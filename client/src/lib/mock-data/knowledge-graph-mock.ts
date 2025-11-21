@@ -3,7 +3,11 @@
  */
 
 import { MockDataGenerator as Gen } from './config';
-import type { GraphNode, GraphEdge, KnowledgeGraphData } from '../data-sources/knowledge-graph-source';
+import type {
+  GraphNode,
+  GraphEdge,
+  KnowledgeGraphData,
+} from '../data-sources/knowledge-graph-source';
 
 export class KnowledgeGraphMockData {
   /**
@@ -11,7 +15,6 @@ export class KnowledgeGraphMockData {
    */
   static generateNodes(count: number = 50): GraphNode[] {
     const nodes: GraphNode[] = [];
-    const nodeTypes = ['pattern', 'service', 'agent', 'api', 'database', 'component'];
 
     // Generate pattern nodes
     const patternCount = Math.floor(count * 0.4);
@@ -75,14 +78,7 @@ export class KnowledgeGraphMockData {
    */
   static generateEdges(nodes: GraphNode[], edgeCount: number = 80): GraphEdge[] {
     const edges: GraphEdge[] = [];
-    const edgeTypes = [
-      'uses',
-      'depends-on',
-      'calls',
-      'implements',
-      'extends',
-      'relates-to',
-    ];
+    const edgeTypes = ['uses', 'depends-on', 'calls', 'implements', 'extends', 'relates-to'];
 
     const nodeIds = nodes.map((n) => n.id);
     const addedEdges = new Set<string>();

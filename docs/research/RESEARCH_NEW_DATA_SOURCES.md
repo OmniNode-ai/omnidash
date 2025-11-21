@@ -16,12 +16,12 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 
 ### Service Health Status
 
-| Service | Status | Endpoint | Notes |
-|---------|--------|----------|-------|
+| Service                     | Status     | Endpoint              | Notes                                    |
+| --------------------------- | ---------- | --------------------- | ---------------------------------------- |
 | **Omniarchon Intelligence** | ✅ Healthy | http://localhost:8053 | Memgraph, Ollama, freshness DB connected |
-| **PostgreSQL Database** | ✅ Healthy | 192.168.86.200:5436 | 39 tables, 209 routing decisions/24h |
-| **Kafka/Redpanda** | ✅ Active | 192.168.86.200:9092 | 4 topics producing events |
-| **Omnidash API** | ✅ Working | http://localhost:3000 | Serving real data from Kafka + DB |
+| **PostgreSQL Database**     | ✅ Healthy | 192.168.86.200:5436   | 39 tables, 209 routing decisions/24h     |
+| **Kafka/Redpanda**          | ✅ Active  | 192.168.86.200:9092   | 4 topics producing events                |
+| **Omnidash API**            | ✅ Working | http://localhost:3000 | Serving real data from Kafka + DB        |
 
 ---
 
@@ -32,6 +32,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Tables**: `document_metadata`, `document_versions`, `document_access_log`, `document_dependencies`
 
 **Current Data**:
+
 - **33 documents** in "archon" repository
 - Full document lifecycle tracking (create, update, delete, archive)
 - **Vector search integration** (vector_id field for Qdrant)
@@ -39,6 +40,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 - Access tracking with timestamps
 
 **Schema Highlights** (`document_metadata`):
+
 ```sql
 - id (uuid)
 - repository (varchar)
@@ -53,11 +55,13 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 ```
 
 **Dashboard Integration Opportunity**:
+
 - **Code Intelligence Dashboard**: Show most accessed documents, recent changes
 - **Knowledge Graph Dashboard**: Visualize document relationships via graph_id
 - **Developer Experience**: Track which docs developers use most
 
 **Integration Effort**: Medium (4-6h)
+
 - Create `/api/intelligence/documents/summary` endpoint
 - Query document_metadata with access analytics
 - Join with document_access_log for usage trends
@@ -71,6 +75,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Current Data**: **0 records** (schema ready, not populated)
 
 **Schema Highlights** (`document_freshness`):
+
 ```sql
 - freshness_score (0.0-1.0) - how up-to-date is this doc
 - freshness_level (fresh/stale/very_stale/unknown)
@@ -82,6 +87,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 ```
 
 **Dashboard Integration Opportunity**:
+
 - **Platform Health Dashboard**: Show stale documentation alerts
 - **Code Intelligence**: Flag outdated patterns or deprecated APIs
 - **Developer Experience**: Warn when using stale documentation
@@ -89,6 +95,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Status**: ⚠️ **Schema ready, awaiting data population**
 
 **Integration Effort**: Easy (1-2h) once data exists
+
 - Omniarchon has `/api/freshness/summary` endpoint (404 currently)
 - Wait for freshness service to populate data
 - Add "Documentation Freshness" widget to Platform Health
@@ -102,6 +109,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Current Data**: **1 stamp** (proof of concept)
 
 **Schema Highlights**:
+
 ```sql
 - file_hash (sha256) - unique file identifier
 - file_path - location of stamped file
@@ -112,6 +120,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 ```
 
 **Dashboard Integration Opportunity**:
+
 - **Code Intelligence Dashboard**: Show ONEX compliance by file
 - **Pattern Learning Dashboard**: Track compliance trends over time
 - **Platform Health**: Alert on files missing stamps
@@ -119,6 +128,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Status**: ✅ **Working, low volume**
 
 **Integration Effort**: Easy (2h)
+
 - Create `/api/intelligence/stamps/summary` endpoint
 - Query metadata_stamps for compliance metrics
 - Add "ONEX Compliance" metric card to Code Intelligence
@@ -132,6 +142,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Current Data**: **0 records** (schema ready, not populated)
 
 **Schema Highlights**:
+
 ```sql
 - pattern_id (references pattern_lineage_nodes)
 - pr_number, pr_repository, pr_url
@@ -143,6 +154,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 ```
 
 **Dashboard Integration Opportunity**:
+
 - **Pattern Learning Dashboard**: Show which patterns are mentioned in PRs
 - **Developer Experience**: Track pattern adoption velocity
 - **Intelligence Operations**: Measure pattern quality via PR outcomes
@@ -150,6 +162,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Status**: ⚠️ **Schema ready, awaiting PR extraction**
 
 **Integration Effort**: Medium (4h) once data exists
+
 - Requires GitHub PR mining service to populate data
 - High value for pattern adoption tracking
 - Can correlate pattern quality with PR merge rate
@@ -163,6 +176,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Current Data**: **0 records from last 24h** (older data may exist)
 
 **Schema Highlights**:
+
 ```sql
 - correlation_id, session_id - distributed tracing
 - user_prompt - original user request
@@ -175,6 +189,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 ```
 
 **Dashboard Integration Opportunity**:
+
 - **Agent Operations Dashboard**: Full execution history with quality scores
 - **Developer Experience**: Track which agents deliver best results
 - **Platform Health**: Detect agent failures and slow executions
@@ -182,6 +197,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Status**: ✅ **Table exists, awaiting fresh data**
 
 **Integration Effort**: Easy (2h)
+
 - Add `/api/intelligence/executions/summary` endpoint
 - Query by agent_name, status, quality_score
 - Join with correlation_id for full traces
@@ -195,6 +211,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Current Data**: **1 record** (proof of concept)
 
 **Schema Highlights**:
+
 ```sql
 - task_type, task_description - what was done
 - completion_time_ms - how long it took
@@ -205,6 +222,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 ```
 
 **Dashboard Integration Opportunity**:
+
 - **Developer Experience Dashboard**: Task completion velocity
 - **Agent Operations**: Agent efficiency by task type
 - **Intelligence Operations**: Identify slow task types
@@ -212,6 +230,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Status**: ✅ **Working, low volume**
 
 **Integration Effort**: Easy (1-2h)
+
 - Create `/api/intelligence/tasks/metrics` endpoint
 - Aggregate by task_type, agent_name, success
 - Show completion time trends over time
@@ -225,6 +244,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Current Data**: Unknown (need to query)
 
 **Schema Highlights** (`workflow_state`):
+
 ```sql
 - workflow_key (unique identifier)
 - version (optimistic locking)
@@ -234,6 +254,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 ```
 
 **Dashboard Integration Opportunity**:
+
 - **Agent Operations**: Show active workflow states
 - **Developer Experience**: Track workflow completion rates
 - **Platform Health**: Detect stuck workflows
@@ -241,6 +262,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Status**: ⚠️ **Schema ready, data volume unknown**
 
 **Integration Effort**: Medium (4h)
+
 - Requires understanding workflow state schema
 - Could power real-time workflow visualization
 - Useful for multi-agent orchestration tracking
@@ -254,6 +276,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Current Data**: **0 records from last 24h**
 
 **Schema Highlights**:
+
 ```sql
 - event_id (uuid) - references specific event
 - processing_time_ms - event processing latency
@@ -262,6 +285,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 ```
 
 **Dashboard Integration Opportunity**:
+
 - **Platform Health Dashboard**: Kafka publishing success rate
 - **Event Flow Dashboard**: Event processing latency
 - **Intelligence Operations**: Identify slow event handlers
@@ -269,6 +293,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Status**: ✅ **Working, awaiting fresh data**
 
 **Integration Effort**: Easy (1-2h)
+
 - Query for Kafka publish success rate
 - Calculate P50/P95/P99 processing times
 - Alert on publish failures
@@ -282,6 +307,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Current Data**: Unknown (need to query count)
 
 **Schema Highlights**:
+
 ```sql
 - node_id, node_type, node_version
 - capabilities (jsonb) - what this node can do
@@ -292,6 +318,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 ```
 
 **Dashboard Integration Opportunity**:
+
 - **Platform Health Dashboard**: Show all registered services
 - **Infrastructure Overview**: Service topology map
 - **Agent Operations**: Which agents are registered and healthy
@@ -299,6 +326,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 **Status**: ⚠️ **Schema ready, data volume unknown**
 
 **Integration Effort**: Easy (2h)
+
 - Create `/api/intelligence/nodes/registry` endpoint
 - Query for all nodes with health_status
 - Show service topology visualization
@@ -334,12 +362,12 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 
 **Total Decisions**: 209
 
-| Strategy | Count | Percentage | Description |
-|----------|-------|------------|-------------|
-| `trigger` | 114 | 54.5% | Fuzzy trigger matching |
-| `ai` | 90 | 43.1% | AI-based routing |
-| `explicit_agent_request` | 3 | 1.4% | User explicitly named agent |
-| `explicit_agent_invocation` | 1 | 0.5% | Direct agent invocation |
+| Strategy                    | Count | Percentage | Description                 |
+| --------------------------- | ----- | ---------- | --------------------------- |
+| `trigger`                   | 114   | 54.5%      | Fuzzy trigger matching      |
+| `ai`                        | 90    | 43.1%      | AI-based routing            |
+| `explicit_agent_request`    | 3     | 1.4%       | User explicitly named agent |
+| `explicit_agent_invocation` | 1     | 0.5%       | Direct agent invocation     |
 
 **Insight**: Trigger-based routing is most common (54.5%), followed by AI routing (43.1%). Very few explicit agent requests suggest good automatic routing.
 
@@ -347,18 +375,18 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 
 ## Top Agents by Activity (Last 24h)
 
-| Agent | Routing Count | Avg Confidence | Notes |
-|-------|---------------|----------------|-------|
-| `agent-polymorphic-agent` | 46 | 0.812 | Meta-agent for routing |
-| `repository-crawler` | 17 | 0.912 | High confidence |
-| `agent-debug-intelligence` | 15 | 0.853 | Debugging tasks |
-| `agent-testing` | 14 | 0.821 | Test generation |
-| `pr-review` | 11 | 0.932 | PR review automation |
-| `agent-ticket-manager` | 11 | 0.800 | Ticket management |
-| `agent-commit` | 10 | 0.800 | Commit generation |
-| `omniagent-smart-responder` | 8 | 0.913 | Smart responses |
-| `pr-workflow` | 7 | 0.950 | Highest confidence |
-| `agent-observability` | 6 | 0.942 | Observability tasks |
+| Agent                       | Routing Count | Avg Confidence | Notes                  |
+| --------------------------- | ------------- | -------------- | ---------------------- |
+| `agent-polymorphic-agent`   | 46            | 0.812          | Meta-agent for routing |
+| `repository-crawler`        | 17            | 0.912          | High confidence        |
+| `agent-debug-intelligence`  | 15            | 0.853          | Debugging tasks        |
+| `agent-testing`             | 14            | 0.821          | Test generation        |
+| `pr-review`                 | 11            | 0.932          | PR review automation   |
+| `agent-ticket-manager`      | 11            | 0.800          | Ticket management      |
+| `agent-commit`              | 10            | 0.800          | Commit generation      |
+| `omniagent-smart-responder` | 8             | 0.913          | Smart responses        |
+| `pr-workflow`               | 7             | 0.950          | Highest confidence     |
+| `agent-observability`       | 6             | 0.942          | Observability tasks    |
 
 **Insight**: PR-workflow has highest confidence (0.950), suggesting excellent agent-task fit. Polymorphic-agent handles most routing decisions.
 
@@ -373,10 +401,13 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 #### Working Endpoints
 
 1. **Health Check** ✅
+
    ```bash
    GET /health
    ```
+
    Response:
+
    ```json
    {
      "status": "healthy",
@@ -417,17 +448,17 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 
 Top 15 tables by disk usage:
 
-| Table | Size | Records (24h) | Purpose |
-|-------|------|---------------|---------|
-| `pattern_lineage_nodes` | Largest | 1,033 total | Code pattern discovery |
-| `agent_routing_decisions` | Medium | 209 | Agent selection history |
-| `agent_actions` | Medium | 205 | Agent action tracking |
-| `agent_manifest_injections` | Medium | Unknown | Manifest snapshots |
-| `document_metadata` | Small | 33 total | Document management |
-| `metadata_stamps` | Small | 1 total | ONEX compliance |
-| `agent_execution_logs` | Empty | 0 | Execution history |
-| `pattern_quality_metrics` | Empty | 0 | Quality tracking |
-| `document_freshness` | Empty | 0 | Freshness tracking |
+| Table                       | Size    | Records (24h) | Purpose                 |
+| --------------------------- | ------- | ------------- | ----------------------- |
+| `pattern_lineage_nodes`     | Largest | 1,033 total   | Code pattern discovery  |
+| `agent_routing_decisions`   | Medium  | 209           | Agent selection history |
+| `agent_actions`             | Medium  | 205           | Agent action tracking   |
+| `agent_manifest_injections` | Medium  | Unknown       | Manifest snapshots      |
+| `document_metadata`         | Small   | 33 total      | Document management     |
+| `metadata_stamps`           | Small   | 1 total       | ONEX compliance         |
+| `agent_execution_logs`      | Empty   | 0             | Execution history       |
+| `pattern_quality_metrics`   | Empty   | 0             | Quality tracking        |
+| `document_freshness`        | Empty   | 0             | Freshness tracking      |
 
 **Observation**: Many advanced features have schema ready but no data yet (quality metrics, freshness, PR intelligence)
 
@@ -506,6 +537,7 @@ Top 15 tables by disk usage:
 **Endpoint**: `/api/intelligence/developer/metrics?timeWindow=24h`
 
 **Status**: ❌ **Endpoint doesn't exist**
+
 - Current dashboard uses:
   - `/api/intelligence/developer/workflows` ✅ Working
   - `/api/intelligence/developer/velocity` ✅ Working
@@ -518,6 +550,7 @@ Top 15 tables by disk usage:
 **Endpoint**: `/api/intelligence/code/analysis`
 
 **Status**: ❌ **Not implemented**
+
 - No route exists in `intelligence-routes.ts`
 - Could be implemented using `pattern_quality_metrics` table (once populated)
 
@@ -528,6 +561,7 @@ Top 15 tables by disk usage:
 **Endpoint**: `/api/intelligence/platform/resources`
 
 **Status**: ❌ **Not implemented**
+
 - Could use `node_registrations` for service health
 - Could use `event_metrics` for Kafka performance
 - Could use `connection_metrics` table
@@ -540,30 +574,33 @@ Top 15 tables by disk usage:
 
 ### Recent Activity (Last 24 Hours)
 
-| Data Source | Last Event | Event Count | Freshness |
-|-------------|-----------|-------------|-----------|
-| `agent_routing_decisions` | Unknown (>6h ago) | 209 | ⚠️ Stale (no activity in 6h) |
-| `agent_actions` | Unknown (>6h ago) | 205 | ⚠️ Stale |
-| `pattern_lineage_nodes` | 974 created today | 1,033 total | ✅ Active |
-| `agent_execution_logs` | N/A | 0 | ❌ No data |
-| `task_completion_metrics` | N/A | 1 total | ⚠️ Proof of concept only |
+| Data Source               | Last Event        | Event Count | Freshness                    |
+| ------------------------- | ----------------- | ----------- | ---------------------------- |
+| `agent_routing_decisions` | Unknown (>6h ago) | 209         | ⚠️ Stale (no activity in 6h) |
+| `agent_actions`           | Unknown (>6h ago) | 205         | ⚠️ Stale                     |
+| `pattern_lineage_nodes`   | 974 created today | 1,033 total | ✅ Active                    |
+| `agent_execution_logs`    | N/A               | 0           | ❌ No data                   |
+| `task_completion_metrics` | N/A               | 1 total     | ⚠️ Proof of concept only     |
 
 **Observation**: Most routing/action events are older (no activity in last 6 hours). Pattern discovery is most active with 974 new patterns today.
 
 ### Data Quality Assessment
 
 **High Quality** (production-ready):
+
 - ✅ `agent_routing_decisions` - complete, well-structured
 - ✅ `agent_actions` - complete event history
 - ✅ `pattern_lineage_nodes` - 1,033 patterns with language/type classification
 - ✅ `document_metadata` - 33 documents with vector/graph IDs
 
 **Medium Quality** (working, low volume):
+
 - ⚠️ `metadata_stamps` - 1 stamp (proof of concept)
 - ⚠️ `task_completion_metrics` - 1 record (proof of concept)
 - ⚠️ `workflow_state` - unknown volume
 
 **Awaiting Data** (schema ready):
+
 - ❌ `pattern_quality_metrics` - 0 records
 - ❌ `document_freshness` - 0 records
 - ❌ `pattern_pr_intelligence` - 0 records
@@ -577,6 +614,7 @@ Top 15 tables by disk usage:
 **Broker**: 192.168.86.200:9092
 
 **Active Topics** (being consumed by omnidash-event-consumer):
+
 1. `agent-routing-decisions` - Agent selection events
 2. `agent-transformation-events` - Polymorphic agent transformations
 3. `router-performance-metrics` - Routing performance data
@@ -722,6 +760,7 @@ The intelligence infrastructure has **significantly matured** since the last aud
 **Estimated Total Integration Effort**: 30-40 hours for all quick wins + medium complexity features
 
 **Next Steps**:
+
 1. Implement Phase 1 quick wins (12h) to maximize immediate dashboard value
 2. Start services to populate missing data (freshness, quality, PR intelligence)
 3. Document Omniarchon API for easier future integration

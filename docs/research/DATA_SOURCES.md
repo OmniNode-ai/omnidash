@@ -42,7 +42,9 @@ class MyDataSource {
     // Return mock data if USE_MOCK_DATA is enabled (but not in tests)
     if (USE_MOCK_DATA && !isTestEnv) {
       return {
-        data: { /* mock data */ },
+        data: {
+          /* mock data */
+        },
         isMock: true,
       };
     }
@@ -60,7 +62,9 @@ class MyDataSource {
 
     // Fallback to mock data on error
     return {
-      data: { /* mock data */ },
+      data: {
+        /* mock data */
+      },
       isMock: true,
     };
   }
@@ -153,7 +157,7 @@ function MyComponent() {
     queryKey: ['my-data', timeRange],
     queryFn: async () => {
       const result = await myDataSource.fetchData(timeRange);
-      return result.data;  // Use the data
+      return result.data; // Use the data
     },
   });
 
@@ -165,7 +169,7 @@ function BadComponent() {
   const { data } = useQuery({
     queryKey: ['bad-data'],
     queryFn: async () => {
-      const response = await fetch('/api/endpoint');  // DON'T DO THIS!
+      const response = await fetch('/api/endpoint'); // DON'T DO THIS!
       return response.json();
     },
   });
@@ -174,29 +178,29 @@ function BadComponent() {
 // ❌ WRONG: Direct WebSocket
 function BadComponent2() {
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:3000/ws');  // DON'T DO THIS!
+    const ws = new WebSocket('ws://localhost:3000/ws'); // DON'T DO THIS!
   }, []);
 }
 ```
 
 ## Available Data Sources
 
-| Data Source | File | Purpose |
-|------------|------|---------|
-| `agentOperationsSource` | `agent-operations-source.ts` | Agent execution metrics |
-| `agentManagementSource` | `agent-management-source.ts` | Agent configuration |
-| `agentNetworkSource` | `agent-network-source.ts` | Agent network topology |
-| `agentRegistrySource` | `agent-registry-source.ts` | Agent registry |
-| `architectureNetworksSource` | `architecture-networks-source.ts` | Architecture visualization |
-| `codeIntelligenceSource` | `code-intelligence-source.ts` | Code analysis |
-| `developerToolsSource` | `developer-tools-source.ts` | Developer metrics |
-| `eventFlowSource` | `event-flow-source.ts` | Event stream |
-| `intelligenceAnalyticsSource` | `intelligence-analytics-source.ts` | Intelligence metrics |
-| `intelligenceSavingsSource` | `intelligence-savings-source.ts` | Cost savings |
-| `knowledgeGraphSource` | `knowledge-graph-source.ts` | Knowledge graph |
-| `patternLearningSource` | `pattern-learning-source.ts` | Pattern discovery |
-| `platformHealthSource` | `platform-health-source.ts` | Platform health |
-| `platformMonitoringSource` | `platform-monitoring-source.ts` | System monitoring |
+| Data Source                   | File                               | Purpose                    |
+| ----------------------------- | ---------------------------------- | -------------------------- |
+| `agentOperationsSource`       | `agent-operations-source.ts`       | Agent execution metrics    |
+| `agentManagementSource`       | `agent-management-source.ts`       | Agent configuration        |
+| `agentNetworkSource`          | `agent-network-source.ts`          | Agent network topology     |
+| `agentRegistrySource`         | `agent-registry-source.ts`         | Agent registry             |
+| `architectureNetworksSource`  | `architecture-networks-source.ts`  | Architecture visualization |
+| `codeIntelligenceSource`      | `code-intelligence-source.ts`      | Code analysis              |
+| `developerToolsSource`        | `developer-tools-source.ts`        | Developer metrics          |
+| `eventFlowSource`             | `event-flow-source.ts`             | Event stream               |
+| `intelligenceAnalyticsSource` | `intelligence-analytics-source.ts` | Intelligence metrics       |
+| `intelligenceSavingsSource`   | `intelligence-savings-source.ts`   | Cost savings               |
+| `knowledgeGraphSource`        | `knowledge-graph-source.ts`        | Knowledge graph            |
+| `patternLearningSource`       | `pattern-learning-source.ts`       | Pattern discovery          |
+| `platformHealthSource`        | `platform-health-source.ts`        | Platform health            |
+| `platformMonitoringSource`    | `platform-monitoring-source.ts`    | System monitoring          |
 
 ## Mock Data Configuration
 
@@ -220,6 +224,7 @@ if (USE_MOCK_DATA && !isTestEnv) {
 ```
 
 This ensures that:
+
 - Tests can provide their own mock data
 - Tests can verify real API calls when needed
 - Mock mode doesn't interfere with test assertions

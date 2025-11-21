@@ -1,29 +1,27 @@
-import { MetricCard } from "@/components/MetricCard";
-import { PatternNetwork } from "@/components/PatternNetwork";
-import { MockDataBadge } from "@/components/MockDataBadge";
-import { TopPatternsList } from "@/components/TopPatternsList";
-import { RealtimeChart } from "@/components/RealtimeChart";
-import { DrillDownModal } from "@/components/DrillDownModal";
-import { StatusLegend } from "@/components/StatusLegend";
-import { PatternFilters } from "@/components/PatternFilters";
-import { ExportButton } from "@/components/ExportButton";
-import { SectionHeader } from "@/components/SectionHeader";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Database, TrendingUp, Award, AlertTriangle } from "lucide-react";
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { patternLearningSource } from "@/lib/data-sources";
-import { POLLING_INTERVAL_MEDIUM, POLLING_INTERVAL_SLOW, getPollingInterval } from "@/lib/constants/query-config";
+import { MetricCard } from '@/components/MetricCard';
+import { PatternNetwork } from '@/components/PatternNetwork';
+import { TopPatternsList } from '@/components/TopPatternsList';
+import { RealtimeChart } from '@/components/RealtimeChart';
+import { DrillDownModal } from '@/components/DrillDownModal';
+import { StatusLegend } from '@/components/StatusLegend';
+import { PatternFilters } from '@/components/PatternFilters';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Database, TrendingUp, Award } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { patternLearningSource } from '@/lib/data-sources';
+import {
+  POLLING_INTERVAL_MEDIUM,
+  POLLING_INTERVAL_SLOW,
+  getPollingInterval,
+} from '@/lib/constants/query-config';
 import type {
-  DiscoveredPattern,
   PatternSummary,
   PatternTrend,
   QualityTrend,
   Pattern,
   LanguageBreakdown,
-} from "@/lib/data-sources/pattern-learning-source";
+} from '@/lib/data-sources/pattern-learning-source';
 
 export default function PatternLearning() {
   const [selectedPattern, setSelectedPattern] = useState<any>(null);
@@ -36,45 +34,52 @@ export default function PatternLearning() {
   const [minUsage, setMinUsage] = useState(0);
 
   // Time range state
-  const [timeRange, setTimeRange] = useState(() => {
+  const [timeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
 
-  const handleTimeRangeChange = (value: string) => {
-    setTimeRange(value);
-    localStorage.setItem('dashboard-timerange', value);
-  };
-
   // Fetch pattern summary metrics with standard polling
-  const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery<PatternSummary>({
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    error: summaryError,
+  } = useQuery<PatternSummary>({
     queryKey: ['patterns', 'summary', timeRange],
     queryFn: () => patternLearningSource.fetchSummary(timeRange),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
 
   // Fetch pattern discovery trends with slow polling
-  const { data: discoveryData, isLoading: discoveryLoading } = useQuery<PatternTrend[]>({
+  const { data: discoveryData } = useQuery<PatternTrend[]>({
     queryKey: ['patterns', 'trends', timeRange],
     queryFn: () => patternLearningSource.fetchTrends(timeRange),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
 
   // Fetch pattern quality trends with slow polling
-  const { data: qualityData, isLoading: qualityLoading } = useQuery<QualityTrend[]>({
+  const { data: qualityData } = useQuery<QualityTrend[]>({
     queryKey: ['patterns', 'quality-trends', timeRange],
     queryFn: () => patternLearningSource.fetchQualityTrends(timeRange),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
 
   // Fetch pattern list with standard polling
-  const { data: patterns, isLoading: patternsLoading, error: patternsError } = useQuery<Pattern[]>({
+  const {
+    data: patterns,
+    isLoading: patternsLoading,
+    error: patternsError,
+  } = useQuery<Pattern[]>({
     queryKey: ['patterns', 'list', timeRange],
     queryFn: () => patternLearningSource.fetchPatternList(50, timeRange),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
 
   // Live pattern discovery via data source
-  const { data: discoveryResult, isLoading: liveDiscoverLoading, error: liveDiscoverError } = useQuery({
+  const {
+    data: discoveryResult,
+    isLoading: liveDiscoverLoading,
+    error: liveDiscoverError,
+  } = useQuery({
     queryKey: ['patterns', 'discovery'],
     queryFn: () => patternLearningSource.fetchDiscovery(8),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
@@ -92,7 +97,7 @@ export default function PatternLearning() {
   const filteredPatterns = useMemo(() => {
     if (!patterns) return [];
 
-    return patterns.filter(pattern => {
+    return patterns.filter((pattern) => {
       // Search filter - check name and description
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -156,14 +161,15 @@ export default function PatternLearning() {
 
   return (
     <div className="space-y-6">
-
       {/* Status legend */}
       <StatusLegend />
 
       <Card>
         <CardHeader>
           <CardTitle>Pattern Learning Metrics</CardTitle>
-          <CardDescription>Real-time pattern discovery metrics, quality scores, and active learning progress</CardDescription>
+          <CardDescription>
+            Real-time pattern discovery metrics, quality scores, and active learning progress
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-4 gap-6">
@@ -183,7 +189,7 @@ export default function PatternLearning() {
               label="Avg Quality"
               value={`${Math.round((summary?.avgQualityScore || 0) * 100)}%`}
               icon={Award}
-              status={(summary?.avgQualityScore || 0) > 0.80 ? "healthy" : "warning"}
+              status={(summary?.avgQualityScore || 0) > 0.8 ? 'healthy' : 'warning'}
             />
             <MetricCard
               label="Active Learning"
@@ -199,9 +205,12 @@ export default function PatternLearning() {
         <div>
           <RealtimeChart
             title="Pattern Discovery Rate"
-            data={(discoveryData || []).map(d => ({
-              time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-              value: d.avgPatternsPerManifest
+            data={(discoveryData || []).map((d) => ({
+              time: new Date(d.period).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+              }),
+              value: d.avgPatternsPerManifest,
             }))}
             color="hsl(var(--chart-2))"
             showArea
@@ -211,9 +220,12 @@ export default function PatternLearning() {
         <div>
           <RealtimeChart
             title="Average Quality Score"
-            data={(qualityData || []).map(d => ({
-              time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-              value: d.avgQuality * 100
+            data={(qualityData || []).map((d) => ({
+              time: new Date(d.period).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+              }),
+              value: d.avgQuality * 100,
             }))}
             color="hsl(var(--chart-3))"
           />
@@ -223,9 +235,7 @@ export default function PatternLearning() {
         <div className="bg-card border rounded-lg p-4 flex flex-col">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold">Live Pattern Discovery</h3>
-            {liveDiscoverLoading && (
-              <span className="text-xs text-muted-foreground">Loading…</span>
-            )}
+            {liveDiscoverLoading && <span className="text-xs text-muted-foreground">Loading…</span>}
           </div>
           {liveDiscoverError ? (
             <p className="text-xs text-destructive">Failed to load live patterns</p>
@@ -237,9 +247,10 @@ export default function PatternLearning() {
                   <div className="text-xs text-muted-foreground truncate">{p.file_path}</div>
                 </li>
               ))}
-              {!liveDiscoverLoading && (!liveDiscoveredPatterns || liveDiscoveredPatterns.length === 0) && (
-                <li className="text-xs text-muted-foreground">No patterns discovered yet</li>
-              )}
+              {!liveDiscoverLoading &&
+                (!liveDiscoveredPatterns || liveDiscoveredPatterns.length === 0) && (
+                  <li className="text-xs text-muted-foreground">No patterns discovered yet</li>
+                )}
             </ul>
           )}
         </div>
@@ -269,14 +280,13 @@ export default function PatternLearning() {
                 <div key={lang.language} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded"
-                        style={{ backgroundColor: color }}
-                      />
+                      <div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
                       <span className="font-medium capitalize">{lang.language}</span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-muted-foreground">{lang.count.toLocaleString()} patterns</span>
+                      <span className="text-muted-foreground">
+                        {lang.count.toLocaleString()} patterns
+                      </span>
                       <span className="font-semibold">{lang.percentage}%</span>
                     </div>
                   </div>
@@ -310,14 +320,18 @@ export default function PatternLearning() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
-          <PatternNetwork patterns={filteredPatterns} height={500} onPatternClick={handlePatternClick} />
+          <PatternNetwork
+            patterns={filteredPatterns}
+            height={500}
+            onPatternClick={handlePatternClick}
+          />
         </div>
 
         <TopPatternsList
-          patterns={filteredPatterns.map(p => ({
+          patterns={filteredPatterns.map((p) => ({
             ...p,
             usageCount: p.usage,
-            trend: p.trendPercentage // Use actual percentage from API
+            trend: p.trendPercentage, // Use actual percentage from API
           }))}
           limit={10}
         />
@@ -326,7 +340,7 @@ export default function PatternLearning() {
       <DrillDownModal
         open={panelOpen}
         onOpenChange={setPanelOpen}
-        title={selectedPattern?.name || "Pattern Details"}
+        title={selectedPattern?.name || 'Pattern Details'}
         data={selectedPattern || {}}
         type="pattern"
         variant="modal"

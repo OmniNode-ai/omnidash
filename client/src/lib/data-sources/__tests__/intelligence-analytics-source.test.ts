@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { intelligenceAnalyticsSource } from '../intelligence-analytics-source';
-import type { IntelligenceMetrics, RecentActivity, AgentPerformance, SavingsMetrics } from '../intelligence-analytics-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import type { SavingsMetrics } from '../intelligence-analytics-source';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 describe('IntelligenceAnalyticsDataSource', () => {
   beforeEach(() => {
@@ -29,9 +33,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchMetrics('24h');
@@ -52,15 +54,13 @@ describe('IntelligenceAnalyticsDataSource', () => {
           agent: 'agent-1',
           totalRequests: 100,
           avgRoutingTime: 1000,
-          avgConfidence: 0.90,
+          avgConfidence: 0.9,
           // Note: successRate is optional, so we omit it to test avgConfidence fallback
         },
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchMetrics('24h');
@@ -70,9 +70,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchMetrics('24h');
@@ -83,11 +81,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
     });
 
     it('should handle empty agents array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/agents/summary', createMockResponse([])]]));
 
       const result = await intelligenceAnalyticsSource.fetchMetrics('24h');
 
@@ -118,9 +112,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/actions/recent', createMockResponse(mockActions)],
-        ])
+        new Map([['/api/intelligence/actions/recent', createMockResponse(mockActions)]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchRecentActivity(5);
@@ -128,14 +120,18 @@ describe('IntelligenceAnalyticsDataSource', () => {
       expect(result.isMock).toBe(false);
       expect(result.data).toHaveLength(2);
       // Data is passed through as-is from API (already in correct format)
-      expect(result.data[0]).toEqual(expect.objectContaining({
-        action: 'code-review',
-        agent: 'agent-1',
-        status: 'completed'
-      }));
-      expect(result.data[1]).toEqual(expect.objectContaining({
-        status: 'failed'
-      }));
+      expect(result.data[0]).toEqual(
+        expect.objectContaining({
+          action: 'code-review',
+          agent: 'agent-1',
+          status: 'completed',
+        })
+      );
+      expect(result.data[1]).toEqual(
+        expect.objectContaining({
+          status: 'failed',
+        })
+      );
     });
 
     it('should handle actions without duration as executing', async () => {
@@ -151,16 +147,16 @@ describe('IntelligenceAnalyticsDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/actions/recent', createMockResponse(mockActions)],
-        ])
+        new Map([['/api/intelligence/actions/recent', createMockResponse(mockActions)]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchRecentActivity(5);
 
-      expect(result.data[0]).toEqual(expect.objectContaining({
-        status: 'executing'
-      }));
+      expect(result.data[0]).toEqual(
+        expect.objectContaining({
+          status: 'executing',
+        })
+      );
     });
 
     it('should fallback to agent executions API when actions API fails', async () => {
@@ -265,9 +261,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchAgentPerformance('24h');
@@ -302,9 +296,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchAgentPerformance('24h');
@@ -324,9 +316,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchAgentPerformance('24h');
@@ -351,9 +341,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchAgentPerformance('24h');
@@ -374,9 +362,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchAgentPerformance('24h');
@@ -398,9 +384,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchAgentPerformance('24h');
@@ -417,9 +401,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchAgentPerformance('24h');
@@ -430,9 +412,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchAgentPerformance('24h');
@@ -443,11 +423,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
     });
 
     it('should return mock data for empty agents array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/agents/summary', createMockResponse([])]]));
 
       const result = await intelligenceAnalyticsSource.fetchAgentPerformance('24h');
 
@@ -472,11 +448,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
         timeSaved: 180,
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/savings/metrics', createMockResponse(mockSavings)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/metrics', createMockResponse(mockSavings)]]));
 
       const result = await intelligenceAnalyticsSource.fetchSavingsMetrics('24h');
 
@@ -491,11 +463,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
         // Missing required fields
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/savings/metrics', createMockResponse(incompleteSavings)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/metrics', createMockResponse(incompleteSavings)]]));
 
       const result = await intelligenceAnalyticsSource.fetchSavingsMetrics('24h');
 
@@ -518,11 +486,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
         timeSaved: -20, // Taking longer
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/savings/metrics', createMockResponse(regressionSavings)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/metrics', createMockResponse(regressionSavings)]]));
 
       const result = await intelligenceAnalyticsSource.fetchSavingsMetrics('24h');
 
@@ -542,11 +506,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
         timeSaved: 180,
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/savings/metrics', createMockResponse(invalidSavings)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/metrics', createMockResponse(invalidSavings)]]));
 
       const result = await intelligenceAnalyticsSource.fetchSavingsMetrics('24h');
 
@@ -554,11 +514,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
     });
 
     it('should reject non-object responses', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/savings/metrics', createMockResponse('invalid string')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/metrics', createMockResponse('invalid string')]]));
 
       const result = await intelligenceAnalyticsSource.fetchSavingsMetrics('24h');
 
@@ -567,9 +523,7 @@ describe('IntelligenceAnalyticsDataSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/savings/metrics', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/savings/metrics', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await intelligenceAnalyticsSource.fetchSavingsMetrics('24h');
@@ -585,17 +539,11 @@ describe('IntelligenceAnalyticsDataSource', () => {
     });
 
     it('should handle network errors', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/savings/metrics', new Error('Network error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/metrics', new Error('Network error')]]));
 
       const result = await intelligenceAnalyticsSource.fetchSavingsMetrics('24h');
 
       expect(result.isMock).toBe(true);
     });
   });
-
 });
-

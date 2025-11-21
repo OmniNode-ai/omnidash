@@ -7,9 +7,9 @@ if (!process.env.KAFKAJS_NO_PARTITIONER_WARNING) {
   process.env.KAFKAJS_NO_PARTITIONER_WARNING = '1';
 }
 
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import express, { type Request, Response, NextFunction } from 'express';
+import { registerRoutes } from './routes';
+import { setupVite, serveStatic, log } from './vite';
 import { setupWebSocket } from './websocket';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
@@ -19,22 +19,24 @@ const app = express();
 
 declare module 'http' {
   interface IncomingMessage {
-    rawBody: unknown
+    rawBody: unknown;
   }
 }
-app.use(express.json({
-  verify: (req, _res, buf) => {
-    req.rawBody = buf;
-  }
-}));
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: false }));
 
 // Disable caching for all API routes to ensure fresh data
 app.use('/api', (req, res, next) => {
   res.set({
     'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache',
-    'Expires': '0'
+    Pragma: 'no-cache',
+    Expires: '0',
   });
   // Remove any existing ETag headers to prevent 304 responses
   res.removeHeader('ETag');
@@ -54,16 +56,16 @@ app.use((req, res, next) => {
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 
-  res.on("finish", () => {
+  res.on('finish', () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
+    if (path.startsWith('/api')) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
       if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+        logLine = logLine.slice(0, 79) + '…';
       }
 
       log(logLine);
@@ -104,7 +106,7 @@ app.use((req, res, next) => {
     } else {
       log('⚠️  Event Bus Data Source validation failed - continuing without event storage');
       log('   Event querying will be limited to database queries');
-      
+
       // In development mode, start mock generator if Kafka is not available
       // Skip in test environment to prevent hanging tests
       if (
@@ -127,11 +129,11 @@ app.use((req, res, next) => {
     console.error('❌ Failed to start Event Bus Data Source:', error);
     console.error('   Event querying endpoints will not be available');
     console.error('   Application will continue with limited functionality');
-    
+
     // Try mock generator as fallback in development
     // Skip in test environment to prevent hanging tests
     if (
-      app.get('env') === 'development' && 
+      app.get('env') === 'development' &&
       process.env.NODE_ENV !== 'test' &&
       !process.env.VITEST &&
       process.env.ENABLE_MOCK_EVENTS !== 'false'
@@ -158,7 +160,7 @@ app.use((req, res, next) => {
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const message = err.message || 'Internal Server Error';
 
     res.status(status).json({ message });
     throw err;
@@ -167,7 +169,7 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  if (app.get('env') === 'development') {
     await setupVite(app, server);
   } else {
     serveStatic(app);
@@ -178,7 +180,7 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '3000', 10);
-  server.listen(port, "0.0.0.0", () => {
+  server.listen(port, '0.0.0.0', () => {
     log(`serving on port ${port}`);
   });
 

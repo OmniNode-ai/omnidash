@@ -12,18 +12,33 @@ export class IntelligenceEventAdapter {
   private producer: Producer | null = null;
   private consumer: Consumer | null = null;
   private started = false;
-  private pending: Map<string, {
-    resolve: (v: any) => void;
-    reject: (e: any) => void;
-    timeout: NodeJS.Timeout;
-  }> = new Map();
+  private pending: Map<
+    string,
+    {
+      resolve: (v: any) => void;
+      reject: (e: any) => void;
+      timeout: NodeJS.Timeout;
+    }
+  > = new Map();
 
   // Default topics aligned with OmniArchon/OmniClaude patterns
-  public readonly TOPIC_REQUEST = process.env.INTEL_REQUEST_TOPIC || 'dev.archon-intelligence.intelligence.code-analysis-requested.v1';
-  public readonly TOPIC_COMPLETED = process.env.INTEL_COMPLETED_TOPIC || 'dev.archon-intelligence.intelligence.code-analysis-completed.v1';
-  public readonly TOPIC_FAILED = process.env.INTEL_FAILED_TOPIC || 'dev.archon-intelligence.intelligence.code-analysis-failed.v1';
+  public readonly TOPIC_REQUEST =
+    process.env.INTEL_REQUEST_TOPIC ||
+    'dev.archon-intelligence.intelligence.code-analysis-requested.v1';
+  public readonly TOPIC_COMPLETED =
+    process.env.INTEL_COMPLETED_TOPIC ||
+    'dev.archon-intelligence.intelligence.code-analysis-completed.v1';
+  public readonly TOPIC_FAILED =
+    process.env.INTEL_FAILED_TOPIC ||
+    'dev.archon-intelligence.intelligence.code-analysis-failed.v1';
 
-  constructor(private readonly brokers: string[] = (process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(',')) {
+  constructor(
+    private readonly brokers: string[] = (
+      process.env.KAFKA_BOOTSTRAP_SERVERS ||
+      process.env.KAFKA_BROKERS ||
+      '192.168.86.200:9092'
+    ).split(',')
+  ) {
     this.kafka = new Kafka({ brokers: this.brokers, clientId: 'omnidash-intelligence-adapter' });
   }
 
@@ -44,12 +59,16 @@ export class IntelligenceEventAdapter {
           const value = message.value?.toString();
           if (!value) return;
           const event = JSON.parse(value);
-          
+
           // Extract correlation_id (may be top-level or in payload)
-          const correlationIdRaw = event?.correlation_id || event?.correlationId || 
-                                   event?.payload?.correlation_id || 
-                                   message.key?.toString();
-          const correlationId = correlationIdRaw ? String(correlationIdRaw).toLowerCase() : undefined;
+          const correlationIdRaw =
+            event?.correlation_id ||
+            event?.correlationId ||
+            event?.payload?.correlation_id ||
+            message.key?.toString();
+          const correlationId = correlationIdRaw
+            ? String(correlationIdRaw).toLowerCase()
+            : undefined;
           if (!correlationId) return;
 
           const pending = this.pending.get(correlationId);
@@ -64,7 +83,8 @@ export class IntelligenceEventAdapter {
           } else if (topic === this.TOPIC_FAILED || event?.event_type === 'CODE_ANALYSIS_FAILED') {
             // Extract error details from payload
             const errorPayload = event?.payload || event;
-            const errorMsg = errorPayload?.error_message || errorPayload?.error || 'Intelligence request failed';
+            const errorMsg =
+              errorPayload?.error_message || errorPayload?.error || 'Intelligence request failed';
             const error = new Error(errorMsg);
             (error as any).error_code = errorPayload?.error_code;
             pending.reject(error);
@@ -73,7 +93,7 @@ export class IntelligenceEventAdapter {
           // Swallow to avoid consumer crash; the caller gets timeout fallback
           console.error('[IntelligenceAdapter] Error processing response:', err);
         }
-      }
+      },
     });
 
     this.started = true;
@@ -94,13 +114,17 @@ export class IntelligenceEventAdapter {
   /**
    * Generic request method - matches OmniClaude/OmniArchon ONEX event format
    */
-  async request(requestType: string, payload: Record<string, any>, timeoutMs: number = 5000): Promise<any> {
+  async request(
+    requestType: string,
+    payload: Record<string, any>,
+    timeoutMs: number = 5000
+  ): Promise<any> {
     if (!this.started || !this.producer) throw new Error('IntelligenceEventAdapter not started');
 
-    const rawCorrelationId = (payload?.correlation_id || payload?.correlationId || randomUUID());
+    const rawCorrelationId = payload?.correlation_id || payload?.correlationId || randomUUID();
     const correlationId = String(rawCorrelationId);
     const correlationKey = correlationId.toLowerCase();
-    
+
     // Format matches OmniClaude's _create_request_payload format
     // Handler expects: event_type, correlation_id, payload (with source_path, language, etc.)
     const envelope = {
@@ -141,13 +165,20 @@ export class IntelligenceEventAdapter {
   /**
    * Request pattern discovery (higher-level wrapper)
    */
-  async requestPatternDiscovery(params: { sourcePath: string; language?: string; project?: string; operationType?: string }, timeoutMs?: number) {
-    return this.request('code_analysis', {
-      sourcePath: params.sourcePath,
-      language: params.language,
-      project_id: params.project,
-      operation_type: params.operationType || 'PATTERN_EXTRACTION',
-    }, timeoutMs);
+  async requestPatternDiscovery(
+    params: { sourcePath: string; language?: string; project?: string; operationType?: string },
+    timeoutMs?: number
+  ) {
+    return this.request(
+      'code_analysis',
+      {
+        sourcePath: params.sourcePath,
+        language: params.language,
+        project_id: params.project,
+        operation_type: params.operationType || 'PATTERN_EXTRACTION',
+      },
+      timeoutMs
+    );
   }
 }
 

@@ -219,7 +219,9 @@ describe('agent-registry routes', () => {
   });
 
   const getRouteHandler = (method: string, routePath: string) => {
-    const layer = routerModule.stack.find((entry: any) => entry.route && entry.route.path === routePath && entry.route.methods[method]);
+    const layer = routerModule.stack.find(
+      (entry: any) => entry.route && entry.route.path === routePath && entry.route.methods[method]
+    );
     if (!layer) {
       throw new Error(`Route handler for [${method.toUpperCase()}] ${routePath} not found`);
     }
@@ -228,7 +230,9 @@ describe('agent-registry routes', () => {
 
   it('starts execution for an agent and schedules completion', async () => {
     const handler = getRouteHandler('post', '/agents/:agentId/execute');
-    const setTimeoutSpy = vi.spyOn(global, 'setTimeout').mockImplementation(((cb: (...args: any[]) => void) => {
+    const setTimeoutSpy = vi.spyOn(global, 'setTimeout').mockImplementation(((
+      cb: (...args: any[]) => void
+    ) => {
       cb();
       return 0 as any;
     }) as any);
@@ -245,15 +249,21 @@ describe('agent-registry routes', () => {
     await handler(req, res, vi.fn());
 
     expect(res.status).not.toHaveBeenCalled();
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ id: 'exec-123', status: 'executing' }));
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'exec-123', status: 'executing' })
+    );
     expect(trackerMocks.startExecution).toHaveBeenCalledWith(
       'agent-alpha',
       'Alpha Specialist',
       'Test query',
       { foo: 'bar' },
-      { decision: true },
+      { decision: true }
     );
-    expect(trackerMocks.updateExecutionStatus).toHaveBeenCalledWith('exec-123', 'completed', expect.any(Object));
+    expect(trackerMocks.updateExecutionStatus).toHaveBeenCalledWith(
+      'exec-123',
+      'completed',
+      expect.any(Object)
+    );
 
     setTimeoutSpy.mockRestore();
   });
@@ -292,7 +302,7 @@ describe('agent-registry routes', () => {
 
     expect(trackerMocks.getExecutionStats).toHaveBeenCalledWith(
       'agent-alpha',
-      expect.objectContaining({ start: expect.any(Date), end: expect.any(Date) }),
+      expect.objectContaining({ start: expect.any(Date), end: expect.any(Date) })
     );
     expect(res.json).toHaveBeenCalledWith({ total: 10 });
   });

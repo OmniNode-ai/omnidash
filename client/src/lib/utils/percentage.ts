@@ -12,10 +12,10 @@ export function clampPercentage(value: number, isDecimal: boolean = false): numb
   if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) {
     return 0;
   }
-  
+
   // Convert decimal (0-1) to percentage (0-100) if needed
   const percentage = isDecimal ? value * 100 : value;
-  
+
   // Clamp between 0 and 100
   return Math.max(0, Math.min(100, percentage));
 }
@@ -45,14 +45,11 @@ export function clampPercentageValue(percentage: number): number {
  * @param decimals - Number of decimal places (default: 1)
  * @returns Formatted percentage string (e.g., "94.5%")
  */
-export function formatPercentage(value: number, isDecimal: boolean = false, decimals: number = 1): string {
+export function formatPercentage(
+  value: number,
+  isDecimal: boolean = false,
+  decimals: number = 1
+): string {
   const clamped = clampPercentage(value, isDecimal);
   return `${clamped.toFixed(decimals)}%`;
 }
-
-
-
-
-
-
-

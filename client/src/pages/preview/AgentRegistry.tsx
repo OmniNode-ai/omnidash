@@ -1,56 +1,35 @@
-import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { agentRegistrySource } from "@/lib/data-sources";
-import { getPollingInterval } from "@/lib/constants/query-config";
-import type { AgentDefinition as ImportedAgentDefinition } from "@/lib/data-sources/agent-registry-source";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { AgentRegistryDetailModal } from "@/components/AgentRegistryDetailModal";
-import { AgentExecutionTraceModal } from "@/components/AgentExecutionTraceModal";
+import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { agentRegistrySource } from '@/lib/data-sources';
+import { type RecentActivity } from '@/lib/data-sources/agent-registry-source';
+import { getPollingInterval } from '@/lib/constants/query-config';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AgentRegistryDetailModal } from '@/components/AgentRegistryDetailModal';
+import { AgentExecutionTraceModal } from '@/components/AgentExecutionTraceModal';
 import {
   Search,
-  Filter,
   Bot,
-  Zap,
   Code,
-  Database,
-  Shield,
-  Settings,
-  Activity,
-  TrendingUp,
-  Clock,
-  Target,
-  Network,
-  Users,
-  Star,
   ArrowRight,
   Play,
-  Pause,
-  RotateCcw,
   Eye,
   BarChart3,
-  Layers,
-  GitFork,
-  Brain,
-  Cpu,
-  Database as DbIcon,
   Server,
-  FileText,
   TestTube,
-  Wrench,
   BookOpen,
-  Workflow
-} from "lucide-react";
+  Layers,
+  Workflow,
+} from 'lucide-react';
 
 interface AgentCapability {
   name: string;
   description: string;
   category: string;
-  level: "beginner" | "intermediate" | "expert";
+  level: 'beginner' | 'intermediate' | 'expert';
 }
 
 interface AgentPerformance {
@@ -70,13 +49,13 @@ interface AgentDefinition {
   description: string;
   category: string;
   color: string;
-  priority: "low" | "medium" | "high" | "critical";
+  priority: 'low' | 'medium' | 'high' | 'critical';
   capabilities: AgentCapability[];
   activationTriggers: string[];
   domainContext: string;
-  specializationLevel: "generalist" | "specialist" | "expert";
+  specializationLevel: 'generalist' | 'specialist' | 'expert';
   performance: AgentPerformance;
-  status: "active" | "inactive" | "deprecated" | "beta";
+  status: 'active' | 'inactive' | 'deprecated' | 'beta';
   lastUpdated: string;
   version: string;
   dependencies: string[];
@@ -93,84 +72,91 @@ interface AgentCategory {
 }
 
 export default function AgentRegistry() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all"); // New: filter by status (active/all)
+  const [activeTab, setActiveTab] = useState('overview');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all'); // New: filter by status (active/all)
   const [selectedAgent, setSelectedAgent] = useState<AgentDefinition | null>(null);
-  const [selectedExecution, setSelectedExecution] = useState<{correlationId: string, agentName: string} | null>(null);
+  const [selectedExecution, setSelectedExecution] = useState<{
+    correlationId: string;
+    agentName: string;
+  } | null>(null);
   const [agents, setAgents] = useState<AgentDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   // performance metric mode: 'success' shows success percentage, 'time' shows avg execution time in ms
   const [performanceMetricMode, setPerformanceMetricMode] = useState<'success' | 'time'>('time');
-  const [performanceTrendTimeRange, setPerformanceTrendTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  const [performanceTrendTimeRange, setPerformanceTrendTimeRange] = useState<
+    '7d' | '30d' | '90d' | 'all'
+  >('30d');
 
   const categories: AgentCategory[] = [
     {
-      name: "development",
-      description: "Core development and coding agents",
+      name: 'development',
+      description: 'Core development and coding agents',
       count: 14,
-      priority: "high",
+      priority: 'high',
       icon: Code,
-      color: "blue"
+      color: 'blue',
     },
     {
-      name: "architecture",
-      description: "System architecture and design agents",
+      name: 'architecture',
+      description: 'System architecture and design agents',
       count: 8,
-      priority: "high",
+      priority: 'high',
       icon: Layers,
-      color: "purple"
+      color: 'purple',
     },
     {
-      name: "quality",
-      description: "Quality assurance and testing agents",
+      name: 'quality',
+      description: 'Quality assurance and testing agents',
       count: 8,
-      priority: "medium",
+      priority: 'medium',
       icon: TestTube,
-      color: "green"
+      color: 'green',
     },
     {
-      name: "infrastructure",
-      description: "DevOps and infrastructure agents",
+      name: 'infrastructure',
+      description: 'DevOps and infrastructure agents',
       count: 6,
-      priority: "medium",
+      priority: 'medium',
       icon: Server,
-      color: "orange"
+      color: 'orange',
     },
     {
-      name: "coordination",
-      description: "Project and workflow coordination agents",
+      name: 'coordination',
+      description: 'Project and workflow coordination agents',
       count: 7,
-      priority: "high",
+      priority: 'high',
       icon: Workflow,
-      color: "cyan"
+      color: 'cyan',
     },
     {
-      name: "documentation",
-      description: "Documentation and knowledge agents",
+      name: 'documentation',
+      description: 'Documentation and knowledge agents',
       count: 5,
-      priority: "low",
+      priority: 'low',
       icon: BookOpen,
-      color: "gray"
-    }
+      color: 'gray',
+    },
   ];
 
   // Use centralized data source
-  const { data: registryData, isLoading: agentsLoading, error: registryError } = useQuery({
+  const {
+    data: registryData,
+    isLoading: agentsLoading,
+    error: registryError,
+  } = useQuery({
     queryKey: ['agent-registry', selectedCategory, searchQuery, selectedStatus],
-    queryFn: () => agentRegistrySource.fetchAll({
-      category: selectedCategory,
-      search: searchQuery,
-      status: selectedStatus
-    }),
+    queryFn: () =>
+      agentRegistrySource.fetchAll({
+        category: selectedCategory,
+        search: searchQuery,
+        status: selectedStatus,
+      }),
     refetchInterval: getPollingInterval(60000),
   });
 
   const agentsData = registryData?.agents;
-  const categoriesData = registryData?.categories;
-  const performanceData = registryData?.performance;
-  const routingData = registryData?.routing;
 
   // Fetch recent actions for Recent Activity section
   const { data: recentActionsData } = useQuery({
@@ -184,7 +170,8 @@ export default function AgentRegistry() {
   // Update state when data changes
   useEffect(() => {
     if (agentsData) {
-      setAgents(agentsData as any); // Type conversion between imported and local AgentDefinition
+      // Type assertion: data source returns flexible AgentDefinition with all required fields
+      setAgents(agentsData as AgentDefinition[]);
     }
   }, [agentsData]);
 
@@ -192,68 +179,76 @@ export default function AgentRegistry() {
     setIsLoading(agentsLoading);
   }, [agentsLoading]);
 
-  const filteredAgents = agents.filter(agent => {
-    const name = agent.name?.toLowerCase?.() || "";
-    const title = agent.title?.toLowerCase?.() || "";
-    const description = agent.description?.toLowerCase?.() || "";
+  const filteredAgents = agents.filter((agent) => {
+    const name = agent.name?.toLowerCase?.() || '';
+    const title = agent.title?.toLowerCase?.() || '';
+    const description = agent.description?.toLowerCase?.() || '';
     const tags: string[] = Array.isArray(agent.tags) ? agent.tags : [];
 
     const q = searchQuery.toLowerCase();
-    const matchesSearch = name.includes(q) ||
-                         title.includes(q) ||
-                         description.includes(q) ||
-                         tags.some(tag => (tag || "").toLowerCase().includes(q));
-    
-    const matchesCategory = selectedCategory === "all" || agent.category === selectedCategory;
-    
+    const matchesSearch =
+      name.includes(q) ||
+      title.includes(q) ||
+      description.includes(q) ||
+      tags.some((tag) => (tag || '').toLowerCase().includes(q));
+
+    const matchesCategory = selectedCategory === 'all' || agent.category === selectedCategory;
+
     return matchesSearch && matchesCategory;
   });
 
   const getCategoryIcon = (categoryName: string) => {
-    const category = categories.find(cat => cat.name === categoryName);
+    const category = categories.find((cat) => cat.name === categoryName);
     return category?.icon || Bot;
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "critical": return "bg-red-100 text-red-800";
-      case "high": return "bg-orange-100 text-orange-800";
-      case "medium": return "bg-yellow-100 text-yellow-800";
-      case "low": return "bg-gray-100 text-gray-800";
-      default: return "bg-gray-100 text-gray-800";
+      case 'critical':
+        return 'bg-red-100 text-red-800';
+      case 'high':
+        return 'bg-orange-100 text-orange-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getColorHex = (color: string) => {
     switch (color) {
-      case "blue": return "#3B82F6";
-      case "purple": return "#8B5CF6";
-      case "green": return "#10B981";
-      case "orange": return "#F59E0B";
-      case "cyan": return "#06B6D4";
-      case "gray": return "#6B7280";
-      default: return "#6B7280";
+      case 'blue':
+        return '#3B82F6';
+      case 'purple':
+        return '#8B5CF6';
+      case 'green':
+        return '#10B981';
+      case 'orange':
+        return '#F59E0B';
+      case 'cyan':
+        return '#06B6D4';
+      case 'gray':
+        return '#6B7280';
+      default:
+        return '#6B7280';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active": return "bg-green-100 text-green-800";
-      case "inactive": return "bg-gray-100 text-gray-800";
-      case "deprecated": return "bg-red-100 text-red-800";
-      case "beta": return "bg-blue-100 text-blue-800";
-      default: return "bg-gray-100 text-gray-800";
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      case 'inactive':
+        return 'bg-gray-100 text-gray-800';
+      case 'deprecated':
+        return 'bg-red-100 text-red-800';
+      case 'beta':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   if (registryError) {
@@ -261,7 +256,9 @@ export default function AgentRegistry() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <p className="text-muted-foreground mb-2">Failed to load agent registry.</p>
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -292,7 +289,9 @@ export default function AgentRegistry() {
           <Card>
             <CardHeader>
               <CardTitle>Search & Filters</CardTitle>
-              <CardDescription>Find agents by name, capabilities, or tags and filter by category or status</CardDescription>
+              <CardDescription>
+                Find agents by name, capabilities, or tags and filter by category or status
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-4">
@@ -313,16 +312,16 @@ export default function AgentRegistry() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground whitespace-nowrap">Show:</span>
                     <Button
-                      variant={selectedStatus === "active" ? "default" : "outline"}
+                      variant={selectedStatus === 'active' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setSelectedStatus("active")}
+                      onClick={() => setSelectedStatus('active')}
                     >
                       Active Only
                     </Button>
                     <Button
-                      variant={selectedStatus === "all" ? "default" : "outline"}
+                      variant={selectedStatus === 'all' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setSelectedStatus("all")}
+                      onClick={() => setSelectedStatus('all')}
                     >
                       All Agents
                     </Button>
@@ -331,16 +330,16 @@ export default function AgentRegistry() {
                 {/* Category Filter Row */}
                 <div className="flex gap-2 flex-wrap">
                   <Button
-                    variant={selectedCategory === "all" ? "default" : "outline"}
+                    variant={selectedCategory === 'all' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setSelectedCategory("all")}
+                    onClick={() => setSelectedCategory('all')}
                   >
                     All ({agents.length})
                   </Button>
                   {categories.map((category) => (
                     <Button
                       key={category.name}
-                      variant={selectedCategory === category.name ? "default" : "outline"}
+                      variant={selectedCategory === category.name ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setSelectedCategory(category.name)}
                     >
@@ -394,7 +393,11 @@ export default function AgentRegistry() {
                       <div className="flex justify-between text-sm">
                         <span>Active Agents</span>
                         <span className="font-medium">
-                          {agents.filter(a => a.category === category.name && a.status === "active").length}
+                          {
+                            agents.filter(
+                              (a) => a.category === category.name && a.status === 'active'
+                            ).length
+                          }
                         </span>
                       </div>
                     </div>
@@ -405,21 +408,18 @@ export default function AgentRegistry() {
           </div>
 
           {/* Filtered Agents Section */}
-          {selectedCategory !== "all" && (
+          {selectedCategory !== 'all' && (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Filtered Agents: {selectedCategory}</CardTitle>
                     <CardDescription>
-                      {filteredAgents.length} {filteredAgents.length === 1 ? 'agent' : 'agents'} in this category
+                      {filteredAgents.length} {filteredAgents.length === 1 ? 'agent' : 'agents'} in
+                      this category
                     </CardDescription>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedCategory("all")}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setSelectedCategory('all')}>
                     Clear Filter
                   </Button>
                 </div>
@@ -446,7 +446,10 @@ export default function AgentRegistry() {
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-2">
-                              <Icon className="w-5 h-5" style={{ color: getColorHex(agent.color) }} />
+                              <Icon
+                                className="w-5 h-5"
+                                style={{ color: getColorHex(agent.color) }}
+                              />
                               <div>
                                 <CardTitle className="text-base">{agent.title}</CardTitle>
                                 <CardDescription className="text-xs">{agent.name}</CardDescription>
@@ -458,12 +461,17 @@ export default function AgentRegistry() {
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          <p className="text-sm text-muted-foreground line-clamp-2">{agent.description}</p>
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {agent.description}
+                          </p>
 
                           <div className="grid grid-cols-3 gap-2 text-sm">
                             <div className="text-center p-2 bg-muted rounded">
                               <div className="font-medium text-green-600">
-                                {Math.max(0, Math.min(100, agent.performance.successRate)).toFixed(1)}%
+                                {Math.max(0, Math.min(100, agent.performance.successRate)).toFixed(
+                                  1
+                                )}
+                                %
                               </div>
                               <div className="text-xs text-muted-foreground">Success</div>
                             </div>
@@ -508,13 +516,19 @@ export default function AgentRegistry() {
           <Card>
             <CardHeader>
               <CardTitle>Recent Agent Activity</CardTitle>
-              <CardDescription>Latest agent executions and performance updates (click to view execution trace)</CardDescription>
+              <CardDescription>
+                Latest agent executions and performance updates (click to view execution trace)
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {recentActions && recentActions.length > 0 ? (
-                  recentActions.slice(0, 5).map((action: any) => {
-                    const agentTitle = action.agentName?.replace('agent-', '').replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown Agent';
+                  recentActions.slice(0, 5).map((action: RecentActivity) => {
+                    const agentTitle =
+                      action.agentName
+                        ?.replace('agent-', '')
+                        .replace(/-/g, ' ')
+                        .replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown Agent';
                     return (
                       <div
                         key={action.id}
@@ -522,7 +536,7 @@ export default function AgentRegistry() {
                         onClick={() => {
                           setSelectedExecution({
                             correlationId: action.correlationId,
-                            agentName: action.agentName || 'Unknown Agent'
+                            agentName: action.agentName || 'Unknown Agent',
                           });
                         }}
                         onKeyDown={(e) => {
@@ -530,7 +544,7 @@ export default function AgentRegistry() {
                             e.preventDefault();
                             setSelectedExecution({
                               correlationId: action.correlationId,
-                              agentName: action.agentName || 'Unknown Agent'
+                              agentName: action.agentName || 'Unknown Agent',
                             });
                           }
                         }}
@@ -543,13 +557,16 @@ export default function AgentRegistry() {
                           <div>
                             <div className="font-medium">{agentTitle}</div>
                             <div className="text-sm text-muted-foreground">
-                              {action.actionType} • {action.actionName} • {new Date(action.createdAt).toLocaleTimeString()}
+                              {action.actionType} • {action.actionName} •{' '}
+                              {new Date(action.createdAt).toLocaleTimeString()}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <div className="text-sm font-medium">{action.durationMs ? `${action.durationMs}ms` : 'N/A'}</div>
+                            <div className="text-sm font-medium">
+                              {action.durationMs ? `${action.durationMs}ms` : 'N/A'}
+                            </div>
                             <div className="text-xs text-muted-foreground">Duration</div>
                           </div>
                           <ArrowRight className="w-4 h-4 text-muted-foreground" />
@@ -587,16 +604,16 @@ export default function AgentRegistry() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground whitespace-nowrap">Show:</span>
                   <Button
-                    variant={selectedStatus === "active" ? "default" : "outline"}
+                    variant={selectedStatus === 'active' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setSelectedStatus("active")}
+                    onClick={() => setSelectedStatus('active')}
                   >
                     Active Only
                   </Button>
                   <Button
-                    variant={selectedStatus === "all" ? "default" : "outline"}
+                    variant={selectedStatus === 'all' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setSelectedStatus("all")}
+                    onClick={() => setSelectedStatus('all')}
                   >
                     All Agents
                   </Button>
@@ -604,16 +621,16 @@ export default function AgentRegistry() {
                 {/* Category Quick Filter */}
                 <div className="flex gap-2">
                   <Button
-                    variant={selectedCategory === "all" ? "default" : "outline"}
+                    variant={selectedCategory === 'all' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setSelectedCategory("all")}
+                    onClick={() => setSelectedCategory('all')}
                   >
                     All
                   </Button>
                   {categories.slice(0, 3).map((category) => (
                     <Button
                       key={category.name}
-                      variant={selectedCategory === category.name ? "default" : "outline"}
+                      variant={selectedCategory === category.name ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setSelectedCategory(category.name)}
                     >
@@ -628,7 +645,13 @@ export default function AgentRegistry() {
             {filteredAgents.map((agent) => {
               const Icon = getCategoryIcon(agent.category);
               return (
-                <Card key={agent.id} className="cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]" tabIndex={0} role="button" aria-label={`View details for ${agent.title}`}>
+                <Card
+                  key={agent.id}
+                  className="cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`View details for ${agent.title}`}
+                >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
@@ -650,7 +673,7 @@ export default function AgentRegistry() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-sm text-muted-foreground">{agent.description}</p>
-                    
+
                     {agent.capabilities && agent.capabilities.length > 0 && (
                       <div className="space-y-2">
                         <div className="text-sm font-medium">Capabilities</div>
@@ -672,11 +695,15 @@ export default function AgentRegistry() {
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <div className="text-muted-foreground">Success Rate</div>
-                        <div className="font-medium">{Math.max(0, Math.min(100, agent.performance.successRate)).toFixed(1)}%</div>
+                        <div className="font-medium">
+                          {Math.max(0, Math.min(100, agent.performance.successRate)).toFixed(1)}%
+                        </div>
                       </div>
                       <div>
                         <div className="text-muted-foreground">Total Runs</div>
-                        <div className="font-medium">{agent.performance.totalRuns.toLocaleString()}</div>
+                        <div className="font-medium">
+                          {agent.performance.totalRuns.toLocaleString()}
+                        </div>
                       </div>
                     </div>
 
@@ -701,35 +728,38 @@ export default function AgentRegistry() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Performance Overview</CardTitle>
-                  <CardDescription>Agent performance metrics and rankings</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Performance Overview</CardTitle>
+                    <CardDescription>Agent performance metrics and rankings</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={performanceMetricMode === 'time' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPerformanceMetricMode('time')}
+                    >
+                      Completion Time (ms)
+                    </Button>
+                    <Button
+                      variant={performanceMetricMode === 'success' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPerformanceMetricMode('success')}
+                    >
+                      Success %
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={performanceMetricMode === 'time' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPerformanceMetricMode('time')}
-                  >
-                    Completion Time (ms)
-                  </Button>
-                  <Button
-                    variant={performanceMetricMode === 'success' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPerformanceMetricMode('success')}
-                  >
-                    Success %
-                  </Button>
-                </div>
-              </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {agents
                     .sort((a, b) => {
                       if (performanceMetricMode === 'time') {
-                        return (a.performance.avgExecutionTime || 0) - (b.performance.avgExecutionTime || 0); // ascending time better
+                        return (
+                          (a.performance.avgExecutionTime || 0) -
+                          (b.performance.avgExecutionTime || 0)
+                        ); // ascending time better
                       }
                       const sa = Math.max(0, Math.min(100, a.performance.successRate || 0));
                       const sb = Math.max(0, Math.min(100, b.performance.successRate || 0));
@@ -737,7 +767,10 @@ export default function AgentRegistry() {
                     })
                     .slice(0, 10)
                     .map((agent, index) => (
-                      <div key={agent.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div
+                        key={agent.id}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
                         <div className="flex items-center gap-3">
                           <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
                             {index + 1}
@@ -751,22 +784,38 @@ export default function AgentRegistry() {
                           {performanceMetricMode === 'time' ? (
                             <>
                               <div className="text-right">
-                                <div className="text-sm font-medium">{Math.max(0, agent.performance.avgExecutionTime || 0)}ms</div>
+                                <div className="text-sm font-medium">
+                                  {Math.max(0, agent.performance.avgExecutionTime || 0)}ms
+                                </div>
                                 <div className="text-xs text-muted-foreground">Avg Time</div>
                               </div>
                               <div className="text-right">
-                                <div className="text-sm font-medium">{Math.max(0, Math.min(100, agent.performance.successRate || 0)).toFixed(1)}%</div>
+                                <div className="text-sm font-medium">
+                                  {Math.max(
+                                    0,
+                                    Math.min(100, agent.performance.successRate || 0)
+                                  ).toFixed(1)}
+                                  %
+                                </div>
                                 <div className="text-xs text-muted-foreground">Success</div>
                               </div>
                             </>
                           ) : (
                             <>
                               <div className="text-right">
-                                <div className="text-sm font-medium">{Math.max(0, Math.min(100, agent.performance.successRate || 0)).toFixed(1)}%</div>
+                                <div className="text-sm font-medium">
+                                  {Math.max(
+                                    0,
+                                    Math.min(100, agent.performance.successRate || 0)
+                                  ).toFixed(1)}
+                                  %
+                                </div>
                                 <div className="text-xs text-muted-foreground">Success</div>
                               </div>
                               <div className="text-right">
-                                <div className="text-sm font-medium">{Math.max(0, agent.performance.avgExecutionTime || 0)}ms</div>
+                                <div className="text-sm font-medium">
+                                  {Math.max(0, agent.performance.avgExecutionTime || 0)}ms
+                                </div>
                                 <div className="text-xs text-muted-foreground">Avg Time</div>
                               </div>
                             </>
@@ -780,60 +829,60 @@ export default function AgentRegistry() {
 
             <Card>
               <CardHeader>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Performance Trends</CardTitle>
-                    <CardDescription>Agent performance over time</CardDescription>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Performance Trends</CardTitle>
+                      <CardDescription>Agent performance over time</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={performanceTrendTimeRange === '7d' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPerformanceTrendTimeRange('7d')}
+                      >
+                        7D
+                      </Button>
+                      <Button
+                        variant={performanceTrendTimeRange === '30d' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPerformanceTrendTimeRange('30d')}
+                      >
+                        30D
+                      </Button>
+                      <Button
+                        variant={performanceTrendTimeRange === '90d' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPerformanceTrendTimeRange('90d')}
+                      >
+                        90D
+                      </Button>
+                      <Button
+                        variant={performanceTrendTimeRange === 'all' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPerformanceTrendTimeRange('all')}
+                      >
+                        All Time
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
-                      variant={performanceTrendTimeRange === '7d' ? 'default' : 'outline'}
+                      variant={performanceMetricMode === 'time' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setPerformanceTrendTimeRange('7d')}
+                      onClick={() => setPerformanceMetricMode('time')}
                     >
-                      7D
+                      Completion Time (ms)
                     </Button>
                     <Button
-                      variant={performanceTrendTimeRange === '30d' ? 'default' : 'outline'}
+                      variant={performanceMetricMode === 'success' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setPerformanceTrendTimeRange('30d')}
+                      onClick={() => setPerformanceMetricMode('success')}
                     >
-                      30D
-                    </Button>
-                    <Button
-                      variant={performanceTrendTimeRange === '90d' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setPerformanceTrendTimeRange('90d')}
-                    >
-                      90D
-                    </Button>
-                    <Button
-                      variant={performanceTrendTimeRange === 'all' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setPerformanceTrendTimeRange('all')}
-                    >
-                      All Time
+                      Success %
                     </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={performanceMetricMode === 'time' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPerformanceMetricMode('time')}
-                  >
-                    Completion Time (ms)
-                  </Button>
-                  <Button
-                    variant={performanceMetricMode === 'success' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPerformanceMetricMode('success')}
-                  >
-                    Success %
-                  </Button>
-                </div>
-              </div>
               </CardHeader>
               <CardContent>
                 <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg border-2 border-dashed">
@@ -843,7 +892,14 @@ export default function AgentRegistry() {
                       Performance trends visualization
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Tracking {performanceMetricMode === 'time' ? 'completion time (ms)' : 'success rate (%)'} over {performanceTrendTimeRange === 'all' ? 'all time' : `last ${performanceTrendTimeRange.toUpperCase()}`}
+                      Tracking{' '}
+                      {performanceMetricMode === 'time'
+                        ? 'completion time (ms)'
+                        : 'success rate (%)'}{' '}
+                      over{' '}
+                      {performanceTrendTimeRange === 'all'
+                        ? 'all time'
+                        : `last ${performanceTrendTimeRange.toUpperCase()}`}
                     </p>
                   </div>
                 </div>
@@ -851,7 +907,6 @@ export default function AgentRegistry() {
             </Card>
           </div>
         </TabsContent>
-
       </Tabs>
 
       {/* Agent Detail Modal */}

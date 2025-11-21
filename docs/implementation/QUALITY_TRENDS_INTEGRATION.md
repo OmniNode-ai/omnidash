@@ -9,15 +9,17 @@ The `/api/intelligence/patterns/quality-trends` endpoint has been updated to int
 ### Endpoint: `GET /api/intelligence/patterns/quality-trends`
 
 **Query Parameters:**
+
 - `timeWindow` (optional): Time window for trends - `24h`, `7d`, or `30d` (default: `7d`)
 
 **Response Format:**
+
 ```typescript
 Array<{
-  period: string;          // ISO timestamp (e.g., "2025-10-27 18:00:00+00")
-  avgQuality: number;      // Quality score 0-1 (e.g., 0.85)
-  manifestCount: number;   // Number of manifests in this period
-}>
+  period: string; // ISO timestamp (e.g., "2025-10-27 18:00:00+00")
+  avgQuality: number; // Quality score 0-1 (e.g., 0.85)
+  manifestCount: number; // Number of manifests in this period
+}>;
 ```
 
 ### Architecture
@@ -36,17 +38,20 @@ The endpoint implements a **resilient proxy pattern** with the following flow:
 ### Key Features
 
 #### 1. Graceful Degradation
+
 - **Primary**: Attempts to fetch from Omniarchon (`INTELLIGENCE_SERVICE_URL`)
 - **Fallback**: Uses local database query if Omniarchon unavailable or lacks data
 - **Timeout**: 5-second timeout prevents blocking on slow responses
 - **Logging**: Clear indicators of which data source is being used
 
 #### 2. Data Transformation
+
 - Converts time windows (`24h`, `7d`, `30d`) to hours for Omniarchon API
 - Transforms Omniarchon response to match frontend expectations
 - Maintains consistent response format regardless of data source
 
 #### 3. Error Handling
+
 - Network failures don't break the endpoint
 - Missing Omniarchon service gracefully falls back
 - Database errors are caught and reported properly
@@ -111,19 +116,20 @@ curl "http://localhost:3000/api/intelligence/patterns/quality-trends?timeWindow=
 
 The endpoint provides clear logging to track behavior:
 
-| Log Message | Meaning |
-|------------|---------|
-| `✓ Using real data from Omniarchon (N snapshots)` | Successfully fetched time-series data from Omniarchon |
-| `⚠ Omniarchon has no data yet, falling back to database` | Omniarchon responded but doesn't have the required data format |
-| `⚠ Omniarchon returned 500, falling back to database` | Omniarchon service error |
-| `⚠ Failed to fetch from Omniarchon, falling back to database` | Network error or timeout |
-| `→ Fetching quality trends from database` | Using database fallback |
+| Log Message                                                    | Meaning                                                        |
+| -------------------------------------------------------------- | -------------------------------------------------------------- |
+| `✓ Using real data from Omniarchon (N snapshots)`              | Successfully fetched time-series data from Omniarchon          |
+| `⚠ Omniarchon has no data yet, falling back to database`      | Omniarchon responded but doesn't have the required data format |
+| `⚠ Omniarchon returned 500, falling back to database`         | Omniarchon service error                                       |
+| `⚠ Failed to fetch from Omniarchon, falling back to database` | Network error or timeout                                       |
+| `→ Fetching quality trends from database`                      | Using database fallback                                        |
 
 ## Implementation Code
 
 **File:** `server/intelligence-routes.ts` (lines 467-555)
 
 **Key Components:**
+
 1. **Time window parsing** - Converts `24h`/`7d`/`30d` to hours for Omniarchon
 2. **Omniarchon request** - Native `fetch()` with 5-second timeout
 3. **Data format validation** - Checks for `snapshots` array in response
@@ -142,15 +148,15 @@ interface OmniarchonTimeSeriesResponse {
   success: true;
   project_id: string;
   snapshots: Array<{
-    timestamp: string;        // ISO timestamp
-    overall_quality: number;  // 0-1 score
-    file_count: number;       // Files analyzed
+    timestamp: string; // ISO timestamp
+    overall_quality: number; // 0-1 score
+    file_count: number; // Files analyzed
     // ... other quality metrics
   }>;
 }
 
 // Transform to frontend format
-const formattedTrends = omniarchonData.snapshots.map(snapshot => ({
+const formattedTrends = omniarchonData.snapshots.map((snapshot) => ({
   period: snapshot.timestamp,
   avgQuality: snapshot.overall_quality,
   manifestCount: snapshot.file_count,
@@ -167,6 +173,7 @@ const formattedTrends = omniarchonData.snapshots.map(snapshot => ({
 ## Success Criteria
 
 ✅ **Completed:**
+
 - [x] Endpoint proxies to Omniarchon intelligence service
 - [x] Graceful fallback to database when Omniarchon unavailable
 - [x] Response format matches frontend expectations
@@ -206,6 +213,7 @@ npm run check
 ## Support
 
 For issues or questions:
+
 1. Check server logs for detailed error messages
 2. Verify `INTELLIGENCE_SERVICE_URL` is set correctly
 3. Ensure Omniarchon service is accessible: `curl http://localhost:8053/health`

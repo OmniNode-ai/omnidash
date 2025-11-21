@@ -30,10 +30,13 @@ describe('IntelligenceEventAdapter', () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
 
-    vi.mocked(Kafka).mockImplementation(() => ({
-      producer: () => mockProducer,
-      consumer: () => mockConsumer,
-    }) as any);
+    vi.mocked(Kafka).mockImplementation(
+      () =>
+        ({
+          producer: () => mockProducer,
+          consumer: () => mockConsumer,
+        }) as any
+    );
 
     adapter = new IntelligenceEventAdapter(['localhost:9092']);
   });
@@ -79,9 +82,9 @@ describe('IntelligenceEventAdapter', () => {
 
   describe('request', () => {
     it('should throw if not started', async () => {
-      await expect(
-        adapter.request('test', { data: 'test' })
-      ).rejects.toThrow('IntelligenceEventAdapter not started');
+      await expect(adapter.request('test', { data: 'test' })).rejects.toThrow(
+        'IntelligenceEventAdapter not started'
+      );
     });
 
     it('should send request and wait for response', async () => {
@@ -100,7 +103,7 @@ describe('IntelligenceEventAdapter', () => {
       const requestPromise = adapter.request('test', { data: 'test' }, 2000);
 
       // Wait a bit for the request to be sent
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Simulate completed response
       if (messageHandler && capturedCorrelationId) {
@@ -108,10 +111,12 @@ describe('IntelligenceEventAdapter', () => {
           topic: adapter.TOPIC_COMPLETED,
           message: {
             key: Buffer.from(capturedCorrelationId),
-            value: Buffer.from(JSON.stringify({
-              correlation_id: capturedCorrelationId,
-              payload: { result: 'success' },
-            })),
+            value: Buffer.from(
+              JSON.stringify({
+                correlation_id: capturedCorrelationId,
+                payload: { result: 'success' },
+              })
+            ),
           },
         });
       }
@@ -123,9 +128,7 @@ describe('IntelligenceEventAdapter', () => {
     it('should handle timeout', async () => {
       await adapter.start();
 
-      await expect(
-        adapter.request('test', { data: 'test' }, 100)
-      ).rejects.toThrow();
+      await expect(adapter.request('test', { data: 'test' }, 100)).rejects.toThrow();
     });
 
     it('should handle failed response', async () => {
@@ -144,7 +147,7 @@ describe('IntelligenceEventAdapter', () => {
       const requestPromise = adapter.request('test', { data: 'test' }, 2000);
 
       // Wait a bit for the request to be sent
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Simulate failed response
       if (messageHandler && capturedCorrelationId) {
@@ -152,10 +155,12 @@ describe('IntelligenceEventAdapter', () => {
           topic: adapter.TOPIC_FAILED,
           message: {
             key: Buffer.from(capturedCorrelationId),
-            value: Buffer.from(JSON.stringify({
-              correlation_id: capturedCorrelationId,
-              payload: { error_message: 'Test error' },
-            })),
+            value: Buffer.from(
+              JSON.stringify({
+                correlation_id: capturedCorrelationId,
+                payload: { error_message: 'Test error' },
+              })
+            ),
           },
         });
       }
@@ -180,15 +185,18 @@ describe('IntelligenceEventAdapter', () => {
       });
 
       // This will timeout, but we can check the payload
-      const requestPromise = adapter.requestPatternDiscovery({
-        sourcePath: '/path/to/file.py',
-        language: 'python',
-        project: 'test-project',
-        operationType: 'PATTERN_EXTRACTION',
-      }, 100); // Short timeout
+      const requestPromise = adapter.requestPatternDiscovery(
+        {
+          sourcePath: '/path/to/file.py',
+          language: 'python',
+          project: 'test-project',
+          operationType: 'PATTERN_EXTRACTION',
+        },
+        100
+      ); // Short timeout
 
       // Wait a bit for the request to be sent
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Check that the payload contains the expected fields
       expect(capturedPayload).toBeDefined();
@@ -214,12 +222,15 @@ describe('IntelligenceEventAdapter', () => {
         return Promise.resolve();
       });
 
-      const requestPromise = adapter.requestPatternDiscovery({
-        sourcePath: '/path/to/file.py',
-        language: 'python',
-      }, 100);
+      const requestPromise = adapter.requestPatternDiscovery(
+        {
+          sourcePath: '/path/to/file.py',
+          language: 'python',
+        },
+        100
+      );
 
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(capturedPayload).toBeDefined();
       expect(capturedPayload.operation_type).toBe('PATTERN_EXTRACTION');
@@ -228,4 +239,3 @@ describe('IntelligenceEventAdapter', () => {
     });
   });
 });
-

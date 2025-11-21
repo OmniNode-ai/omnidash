@@ -1,18 +1,36 @@
-import { memo } from "react";
-import { Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { memo } from 'react';
+import { Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toast } from "@/hooks/use-toast";
+} from '@/components/ui/dropdown-menu';
+import { toast } from '@/hooks/use-toast';
 
 interface ExportButtonProps {
   data: Record<string, unknown> | Array<Record<string, unknown>> | null;
   filename: string;
   disabled?: boolean;
+}
+
+/**
+ * Sanitize value to prevent CSV injection attacks.
+ * Prefixes dangerous characters with single quote to prevent formula execution in Excel/Sheets.
+ *
+ * @param value - Value to sanitize
+ * @returns Sanitized string value
+ */
+function sanitizeCSVValue(value: any): string {
+  const strValue = String(value ?? '');
+
+  // Check if value starts with dangerous characters that could trigger formula execution
+  if (/^[=+\-@\t\r]/.test(strValue)) {
+    return `'${strValue}`; // Prefix with single quote to escape
+  }
+
+  return strValue;
 }
 
 /**
@@ -23,13 +41,18 @@ interface ExportButtonProps {
  * - JSON export with pretty formatting
  * - CSV export with automatic header detection (for arrays)
  * - Handles nested objects and arrays
+ * - CSV injection protection (prevents formula execution)
  * - Client-side file download
  *
  * @param data - The data to export (can be object, array, or any JSON-serializable data)
  * @param filename - Base filename without extension (e.g., "agent-operations")
  * @param disabled - Optional disable state
  */
-export const ExportButton = memo(function ExportButton({ data, filename, disabled = false }: ExportButtonProps) {
+export const ExportButton = memo(function ExportButton({
+  data,
+  filename,
+  disabled = false,
+}: ExportButtonProps) {
   const exportAsJSON = () => {
     let url: string | null = null;
     try {
@@ -44,12 +67,12 @@ export const ExportButton = memo(function ExportButton({ data, filename, disable
       document.body.removeChild(a);
     } catch (error) {
       console.error('Failed to export JSON:', error);
-      const errorMessage = "Failed to export data as JSON. Please check console for details.";
+      const errorMessage = 'Failed to export data as JSON. Please check console for details.';
       window.alert(errorMessage);
       toast({
-        title: "Export Failed",
+        title: 'Export Failed',
         description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       // Always cleanup to prevent memory leak
@@ -67,12 +90,12 @@ export const ExportButton = memo(function ExportButton({ data, filename, disable
       // Handle array data (most common for CSV)
       if (Array.isArray(data)) {
         if (data.length === 0) {
-          const errorMessage = "No data available to export as CSV.";
+          const errorMessage = 'No data available to export as CSV.';
           window.alert(errorMessage);
           toast({
-            title: "No Data",
+            title: 'No Data',
             description: errorMessage,
-            variant: "destructive",
+            variant: 'destructive',
           });
           return;
         }
@@ -92,32 +115,37 @@ export const ExportButton = memo(function ExportButton({ data, filename, disable
 
         // Get all unique keys from all objects
         const allKeys = new Set<string>();
-        const flattenedData = data.map(item => {
+        const flattenedData = data.map((item) => {
           const flattened = flattenObject(item);
-          Object.keys(flattened).forEach(key => allKeys.add(key));
+          Object.keys(flattened).forEach((key) => allKeys.add(key));
           return flattened;
         });
 
         const headers = Array.from(allKeys);
 
         // Create CSV header row
-        csv += headers.map(h => `"${h}"`).join(',') + '\n';
+        csv += headers.map((h) => `"${h}"`).join(',') + '\n';
 
         // Create CSV data rows
-        flattenedData.forEach(row => {
-          csv += headers.map(header => {
-            const value = row[header];
-            if (value === null || value === undefined) {
-              return '""';
-            }
-            // Handle arrays and objects in cells
-            if (typeof value === 'object') {
-              return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
-            }
-            // Escape quotes in strings
-            const stringValue = String(value).replace(/"/g, '""');
-            return `"${stringValue}"`;
-          }).join(',') + '\n';
+        flattenedData.forEach((row) => {
+          csv +=
+            headers
+              .map((header) => {
+                const value = row[header];
+                if (value === null || value === undefined) {
+                  return '""';
+                }
+                // Handle arrays and objects in cells
+                if (typeof value === 'object') {
+                  const sanitized = sanitizeCSVValue(JSON.stringify(value));
+                  return `"${sanitized.replace(/"/g, '""')}"`;
+                }
+                // Sanitize and escape quotes in strings
+                const sanitized = sanitizeCSVValue(value);
+                const stringValue = sanitized.replace(/"/g, '""');
+                return `"${stringValue}"`;
+              })
+              .join(',') + '\n';
         });
       }
       // Handle single object (convert to single-row CSV)
@@ -135,23 +163,28 @@ export const ExportButton = memo(function ExportButton({ data, filename, disable
         }, {});
 
         const headers = Object.keys(flatObject);
-        csv += headers.map(h => `"${h}"`).join(',') + '\n';
-        csv += headers.map(header => {
-          const value = flatObject[header];
-          if (value === null || value === undefined) {
-            return '""';
-          }
-          if (typeof value === 'object') {
-            return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
-          }
-          const stringValue = String(value).replace(/"/g, '""');
-          return `"${stringValue}"`;
-        }).join(',') + '\n';
+        csv += headers.map((h) => `"${h}"`).join(',') + '\n';
+        csv +=
+          headers
+            .map((header) => {
+              const value = flatObject[header];
+              if (value === null || value === undefined) {
+                return '""';
+              }
+              if (typeof value === 'object') {
+                const sanitized = sanitizeCSVValue(JSON.stringify(value));
+                return `"${sanitized.replace(/"/g, '""')}"`;
+              }
+              const sanitized = sanitizeCSVValue(value);
+              const stringValue = sanitized.replace(/"/g, '""');
+              return `"${stringValue}"`;
+            })
+            .join(',') + '\n';
       } else {
         toast({
-          title: "Invalid Format",
-          description: "Data format not suitable for CSV export. Use JSON export instead.",
-          variant: "destructive",
+          title: 'Invalid Format',
+          description: 'Data format not suitable for CSV export. Use JSON export instead.',
+          variant: 'destructive',
         });
         return;
       }
@@ -167,9 +200,10 @@ export const ExportButton = memo(function ExportButton({ data, filename, disable
     } catch (error) {
       console.error('Failed to export CSV:', error);
       toast({
-        title: "Export Failed",
-        description: "Failed to export data as CSV. Please try JSON export or check console for details.",
-        variant: "destructive",
+        title: 'Export Failed',
+        description:
+          'Failed to export data as CSV. Please try JSON export or check console for details.',
+        variant: 'destructive',
       });
     } finally {
       // Always cleanup to prevent memory leak
@@ -188,12 +222,8 @@ export const ExportButton = memo(function ExportButton({ data, filename, disable
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={exportAsJSON}>
-          Export as JSON
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={exportAsCSV}>
-          Export as CSV
-        </DropdownMenuItem>
+        <DropdownMenuItem onClick={exportAsJSON}>Export as JSON</DropdownMenuItem>
+        <DropdownMenuItem onClick={exportAsCSV}>Export as CSV</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

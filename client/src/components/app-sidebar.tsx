@@ -1,5 +1,18 @@
-import { Bot, Network, Zap, Code, Activity, Database, Server, Users, ChevronRight, MessageSquare, Search, Eye, BarChart3, Settings, Shield, FileText, TrendingUp, Layers, Target, Calculator, BookOpen, Radio } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import {
+  Bot,
+  Network,
+  Code,
+  ChevronRight,
+  MessageSquare,
+  Search,
+  Eye,
+  BarChart3,
+  Settings,
+  Shield,
+  FileText,
+  Radio,
+} from 'lucide-react';
+import { Link, useLocation } from 'wouter';
 import {
   Sidebar,
   SidebarContent,
@@ -9,74 +22,74 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 
 const dashboards = [
   {
-    title: "Agent Management",
-    url: "/",
+    title: 'Agent Management',
+    url: '/',
     icon: Bot,
   },
   {
-    title: "Code Intelligence Suite",
-    url: "/preview/code-intelligence-suite",
+    title: 'Code Intelligence Suite',
+    url: '/preview/code-intelligence-suite',
     icon: Code,
   },
   // Moved from Preview Features (ordered by importance)
   {
-    title: "Intelligence Analytics",
-    url: "/preview/intelligence-analytics",
+    title: 'Intelligence Analytics',
+    url: '/preview/intelligence-analytics',
     icon: BarChart3,
   },
   {
-    title: "Platform Monitoring",
-    url: "/preview/platform-monitoring",
+    title: 'Platform Monitoring',
+    url: '/preview/platform-monitoring',
     icon: Shield,
   },
   {
-    title: "Architecture & Networks",
-    url: "/preview/architecture-networks",
+    title: 'Architecture & Networks',
+    url: '/preview/architecture-networks',
     icon: Network,
   },
   {
-    title: "Developer Tools",
-    url: "/preview/developer-tools",
+    title: 'Developer Tools',
+    url: '/preview/developer-tools',
     icon: Settings,
   },
   {
-    title: "Contract Builder",
-    url: "/preview/contracts",
+    title: 'Contract Builder',
+    url: '/preview/contracts',
     icon: FileText,
   },
 ];
 
 const tools = [
   {
-    title: "AI Query Assistant",
-    url: "/chat",
+    title: 'AI Query Assistant',
+    url: '/chat',
     icon: MessageSquare,
   },
   {
-    title: "Correlation Trace",
-    url: "/trace",
+    title: 'Correlation Trace',
+    url: '/trace',
     icon: Search,
   },
   {
-    title: "Event Bus Explorer",
-    url: "/event-bus",
+    title: 'Event Bus Explorer',
+    url: '/event-bus',
     icon: Radio,
   },
 ];
 
-  const previews = [
-    {
-      title: "Feature Showcase",
-      url: "/preview/showcase",
-      icon: Eye,
-      description: "Feature demos and interactive previews"
-    },
-  ];
+const previews = [
+  {
+    title: 'Feature Showcase',
+    url: '/preview/showcase',
+    icon: Eye,
+    description: 'Feature demos and interactive previews',
+  },
+];
 
 export function AppSidebar() {
   const [location] = useLocation();
@@ -94,12 +107,9 @@ export function AppSidebar() {
                 const isActive = location === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild 
-                      className={cn(
-                        "group",
-                        isActive && "bg-sidebar-accent"
-                      )}
+                    <SidebarMenuButton
+                      asChild
+                      className={cn('group', isActive && 'bg-sidebar-accent')}
                       data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, '-')}`}
                     >
                       <Link href={item.url}>
@@ -127,12 +137,9 @@ export function AppSidebar() {
                 const isActive = location === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild 
-                      className={cn(
-                        "group",
-                        isActive && "bg-sidebar-accent"
-                      )}
+                    <SidebarMenuButton
+                      asChild
+                      className={cn('group', isActive && 'bg-sidebar-accent')}
                       data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, '-')}`}
                     >
                       <Link href={item.url}>
@@ -160,12 +167,9 @@ export function AppSidebar() {
                 const isActive = location === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild 
-                      className={cn(
-                        "group",
-                        isActive && "bg-sidebar-accent"
-                      )}
+                    <SidebarMenuButton
+                      asChild
+                      className={cn('group', isActive && 'bg-sidebar-accent')}
                       data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, '-')}`}
                     >
                       <Link href={item.url}>

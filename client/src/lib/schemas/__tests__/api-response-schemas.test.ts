@@ -3,7 +3,6 @@ import {
   serviceStatusSchema,
   healthStatusSchema,
   agentSummarySchema,
-  recentActionSchema,
   patternSummarySchema,
   patternTrendSchema,
   safeParseResponse,
@@ -146,4 +145,3 @@ describe('api-response-schemas', () => {
     });
   });
 });
-

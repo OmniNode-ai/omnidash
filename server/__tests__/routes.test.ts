@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express, { type Express } from 'express';
 import { registerRoutes } from '../routes';
-import { intelligenceRouter } from '../intelligence-routes';
-import { chatRouter } from '../chat-routes';
-import savingsRoutes from '../savings-routes';
-import agentRegistryRoutes from '../agent-registry-routes';
 
 // Mock the route modules
 vi.mock('../intelligence-routes', () => ({
@@ -40,7 +36,7 @@ describe('registerRoutes', () => {
 
   it('should mount intelligence routes at /api/intelligence', async () => {
     const server = await registerRoutes(app);
-    
+
     // Verify the route is registered by checking if app has the route
     // We can't easily test route registration without making requests,
     // but we can verify the server was created successfully
@@ -62,4 +58,3 @@ describe('registerRoutes', () => {
     expect(server).toBeDefined();
   });
 });
-

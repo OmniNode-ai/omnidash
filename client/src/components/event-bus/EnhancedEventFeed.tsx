@@ -1,18 +1,18 @@
 /**
  * Enhanced Event Feed Component
- * 
+ *
  * Improved event feed with event bus integration, correlation grouping, and causation visualization.
  */
 
-import React, { useMemo, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { EventTypeBadge } from "./EventTypeBadge";
-import { cn } from "@/lib/utils";
-import type { EventBusEvent } from "@/lib/data-sources";
-import { Link2 } from "lucide-react";
+import React, { useMemo, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { EventTypeBadge } from './EventTypeBadge';
+import { cn } from '@/lib/utils';
+import type { EventBusEvent } from '@/lib/data-sources';
+import { Link2 } from 'lucide-react';
 
 export interface EnhancedEventFeedProps {
   events: EventBusEvent[];
@@ -24,34 +24,34 @@ export interface EnhancedEventFeedProps {
 
 function getStatusColor(eventType: string): string {
   if (eventType.includes('.failed.') || eventType.includes('.error.')) {
-    return "bg-status-error";
+    return 'bg-status-error';
   }
   if (eventType.includes('.completed.') || eventType.includes('.success.')) {
-    return "bg-status-healthy";
+    return 'bg-status-healthy';
   }
   if (eventType.includes('.started.') || eventType.includes('.requested.')) {
-    return "bg-status-warning";
+    return 'bg-status-warning';
   }
-  return "bg-primary";
+  return 'bg-primary';
 }
 
-export function EnhancedEventFeed({ 
-  events, 
-  maxHeight = 400, 
+export function EnhancedEventFeed({
+  events,
+  maxHeight = 400,
   onEventClick,
   onCorrelationClick,
-  className 
+  className,
 }: EnhancedEventFeedProps) {
   const [groupedByCorrelation, setGroupedByCorrelation] = useState(true);
 
   // Group events by correlation_id
   const groupedEvents = useMemo(() => {
     if (!groupedByCorrelation) {
-      return { 'ungrouped': events };
+      return { ungrouped: events };
     }
 
     const groups: Record<string, EventBusEvent[]> = {};
-    events.forEach(event => {
+    events.forEach((event) => {
       const key = event.correlation_id || 'ungrouped';
       if (!groups[key]) {
         groups[key] = [];
@@ -71,7 +71,7 @@ export function EnhancedEventFeed({
   };
 
   return (
-    <Card className={cn("p-6", className)}>
+    <Card className={cn('p-6', className)}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-semibold">Live Event Stream</h3>
         <Button
@@ -91,7 +91,8 @@ export function EnhancedEventFeed({
                 <div className="flex items-center gap-2 px-2 py-1 bg-muted/50 rounded text-xs">
                   <Link2 className="w-3 h-3" />
                   <span className="font-mono">
-                    Correlation: {correlationId.length > 16 ? `${correlationId.slice(0, 16)}...` : correlationId}
+                    Correlation:{' '}
+                    {correlationId.length > 16 ? `${correlationId.slice(0, 16)}...` : correlationId}
                   </span>
                   <Badge variant="secondary" className="ml-auto">
                     {groupEvents.length} events
@@ -113,24 +114,31 @@ export function EnhancedEventFeed({
                 {groupEvents.map((event, index) => (
                   <div
                     key={event.event_id}
-                    role={onEventClick ? "button" : undefined}
+                    role={onEventClick ? 'button' : undefined}
                     tabIndex={onEventClick ? 0 : undefined}
-                    aria-label={onEventClick ? `View details for event ${event.event_type}` : undefined}
+                    aria-label={
+                      onEventClick ? `View details for event ${event.event_type}` : undefined
+                    }
                     className={cn(
-                      "flex gap-3 p-3 rounded-lg border bg-card border-border",
-                      index < 20 && "animate-slide-in",
-                      onEventClick && "cursor-pointer transition-all duration-200 ease-in-out hover:bg-accent/50 hover:scale-[1.01]"
+                      'flex gap-3 p-3 rounded-lg border bg-card border-border',
+                      index < 20 && 'animate-slide-in',
+                      onEventClick &&
+                        'cursor-pointer transition-all duration-200 ease-in-out hover:bg-accent/50 hover:scale-[1.01]'
                     )}
                     style={index < 20 ? { animationDelay: `${index * 50}ms` } : undefined}
                     onClick={onEventClick ? () => onEventClick(event) : undefined}
-                    onKeyDown={onEventClick ? (e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onEventClick(event);
-                      }
-                    } : undefined}
+                    onKeyDown={
+                      onEventClick
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onEventClick(event);
+                            }
+                          }
+                        : undefined
+                    }
                   >
-                    <div className={cn("w-1 rounded", getStatusColor(event.event_type))} />
+                    <div className={cn('w-1 rounded', getStatusColor(event.event_type))} />
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-muted-foreground font-mono">
@@ -139,7 +147,10 @@ export function EnhancedEventFeed({
                         <EventTypeBadge eventType={event.event_type} />
                         {event.causation_id && (
                           <Badge variant="outline" className="text-xs font-mono">
-                            Caused by: {event.causation_id.length > 8 ? `${event.causation_id.slice(0, 8)}...` : event.causation_id}
+                            Caused by:{' '}
+                            {event.causation_id.length > 8
+                              ? `${event.causation_id.slice(0, 8)}...`
+                              : event.causation_id}
                           </Badge>
                         )}
                       </div>
@@ -147,15 +158,17 @@ export function EnhancedEventFeed({
                         <div className="text-xs text-muted-foreground mb-1">
                           Source: <span className="font-mono">{event.source}</span>
                         </div>
-                        {event.payload && Object.keys(event.payload).length > 0 && (() => {
-                          const json = JSON.stringify(event.payload);
-                          const preview = json.slice(0, 100);
-                          return (
-                            <div className="text-xs text-muted-foreground truncate">
-                              {json.length > 100 ? `${preview}...` : preview}
-                            </div>
-                          );
-                        })()}
+                        {event.payload &&
+                          Object.keys(event.payload).length > 0 &&
+                          (() => {
+                            const json = JSON.stringify(event.payload);
+                            const preview = json.slice(0, 100);
+                            return (
+                              <div className="text-xs text-muted-foreground truncate">
+                                {json.length > 100 ? `${preview}...` : preview}
+                              </div>
+                            );
+                          })()}
                       </div>
                     </div>
                   </div>
@@ -173,4 +186,3 @@ export function EnhancedEventFeed({
     </Card>
   );
 }
-

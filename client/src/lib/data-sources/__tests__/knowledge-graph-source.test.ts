@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { knowledgeGraphSource } from '../knowledge-graph-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import { resetFetchMock } from '../../../tests/utils/mock-fetch';
 
 // Mock the USE_MOCK_DATA flag to false so we can test real API paths
 vi.mock('../../mock-data', () => ({
@@ -27,9 +27,7 @@ describe('KnowledgeGraphSource', () => {
           { id: 'node-1', label: 'Node 1', type: 'pattern' },
           { id: 'node-2', label: 'Node 2', type: 'service' },
         ],
-        edges: [
-          { source: 'node-1', target: 'node-2', type: 'used-by' },
-        ],
+        edges: [{ source: 'node-1', target: 'node-2', type: 'used-by' }],
       };
 
       (global.fetch as any) = vi.fn().mockResolvedValue({

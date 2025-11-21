@@ -1,10 +1,17 @@
-import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TableFilters, FilterState, ColumnFilter } from "@/components/TableFilters";
-import { TablePagination, PaginationState } from "@/components/TablePagination";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-import { useState, useMemo } from "react";
-import { cn } from "@/lib/utils";
+import { Card } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { TableFilters, FilterState, ColumnFilter } from '@/components/TableFilters';
+import { TablePagination, PaginationState } from '@/components/TablePagination';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 
 export interface Column<T> {
   key: string;
@@ -41,18 +48,18 @@ export function DataTable<T extends Record<string, any> & { id: string | number 
   columns,
   title,
   isLoading = false,
-  emptyMessage = "No data available",
+  emptyMessage = 'No data available',
   searchKeys = [],
   columnFilters = [],
   showTimeRange = false,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = 'Search...',
   defaultPageSize = 50,
-  maxHeight = "600px",
+  maxHeight = '600px',
   className,
 }: DataTableProps<T>) {
   const [filters, setFilters] = useState<FilterState>({
-    searchQuery: "",
-    timeRange: showTimeRange ? "24h" : undefined,
+    searchQuery: '',
+    timeRange: showTimeRange ? '24h' : undefined,
     columnFilters: {},
   });
 
@@ -156,7 +163,7 @@ export function DataTable<T extends Record<string, any> & { id: string | number 
   };
 
   return (
-    <Card className={cn("p-6", className)}>
+    <Card className={cn('p-6', className)}>
       {title && <h3 className="text-base font-semibold mb-4">{title}</h3>}
 
       {/* Filters */}
@@ -183,10 +190,7 @@ export function DataTable<T extends Record<string, any> & { id: string | number 
       ) : (
         <>
           {/* Table Container with Fixed Header */}
-          <div
-            className="relative border rounded-lg overflow-hidden"
-            style={{ maxHeight }}
-          >
+          <div className="relative border rounded-lg overflow-hidden" style={{ maxHeight }}>
             <div className="overflow-auto" style={{ maxHeight }}>
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10 border-b">
@@ -196,7 +200,7 @@ export function DataTable<T extends Record<string, any> & { id: string | number 
                         key={column.key}
                         className={cn(
                           column.className,
-                          column.sortable && "cursor-pointer select-none hover:bg-muted/50"
+                          column.sortable && 'cursor-pointer select-none hover:bg-muted/50'
                         )}
                         onClick={() => column.sortable && handleSort(column.key)}
                       >
@@ -213,9 +217,7 @@ export function DataTable<T extends Record<string, any> & { id: string | number 
                     <TableRow key={item.id}>
                       {columns.map((column) => (
                         <TableCell key={`${item.id}-${column.key}`} className={column.className}>
-                          {column.render
-                            ? column.render(item)
-                            : String(item[column.key] ?? "")}
+                          {column.render ? column.render(item) : String(item[column.key] ?? '')}
                         </TableCell>
                       ))}
                     </TableRow>

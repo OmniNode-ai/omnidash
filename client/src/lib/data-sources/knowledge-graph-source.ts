@@ -1,10 +1,7 @@
 // Knowledge Graph Data Source
 import { USE_MOCK_DATA, KnowledgeGraphMockData } from '../mock-data';
 import { ensureArray } from '../defensive-transform-logger';
-import {
-  knowledgeGraphDataSchema,
-  safeParseResponse,
-} from '../schemas/api-response-schemas';
+import { knowledgeGraphDataSchema, safeParseResponse } from '../schemas/api-response-schemas';
 
 export interface GraphNode {
   id: string;
@@ -37,8 +34,11 @@ class KnowledgeGraphSource {
     }
 
     try {
-      const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
-      const response = await fetch(`${omniarchonUrl}/api/intelligence/knowledge/graph?limit=${limit}&timeWindow=${timeRange}`);
+      const omniarchonUrl =
+        import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+      const response = await fetch(
+        `${omniarchonUrl}/api/intelligence/knowledge/graph?limit=${limit}&timeWindow=${timeRange}`
+      );
       if (response.ok) {
         const rawData = await response.json();
         // Validate API response with Zod schema
@@ -80,4 +80,3 @@ class KnowledgeGraphSource {
 }
 
 export const knowledgeGraphSource = new KnowledgeGraphSource();
-

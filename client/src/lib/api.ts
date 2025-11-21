@@ -7,11 +7,15 @@ export interface DiscoveredPattern {
   metadata?: Record<string, any>;
 }
 
-export async function fetchPatterns(params: { path: string; lang?: string; timeout?: number }): Promise<DiscoveredPattern[]> {
+export async function fetchPatterns(params: {
+  path: string;
+  lang?: string;
+  timeout?: number;
+}): Promise<DiscoveredPattern[]> {
   const qp = new URLSearchParams();
   qp.set('path', params.path);
   if (params.lang) qp.set('lang', params.lang);
-  if (params.timeout) qp.set('timeout', String(params.timeout));
+  if (params.timeout != null) qp.set('timeout', String(params.timeout));
 
   const res = await fetch(`/api/intelligence/analysis/patterns?${qp.toString()}`);
   if (!res.ok) {
@@ -21,13 +25,3 @@ export async function fetchPatterns(params: { path: string; lang?: string; timeo
   const json = await res.json();
   return (json?.patterns || []) as DiscoveredPattern[];
 }
-
-
-
-
-
-
-
-
-
-

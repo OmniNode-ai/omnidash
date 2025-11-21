@@ -1,7 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { architectureNetworksSource } from '../architecture-networks-source';
-import type { ArchitectureSummary, ArchitectureNode, ArchitectureEdge, KnowledgeEntity, EventFlow } from '../architecture-networks-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import type {
+  ArchitectureSummary,
+  ArchitectureNode,
+  ArchitectureEdge,
+  KnowledgeEntity,
+  EventFlow,
+} from '../architecture-networks-source';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 describe('ArchitectureNetworksSource', () => {
   beforeEach(() => {
@@ -18,11 +28,7 @@ describe('ArchitectureNetworksSource', () => {
         patterns: 4,
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/architecture/summary', createMockResponse(mockSummary)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/architecture/summary', createMockResponse(mockSummary)]]));
 
       const result = await architectureNetworksSource.fetchSummary('24h');
 
@@ -38,11 +44,7 @@ describe('ArchitectureNetworksSource', () => {
         patterns: 6,
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/architecture/summary', createMockResponse(mockSummary)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/architecture/summary', createMockResponse(mockSummary)]]));
 
       const result = await architectureNetworksSource.fetchSummary('7d');
 
@@ -56,9 +58,7 @@ describe('ArchitectureNetworksSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/architecture/summary', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/architecture/summary', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await architectureNetworksSource.fetchSummary('24h');
@@ -72,9 +72,7 @@ describe('ArchitectureNetworksSource', () => {
 
     it('should handle network error gracefully', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/architecture/summary', new Error('Network connection failed')],
-        ])
+        new Map([['/api/architecture/summary', new Error('Network connection failed')]])
       );
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -100,11 +98,7 @@ describe('ArchitectureNetworksSource', () => {
         { id: 'node-3', name: 'Database C', type: 'database' },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/architecture/nodes', createMockResponse(mockNodes)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/architecture/nodes', createMockResponse(mockNodes)]]));
 
       const result = await architectureNetworksSource.fetchNodes('24h');
 
@@ -119,15 +113,11 @@ describe('ArchitectureNetworksSource', () => {
         { id: 'node-2', name: 'Polymorphic Agent', type: 'agent', status: 'active' },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/architecture/nodes', createMockResponse(mockNodes)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/architecture/nodes', createMockResponse(mockNodes)]]));
 
       const result = await architectureNetworksSource.fetchNodes('7d');
 
-      result.data.forEach(node => {
+      result.data.forEach((node) => {
         expect(node).toHaveProperty('id');
         expect(node).toHaveProperty('name');
         expect(node).toHaveProperty('type');
@@ -138,11 +128,7 @@ describe('ArchitectureNetworksSource', () => {
     });
 
     it('should return empty array when API returns non-array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/architecture/nodes', createMockResponse({ nodes: [] })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/architecture/nodes', createMockResponse({ nodes: [] })]]));
 
       const result = await architectureNetworksSource.fetchNodes('24h');
 
@@ -152,24 +138,18 @@ describe('ArchitectureNetworksSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/architecture/nodes', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/architecture/nodes', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await architectureNetworksSource.fetchNodes('24h');
 
       expect(result.isMock).toBe(true);
       expect(result.data.length).toBe(8); // Mock has 8 nodes
-      expect(result.data.every(node => node.id && node.name && node.type)).toBe(true);
+      expect(result.data.every((node) => node.id && node.name && node.type)).toBe(true);
     });
 
     it('should handle network error gracefully', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/architecture/nodes', new Error('Connection timeout')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/architecture/nodes', new Error('Connection timeout')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -194,11 +174,7 @@ describe('ArchitectureNetworksSource', () => {
         { source: 'node-1', target: 'node-3', type: 'delegates-to' },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/architecture/edges', createMockResponse(mockEdges)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/architecture/edges', createMockResponse(mockEdges)]]));
 
       const result = await architectureNetworksSource.fetchEdges('24h');
 
@@ -213,15 +189,11 @@ describe('ArchitectureNetworksSource', () => {
         { source: 'node-3', target: 'node-4', type: 'queries' },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/architecture/edges', createMockResponse(mockEdges)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/architecture/edges', createMockResponse(mockEdges)]]));
 
       const result = await architectureNetworksSource.fetchEdges('7d');
 
-      result.data.forEach(edge => {
+      result.data.forEach((edge) => {
         expect(edge).toHaveProperty('source');
         expect(edge).toHaveProperty('target');
         expect(edge.source).toBeTruthy();
@@ -232,11 +204,7 @@ describe('ArchitectureNetworksSource', () => {
     });
 
     it('should return empty array when API returns non-array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/architecture/edges', createMockResponse({ edges: [] })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/architecture/edges', createMockResponse({ edges: [] })]]));
 
       const result = await architectureNetworksSource.fetchEdges('24h');
 
@@ -246,24 +214,18 @@ describe('ArchitectureNetworksSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/architecture/edges', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/architecture/edges', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await architectureNetworksSource.fetchEdges('24h');
 
       expect(result.isMock).toBe(true);
       expect(result.data.length).toBe(12); // Mock has 12 edges
-      expect(result.data.every(edge => edge.source && edge.target)).toBe(true);
+      expect(result.data.every((edge) => edge.source && edge.target)).toBe(true);
     });
 
     it('should handle network error gracefully', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/architecture/edges', new Error('API unreachable')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/architecture/edges', new Error('API unreachable')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -287,11 +249,7 @@ describe('ArchitectureNetworksSource', () => {
         { id: 'entity-2', name: 'Entity B', type: 'pattern' },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/knowledge/entities', createMockResponse(mockEntities)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/knowledge/entities', createMockResponse(mockEntities)]]));
 
       const result = await architectureNetworksSource.fetchKnowledgeEntities('24h');
 
@@ -304,15 +262,11 @@ describe('ArchitectureNetworksSource', () => {
         { id: 'entity-1', name: 'Code Pattern', type: 'pattern', confidence: 0.95 },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/knowledge/entities', createMockResponse(mockEntities)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/knowledge/entities', createMockResponse(mockEntities)]]));
 
       const result = await architectureNetworksSource.fetchKnowledgeEntities('7d');
 
-      result.data.forEach(entity => {
+      result.data.forEach((entity) => {
         expect(entity).toHaveProperty('id');
         expect(entity).toHaveProperty('name');
         expect(entity).toHaveProperty('type');
@@ -323,11 +277,7 @@ describe('ArchitectureNetworksSource', () => {
     });
 
     it('should return empty array when API returns non-array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/knowledge/entities', createMockResponse({ entities: [] })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/knowledge/entities', createMockResponse({ entities: [] })]]));
 
       const result = await architectureNetworksSource.fetchKnowledgeEntities('24h');
 
@@ -337,9 +287,7 @@ describe('ArchitectureNetworksSource', () => {
 
     it('should return mock data (empty array) when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/knowledge/entities', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/knowledge/entities', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await architectureNetworksSource.fetchKnowledgeEntities('24h');
@@ -349,11 +297,7 @@ describe('ArchitectureNetworksSource', () => {
     });
 
     it('should handle network error gracefully', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/knowledge/entities', new Error('Network error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/knowledge/entities', new Error('Network error')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -378,11 +322,7 @@ describe('ArchitectureNetworksSource', () => {
         ],
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/events/flow', createMockResponse(mockEventFlow)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/events/flow', createMockResponse(mockEventFlow)]]));
 
       const result = await architectureNetworksSource.fetchEventFlow('24h');
 
@@ -399,15 +339,11 @@ describe('ArchitectureNetworksSource', () => {
         ],
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/events/flow', createMockResponse(mockEventFlow)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/events/flow', createMockResponse(mockEventFlow)]]));
 
       const result = await architectureNetworksSource.fetchEventFlow('7d');
 
-      result.data.events.forEach(event => {
+      result.data.events.forEach((event) => {
         expect(event).toHaveProperty('id');
         expect(event).toHaveProperty('timestamp');
         expect(event).toHaveProperty('type');
@@ -418,11 +354,7 @@ describe('ArchitectureNetworksSource', () => {
     });
 
     it('should return empty events when API fails', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/events/flow', createMockResponse(null, { status: 500 })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/events/flow', createMockResponse(null, { status: 500 })]]));
 
       const result = await architectureNetworksSource.fetchEventFlow('24h');
 
@@ -431,11 +363,7 @@ describe('ArchitectureNetworksSource', () => {
     });
 
     it('should handle network error gracefully', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/events/flow', new Error('Connection failed')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/events/flow', new Error('Connection failed')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -471,9 +399,7 @@ describe('ArchitectureNetworksSource', () => {
         { id: 'entity-1', name: 'Pattern A', type: 'pattern' },
       ];
       const mockEventFlow: EventFlow = {
-        events: [
-          { id: 'event-1', timestamp: '2024-01-01T00:00:00Z', type: 'routing' },
-        ],
+        events: [{ id: 'event-1', timestamp: '2024-01-01T00:00:00Z', type: 'routing' }],
       };
 
       setupFetchMock(
@@ -503,9 +429,7 @@ describe('ArchitectureNetworksSource', () => {
         services: 5,
         patterns: 3,
       };
-      const mockNodes: ArchitectureNode[] = [
-        { id: 'node-1', name: 'Service A', type: 'service' },
-      ];
+      const mockNodes: ArchitectureNode[] = [{ id: 'node-1', name: 'Service A', type: 'service' }];
 
       setupFetchMock(
         new Map([

@@ -9,11 +9,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **ALWAYS check `.env` file for actual configuration values before making assumptions!**
 
 Key configuration values (see `.env` for full details):
+
 - **Port**: 3000 (set in package.json: `PORT=3000 npm run dev`)
 - **Database**: All connection details in `.env` file (never hardcode passwords!)
 - **Kafka Brokers**: `192.168.86.200:9092` (see `~/.claude/CLAUDE.md` for connection patterns)
 
 **Before running any commands that require configuration:**
+
 1. Read `.env` file to get actual values
 2. Use those exact values (don't guess or use old defaults)
 3. Server runs on port **3000**, not 5000!
@@ -21,6 +23,7 @@ Key configuration values (see `.env` for full details):
 ## Common Commands
 
 **Development**:
+
 ```bash
 PORT=3000 npm run dev  # Start development server (port 3000)
 npm run check          # TypeScript type checking across client/server/shared
@@ -29,6 +32,7 @@ PORT=3000 npm start    # Run production build on port 3000
 ```
 
 **Testing**:
+
 ```bash
 npm run test              # Run vitest tests
 npm run test:ui           # Run tests with interactive UI
@@ -36,11 +40,13 @@ npm run test:coverage     # Generate test coverage report
 ```
 
 **Database**:
+
 ```bash
 npm run db:push     # Push Drizzle schema changes to PostgreSQL
 ```
 
 **Testing APIs**:
+
 ```bash
 # Use port 3000, not 5000!
 curl http://localhost:3000/api/intelligence/patterns/summary
@@ -51,6 +57,7 @@ curl http://localhost:3000/api/intelligence/quality/summary
 ```
 
 **Observability & Testing**:
+
 ```bash
 # Event generation and testing
 npm run seed-events              # Seed test events once
@@ -62,6 +69,7 @@ node scripts/seed-events.ts      # Direct script execution
 ```
 
 **Dashboard URLs** (always port 3000):
+
 - Agent Operations: http://localhost:3000/
 - Pattern Learning: http://localhost:3000/patterns
 - Intelligence Operations: http://localhost:3000/intelligence
@@ -73,6 +81,7 @@ node scripts/seed-events.ts      # Direct script execution
 - Chat: http://localhost:3000/chat
 
 **Environment**:
+
 - **ALWAYS CHECK `.env` FILE FIRST** for actual configuration values
 - Runs on `PORT=3000` (configured in package.json dev script, NOT 5000!)
 - Database: All connection details in `.env` file (host, port, credentials)
@@ -84,6 +93,7 @@ node scripts/seed-events.ts      # Direct script execution
 ### Monorepo Structure
 
 Three-directory monorepo with TypeScript path aliases:
+
 - **`client/`** → React frontend (accessed via `@/` alias)
 - **`server/`** → Express backend (minimal API surface)
 - **`shared/`** → Shared types/schemas (accessed via `@shared/` alias)
@@ -92,32 +102,35 @@ Three-directory monorepo with TypeScript path aliases:
 
 **Router Pattern**: Wouter-based SPA with 9 dashboard routes representing different platform capabilities:
 
-| Route | Component | Purpose |
-|-------|-----------|---------|
-| `/` | AgentOperations | 52 AI agents monitoring |
-| `/patterns` | PatternLearning | 25,000+ code patterns |
-| `/intelligence` | IntelligenceOperations | 168+ AI operations |
-| `/code` | CodeIntelligence | Semantic search, quality gates |
-| `/events` | EventFlow | Kafka/Redpanda event processing |
-| `/knowledge` | KnowledgeGraph | Code relationship visualization |
-| `/health` | PlatformHealth | System health monitoring |
-| `/developer` | DeveloperExperience | Workflow metrics |
-| `/chat` | Chat | AI query assistant |
+| Route           | Component              | Purpose                         |
+| --------------- | ---------------------- | ------------------------------- |
+| `/`             | AgentOperations        | 52 AI agents monitoring         |
+| `/patterns`     | PatternLearning        | 25,000+ code patterns           |
+| `/intelligence` | IntelligenceOperations | 168+ AI operations              |
+| `/code`         | CodeIntelligence       | Semantic search, quality gates  |
+| `/events`       | EventFlow              | Kafka/Redpanda event processing |
+| `/knowledge`    | KnowledgeGraph         | Code relationship visualization |
+| `/health`       | PlatformHealth         | System health monitoring        |
+| `/developer`    | DeveloperExperience    | Workflow metrics                |
+| `/chat`         | Chat                   | AI query assistant              |
 
 **Component System**: Built on shadcn/ui (New York variant) with Radix UI primitives. All UI components live in `client/src/components/ui/` and follow shadcn conventions.
 
 **Design Philosophy**: Carbon Design System principles (IBM) optimized for data-dense enterprise dashboards:
+
 - Information density over white space
 - IBM Plex Sans/Mono typography (loaded from Google Fonts)
 - Scanability for real-time monitoring scenarios
 - Consistent metric card patterns across dashboards
 
 **State Management**:
+
 - Server state: TanStack Query v5 (`queryClient` in `client/src/lib/queryClient.ts`)
 - Theme state: Custom `ThemeProvider` context (supports dark/light modes, defaults to dark)
 - Local state: React hooks
 
 **Layout Pattern**: All dashboards share consistent structure:
+
 ```
 <SidebarProvider>
   <AppSidebar /> (w-64, collapsible navigation)
@@ -130,14 +143,17 @@ Three-directory monorepo with TypeScript path aliases:
 **API-Driven Design**: Express server provides comprehensive API endpoints for intelligence data with real-time WebSocket updates.
 
 **Development vs Production**:
+
 - **Dev**: Vite middleware integrated into Express for HMR (`setupVite()` in `server/vite.ts`)
 - **Prod**: Static files served from `dist/public`, API routes from `dist/index.js`
 
 **Build Process**:
+
 1. Frontend: Vite bundles to `dist/public/`
 2. Backend: esbuild bundles server to `dist/` (ESM format, platform: node, externalized packages)
 
 **Backend Components**:
+
 - `server/index.ts` - Main Express server with middleware setup
 - `server/routes.ts` - Route registration and HTTP server creation
 - `server/intelligence-routes.ts` - Intelligence API endpoints (100+ routes)
@@ -150,6 +166,7 @@ Three-directory monorepo with TypeScript path aliases:
 - `server/service-health.ts` - Service health monitoring
 
 **Database Layer**:
+
 - **ORM**: Drizzle with Neon serverless PostgreSQL driver
 - **Schemas**:
   - `shared/schema.ts` - User authentication tables
@@ -162,18 +179,22 @@ Three-directory monorepo with TypeScript path aliases:
 ### Key Architectural Patterns
 
 **Mock Data Strategy**: Dashboards currently generate client-side mock data. Future production implementation should replace with:
+
 - WebSocket or Server-Sent Events for real-time updates
 - Actual API endpoints in `server/routes.ts`
 - Backend data aggregation for metrics
 
 **Path Alias Resolution**: Two import aliases configured in `tsconfig.json`, `vite.config.ts`, and `vitest.config.ts`:
+
 ```typescript
 @/          → client/src/
 @shared/    → shared/
 ```
+
 Note: The `@assets/` alias exists in vite.config but is not widely used.
 
 **Type Flow**: Database schema → Drizzle inferred types → Zod schemas → Runtime validation
+
 ```typescript
 // shared/schema.ts
 export const users = pgTable("users", { ... });
@@ -184,6 +205,7 @@ export const insertUserSchema = createInsertSchema(users); // Zod schema
 **Component Reuse Philosophy**: MetricCard, ChartContainer, and StatusBadge are designed as reusable primitives across all 8 operational dashboards. When adding new metrics or visualizations, extend these components rather than creating new patterns.
 
 **Responsive Grid System**: Dashboards use Tailwind's responsive grid utilities with breakpoints:
+
 - Mobile: 1-2 columns
 - Tablet (md): 2-4 columns
 - Desktop (xl/2xl): 4-6 columns (depending on dashboard)
@@ -193,12 +215,14 @@ export const insertUserSchema = createInsertSchema(users); // Zod schema
 ### Real-Time Event System
 
 **WebSocket Architecture** (`server/websocket.ts`):
+
 - WebSocket server mounted at `/ws` endpoint
 - Client subscription model: clients subscribe to specific event types
 - Heartbeat monitoring with 30-second intervals and missed ping tolerance
 - Graceful connection management and cleanup
 
 **Event Consumer** (`server/event-consumer.ts`):
+
 - Kafka consumer using `kafkajs` library
 - Connects to `192.168.86.200:9092` (configured via `KAFKA_BOOTSTRAP_SERVERS`)
 - Consumes from multiple topics: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
@@ -207,15 +231,18 @@ export const insertUserSchema = createInsertSchema(users); // Zod schema
 - EventEmitter-based pub/sub for internal event distribution
 
 **Client Integration Pattern**:
+
 ```typescript
 // Connect to WebSocket
 const ws = new WebSocket('ws://localhost:3000/ws');
 
 // Subscribe to events
-ws.send(JSON.stringify({
-  type: 'subscribe',
-  topics: ['agent-actions', 'routing-decisions']
-}));
+ws.send(
+  JSON.stringify({
+    type: 'subscribe',
+    topics: ['agent-actions', 'routing-decisions'],
+  })
+);
 
 // Receive events
 ws.onmessage = (event) => {
@@ -233,12 +260,14 @@ ws.onmessage = (event) => {
 **Test Framework**: Vitest is configured with 20+ test files covering components and data sources.
 
 **Test Configuration** (`vitest.config.ts`):
+
 - Environment: jsdom (for DOM testing)
 - Setup file: `client/src/tests/setup.ts`
 - Coverage: v8 provider with text/json/html reporters
 - Path aliases: Same as main tsconfig (`@/` and `@shared/`)
 
 **Test Structure**:
+
 - Component tests: `client/src/components/__tests__/` (12+ files)
   - MetricCard, DataTable, EventFeed, StatusLegend, etc.
 - Data source tests: `client/src/lib/data-sources/__tests__/` (8+ files)
@@ -246,6 +275,7 @@ ws.onmessage = (event) => {
 - Testing tools: @testing-library/react, @testing-library/user-event, vitest
 
 **Running Tests**:
+
 ```bash
 npm run test              # Run all tests
 npm run test:ui           # Interactive test UI
@@ -259,6 +289,7 @@ npm run test:coverage     # Generate coverage report
 **Current State**: Hybrid implementation with real-time capabilities already in place.
 
 **Already Implemented**:
+
 - **WebSocket Server**: `server/websocket.ts` provides real-time event streaming to clients
 - **Kafka Consumer**: `server/event-consumer.ts` consumes events from Kafka topics
 - **Database Adapter**: `server/db-adapter.ts` reads from PostgreSQL intelligence database
@@ -274,6 +305,7 @@ npm run test:coverage     # Generate coverage report
 ### Available Data Sources
 
 **PostgreSQL Database** (`192.168.86.200:5436`):
+
 - **Database**: `omninode_bridge`
 - **30+ tables** tracking agent execution, routing, patterns, and performance
 - **Key tables**:
@@ -285,6 +317,7 @@ npm run test:coverage     # Generate coverage report
   - `error_events` / `success_events` - Error and success tracking
 
 **Kafka Event Bus** (`192.168.86.200:9092`):
+
 - **Real-time event streaming** with <100ms latency
 - **Topics**: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
 - **Consumer Group**: `omnidash-consumers-v2`
@@ -314,18 +347,21 @@ ENABLE_REAL_TIME_EVENTS=true
 ### Integration Patterns
 
 **Pattern 1: Database-Backed API Endpoints** (✅ Implemented)
+
 - Express API endpoints in `server/intelligence-routes.ts`, `server/savings-routes.ts`, `server/agent-registry-routes.ts`
 - Uses Drizzle ORM with PostgreSQL at `192.168.86.200:5436`
 - Backend aggregation and caching for performance
 - Integrate with TanStack Query in dashboard components
 
 **Pattern 2: WebSocket for Real-Time Updates** (✅ Implemented)
+
 - WebSocket server at `/ws` in `server/websocket.ts`
 - Consumes Kafka topics via `server/event-consumer.ts`
 - Broadcasts events to subscribed clients (<100ms latency)
 - Client subscription model for targeted updates
 
 **Pattern 3: Server-Sent Events (SSE)** (Alternative Option)
+
 - Simpler than WebSocket for one-way real-time updates
 - Built-in browser reconnection
 - Can be implemented as Express route streaming Kafka events
@@ -335,6 +371,7 @@ ENABLE_REAL_TIME_EVENTS=true
 Intelligence schema is defined in `shared/intelligence-schema.ts` with 30+ tables including:
 
 **Core Tables** (already implemented):
+
 - `agent_routing_decisions` - Agent selection with confidence scoring
 - `agent_actions` - Tool calls, decisions, errors, successes
 - `agent_transformation_events` - Polymorphic agent transformations
@@ -350,24 +387,28 @@ All tables use Drizzle ORM with Zod validation schemas auto-generated via `creat
 ### Implementation Status
 
 **✅ Phase 1: Infrastructure (Completed)**
+
 - Intelligence schema with 30+ tables in `shared/intelligence-schema.ts`
 - Database adapter in `server/db-adapter.ts` with connection pooling
 - API endpoints in `server/intelligence-routes.ts` and related route files
 - KafkaJS consumer in `server/event-consumer.ts` with event aggregation
 
 **✅ Phase 2: Real-Time Streaming (Completed)**
+
 - WebSocket server in `server/websocket.ts` with heartbeat monitoring
 - Client subscription model for targeted event delivery
 - Event bus integration with <100ms latency
 - Automatic reconnection and error recovery
 
 **🚧 Phase 3: Dashboard Integration (In Progress)**
+
 1. Convert dashboard components from mock data to real API calls
 2. Add `useWebSocket` hooks for real-time updates
 3. Implement live metric updates with smooth animations
 4. Add error boundaries and fallback states
 
 **📋 Phase 4: Advanced Features (Planned)**
+
 1. Qdrant integration for pattern similarity search
 2. Redis caching layer for expensive queries
 3. Materialized views for dashboard aggregations
@@ -386,6 +427,7 @@ All tables use Drizzle ORM with Zod validation schemas auto-generated via `creat
 ### Complete Integration Guide
 
 See `INTELLIGENCE_INTEGRATION.md` for comprehensive details including:
+
 - Complete database schema documentation (30+ tables)
 - Kafka event schemas with TypeScript interfaces
 - Example SQL queries for each dashboard
@@ -397,6 +439,7 @@ See `INTELLIGENCE_INTEGRATION.md` for comprehensive details including:
 ## Design System Reference
 
 See `design_guidelines.md` for comprehensive Carbon Design System implementation details including:
+
 - Typography scale and IBM Plex font usage
 - Spacing primitives (Tailwind units: 2, 4, 6, 8, 12, 16)
 - Component patterns (metric cards, status indicators, data tables)
@@ -409,6 +452,7 @@ See `design_guidelines.md` for comprehensive Carbon Design System implementation
 **Application Schema**: `shared/schema.ts` contains basic user authentication tables.
 
 **Intelligence Schema**: `shared/intelligence-schema.ts` (✅ already implemented) contains 30+ tables for agent observability:
+
 - Agent routing and decision tracking
 - Workflow execution and performance metrics
 - Pattern learning and manifest generation
@@ -417,6 +461,7 @@ See `design_guidelines.md` for comprehensive Carbon Design System implementation
 - Debug intelligence capture
 
 Both schemas use:
+
 - Drizzle ORM for type-safe database access
 - `createInsertSchema()` from `drizzle-zod` for runtime validation
 - PostgreSQL with connection pooling via `@neondatabase/serverless`

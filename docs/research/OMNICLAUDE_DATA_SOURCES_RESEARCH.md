@@ -9,6 +9,7 @@
 ## Executive Summary
 
 **Key Findings**:
+
 - ✅ **34+ database tables** in PostgreSQL tracking comprehensive agent execution data
 - ✅ **8 Kafka topics** publishing real-time agent events
 - ✅ **1 FastAPI dashboard** with SSE updates (port not documented, needs verification)
@@ -24,6 +25,7 @@
 ### Purpose of OmniClaude
 
 OmniClaude is a **comprehensive toolkit for enhancing Claude Code** with:
+
 - **Multi-provider AI support** (7 providers: Anthropic, Z.ai, Together AI, OpenRouter, Gemini variants)
 - **Polymorphic agent framework** (52 specialized agents)
 - **Intelligence infrastructure** (pattern discovery, manifest injection, debug intelligence)
@@ -84,13 +86,13 @@ OmniClaude is a **comprehensive toolkit for enhancing Claude Code** with:
 
 ### Key Infrastructure Components
 
-| Component | Location | Purpose | Status |
-|-----------|----------|---------|--------|
-| **PostgreSQL** | `192.168.86.200:5436` | Primary data storage (34+ tables) | ✅ Production |
-| **Kafka/Redpanda** | `192.168.86.200:9092` | Event streaming (8 topics) | ✅ Production |
-| **Qdrant** | `localhost:6333` | Vector database (120+ patterns) | ✅ Production |
-| **Memgraph** | `localhost:7687` | Graph database (relationships) | ✅ Production |
-| **FastAPI Dashboard** | Port unknown | Web dashboard with SSE | ⚠️ Optional |
+| Component             | Location              | Purpose                           | Status        |
+| --------------------- | --------------------- | --------------------------------- | ------------- |
+| **PostgreSQL**        | `192.168.86.200:5436` | Primary data storage (34+ tables) | ✅ Production |
+| **Kafka/Redpanda**    | `192.168.86.200:9092` | Event streaming (8 topics)        | ✅ Production |
+| **Qdrant**            | `localhost:6333`      | Vector database (120+ patterns)   | ✅ Production |
+| **Memgraph**          | `localhost:7687`      | Graph database (relationships)    | ✅ Production |
+| **FastAPI Dashboard** | Port unknown          | Web dashboard with SSE            | ⚠️ Optional   |
 
 ---
 
@@ -103,6 +105,7 @@ OmniClaude is a **comprehensive toolkit for enhancing Claude Code** with:
 **Update Frequency**: Real-time (on every agent selection)
 
 **Schema**:
+
 ```sql
 CREATE TABLE agent_routing_decisions (
     id UUID PRIMARY KEY,
@@ -162,6 +165,7 @@ CREATE TABLE agent_routing_decisions (
 **Update Frequency**: Real-time (on every tool call)
 
 **Schema**:
+
 ```sql
 CREATE TABLE agent_actions (
     id UUID PRIMARY KEY,
@@ -195,6 +199,7 @@ CREATE TABLE agent_actions (
 **Update Frequency**: On every agent execution
 
 **Schema**:
+
 ```sql
 CREATE TABLE agent_manifest_injections (
     id UUID PRIMARY KEY,
@@ -261,6 +266,7 @@ CREATE TABLE agent_manifest_injections (
 **Update Frequency**: On every user request
 
 **Schema**:
+
 ```sql
 CREATE TABLE agent_prompts (
     id UUID PRIMARY KEY,
@@ -310,6 +316,7 @@ CREATE TABLE agent_prompts (
 **Update Frequency**: Real-time
 
 **Schema**:
+
 ```sql
 CREATE TABLE agent_file_operations (
     id UUID PRIMARY KEY,
@@ -366,6 +373,7 @@ CREATE TABLE agent_file_operations (
 **Update Frequency**: On pattern application
 
 **Schema**:
+
 ```sql
 CREATE TABLE agent_intelligence_usage (
     id UUID PRIMARY KEY,
@@ -422,6 +430,7 @@ CREATE TABLE agent_intelligence_usage (
 **Purpose**: Complete trace from user request to result
 
 **View Definition**:
+
 ```sql
 CREATE OR REPLACE VIEW v_agent_execution_trace AS
 SELECT
@@ -465,6 +474,7 @@ ORDER BY ard.created_at DESC;
 **Update Frequency**: Real-time
 
 **Metrics Tracked**:
+
 - Routing time (target: <100ms, achieved: 7-13ms)
 - Confidence scores
 - Success rates
@@ -487,20 +497,21 @@ ORDER BY ard.created_at DESC;
 
 ### Available Topics
 
-| Topic | Purpose | Event Frequency | Retention |
-|-------|---------|-----------------|-----------|
-| `agent-actions` | Tool calls, decisions, errors | ~50K/day | 7 days |
-| `agent-routing-decisions` | Agent selection events | ~1K/day | 7 days |
-| `agent-transformation-events` | Agent transformations | Low | 7 days |
-| `router-performance-metrics` | Routing performance | ~1K/day | 7 days |
-| `agent.routing.requested.v1` | Routing requests | ~1K/day | 7 days |
-| `agent.routing.completed.v1` | Routing successes | ~1K/day | 7 days |
-| `agent.routing.failed.v1` | Routing failures | Low | 7 days |
-| `agent-detection-failures` | Detection failures | Low | 7 days |
+| Topic                         | Purpose                       | Event Frequency | Retention |
+| ----------------------------- | ----------------------------- | --------------- | --------- |
+| `agent-actions`               | Tool calls, decisions, errors | ~50K/day        | 7 days    |
+| `agent-routing-decisions`     | Agent selection events        | ~1K/day         | 7 days    |
+| `agent-transformation-events` | Agent transformations         | Low             | 7 days    |
+| `router-performance-metrics`  | Routing performance           | ~1K/day         | 7 days    |
+| `agent.routing.requested.v1`  | Routing requests              | ~1K/day         | 7 days    |
+| `agent.routing.completed.v1`  | Routing successes             | ~1K/day         | 7 days    |
+| `agent.routing.failed.v1`     | Routing failures              | Low             | 7 days    |
+| `agent-detection-failures`    | Detection failures            | Low             | 7 days    |
 
 ### Event Schemas
 
 **Agent Action Event** (`agent-actions`):
+
 ```json
 {
   "correlation_id": "uuid",
@@ -517,6 +528,7 @@ ORDER BY ard.created_at DESC;
 ```
 
 **Routing Decision Event** (`agent-routing-decisions`):
+
 ```json
 {
   "correlation_id": "uuid",
@@ -525,15 +537,14 @@ ORDER BY ard.created_at DESC;
   "confidence_score": 0.92,
   "routing_strategy": "enhanced_fuzzy_matching",
   "routing_time_ms": 8,
-  "alternatives": [
-    {"agent": "agent-code-quality", "confidence": 0.78}
-  ],
+  "alternatives": [{ "agent": "agent-code-quality", "confidence": 0.78 }],
   "matched_triggers": ["debug", "code"],
   "timestamp": "2025-11-03T10:30:00Z"
 }
 ```
 
 **Agent Routing Request Event** (`agent.routing.requested.v1`):
+
 ```json
 {
   "correlation_id": "uuid",
@@ -554,6 +565,7 @@ ORDER BY ard.created_at DESC;
 ### Approach 1: Direct PostgreSQL Queries (Recommended for Phase 1)
 
 **Advantages**:
+
 - Simple, no additional infrastructure
 - Cacheable with TanStack Query
 - Familiar SQL patterns
@@ -564,6 +576,7 @@ ORDER BY ard.created_at DESC;
 1. **Add PostgreSQL connection in omnidash**
 
 Update `.env`:
+
 ```bash
 # Intelligence Database (same as omnidash already has)
 DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge"
@@ -572,8 +585,18 @@ DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_brid
 2. **Create Drizzle schema for intelligence tables**
 
 `shared/intelligence-schema.ts`:
+
 ```typescript
-import { pgTable, uuid, text, integer, numeric, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  integer,
+  numeric,
+  boolean,
+  timestamp,
+  jsonb,
+} from 'drizzle-orm/pg-core';
 
 export const agentRoutingDecisions = pgTable('agent_routing_decisions', {
   id: uuid('id').primaryKey(),
@@ -604,6 +627,7 @@ export const agentActions = pgTable('agent_actions', {
 3. **Create API endpoints in omnidash server**
 
 `server/intelligence-routes.ts`:
+
 ```typescript
 import { db } from './db';
 import { agentRoutingDecisions, agentActions } from '../shared/intelligence-schema';
@@ -664,6 +688,7 @@ app.get('/api/intelligence/routing/metrics', async (req, res) => {
 4. **Replace mock data in dashboard components**
 
 `client/src/pages/AgentOperations.tsx`:
+
 ```typescript
 import { useQuery } from '@tanstack/react-query';
 
@@ -706,6 +731,7 @@ function AgentOperations() {
 ### Approach 2: Real-Time Kafka Events (Phase 2)
 
 **Advantages**:
+
 - Real-time updates (<100ms latency)
 - Event sourcing patterns
 - Horizontal scalability
@@ -721,6 +747,7 @@ npm install kafkajs ws
 2. **Create Kafka consumer service**
 
 `server/kafka-consumer.ts`:
+
 ```typescript
 import { Kafka } from 'kafkajs';
 import { WebSocketServer } from 'ws';
@@ -738,11 +765,7 @@ const wss = new WebSocketServer({ port: 3001 });
 async function startConsumer() {
   await consumer.connect();
   await consumer.subscribe({
-    topics: [
-      'agent-actions',
-      'agent-routing-decisions',
-      'router-performance-metrics'
-    ]
+    topics: ['agent-actions', 'agent-routing-decisions', 'router-performance-metrics'],
   });
 
   await consumer.run({
@@ -750,7 +773,7 @@ async function startConsumer() {
       const event = JSON.parse(message.value.toString());
 
       // Broadcast to all connected WebSocket clients
-      wss.clients.forEach(client => {
+      wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(JSON.stringify({ topic, event }));
         }
@@ -765,6 +788,7 @@ startConsumer().catch(console.error);
 3. **Create WebSocket hook in frontend**
 
 `client/src/hooks/useWebSocket.ts`:
+
 ```typescript
 import { useEffect, useState } from 'react';
 
@@ -813,6 +837,7 @@ function AgentOperations() {
 ### Agent Operations Dashboard
 
 **Agent Activity Summary (Last 24h)**:
+
 ```sql
 SELECT
     aa.agent_name,
@@ -831,6 +856,7 @@ LIMIT 20;
 ```
 
 **Recent Routing Decisions with Confidence**:
+
 ```sql
 SELECT
     ard.user_request,
@@ -846,6 +872,7 @@ LIMIT 50;
 ```
 
 **Routing Performance Metrics**:
+
 ```sql
 SELECT
     COUNT(*) as total_decisions,
@@ -863,6 +890,7 @@ WHERE created_at > NOW() - INTERVAL '24 hours';
 ### Pattern Learning Dashboard
 
 **Top Applied Patterns**:
+
 ```sql
 SELECT
     aiu.intelligence_name,
@@ -882,6 +910,7 @@ LIMIT 25;
 ```
 
 **Pattern Discovery Trends**:
+
 ```sql
 SELECT
     DATE_TRUNC('hour', ami.created_at) as hour,
@@ -898,6 +927,7 @@ ORDER BY hour DESC;
 ### Intelligence Operations Dashboard
 
 **Manifest Injection Performance**:
+
 ```sql
 SELECT
     ami.agent_name,
@@ -918,6 +948,7 @@ ORDER BY total_injections DESC;
 ### Code Intelligence Dashboard
 
 **File Operation Statistics**:
+
 ```sql
 SELECT
     afo.file_extension,
@@ -935,6 +966,7 @@ LIMIT 20;
 ```
 
 **Most Modified Files**:
+
 ```sql
 SELECT
     afo.file_path,
@@ -953,6 +985,7 @@ LIMIT 20;
 ### Event Flow Dashboard
 
 **Execution Traces (Complete Workflows)**:
+
 ```sql
 SELECT
     vet.correlation_id,
@@ -972,6 +1005,7 @@ LIMIT 50;
 ```
 
 **Correlation Trace (Single Workflow)**:
+
 ```sql
 -- Get complete trace for a specific correlation_id
 SELECT * FROM get_complete_trace('your-correlation-id-here');
@@ -1021,6 +1055,7 @@ ORDER BY created_at;
 ### Platform Health Dashboard
 
 **System Health Score**:
+
 ```sql
 SELECT
     -- Routing performance (40% weight)
@@ -1236,6 +1271,7 @@ export function AgentOperations() {
 ### ⚠️ Partial Availability
 
 **Event Flow Visualization**:
+
 - **Status**: Events published to Kafka but not persisted
 - **Gap**: No database table for event flow graph
 - **Recommendation**:
@@ -1244,6 +1280,7 @@ export function AgentOperations() {
   - Option 3: Use `agent_actions` table as proxy (has correlation_id chain)
 
 **Knowledge Graph Visualization**:
+
 - **Status**: Data in Memgraph (graph database) at `localhost:7687`
 - **Gap**: Not exposed via PostgreSQL
 - **Recommendation**:
@@ -1253,6 +1290,7 @@ export function AgentOperations() {
 ### ❌ Not Available
 
 **Real-Time Chat Interface**:
+
 - **Status**: No chat history in database
 - **Gap**: OmniClaude doesn't track chat conversations
 - **Recommendation**:
@@ -1260,6 +1298,7 @@ export function AgentOperations() {
   - Or integrate with `agent_prompts` table (user prompts only)
 
 **Developer Experience Metrics**:
+
 - **Status**: Partial (can derive from routing + execution data)
 - **Gap**: No explicit "developer satisfaction" or "workflow efficiency" metrics
 - **Recommendation**:
@@ -1269,6 +1308,7 @@ export function AgentOperations() {
     - Routing time + execution time → Total latency
 
 **Platform Monitoring (Infrastructure)**:
+
 - **Status**: No infrastructure metrics in database
 - **Gap**: Docker, Kafka, PostgreSQL health not tracked
 - **Recommendation**:
@@ -1282,6 +1322,7 @@ export function AgentOperations() {
 ### Step 1: Database Connection (10 minutes)
 
 1. **Verify .env has correct credentials**
+
 ```bash
 # In omnidash/.env
 DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge"
@@ -1293,6 +1334,7 @@ POSTGRES_PASSWORD=<from omniclaude/.env>
 ```
 
 2. **Test connection**
+
 ```bash
 psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "SELECT COUNT(*) FROM agent_routing_decisions;"
 ```
@@ -1302,6 +1344,7 @@ psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "SELECT COUNT(*
 1. **Create `shared/intelligence-schema.ts`** (see Integration Guide above)
 
 2. **Test Drizzle connection**
+
 ```typescript
 // Test script
 import { db } from './server/db';
@@ -1316,11 +1359,13 @@ console.log(decisions);
 1. **Create `server/intelligence-routes.ts`** (see Integration Guide above)
 
 2. **Import in `server/index.ts`**
+
 ```typescript
 import './intelligence-routes';
 ```
 
 3. **Test endpoints**
+
 ```bash
 curl http://localhost:3000/api/intelligence/agents/summary
 curl http://localhost:3000/api/intelligence/routing/metrics
@@ -1341,17 +1386,20 @@ curl http://localhost:3000/api/intelligence/routing/metrics
 ### Database Query Optimization
 
 **Indexes Available**:
+
 - ✅ `correlation_id` - Every table (fast correlation tracing)
 - ✅ `created_at DESC` - Every table (fast time-range queries)
 - ✅ `agent_name + created_at` - Fast per-agent queries
 - ✅ GIN indexes on JSONB columns - Fast JSON queries
 
 **Query Performance Targets**:
+
 - Simple aggregations (COUNT, AVG): <50ms
 - Complex joins (v_agent_execution_trace): <200ms
 - Time-range queries (24h): <100ms with proper indexes
 
 **Optimization Tips**:
+
 1. Always filter by `created_at` with time range (uses index)
 2. Use `LIMIT` for large result sets
 3. Use views for complex joins (pre-optimized)
@@ -1360,11 +1408,13 @@ curl http://localhost:3000/api/intelligence/routing/metrics
 ### Kafka Consumer Performance
 
 **Current Throughput**:
+
 - ~1K events/day for routing decisions
 - ~50K events/day for agent actions
 - ~7-day retention
 
 **Consumer Group Strategy**:
+
 - Use `omnidash-consumers` group
 - Single partition per topic (low volume)
 - Auto-commit enabled
@@ -1376,6 +1426,7 @@ curl http://localhost:3000/api/intelligence/routing/metrics
 ### Health Check Queries
 
 **Check data freshness**:
+
 ```sql
 SELECT
     'routing_decisions' as table_name,
@@ -1404,6 +1455,7 @@ FROM agent_manifest_injections;
 ```
 
 **Check data quality**:
+
 ```sql
 -- Find routing decisions without validation
 SELECT COUNT(*)
@@ -1485,6 +1537,7 @@ docker exec omninode-bridge-redpanda rpk topic consume agent-actions --num 10
 ## Summary
 
 **OmniClaude provides:**
+
 - ✅ **34+ database tables** with complete agent execution traceability
 - ✅ **8 Kafka topics** for real-time event streaming
 - ✅ **Production-ready infrastructure** with 1,408+ routing decisions
@@ -1493,6 +1546,7 @@ docker exec omninode-bridge-redpanda rpk topic consume agent-actions --num 10
 - ✅ **Event-driven architecture** for scalability
 
 **Integration with Omnidash:**
+
 - **Phase 1**: Direct PostgreSQL queries (simple, fast, cacheable)
 - **Phase 2**: Real-time Kafka events (sub-100ms latency)
 - **Phase 3**: Advanced features (Qdrant, Memgraph, custom metrics)

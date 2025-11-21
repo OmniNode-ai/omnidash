@@ -9,12 +9,8 @@ export default function RealtimeChartExample() {
 
   return (
     <div className="grid grid-cols-2 gap-6 p-6">
-      <RealtimeChart 
-        title="Agent Response Times"
-        data={data}
-        color="hsl(var(--chart-1))"
-      />
-      <RealtimeChart 
+      <RealtimeChart title="Agent Response Times" data={data} color="hsl(var(--chart-1))" />
+      <RealtimeChart
         title="Pattern Discovery Rate"
         data={data}
         color="hsl(var(--chart-2))"

@@ -14,6 +14,7 @@ The Pattern Learning dashboard integration has been validated against the backen
 ### Key Findings
 
 ✅ **Working Correctly**:
+
 - All API endpoints operational and responding
 - Real pattern names from database (not filenames)
 - Real pattern counts and discovery trends
@@ -22,6 +23,7 @@ The Pattern Learning dashboard integration has been validated against the backen
 - Pattern relationship visualization with API integration
 
 🔴 **Critical Issues**:
+
 1. **Quality Scores Hardcoded** - All patterns show 0.87 (Python) or 0.82 (other languages)
 2. **Usage Counts Hardcoded** - All patterns have usage = 1
 3. **Quality Summary Hardcoded** - Average quality fixed at 0.85
@@ -35,6 +37,7 @@ The Pattern Learning dashboard integration has been validated against the backen
 **Location**: `client/src/pages/PatternLearning.tsx`
 
 #### ✅ API Integration - Correct
+
 ```typescript
 // Real API endpoints being called
 const { data: summary } = useQuery<PatternSummary>({
@@ -43,12 +46,15 @@ const { data: summary } = useQuery<PatternSummary>({
 });
 
 const { data: patterns } = useQuery<Pattern[]>({
-  queryKey: [`http://localhost:3000/api/intelligence/patterns/list?limit=50&timeWindow=${timeRange}`],
+  queryKey: [
+    `http://localhost:3000/api/intelligence/patterns/list?limit=50&timeWindow=${timeRange}`,
+  ],
   refetchInterval: 30000,
 });
 ```
 
 #### ✅ Error Handling - Correct
+
 ```typescript
 if (summaryError || patternsError) {
   return (
@@ -60,6 +66,7 @@ if (summaryError || patternsError) {
 ```
 
 #### ✅ Hardcoded Data Detection - Excellent
+
 ```typescript
 // Dashboard already detects hardcoded quality scores!
 const isFlat = qualityData && qualityData.length > 0 &&
@@ -86,6 +93,7 @@ if (isFlat) {
 #### 🔴 Issue #1: Hardcoded Quality Scores in Pattern List
 
 **Line 443-444**:
+
 ```typescript
 // Mock quality score based on language (Python slightly higher)
 const quality = p.language === 'python' ? 0.87 : 0.82;
@@ -94,6 +102,7 @@ const quality = p.language === 'python' ? 0.87 : 0.82;
 **Impact**: All patterns display hardcoded quality scores instead of real quality metrics.
 
 **Expected**: Quality should be calculated from:
+
 - Code quality analysis (complexity, maintainability)
 - Usage success rates
 - Pattern effectiveness metrics
@@ -107,6 +116,7 @@ const quality = p.language === 'python' ? 0.87 : 0.82;
 #### 🔴 Issue #2: Hardcoded Usage Counts
 
 **Line 446-447**:
+
 ```typescript
 // All patterns have usage of 1 since they're unique discoveries
 const usage = 1;
@@ -115,6 +125,7 @@ const usage = 1;
 **Impact**: Cannot identify most-used patterns. All patterns show usage = 1.
 
 **Expected**: Usage should be calculated from:
+
 - Number of times pattern was referenced in manifest injections
 - Pattern application frequency across agents
 - Pattern reuse metrics
@@ -128,6 +139,7 @@ const usage = 1;
 #### 🔴 Issue #3: Hardcoded Average Quality in Summary
 
 **Line 315**:
+
 ```typescript
 // Mock quality score - no real quality data in pattern_lineage_nodes
 avgQualityScore: sql<number>`0.85::numeric`,
@@ -144,6 +156,7 @@ avgQualityScore: sql<number>`0.85::numeric`,
 #### ⚠️ Issue #4: Trend Calculations Based on Age Only
 
 **Lines 449-477**: Trend calculation uses pattern age, not actual usage trends:
+
 ```typescript
 // Very recent patterns (< 12 hours) show strong growth
 if (ageInHours < 12) {
@@ -155,6 +168,7 @@ if (ageInHours < 12) {
 **Impact**: Trend indicators are synthetic, not based on real usage data.
 
 **Expected**: Trends calculated from:
+
 - Usage change over last 7 days vs previous 7 days
 - Pattern application frequency changes
 - Agent adoption rate changes
@@ -168,6 +182,7 @@ if (ageInHours < 12) {
 **Location**: `shared/intelligence-schema.ts`
 
 #### Pattern Lineage Nodes Table
+
 ```typescript
 export const patternLineageNodes = pgTable('pattern_lineage_nodes', {
   id: uuid('id').primaryKey(),
@@ -180,6 +195,7 @@ export const patternLineageNodes = pgTable('pattern_lineage_nodes', {
 ```
 
 **Missing Quality Fields**:
+
 - No `qualityScore` field
 - No `usageCount` field
 - No `lastUsedAt` field
@@ -194,6 +210,7 @@ export const patternLineageNodes = pgTable('pattern_lineage_nodes', {
 **Location**: `client/src/components/PatternNetwork.tsx`
 
 #### ✅ API Integration - Correct
+
 ```typescript
 const { data: relationships = [] } = useQuery<PatternRelationship[]>({
   queryKey: [`/api/intelligence/patterns/relationships?patterns=${patternIds}`],
@@ -203,6 +220,7 @@ const { data: relationships = [] } = useQuery<PatternRelationship[]>({
 ```
 
 #### ✅ Fallback Rendering - Acceptable
+
 ```typescript
 if (relationships.length > 0) {
   // Draw real relationships from API
@@ -232,26 +250,34 @@ The hardcoded data issues stem from **incomplete Phase 2 implementation**:
 ## Data Quality Assessment
 
 ### Pattern Names
+
 ✅ **Real Data**: Pattern names come from `patternLineageNodes.patternName`
+
 - Example: "Async Database Transaction with Retry"
 - Example: "State Management Pattern with Reducer"
-- **Not** filenames like "__init__.py"
+- **Not** filenames like "**init**.py"
 
 ### Pattern Counts
+
 ✅ **Real Data**: Total patterns and daily counts from database queries
+
 ```typescript
-totalPatterns: sql<number>`COUNT(*)::int`
-newPatternsToday: sql<number>`COUNT(*) FILTER (WHERE created_at >= ...)::int`
+totalPatterns: sql<number>`COUNT(*)::int`;
+newPatternsToday: sql<number>`COUNT(*) FILTER (WHERE created_at >= ...)::int`;
 ```
 
 ### Quality Scores
+
 🔴 **Hardcoded**: All values synthetic
+
 - Summary: Always 0.85
 - List: Always 0.87 (Python) or 0.82 (others)
 - No real quality calculation exists
 
 ### Usage Counts
+
 🔴 **Hardcoded**: All values = 1
+
 - No usage tracking implemented
 - No references tracked
 - Cannot identify popular patterns
@@ -263,6 +289,7 @@ newPatternsToday: sql<number>`COUNT(*) FILTER (WHERE created_at >= ...)::int`
 ### Priority 1: Implement Real Quality Scoring
 
 **Option A**: Use Archon Intelligence Service (Recommended)
+
 ```typescript
 // Query quality scores from Archon Intelligence
 const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
@@ -272,6 +299,7 @@ const qualityResponse = await fetch(
 ```
 
 **Option B**: Calculate quality from pattern data
+
 ```typescript
 function calculatePatternQuality(pattern: Pattern): number {
   const metrics = {
@@ -279,7 +307,7 @@ function calculatePatternQuality(pattern: Pattern): number {
     documentation: checkDocumentation(pattern),
     testCoverage: getTestCoverage(pattern),
     usageSuccess: getSuccessRate(pattern),
-    conformance: checkONEXConformance(pattern)
+    conformance: checkONEXConformance(pattern),
   };
 
   return weightedAverage(metrics);
@@ -287,10 +315,11 @@ function calculatePatternQuality(pattern: Pattern): number {
 ```
 
 **Option C**: Store quality scores in database (requires schema migration)
+
 ```typescript
 // Add migration to pattern_lineage_nodes table
-qualityScore: numeric('quality_score', { precision: 5, scale: 4 })
-lastQualityCheck: timestamp('last_quality_check')
+qualityScore: numeric('quality_score', { precision: 5, scale: 4 });
+lastQualityCheck: timestamp('last_quality_check');
 ```
 
 ### Priority 2: Implement Usage Tracking
@@ -301,7 +330,8 @@ lastQualityCheck: timestamp('last_quality_check')
 // When pattern is used in manifest injection
 async function recordPatternUsage(patternId: string, manifestId: string) {
   // Increment usage counter
-  await db.update(patternLineageNodes)
+  await db
+    .update(patternLineageNodes)
     .set({ usageCount: sql`usage_count + 1`, lastUsedAt: new Date() })
     .where(eq(patternLineageNodes.id, patternId));
 
@@ -309,19 +339,20 @@ async function recordPatternUsage(patternId: string, manifestId: string) {
   await db.insert(patternUsageEvents).values({
     patternId,
     manifestId,
-    timestamp: new Date()
+    timestamp: new Date(),
   });
 }
 ```
 
 **Query for usage counts**:
+
 ```typescript
 const patterns = await intelligenceDb
   .select({
     id: patternLineageNodes.id,
     name: patternLineageNodes.patternName,
     usageCount: patternLineageNodes.usageCount,
-    quality: patternLineageNodes.qualityScore
+    quality: patternLineageNodes.qualityScore,
   })
   .from(patternLineageNodes)
   .orderBy(desc(patternLineageNodes.usageCount));
@@ -347,6 +378,7 @@ const trendPercentage = calculatePercentageChange(last7Days, previous7Days);
 ### Phase 1: Database Schema Updates (1 day)
 
 1. **Add quality/usage fields** to `pattern_lineage_nodes`:
+
 ```sql
 ALTER TABLE pattern_lineage_nodes
 ADD COLUMN quality_score NUMERIC(5,4) DEFAULT 0.0,
@@ -356,6 +388,7 @@ ADD COLUMN success_rate NUMERIC(5,4) DEFAULT 0.0;
 ```
 
 2. **Create pattern usage events table**:
+
 ```sql
 CREATE TABLE pattern_usage_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -406,7 +439,8 @@ CREATE INDEX idx_pattern_usage_created_at ON pattern_usage_events(created_at);
 ## Testing Validation Checklist
 
 ### Data Quality Checks
-- [ ] No filenames in pattern list (no __init__.py, no .py files)
+
+- [ ] No filenames in pattern list (no **init**.py, no .py files)
 - [ ] Pattern names are descriptive
 - [ ] Quality scores vary (not all 0.85/0.87/0.82)
 - [ ] Quality scores in range [0.0, 1.0]
@@ -415,6 +449,7 @@ CREATE INDEX idx_pattern_usage_created_at ON pattern_usage_events(created_at);
 - [ ] Pattern types correct (function_pattern, class_pattern, design_pattern)
 
 ### UI Functionality
+
 - [ ] Pattern list loads without errors
 - [ ] Pattern details page displays all fields
 - [ ] Quality breakdown shows 5 components
@@ -426,6 +461,7 @@ CREATE INDEX idx_pattern_usage_created_at ON pattern_usage_events(created_at);
 - [ ] No hardcoded quality score warnings displayed
 
 ### API Integration
+
 - [ ] GET /api/intelligence/patterns/summary returns real avg quality
 - [ ] GET /api/intelligence/patterns/list returns varied quality scores
 - [ ] GET /api/intelligence/patterns/list returns varied usage counts
@@ -434,6 +470,7 @@ CREATE INDEX idx_pattern_usage_created_at ON pattern_usage_events(created_at);
 - [ ] Loading states displayed correctly
 
 ### Performance
+
 - [ ] Pattern list loads < 2 seconds
 - [ ] Pattern details load < 1 second
 - [ ] Relationship graph renders < 3 seconds
@@ -445,12 +482,14 @@ CREATE INDEX idx_pattern_usage_created_at ON pattern_usage_events(created_at);
 ## Success Metrics
 
 ### Current State (Baseline)
+
 - Quality Score Variance: **0%** (all hardcoded)
 - Usage Count Variance: **0%** (all = 1)
 - Data Accuracy: **40%** (names/counts real, quality/usage fake)
 - User Trust: **Low** (users can see hardcoded values)
 
 ### Target State (After Fixes)
+
 - Quality Score Variance: **>20%** (real variation)
 - Usage Count Variance: **>50%** (popular patterns stand out)
 - Data Accuracy: **100%** (all metrics from real data)
@@ -461,12 +500,14 @@ CREATE INDEX idx_pattern_usage_created_at ON pattern_usage_events(created_at);
 ## Appendix A: Code Locations
 
 ### Frontend
+
 - Main Dashboard: `/client/src/pages/PatternLearning.tsx`
 - Pattern Network: `/client/src/components/PatternNetwork.tsx`
 - Top Patterns List: `/client/src/components/TopPatternsList.tsx`
 - Pattern Filters: `/client/src/components/PatternFilters.tsx`
 
 ### Backend
+
 - API Routes: `/server/intelligence-routes.ts`
   - Line 300: `/patterns/summary` (hardcoded quality at line 315)
   - Line 419: `/patterns/list` (hardcoded quality at line 444, usage at line 447)
@@ -474,6 +515,7 @@ CREATE INDEX idx_pattern_usage_created_at ON pattern_usage_events(created_at);
   - Line 671: `/patterns/relationships`
 
 ### Database
+
 - Schema: `/shared/intelligence-schema.ts`
   - Line 108: `patternLineageNodes` table (missing quality/usage fields)
   - Line 133: `patternLineageEdges` table (for relationships)
@@ -483,6 +525,7 @@ CREATE INDEX idx_pattern_usage_created_at ON pattern_usage_events(created_at);
 ## Appendix B: Sample API Responses
 
 ### Current Response (Hardcoded)
+
 ```json
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
@@ -498,6 +541,7 @@ CREATE INDEX idx_pattern_usage_created_at ON pattern_usage_events(created_at);
 ```
 
 ### Expected Response (Real Data)
+
 ```json
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",

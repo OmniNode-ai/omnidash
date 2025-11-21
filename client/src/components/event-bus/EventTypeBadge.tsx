@@ -1,26 +1,26 @@
 /**
  * Event Type Badge Component
- * 
+ *
  * Displays event types with color coding by domain and status indicators.
  */
 
-import React from "react";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { 
-  Brain, 
-  Bot, 
-  Code, 
-  Database, 
-  Network, 
-  Lock, 
+import React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Brain,
+  Bot,
+  Code,
+  Database,
+  Network,
+  Lock,
   Workflow,
   CheckCircle2,
   XCircle,
   Clock,
-  PlayCircle
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+  PlayCircle,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface EventTypeBadgeProps {
   eventType: string;
@@ -125,9 +125,9 @@ export function EventTypeBadge({ eventType, status, onClick, className }: EventT
     <Badge
       variant="outline"
       className={cn(
-        "font-mono text-xs cursor-pointer transition-colors",
+        'font-mono text-xs cursor-pointer transition-colors',
         domainColor,
-        onClick && "hover:scale-105",
+        onClick && 'hover:scale-105',
         className
       )}
       onClick={onClick}
@@ -135,9 +135,7 @@ export function EventTypeBadge({ eventType, status, onClick, className }: EventT
       <div className="flex items-center gap-1.5">
         <DomainIcon className="w-3 h-3" />
         <span className="truncate max-w-[200px]">{eventType}</span>
-        {StatusIcon && (
-          <StatusIcon className={cn("w-3 h-3", statusColor)} />
-        )}
+        {StatusIcon && <StatusIcon className={cn('w-3 h-3', statusColor)} />}
       </div>
     </Badge>
   );
@@ -145,9 +143,7 @@ export function EventTypeBadge({ eventType, status, onClick, className }: EventT
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
-          {badge}
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
         <TooltipContent>
           <p className="text-xs">{description}</p>
           {onClick && (
@@ -158,4 +154,3 @@ export function EventTypeBadge({ eventType, status, onClick, className }: EventT
     </TooltipProvider>
   );
 }
-

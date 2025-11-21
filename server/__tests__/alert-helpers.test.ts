@@ -13,9 +13,6 @@ vi.mock('../storage', () => ({
   },
 }));
 
-// Import sql for mocking
-import { sql } from 'drizzle-orm';
-
 // Mock global fetch
 global.fetch = vi.fn();
 
@@ -123,4 +120,3 @@ describe('Alert Helpers', () => {
     });
   });
 });
-

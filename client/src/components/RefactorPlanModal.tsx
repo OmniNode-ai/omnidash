@@ -1,9 +1,15 @@
-import React from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { CheckCircle, Clock, DollarSign, AlertTriangle, Code, ArrowRight } from "lucide-react";
+import React from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { CheckCircle, Clock, DollarSign, AlertTriangle, Code } from 'lucide-react';
 
 interface RefactoringStep {
   id: string;
@@ -38,16 +44,19 @@ export function RefactorPlanModal({ open, onClose, plan, duplicateTitle }: Refac
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'high': return 'destructive';
-      case 'medium': return 'default';
-      case 'low': return 'secondary';
-      default: return 'outline';
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'default';
+      case 'low':
+        return 'secondary';
+      default:
+        return 'outline';
     }
   };
 
-  const sortedSteps = plan.steps && plan.steps.length > 0
-    ? [...plan.steps].sort((a, b) => a.order - b.order)
-    : [];
+  const sortedSteps =
+    plan.steps && plan.steps.length > 0 ? [...plan.steps].sort((a, b) => a.order - b.order) : [];
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -113,49 +122,53 @@ export function RefactorPlanModal({ open, onClose, plan, duplicateTitle }: Refac
               <p className="text-sm text-muted-foreground">No refactoring steps defined.</p>
             ) : (
               <div className="space-y-3">
-                {sortedSteps.map((step, idx) => (
-                <Card key={step.id} className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
-                      {step.order}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h5 className="font-medium">{step.description}</h5>
-                        {step.automated && (
-                          <Badge variant="secondary" className="text-xs">
-                            Automated
-                          </Badge>
-                        )}
+                {sortedSteps.map((step) => (
+                  <Card key={step.id} className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
+                        {step.order}
                       </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm mb-2">
-                        <div>
-                          <span className="text-muted-foreground">Time:</span>
-                          <span className="ml-2 font-medium">{step.estimatedTime}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h5 className="font-medium">{step.description}</h5>
+                          {step.automated && (
+                            <Badge variant="secondary" className="text-xs">
+                              Automated
+                            </Badge>
+                          )}
                         </div>
-                        {step.dependencies && step.dependencies.length > 0 && (
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-2">
                           <div>
-                            <span className="text-muted-foreground">Depends on:</span>
-                            <span className="ml-2 font-medium">Step {step.dependencies.join(', ')}</span>
+                            <span className="text-muted-foreground">Time:</span>
+                            <span className="ml-2 font-medium">{step.estimatedTime}</span>
+                          </div>
+                          {step.dependencies && step.dependencies.length > 0 && (
+                            <div>
+                              <span className="text-muted-foreground">Depends on:</span>
+                              <span className="ml-2 font-medium">
+                                Step {step.dependencies.join(', ')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {step.files && step.files.length > 0 && (
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-1">
+                              Affected Files:
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {step.files.map((file, fileIdx) => (
+                                <code key={fileIdx} className="text-xs bg-muted px-2 py-1 rounded">
+                                  {file}
+                                </code>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
-                      {step.files && step.files.length > 0 && (
-                        <div>
-                          <div className="text-xs text-muted-foreground mb-1">Affected Files:</div>
-                          <div className="flex flex-wrap gap-1">
-                            {step.files.map((file, fileIdx) => (
-                              <code key={fileIdx} className="text-xs bg-muted px-2 py-1 rounded">
-                                {file}
-                              </code>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                ))}
               </div>
             )}
           </div>
@@ -184,19 +197,10 @@ export function RefactorPlanModal({ open, onClose, plan, duplicateTitle }: Refac
               <Code className="w-4 h-4 mr-2" />
               Generate PR
             </Button>
-            <Button variant="default">
-              Export Plan
-            </Button>
+            <Button variant="default">Export Plan</Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
-
-
-
-
-
-
-

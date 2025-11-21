@@ -77,18 +77,21 @@ This guide documents how to integrate OmniClaude's comprehensive intelligence in
 ### Data Flow Patterns
 
 **Pattern 1: Real-Time Event Stream** (Kafka → Dashboard)
+
 ```
 Agent Event → Kafka Topic → WebSocket/SSE → Dashboard Update
 Latency: <100ms
 ```
 
 **Pattern 2: Historical Analysis** (PostgreSQL → Dashboard)
+
 ```
 User Query → API Endpoint → SQL Query → Aggregated Data → Chart
 Latency: <500ms
 ```
 
 **Pattern 3: Pattern Discovery** (Qdrant → Dashboard)
+
 ```
 Search Query → Vector Search → Similar Patterns → Visualization
 Latency: <200ms
@@ -108,18 +111,18 @@ Latency: <200ms
 
 **Key Tables** (30+ total):
 
-| Table | Records | Purpose | Update Frequency |
-|-------|---------|---------|------------------|
-| `agent_routing_decisions` | ~1K/day | Agent selection, confidence scoring | Per user request |
-| `agent_manifest_injections` | ~1K/day | Complete manifest snapshots | Per agent execution |
-| `agent_transformation_events` | ~1K/day | Agent transformations | Per polymorphic switch |
-| `agent_actions` | ~50K/day | Tool calls, decisions, errors | Per agent action |
-| `router_performance_metrics` | ~1K/day | Routing performance | Per routing decision |
-| `workflow_steps` | ~10K/day | Workflow execution steps | Per workflow step |
-| `llm_calls` | ~5K/day | LLM API calls with costs | Per LLM call |
-| `error_events` | ~500/day | Error tracking | Per error |
-| `success_events` | ~800/day | Success tracking | Per success |
-| `lineage_edges` | ~20K/day | Data lineage graph | Continuous |
+| Table                         | Records  | Purpose                             | Update Frequency       |
+| ----------------------------- | -------- | ----------------------------------- | ---------------------- |
+| `agent_routing_decisions`     | ~1K/day  | Agent selection, confidence scoring | Per user request       |
+| `agent_manifest_injections`   | ~1K/day  | Complete manifest snapshots         | Per agent execution    |
+| `agent_transformation_events` | ~1K/day  | Agent transformations               | Per polymorphic switch |
+| `agent_actions`               | ~50K/day | Tool calls, decisions, errors       | Per agent action       |
+| `router_performance_metrics`  | ~1K/day  | Routing performance                 | Per routing decision   |
+| `workflow_steps`              | ~10K/day | Workflow execution steps            | Per workflow step      |
+| `llm_calls`                   | ~5K/day  | LLM API calls with costs            | Per LLM call           |
+| `error_events`                | ~500/day | Error tracking                      | Per error              |
+| `success_events`              | ~800/day | Success tracking                    | Per success            |
+| `lineage_edges`               | ~20K/day | Data lineage graph                  | Continuous             |
 
 ### 2. Kafka Event Bus
 
@@ -129,17 +132,18 @@ Latency: <200ms
 
 **Topics**:
 
-| Topic | Events/Day | Schema | Retention |
-|-------|------------|--------|-----------|
-| `agent-routing-decisions` | ~1K | Routing decisions with confidence | 7 days |
-| `agent-transformation-events` | ~1K | Agent transformations | 7 days |
-| `router-performance-metrics` | ~1K | Routing performance | 7 days |
-| `agent-actions` | ~50K | Tool calls, decisions, errors | 3 days |
+| Topic                         | Events/Day | Schema                            | Retention |
+| ----------------------------- | ---------- | --------------------------------- | --------- |
+| `agent-routing-decisions`     | ~1K        | Routing decisions with confidence | 7 days    |
+| `agent-transformation-events` | ~1K        | Agent transformations             | 7 days    |
+| `router-performance-metrics`  | ~1K        | Routing performance               | 7 days    |
+| `agent-actions`               | ~50K       | Tool calls, decisions, errors     | 3 days    |
 
 ### 3. Qdrant Vector Database
 
 **Host**: `archon-qdrant` (Docker network) or `192.168.86.101:6333`
 **Collections**:
+
 - `execution_patterns` (~50 patterns)
 - `code_patterns` (~100 patterns)
 - `workflow_events` (streaming)
@@ -176,6 +180,7 @@ ENABLE_REAL_TIME_EVENTS=true
 ### Network Access
 
 **Requirements**:
+
 - Dashboard server must have network access to `192.168.86.0/24` subnet
 - Ports required: 5436 (PostgreSQL), 9092 (Kafka), 6333 (Qdrant)
 - No authentication required for local development (production: add auth)
@@ -230,6 +235,7 @@ CREATE TABLE agent_routing_decisions (
 ```
 
 **Dashboard Use Cases**:
+
 - Agent success rates over time
 - Confidence score distributions
 - Routing strategy effectiveness
@@ -273,6 +279,7 @@ CREATE TABLE agent_manifest_injections (
 ```
 
 **Dashboard Use Cases**:
+
 - Manifest generation performance
 - Intelligence query time breakdown
 - Pattern discovery trends
@@ -302,6 +309,7 @@ CREATE TABLE agent_actions (
 ```
 
 **Dashboard Use Cases**:
+
 - Tool usage heatmaps
 - Agent execution timelines
 - Error rate tracking
@@ -310,6 +318,7 @@ CREATE TABLE agent_actions (
 #### 4. Views for Analysis
 
 **v_agent_execution_trace**: Complete trace from routing → manifest → execution
+
 ```sql
 CREATE VIEW v_agent_execution_trace AS
 SELECT
@@ -338,6 +347,7 @@ LEFT JOIN agent_manifest_injections ami
 #### 1. `agent-routing-decisions`
 
 **Event Schema**:
+
 ```typescript
 interface AgentRoutingDecisionEvent {
   correlation_id: string;
@@ -357,6 +367,7 @@ interface AgentRoutingDecisionEvent {
 ```
 
 **Example Event**:
+
 ```json
 {
   "correlation_id": "0f9ffdbb-acb4-46aa-ae74-5d5527a22b79",
@@ -366,8 +377,8 @@ interface AgentRoutingDecisionEvent {
   "routing_strategy": "enhanced_fuzzy_matching",
   "routing_time_ms": 45,
   "alternatives": [
-    {"agent": "agent-database", "confidence": 0.89, "reason": "exact capability match"},
-    {"agent": "agent-debug", "confidence": 0.76, "reason": "moderate trigger match"}
+    { "agent": "agent-database", "confidence": 0.89, "reason": "exact capability match" },
+    { "agent": "agent-debug", "confidence": 0.76, "reason": "moderate trigger match" }
   ],
   "reasoning": "High confidence match on 'optimize' and 'performance' triggers",
   "timestamp": "2025-10-27T13:26:45.123Z"
@@ -377,6 +388,7 @@ interface AgentRoutingDecisionEvent {
 #### 2. `agent-transformation-events`
 
 **Event Schema**:
+
 ```typescript
 interface AgentTransformationEvent {
   correlation_id: string;
@@ -393,6 +405,7 @@ interface AgentTransformationEvent {
 #### 3. `router-performance-metrics`
 
 **Event Schema**:
+
 ```typescript
 interface RouterPerformanceMetricsEvent {
   correlation_id: string;
@@ -414,6 +427,7 @@ interface RouterPerformanceMetricsEvent {
 #### 4. `agent-actions`
 
 **Event Schema**:
+
 ```typescript
 interface AgentActionEvent {
   correlation_id: string;
@@ -435,6 +449,7 @@ interface AgentActionEvent {
 **Recommended Approach**: Create Express API endpoints that query PostgreSQL and return aggregated data.
 
 **Advantages**:
+
 - Simple to implement with existing Drizzle ORM
 - Works with existing TanStack Query patterns
 - Can cache results for performance
@@ -456,6 +471,7 @@ app.get('/api/agent-metrics', async (req, res) => {
 **Recommended Approach**: Add WebSocket server that consumes Kafka and broadcasts to connected clients.
 
 **Advantages**:
+
 - Real-time updates (<100ms latency)
 - Efficient for high-frequency updates
 - Matches existing dashboard design (real-time monitoring)
@@ -475,6 +491,7 @@ wss.on('connection', (ws) => {
 **Recommended Approach**: Simpler alternative to WebSocket for one-way real-time updates.
 
 **Advantages**:
+
 - Simpler than WebSocket
 - Built-in browser reconnection
 - Works with existing HTTP infrastructure
@@ -492,18 +509,21 @@ app.get('/api/events/stream', (req, res) => {
 ### Recommended Integration Strategy
 
 **Phase 1: Database API (Week 1)**
+
 1. Add PostgreSQL queries to `server/routes.ts`
 2. Create aggregation endpoints for each dashboard
 3. Replace mock data with API calls using TanStack Query
 4. Test with historical data
 
 **Phase 2: Real-Time Events (Week 2)**
+
 1. Add Kafka consumer to Express server
 2. Implement WebSocket or SSE server
 3. Subscribe to relevant topics per dashboard
 4. Add real-time update logic to dashboard components
 
 **Phase 3: Advanced Features (Week 3+)**
+
 1. Add Qdrant integration for pattern search
 2. Implement caching layer (Redis)
 3. Add data aggregation jobs for performance
@@ -516,12 +536,14 @@ app.get('/api/events/stream', (req, res) => {
 ### 1. Agent Operations Dashboard (Currently: `AgentOperations.tsx`)
 
 **Data Sources**:
+
 - `agent_routing_decisions` - Agent selection frequency
 - `agent_actions` - Tool usage tracking
 - `agent_transformation_events` - Agent switches
 - Topic: `agent-actions` - Real-time action stream
 
 **Metrics to Add**:
+
 - **Active Agents** (real): Count of agents used in last hour
 - **Success Rate by Agent**: `actual_success` from routing decisions
 - **Average Response Time**: `duration_ms` from agent_actions
@@ -529,6 +551,7 @@ app.get('/api/events/stream', (req, res) => {
 - **Agent Status Grid**: Replace mock data with real agent execution status
 
 **Example Query**:
+
 ```sql
 -- Agent success rates over last 24 hours
 SELECT
@@ -547,11 +570,13 @@ ORDER BY total_requests DESC;
 ### 2. Pattern Learning Dashboard (Currently: `PatternLearning.tsx`)
 
 **Data Sources**:
+
 - `agent_manifest_injections` - Pattern discovery metrics
 - Qdrant via MCP - Pattern similarity search
 - `pattern_feedback_log` - Pattern feedback
 
 **Metrics to Add**:
+
 - **Patterns Discovered**: trends over time
 - **Pattern Quality Scores**: distribution
 - **Pattern Reuse Rate**: how often patterns are referenced
@@ -559,6 +584,7 @@ ORDER BY total_requests DESC;
 - **Discovery Source Breakdown**: Qdrant vs PostgreSQL
 
 **Example Query**:
+
 ```sql
 -- Pattern discovery trends
 SELECT
@@ -575,11 +601,13 @@ ORDER BY hour DESC;
 ### 3. Intelligence Operations Dashboard (Currently: `IntelligenceOperations.tsx`)
 
 **Data Sources**:
+
 - `agent_manifest_injections` - Intelligence query performance
 - `llm_calls` - LLM usage and costs
 - `workflow_steps` - Workflow execution
 
 **Metrics to Add**:
+
 - **Intelligence Query Performance**: query_times breakdown
 - **Fallback Rate**: is_fallback percentage
 - **Debug Intelligence Hits**: successful pattern matches
@@ -587,6 +615,7 @@ ORDER BY hour DESC;
 - **Manifest Generation Timeline**: total_query_time_ms over time
 
 **Example Query**:
+
 ```sql
 -- Intelligence query performance breakdown
 SELECT
@@ -605,11 +634,13 @@ GROUP BY generation_source;
 ### 4. Event Flow Dashboard (Currently: `EventFlow.tsx`)
 
 **Data Sources**:
+
 - Kafka consumer lag metrics
 - `event_processing_metrics` - Event processing performance
 - Direct Kafka topic metrics
 
 **Metrics to Add**:
+
 - **Real Kafka Topics**: Replace mock topics with actual topics
 - **Consumer Lag**: Track lag per topic
 - **Event Throughput**: Events per second per topic
@@ -617,12 +648,13 @@ GROUP BY generation_source;
 - **Dead Letter Queue**: Failed event tracking
 
 **Kafka Consumer Pattern**:
+
 ```typescript
 // Example Kafka metrics collection
 import { Kafka } from 'kafkajs';
 
 const kafka = new Kafka({
-  brokers: ['192.168.86.200:9092']
+  brokers: ['192.168.86.200:9092'],
 });
 
 const admin = kafka.admin();
@@ -633,11 +665,13 @@ await admin.fetchTopicMetadata({ topics: ['agent-actions'] });
 ### 5. Code Intelligence Dashboard (Currently: `CodeIntelligence.tsx`)
 
 **Data Sources**:
+
 - Qdrant via MCP - Semantic code search
 - `workflow_steps` - Code generation steps
 - `generation_performance_metrics` - Code gen performance
 
 **Metrics to Add**:
+
 - **Semantic Search Performance**: Query times and result quality
 - **Code Pattern Matches**: Similar code patterns found
 - **Quality Gate Results**: Quality score distribution
@@ -646,12 +680,14 @@ await admin.fetchTopicMetadata({ topics: ['agent-actions'] });
 ### 6. Platform Health Dashboard (Currently: `PlatformHealth.tsx`)
 
 **Data Sources**:
+
 - `error_events` - System errors
 - `generation_performance_metrics` - Performance metrics
 - Database connection pool stats
 - Kafka broker health
 
 **Metrics to Add**:
+
 - **Service Status**: PostgreSQL, Kafka, Qdrant health
 - **Error Rates**: Errors per minute by type
 - **Performance P95/P99**: Latency percentiles
@@ -659,6 +695,7 @@ await admin.fetchTopicMetadata({ topics: ['agent-actions'] });
 - **Kafka Broker Status**: Broker availability
 
 **Example Query**:
+
 ```sql
 -- Error rate trends
 SELECT
@@ -674,12 +711,14 @@ ORDER BY minute DESC;
 ### 7. Developer Experience Dashboard (Currently: `DeveloperExperience.tsx`)
 
 **Data Sources**:
+
 - `agent_routing_decisions` - Routing decision accuracy
 - `agent_actions` - Developer tool usage
 - `workflow_steps` - Workflow duration
 - `llm_calls` - LLM response times
 
 **Metrics to Add**:
+
 - **Routing Accuracy**: Actual vs predicted success
 - **Time to First Response**: Initial agent response time
 - **Workflow Completion Time**: End-to-end duration
@@ -693,6 +732,7 @@ ORDER BY minute DESC;
 ### Agent Performance Queries
 
 #### 1. Agent Success Rates Over Time
+
 ```sql
 SELECT
     DATE_TRUNC('hour', ard.created_at) as hour,
@@ -711,6 +751,7 @@ ORDER BY hour DESC, total_executions DESC;
 ```
 
 #### 2. Routing Confidence Calibration
+
 ```sql
 -- How well does confidence predict success?
 SELECT
@@ -730,6 +771,7 @@ ORDER BY confidence_bucket DESC;
 ```
 
 #### 3. Tool Usage Heatmap
+
 ```sql
 SELECT
     agent_name,
@@ -748,6 +790,7 @@ LIMIT 50;
 ### Pattern Discovery Queries
 
 #### 4. Pattern Discovery Trends
+
 ```sql
 SELECT
     DATE_TRUNC('day', created_at) as day,
@@ -764,6 +807,7 @@ ORDER BY day DESC;
 ```
 
 #### 5. Intelligence Query Performance Breakdown
+
 ```sql
 SELECT
     agent_name,
@@ -783,6 +827,7 @@ ORDER BY avg_total_query_ms DESC;
 ### Performance Monitoring Queries
 
 #### 6. Routing Performance Percentiles
+
 ```sql
 SELECT
     routing_strategy,
@@ -799,6 +844,7 @@ ORDER BY total_routings DESC;
 ```
 
 #### 7. Error Rate Analysis
+
 ```sql
 SELECT
     DATE_TRUNC('hour', created_at) as hour,
@@ -814,6 +860,7 @@ ORDER BY hour DESC, error_count DESC;
 ### Execution Traceability Queries
 
 #### 8. Complete Execution Trace (using view)
+
 ```sql
 SELECT
     correlation_id,
@@ -834,6 +881,7 @@ LIMIT 100;
 ```
 
 #### 9. Agent Action Timeline
+
 ```sql
 SELECT
     correlation_id,
@@ -874,9 +922,14 @@ intelligenceRouter.get('/agents/metrics', async (req, res) => {
   const { timeWindow = '24h', agent = null } = req.query;
 
   // Convert timeWindow to PostgreSQL interval
-  const interval = timeWindow === '24h' ? '24 hours' :
-                   timeWindow === '7d' ? '7 days' :
-                   timeWindow === '30d' ? '30 days' : '24 hours';
+  const interval =
+    timeWindow === '24h'
+      ? '24 hours'
+      : timeWindow === '7d'
+        ? '7 days'
+        : timeWindow === '30d'
+          ? '30 days'
+          : '24 hours';
 
   const query = `
     SELECT
@@ -1121,12 +1174,8 @@ export function setupWebSocket(httpServer: createServer) {
   // Connect to Kafka
   consumer.connect();
   consumer.subscribe({
-    topics: [
-      'agent-routing-decisions',
-      'agent-transformation-events',
-      'agent-actions'
-    ],
-    fromBeginning: false
+    topics: ['agent-routing-decisions', 'agent-transformation-events', 'agent-actions'],
+    fromBeginning: false,
   });
 
   // Broadcast Kafka events to all connected clients
@@ -1134,13 +1183,15 @@ export function setupWebSocket(httpServer: createServer) {
     eachMessage: async ({ topic, message }) => {
       const event = JSON.parse(message.value.toString());
 
-      wss.clients.forEach(client => {
+      wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({
-            topic,
-            event,
-            timestamp: new Date().toISOString()
-          }));
+          client.send(
+            JSON.stringify({
+              topic,
+              event,
+              timestamp: new Date().toISOString(),
+            })
+          );
         }
       });
     },
@@ -1190,15 +1241,17 @@ export function useWebSocket(url: string = 'ws://localhost:3000/ws') {
       setConnected(true);
 
       // Subscribe to topics
-      ws.send(JSON.stringify({
-        action: 'subscribe',
-        topics: ['agent-routing-decisions', 'agent-actions']
-      }));
+      ws.send(
+        JSON.stringify({
+          action: 'subscribe',
+          topics: ['agent-routing-decisions', 'agent-actions'],
+        })
+      );
     };
 
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
-      setMessages(prev => [...prev.slice(-100), message]); // Keep last 100 messages
+      setMessages((prev) => [...prev.slice(-100), message]); // Keep last 100 messages
     };
 
     ws.onclose = () => {
@@ -1271,13 +1324,13 @@ intelligenceRouter.get('/events/stream', async (req, res) => {
   });
 
   const consumer = kafka.consumer({
-    groupId: `omnidash-sse-group-${Date.now()}`
+    groupId: `omnidash-sse-group-${Date.now()}`,
   });
 
   await consumer.connect();
   await consumer.subscribe({
     topics: ['agent-actions'],
-    fromBeginning: false
+    fromBeginning: false,
   });
 
   consumer.run({
@@ -1308,7 +1361,7 @@ export function useSSE(url: string = '/api/intelligence/events/stream') {
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setEvents(prev => [...prev.slice(-100), data]);
+      setEvents((prev) => [...prev.slice(-100), data]);
     };
 
     eventSource.onerror = (error) => {
@@ -1336,7 +1389,16 @@ export function useSSE(url: string = '/api/intelligence/events/stream') {
 Create `shared/intelligence-schema.ts`:
 
 ```typescript
-import { pgTable, uuid, text, integer, numeric, boolean, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  integer,
+  numeric,
+  boolean,
+  jsonb,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 
 export const agentRoutingDecisions = pgTable('agent_routing_decisions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -1567,8 +1629,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
         const event = JSON.parse(message.value?.toString() || '{}');
 
         // Broadcast to all connected clients
-        wss.clients.forEach(client => {
-          if (client.readyState === 1) { // OPEN
+        wss.clients.forEach((client) => {
+          if (client.readyState === 1) {
+            // OPEN
             client.send(JSON.stringify({ topic, event }));
           }
         });
@@ -1599,14 +1662,14 @@ import { setupWebSocket } from './websocket';
   // Setup WebSocket
   setupWebSocket(server);
 
-  if (app.get("env") === "development") {
+  if (app.get('env') === 'development') {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
   const port = parseInt(process.env.PORT || '3000', 10);
-  server.listen({ port, host: "0.0.0.0" }, () => {
+  server.listen({ port, host: '0.0.0.0' }, () => {
     log(`serving on port ${port}`);
   });
 })();
@@ -1735,18 +1798,21 @@ useEffect(() => {
 ### Performance Optimization
 
 **Database**:
+
 - Add indexes on `created_at`, `correlation_id`, `agent_name` columns
 - Use EXPLAIN ANALYZE to identify slow queries
 - Create materialized views for dashboard aggregations
 - Implement connection pooling
 
 **Kafka**:
+
 - Increase batch size for better throughput
 - Use compression (gzip/snappy)
 - Adjust consumer fetch settings
 - Monitor consumer lag metrics
 
 **API**:
+
 - Implement Redis caching for expensive queries
 - Use HTTP caching headers
 - Add API rate limiting
@@ -1757,20 +1823,23 @@ useEffect(() => {
 ## Support & Resources
 
 **Documentation**:
+
 - PostgreSQL: https://www.postgresql.org/docs/
 - Kafka: https://kafka.apache.org/documentation/
 - Drizzle ORM: https://orm.drizzle.team/
 - TanStack Query: https://tanstack.com/query/latest
 
 **Monitoring**:
+
 - Database: pgAdmin, DataGrip
 - Kafka: Kafka UI, Conduktor
 - Application: Grafana, Datadog
 
 **Contact**:
+
 - Intelligence Infrastructure: See correlation ID 0f9ffdbb-acb4-46aa-ae74-5d5527a22b79
 - Dashboard Issues: Create issue in omnidash repo
 
 ---
 
-*This integration guide was generated by agent-polymorphic-agent on 2025-10-27. For updates or questions, reference correlation ID: 0f9ffdbb-acb4-46aa-ae74-5d5527a22b79*
+_This integration guide was generated by agent-polymorphic-agent on 2025-10-27. For updates or questions, reference correlation ID: 0f9ffdbb-acb4-46aa-ae74-5d5527a22b79_

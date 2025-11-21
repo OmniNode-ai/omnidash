@@ -1,56 +1,18 @@
-import React from "react";
-import { DetailModal } from "./DetailModal";
-import { SavingsTooltip } from "@/components/SavingsTooltip";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { 
-  Code, 
-  Zap, 
-  Download, 
-  Eye, 
-  FileText, 
-  Clock, 
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  TrendingUp,
-  Target,
-  Layers,
-  DollarSign,
-  BarChart3,
-  Activity
-} from "lucide-react";
+import React from 'react';
+import { DetailModal } from './DetailModal';
+import { SavingsTooltip } from '@/components/SavingsTooltip';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Code, Zap, Download, AlertTriangle, CheckCircle } from 'lucide-react';
 
-import type { RefactoringOpportunity } from "@/pages/preview/TechDebtAnalysis";
+import type { RefactoringOpportunity } from '@/pages/preview/TechDebtAnalysis';
 
-interface _RefactoringOpportunity {
-  id: string;
-  title: string;
-  description: string;
-  impact: 'low' | 'medium' | 'high' | 'critical';
-  effort: 'low' | 'medium' | 'high' | 'extreme';
-  timeEstimate: string;
-  costSavings: number;
-  complexity: number;
-  files: string[];
-  patterns: string[];
-  suggestedApproach: string;
-  risks: string[];
-  benefits: string[];
-  dependencies: string[];
-  testCoverage: number;
-  lastModified: string;
-  author: string;
-  priority: number;
-  category: string;
-  technicalDebt: number;
-  maintainability: number;
-  performance: number;
-  security: number;
-}
+// Maximum cost savings value used for progress bar scale
+// This normalizes cost savings to a 0-100% progress range
+const MAX_COST_SAVINGS_FOR_PROGRESS = 50000;
 
 interface TechDebtDetailModalProps {
   opportunity: RefactoringOpportunity | null;
@@ -61,33 +23,18 @@ interface TechDebtDetailModalProps {
 export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDetailModalProps) {
   if (!opportunity) return null;
 
-  const getImpactColor = (impact: string) => {
-    switch (impact) {
-      case "low": return "text-green-500";
-      case "medium": return "text-yellow-500";
-      case "high": return "text-red-500";
-      case "critical": return "text-red-600";
-      default: return "text-gray-500";
-    }
-  };
-
   const getImpactBadgeVariant = (impact: string) => {
     switch (impact) {
-      case "low": return "default";
-      case "medium": return "secondary";
-      case "high": return "destructive";
-      case "critical": return "destructive";
-      default: return "outline";
-    }
-  };
-
-  const getEffortColor = (effort: string) => {
-    switch (effort) {
-      case "low": return "text-green-500";
-      case "medium": return "text-yellow-500";
-      case "high": return "text-orange-500";
-      case "extreme": return "text-red-500";
-      default: return "text-gray-500";
+      case 'low':
+        return 'default';
+      case 'medium':
+        return 'secondary';
+      case 'high':
+        return 'destructive';
+      case 'critical':
+        return 'destructive';
+      default:
+        return 'outline';
     }
   };
 
@@ -128,8 +75,12 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
               <div className="text-2xl font-bold font-mono">{opportunity.timeEstimate}</div>
             </Card>
             <Card className="p-4">
-              <SavingsTooltip className="text-xs text-muted-foreground mb-1">Cost Savings</SavingsTooltip>
-              <div className="text-2xl font-bold font-mono">${opportunity.costSavings.toLocaleString()}</div>
+              <SavingsTooltip className="text-xs text-muted-foreground mb-1">
+                Cost Savings
+              </SavingsTooltip>
+              <div className="text-2xl font-bold font-mono">
+                ${opportunity.costSavings.toLocaleString()}
+              </div>
             </Card>
           </div>
 
@@ -170,7 +121,10 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                   <span>Debt Level</span>
                   <span className="font-mono">{opportunity.technicalDebt}/100</span>
                 </div>
-                <Progress value={Math.max(0, Math.min(100, opportunity.technicalDebt || 0))} className="h-2" />
+                <Progress
+                  value={Math.max(0, Math.min(100, opportunity.technicalDebt || 0))}
+                  className="h-2"
+                />
               </div>
             </div>
 
@@ -181,7 +135,10 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                   <span>Complexity</span>
                   <span className="font-mono">{opportunity.complexity}/10</span>
                 </div>
-                <Progress value={Math.max(0, Math.min(100, (opportunity.complexity || 0) * 10))} className="h-2" />
+                <Progress
+                  value={Math.max(0, Math.min(100, (opportunity.complexity || 0) * 10))}
+                  className="h-2"
+                />
               </div>
             </div>
 
@@ -192,7 +149,10 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                   <span>Coverage</span>
                   <span className="font-mono">{opportunity.testCoverage}%</span>
                 </div>
-                <Progress value={Math.max(0, Math.min(100, opportunity.testCoverage || 0))} className="h-2" />
+                <Progress
+                  value={Math.max(0, Math.min(100, opportunity.testCoverage || 0))}
+                  className="h-2"
+                />
               </div>
             </div>
 
@@ -271,7 +231,16 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                   <SavingsTooltip>Estimated Savings</SavingsTooltip>
                   <span className="font-mono">${opportunity.costSavings.toLocaleString()}</span>
                 </div>
-                <Progress value={Math.max(0, Math.min(100, (opportunity.costSavings || 0) / 50000 * 100))} className="h-2" />
+                <Progress
+                  value={Math.max(
+                    0,
+                    Math.min(
+                      100,
+                      ((opportunity.costSavings || 0) / MAX_COST_SAVINGS_FOR_PROGRESS) * 100
+                    )
+                  )}
+                  className="h-2"
+                />
               </div>
             </div>
 
@@ -282,7 +251,22 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                   <span>Refactoring Time</span>
                   <span className="font-mono">{opportunity.timeEstimate}</span>
                 </div>
-                <Progress value={Math.max(0, Math.min(100, opportunity.effort === 'low' ? 25 : opportunity.effort === 'medium' ? 50 : opportunity.effort === 'high' ? 75 : 100))} className="h-2" />
+                <Progress
+                  value={Math.max(
+                    0,
+                    Math.min(
+                      100,
+                      opportunity.effort === 'low'
+                        ? 25
+                        : opportunity.effort === 'medium'
+                          ? 50
+                          : opportunity.effort === 'high'
+                            ? 75
+                            : 100
+                    )
+                  )}
+                  className="h-2"
+                />
               </div>
             </div>
 
@@ -291,7 +275,9 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Maintainability</div>
-                  <div className="text-lg font-bold text-green-500">+{opportunity.maintainability}</div>
+                  <div className="text-lg font-bold text-green-500">
+                    +{opportunity.maintainability}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Performance</div>
@@ -303,7 +289,9 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Debt Reduction</div>
-                  <div className="text-lg font-bold text-green-500">-{opportunity.technicalDebt}</div>
+                  <div className="text-lg font-bold text-green-500">
+                    -{opportunity.technicalDebt}
+                  </div>
                 </div>
               </div>
             </div>

@@ -44,9 +44,9 @@ async function getHealthCheckStatus(): Promise<HealthCheckCache> {
       const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
       try {
         const healthResponse = await fetch(`${omniarchonUrl}/health`, {
-          signal: AbortSignal.timeout(500)
+          signal: AbortSignal.timeout(500),
         });
-        return healthResponse.ok ? 'ok' as const : healthResponse.status;
+        return healthResponse.ok ? ('ok' as const) : healthResponse.status;
       } catch {
         return 'error' as const;
       }
@@ -154,7 +154,7 @@ alertRouter.get('/active', async (req, res) => {
     const { errorRate, injectionSuccessRate, avgResponseTime, successRate } = metrics;
 
     // Check error rate (last 10 minutes)
-    if (errorRate > 0.10) {
+    if (errorRate > 0.1) {
       alerts.push({
         id: randomUUID(),
         level: 'critical',
@@ -171,7 +171,7 @@ alertRouter.get('/active', async (req, res) => {
     }
 
     // Check manifest injection success rate (last hour)
-    if (injectionSuccessRate < 0.90) {
+    if (injectionSuccessRate < 0.9) {
       alerts.push({
         id: randomUUID(),
         level: 'critical',
@@ -212,7 +212,7 @@ alertRouter.get('/active', async (req, res) => {
     console.error('Error fetching active alerts:', error);
     res.status(500).json({
       error: 'Failed to fetch active alerts',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

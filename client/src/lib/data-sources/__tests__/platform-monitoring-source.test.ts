@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { platformMonitoringSource } from '../platform-monitoring-source';
 import type { SystemStatus, DeveloperMetrics, Incident } from '../platform-monitoring-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 describe('PlatformMonitoringSource', () => {
   beforeEach(() => {
@@ -17,15 +21,18 @@ describe('PlatformMonitoringSource', () => {
         lastIncident: new Date().toISOString(),
         responseTime: 150,
         services: [
-          { name: 'PostgreSQL', status: 'healthy', uptime: 100, responseTime: 20, lastCheck: new Date().toISOString(), dependencies: [] },
+          {
+            name: 'PostgreSQL',
+            status: 'healthy',
+            uptime: 100,
+            responseTime: 20,
+            lastCheck: new Date().toISOString(),
+            dependencies: [],
+          },
         ],
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/health/status', createMockResponse(mockSystemStatus)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/health/status', createMockResponse(mockSystemStatus)]]));
 
       const result = await platformMonitoringSource.fetchSystemStatus('24h');
 
@@ -35,9 +42,7 @@ describe('PlatformMonitoringSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/health', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/health', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await platformMonitoringSource.fetchSystemStatus('24h');
@@ -56,11 +61,7 @@ describe('PlatformMonitoringSource', () => {
         avgDeploymentTime: 15,
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/developer/metrics', createMockResponse(mockMetrics)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/developer/metrics', createMockResponse(mockMetrics)]]));
 
       const result = await platformMonitoringSource.fetchDeveloperMetrics('24h');
 
@@ -70,9 +71,7 @@ describe('PlatformMonitoringSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/developer/metrics', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/developer/metrics', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await platformMonitoringSource.fetchDeveloperMetrics('24h');
@@ -97,11 +96,7 @@ describe('PlatformMonitoringSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/incidents', createMockResponse(mockIncidents)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/incidents', createMockResponse(mockIncidents)]]));
 
       const result = await platformMonitoringSource.fetchIncidents('24h');
 
@@ -110,11 +105,7 @@ describe('PlatformMonitoringSource', () => {
     });
 
     it('should return mock data when API fails', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/incidents', createMockResponse(null, { status: 500 })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/incidents', createMockResponse(null, { status: 500 })]]));
 
       const result = await platformMonitoringSource.fetchIncidents('24h');
 
@@ -186,11 +177,7 @@ describe('PlatformMonitoringSource', () => {
 
   describe('edge cases', () => {
     it('should handle empty incidents array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/incidents?timeRange=24h', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/incidents?timeRange=24h', createMockResponse([])]]));
 
       const result = await platformMonitoringSource.fetchIncidents('24h');
       expect(result.isMock).toBe(false);
@@ -199,9 +186,7 @@ describe('PlatformMonitoringSource', () => {
 
     it('should handle non-array incidents response', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/incidents?timeRange=24h', createMockResponse({ incidents: [] })],
-        ])
+        new Map([['/api/incidents?timeRange=24h', createMockResponse({ incidents: [] })]])
       );
 
       const result = await platformMonitoringSource.fetchIncidents('24h');
@@ -254,15 +239,10 @@ describe('PlatformMonitoringSource', () => {
         headers: { 'Content-Type': 'application/json' },
       });
 
-      setupFetchMock(
-        new Map([
-          ['/api/health/status?timeRange=24h', malformedResponse],
-        ])
-      );
+      setupFetchMock(new Map([['/api/health/status?timeRange=24h', malformedResponse]]));
 
       const result = await platformMonitoringSource.fetchSystemStatus('24h');
       expect(result.isMock).toBe(true);
     });
   });
 });
-

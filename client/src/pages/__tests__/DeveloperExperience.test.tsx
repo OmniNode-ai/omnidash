@@ -26,9 +26,7 @@ function renderWithClient(ui: React.ReactNode) {
     },
   });
 
-  const result = render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
+  const result = render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
   return { queryClient, ...result };
 }
 
@@ -79,9 +77,7 @@ describe('DeveloperExperience page', () => {
       },
       productivity: {
         time_window: '24h',
-        data: [
-          { period: new Date().toISOString(), productivity_score: 78, code_generated: 500 },
-        ],
+        data: [{ period: new Date().toISOString(), productivity_score: 78, code_generated: 500 }],
         avg_productivity_gain: 34,
         pattern_reuse_rate: 0.82,
       },
@@ -99,21 +95,27 @@ describe('DeveloperExperience page', () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url.includes('/api/intelligence/developer/task-velocity')) {
-        return Promise.resolve(new Response(JSON.stringify(velocityResponse), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }));
+        return Promise.resolve(
+          new Response(JSON.stringify(velocityResponse), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
       }
       if (url.includes('/api/intelligence/developer/metrics')) {
-        return Promise.resolve(new Response(JSON.stringify(metricsResponse), {
+        return Promise.resolve(
+          new Response(JSON.stringify(metricsResponse), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify([]), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
-        }));
-      }
-      return Promise.resolve(new Response(JSON.stringify([]), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }));
+        })
+      );
     });
 
     const { default: DeveloperExperience } = await import('../DeveloperExperience');
@@ -143,10 +145,12 @@ describe('DeveloperExperience page', () => {
       if (url.includes('/api/intelligence/developer/metrics')) {
         return Promise.resolve(new Response('fail', { status: 500 }));
       }
-      return Promise.resolve(new Response(JSON.stringify([]), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }));
+      return Promise.resolve(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
     });
 
     const { default: DeveloperExperience } = await import('../DeveloperExperience');

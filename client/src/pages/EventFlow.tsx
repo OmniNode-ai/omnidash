@@ -87,10 +87,6 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
     return { start, end: now };
   }, [timeRange]);
 
-  // Extract timestamp values for stable dependencies
-  const startTimeMs = timeRangeDates.start.getTime();
-  const endTimeMs = timeRangeDates.end.getTime();
-
   // Calculate effective start/end times: prefer EventSearchBar filters, fallback to page-level TimeRangeSelector
   const effectiveStartTime = eventBusFilters.start_time ?? timeRangeDates.start;
   const effectiveEndTime = eventBusFilters.end_time ?? timeRangeDates.end;

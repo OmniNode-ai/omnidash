@@ -1,5 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { STALE_TIME_STANDARD, STALE_TIME_MEDIUM, STALE_TIME_LONG, POLLING_INTERVAL_MEDIUM, POLLING_INTERVAL_STANDARD } from '@/lib/constants/query-config';
+import {
+  STALE_TIME_STANDARD,
+  STALE_TIME_MEDIUM,
+  STALE_TIME_LONG,
+  POLLING_INTERVAL_MEDIUM,
+  POLLING_INTERVAL_STANDARD,
+} from '@/lib/constants/query-config';
 
 // ============================================================================
 // Type Definitions
@@ -57,8 +63,13 @@ export interface ServiceDetails {
 // API Fetch Functions
 // ============================================================================
 
-async function fetchAgentDetails(agentName: string, timeWindow: string = '24h'): Promise<AgentDetails> {
-  const response = await fetch(`/api/intelligence/agents/${encodeURIComponent(agentName)}/details?timeWindow=${timeWindow}`);
+async function fetchAgentDetails(
+  agentName: string,
+  timeWindow: string = '24h'
+): Promise<AgentDetails> {
+  const response = await fetch(
+    `/api/intelligence/agents/${encodeURIComponent(agentName)}/details?timeWindow=${timeWindow}`
+  );
 
   if (!response.ok) {
     throw new Error(`Failed to fetch agent details: ${response.statusText}`);
@@ -68,7 +79,9 @@ async function fetchAgentDetails(agentName: string, timeWindow: string = '24h'):
 }
 
 async function fetchPatternDetails(patternId: string): Promise<PatternDetails> {
-  const response = await fetch(`/api/intelligence/patterns/${encodeURIComponent(patternId)}/details`);
+  const response = await fetch(
+    `/api/intelligence/patterns/${encodeURIComponent(patternId)}/details`
+  );
 
   if (!response.ok) {
     throw new Error(`Failed to fetch pattern details: ${response.statusText}`);
@@ -78,7 +91,9 @@ async function fetchPatternDetails(patternId: string): Promise<PatternDetails> {
 }
 
 async function fetchServiceDetails(serviceName: string): Promise<ServiceDetails> {
-  const response = await fetch(`/api/intelligence/services/${encodeURIComponent(serviceName)}/details`);
+  const response = await fetch(
+    `/api/intelligence/services/${encodeURIComponent(serviceName)}/details`
+  );
 
   if (!response.ok) {
     throw new Error(`Failed to fetch service details: ${response.statusText}`);
@@ -116,10 +131,7 @@ export function useAgentDetails(
  * @param patternId - ID of the pattern to fetch details for
  * @param enabled - Whether to enable the query (default: true)
  */
-export function usePatternDetails(
-  patternId: string | null,
-  enabled: boolean = true
-) {
+export function usePatternDetails(patternId: string | null, enabled: boolean = true) {
   return useQuery<PatternDetails, Error>({
     queryKey: ['pattern-details', patternId],
     queryFn: () => fetchPatternDetails(patternId!),
@@ -133,10 +145,7 @@ export function usePatternDetails(
  * @param serviceName - Name of the service to fetch details for
  * @param enabled - Whether to enable the query (default: true)
  */
-export function useServiceDetails(
-  serviceName: string | null,
-  enabled: boolean = true
-) {
+export function useServiceDetails(serviceName: string | null, enabled: boolean = true) {
   return useQuery<ServiceDetails, Error>({
     queryKey: ['service-details', serviceName],
     queryFn: () => fetchServiceDetails(serviceName!),

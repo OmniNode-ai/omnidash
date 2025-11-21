@@ -1,20 +1,26 @@
 /**
  * Event Statistics Panel Component
- * 
+ *
  * Displays event bus statistics including total events, events by type, events by tenant, and events per minute.
  */
 
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
-import { MetricCard } from "@/components/MetricCard";
-import { Activity, TrendingUp, Users, Zap } from "lucide-react";
-import { eventBusSource, type EventStatistics } from "@/lib/data-sources";
-import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
-import { MockBadge } from "@/components/MockBadge";
-import { useState, useMemo } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card } from '@/components/ui/card';
+import { MetricCard } from '@/components/MetricCard';
+import { Activity, TrendingUp, Users, Zap } from 'lucide-react';
+import { eventBusSource } from '@/lib/data-sources';
+import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
+import { MockBadge } from '@/components/MockBadge';
+import { useState, useMemo } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 export interface EventStatisticsPanelProps {
   className?: string;
@@ -23,11 +29,11 @@ export interface EventStatisticsPanelProps {
 export function EventStatisticsPanel({ className }: EventStatisticsPanelProps) {
   const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
 
-  // Calculate time range
-  const timeRangeDates = useMemo(() => {
+  // Helper function to calculate fresh time range on each query
+  const getTimeRangeDates = () => {
     const now = new Date();
     let start: Date;
-    
+
     switch (timeRange) {
       case '1h':
         start = new Date(now.getTime() - 60 * 60 * 1000);
@@ -42,13 +48,17 @@ export function EventStatisticsPanel({ className }: EventStatisticsPanelProps) {
         start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         break;
     }
-    
-    return { start, end: now };
-  }, [timeRange]);
 
-  const { data: statistics, isLoading, isError, dataUpdatedAt } = useQuery({
+    return { start, end: now };
+  };
+
+  const {
+    data: statistics,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['event-bus-statistics', timeRange],
-    queryFn: () => eventBusSource.getStatistics(timeRangeDates),
+    queryFn: () => eventBusSource.getStatistics(getTimeRangeDates()),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     refetchOnWindowFocus: true,
     staleTime: 30000, // Consider data fresh for 30s
@@ -73,10 +83,13 @@ export function EventStatisticsPanel({ className }: EventStatisticsPanelProps) {
   }, [statistics]);
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn('space-y-4', className)}>
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold">Event Statistics</h3>
-        <Select value={timeRange} onValueChange={(value: '1h' | '24h' | '7d' | '30d') => setTimeRange(value)}>
+        <Select
+          value={timeRange}
+          onValueChange={(value: '1h' | '24h' | '7d' | '30d') => setTimeRange(value)}
+        >
           <SelectTrigger className="w-32">
             <SelectValue />
           </SelectTrigger>
@@ -94,27 +107,31 @@ export function EventStatisticsPanel({ className }: EventStatisticsPanelProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard
           label="Total Events"
-          value={isLoading ? "..." : (statistics?.total_events || 0).toLocaleString()}
+          value={isLoading ? '...' : (statistics?.total_events || 0).toLocaleString()}
           icon={Activity}
-          status={isError ? "error" : "healthy"}
+          status={isError ? 'error' : 'healthy'}
         />
         <MetricCard
           label="Events/min"
-          value={isLoading ? "..." : (statistics?.events_per_minute || 0).toFixed(1)}
+          value={isLoading ? '...' : (statistics?.events_per_minute || 0).toFixed(1)}
           icon={Zap}
-          status={isError ? "error" : "healthy"}
+          status={isError ? 'error' : 'healthy'}
         />
         <MetricCard
           label="Event Types"
-          value={isLoading ? "..." : Object.keys(statistics?.events_by_type || {}).length.toString()}
+          value={
+            isLoading ? '...' : Object.keys(statistics?.events_by_type || {}).length.toString()
+          }
           icon={TrendingUp}
-          status={isError ? "error" : "healthy"}
+          status={isError ? 'error' : 'healthy'}
         />
         <MetricCard
           label="Tenants"
-          value={isLoading ? "..." : Object.keys(statistics?.events_by_tenant || {}).length.toString()}
+          value={
+            isLoading ? '...' : Object.keys(statistics?.events_by_tenant || {}).length.toString()
+          }
           icon={Users}
-          status={isError ? "error" : "healthy"}
+          status={isError ? 'error' : 'healthy'}
         />
       </div>
 
@@ -164,5 +181,3 @@ export function EventStatisticsPanel({ className }: EventStatisticsPanelProps) {
     </div>
   );
 }
-
-

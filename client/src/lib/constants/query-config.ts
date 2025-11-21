@@ -153,7 +153,7 @@ export function getPollingInterval(interval: number): number | false {
     (typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test') ||
     (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
     (typeof globalThis !== 'undefined' && typeof (globalThis as any).vi !== 'undefined');
-  
+
   if (isTestEnv) {
     return false;
   }

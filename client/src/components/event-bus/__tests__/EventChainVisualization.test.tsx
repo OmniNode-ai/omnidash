@@ -43,12 +43,7 @@ const mockEvents: EventBusEvent[] = [
 
 describe('EventChainVisualization', () => {
   it('should render event chain', () => {
-    render(
-      <EventChainVisualization 
-        events={mockEvents}
-        correlationId="corr-123"
-      />
-    );
+    render(<EventChainVisualization events={mockEvents} correlationId="corr-123" />);
 
     expect(screen.getByText(/Event Chain/)).toBeInTheDocument();
   });
@@ -61,12 +56,7 @@ describe('EventChainVisualization', () => {
 
   it('should call onEventClick when event is clicked', () => {
     const onEventClick = vi.fn();
-    render(
-      <EventChainVisualization
-        events={mockEvents}
-        onEventClick={onEventClick}
-      />
-    );
+    render(<EventChainVisualization events={mockEvents} onEventClick={onEventClick} />);
 
     // Find and click an event using data-testid
     const eventNodes = screen.getAllByTestId('event-chain-node');
@@ -76,14 +66,8 @@ describe('EventChainVisualization', () => {
   });
 
   it('should display correlation ID when provided', () => {
-    render(
-      <EventChainVisualization 
-        events={mockEvents}
-        correlationId="corr-123"
-      />
-    );
+    render(<EventChainVisualization events={mockEvents} correlationId="corr-123" />);
 
     expect(screen.getByText(/corr-123/)).toBeInTheDocument();
   });
 });
-

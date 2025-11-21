@@ -1,17 +1,13 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Shield, 
-  Server, 
-  Database, 
-  Zap, 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Shield,
+  AlertTriangle,
+  CheckCircle,
   XCircle,
   Clock,
   RefreshCw,
@@ -21,164 +17,199 @@ import {
   TrendingUp,
   TrendingDown,
   Eye,
-  Brain,
-  Lightbulb,
-  Layers,
-  Cpu,
-  HardDrive,
-  Wifi,
   AlertCircle,
   BarChart3,
-  PieChart,
-  LineChart,
-  Target,
-  Users,
-  Globe,
   Lock,
-  Unlock,
-  Play,
-  Pause,
-  RotateCcw
-} from "lucide-react";
+  Activity,
+  Lightbulb,
+} from 'lucide-react';
 
 export default function SystemHealth() {
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState('overview');
 
   // Mock real-time data
-  const [systemStatus, setSystemStatus] = useState({
-    overall: "healthy",
-    uptime: "99.9%",
-    lastIncident: "2025-10-15T14:30:00Z",
+  const [systemStatus, _setSystemStatus] = useState({
+    overall: 'healthy',
+    uptime: '99.9%',
+    lastIncident: '2025-10-15T14:30:00Z',
     activeAlerts: 2,
     totalChecks: 47,
-    passedChecks: 45
+    passedChecks: 45,
   });
 
   const services = [
     {
-      name: "PostgreSQL Database",
-      status: "healthy",
-      uptime: "99.98%",
-      responseTime: "12ms",
-      lastCheck: "2s ago",
+      name: 'PostgreSQL Database',
+      status: 'healthy',
+      uptime: '99.98%',
+      responseTime: '12ms',
+      lastCheck: '2s ago',
       details: {
         connections: { current: 45, max: 100 },
-        queries: { perSecond: 156, avgTime: "8ms" },
-        storage: { used: "2.3GB", total: "10GB" }
-      }
+        queries: { perSecond: 156, avgTime: '8ms' },
+        storage: { used: '2.3GB', total: '10GB' },
+      },
     },
     {
-      name: "Kafka Event Bus",
-      status: "healthy",
-      uptime: "99.95%",
-      responseTime: "8ms",
-      lastCheck: "1s ago",
+      name: 'Kafka Event Bus',
+      status: 'healthy',
+      uptime: '99.95%',
+      responseTime: '8ms',
+      lastCheck: '1s ago',
       details: {
         topics: { active: 4, total: 4 },
         consumers: { active: 12, lag: 0 },
-        throughput: { messagesPerSecond: 1247 }
-      }
+        throughput: { messagesPerSecond: 1247 },
+      },
     },
     {
-      name: "Qdrant Vector DB",
-      status: "degraded",
-      uptime: "98.2%",
-      responseTime: "156ms",
-      lastCheck: "5s ago",
+      name: 'Qdrant Vector DB',
+      status: 'degraded',
+      uptime: '98.2%',
+      responseTime: '156ms',
+      lastCheck: '5s ago',
       details: {
         collections: { active: 3, total: 3 },
         vectors: { total: 125000, indexed: 124500 },
-        memory: { used: "1.2GB", total: "2GB" }
-      }
+        memory: { used: '1.2GB', total: '2GB' },
+      },
     },
     {
-      name: "Omniarchon Service",
-      status: "healthy",
-      uptime: "99.8%",
-      responseTime: "45ms",
-      lastCheck: "3s ago",
+      name: 'Omniarchon Service',
+      status: 'healthy',
+      uptime: '99.8%',
+      responseTime: '45ms',
+      lastCheck: '3s ago',
       details: {
         endpoints: { active: 8, total: 8 },
-        requests: { perMinute: 89, avgTime: "42ms" },
-        cache: { hitRate: "87%" }
-      }
+        requests: { perMinute: 89, avgTime: '42ms' },
+        cache: { hitRate: '87%' },
+      },
     },
     {
-      name: "WebSocket Server",
-      status: "healthy",
-      uptime: "99.9%",
-      responseTime: "3ms",
-      lastCheck: "1s ago",
+      name: 'WebSocket Server',
+      status: 'healthy',
+      uptime: '99.9%',
+      responseTime: '3ms',
+      lastCheck: '1s ago',
       details: {
         connections: { active: 23, max: 1000 },
         messages: { perSecond: 156, queued: 0 },
-        latency: { avg: "3ms", p95: "8ms" }
-      }
-    }
+        latency: { avg: '3ms', p95: '8ms' },
+      },
+    },
   ];
 
   const alerts = [
     {
       id: 1,
-      severity: "warning",
-      title: "High Memory Usage",
-      description: "Qdrant service is using 85% of allocated memory",
-      timestamp: "2025-10-28T19:15:00Z",
-      acknowledged: false
+      severity: 'warning',
+      title: 'High Memory Usage',
+      description: 'Qdrant service is using 85% of allocated memory',
+      timestamp: '2025-10-28T19:15:00Z',
+      acknowledged: false,
     },
     {
       id: 2,
-      severity: "info",
-      title: "Scheduled Maintenance",
-      description: "Database maintenance scheduled for 2025-10-29T02:00:00Z",
-      timestamp: "2025-10-28T18:00:00Z",
-      acknowledged: true
-    }
+      severity: 'info',
+      title: 'Scheduled Maintenance',
+      description: 'Database maintenance scheduled for 2025-10-29T02:00:00Z',
+      timestamp: '2025-10-28T18:00:00Z',
+      acknowledged: true,
+    },
   ];
 
   const metrics = [
-    { name: "CPU Usage", value: 65, status: "warning", trend: "+5%" },
-    { name: "Memory Usage", value: 78, status: "warning", trend: "+12%" },
-    { name: "Disk Usage", value: 45, status: "healthy", trend: "+2%" },
-    { name: "Network I/O", value: 32, status: "healthy", trend: "-8%" },
-    { name: "Database Connections", value: 45, status: "healthy", trend: "+3%" },
-    { name: "Cache Hit Rate", value: 87, status: "healthy", trend: "+1%" }
+    { name: 'CPU Usage', value: 65, status: 'warning', trend: '+5%' },
+    { name: 'Memory Usage', value: 78, status: 'warning', trend: '+12%' },
+    { name: 'Disk Usage', value: 45, status: 'healthy', trend: '+2%' },
+    { name: 'Network I/O', value: 32, status: 'healthy', trend: '-8%' },
+    { name: 'Database Connections', value: 45, status: 'healthy', trend: '+3%' },
+    { name: 'Cache Hit Rate', value: 87, status: 'healthy', trend: '+1%' },
   ];
 
   // Security & Compliance Data
   const securityMetrics = [
-    { name: "Security Score", value: 95, status: "excellent", trend: "+2%" },
-    { name: "Vulnerabilities", value: 2, status: "good", trend: "-1" },
-    { name: "Failed Logins", value: 3, status: "good", trend: "-2" },
-    { name: "SSL Certificates", value: 100, status: "excellent", trend: "0%" },
-    { name: "Firewall Rules", value: 24, status: "good", trend: "+1" },
-    { name: "Access Attempts", value: 156, status: "normal", trend: "+12%" }
+    { name: 'Security Score', value: 95, status: 'excellent', trend: '+2%' },
+    { name: 'Vulnerabilities', value: 2, status: 'good', trend: '-1' },
+    { name: 'Failed Logins', value: 3, status: 'good', trend: '-2' },
+    { name: 'SSL Certificates', value: 100, status: 'excellent', trend: '0%' },
+    { name: 'Firewall Rules', value: 24, status: 'good', trend: '+1' },
+    { name: 'Access Attempts', value: 156, status: 'normal', trend: '+12%' },
   ];
 
   // Predictive Analytics Data
   const predictions = [
-    { metric: "CPU Usage", current: 65, predicted: 78, confidence: 0.85, timeframe: "1 hour" },
-    { metric: "Memory Usage", current: 78, predicted: 82, confidence: 0.92, timeframe: "2 hours" },
-    { metric: "Disk Usage", current: 45, predicted: 48, confidence: 0.78, timeframe: "6 hours" },
-    { metric: "Network Load", current: 32, predicted: 45, confidence: 0.88, timeframe: "3 hours" }
+    { metric: 'CPU Usage', current: 65, predicted: 78, confidence: 0.85, timeframe: '1 hour' },
+    { metric: 'Memory Usage', current: 78, predicted: 82, confidence: 0.92, timeframe: '2 hours' },
+    { metric: 'Disk Usage', current: 45, predicted: 48, confidence: 0.78, timeframe: '6 hours' },
+    { metric: 'Network Load', current: 32, predicted: 45, confidence: 0.88, timeframe: '3 hours' },
   ];
 
   // Resource Optimization Data
   const optimizationSuggestions = [
-    { type: "performance", title: "Enable Connection Pooling", impact: "Reduce DB latency by 30%", priority: "high" },
-    { type: "cost", title: "Right-size Qdrant Instance", impact: "Save $200/month", priority: "medium" },
-    { type: "efficiency", title: "Implement Caching Layer", impact: "Reduce API calls by 40%", priority: "high" },
-    { type: "scaling", title: "Add Load Balancer", impact: "Handle 50% more traffic", priority: "low" }
+    {
+      type: 'performance',
+      title: 'Enable Connection Pooling',
+      impact: 'Reduce DB latency by 30%',
+      priority: 'high',
+    },
+    {
+      type: 'cost',
+      title: 'Right-size Qdrant Instance',
+      impact: 'Save $200/month',
+      priority: 'medium',
+    },
+    {
+      type: 'efficiency',
+      title: 'Implement Caching Layer',
+      impact: 'Reduce API calls by 40%',
+      priority: 'high',
+    },
+    {
+      type: 'scaling',
+      title: 'Add Load Balancer',
+      impact: 'Handle 50% more traffic',
+      priority: 'low',
+    },
   ];
 
   // Incident History
   const incidentHistory = [
-    { id: 1, severity: "critical", title: "Database Connection Pool Exhausted", duration: "15m", resolved: true, timestamp: "2025-10-28T14:30:00Z" },
-    { id: 2, severity: "warning", title: "High Memory Usage on Qdrant", duration: "2h", resolved: true, timestamp: "2025-10-27T09:15:00Z" },
-    { id: 3, severity: "info", title: "Scheduled Maintenance Window", duration: "1h", resolved: true, timestamp: "2025-10-26T02:00:00Z" },
-    { id: 4, severity: "critical", title: "Kafka Consumer Lag", duration: "45m", resolved: true, timestamp: "2025-10-25T16:20:00Z" }
+    {
+      id: 1,
+      severity: 'critical',
+      title: 'Database Connection Pool Exhausted',
+      duration: '15m',
+      resolved: true,
+      timestamp: '2025-10-28T14:30:00Z',
+    },
+    {
+      id: 2,
+      severity: 'warning',
+      title: 'High Memory Usage on Qdrant',
+      duration: '2h',
+      resolved: true,
+      timestamp: '2025-10-27T09:15:00Z',
+    },
+    {
+      id: 3,
+      severity: 'info',
+      title: 'Scheduled Maintenance Window',
+      duration: '1h',
+      resolved: true,
+      timestamp: '2025-10-26T02:00:00Z',
+    },
+    {
+      id: 4,
+      severity: 'critical',
+      title: 'Kafka Consumer Lag',
+      duration: '45m',
+      resolved: true,
+      timestamp: '2025-10-25T16:20:00Z',
+    },
   ];
 
   const handleRefresh = () => {
@@ -191,28 +222,40 @@ export default function SystemHealth() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "healthy": return "text-green-500";
-      case "degraded": return "text-yellow-500";
-      case "unhealthy": return "text-red-500";
-      default: return "text-gray-500";
+      case 'healthy':
+        return 'text-green-500';
+      case 'degraded':
+        return 'text-yellow-500';
+      case 'unhealthy':
+        return 'text-red-500';
+      default:
+        return 'text-gray-500';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "healthy": return <CheckCircle className="h-4 w-4" />;
-      case "degraded": return <AlertTriangle className="h-4 w-4" />;
-      case "unhealthy": return <XCircle className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
+      case 'healthy':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'degraded':
+        return <AlertTriangle className="h-4 w-4" />;
+      case 'unhealthy':
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
     }
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case "critical": return "bg-red-500";
-      case "warning": return "bg-yellow-500";
-      case "info": return "bg-blue-500";
-      default: return "bg-gray-500";
+      case 'critical':
+        return 'bg-red-500';
+      case 'warning':
+        return 'bg-yellow-500';
+      case 'info':
+        return 'bg-blue-500';
+      default:
+        return 'bg-gray-500';
     }
   };
 
@@ -251,10 +294,15 @@ export default function SystemHealth() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <div className={`h-3 w-3 rounded-full ${
-                systemStatus.overall === 'healthy' ? 'bg-green-500' :
-                systemStatus.overall === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'
-              }`} />
+              <div
+                className={`h-3 w-3 rounded-full ${
+                  systemStatus.overall === 'healthy'
+                    ? 'bg-green-500'
+                    : systemStatus.overall === 'degraded'
+                      ? 'bg-yellow-500'
+                      : 'bg-red-500'
+                }`}
+              />
               <span className="text-2xl font-bold capitalize">{systemStatus.overall}</span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -284,7 +332,7 @@ export default function SystemHealth() {
           <CardContent>
             <div className="text-2xl font-bold">{systemStatus.activeAlerts}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {alerts.filter(a => !a.acknowledged).length} unacknowledged
+              {alerts.filter((a) => !a.acknowledged).length} unacknowledged
             </p>
           </CardContent>
         </Card>
@@ -295,54 +343,50 @@ export default function SystemHealth() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {lastUpdated.toLocaleTimeString()}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Auto-refresh every 30s
-            </p>
+            <div className="text-2xl font-bold">{lastUpdated.toLocaleTimeString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">Auto-refresh every 30s</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Navigation Tabs */}
       <div className="flex gap-2 mb-4">
-        <Button 
-          variant={activeSection === "overview" ? "default" : "outline"} 
+        <Button
+          variant={activeSection === 'overview' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setActiveSection("overview")}
+          onClick={() => setActiveSection('overview')}
         >
           <BarChart3 className="w-4 h-4 mr-2" />
           Overview
         </Button>
-        <Button 
-          variant={activeSection === "security" ? "default" : "outline"} 
+        <Button
+          variant={activeSection === 'security' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setActiveSection("security")}
+          onClick={() => setActiveSection('security')}
         >
           <Shield className="w-4 h-4 mr-2" />
           Security
         </Button>
-        <Button 
-          variant={activeSection === "predictions" ? "default" : "outline"} 
+        <Button
+          variant={activeSection === 'predictions' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setActiveSection("predictions")}
+          onClick={() => setActiveSection('predictions')}
         >
           <Eye className="w-4 h-4 mr-2" />
           Predictions
         </Button>
-        <Button 
-          variant={activeSection === "optimization" ? "default" : "outline"} 
+        <Button
+          variant={activeSection === 'optimization' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setActiveSection("optimization")}
+          onClick={() => setActiveSection('optimization')}
         >
           <Lightbulb className="w-4 h-4 mr-2" />
           Optimization
         </Button>
-        <Button 
-          variant={activeSection === "incidents" ? "default" : "outline"} 
+        <Button
+          variant={activeSection === 'incidents' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setActiveSection("incidents")}
+          onClick={() => setActiveSection('incidents')}
         >
           <AlertCircle className="w-4 h-4 mr-2" />
           Incidents
@@ -350,7 +394,7 @@ export default function SystemHealth() {
       </div>
 
       {/* Overview Section */}
-      {activeSection === "overview" && (
+      {activeSection === 'overview' && (
         <div className="space-y-6">
           {/* Service Status */}
           <Card>
@@ -361,7 +405,10 @@ export default function SystemHealth() {
             <CardContent>
               <div className="space-y-4">
                 {services.map((service, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
                     <div className="flex items-center gap-4">
                       <div className={`${getStatusColor(service.status)}`}>
                         {getStatusIcon(service.status)}
@@ -374,17 +421,18 @@ export default function SystemHealth() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <Badge 
+                      <Badge
                         variant={
-                          service.status === 'healthy' ? 'default' :
-                          service.status === 'degraded' ? 'secondary' : 'destructive'
+                          service.status === 'healthy'
+                            ? 'default'
+                            : service.status === 'degraded'
+                              ? 'secondary'
+                              : 'destructive'
                         }
                       >
                         {service.status}
                       </Badge>
-                      <div className="text-sm text-muted-foreground">
-                        {service.lastCheck}
-                      </div>
+                      <div className="text-sm text-muted-foreground">{service.lastCheck}</div>
                     </div>
                   </div>
                 ))}
@@ -412,8 +460,8 @@ export default function SystemHealth() {
                         <span className="text-sm text-muted-foreground">{metric.trend}</span>
                       </div>
                     </div>
-                    <Progress 
-                      value={metric.value} 
+                    <Progress
+                      value={metric.value}
                       className="w-full"
                       // @ts-ignore
                       data-status={metric.status}
@@ -437,7 +485,7 @@ export default function SystemHealth() {
             <CardContent>
               <div className="space-y-4">
                 {alerts.map((alert) => (
-                  <Alert key={alert.id} className={alert.acknowledged ? "opacity-60" : ""}>
+                  <Alert key={alert.id} className={alert.acknowledged ? 'opacity-60' : ''}>
                     <div className={`h-2 w-2 rounded-full ${getSeverityColor(alert.severity)}`} />
                     <AlertDescription>
                       <div className="flex items-center justify-between">
@@ -457,7 +505,7 @@ export default function SystemHealth() {
                             </Badge>
                           )}
                           <Button variant="outline" size="sm">
-                            {alert.acknowledged ? "Unacknowledge" : "Acknowledge"}
+                            {alert.acknowledged ? 'Unacknowledge' : 'Acknowledge'}
                           </Button>
                         </div>
                       </div>
@@ -471,7 +519,7 @@ export default function SystemHealth() {
       )}
 
       {/* Security Section */}
-      {activeSection === "security" && (
+      {activeSection === 'security' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {securityMetrics.map((metric, index) => (
@@ -482,7 +530,12 @@ export default function SystemHealth() {
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold">{metric.value}{metric.name.includes('Score') || metric.name.includes('Certificates') ? '%' : ''}</span>
+                      <span className="text-2xl font-bold">
+                        {metric.value}
+                        {metric.name.includes('Score') || metric.name.includes('Certificates')
+                          ? '%'
+                          : ''}
+                      </span>
                       <div className="flex items-center gap-1">
                         {metric.trend.startsWith('+') ? (
                           <TrendingUp className="h-4 w-4 text-red-500" />
@@ -492,15 +545,25 @@ export default function SystemHealth() {
                         <span className="text-sm text-muted-foreground">{metric.trend}</span>
                       </div>
                     </div>
-                    <Progress 
-                      value={metric.value} 
+                    <Progress
+                      value={metric.value}
                       className="w-full"
                       // @ts-ignore
                       data-status={metric.status}
                     />
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>0{metric.name.includes('Score') || metric.name.includes('Certificates') ? '%' : ''}</span>
-                      <span>100{metric.name.includes('Score') || metric.name.includes('Certificates') ? '%' : ''}</span>
+                      <span>
+                        0
+                        {metric.name.includes('Score') || metric.name.includes('Certificates')
+                          ? '%'
+                          : ''}
+                      </span>
+                      <span>
+                        100
+                        {metric.name.includes('Score') || metric.name.includes('Certificates')
+                          ? '%'
+                          : ''}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -558,7 +621,7 @@ export default function SystemHealth() {
       )}
 
       {/* Predictions Section */}
-      {activeSection === "predictions" && (
+      {activeSection === 'predictions' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {predictions.map((prediction, index) => (
@@ -568,7 +631,9 @@ export default function SystemHealth() {
                     <Eye className="w-5 h-5" />
                     {prediction.metric} Prediction
                   </CardTitle>
-                  <CardDescription>ML-powered prediction for {prediction.timeframe}</CardDescription>
+                  <CardDescription>
+                    ML-powered prediction for {prediction.timeframe}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -578,13 +643,17 @@ export default function SystemHealth() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Predicted Value</span>
-                      <span className="text-2xl font-bold text-blue-600">{prediction.predicted}%</span>
+                      <span className="text-2xl font-bold text-blue-600">
+                        {prediction.predicted}%
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Confidence</span>
                       <div className="flex items-center gap-2">
                         <Progress value={prediction.confidence * 100} className="w-20" />
-                        <span className="text-sm font-medium">{(prediction.confidence * 100).toFixed(0)}%</span>
+                        <span className="text-sm font-medium">
+                          {(prediction.confidence * 100).toFixed(0)}%
+                        </span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
@@ -600,7 +669,7 @@ export default function SystemHealth() {
       )}
 
       {/* Optimization Section */}
-      {activeSection === "optimization" && (
+      {activeSection === 'optimization' && (
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -608,7 +677,9 @@ export default function SystemHealth() {
                 <Lightbulb className="w-5 h-5" />
                 Optimization Recommendations
               </CardTitle>
-              <CardDescription>AI-powered suggestions for improving system performance and efficiency</CardDescription>
+              <CardDescription>
+                AI-powered suggestions for improving system performance and efficiency
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -616,11 +687,13 @@ export default function SystemHealth() {
                   <div key={index} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium">{suggestion.title}</h4>
-                      <Badge 
+                      <Badge
                         variant={
-                          suggestion.priority === "high" ? "destructive" : 
-                          suggestion.priority === "medium" ? "secondary" : 
-                          "outline"
+                          suggestion.priority === 'high'
+                            ? 'destructive'
+                            : suggestion.priority === 'medium'
+                              ? 'secondary'
+                              : 'outline'
                         }
                       >
                         {suggestion.priority}
@@ -628,8 +701,12 @@ export default function SystemHealth() {
                     </div>
                     <p className="text-sm text-muted-foreground">{suggestion.impact}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline">Apply</Button>
-                      <Button size="sm" variant="ghost">Learn More</Button>
+                      <Button size="sm" variant="outline">
+                        Apply
+                      </Button>
+                      <Button size="sm" variant="ghost">
+                        Learn More
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -640,7 +717,7 @@ export default function SystemHealth() {
       )}
 
       {/* Incidents Section */}
-      {activeSection === "incidents" && (
+      {activeSection === 'incidents' && (
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -657,18 +734,18 @@ export default function SystemHealth() {
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium">{incident.title}</h4>
                       <div className="flex items-center gap-2">
-                        <Badge 
+                        <Badge
                           variant={
-                            incident.severity === "critical" ? "destructive" : 
-                            incident.severity === "warning" ? "secondary" : 
-                            "outline"
+                            incident.severity === 'critical'
+                              ? 'destructive'
+                              : incident.severity === 'warning'
+                                ? 'secondary'
+                                : 'outline'
                           }
                         >
                           {incident.severity}
                         </Badge>
-                        {incident.resolved && (
-                          <Badge variant="default">Resolved</Badge>
-                        )}
+                        {incident.resolved && <Badge variant="default">Resolved</Badge>}
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
@@ -690,7 +767,6 @@ export default function SystemHealth() {
           </Card>
         </div>
       )}
-
     </div>
   );
 }

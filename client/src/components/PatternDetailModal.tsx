@@ -1,31 +1,21 @@
-import React from "react";
-import { DetailModal } from "./DetailModal";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
+import React from 'react';
+import { DetailModal } from './DetailModal';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import {
   Code,
-  Zap,
   Download,
-  Eye,
-  FileText,
   Clock,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  TrendingUp,
-  Target,
   Layers,
   Network,
   GitBranch,
-  Users,
-  Activity,
   ArrowRight,
   ArrowDown,
-  Circle
-} from "lucide-react";
+  Circle,
+} from 'lucide-react';
 
 interface PatternNode {
   id: string;
@@ -75,33 +65,33 @@ interface PatternDetailModalProps {
 export function PatternDetailModal({ pattern, isOpen, onClose }: PatternDetailModalProps) {
   if (!pattern) return null;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active": return "text-green-500";
-      case "stable": return "text-blue-500";
-      case "experimental": return "text-yellow-500";
-      case "deprecated": return "text-red-500";
-      default: return "text-gray-500";
-    }
-  };
-
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case "active": return "default";
-      case "stable": return "secondary";
-      case "experimental": return "outline";
-      case "deprecated": return "destructive";
-      default: return "outline";
+      case 'active':
+        return 'default';
+      case 'stable':
+        return 'secondary';
+      case 'experimental':
+        return 'outline';
+      case 'deprecated':
+        return 'destructive';
+      default:
+        return 'outline';
     }
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case "pattern": return <Layers className="w-4 h-4" />;
-      case "implementation": return <Code className="w-4 h-4" />;
-      case "dependency": return <GitBranch className="w-4 h-4" />;
-      case "version": return <Clock className="w-4 h-4" />;
-      default: return <Circle className="w-4 h-4" />;
+      case 'pattern':
+        return <Layers className="w-4 h-4" />;
+      case 'implementation':
+        return <Code className="w-4 h-4" />;
+      case 'dependency':
+        return <GitBranch className="w-4 h-4" />;
+      case 'version':
+        return <Clock className="w-4 h-4" />;
+      default:
+        return <Circle className="w-4 h-4" />;
     }
   };
 
@@ -212,19 +202,19 @@ export function PatternDetailModal({ pattern, isOpen, onClose }: PatternDetailMo
                   <span className="font-mono">{pattern.metrics.testCoverage}%</span>
                 </div>
                 <Progress value={pattern.metrics.testCoverage} className="h-2" />
-                
+
                 <div className="flex justify-between text-sm">
                   <span>Maintainability</span>
                   <span className="font-mono">{pattern.metrics.maintainability}/100</span>
                 </div>
                 <Progress value={pattern.metrics.maintainability} className="h-2" />
-                
+
                 <div className="flex justify-between text-sm">
                   <span>Reliability</span>
                   <span className="font-mono">{pattern.metrics.reliability}/100</span>
                 </div>
                 <Progress value={pattern.metrics.reliability} className="h-2" />
-                
+
                 <div className="flex justify-between text-sm">
                   <span>Security</span>
                   <span className="font-mono">{pattern.metrics.security}/100</span>
@@ -276,11 +266,15 @@ export function PatternDetailModal({ pattern, isOpen, onClose }: PatternDetailMo
             <div className="grid grid-cols-2 gap-4">
               <Card className="p-4">
                 <div className="text-xs text-muted-foreground mb-1">Breaking Changes</div>
-                <div className="text-2xl font-bold text-red-500">{pattern.evolution.breakingChanges}</div>
+                <div className="text-2xl font-bold text-red-500">
+                  {pattern.evolution.breakingChanges}
+                </div>
               </Card>
               <Card className="p-4">
                 <div className="text-xs text-muted-foreground mb-1">Feature Additions</div>
-                <div className="text-2xl font-bold text-green-500">{pattern.evolution.featureAdditions}</div>
+                <div className="text-2xl font-bold text-green-500">
+                  {pattern.evolution.featureAdditions}
+                </div>
               </Card>
             </div>
           </div>
@@ -334,7 +328,9 @@ export function PatternDetailModal({ pattern, isOpen, onClose }: PatternDetailMo
                   <div>
                     <div className="text-sm font-medium mb-1">Siblings:</div>
                     {pattern.relationships.siblings.map((sibling, index) => (
-                      <div key={index} className="text-sm ml-4">• {sibling}</div>
+                      <div key={index} className="text-sm ml-4">
+                        • {sibling}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -346,7 +342,10 @@ export function PatternDetailModal({ pattern, isOpen, onClose }: PatternDetailMo
                 <h4 className="text-sm font-semibold mb-3">Conflicts</h4>
                 <div className="space-y-1">
                   {pattern.relationships.conflicts.map((conflict, index) => (
-                    <div key={index} className="text-sm font-mono bg-red-100 dark:bg-red-900/20 p-2 rounded text-red-700 dark:text-red-300">
+                    <div
+                      key={index}
+                      className="text-sm font-mono bg-red-100 dark:bg-red-900/20 p-2 rounded text-red-700 dark:text-red-300"
+                    >
                       {conflict}
                     </div>
                   ))}

@@ -9,11 +9,13 @@ Successfully aligned the `/api/savings/metrics` endpoint response format with th
 ### 1. Updated `AgentRunTracker.calculateSavingsMetrics()` (server/agent-run-tracker.ts)
 
 **Before**: Returned incomplete object with fields like:
+
 - `tokenSavings`, `computeSavings` (not in frontend interface)
 - `avgTokensPerIntelligenceRun`, `avgTokensPerBaselineRun` (wrong names)
 - Missing: `monthlySavings`, `weeklySavings`, `dailySavings`, `costPerToken`, `costPerCompute`
 
 **After**: Returns complete `SavingsMetrics` interface with:
+
 ```typescript
 {
   totalSavings: number;
@@ -32,6 +34,7 @@ Successfully aligned the `/api/savings/metrics` endpoint response format with th
 ```
 
 **Key improvements**:
+
 - ✅ Calculates time period in days for accurate savings extrapolation
 - ✅ **Allows negative values** to detect performance regressions (intelligence worse than baseline)
 - ✅ Returns realistic demo values when data is insufficient
@@ -41,12 +44,14 @@ Successfully aligned the `/api/savings/metrics` endpoint response format with th
 ### 2. Updated `/api/savings/metrics` endpoint (server/savings-routes.ts)
 
 **Before**: Directly returned raw metrics without transformation
+
 ```typescript
 const metrics = AgentRunTracker.calculateSavingsMetrics(startDate, now);
 res.json(metrics);
 ```
 
 **After**: Returns validated metrics matching frontend interface
+
 ```typescript
 const rawMetrics = AgentRunTracker.calculateSavingsMetrics(startDate, now);
 const metrics = {
@@ -69,13 +74,15 @@ res.json(validatedMetrics);
 ```
 
 **Key improvements**:
+
 - ✅ Explicit field mapping for clarity
 - ✅ Zod schema validation ensures runtime type safety
 - ✅ Catches type mismatches before sending to frontend
 
-### 3. Added comprehensive tests (server/__tests__/savings-metrics-transformation.test.ts)
+### 3. Added comprehensive tests (server/**tests**/savings-metrics-transformation.test.ts)
 
 Three test scenarios:
+
 1. **Complete metrics transformation** - Verifies all fields are present and calculated correctly
 2. **Edge case with no runs** - Ensures fallback to zero values works
 3. **Performance regression detection** - Confirms negative savings are correctly returned when intelligence underperforms baseline
@@ -83,17 +90,20 @@ Three test scenarios:
 ## Validation Strategy
 
 ### Data Layer (AgentRunTracker)
+
 - Calculates metrics from raw run data
 - **Allows negative values** to indicate performance regressions
 - Returns fallback demo values when insufficient data
 - Averages and counts remain non-negative (only savings can be negative)
 
 ### API Layer (savings-routes.ts)
+
 - Explicit field mapping for type safety
 - Zod schema validation with `SavingsMetricsSchema.parse()`
 - Error handling with 500 status on failure
 
 ### Frontend Layer (intelligence-savings-source.ts)
+
 - Type-safe interface definition
 - Mock data fallback if API fails (mock data intentionally shows positive values)
 - **Real API data can be negative** to indicate performance regressions

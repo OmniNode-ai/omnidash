@@ -59,4 +59,3 @@ describe('EventTypeDistributionChart', () => {
     expect(screen.getByText('All Tenants')).toBeInTheDocument();
   });
 });
-

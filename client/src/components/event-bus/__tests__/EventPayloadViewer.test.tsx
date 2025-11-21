@@ -53,4 +53,3 @@ describe('EventPayloadViewer', () => {
     expect(screen.getByText(/test query/)).toBeInTheDocument();
   });
 });
-

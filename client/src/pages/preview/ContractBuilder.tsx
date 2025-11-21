@@ -1,142 +1,158 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { 
-  FileText, 
-  Wand2, 
-  CheckCircle, 
-  AlertTriangle, 
-  Copy, 
-  Download, 
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  FileText,
+  Wand2,
+  CheckCircle,
+  AlertTriangle,
+  Copy,
+  Download,
   Upload,
   RefreshCw,
   Eye,
   Settings,
-  Code,
   Database,
   Zap,
   BarChart3,
-  Save,
   Loader2,
   Sparkles,
   FileCode,
   Shield,
-  Clock
-} from "lucide-react";
+  Clock,
+} from 'lucide-react';
 
 // Mock contract schemas based on omnibase_core models
 const CONTRACT_TYPES = {
   workflow: {
-    name: "Workflow (Orchestrator)",
-    description: "Orchestrator workflow for coordinating multiple operations",
+    name: 'Workflow (Orchestrator)',
+    description: 'Orchestrator workflow for coordinating multiple operations',
     icon: BarChart3,
     schema: {
       node_identity: {
-        name: { type: "string", required: true, description: "Unique contract name" },
-        display_name: { type: "string", required: true, description: "Human-readable name" },
-        node_type: { type: "enum", values: ["orchestrator"], required: true },
-        version: { type: "string", required: true, description: "Semantic version" },
-        description: { type: "string", required: true, description: "Contract description" }
+        name: { type: 'string', required: true, description: 'Unique contract name' },
+        display_name: { type: 'string', required: true, description: 'Human-readable name' },
+        node_type: { type: 'enum', values: ['orchestrator'], required: true },
+        version: { type: 'string', required: true, description: 'Semantic version' },
+        description: { type: 'string', required: true, description: 'Contract description' },
       },
       metadata: {
-        author: { type: "string", required: false, description: "Contract author" },
-        created_date: { type: "date", required: false, description: "Creation date" },
-        tags: { type: "array", required: false, description: "Classification tags" }
+        author: { type: 'string', required: false, description: 'Contract author' },
+        created_date: { type: 'date', required: false, description: 'Creation date' },
+        tags: { type: 'array', required: false, description: 'Classification tags' },
       },
       performance_requirements: {
         execution_time: {
-          target_ms: { type: "number", required: true, description: "Target execution time" },
-          max_ms: { type: "number", required: true, description: "Maximum execution time" }
+          target_ms: { type: 'number', required: true, description: 'Target execution time' },
+          max_ms: { type: 'number', required: true, description: 'Maximum execution time' },
         },
         throughput: {
-          target_workflows_per_minute: { type: "number", required: false, description: "Target throughput" }
-        }
+          target_workflows_per_minute: {
+            type: 'number',
+            required: false,
+            description: 'Target throughput',
+          },
+        },
       },
       workflow_stages: {
-        type: "array",
+        type: 'array',
         item_schema: {
-          stage_number: { type: "number", required: true },
-          stage_name: { type: "string", required: true },
-          description: { type: "string", required: true },
-          target_duration_ms: { type: "number", required: true },
-          dependencies: { type: "array", required: false },
-          output_artifacts: { type: "array", required: false }
-        }
-      }
-    }
+          stage_number: { type: 'number', required: true },
+          stage_name: { type: 'string', required: true },
+          description: { type: 'string', required: true },
+          target_duration_ms: { type: 'number', required: true },
+          dependencies: { type: 'array', required: false },
+          output_artifacts: { type: 'array', required: false },
+        },
+      },
+    },
   },
   effect: {
-    name: "Effect",
-    description: "Side-effect node for I/O operations and external integrations",
+    name: 'Effect',
+    description: 'Side-effect node for I/O operations and external integrations',
     icon: Zap,
     schema: {
       node_identity: {
-        name: { type: "string", required: true, description: "Unique contract name" },
-        display_name: { type: "string", required: true, description: "Human-readable name" },
-        node_type: { type: "enum", values: ["effect"], required: true },
-        version: { type: "string", required: true, description: "Semantic version" },
-        description: { type: "string", required: true, description: "Contract description" }
+        name: { type: 'string', required: true, description: 'Unique contract name' },
+        display_name: { type: 'string', required: true, description: 'Human-readable name' },
+        node_type: { type: 'enum', values: ['effect'], required: true },
+        version: { type: 'string', required: true, description: 'Semantic version' },
+        description: { type: 'string', required: true, description: 'Contract description' },
       },
       io_operations: {
-        type: "array",
+        type: 'array',
         item_schema: {
-          name: { type: "string", required: true, description: "Operation name" },
-          description: { type: "string", required: true, description: "Operation description" },
-          target_ms: { type: "number", required: true, description: "Target duration" },
-          input_model: { type: "string", required: true, description: "Input model class" },
-          output_model: { type: "string", required: true, description: "Output model class" },
-          side_effects: { type: "array", required: false, description: "Side effects list" }
-        }
+          name: { type: 'string', required: true, description: 'Operation name' },
+          description: { type: 'string', required: true, description: 'Operation description' },
+          target_ms: { type: 'number', required: true, description: 'Target duration' },
+          input_model: { type: 'string', required: true, description: 'Input model class' },
+          output_model: { type: 'string', required: true, description: 'Output model class' },
+          side_effects: { type: 'array', required: false, description: 'Side effects list' },
+        },
       },
       transaction_management: {
-        enabled: { type: "boolean", required: false, description: "Enable transactions" },
-        isolation_level: { type: "enum", values: ["read_committed", "repeatable_read", "serializable"], required: false }
-      }
-    }
+        enabled: { type: 'boolean', required: false, description: 'Enable transactions' },
+        isolation_level: {
+          type: 'enum',
+          values: ['read_committed', 'repeatable_read', 'serializable'],
+          required: false,
+        },
+      },
+    },
   },
   reducer: {
-    name: "Reducer",
-    description: "Streaming aggregation and data processing node",
+    name: 'Reducer',
+    description: 'Streaming aggregation and data processing node',
     icon: Database,
     schema: {
       node_identity: {
-        name: { type: "string", required: true, description: "Unique contract name" },
-        display_name: { type: "string", required: true, description: "Human-readable name" },
-        node_type: { type: "enum", values: ["reducer"], required: true },
-        version: { type: "string", required: true, description: "Semantic version" },
-        description: { type: "string", required: true, description: "Contract description" }
+        name: { type: 'string', required: true, description: 'Unique contract name' },
+        display_name: { type: 'string', required: true, description: 'Human-readable name' },
+        node_type: { type: 'enum', values: ['reducer'], required: true },
+        version: { type: 'string', required: true, description: 'Semantic version' },
+        description: { type: 'string', required: true, description: 'Contract description' },
       },
       aggregation_strategy: {
-        type: { type: "enum", values: ["streaming", "batch"], required: true, description: "Aggregation type" },
+        type: {
+          type: 'enum',
+          values: ['streaming', 'batch'],
+          required: true,
+          description: 'Aggregation type',
+        },
         window_types: {
-          type: "array",
+          type: 'array',
           item_schema: {
-            name: { type: "string", required: true, description: "Window name" },
-            duration_seconds: { type: "number", required: true, description: "Window duration" }
-          }
-        }
+            name: { type: 'string', required: true, description: 'Window name' },
+            duration_seconds: { type: 'number', required: true, description: 'Window duration' },
+          },
+        },
       },
       input_state: {
-        type: { type: "enum", values: ["stream"], required: true, description: "Input type" },
-        event_types: { type: "array", required: true, description: "Supported event types" }
-      }
-    }
-  }
+        type: { type: 'enum', values: ['stream'], required: true, description: 'Input type' },
+        event_types: { type: 'array', required: true, description: 'Supported event types' },
+      },
+    },
+  },
 };
 
 // Mock examples from omninode_bridge contracts
 const EXAMPLE_CONTRACTS = {
   workflow: {
-    name: "codegen_workflow",
-    display_name: "Code Generation Workflow",
-    description: "Orchestrator workflow for 6-stage ONEX node generation pipeline",
+    name: 'codegen_workflow',
+    display_name: 'Code Generation Workflow',
+    description: 'Orchestrator workflow for 6-stage ONEX node generation pipeline',
     yaml: `# ONEX v2.0 Contract - Code Generation Workflow
 schema_version: "2.0"
 contract_version: "1.0.0"
@@ -179,12 +195,12 @@ workflow_stages:
     target_duration_ms: 6000
     dependencies: ["contract_generation"]
     output_artifacts:
-      - "models/*.py"`
+      - "models/*.py"`,
   },
   effect: {
-    name: "deployment_sender_effect",
-    display_name: "Deployment Sender Effect",
-    description: "Effect node for Docker container packaging and remote deployment operations",
+    name: 'deployment_sender_effect',
+    display_name: 'Deployment Sender Effect',
+    description: 'Effect node for Docker container packaging and remote deployment operations',
     yaml: `# ONEX v2.0 Contract - Deployment Sender Effect
 schema_version: "2.0"
 contract_version: "1.0.0"
@@ -218,12 +234,12 @@ io_operations:
 
 transaction_management:
   enabled: true
-  isolation_level: "read_committed"`
+  isolation_level: "read_committed"`,
   },
   reducer: {
-    name: "codegen_metrics",
-    display_name: "Code Generation Metrics Reducer",
-    description: "Reducer node for streaming aggregation of code generation metrics",
+    name: 'codegen_metrics',
+    display_name: 'Code Generation Metrics Reducer',
+    description: 'Reducer node for streaming aggregation of code generation metrics',
     yaml: `# ONEX v2.0 Contract - Code Generation Metrics Reducer
 schema_version: "2.0"
 contract_version: "1.0.0"
@@ -249,18 +265,20 @@ input_state:
   event_types:
     - "NODE_GENERATION_STARTED"
     - "NODE_GENERATION_COMPLETED"
-    - "NODE_GENERATION_FAILED"`
-  }
+    - "NODE_GENERATION_FAILED"`,
+  },
 };
 
 export default function ContractBuilder() {
-  const [selectedType, setSelectedType] = useState<string>("");
-  const [aiPrompt, setAiPrompt] = useState<string>("");
+  const [selectedType, setSelectedType] = useState<string>('');
+  const [aiPrompt, setAiPrompt] = useState<string>('');
   const [generatedContract, setGeneratedContract] = useState<any>(null);
-  const [yamlOutput, setYamlOutput] = useState<string>("");
+  const [yamlOutput, setYamlOutput] = useState<string>('');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<"prompt" | "form" | "yaml" | "validation" | "history" | "suggestions">("prompt");
+  const [activeTab, setActiveTab] = useState<
+    'prompt' | 'form' | 'yaml' | 'validation' | 'history' | 'suggestions'
+  >('prompt');
   const [formData, setFormData] = useState<any>({});
   // Seed contract history with 1-2 prior contracts for demo
   const [contractHistory, setContractHistory] = useState<any[]>([
@@ -270,7 +288,7 @@ export default function ContractBuilder() {
       prompt: 'Create a code generation workflow with validation stages',
       contract: EXAMPLE_CONTRACTS.workflow,
       yaml: EXAMPLE_CONTRACTS.workflow.yaml,
-      timestamp: new Date(Date.now() - 86400000).toISOString()
+      timestamp: new Date(Date.now() - 86400000).toISOString(),
     },
     {
       id: Date.now() - 172800000,
@@ -278,33 +296,32 @@ export default function ContractBuilder() {
       prompt: 'Build a deployment sender effect for Docker containers',
       contract: EXAMPLE_CONTRACTS.effect,
       yaml: EXAMPLE_CONTRACTS.effect.yaml,
-      timestamp: new Date(Date.now() - 172800000).toISOString()
-    }
+      timestamp: new Date(Date.now() - 172800000).toISOString(),
+    },
   ]);
   // Preload with single strong AI suggestion
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([
-    "Create a data processing workflow with validation, transformation, and storage stages. This pattern has been proven in 45 similar implementations and shows 92% success rate."
+    'Create a data processing workflow with validation, transformation, and storage stages. This pattern has been proven in 45 similar implementations and shows 92% success rate.',
   ]);
-  const [isValidating, setIsValidating] = useState<boolean>(false);
 
   // Generate AI suggestions based on contract type
   const generateSuggestions = () => {
     const suggestions = {
       workflow: [
-        "Create a data processing workflow with validation, transformation, and storage stages",
-        "Build a microservice orchestration workflow with error handling and retries",
-        "Design a CI/CD pipeline workflow with automated testing and deployment"
+        'Create a data processing workflow with validation, transformation, and storage stages',
+        'Build a microservice orchestration workflow with error handling and retries',
+        'Design a CI/CD pipeline workflow with automated testing and deployment',
       ],
       effect: [
-        "Create a database write effect with transaction management",
-        "Build an API integration effect with rate limiting and error handling",
-        "Design a file processing effect with validation and backup"
+        'Create a database write effect with transaction management',
+        'Build an API integration effect with rate limiting and error handling',
+        'Design a file processing effect with validation and backup',
       ],
       reducer: [
-        "Create a metrics aggregation reducer for real-time analytics",
-        "Build a log processing reducer with filtering and alerting",
-        "Design a data transformation reducer with streaming capabilities"
-      ]
+        'Create a metrics aggregation reducer for real-time analytics',
+        'Build a log processing reducer with filtering and alerting',
+        'Design a data transformation reducer with streaming capabilities',
+      ],
     };
     setAiSuggestions(suggestions[selectedType as keyof typeof suggestions] || []);
   };
@@ -317,9 +334,9 @@ export default function ContractBuilder() {
       prompt: aiPrompt,
       contract,
       yaml,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
-    setContractHistory(prev => [historyItem, ...prev.slice(0, 9)]); // Keep last 10
+    setContractHistory((prev) => [historyItem, ...prev.slice(0, 9)]); // Keep last 10
   };
 
   // Load contract from history
@@ -331,27 +348,27 @@ export default function ContractBuilder() {
       setGeneratedContract(item.contract);
       setYamlOutput(item.yaml);
       setFormData(item.contract);
-      setActiveTab("yaml");
+      setActiveTab('yaml');
     }
   };
 
   // Generate contract from AI prompt
   const generateContract = async () => {
     if (!selectedType || !aiPrompt.trim()) return;
-    
+
     setIsGenerating(true);
-    
+
     // Simulate AI generation delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
     // Mock AI generation based on prompt and type
     const mockContract = generateMockContract(selectedType, aiPrompt);
     setGeneratedContract(mockContract);
     setFormData(mockContract);
     setYamlOutput(convertToYaml(mockContract));
-    setActiveTab("form");
+    setActiveTab('form');
     setIsGenerating(false);
-    
+
     // Save to history
     saveToHistory(mockContract, convertToYaml(mockContract));
   };
@@ -363,7 +380,7 @@ export default function ContractBuilder() {
       setGeneratedContract(example);
       setFormData(example);
       setYamlOutput(example.yaml);
-      setActiveTab("yaml");
+      setActiveTab('yaml');
     }
   };
 
@@ -372,16 +389,19 @@ export default function ContractBuilder() {
     const baseContract = {
       node_identity: {
         name: prompt.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + type,
-        display_name: prompt.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        display_name: prompt
+          .split(' ')
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' '),
         node_type: type,
-        version: "1.0.0",
-        description: prompt
+        version: '1.0.0',
+        description: prompt,
       },
       metadata: {
-        author: "AI Generated",
+        author: 'AI Generated',
         created_date: new Date().toISOString().split('T')[0],
-        tags: [type, "ai-generated"]
-      }
+        tags: [type, 'ai-generated'],
+      },
     };
 
     // Add type-specific fields
@@ -390,59 +410,59 @@ export default function ContractBuilder() {
         ...baseContract,
         performance_requirements: {
           execution_time: { target_ms: 30000, max_ms: 60000 },
-          throughput: { target_workflows_per_minute: 5 }
+          throughput: { target_workflows_per_minute: 5 },
         },
         workflow_stages: [
           {
             stage_number: 1,
-            stage_name: "initialization",
-            description: "Initialize workflow",
+            stage_name: 'initialization',
+            description: 'Initialize workflow',
             target_duration_ms: 5000,
             dependencies: [],
-            output_artifacts: ["init.log"]
+            output_artifacts: ['init.log'],
           },
           {
             stage_number: 2,
-            stage_name: "processing",
-            description: "Main processing stage",
+            stage_name: 'processing',
+            description: 'Main processing stage',
             target_duration_ms: 20000,
-            dependencies: ["initialization"],
-            output_artifacts: ["result.json"]
-          }
-        ]
+            dependencies: ['initialization'],
+            output_artifacts: ['result.json'],
+          },
+        ],
       };
     } else if (type === 'effect') {
       return {
         ...baseContract,
         io_operations: [
           {
-            name: "main_operation",
-            description: "Primary I/O operation",
+            name: 'main_operation',
+            description: 'Primary I/O operation',
             target_ms: 10000,
-            input_model: "ModelInput",
-            output_model: "ModelOutput",
-            side_effects: ["filesystem_write", "network_io"]
-          }
+            input_model: 'ModelInput',
+            output_model: 'ModelOutput',
+            side_effects: ['filesystem_write', 'network_io'],
+          },
         ],
         transaction_management: {
           enabled: true,
-          isolation_level: "read_committed"
-        }
+          isolation_level: 'read_committed',
+        },
       };
     } else if (type === 'reducer') {
       return {
         ...baseContract,
         aggregation_strategy: {
-          type: "streaming",
+          type: 'streaming',
           window_types: [
-            { name: "minute", duration_seconds: 60 },
-            { name: "hourly", duration_seconds: 3600 }
-          ]
+            { name: 'minute', duration_seconds: 60 },
+            { name: 'hourly', duration_seconds: 3600 },
+          ],
         },
         input_state: {
-          type: "stream",
-          event_types: ["EVENT_STARTED", "EVENT_COMPLETED"]
-        }
+          type: 'stream',
+          event_types: ['EVENT_STARTED', 'EVENT_COMPLETED'],
+        },
       };
     }
 
@@ -451,18 +471,18 @@ export default function ContractBuilder() {
 
   // Convert contract to YAML
   const convertToYaml = (contract: any) => {
-    const yamlLines = ["# ONEX v2.0 Contract - AI Generated"];
+    const yamlLines = ['# ONEX v2.0 Contract - AI Generated'];
     yamlLines.push(`schema_version: "2.0"`);
     yamlLines.push(`contract_version: "1.0.0"`);
-    yamlLines.push("");
-    
+    yamlLines.push('');
+
     // Convert nested object to YAML
     const convertObject = (obj: any, indent = 0) => {
-      const spaces = "  ".repeat(indent);
+      const spaces = '  '.repeat(indent);
       for (const [key, value] of Object.entries(obj)) {
         if (Array.isArray(value)) {
           yamlLines.push(`${spaces}${key}:`);
-          value.forEach(item => {
+          value.forEach((item) => {
             if (typeof item === 'object') {
               yamlLines.push(`${spaces}  - ${Object.keys(item)[0]}: ${Object.values(item)[0]}`);
             } else {
@@ -473,12 +493,13 @@ export default function ContractBuilder() {
           yamlLines.push(`${spaces}${key}:`);
           convertObject(value, indent + 1);
         } else {
-          const yamlValue = typeof value === 'string' && value.includes('\n') ? `|\n${spaces}  ${value}` : value;
+          const yamlValue =
+            typeof value === 'string' && value.includes('\n') ? `|\n${spaces}  ${value}` : value;
           yamlLines.push(`${spaces}${key}: ${yamlValue}`);
         }
       }
     };
-    
+
     convertObject(contract);
     return yamlLines.join('\n');
   };
@@ -486,28 +507,28 @@ export default function ContractBuilder() {
   // Validate contract
   const validateContract = () => {
     const errors: string[] = [];
-    
+
     if (!formData.node_identity?.name) {
-      errors.push("Contract name is required");
+      errors.push('Contract name is required');
     }
     if (!formData.node_identity?.description) {
-      errors.push("Contract description is required");
+      errors.push('Contract description is required');
     }
     if (!formData.node_identity?.version) {
-      errors.push("Contract version is required");
+      errors.push('Contract version is required');
     }
-    
+
     // Type-specific validation
     if (selectedType === 'workflow' && !formData.workflow_stages?.length) {
-      errors.push("Workflow must have at least one stage");
+      errors.push('Workflow must have at least one stage');
     }
     if (selectedType === 'effect' && !formData.io_operations?.length) {
-      errors.push("Effect must have at least one I/O operation");
+      errors.push('Effect must have at least one I/O operation');
     }
     if (selectedType === 'reducer' && !formData.aggregation_strategy) {
-      errors.push("Reducer must have aggregation strategy");
+      errors.push('Reducer must have aggregation strategy');
     }
-    
+
     setValidationErrors(errors);
     return errors.length === 0;
   };
@@ -517,12 +538,12 @@ export default function ContractBuilder() {
     const keys = path.split('.');
     const newData = { ...formData };
     let current = newData;
-    
+
     for (let i = 0; i < keys.length - 1; i++) {
       if (!current[keys[i]]) current[keys[i]] = {};
       current = current[keys[i]];
     }
-    
+
     current[keys[keys.length - 1]] = value;
     setFormData(newData);
     setYamlOutput(convertToYaml(newData));
@@ -531,7 +552,7 @@ export default function ContractBuilder() {
   // Render form field based on schema
   const renderFormField = (key: string, field: any, path: string) => {
     const value = getNestedValue(formData, path) || '';
-    
+
     if (field.type === 'enum') {
       return (
         <div key={path} className="space-y-2">
@@ -542,7 +563,9 @@ export default function ContractBuilder() {
             </SelectTrigger>
             <SelectContent>
               {field.values.map((val: string) => (
-                <SelectItem key={val} value={val}>{val}</SelectItem>
+                <SelectItem key={val} value={val}>
+                  {val}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -552,12 +575,15 @@ export default function ContractBuilder() {
         </div>
       );
     }
-    
+
     if (field.type === 'boolean') {
       return (
         <div key={path} className="space-y-2">
           <Label htmlFor={path}>{key}</Label>
-          <Select value={value.toString()} onValueChange={(val) => updateFormData(path, val === 'true')}>
+          <Select
+            value={value.toString()}
+            onValueChange={(val) => updateFormData(path, val === 'true')}
+          >
             <SelectTrigger>
               <SelectValue placeholder={`Select ${key}`} />
             </SelectTrigger>
@@ -572,7 +598,7 @@ export default function ContractBuilder() {
         </div>
       );
     }
-    
+
     if (field.type === 'array') {
       return (
         <div key={path} className="space-y-2">
@@ -588,7 +614,7 @@ export default function ContractBuilder() {
         </div>
       );
     }
-    
+
     if (field.type === 'number') {
       return (
         <div key={path} className="space-y-2">
@@ -605,7 +631,7 @@ export default function ContractBuilder() {
         </div>
       );
     }
-    
+
     return (
       <div key={path} className="space-y-2">
         <Label htmlFor={path}>{key}</Label>
@@ -614,9 +640,7 @@ export default function ContractBuilder() {
           onChange={(e) => updateFormData(path, e.target.value)}
           placeholder={`Enter ${key}`}
         />
-        {field.description && (
-          <p className="text-sm text-muted-foreground">{field.description}</p>
-        )}
+        {field.description && <p className="text-sm text-muted-foreground">{field.description}</p>}
       </div>
     );
   };
@@ -631,10 +655,10 @@ export default function ContractBuilder() {
     if (!selectedType || !CONTRACT_TYPES[selectedType as keyof typeof CONTRACT_TYPES]) {
       return <div>Please select a contract type first</div>;
     }
-    
+
     const schema = CONTRACT_TYPES[selectedType as keyof typeof CONTRACT_TYPES].schema;
     const sections = Object.entries(schema);
-    
+
     return (
       <div className="space-y-6">
         {sections.map(([sectionName, sectionSchema]) => (
@@ -645,12 +669,21 @@ export default function ContractBuilder() {
             <CardContent className="space-y-4">
               {Object.entries(sectionSchema).map(([key, field]) => {
                 // Handle array of objects
-                if (typeof field === 'object' && field !== null && 'type' in field && field.type === 'array' && 'item_schema' in field && field.item_schema) {
+                if (
+                  typeof field === 'object' &&
+                  field !== null &&
+                  'type' in field &&
+                  field.type === 'array' &&
+                  'item_schema' in field &&
+                  field.item_schema
+                ) {
                   return (
                     <div key={`${sectionName}.${key}`} className="space-y-2">
                       <Label>{key}</Label>
                       <div className="space-y-2 p-4 border rounded-lg">
-                        <p className="text-sm text-muted-foreground">Array items will be added here</p>
+                        <p className="text-sm text-muted-foreground">
+                          Array items will be added here
+                        </p>
                         <Button variant="outline" size="sm">
                           Add {key.slice(0, -1)}
                         </Button>
@@ -667,31 +700,66 @@ export default function ContractBuilder() {
                 // Handle nested objects (e.g., performance_requirements.execution_time)
                 if (typeof field === 'object' && field !== null && !('type' in field)) {
                   const hasNestedFields = Object.values(field).some(
-                    (nestedField: any) => typeof nestedField === 'object' && nestedField !== null && 'type' in nestedField
+                    (nestedField: any) =>
+                      typeof nestedField === 'object' &&
+                      nestedField !== null &&
+                      'type' in nestedField
                   );
 
                   if (hasNestedFields) {
                     return (
-                      <div key={`${sectionName}.${key}`} className="space-y-3 p-4 border rounded-lg bg-muted/20">
-                        <Label className="text-base font-semibold capitalize">{key.replace(/_/g, ' ')}</Label>
+                      <div
+                        key={`${sectionName}.${key}`}
+                        className="space-y-3 p-4 border rounded-lg bg-muted/20"
+                      >
+                        <Label className="text-base font-semibold capitalize">
+                          {key.replace(/_/g, ' ')}
+                        </Label>
                         <div className="space-y-4 pl-4">
                           {Object.entries(field).map(([nestedKey, nestedField]: [string, any]) => {
-                            if (typeof nestedField === 'object' && nestedField !== null && 'type' in nestedField) {
-                              return renderFormField(nestedKey, nestedField, `${sectionName}.${key}.${nestedKey}`);
+                            if (
+                              typeof nestedField === 'object' &&
+                              nestedField !== null &&
+                              'type' in nestedField
+                            ) {
+                              return renderFormField(
+                                nestedKey,
+                                nestedField,
+                                `${sectionName}.${key}.${nestedKey}`
+                              );
                             }
 
                             // Handle deeper nesting (e.g., performance_requirements.execution_time.target_ms)
-                            if (typeof nestedField === 'object' && nestedField !== null && !('type' in nestedField)) {
+                            if (
+                              typeof nestedField === 'object' &&
+                              nestedField !== null &&
+                              !('type' in nestedField)
+                            ) {
                               return (
-                                <div key={`${sectionName}.${key}.${nestedKey}`} className="space-y-3 p-3 border rounded bg-background/50">
-                                  <Label className="text-sm font-medium capitalize">{nestedKey.replace(/_/g, ' ')}</Label>
+                                <div
+                                  key={`${sectionName}.${key}.${nestedKey}`}
+                                  className="space-y-3 p-3 border rounded bg-background/50"
+                                >
+                                  <Label className="text-sm font-medium capitalize">
+                                    {nestedKey.replace(/_/g, ' ')}
+                                  </Label>
                                   <div className="space-y-3 pl-3">
-                                    {Object.entries(nestedField).map(([deepKey, deepField]: [string, any]) => {
-                                      if (typeof deepField === 'object' && deepField !== null && 'type' in deepField) {
-                                        return renderFormField(deepKey, deepField, `${sectionName}.${key}.${nestedKey}.${deepKey}`);
+                                    {Object.entries(nestedField).map(
+                                      ([deepKey, deepField]: [string, any]) => {
+                                        if (
+                                          typeof deepField === 'object' &&
+                                          deepField !== null &&
+                                          'type' in deepField
+                                        ) {
+                                          return renderFormField(
+                                            deepKey,
+                                            deepField,
+                                            `${sectionName}.${key}.${nestedKey}.${deepKey}`
+                                          );
+                                        }
+                                        return null;
                                       }
-                                      return null;
-                                    })}
+                                    )}
                                   </div>
                                 </div>
                               );
@@ -728,7 +796,7 @@ export default function ContractBuilder() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setActiveTab("prompt")}>
+          <Button variant="outline" onClick={() => setActiveTab('prompt')}>
             <RefreshCw className="w-4 h-4 mr-2" />
             New Contract
           </Button>
@@ -754,7 +822,7 @@ export default function ContractBuilder() {
             {Object.entries(CONTRACT_TYPES).map(([key, type]) => {
               const Icon = type.icon;
               return (
-                <Card 
+                <Card
                   key={key}
                   className={`cursor-pointer transition-all hover:shadow-md ${
                     selectedType === key ? 'ring-2 ring-primary' : ''
@@ -780,48 +848,48 @@ export default function ContractBuilder() {
       {/* Main Content Tabs */}
       <div className="space-y-4">
         <div className="flex gap-2">
-          <Button 
-            variant={activeTab === "prompt" ? "default" : "outline"} 
-            onClick={() => setActiveTab("prompt")}
+          <Button
+            variant={activeTab === 'prompt' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('prompt')}
           >
             <Wand2 className="w-4 h-4 mr-2" />
             AI Prompt
           </Button>
-          <Button 
-            variant={activeTab === "form" ? "default" : "outline"} 
-            onClick={() => setActiveTab("form")}
+          <Button
+            variant={activeTab === 'form' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('form')}
             disabled={!generatedContract}
           >
             <Settings className="w-4 h-4 mr-2" />
             Form Editor
           </Button>
-          <Button 
-            variant={activeTab === "yaml" ? "default" : "outline"} 
-            onClick={() => setActiveTab("yaml")}
+          <Button
+            variant={activeTab === 'yaml' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('yaml')}
             disabled={!yamlOutput}
           >
             <FileCode className="w-4 h-4 mr-2" />
             YAML Preview
           </Button>
-          <Button 
-            variant={activeTab === "validation" ? "default" : "outline"} 
-            onClick={() => setActiveTab("validation")}
+          <Button
+            variant={activeTab === 'validation' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('validation')}
             disabled={!generatedContract}
           >
             <Shield className="w-4 h-4 mr-2" />
             Validation
           </Button>
-          <Button 
-            variant={activeTab === "history" ? "default" : "outline"} 
-            onClick={() => setActiveTab("history")}
+          <Button
+            variant={activeTab === 'history' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('history')}
           >
             <Clock className="w-4 h-4 mr-2" />
             History
           </Button>
-          <Button 
-            variant={activeTab === "suggestions" ? "default" : "outline"} 
+          <Button
+            variant={activeTab === 'suggestions' ? 'default' : 'outline'}
             onClick={() => {
-              setActiveTab("suggestions");
+              setActiveTab('suggestions');
               generateSuggestions();
             }}
           >
@@ -831,7 +899,7 @@ export default function ContractBuilder() {
         </div>
 
         {/* AI Prompt Tab */}
-        {activeTab === "prompt" && (
+        {activeTab === 'prompt' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -853,9 +921,9 @@ export default function ContractBuilder() {
                   className="min-h-[120px]"
                 />
               </div>
-              
+
               <div className="flex gap-2">
-                <Button 
+                <Button
                   onClick={generateContract}
                   disabled={!selectedType || !aiPrompt.trim() || isGenerating}
                 >
@@ -864,14 +932,11 @@ export default function ContractBuilder() {
                   ) : (
                     <Wand2 className="w-4 h-4 mr-2" />
                   )}
-                  {isGenerating ? "Generating..." : "Generate Contract"}
+                  {isGenerating ? 'Generating...' : 'Generate Contract'}
                 </Button>
-                
+
                 {selectedType && (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => loadExample(selectedType)}
-                  >
+                  <Button variant="outline" onClick={() => loadExample(selectedType)}>
                     <Eye className="w-4 h-4 mr-2" />
                     Load Example
                   </Button>
@@ -882,32 +947,28 @@ export default function ContractBuilder() {
         )}
 
         {/* Form Editor Tab */}
-        {activeTab === "form" && generatedContract && (
-          <div className="space-y-4">
-            {renderForm()}
-          </div>
+        {activeTab === 'form' && generatedContract && (
+          <div className="space-y-4">{renderForm()}</div>
         )}
 
         {/* YAML Preview Tab */}
-        {activeTab === "yaml" && yamlOutput && (
+        {activeTab === 'yaml' && yamlOutput && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileCode className="w-5 h-5" />
                 YAML Preview
               </CardTitle>
-              <CardDescription>
-                Generated ONEX v2.0 contract in YAML format
-              </CardDescription>
+              <CardDescription>Generated ONEX v2.0 contract in YAML format</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="relative">
                 <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
                   <code>{yamlOutput}</code>
                 </pre>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   className="absolute top-2 right-2"
                   onClick={() => navigator.clipboard.writeText(yamlOutput)}
                 >
@@ -920,7 +981,7 @@ export default function ContractBuilder() {
         )}
 
         {/* Validation Tab */}
-        {activeTab === "validation" && generatedContract && (
+        {activeTab === 'validation' && generatedContract && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -938,7 +999,7 @@ export default function ContractBuilder() {
                   Validate Contract
                 </Button>
               </div>
-              
+
               {validationErrors.length > 0 ? (
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
@@ -947,7 +1008,9 @@ export default function ContractBuilder() {
                       <p className="font-semibold">Validation Errors:</p>
                       <ul className="list-disc list-inside space-y-1">
                         {validationErrors.map((error, index) => (
-                          <li key={index} className="text-sm">{error}</li>
+                          <li key={index} className="text-sm">
+                            {error}
+                          </li>
                         ))}
                       </ul>
                     </div>
@@ -961,7 +1024,7 @@ export default function ContractBuilder() {
                   </AlertDescription>
                 </Alert>
               )}
-              
+
               {/* Compliance Hints */}
               <div className="space-y-2">
                 <h4 className="font-semibold">Compliance Hints</h4>
@@ -989,16 +1052,14 @@ export default function ContractBuilder() {
         )}
 
         {/* History Tab */}
-        {activeTab === "history" && (
+        {activeTab === 'history' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Clock className="w-5 h-5 mr-2" />
                 Contract History
               </CardTitle>
-              <CardDescription>
-                View and load previously generated contracts
-              </CardDescription>
+              <CardDescription>View and load previously generated contracts</CardDescription>
             </CardHeader>
             <CardContent>
               {contractHistory.length === 0 ? (
@@ -1041,8 +1102,12 @@ export default function ContractBuilder() {
                         </div>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        <p><strong>Description:</strong> {contract.description}</p>
-                        <p><strong>Status:</strong> {contract.status}</p>
+                        <p>
+                          <strong>Description:</strong> {contract.description}
+                        </p>
+                        <p>
+                          <strong>Status:</strong> {contract.status}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -1053,7 +1118,7 @@ export default function ContractBuilder() {
         )}
 
         {/* Suggestions Tab */}
-        {activeTab === "suggestions" && (
+        {activeTab === 'suggestions' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -1071,9 +1136,7 @@ export default function ContractBuilder() {
                     <div key={index} className="border rounded-lg p-4 space-y-2">
                       <div className="flex items-start justify-between">
                         <h4 className="font-medium">AI Suggestion #{index + 1}</h4>
-                        <Badge variant="default">
-                          Suggested
-                        </Badge>
+                        <Badge variant="default">Suggested</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">{suggestion}</p>
                       <div className="flex gap-2">
@@ -1082,7 +1145,7 @@ export default function ContractBuilder() {
                           size="sm"
                           onClick={() => {
                             setAiPrompt(suggestion);
-                            setActiveTab("prompt");
+                            setActiveTab('prompt');
                           }}
                         >
                           <Zap className="w-4 h-4 mr-2" />
@@ -1092,13 +1155,9 @@ export default function ContractBuilder() {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="pt-4 border-t">
-                  <Button
-                    onClick={generateSuggestions}
-                    className="w-full"
-                    variant="outline"
-                  >
+                  <Button onClick={generateSuggestions} className="w-full" variant="outline">
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Generate New Suggestions
                   </Button>

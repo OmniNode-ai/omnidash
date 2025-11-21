@@ -1,11 +1,11 @@
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useEffect, useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { UnifiedGraph, GraphNode, GraphEdge } from "@/components/UnifiedGraph";
-import { Search, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useEffect, useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { UnifiedGraph, GraphNode, GraphEdge } from '@/components/UnifiedGraph';
+import { Search } from 'lucide-react';
 
 interface Pattern {
   id: string;
@@ -51,9 +51,9 @@ function clusterPatterns(
   if (count <= 1000) {
     // Score patterns by combined quality and usage
     const scored = patterns
-      .map(p => ({
+      .map((p) => ({
         ...p,
-        score: (p.quality * 0.6) + (Math.min(p.usage, 1000) / 1000 * 0.4),
+        score: p.quality * 0.6 + (Math.min(p.usage, 1000) / 1000) * 0.4,
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, targetSize);
@@ -69,7 +69,7 @@ function clusterPatterns(
   // Group by category and language, then select representatives
   const clusters = new Map<string, Pattern[]>();
 
-  patterns.forEach(p => {
+  patterns.forEach((p) => {
     const key = `${p.category}|${p.language || 'unknown'}`;
     if (!clusters.has(key)) {
       clusters.set(key, []);
@@ -91,9 +91,9 @@ function clusterPatterns(
   // Fill remaining slots with highest usage patterns not yet included
   const remaining = targetSize - representatives.length;
   if (remaining > 0) {
-    const representativeIds = new Set(representatives.map(p => p.id));
+    const representativeIds = new Set(representatives.map((p) => p.id));
     const additional = patterns
-      .filter(p => !representativeIds.has(p.id))
+      .filter((p) => !representativeIds.has(p.id))
       .sort((a, b) => b.usage - a.usage)
       .slice(0, remaining);
     representatives.push(...additional);
@@ -110,16 +110,16 @@ function clusterPatterns(
  * Transform Pattern objects to GraphNode format
  */
 function transformPatternsToNodes(patterns: Pattern[]): GraphNode[] {
-  return patterns.map(p => {
+  return patterns.map((p) => {
     // Calculate node size based on usage (25-70px range for optimal text readability)
     const normalizedUsage = Math.min(p.usage / 100, 1); // Normalize to 0-1
-    const size = 25 + (normalizedUsage * 45); // 25-70px range
+    const size = 25 + normalizedUsage * 45; // 25-70px range
 
     // Color-code by quality score
     let color: string;
-    if (p.quality > 0.80) {
+    if (p.quality > 0.8) {
       color = '#10b981'; // Green for high quality (>80%)
-    } else if (p.quality > 0.60) {
+    } else if (p.quality > 0.6) {
       color = '#f59e0b'; // Orange for medium quality (60-80%)
     } else {
       color = '#ef4444'; // Red for low quality (<60%)
@@ -150,8 +150,8 @@ function transformRelationshipsToEdges(
 ): GraphEdge[] {
   // Filter to only include relationships between visible patterns
   return relationships
-    .filter(r => patternIds.has(r.source) && patternIds.has(r.target))
-    .map(r => ({
+    .filter((r) => patternIds.has(r.source) && patternIds.has(r.target))
+    .map((r) => ({
       source: r.source,
       target: r.target,
       weight: r.weight,
@@ -164,11 +164,11 @@ function transformRelationshipsToEdges(
  * Edge color scheme for relationship types
  */
 const edgeColorScheme = {
-  modified_from: '#3b82f6',    // Blue for direct lineage
-  same_language: '#10b981',    // Green for same language
-  same_type: '#f59e0b',        // Orange for same type
-  similar: '#8b5cf6',          // Purple for similar patterns
-  default: '#94a3b8',          // Gray for other relationships
+  modified_from: '#3b82f6', // Blue for direct lineage
+  same_language: '#10b981', // Green for same language
+  same_type: '#f59e0b', // Orange for same type
+  similar: '#8b5cf6', // Purple for similar patterns
+  default: '#94a3b8', // Gray for other relationships
 };
 
 export function PatternNetwork({ patterns, height = 500, onPatternClick }: PatternNetworkProps) {
@@ -181,23 +181,28 @@ export function PatternNetwork({ patterns, height = 500, onPatternClick }: Patte
     if (!searchQuery) return patterns;
 
     const query = searchQuery.toLowerCase();
-    return patterns.filter(p =>
-      p.name.toLowerCase().includes(query) ||
-      p.category.toLowerCase().includes(query) ||
-      (p.language && p.language.toLowerCase().includes(query))
+    return patterns.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.category.toLowerCase().includes(query) ||
+        (p.language && p.language.toLowerCase().includes(query))
     );
   }, [patterns, searchQuery]);
 
   // Apply intelligent clustering
-  const { patterns: displayPatterns, clustered, clusterInfo } = useMemo(() => {
+  const {
+    patterns: displayPatterns,
+    clustered,
+    clusterInfo,
+  } = useMemo(() => {
     return clusterPatterns(searchFiltered, maxPatterns);
   }, [searchFiltered, maxPatterns]);
 
   // Get pattern IDs for edge filtering
-  const patternIds = useMemo(() => new Set(displayPatterns.map(p => p.id)), [displayPatterns]);
+  const patternIds = useMemo(() => new Set(displayPatterns.map((p) => p.id)), [displayPatterns]);
 
   // Fetch pattern relationships from API
-  const patternIdsParam = displayPatterns.map(p => p.id).join(',');
+  const patternIdsParam = displayPatterns.map((p) => p.id).join(',');
   const { data: relationships = [] } = useQuery<PatternRelationship[]>({
     queryKey: [`/api/intelligence/patterns/relationships?patterns=${patternIdsParam}`],
     enabled: displayPatterns.length > 0,
@@ -213,13 +218,34 @@ export function PatternNetwork({ patterns, height = 500, onPatternClick }: Patte
 
   // Handle pattern node clicks
   const handleNodeClick = (node: GraphNode) => {
-    const pattern = displayPatterns.find(p => p.id === node.id);
+    const pattern = displayPatterns.find((p) => p.id === node.id);
     if (pattern && onPatternClick) {
       onPatternClick(pattern);
     }
   };
 
   // Auto-adjust max patterns based on dataset size
+  // NOTE: This is a functional enhancement that was introduced in commit 9534c961
+  // (Nov 7, 2025) during a "cleanup and refactor" commit. While this violates
+  // the scope of that commit, it provides valuable UX improvements:
+  //
+  // WHAT IT DOES:
+  // - Dynamically adjusts the maximum number of patterns displayed based on total dataset size
+  // - Smaller datasets (≤50): Show all patterns (limit: 50)
+  // - Medium datasets (51-100): Show more detail (limit: 75)
+  // - Large datasets (101-500): Show representative sample (limit: 100)
+  // - Very large datasets (500+): Cap at 150 to prevent performance issues
+  //
+  // WHY IT'S HERE:
+  // - Works in conjunction with the intelligent clustering algorithm (clusterPatterns function)
+  // - Prevents overwhelming the graph visualization with too many nodes
+  // - Balances detail vs performance for different dataset sizes
+  // - Currently working in production without issues
+  //
+  // TODO:
+  // - Add unit tests for this logic (currently untested)
+  // - Consider making thresholds configurable via props
+  // - Add user control to override automatic limits
   useEffect(() => {
     const count = patterns.length;
     if (count <= 50) {
@@ -286,9 +312,7 @@ export function PatternNetwork({ patterns, height = 500, onPatternClick }: Patte
 
         {/* Cluster information */}
         {clustered && clusterInfo && (
-          <div className="mt-3 text-xs text-muted-foreground">
-            {clusterInfo}
-          </div>
+          <div className="mt-3 text-xs text-muted-foreground">{clusterInfo}</div>
         )}
 
         {/* Quality Legend */}

@@ -100,10 +100,7 @@ describe('PolymorphicAgentIntegration', () => {
     });
 
     it('should include routing time', async () => {
-      const decision = await PolymorphicAgentIntegration.simulateRoutingDecision(
-        'Test query',
-        {}
-      );
+      const decision = await PolymorphicAgentIntegration.simulateRoutingDecision('Test query', {});
 
       expect(decision.routingTime).toBeDefined();
       expect(typeof decision.routingTime).toBe('number');
@@ -196,7 +193,11 @@ describe('PolymorphicAgentIntegration', () => {
           agentId: 'agent-api-architect',
           status: 'completed',
           result: { success: true },
-          routingDecision: { confidence: 0.9, routingTime: 50, strategy: 'enhanced_fuzzy_matching' },
+          routingDecision: {
+            confidence: 0.9,
+            routingTime: 50,
+            strategy: 'enhanced_fuzzy_matching',
+          },
         },
         {
           agentId: 'agent-api-architect',
@@ -251,4 +252,3 @@ describe('PolymorphicAgentIntegration', () => {
     });
   });
 });
-

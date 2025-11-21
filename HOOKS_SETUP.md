@@ -59,15 +59,13 @@ Located in `package.json`:
 ```json
 {
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix --max-warnings 10",
-      "prettier --write"
-    ]
+    "*.{ts,tsx}": ["eslint --fix --max-warnings 10", "prettier --write"]
   }
 }
 ```
 
 **Actions performed on staged TypeScript/TSX files:**
+
 1. Run ESLint with automatic fixes (allows up to 10 warnings)
 2. Format code with Prettier
 
@@ -76,6 +74,7 @@ Located in `package.json`:
 File: `.eslintrc.cjs`
 
 **Key features:**
+
 - TypeScript support with `@typescript-eslint`
 - React 18 with hooks support
 - Prettier integration to avoid conflicts
@@ -83,6 +82,7 @@ File: `.eslintrc.cjs`
 - Unused variable warnings (prefix with `_` to ignore)
 
 **Rules:**
+
 - Unused variables/arguments generate warnings (can be prefixed with `_`)
 - Console statements warn except `console.warn` and `console.error`
 - React prop-types disabled (using TypeScript)
@@ -106,6 +106,7 @@ File: `.prettierrc.json`
 ```
 
 **Style enforced:**
+
 - Single quotes
 - Semicolons
 - 100 character line width
@@ -127,6 +128,7 @@ File: `.commitlintrc.json`
 ```
 
 **Valid types:**
+
 - `feat` - New feature
 - `fix` - Bug fix
 - `docs` - Documentation
@@ -140,6 +142,7 @@ File: `.commitlintrc.json`
 - `revert` - Revert commit
 
 **Rules:**
+
 - Subject cannot be empty
 - Subject must be lowercase (no uppercase start)
 - No period at end of subject
@@ -234,6 +237,7 @@ git commit --no-verify -m "emergency fix"
 If hooks don't run automatically:
 
 1. Check hook files are executable:
+
    ```bash
    ls -la .husky/
    chmod +x .husky/pre-commit
@@ -241,6 +245,7 @@ If hooks don't run automatically:
    ```
 
 2. Verify Husky initialization:
+
    ```bash
    npm run prepare
    ```
@@ -256,11 +261,13 @@ If hooks don't run automatically:
 If ESLint fails:
 
 1. Check ESLint config is valid:
+
    ```bash
    npx eslint --print-config client/src/App.tsx
    ```
 
 2. Fix issues manually:
+
    ```bash
    npm run lint:fix
    ```
@@ -297,6 +304,7 @@ If commit message validation fails:
 ## Performance Impact
 
 Typical pre-commit hook execution times:
+
 - Small changes (1-5 files): 2-5 seconds
 - Medium changes (5-20 files): 5-15 seconds
 - Large changes (20+ files): 15-30 seconds
@@ -306,6 +314,7 @@ Only staged files are checked, so impact is minimal for focused commits.
 ## Integration with CI/CD
 
 These local hooks complement CI/CD checks:
+
 - **Local**: Fast feedback during development
 - **CI/CD**: Final validation before merge
 
@@ -350,6 +359,7 @@ Add to `.eslintrc.cjs`:
 ## Summary
 
 The pre-commit hook system provides automated quality gates that:
+
 1. Format code consistently with Prettier
 2. Lint code for issues with ESLint
 3. Validate commit messages with Commitlint

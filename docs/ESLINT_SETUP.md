@@ -17,6 +17,7 @@ npm run lint:fix
 ### 1. Dependencies
 
 Added to `package.json` devDependencies:
+
 - `eslint@^9.18.0` - Core ESLint engine
 - `@typescript-eslint/eslint-plugin@^8.18.0` - TypeScript linting rules
 - `@typescript-eslint/parser@^8.18.0` - TypeScript parser for ESLint
@@ -27,6 +28,7 @@ Added to `package.json` devDependencies:
 ### 2. Configuration Files
 
 **`eslint.config.js`** - Main ESLint configuration using flat config format (ESLint v9+)
+
 - Base TypeScript configuration for all `.ts` and `.tsx` files
 - React-specific rules for client code
 - Server-specific rules allowing console logs
@@ -35,6 +37,7 @@ Added to `package.json` devDependencies:
 ### 3. NPM Scripts
 
 Added to `package.json`:
+
 ```json
 {
   "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
@@ -108,6 +111,7 @@ This prevents code with warnings from being merged.
 ### Fix 1: Move timers to beforeEach
 
 **Before:**
+
 ```typescript
 vi.useFakeTimers();
 
@@ -119,6 +123,7 @@ describe('MyTest', () => {
 ```
 
 **After:**
+
 ```typescript
 describe('MyTest', () => {
   beforeEach(() => {
@@ -139,6 +144,7 @@ describe('MyTest', () => {
 ### Fix 2: Remove focused tests
 
 **Before:**
+
 ```typescript
 test.only('should work', () => {
   // ...
@@ -146,6 +152,7 @@ test.only('should work', () => {
 ```
 
 **After:**
+
 ```typescript
 test('should work', () => {
   // ...
@@ -155,6 +162,7 @@ test('should work', () => {
 ### Fix 3: Add assertions
 
 **Before:**
+
 ```typescript
 test('should render', () => {
   render(<MyComponent />);
@@ -162,6 +170,7 @@ test('should render', () => {
 ```
 
 **After:**
+
 ```typescript
 test('should render', () => {
   render(<MyComponent />);
@@ -180,6 +189,7 @@ test('should render', () => {
 ## Documentation
 
 For detailed rule explanations and examples, see:
+
 - `docs/ESLINT_TEST_RULES.md` - Comprehensive rule documentation
 - `eslint.config.js` - Configuration with inline comments
 

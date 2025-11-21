@@ -1,7 +1,7 @@
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Repeat, TrendingUp, Clock } from "lucide-react";
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowRight, Repeat, TrendingUp, Clock } from 'lucide-react';
 
 interface TransformationSummary {
   totalTransformations: number;
@@ -45,7 +45,9 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
   const { data, isLoading, error } = useQuery<TransformationData>({
     queryKey: ['transformations', timeWindow],
     queryFn: async () => {
-      const response = await fetch(`/api/intelligence/transformations/summary?timeWindow=${timeWindow}`);
+      const response = await fetch(
+        `/api/intelligence/transformations/summary?timeWindow=${timeWindow}`
+      );
       if (!response.ok) {
         throw new Error('Failed to fetch transformation data');
       }
@@ -90,35 +92,36 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
   const { summary, sankey } = data;
 
   // Calculate positions for nodes (left and right columns)
-  const sourceNodes = new Set(sankey.links.map(l => l.source));
-  const targetNodes = new Set(sankey.links.map(l => l.target));
+  const sourceNodes = new Set(sankey.links.map((l) => l.source));
+  const targetNodes = new Set(sankey.links.map((l) => l.target));
 
   // Calculate transformation counts for sorting
   const targetCounts: Record<string, number> = {};
   const sourceCounts: Record<string, number> = {};
 
-  sankey.links.forEach(link => {
+  sankey.links.forEach((link) => {
     targetCounts[link.target] = (targetCounts[link.target] || 0) + link.value;
     sourceCounts[link.source] = (sourceCounts[link.source] || 0) + link.value;
   });
 
   // Separate into left (sources) and right (targets) columns, sorted by count (descending)
-  const leftNodes = Array.from(sourceNodes).sort((a, b) =>
-    (sourceCounts[b] || 0) - (sourceCounts[a] || 0)
+  const leftNodes = Array.from(sourceNodes).sort(
+    (a, b) => (sourceCounts[b] || 0) - (sourceCounts[a] || 0)
   );
-  const rightNodes = Array.from(targetNodes).filter(n => !sourceNodes.has(n)).sort((a, b) =>
-    (targetCounts[b] || 0) - (targetCounts[a] || 0)
-  );
+  const rightNodes = Array.from(targetNodes)
+    .filter((n) => !sourceNodes.has(n))
+    .sort((a, b) => (targetCounts[b] || 0) - (targetCounts[a] || 0));
 
   // If a node is both source and target, it appears on both sides
   const allLeftNodes = leftNodes;
-  const allRightNodes = [...leftNodes.filter(n => targetNodes.has(n)), ...rightNodes].sort((a, b) =>
-    (targetCounts[b] || 0) - (targetCounts[a] || 0)
+  const allRightNodes = [...leftNodes.filter((n) => targetNodes.has(n)), ...rightNodes].sort(
+    (a, b) => (targetCounts[b] || 0) - (targetCounts[a] || 0)
   );
 
   const nodeHeight = 40;
   const nodeSpacing = 16;
-  const svgHeight = Math.max(allLeftNodes.length, allRightNodes.length) * (nodeHeight + nodeSpacing) + 40;
+  const svgHeight =
+    Math.max(allLeftNodes.length, allRightNodes.length) * (nodeHeight + nodeSpacing) + 40;
   const svgWidth = 800;
   const columnWidth = 200;
   const leftX = 50;
@@ -131,7 +134,7 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
     nodePositions[`${nodeId}-left`] = {
       x: leftX,
       y: 40 + index * (nodeHeight + nodeSpacing),
-      side: 'left'
+      side: 'left',
     };
   });
 
@@ -139,12 +142,12 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
     nodePositions[`${nodeId}-right`] = {
       x: rightX,
       y: 40 + index * (nodeHeight + nodeSpacing),
-      side: 'right'
+      side: 'right',
     };
   });
 
   // Find max value for link thickness scaling
-  const maxValue = Math.max(...sankey.links.map(l => l.value));
+  const maxValue = Math.max(...sankey.links.map((l) => l.value));
 
   return (
     <div className="space-y-6">
@@ -168,7 +171,9 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
               <ArrowRight className="h-5 w-5" style={{ color: 'hsl(var(--chart-4))' }} />
             </div>
             <div>
-              <div className="text-2xl font-semibold">{summary.uniqueSourceAgents} → {summary.uniqueTargetAgents}</div>
+              <div className="text-2xl font-semibold">
+                {summary.uniqueSourceAgents} → {summary.uniqueTargetAgents}
+              </div>
               <div className="text-xs text-muted-foreground">Source → Target Agents</div>
             </div>
           </div>
@@ -180,7 +185,9 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
               <Clock className="h-5 w-5" style={{ color: 'hsl(var(--chart-3))' }} />
             </div>
             <div>
-              <div className="text-2xl font-semibold">{summary.avgTransformationTimeMs.toFixed(0)}ms</div>
+              <div className="text-2xl font-semibold">
+                {summary.avgTransformationTimeMs.toFixed(0)}ms
+              </div>
               <div className="text-xs text-muted-foreground">Avg Transformation Time</div>
             </div>
           </div>
@@ -192,7 +199,16 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
               <TrendingUp className="h-5 w-5 text-status-healthy" />
             </div>
             <div>
-              <div className="text-2xl font-semibold">{Math.max(0, Math.min(100, (summary.successRate <= 1 ? summary.successRate * 100 : summary.successRate))).toFixed(1)}%</div>
+              <div className="text-2xl font-semibold">
+                {Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    summary.successRate <= 1 ? summary.successRate * 100 : summary.successRate
+                  )
+                ).toFixed(1)}
+                %
+              </div>
               <div className="text-xs text-muted-foreground">Success Rate</div>
             </div>
           </div>
@@ -256,8 +272,10 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
                   />
                   {/* Tooltip on hover - show value */}
                   <title>
-                    {link.source.replace('agent-', '')} → {link.target.replace('agent-', '')}: {link.value} times
-                    {link.avgConfidence && ` (${(link.avgConfidence * 100).toFixed(0)}% confidence)`}
+                    {link.source.replace('agent-', '')} → {link.target.replace('agent-', '')}:{' '}
+                    {link.value} times
+                    {link.avgConfidence &&
+                      ` (${(link.avgConfidence * 100).toFixed(0)}% confidence)`}
                     {link.avgDurationMs && ` (${link.avgDurationMs.toFixed(0)}ms avg)`}
                   </title>
                 </g>
@@ -265,13 +283,13 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
             })}
 
             {/* Draw source nodes (left) */}
-            {allLeftNodes.map((nodeId, index) => {
-              const node = sankey.nodes.find(n => n.id === nodeId);
+            {allLeftNodes.map((nodeId, _index) => {
+              const node = sankey.nodes.find((n) => n.id === nodeId);
               if (!node) return null;
 
               const pos = nodePositions[`${nodeId}-left`];
               const totalOutgoing = sankey.links
-                .filter(l => l.source === nodeId)
+                .filter((l) => l.source === nodeId)
                 .reduce((sum, l) => sum + l.value, 0);
 
               return (
@@ -311,13 +329,13 @@ export function TransformationFlow({ timeWindow = '24h' }: TransformationFlowPro
             })}
 
             {/* Draw target nodes (right) */}
-            {allRightNodes.map((nodeId, index) => {
-              const node = sankey.nodes.find(n => n.id === nodeId);
+            {allRightNodes.map((nodeId, _index) => {
+              const node = sankey.nodes.find((n) => n.id === nodeId);
               if (!node) return null;
 
               const pos = nodePositions[`${nodeId}-right`];
               const totalIncoming = sankey.links
-                .filter(l => l.target === nodeId)
+                .filter((l) => l.target === nodeId)
                 .reduce((sum, l) => sum + l.value, 0);
 
               return (

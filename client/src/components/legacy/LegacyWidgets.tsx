@@ -1,8 +1,16 @@
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // Legacy metric tile captured for reuse/migration
-export function LegacyMetricTile({ label, value, suffix }: { label: string; value: React.ReactNode; suffix?: string }) {
+export function LegacyMetricTile({
+  label,
+  value,
+  suffix,
+}: {
+  label: string;
+  value: React.ReactNode;
+  suffix?: string;
+}) {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -19,7 +27,15 @@ export function LegacyMetricTile({ label, value, suffix }: { label: string; valu
 }
 
 // Legacy list row pattern
-export function LegacyListRow({ title, meta, right }: { title: string; meta?: string; right?: React.ReactNode }) {
+export function LegacyListRow({
+  title,
+  meta,
+  right,
+}: {
+  title: string;
+  meta?: string;
+  right?: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between p-3 border rounded-lg">
       <div>
@@ -30,5 +46,3 @@ export function LegacyListRow({ title, meta, right }: { title: string; meta?: st
     </div>
   );
 }
-
-

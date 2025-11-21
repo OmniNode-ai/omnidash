@@ -1,4 +1,6 @@
 #!/usr/bin/env tsx
+/* eslint-disable no-console */
+
 /**
  * Test script to check agent_routing_decisions table for success tracking
  */
@@ -10,7 +12,8 @@ import { sql } from 'drizzle-orm';
 
 config();
 
-const connectionString = process.env.DATABASE_URL ||
+const connectionString =
+  process.env.DATABASE_URL ||
   `postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge`;
 
 const pool = new Pool({ connectionString });
@@ -27,7 +30,7 @@ async function main() {
     WHERE table_name = 'agent_routing_decisions'
     ORDER BY ordinal_position
   `);
-  console.table(schema.rows);
+  console.log(JSON.stringify(schema.rows, null, 2));
 
   // 2. Check for recent routing decisions
   console.log('\n=== RECENT ROUTING DECISIONS (24h) ===');
@@ -41,7 +44,7 @@ async function main() {
     ORDER BY created_at DESC
     LIMIT 10
   `);
-  console.table(recentDecisions.rows);
+  console.log(JSON.stringify(recentDecisions.rows, null, 2));
 
   // 3. Check confidence distribution
   console.log('\n=== CONFIDENCE DISTRIBUTION BY AGENT (7d) ===');
@@ -58,7 +61,7 @@ async function main() {
     ORDER BY total_requests DESC
     LIMIT 10
   `);
-  console.table(successRates.rows);
+  console.log(JSON.stringify(successRates.rows, null, 2));
 
   // 4. Check total stats
   console.log('\n=== TOTAL ROUTING DECISIONS (7d) ===');
@@ -70,7 +73,7 @@ async function main() {
     FROM agent_routing_decisions
     WHERE created_at > NOW() - INTERVAL '7 days'
   `);
-  console.table(totalStats.rows);
+  console.log(JSON.stringify(totalStats.rows, null, 2));
 
   await pool.end();
   console.log('\nDone!');

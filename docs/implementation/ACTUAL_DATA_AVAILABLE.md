@@ -44,12 +44,14 @@ template_cache_metadata
 **Table**: `pattern_lineage_nodes`
 
 **What it contains**:
+
 - 1,056 code patterns (all `pattern_type = 'code'`)
 - Python patterns (test files, scripts)
 - Correlation IDs for tracing
 - Pattern metadata and versions
 
 **Schema**:
+
 ```sql
 - id (uuid)
 - pattern_id (varchar)
@@ -68,6 +70,7 @@ template_cache_metadata
 ```
 
 **Sample Query**:
+
 ```sql
 SELECT
   pattern_name,
@@ -89,11 +92,13 @@ LIMIT 10;
 **Table**: `hook_events`
 
 **What it contains**:
+
 - 147 UserPromptSubmit events
 - Payload includes user prompts and agent routing info
 - All events are `source='UserPromptSubmit', action='prompt_submitted'`
 
 **Schema**:
+
 ```sql
 - id (uuid)
 - source (varchar) - "UserPromptSubmit"
@@ -110,6 +115,7 @@ LIMIT 10;
 ```
 
 **Sample Query**:
+
 ```sql
 SELECT
   id,
@@ -150,6 +156,7 @@ LIMIT 10;
 ## ❌ Data We DON'T Have
 
 ### Missing Tables (Expected but not present):
+
 - `agent_routing_decisions` - ❌ Does not exist
 - `agent_actions` - ❌ Does not exist
 - `agent_manifest_injections` - ❌ Does not exist
@@ -161,22 +168,23 @@ LIMIT 10;
 - `success_events` / `error_events` - ❌ Does not exist
 
 ### Empty Tables:
+
 - `event_metrics` - ✅ Exists but EMPTY (0 rows)
 
 ---
 
 ## 🎯 Dashboard Feasibility Assessment
 
-| Dashboard | Feasibility | Data Source | Status |
-|-----------|------------|-------------|---------|
-| **Agent Operations** | ⚠️ Partial | `hook_events.payload` | Limited - only UserPromptSubmit |
-| **Pattern Learning** | ✅ Good | `pattern_lineage_nodes` | 1,056 patterns available! |
-| **Intelligence Operations** | ❌ No Data | N/A | Would need agent execution data |
-| **Code Intelligence** | ⚠️ Partial | `pattern_lineage_nodes` | Patterns exist, no quality scores |
-| **Event Flow** | ❌ No Data | `event_metrics` is empty | Would need event stream data |
-| **Knowledge Graph** | ❌ Insufficient | `pattern_lineage_edges` (1 row) | Need more relationships |
-| **Platform Health** | ❌ No Data | N/A | Would need service health metrics |
-| **Developer Experience** | ❌ No Data | N/A | Would need workflow data |
+| Dashboard                   | Feasibility     | Data Source                     | Status                            |
+| --------------------------- | --------------- | ------------------------------- | --------------------------------- |
+| **Agent Operations**        | ⚠️ Partial      | `hook_events.payload`           | Limited - only UserPromptSubmit   |
+| **Pattern Learning**        | ✅ Good         | `pattern_lineage_nodes`         | 1,056 patterns available!         |
+| **Intelligence Operations** | ❌ No Data      | N/A                             | Would need agent execution data   |
+| **Code Intelligence**       | ⚠️ Partial      | `pattern_lineage_nodes`         | Patterns exist, no quality scores |
+| **Event Flow**              | ❌ No Data      | `event_metrics` is empty        | Would need event stream data      |
+| **Knowledge Graph**         | ❌ Insufficient | `pattern_lineage_edges` (1 row) | Need more relationships           |
+| **Platform Health**         | ❌ No Data      | N/A                             | Would need service health metrics |
+| **Developer Experience**    | ❌ No Data      | N/A                             | Would need workflow data          |
 
 ---
 
@@ -187,6 +195,7 @@ LIMIT 10;
 **✅ CAN DO NOW** - We have 1,056 patterns!
 
 **Endpoints to create**:
+
 ```typescript
 // server/intelligence-routes.ts
 
@@ -235,6 +244,7 @@ router.get('/api/patterns/by-language', async (req, res) => {
 ```
 
 **Replace mock data in**:
+
 - `client/src/pages/PatternLearning.tsx`
 - `client/src/lib/data-sources/pattern-learning-source.ts`
 
@@ -245,6 +255,7 @@ router.get('/api/patterns/by-language', async (req, res) => {
 **⚠️ LIMITED DATA** - Only UserPromptSubmit events
 
 **Endpoints to create**:
+
 ```typescript
 // GET /api/intelligence/prompts/recent
 router.get('/api/intelligence/prompts/recent', async (req, res) => {
@@ -281,6 +292,7 @@ router.get('/api/intelligence/agents/activity-summary', async (req, res) => {
 ```
 
 **Limitations**:
+
 - No agent actions/tool calls (need to add those tables)
 - No execution duration (not tracked in hook_events)
 - No success/failure tracking (not in current schema)
@@ -339,6 +351,7 @@ Create `server/pattern-routes.ts` with endpoints above.
 ### Step 3: Replace Mock Data (20 min)
 
 Update `pattern-learning-source.ts`:
+
 ```typescript
 export const fetchPatternSummary = async () => {
   const response = await fetch('/api/patterns/summary');
@@ -362,16 +375,19 @@ curl http://localhost:3000/api/patterns/by-language
 ## 📈 Summary
 
 ### ✅ What We Can Do NOW:
+
 1. **Pattern Learning Dashboard** - 1,056 patterns ready to display!
 2. **Limited Agent Activity** - 147 user prompts with agent selection
 
 ### ⚠️ What Needs Work:
+
 1. Agent execution tracking (no actions/tool calls yet)
 2. Performance metrics (no duration/success tracking)
 3. Event streaming (event_metrics is empty)
 4. Knowledge graph (only 1 edge)
 
 ### ❌ What's Not Available:
+
 1. Full agent operations (missing execution data)
 2. Code intelligence scores (no quality data)
 3. Real-time events (no event stream)

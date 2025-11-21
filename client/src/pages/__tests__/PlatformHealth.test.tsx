@@ -117,9 +117,7 @@ describe('PlatformHealth page', () => {
     const result = renderWithClient(<PlatformHealth />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Error loading health data:/)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Error loading health data:/)).toBeInTheDocument();
     });
 
     consoleError.mockRestore();

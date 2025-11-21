@@ -34,9 +34,9 @@ test.describe('Pattern Learning Dashboard', () => {
 
   test('should match with collapsed sidebar', async ({ page }) => {
     // Click sidebar toggle if available
-    const sidebarToggle = page.locator('[data-testid="sidebar-toggle"]').or(
-      page.locator('button[aria-label*="toggle"]').first()
-    );
+    const sidebarToggle = page
+      .locator('[data-testid="sidebar-toggle"]')
+      .or(page.locator('button[aria-label*="toggle"]').first());
 
     if (await sidebarToggle.isVisible().catch(() => false)) {
       await sidebarToggle.click();

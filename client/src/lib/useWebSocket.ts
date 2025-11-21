@@ -24,15 +24,14 @@ export function useWebSocket(
   const [error, setError] = useState<Error | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const shouldReconnectRef = useRef(true);
 
   const connect = useCallback(() => {
     try {
-      console.log('Connecting to WebSocket:', url);
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('WebSocket connected');
         setConnected(true);
         setError(null);
       };
@@ -47,21 +46,21 @@ export function useWebSocket(
           }
 
           setLastMessage(message);
-          setMessages(prev => [...prev.slice(-99), message]); // Keep last 100 messages
+          setMessages((prev) => [...prev.slice(-99), message]); // Keep last 100 messages
         } catch (err) {
           console.error('Error parsing WebSocket message:', err);
         }
       };
 
       ws.onclose = () => {
-        console.log('WebSocket disconnected');
         setConnected(false);
 
-        // Attempt reconnection after 5 seconds
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('Attempting to reconnect...');
-          connect();
-        }, 5000);
+        // Attempt reconnection after 5 seconds (only if component is still mounted)
+        if (shouldReconnectRef.current) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connect();
+          }, 5000);
+        }
       };
 
       ws.onerror = (event) => {
@@ -87,7 +86,8 @@ export function useWebSocket(
     connect();
 
     return () => {
-      // Cleanup on unmount
+      // Cleanup on unmount - prevent reconnection
+      shouldReconnectRef.current = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -114,9 +114,7 @@ export function useWebSocketTopic(topic: string): {
 } {
   const { messages, lastMessage, connected } = useWebSocket();
 
-  const filteredMessages = messages
-    .filter(msg => msg.topic === topic)
-    .map(msg => msg.event);
+  const filteredMessages = messages.filter((msg) => msg.topic === topic).map((msg) => msg.event);
 
   const filteredLastMessage = lastMessage?.topic === topic ? lastMessage.event : null;
 

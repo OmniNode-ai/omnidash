@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 export function LegacySection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -8,5 +8,3 @@ export function LegacySection({ title, children }: { title: string; children: Re
     </section>
   );
 }
-
-

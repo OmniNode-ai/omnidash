@@ -1,8 +1,14 @@
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
-import { X, Search } from "lucide-react";
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { TimeRangeSelector } from '@/components/TimeRangeSelector';
+import { X, Search } from 'lucide-react';
 
 export interface FilterState {
   searchQuery: string;
@@ -29,7 +35,7 @@ export function TableFilters({
   onFiltersChange,
   columnFilters = [],
   showTimeRange = false,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = 'Search...',
 }: TableFiltersProps) {
   const handleSearchChange = (value: string) => {
     onFiltersChange({
@@ -57,7 +63,7 @@ export function TableFilters({
 
   const handleClearFilters = () => {
     onFiltersChange({
-      searchQuery: "",
+      searchQuery: '',
       timeRange: filters.timeRange,
       columnFilters: {},
     });
@@ -83,18 +89,17 @@ export function TableFilters({
 
       {/* Time Range Selector */}
       {showTimeRange && filters.timeRange !== undefined && (
-        <TimeRangeSelector
-          value={filters.timeRange}
-          onChange={handleTimeRangeChange}
-        />
+        <TimeRangeSelector value={filters.timeRange} onChange={handleTimeRangeChange} />
       )}
 
       {/* Column Filters */}
       {columnFilters.map((filter) => (
         <Select
           key={filter.key}
-          value={filters.columnFilters[filter.key] || "all"}
-          onValueChange={(value) => handleColumnFilterChange(filter.key, value === "all" ? "" : value)}
+          value={filters.columnFilters[filter.key] || 'all'}
+          onValueChange={(value) =>
+            handleColumnFilterChange(filter.key, value === 'all' ? '' : value)
+          }
         >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder={filter.label} />
@@ -112,12 +117,7 @@ export function TableFilters({
 
       {/* Clear Filters Button */}
       {hasActiveFilters && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleClearFilters}
-          className="h-10 px-3"
-        >
+        <Button variant="ghost" size="sm" onClick={handleClearFilters} className="h-10 px-3">
           <X className="h-4 w-4 mr-2" />
           Clear Filters
         </Button>

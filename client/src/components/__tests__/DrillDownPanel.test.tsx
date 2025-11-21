@@ -22,11 +22,7 @@ describe('DrillDownPanel', () => {
   });
 
   const renderWithQueryClient = (component: React.ReactElement) => {
-    return render(
-      <QueryClientProvider client={queryClient}>
-        {component}
-      </QueryClientProvider>
-    );
+    return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>);
   };
 
   describe('Agent Details', () => {
@@ -257,9 +253,7 @@ describe('DrillDownPanel', () => {
 
   describe('Loading States', () => {
     it('should display loading state while fetching data', () => {
-      mockFetch.mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 1000))
-      );
+      mockFetch.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 1000)));
 
       renderWithQueryClient(
         <DrillDownPanel
@@ -339,9 +333,7 @@ describe('DrillDownPanel', () => {
       );
 
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining('timeWindow=7d')
-        );
+        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('timeWindow=7d'));
       });
     });
   });

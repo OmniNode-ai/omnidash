@@ -27,7 +27,7 @@ This document shows before/after examples for refactoring existing clickable ele
 ### After
 
 ```tsx
-import { ClickableCard } from "@/components/ui/clickable-card";
+import { ClickableCard } from '@/components/ui/clickable-card';
 
 <ClickableCard onClick={() => handleAgentClick(agent.id)}>
   <CardHeader>
@@ -37,10 +37,11 @@ import { ClickableCard } from "@/components/ui/clickable-card";
   <CardContent>
     <div className="text-2xl font-bold">{agent.successRate}%</div>
   </CardContent>
-</ClickableCard>
+</ClickableCard>;
 ```
 
 **Benefits:**
+
 - ✅ Removes 4 className props
 - ✅ Adds keyboard accessibility automatically
 - ✅ Adds ARIA attributes
@@ -73,7 +74,7 @@ import { ClickableCard } from "@/components/ui/clickable-card";
 ### After
 
 ```tsx
-import { ClickableCard } from "@/components/ui/clickable-card";
+import { ClickableCard } from '@/components/ui/clickable-card';
 
 <ClickableCard onClick={() => setSelectedPattern(pattern)}>
   <CardHeader>
@@ -85,7 +86,7 @@ import { ClickableCard } from "@/components/ui/clickable-card";
       <span className="text-xs">Used {pattern.count} times</span>
     </div>
   </CardContent>
-</ClickableCard>
+</ClickableCard>;
 ```
 
 ---
@@ -125,7 +126,7 @@ import { ClickableCard } from "@/components/ui/clickable-card";
 ### After (Option 2: Using Utility Function)
 
 ```tsx
-import { clickableRowClasses, createKeyboardHandler } from "@/lib/utils/interactive-classes";
+import { clickableRowClasses, createKeyboardHandler } from '@/lib/utils/interactive-classes';
 
 <TableRow
   className={clickableRowClasses}
@@ -137,10 +138,11 @@ import { clickableRowClasses, createKeyboardHandler } from "@/lib/utils/interact
   <TableCell>{event.timestamp}</TableCell>
   <TableCell>{event.type}</TableCell>
   <TableCell>{event.agent}</TableCell>
-</TableRow>
+</TableRow>;
 ```
 
 **Benefits:**
+
 - ✅ Consistent hover behavior across all table rows
 - ✅ Keyboard navigation support
 - ✅ Focus indicators for accessibility
@@ -155,39 +157,33 @@ import { clickableRowClasses, createKeyboardHandler } from "@/lib/utils/interact
 // client/src/components/CodeIntelligence.tsx
 <Card
   className={cn(
-    "cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all",
-    isProcessing && "opacity-50 cursor-not-allowed"
+    'cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all',
+    isProcessing && 'opacity-50 cursor-not-allowed'
   )}
   onClick={isProcessing ? undefined : handleAnalyze}
 >
   <CardHeader>
     <CardTitle>Code Analysis</CardTitle>
   </CardHeader>
-  <CardContent>
-    {isProcessing ? "Processing..." : "Click to analyze"}
-  </CardContent>
+  <CardContent>{isProcessing ? 'Processing...' : 'Click to analyze'}</CardContent>
 </Card>
 ```
 
 ### After
 
 ```tsx
-import { ClickableCard } from "@/components/ui/clickable-card";
+import { ClickableCard } from '@/components/ui/clickable-card';
 
-<ClickableCard
-  disabled={isProcessing}
-  onClick={handleAnalyze}
->
+<ClickableCard disabled={isProcessing} onClick={handleAnalyze}>
   <CardHeader>
     <CardTitle>Code Analysis</CardTitle>
   </CardHeader>
-  <CardContent>
-    {isProcessing ? "Processing..." : "Click to analyze"}
-  </CardContent>
-</ClickableCard>
+  <CardContent>{isProcessing ? 'Processing...' : 'Click to analyze'}</CardContent>
+</ClickableCard>;
 ```
 
 **Benefits:**
+
 - ✅ Simplified conditional logic
 - ✅ Automatic handling of disabled state
 - ✅ Prevents onClick when disabled (no manual check needed)
@@ -211,16 +207,16 @@ import { ClickableCard } from "@/components/ui/clickable-card";
 ### After
 
 ```tsx
-import { clickableListItemClasses } from "@/lib/utils/interactive-classes";
+import { clickableListItemClasses } from '@/lib/utils/interactive-classes';
 
 <div
-  className={cn("px-3 py-2", clickableListItemClasses)}
+  className={cn('px-3 py-2', clickableListItemClasses)}
   onClick={() => handleFilterSelect(filter)}
   role="menuitem"
   tabIndex={0}
 >
   {filter.label}
-</div>
+</div>;
 ```
 
 ---
@@ -231,34 +227,37 @@ import { clickableListItemClasses } from "@/lib/utils/interactive-classes";
 
 ```tsx
 // Sometimes clickable, sometimes not
-{isClickable ? (
-  <Card
-    className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all"
-    onClick={handleClick}
-  >
-    <CardContent>{content}</CardContent>
-  </Card>
-) : (
-  <Card>
-    <CardContent>{content}</CardContent>
-  </Card>
-)}
+{
+  isClickable ? (
+    <Card
+      className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all"
+      onClick={handleClick}
+    >
+      <CardContent>{content}</CardContent>
+    </Card>
+  ) : (
+    <Card>
+      <CardContent>{content}</CardContent>
+    </Card>
+  );
+}
 ```
 
 ### After
 
 ```tsx
-import { Card } from "@/components/ui/card";
-import { ClickableCard } from "@/components/ui/clickable-card";
+import { Card } from '@/components/ui/card';
+import { ClickableCard } from '@/components/ui/clickable-card';
 
 const CardComponent = isClickable ? ClickableCard : Card;
 
 <CardComponent onClick={isClickable ? handleClick : undefined}>
   <CardContent>{content}</CardContent>
-</CardComponent>
+</CardComponent>;
 ```
 
 **Benefits:**
+
 - ✅ No duplication of card structure
 - ✅ Single component instance
 - ✅ Cleaner conditional logic
@@ -283,17 +282,17 @@ const CardComponent = isClickable ? ClickableCard : Card;
 ### After
 
 ```tsx
-import { interactiveClasses } from "@/lib/utils/interactive-classes";
+import { interactiveClasses } from '@/lib/utils/interactive-classes';
 
 <div
-  className={interactiveClasses("p-4 rounded-lg border", "card")}
+  className={interactiveClasses('p-4 rounded-lg border', 'card')}
   onClick={handleClick}
   tabIndex={0}
   role="button"
 >
   <h3>Custom Card</h3>
   <p>Content here</p>
-</div>
+</div>;
 ```
 
 ---
@@ -305,7 +304,7 @@ import { interactiveClasses } from "@/lib/utils/interactive-classes";
 ```tsx
 // client/src/components/Dashboard.tsx
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-  {items.map(item => (
+  {items.map((item) => (
     <Card
       key={item.id}
       className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all hover:-translate-y-0.5"
@@ -325,14 +324,11 @@ import { interactiveClasses } from "@/lib/utils/interactive-classes";
 ### After
 
 ```tsx
-import { ClickableCard } from "@/components/ui/clickable-card";
+import { ClickableCard } from '@/components/ui/clickable-card';
 
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-  {items.map(item => (
-    <ClickableCard
-      key={item.id}
-      onClick={() => handleItemClick(item)}
-    >
+  {items.map((item) => (
+    <ClickableCard key={item.id} onClick={() => handleItemClick(item)}>
       <CardHeader>
         <CardTitle>{item.title}</CardTitle>
       </CardHeader>
@@ -341,7 +337,7 @@ import { ClickableCard } from "@/components/ui/clickable-card";
       </CardContent>
     </ClickableCard>
   ))}
-</div>
+</div>;
 ```
 
 ---
@@ -361,10 +357,12 @@ import { ClickableCard } from "@/components/ui/clickable-card";
   </CardHeader>
   <CardContent>
     <p>{item.description}</p>
-    <Button onClick={(e) => {
-      e.stopPropagation();
-      handleDelete(item.id);
-    }}>
+    <Button
+      onClick={(e) => {
+        e.stopPropagation();
+        handleDelete(item.id);
+      }}
+    >
       Delete
     </Button>
   </CardContent>
@@ -374,7 +372,7 @@ import { ClickableCard } from "@/components/ui/clickable-card";
 ### After
 
 ```tsx
-import { ClickableCard } from "@/components/ui/clickable-card";
+import { ClickableCard } from '@/components/ui/clickable-card';
 
 <ClickableCard onClick={() => handleCardClick(item)}>
   <CardHeader>
@@ -391,7 +389,7 @@ import { ClickableCard } from "@/components/ui/clickable-card";
       Delete
     </Button>
   </CardContent>
-</ClickableCard>
+</ClickableCard>;
 ```
 
 **Note:** Event bubbling pattern remains the same, but the card behavior is now consistent.
@@ -414,17 +412,15 @@ import { ClickableCard } from "@/components/ui/clickable-card";
 ### After
 
 ```tsx
-import { ClickableCard } from "@/components/ui/clickable-card";
+import { ClickableCard } from '@/components/ui/clickable-card';
 
-<ClickableCard
-  onClick={handleDangerousAction}
-  className="hover:border-destructive"
->
+<ClickableCard onClick={handleDangerousAction} className="hover:border-destructive">
   <CardContent>Dangerous action</CardContent>
-</ClickableCard>
+</ClickableCard>;
 ```
 
 **Benefits:**
+
 - ✅ Base interactive behavior from `ClickableCard`
 - ✅ Custom border color on hover via className override
 - ✅ Maintains all other interactive features
@@ -449,16 +445,19 @@ When refactoring to use interactive components:
 ## Quick Decision Guide
 
 **Use `ClickableCard` when:**
+
 - Element is a card (using shadcn Card component)
 - Need full interactive behavior (hover, focus, keyboard, ARIA)
 - Want simplest API
 
 **Use utility classes when:**
+
 - Need quick styling without component overhead
 - Working with existing components
 - Building custom interactive elements
 
 **Use utility functions when:**
+
 - Need programmatic class composition
 - Complex conditional styling
 - Reusable helper functions (keyboard handlers, ARIA props)
@@ -468,11 +467,11 @@ When refactoring to use interactive components:
 ## Testing After Refactoring
 
 ```tsx
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 // Test click handler
-test("triggers onClick when card is clicked", async () => {
+test('triggers onClick when card is clicked', async () => {
   const handleClick = vi.fn();
   render(
     <ClickableCard onClick={handleClick}>
@@ -480,12 +479,12 @@ test("triggers onClick when card is clicked", async () => {
     </ClickableCard>
   );
 
-  await userEvent.click(screen.getByRole("button"));
+  await userEvent.click(screen.getByRole('button'));
   expect(handleClick).toHaveBeenCalledOnce();
 });
 
 // Test keyboard navigation
-test("triggers onClick when Enter is pressed", async () => {
+test('triggers onClick when Enter is pressed', async () => {
   const handleClick = vi.fn();
   render(
     <ClickableCard onClick={handleClick}>
@@ -493,15 +492,15 @@ test("triggers onClick when Enter is pressed", async () => {
     </ClickableCard>
   );
 
-  const card = screen.getByRole("button");
+  const card = screen.getByRole('button');
   card.focus();
-  await userEvent.keyboard("{Enter}");
+  await userEvent.keyboard('{Enter}');
 
   expect(handleClick).toHaveBeenCalledOnce();
 });
 
 // Test disabled state
-test("does not trigger onClick when disabled", async () => {
+test('does not trigger onClick when disabled', async () => {
   const handleClick = vi.fn();
   render(
     <ClickableCard onClick={handleClick} disabled>
@@ -509,7 +508,7 @@ test("does not trigger onClick when disabled", async () => {
     </ClickableCard>
   );
 
-  await userEvent.click(screen.getByRole("button"));
+  await userEvent.click(screen.getByRole('button'));
   expect(handleClick).not.toHaveBeenCalled();
 });
 ```
@@ -519,6 +518,7 @@ test("does not trigger onClick when disabled", async () => {
 ## Performance Notes
 
 All refactored components maintain the same performance characteristics:
+
 - CSS-only animations (no JS-based transitions)
 - No additional re-renders
 - Minimal bundle size increase (tree-shakable utilities)

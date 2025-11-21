@@ -43,11 +43,7 @@ describe('EventCorrelationExplorer', () => {
   });
 
   const renderWithClient = (ui: React.ReactElement) => {
-    return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>
-    );
+    return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
   };
 
   it('should render correlation explorer', () => {
@@ -109,4 +105,3 @@ describe('EventCorrelationExplorer', () => {
     result.unmount();
   });
 });
-

@@ -158,7 +158,7 @@ describe('Migration Example', () => {
   describe('Old Pattern (avoid)', () => {
     it('renders without proper cleanup', async () => {
       // This was the old way - no cleanup, potential memory leaks
-      const result = renderWithQueryClient(<TestComponent />);
+      renderWithQueryClient(<TestComponent />);
 
       await waitFor(() => {
         expect(screen.getByText('Data: Hello from query!')).toBeInTheDocument();

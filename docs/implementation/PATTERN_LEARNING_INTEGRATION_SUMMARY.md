@@ -20,6 +20,7 @@ Added comprehensive data fetching functions with proper TypeScript interfaces:
 - **`fetchDiscovery(limit)`** - Recently discovered patterns
 
 **Key Features**:
+
 - ✅ Automatic snake_case to camelCase transformation
 - ✅ Graceful fallback to mock data on API errors
 - ✅ Proper TypeScript typing for all responses
@@ -47,6 +48,7 @@ const { data: summary } = useQuery<PatternSummary>({
 ```
 
 **Benefits**:
+
 - ✅ Cleaner separation of concerns
 - ✅ Easier to test and mock
 - ✅ Consistent error handling across all queries
@@ -55,6 +57,7 @@ const { data: summary } = useQuery<PatternSummary>({
 ### 3. Removed Inline Mock Data
 
 Cleaned up component by removing inline mock data fallbacks:
+
 - Removed hardcoded chart data
 - Removed inline language breakdown mock data
 - Removed quality trend fallbacks
@@ -66,14 +69,14 @@ Cleaned up component by removing inline mock data fallbacks:
 
 ### ✅ Working with Real Data
 
-| Metric | Source | Status |
-|--------|--------|--------|
-| **Total Patterns** | PostgreSQL `pattern_lineage_nodes` | ✅ 1,061 patterns |
-| **Pattern Discovery Trends** | `/api/intelligence/patterns/trends` | ✅ Real hourly data |
-| **Language Breakdown** | `/api/intelligence/patterns/by-language` | ✅ 100% Python (1,061 patterns) |
-| **Live Discovery** | `/api/intelligence/patterns/discovery` | ⚠️ Mock fallback (endpoint returns mock) |
-| **Quality Trends** | `/api/intelligence/patterns/quality-trends` | ⚠️ Empty array (no quality data yet) |
-| **Pattern List** | `/api/intelligence/patterns/list` | ⚠️ Backend error (500) |
+| Metric                       | Source                                      | Status                                   |
+| ---------------------------- | ------------------------------------------- | ---------------------------------------- |
+| **Total Patterns**           | PostgreSQL `pattern_lineage_nodes`          | ✅ 1,061 patterns                        |
+| **Pattern Discovery Trends** | `/api/intelligence/patterns/trends`         | ✅ Real hourly data                      |
+| **Language Breakdown**       | `/api/intelligence/patterns/by-language`    | ✅ 100% Python (1,061 patterns)          |
+| **Live Discovery**           | `/api/intelligence/patterns/discovery`      | ⚠️ Mock fallback (endpoint returns mock) |
+| **Quality Trends**           | `/api/intelligence/patterns/quality-trends` | ⚠️ Empty array (no quality data yet)     |
+| **Pattern List**             | `/api/intelligence/patterns/list`           | ⚠️ Backend error (500)                   |
 
 ### ⚠️ Needs Backend Work
 
@@ -191,6 +194,7 @@ curl http://localhost:3000/api/intelligence/patterns/by-language
 ### Phase 1: Fix Backend Issues (1-2 hours)
 
 1. **Fix Pattern List Endpoint**
+
    ```typescript
    // server/intelligence-routes.ts
    // Line causing error: Cannot convert undefined or null to object
@@ -286,6 +290,7 @@ curl http://localhost:3000/api/intelligence/patterns/by-language
 See: `.playwright-mcp/pattern-learning-real-data-integration.png`
 
 **Key Observations**:
+
 - Dashboard displays real pattern count (1,061)
 - Charts show actual trend data from PostgreSQL
 - Language breakdown correctly shows 100% Python

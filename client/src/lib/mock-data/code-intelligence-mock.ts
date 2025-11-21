@@ -49,9 +49,7 @@ export class CodeIntelligenceMockData {
     const compliantFiles = Math.floor(totalFiles * Gen.randomFloat(0.7, 0.9));
     const nonCompliantFiles = Math.floor(totalFiles * Gen.randomFloat(0.05, 0.2));
     const pendingFiles = totalFiles - compliantFiles - nonCompliantFiles;
-    const compliancePercentage = parseFloat(
-      ((compliantFiles / totalFiles) * 100).toFixed(1)
-    );
+    const compliancePercentage = parseFloat(((compliantFiles / totalFiles) * 100).toFixed(1));
     const avgComplianceScore = Gen.randomFloat(0.75, 0.92, 2);
 
     // Status breakdown

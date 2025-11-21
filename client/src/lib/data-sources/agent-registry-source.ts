@@ -21,11 +21,16 @@ interface AgentRegistryData {
 export type { RecentActivity };
 
 class AgentRegistrySource {
-  async fetchAgents(filters?: { category?: string; search?: string; status?: string }): Promise<{ data: AgentDefinition[]; isMock: boolean }> {
+  async fetchAgents(filters?: {
+    category?: string;
+    search?: string;
+    status?: string;
+  }): Promise<{ data: AgentDefinition[]; isMock: boolean }> {
     // Use the full registry API which has all agents with proper status information
     try {
       const params = new URLSearchParams();
-      if (filters?.category && filters.category !== 'all') params.append('category', filters.category);
+      if (filters?.category && filters.category !== 'all')
+        params.append('category', filters.category);
       if (filters?.search) params.append('search', filters.search);
       if (filters?.status && filters.status !== 'all') params.append('status', filters.status);
 
@@ -47,22 +52,38 @@ class AgentRegistrySource {
   private inferCategory(agentName: string): string {
     const name = agentName.toLowerCase();
     if (name.includes('test') || name.includes('qa') || name.includes('quality')) return 'quality';
-    if (name.includes('architect') || name.includes('design') || name.includes('architecture')) return 'architecture';
-    if (name.includes('deploy') || name.includes('infrastructure') || name.includes('devops') || name.includes('server')) return 'infrastructure';
-    if (name.includes('coordinator') || name.includes('workflow') || name.includes('polymorphic')) return 'coordination';
-    if (name.includes('doc') || name.includes('knowledge') || name.includes('book')) return 'documentation';
+    if (name.includes('architect') || name.includes('design') || name.includes('architecture'))
+      return 'architecture';
+    if (
+      name.includes('deploy') ||
+      name.includes('infrastructure') ||
+      name.includes('devops') ||
+      name.includes('server')
+    )
+      return 'infrastructure';
+    if (name.includes('coordinator') || name.includes('workflow') || name.includes('polymorphic'))
+      return 'coordination';
+    if (name.includes('doc') || name.includes('knowledge') || name.includes('book'))
+      return 'documentation';
     return 'development';
   }
 
   private inferColor(category: string): string {
     switch (category) {
-      case 'development': return 'blue';
-      case 'architecture': return 'purple';
-      case 'quality': return 'green';
-      case 'infrastructure': return 'orange';
-      case 'coordination': return 'cyan';
-      case 'documentation': return 'gray';
-      default: return 'blue';
+      case 'development':
+        return 'blue';
+      case 'architecture':
+        return 'purple';
+      case 'quality':
+        return 'green';
+      case 'infrastructure':
+        return 'orange';
+      case 'coordination':
+        return 'cyan';
+      case 'documentation':
+        return 'gray';
+      default:
+        return 'blue';
     }
   }
 
@@ -117,7 +138,11 @@ class AgentRegistrySource {
     };
   }
 
-  async fetchAll(filters?: { category?: string; search?: string; status?: string }): Promise<AgentRegistryData> {
+  async fetchAll(filters?: {
+    category?: string;
+    search?: string;
+    status?: string;
+  }): Promise<AgentRegistryData> {
     const [agents, categories, performance, routing] = await Promise.all([
       this.fetchAgents(filters),
       this.fetchCategories(),
@@ -134,7 +159,9 @@ class AgentRegistrySource {
     };
   }
 
-  async fetchRecentActivity(limit: number = 20): Promise<{ data: RecentActivity[]; isMock: boolean }> {
+  async fetchRecentActivity(
+    limit: number = 20
+  ): Promise<{ data: RecentActivity[]; isMock: boolean }> {
     // Return comprehensive mock data if USE_MOCK_DATA is enabled
     if (USE_MOCK_DATA) {
       const mockData = AgentRegistryMockData.generateRecentActivities(limit);
@@ -158,4 +185,3 @@ class AgentRegistrySource {
 }
 
 export const agentRegistrySource = new AgentRegistrySource();
-

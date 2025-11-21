@@ -1,24 +1,43 @@
-import { MetricCard } from "@/components/MetricCard";
-import { RealtimeChart } from "@/components/RealtimeChart";
-import { DataTable, Column } from "@/components/DataTable";
-import { TransformationFlow } from "@/components/TransformationFlow";
-import { AlertPill } from "@/components/AlertPill";
-import { ExportButton } from "@/components/ExportButton";
-import { SectionHeader } from "@/components/SectionHeader";
-import { Card } from "@/components/ui/card";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Zap, CheckCircle, AlertTriangle, TrendingUp, Activity, Database, Server, Clock } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useWebSocket } from "@/hooks/useWebSocket";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
-import { MockDataBadge } from "@/components/MockDataBadge";
-import { ensureTimeSeries, ensureArray } from "@/components/mockUtils";
-import { agentOperationsSource } from "@/lib/data-sources";
-import { POLLING_INTERVAL_SLOW, POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
+import { MetricCard } from '@/components/MetricCard';
+import { RealtimeChart } from '@/components/RealtimeChart';
+import { DataTable } from '@/components/DataTable';
+import { TransformationFlow } from '@/components/TransformationFlow';
+import { AlertPill } from '@/components/AlertPill';
+import { ExportButton } from '@/components/ExportButton';
+import { SectionHeader } from '@/components/SectionHeader';
+import { Card } from '@/components/ui/card';
+import { TimeRangeSelector } from '@/components/TimeRangeSelector';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Zap,
+  CheckCircle,
+  AlertTriangle,
+  TrendingUp,
+  Activity,
+  Database,
+  Clock,
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { cn } from '@/lib/utils';
+import { MockDataBadge } from '@/components/MockDataBadge';
+import { ensureTimeSeries } from '@/components/mockUtils';
+import { agentOperationsSource } from '@/lib/data-sources';
+import {
+  POLLING_INTERVAL_SLOW,
+  POLLING_INTERVAL_MEDIUM,
+  getPollingInterval,
+} from '@/lib/constants/query-config';
 
 interface ManifestInjectionHealth {
   successRate: number;
@@ -43,12 +62,6 @@ interface ManifestInjectionHealth {
     omniarchon: { status: 'up' | 'down'; latencyMs?: number };
     qdrant: { status: 'up' | 'down'; latencyMs?: number };
   };
-}
-
-interface OperationsPerMinute {
-  period: string;
-  operationsPerMinute: number;
-  actionType: string;
 }
 
 interface QualityImpact {
@@ -134,7 +147,7 @@ export default function IntelligenceOperations() {
     const timestamp = new Date(action.createdAt).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
     });
 
     return {
@@ -147,14 +160,14 @@ export default function IntelligenceOperations() {
   };
 
   // WebSocket for real-time updates
-  const { isConnected, connectionStatus } = useWebSocket({
+  useWebSocket({
     onMessage: (message) => {
       // Process different message types
       switch (message.type) {
         case 'AGENT_ACTION':
           // Add new action to live events (prepend to show newest first)
           const newEvent = transformActionToEvent(message.data);
-          setLiveEvents(prev => [newEvent, ...prev].slice(0, 50)); // Keep last 50 events
+          setLiveEvents((prev) => [newEvent, ...prev].slice(0, 50)); // Keep last 50 events
           break;
 
         case 'INITIAL_STATE':
@@ -172,9 +185,18 @@ export default function IntelligenceOperations() {
         case 'AGENT_METRIC_UPDATE':
         case 'ROUTING_DECISION':
           // Invalidate all intelligence queries when events occur
-          queryClient.invalidateQueries({ queryKey: ['http://localhost:3000/api/intelligence/health/manifest-injection', timeRange] });
-          queryClient.invalidateQueries({ queryKey: ['http://localhost:3000/api/intelligence/metrics/operations-per-minute', timeRange] });
-          queryClient.invalidateQueries({ queryKey: ['http://localhost:3000/api/intelligence/metrics/quality-impact', timeRange] });
+          queryClient.invalidateQueries({
+            queryKey: [
+              'http://localhost:3000/api/intelligence/health/manifest-injection',
+              timeRange,
+            ],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ['agent-operations-full', timeRange],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ['http://localhost:3000/api/intelligence/documents/top-accessed', timeRange],
+          });
           break;
       }
     },
@@ -183,7 +205,14 @@ export default function IntelligenceOperations() {
 
   // Fetch manifest injection health data (updated via WebSocket)
   const { data: healthData, isLoading: healthLoading } = useQuery<ManifestInjectionHealth>({
-    queryKey: [`http://localhost:3000/api/intelligence/health/manifest-injection?timeWindow=${timeRange}`],
+    queryKey: ['http://localhost:3000/api/intelligence/health/manifest-injection', timeRange],
+    queryFn: async () => {
+      const response = await fetch(
+        `http://localhost:3000/api/intelligence/health/manifest-injection?timeWindow=${timeRange}`
+      );
+      if (!response.ok) throw new Error('Failed to fetch manifest injection health');
+      return response.json();
+    },
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
 
@@ -204,12 +233,19 @@ export default function IntelligenceOperations() {
   const { data: recentActionsData } = useQuery<AgentAction[]>({
     queryKey: [`http://localhost:3000/api/intelligence/actions/recent?limit=50`],
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
-    enabled: liveEvents.length === 0 && !isConnected, // Only fetch if no live events and not connected
+    enabled: liveEvents.length === 0, // Only fetch if no live events
   });
 
   // Fetch top accessed documents
-  const { data: topDocumentsData, isLoading: documentsLoading } = useQuery<TopAccessedDocument[]>({
-    queryKey: [`http://localhost:3000/api/intelligence/documents/top-accessed?timeWindow=${timeRange}&limit=10`],
+  const { data: topDocumentsData } = useQuery<TopAccessedDocument[]>({
+    queryKey: ['http://localhost:3000/api/intelligence/documents/top-accessed', timeRange],
+    queryFn: async () => {
+      const response = await fetch(
+        `http://localhost:3000/api/intelligence/documents/top-accessed?timeWindow=${timeRange}&limit=10`
+      );
+      if (!response.ok) throw new Error('Failed to fetch top documents');
+      return response.json();
+    },
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
 
@@ -219,6 +255,7 @@ export default function IntelligenceOperations() {
       const events = recentActionsData.map(transformActionToEvent);
       setLiveEvents(events);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recentActionsData]);
 
   // Extract transformed data from source
@@ -241,7 +278,11 @@ export default function IntelligenceOperations() {
     <div className="space-y-6">
       <SectionHeader
         title="Intelligence Operations"
-        description={isLoading ? 'Loading AI operations data...' : `${totalOperations} AI operations for code analysis and optimization`}
+        description={
+          isLoading
+            ? 'Loading AI operations data...'
+            : `${totalOperations} AI operations for code analysis and optimization`
+        }
         details="Intelligence Operations tracks all AI-powered analysis and optimization tasks across the platform. Monitor active operations, quality improvements, manifest injections, and document access patterns. This dashboard provides visibility into how AI agents are improving code quality and developer productivity in real-time."
         level="h1"
       />
@@ -249,7 +290,15 @@ export default function IntelligenceOperations() {
         <div className="flex items-center gap-4">
           <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
           <ExportButton
-            data={{ operations, operationsData, qualityImpactData, healthData, chartData, qualityData, liveEvents }}
+            data={{
+              operations,
+              operationsData,
+              qualityImpactData,
+              healthData,
+              chartData,
+              qualityData,
+              liveEvents,
+            }}
             filename={`intelligence-operations-${new Date().toISOString().split('T')[0]}`}
             disabled={!operationsData && !qualityImpactData && !healthData}
           />
@@ -279,7 +328,7 @@ export default function IntelligenceOperations() {
           label="Avg Quality Impact"
           value={isLoading ? '...' : `${(avgQualityImprovement * 100).toFixed(1)}%`}
           icon={TrendingUp}
-          status={avgQualityImprovement > 0 ? "healthy" : "warning"}
+          status={avgQualityImprovement > 0 ? 'healthy' : 'warning'}
         />
       </div>
 
@@ -297,8 +346,10 @@ export default function IntelligenceOperations() {
           {(() => {
             // Check if quality impact data is empty or all zeros
             const hasNoData = !qualityImpactData || qualityImpactData.length === 0;
-            const allZeros = qualityImpactData && qualityImpactData.length > 0 &&
-              qualityImpactData.every(d => Math.abs(d.avgQualityImprovement) < 0.001);
+            const allZeros =
+              qualityImpactData &&
+              qualityImpactData.length > 0 &&
+              qualityImpactData.every((d) => Math.abs(d.avgQualityImprovement) < 0.001);
 
             return (
               <>
@@ -327,38 +378,40 @@ export default function IntelligenceOperations() {
       </div>
 
       <div className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-base font-semibold mb-4">Operation Status</h3>
-            {operationsLoading ? (
-              <div className="flex items-center justify-center h-48">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-              </div>
-            ) : operations.length === 0 ? (
-              <div className="flex items-center justify-center h-48 text-muted-foreground">
-                No operations data available for selected time range
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {operations.map((op) => (
+        <Card className="p-6">
+          <h3 className="text-base font-semibold mb-4">Operation Status</h3>
+          {operationsLoading ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          ) : operations.length === 0 ? (
+            <div className="flex items-center justify-center h-48 text-muted-foreground">
+              No operations data available for selected time range
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {operations.map((op) => (
+                <div
+                  key={op.id}
+                  className="flex items-center gap-3 p-4 rounded-lg border border-card-border hover-elevate"
+                >
                   <div
-                    key={op.id}
-                    className="flex items-center gap-3 p-4 rounded-lg border border-card-border hover-elevate"
-                  >
-                    <div className={`h-3 w-3 rounded-full ${op.status === 'running' ? 'bg-status-healthy animate-pulse' : 'bg-status-idle'}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium">{op.name}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {op.count} operations • {op.avgTime} avg
-                      </div>
+                    className={`h-3 w-3 rounded-full ${op.status === 'running' ? 'bg-status-healthy animate-pulse' : 'bg-status-idle'}`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium">{op.name}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {op.count} operations • {op.avgTime} avg
                     </div>
-                    <Badge variant={op.status === 'running' ? 'default' : 'secondary'}>
-                      {op.status}
-                    </Badge>
                   </div>
-                ))}
-              </div>
-            )}
-          </Card>
+                  <Badge variant={op.status === 'running' ? 'default' : 'secondary'}>
+                    {op.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
 
         <DataTable<LiveEvent>
           title="Live Event Stream"
@@ -378,15 +431,21 @@ export default function IntelligenceOperations() {
               render: (event) => (
                 <Badge
                   variant={
-                    event.type === 'success' ? 'default' :
-                    event.type === 'error' ? 'destructive' :
-                    event.type === 'warning' ? 'outline' :
-                    'secondary'
+                    event.type === 'success'
+                      ? 'default'
+                      : event.type === 'error'
+                        ? 'destructive'
+                        : event.type === 'warning'
+                          ? 'outline'
+                          : 'secondary'
                   }
                   className={cn(
-                    event.type === 'success' && 'bg-status-healthy/10 text-status-healthy border-status-healthy/20',
-                    event.type === 'error' && 'bg-status-error/10 text-status-error border-status-error/20',
-                    event.type === 'warning' && 'bg-status-warning/10 text-status-warning border-status-warning/20',
+                    event.type === 'success' &&
+                      'bg-status-healthy/10 text-status-healthy border-status-healthy/20',
+                    event.type === 'error' &&
+                      'bg-status-error/10 text-status-error border-status-error/20',
+                    event.type === 'warning' &&
+                      'bg-status-warning/10 text-status-warning border-status-warning/20',
                     event.type === 'info' && 'bg-primary/10 text-primary border-primary/20'
                   )}
                 >
@@ -426,9 +485,9 @@ export default function IntelligenceOperations() {
             {
               key: 'source',
               label: 'Agent',
-              options: [...Array.from(new Set(liveEvents.map(e => e.source)))]
+              options: [...Array.from(new Set(liveEvents.map((e) => e.source)))]
                 .sort()
-                .map(source => ({ value: source, label: source })),
+                .map((source) => ({ value: source, label: source })),
             },
           ]}
           searchKeys={['message', 'source']}
@@ -461,13 +520,25 @@ export default function IntelligenceOperations() {
                 label="Success Rate (24h)"
                 value={`${(healthData.successRate * 100).toFixed(1)}%`}
                 icon={CheckCircle}
-                status={healthData.successRate >= 0.95 ? 'healthy' : healthData.successRate >= 0.90 ? 'warning' : 'error'}
+                status={
+                  healthData.successRate >= 0.95
+                    ? 'healthy'
+                    : healthData.successRate >= 0.9
+                      ? 'warning'
+                      : 'error'
+                }
               />
               <MetricCard
                 label="Avg Latency"
                 value={`${healthData.avgLatencyMs.toFixed(0)}ms`}
                 icon={Clock}
-                status={healthData.avgLatencyMs <= 500 ? 'healthy' : healthData.avgLatencyMs <= 1000 ? 'warning' : 'error'}
+                status={
+                  healthData.avgLatencyMs <= 500
+                    ? 'healthy'
+                    : healthData.avgLatencyMs <= 1000
+                      ? 'warning'
+                      : 'error'
+                }
               />
               <MetricCard
                 label="Manifest Size (Avg)"
@@ -479,7 +550,11 @@ export default function IntelligenceOperations() {
                 label="Failed Injections"
                 value={healthData.failedInjections.reduce((sum, f) => sum + f.count, 0).toString()}
                 icon={AlertTriangle}
-                status={healthData.failedInjections.reduce((sum, f) => sum + f.count, 0) === 0 ? 'healthy' : 'warning'}
+                status={
+                  healthData.failedInjections.reduce((sum, f) => sum + f.count, 0) === 0
+                    ? 'healthy'
+                    : 'warning'
+                }
               />
             </div>
 
@@ -487,10 +562,15 @@ export default function IntelligenceOperations() {
             <div className="grid grid-cols-2 gap-6">
               <RealtimeChart
                 title="Injection Latency Trend (24h)"
-                data={[...healthData.latencyTrend.map(t => ({
-                  time: new Date(t.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                  value: t.avgLatencyMs,
-                }))].reverse()}
+                data={[
+                  ...healthData.latencyTrend.map((t) => ({
+                    time: new Date(t.period).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }),
+                    value: t.avgLatencyMs,
+                  })),
+                ].reverse()}
                 color="hsl(var(--chart-2))"
                 showArea
               />
@@ -500,9 +580,14 @@ export default function IntelligenceOperations() {
                 <h3 className="text-base font-semibold mb-4">Service Health Status</h3>
                 <div className="space-y-4">
                   {Object.entries(healthData.serviceHealth).map(([service, health]) => (
-                    <div key={service} className="flex items-center justify-between p-3 rounded-lg border border-card-border">
+                    <div
+                      key={service}
+                      className="flex items-center justify-between p-3 rounded-lg border border-card-border"
+                    >
                       <div className="flex items-center gap-3">
-                        <div className={`h-3 w-3 rounded-full ${health.status === 'up' ? 'bg-status-healthy' : 'bg-status-critical'} ${health.status === 'up' ? 'animate-pulse' : ''}`} />
+                        <div
+                          className={`h-3 w-3 rounded-full ${health.status === 'up' ? 'bg-status-healthy' : 'bg-status-critical'} ${health.status === 'up' ? 'animate-pulse' : ''}`}
+                        />
                         <div>
                           <div className="text-sm font-medium capitalize">{service}</div>
                           {health.latencyMs !== undefined && health.status === 'up' && (
@@ -536,7 +621,9 @@ export default function IntelligenceOperations() {
                   <TableBody>
                     {healthData.failedInjections.map((failure) => (
                       <TableRow key={failure.errorType}>
-                        <TableCell className="font-medium">{failure.errorType.replace(/_/g, ' ').toUpperCase()}</TableCell>
+                        <TableCell className="font-medium">
+                          {failure.errorType.replace(/_/g, ' ').toUpperCase()}
+                        </TableCell>
                         <TableCell className="text-right">{failure.count}</TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {new Date(failure.lastOccurrence).toLocaleString()}
@@ -581,11 +668,39 @@ export default function IntelligenceOperations() {
         {(!topDocumentsData || topDocumentsData.length === 0) && <MockDataBadge className="mb-2" />}
         <DataTable<TopAccessedDocument>
           title="Top Accessed Documents"
-          data={(topDocumentsData && topDocumentsData.length > 0 ? topDocumentsData : [
-            { id: 'm1', repository: 'omniarchon', filePath: 'https://repo/docs/INTRO.md', accessCount: 128, lastAccessedAt: new Date().toISOString(), trend: 'up', trendPercentage: 18 },
-            { id: 'm2', repository: 'omniarchon', filePath: 'https://repo/docs/API.md', accessCount: 64, lastAccessedAt: new Date(Date.now() - 86400000).toISOString(), trend: 'stable', trendPercentage: 0 },
-            { id: 'm3', repository: 'omniarchon', filePath: 'https://repo/docs/SETUP.md', accessCount: 29, lastAccessedAt: null, trend: 'down', trendPercentage: 7 },
-          ])}
+          data={
+            topDocumentsData && topDocumentsData.length > 0
+              ? topDocumentsData
+              : [
+                  {
+                    id: 'm1',
+                    repository: 'omniarchon',
+                    filePath: 'https://repo/docs/INTRO.md',
+                    accessCount: 128,
+                    lastAccessedAt: new Date().toISOString(),
+                    trend: 'up',
+                    trendPercentage: 18,
+                  },
+                  {
+                    id: 'm2',
+                    repository: 'omniarchon',
+                    filePath: 'https://repo/docs/API.md',
+                    accessCount: 64,
+                    lastAccessedAt: new Date(Date.now() - 86400000).toISOString(),
+                    trend: 'stable',
+                    trendPercentage: 0,
+                  },
+                  {
+                    id: 'm3',
+                    repository: 'omniarchon',
+                    filePath: 'https://repo/docs/SETUP.md',
+                    accessCount: 29,
+                    lastAccessedAt: null,
+                    trend: 'down',
+                    trendPercentage: 7,
+                  },
+                ]
+          }
           columns={[
             {
               key: 'filePath',
@@ -614,9 +729,7 @@ export default function IntelligenceOperations() {
               sortable: true,
               className: 'text-right w-[100px]',
               render: (doc) => (
-                <span className="font-mono font-semibold">
-                  {doc.accessCount.toLocaleString()}
-                </span>
+                <span className="font-mono font-semibold">{doc.accessCount.toLocaleString()}</span>
               ),
             },
             {
@@ -628,17 +741,22 @@ export default function IntelligenceOperations() {
                 <div className="flex items-center gap-2">
                   <Badge
                     variant={
-                      doc.trend === 'up' ? 'default' :
-                      doc.trend === 'down' ? 'destructive' :
-                      'secondary'
+                      doc.trend === 'up'
+                        ? 'default'
+                        : doc.trend === 'down'
+                          ? 'destructive'
+                          : 'secondary'
                     }
                     className={cn(
-                      doc.trend === 'up' && 'bg-status-healthy/10 text-status-healthy border-status-healthy/20',
-                      doc.trend === 'down' && 'bg-status-error/10 text-status-error border-status-error/20',
+                      doc.trend === 'up' &&
+                        'bg-status-healthy/10 text-status-healthy border-status-healthy/20',
+                      doc.trend === 'down' &&
+                        'bg-status-error/10 text-status-error border-status-error/20',
                       doc.trend === 'stable' && 'bg-muted/10 text-muted-foreground border-muted/20'
                     )}
                   >
-                    {doc.trend === 'up' ? '↑' : doc.trend === 'down' ? '↓' : '→'} {Math.abs(doc.trendPercentage)}%
+                    {doc.trend === 'up' ? '↑' : doc.trend === 'down' ? '↓' : '→'}{' '}
+                    {Math.abs(doc.trendPercentage)}%
                   </Badge>
                 </div>
               ),
@@ -666,9 +784,9 @@ export default function IntelligenceOperations() {
             {
               key: 'repository',
               label: 'Repository',
-              options: [...Array.from(new Set((topDocumentsData || []).map(d => d.repository)))]
+              options: [...Array.from(new Set((topDocumentsData || []).map((d) => d.repository)))]
                 .sort()
-                .map(repo => ({ value: repo, label: repo })),
+                .map((repo) => ({ value: repo, label: repo })),
             },
             {
               key: 'trend',

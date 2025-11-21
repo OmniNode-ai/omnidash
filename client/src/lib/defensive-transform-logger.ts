@@ -23,6 +23,10 @@
  * ```
  */
 
+// Import and re-export shared utilities for backwards compatibility
+import { ensureNumeric, type TransformContext } from '@shared/utils/number-utils';
+export { ensureNumeric, type TransformContext };
+
 export type LogLevel = 'debug' | 'warn' | 'error';
 
 export interface FallbackOption<T> {
@@ -32,15 +36,6 @@ export interface FallbackOption<T> {
   label: string;
   /** Log level when this fallback is used (default: 'debug' for last option, 'warn' for others) */
   level?: LogLevel;
-}
-
-export interface TransformContext {
-  /** Record identifier (for debugging) */
-  id?: string | number;
-  /** Context description (e.g., 'agent-action', 'routing-decision') */
-  context: string;
-  /** Additional metadata */
-  [key: string]: any;
 }
 
 /**
@@ -104,9 +99,7 @@ function logFallback(
   usedLabel: string,
   fallbackIndex: number
 ): void {
-  const contextStr = context.id
-    ? `${context.context} [id: ${context.id}]`
-    : context.context;
+  const contextStr = context.id ? `${context.context} [id: ${context.id}]` : context.context;
 
   const message = `[DataTransform] Fallback used for '${fieldName}' in ${contextStr}: using ${usedLabel} (fallback #${fallbackIndex + 1})`;
 
@@ -171,53 +164,13 @@ export function ensureArray<T>(
 ): T[] {
   if (Array.isArray(array)) {
     if (array.length === 0) {
-      console.debug(`[DataTransform] Empty array for '${fieldName}' in ${context.context}`);
+      console.warn(`[DataTransform] Empty array for '${fieldName}' in ${context.context}`);
     }
     return array;
   }
 
   logFallback(level, fieldName, context, 'empty array', 1);
   return [];
-}
-
-/**
- * Numeric value with validation and fallback
- *
- * @param fieldName - Name of the field
- * @param value - Numeric value to validate
- * @param fallback - Fallback value (default: 0)
- * @param context - Context for logging
- * @param options - Validation options (min, max)
- * @returns Valid numeric value or fallback
- */
-export function ensureNumeric(
-  fieldName: string,
-  value: number | string | undefined | null,
-  fallback: number = 0,
-  context: TransformContext,
-  options: { min?: number; max?: number } = {}
-): number {
-  // Convert to number if needed
-  const num = typeof value === 'string' ? parseFloat(value) : value;
-
-  // Check if valid number
-  if (typeof num !== 'number' || isNaN(num)) {
-    console.warn(`[DataTransform] Invalid numeric value for '${fieldName}' in ${context.context}: ${value}, using fallback ${fallback}`);
-    return fallback;
-  }
-
-  // Check bounds
-  if (options.min !== undefined && num < options.min) {
-    console.warn(`[DataTransform] Value for '${fieldName}' in ${context.context} below minimum: ${num} < ${options.min}, clamping to ${options.min}`);
-    return options.min;
-  }
-
-  if (options.max !== undefined && num > options.max) {
-    console.warn(`[DataTransform] Value for '${fieldName}' in ${context.context} above maximum: ${num} > ${options.max}, clamping to ${options.max}`);
-    return options.max;
-  }
-
-  return num;
 }
 
 /**
@@ -239,7 +192,9 @@ export function ensureString(
 ): string {
   if (typeof value === 'string') {
     if (!allowEmpty && value.trim() === '') {
-      console.warn(`[DataTransform] Empty string for '${fieldName}' in ${context.context}, using fallback "${fallback}"`);
+      console.warn(
+        `[DataTransform] Empty string for '${fieldName}' in ${context.context}, using fallback "${fallback}"`
+      );
       return fallback;
     }
     return value;
@@ -257,11 +212,7 @@ export function ensureString(
  * @param level - Log level when fallback is used (default: 'warn')
  * @returns Environment variable value or fallback
  */
-export function ensureEnvVar(
-  varName: string,
-  fallback: string,
-  level: LogLevel = 'warn'
-): string {
+export function ensureEnvVar(varName: string, fallback: string, level: LogLevel = 'warn'): string {
   const value = import.meta.env[varName];
 
   if (value !== undefined && value !== null && value !== '') {

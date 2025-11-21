@@ -45,21 +45,26 @@ Custom ESLint rules have been successfully added to enforce test cleanup pattern
 ### Critical: Memory Leak Prevention
 
 **Rule**: `no-restricted-syntax` (error)
+
 - Detects `vi.useFakeTimers()` at module level
 - Prevents timer leaks between tests
 - Provides clear error message with fix instructions
 
 **Example Violation**:
+
 ```typescript
 // ❌ ESLint Error: Module-level timer
 vi.useFakeTimers();
 
 describe('MyTest', () => {
-  test('should work', () => { /* ... */ });
+  test('should work', () => {
+    /* ... */
+  });
 });
 ```
 
 **Fix**:
+
 ```typescript
 // ✅ Correct: Timer in beforeEach
 describe('MyTest', () => {
@@ -72,28 +77,31 @@ describe('MyTest', () => {
     vi.useRealTimers();
   });
 
-  test('should work', () => { /* ... */ });
+  test('should work', () => {
+    /* ... */
+  });
 });
 ```
 
 ### Vitest Best Practices
 
-| Rule | Level | Purpose |
-|------|-------|---------|
-| `vitest/expect-expect` | error | Ensure tests have assertions |
-| `vitest/no-focused-tests` | error | Prevent `test.only` in commits |
-| `vitest/valid-expect` | error | Ensure valid expect() calls |
-| `vitest/no-duplicate-hooks` | error | Prevent duplicate hooks |
-| `vitest/no-disabled-tests` | warn | Flag `test.skip` for review |
-| `vitest/no-identical-title` | warn | Prevent duplicate test names |
-| `vitest/prefer-hooks-in-order` | warn | Enforce hook ordering |
-| `vitest/require-top-level-describe` | warn | Encourage describe blocks |
-| `vitest/prefer-to-be` | warn | Use specific matchers |
-| `vitest/require-hook` | warn | Hooks inside describe blocks |
+| Rule                                | Level | Purpose                        |
+| ----------------------------------- | ----- | ------------------------------ |
+| `vitest/expect-expect`              | error | Ensure tests have assertions   |
+| `vitest/no-focused-tests`           | error | Prevent `test.only` in commits |
+| `vitest/valid-expect`               | error | Ensure valid expect() calls    |
+| `vitest/no-duplicate-hooks`         | error | Prevent duplicate hooks        |
+| `vitest/no-disabled-tests`          | warn  | Flag `test.skip` for review    |
+| `vitest/no-identical-title`         | warn  | Prevent duplicate test names   |
+| `vitest/prefer-hooks-in-order`      | warn  | Enforce hook ordering          |
+| `vitest/require-top-level-describe` | warn  | Encourage describe blocks      |
+| `vitest/prefer-to-be`               | warn  | Use specific matchers          |
+| `vitest/require-hook`               | warn  | Hooks inside describe blocks   |
 
 ## Current Lint Status
 
 **Total Issues**: 672
+
 - **Errors**: 5
   - 2 React hooks violations (unrelated to test cleanup)
   - 3 tests without assertions (vitest rules working!)
@@ -107,6 +115,7 @@ describe('MyTest', () => {
 **Decision**: Use simplified AST selector that only catches module-level timers.
 
 **Rationale**:
+
 - Original complex selectors caused 60+ false positives
 - Catching module-level timers prevents 90% of memory leaks
 - Code review can catch remaining edge cases
@@ -117,12 +126,14 @@ describe('MyTest', () => {
 ### 2. Error vs Warning Levels
 
 **Critical Rules (error)**:
+
 - Memory leak patterns
 - Focused tests (breaks CI)
 - Missing assertions
 - Invalid expect() calls
 
 **Guidelines (warn)**:
+
 - Test organization
 - Hook ordering
 - Naming conventions
@@ -132,6 +143,7 @@ describe('MyTest', () => {
 ### 3. Test File Patterns
 
 **Matched Patterns**:
+
 - `**/*.test.ts`
 - `**/*.test.tsx`
 - `**/__tests__/**/*.ts`
@@ -271,19 +283,20 @@ Always add a comment explaining WHY the rule is disabled.
 
 ## Success Metrics
 
-| Metric | Target | Actual | Status |
-|--------|--------|--------|--------|
-| ESLint installed | ✅ | ✅ | ✅ Complete |
-| Rules configured | ✅ | ✅ | ✅ Complete |
-| Documentation created | ✅ | ✅ | ✅ Complete |
-| Module-level timer detection | ✅ | ✅ | ✅ Working |
-| Focused test detection | ✅ | ✅ | ✅ Working |
-| No false positives | ✅ | ✅ | ✅ Achieved |
-| CI-ready | ✅ | ✅ | ✅ Ready |
+| Metric                       | Target | Actual | Status      |
+| ---------------------------- | ------ | ------ | ----------- |
+| ESLint installed             | ✅     | ✅     | ✅ Complete |
+| Rules configured             | ✅     | ✅     | ✅ Complete |
+| Documentation created        | ✅     | ✅     | ✅ Complete |
+| Module-level timer detection | ✅     | ✅     | ✅ Working  |
+| Focused test detection       | ✅     | ✅     | ✅ Working  |
+| No false positives           | ✅     | ✅     | ✅ Achieved |
+| CI-ready                     | ✅     | ✅     | ✅ Ready    |
 
 ## Conclusion
 
 ESLint configuration successfully enforces test cleanup patterns with:
+
 - ✅ Zero false positives for timer cleanup
 - ✅ Clear, actionable error messages
 - ✅ Comprehensive documentation

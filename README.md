@@ -87,6 +87,7 @@ This project uses automated quality gates to ensure code quality and consistency
 ### Pre-commit Hooks
 
 Pre-commit hooks automatically run before each commit to:
+
 - **Lint TypeScript/TSX files**: ESLint automatically fixes code style issues
 - **Format code**: Prettier ensures consistent formatting
 
@@ -105,6 +106,7 @@ Commit messages must follow [Conventional Commits](https://www.conventionalcommi
 ```
 
 **Valid commit types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes

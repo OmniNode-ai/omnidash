@@ -1,5 +1,7 @@
 #!/usr/bin/env tsx
 
+/* eslint-disable no-console */
+
 /**
  * Seed Kafka Events Script
  *
@@ -53,7 +55,7 @@ function generateRoutingDecision(correlationId: string) {
     selected_agent: randomItem(AGENT_NAMES),
     confidence_score: 0.7 + Math.random() * 0.3, // 0.7-1.0
     routing_strategy: randomItem(ROUTING_STRATEGIES),
-    alternatives: AGENT_NAMES.slice(0, 2).map(name => ({
+    alternatives: AGENT_NAMES.slice(0, 2).map((name) => ({
       agent: name,
       confidence: 0.5 + Math.random() * 0.3,
     })),
@@ -113,7 +115,9 @@ async function seedEvents(count: number = 10) {
     }
 
     // Send all messages in batches
-    console.log(`📤 Publishing ${messages.length} events (${count} routing decisions + actions)...`);
+    console.log(
+      `📤 Publishing ${messages.length} events (${count} routing decisions + actions)...`
+    );
 
     for (const msg of messages) {
       await producer.send({

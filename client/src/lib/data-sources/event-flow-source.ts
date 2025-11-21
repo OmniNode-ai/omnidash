@@ -46,28 +46,27 @@ class EventFlowSource {
       }
 
       if (event.data?.durationMs !== undefined) {
-        const duration = ensureNumeric(
-          'durationMs',
-          event.data.durationMs,
-          0,
-          { id: event.id || index, context: 'event-metrics-duration' }
-        );
+        const duration = ensureNumeric('durationMs', event.data.durationMs, 0, {
+          id: event.id || index,
+          context: 'event-metrics-duration',
+        });
         totalProcessingTime += duration;
         processingTimeCount++;
       }
     });
 
     const now = Date.now();
-    const recentEvents = events.filter(e => {
+    const recentEvents = events.filter((e) => {
       const eventTime = new Date(e.timestamp).getTime();
-      return (now - eventTime) < 60000;
+      return now - eventTime < 60000;
     });
 
     return {
       totalEvents: events.length,
       uniqueTypes: typeCount.size,
       eventsPerMinute: recentEvents.length,
-      avgProcessingTime: processingTimeCount > 0 ? Math.round(totalProcessingTime / processingTimeCount) : 0,
+      avgProcessingTime:
+        processingTimeCount > 0 ? Math.round(totalProcessingTime / processingTimeCount) : 0,
       topicCounts: typeCount,
     };
   }
@@ -75,7 +74,7 @@ class EventFlowSource {
   generateChartData(events: Event[]): EventChartData {
     // Throughput chart - group by minute
     const minuteCounts = new Map<string, number>();
-    events.forEach(event => {
+    events.forEach((event) => {
       const time = new Date(event.timestamp);
       const minute = `${time.getHours()}:${time.getMinutes().toString().padStart(2, '0')}`;
       const currentCount = minuteCounts.get(minute);
@@ -92,16 +91,14 @@ class EventFlowSource {
 
     // Lag chart - last 20 events
     const now = Date.now();
-    const lag = events
-      .slice(-20)
-      .map(event => {
-        const eventTime = new Date(event.timestamp).getTime();
-        const lagSeconds = Math.max(0, (now - eventTime) / 1000);
-        return {
-          time: new Date(event.timestamp).toLocaleTimeString(),
-          value: lagSeconds,
-        };
-      });
+    const lag = events.slice(-20).map((event) => {
+      const eventTime = new Date(event.timestamp).getTime();
+      const lagSeconds = Math.max(0, (now - eventTime) / 1000);
+      return {
+        time: new Date(event.timestamp).toLocaleTimeString(),
+        value: lagSeconds,
+      };
+    });
 
     return { throughput, lag };
   }
@@ -114,12 +111,48 @@ class EventFlowSource {
     if (USE_MOCK_DATA && !isTestEnv) {
       const now = Date.now();
       const mockEvents: Event[] = [
-        { id: '1', timestamp: new Date(now).toISOString(), type: 'throughput', source: 'api', data: { count: 1250, endpoint: '/api/agents/execute' } },
-        { id: '2', timestamp: new Date(now - 30000).toISOString(), type: 'pattern-injection', source: 'intelligence', data: { patternId: 'auth-pattern', agentId: 'polymorphic-agent', success: true } },
-        { id: '3', timestamp: new Date(now - 60000).toISOString(), type: 'routing-decision', source: 'router', data: { decision: 'code-reviewer', confidence: 0.94 } },
-        { id: '4', timestamp: new Date(now - 90000).toISOString(), type: 'agent-action', source: 'agent', data: { agentId: 'code-reviewer', action: 'code-review', duration: 1200 } },
-        { id: '5', timestamp: new Date(now - 120000).toISOString(), type: 'throughput', source: 'api', data: { count: 1180, endpoint: '/api/agents/execute' } },
-        { id: '6', timestamp: new Date(now - 150000).toISOString(), type: 'cache-hit', source: 'cache', data: { hitRate: 0.67, key: 'agent-config:polymorphic-agent' } },
+        {
+          id: '1',
+          timestamp: new Date(now).toISOString(),
+          type: 'throughput',
+          source: 'api',
+          data: { count: 1250, endpoint: '/api/agents/execute' },
+        },
+        {
+          id: '2',
+          timestamp: new Date(now - 30000).toISOString(),
+          type: 'pattern-injection',
+          source: 'intelligence',
+          data: { patternId: 'auth-pattern', agentId: 'polymorphic-agent', success: true },
+        },
+        {
+          id: '3',
+          timestamp: new Date(now - 60000).toISOString(),
+          type: 'routing-decision',
+          source: 'router',
+          data: { decision: 'code-reviewer', confidence: 0.94 },
+        },
+        {
+          id: '4',
+          timestamp: new Date(now - 90000).toISOString(),
+          type: 'agent-action',
+          source: 'agent',
+          data: { agentId: 'code-reviewer', action: 'code-review', duration: 1200 },
+        },
+        {
+          id: '5',
+          timestamp: new Date(now - 120000).toISOString(),
+          type: 'throughput',
+          source: 'api',
+          data: { count: 1180, endpoint: '/api/agents/execute' },
+        },
+        {
+          id: '6',
+          timestamp: new Date(now - 150000).toISOString(),
+          type: 'cache-hit',
+          source: 'cache',
+          data: { hitRate: 0.67, key: 'agent-config:polymorphic-agent' },
+        },
       ];
 
       return {
@@ -156,12 +189,48 @@ class EventFlowSource {
     // Mock fallback with comprehensive sample events
     const now = Date.now();
     const mockEvents: Event[] = [
-      { id: '1', timestamp: new Date(now).toISOString(), type: 'throughput', source: 'api', data: { count: 1250, endpoint: '/api/agents/execute' } },
-      { id: '2', timestamp: new Date(now - 30000).toISOString(), type: 'pattern-injection', source: 'intelligence', data: { patternId: 'auth-pattern', agentId: 'polymorphic-agent', success: true } },
-      { id: '3', timestamp: new Date(now - 60000).toISOString(), type: 'routing-decision', source: 'router', data: { decision: 'code-reviewer', confidence: 0.94 } },
-      { id: '4', timestamp: new Date(now - 90000).toISOString(), type: 'agent-action', source: 'agent', data: { agentId: 'code-reviewer', action: 'code-review', duration: 1200 } },
-      { id: '5', timestamp: new Date(now - 120000).toISOString(), type: 'throughput', source: 'api', data: { count: 1180, endpoint: '/api/agents/execute' } },
-      { id: '6', timestamp: new Date(now - 150000).toISOString(), type: 'cache-hit', source: 'cache', data: { hitRate: 0.67, key: 'agent-config:polymorphic-agent' } },
+      {
+        id: '1',
+        timestamp: new Date(now).toISOString(),
+        type: 'throughput',
+        source: 'api',
+        data: { count: 1250, endpoint: '/api/agents/execute' },
+      },
+      {
+        id: '2',
+        timestamp: new Date(now - 30000).toISOString(),
+        type: 'pattern-injection',
+        source: 'intelligence',
+        data: { patternId: 'auth-pattern', agentId: 'polymorphic-agent', success: true },
+      },
+      {
+        id: '3',
+        timestamp: new Date(now - 60000).toISOString(),
+        type: 'routing-decision',
+        source: 'router',
+        data: { decision: 'code-reviewer', confidence: 0.94 },
+      },
+      {
+        id: '4',
+        timestamp: new Date(now - 90000).toISOString(),
+        type: 'agent-action',
+        source: 'agent',
+        data: { agentId: 'code-reviewer', action: 'code-review', duration: 1200 },
+      },
+      {
+        id: '5',
+        timestamp: new Date(now - 120000).toISOString(),
+        type: 'throughput',
+        source: 'api',
+        data: { count: 1180, endpoint: '/api/agents/execute' },
+      },
+      {
+        id: '6',
+        timestamp: new Date(now - 150000).toISOString(),
+        type: 'cache-hit',
+        source: 'cache',
+        data: { hitRate: 0.67, key: 'agent-config:polymorphic-agent' },
+      },
     ];
 
     return {
@@ -174,4 +243,3 @@ class EventFlowSource {
 }
 
 export const eventFlowSource = new EventFlowSource();
-

@@ -1,7 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { intelligenceSavingsSource, formatTimeSaved } from '../intelligence-savings-source';
-import type { SavingsMetrics, AgentComparison, TimeSeriesData, ProviderSavings } from '../intelligence-savings-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import type {
+  SavingsMetrics,
+  AgentComparison,
+  TimeSeriesData,
+  ProviderSavings,
+} from '../intelligence-savings-source';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 describe('IntelligenceSavingsSource', () => {
   beforeEach(() => {
@@ -24,11 +33,7 @@ describe('IntelligenceSavingsSource', () => {
         intelligenceRuns: 8500,
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/savings/metrics', createMockResponse(mockMetrics)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/metrics', createMockResponse(mockMetrics)]]));
 
       const result = await intelligenceSavingsSource.fetchMetrics('24h');
 
@@ -38,9 +43,7 @@ describe('IntelligenceSavingsSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/savings/metrics', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/savings/metrics', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await intelligenceSavingsSource.fetchMetrics('24h');
@@ -50,11 +53,7 @@ describe('IntelligenceSavingsSource', () => {
     });
 
     it('should handle network error in fetchMetrics', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/savings/metrics', new Error('Network connection failed')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/metrics', new Error('Network connection failed')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -90,11 +89,7 @@ describe('IntelligenceSavingsSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/savings/timeseries', createMockResponse(mockTimeSeries)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/timeseries', createMockResponse(mockTimeSeries)]]));
 
       const result = await intelligenceSavingsSource.fetchTimeSeries('7d');
 
@@ -106,9 +101,7 @@ describe('IntelligenceSavingsSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/savings/timeseries', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/savings/timeseries', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await intelligenceSavingsSource.fetchTimeSeries('7d');
@@ -118,11 +111,7 @@ describe('IntelligenceSavingsSource', () => {
     });
 
     it('should handle network error in fetchTimeSeries', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/savings/timeseries', new Error('Connection timeout')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/timeseries', new Error('Connection timeout')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -169,11 +158,7 @@ describe('IntelligenceSavingsSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/savings/agents', createMockResponse(mockComparisons)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/agents', createMockResponse(mockComparisons)]]));
 
       const result = await intelligenceSavingsSource.fetchAgentComparisons('24h');
 
@@ -182,11 +167,7 @@ describe('IntelligenceSavingsSource', () => {
     });
 
     it('should return mock data when API fails', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/savings/agents', createMockResponse(null, { status: 500 })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/agents', createMockResponse(null, { status: 500 })]]));
 
       const result = await intelligenceSavingsSource.fetchAgentComparisons('24h');
 
@@ -195,11 +176,7 @@ describe('IntelligenceSavingsSource', () => {
     });
 
     it('should handle network error in fetchAgentComparisons', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/savings/agents', new Error('API unreachable')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/agents', new Error('API unreachable')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -215,7 +192,6 @@ describe('IntelligenceSavingsSource', () => {
       consoleSpy.mockRestore();
     });
   });
-
 
   describe('fetchAll', () => {
     it('should combine all savings data sources', async () => {
@@ -354,11 +330,7 @@ describe('IntelligenceSavingsSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/savings/providers', createMockResponse(mockProviders)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/providers', createMockResponse(mockProviders)]]));
 
       const result = await intelligenceSavingsSource.fetchProviderSavings('24h');
 
@@ -371,9 +343,7 @@ describe('IntelligenceSavingsSource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/savings/providers', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/savings/providers', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await intelligenceSavingsSource.fetchProviderSavings('24h');
@@ -385,11 +355,7 @@ describe('IntelligenceSavingsSource', () => {
     });
 
     it('should return mock data when API returns empty array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/savings/providers', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/providers', createMockResponse([])]]));
 
       const result = await intelligenceSavingsSource.fetchProviderSavings('7d');
 
@@ -398,11 +364,7 @@ describe('IntelligenceSavingsSource', () => {
     });
 
     it('should handle network errors gracefully', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/savings/providers', new Error('Network error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/savings/providers', new Error('Network error')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -419,16 +381,18 @@ describe('IntelligenceSavingsSource', () => {
     });
 
     it('should pass correct timeRange parameter to API', async () => {
-      const mockProviders: ProviderSavings[] = [{
-        providerId: 'test-provider',
-        providerName: 'Test Provider',
-        savingsAmount: 5000,
-        tokensProcessed: 100000,
-        tokensOffloaded: 50000,
-        percentageOfTotal: 20,
-        avgCostPerToken: 0.00001,
-        runsCount: 1000,
-      }];
+      const mockProviders: ProviderSavings[] = [
+        {
+          providerId: 'test-provider',
+          providerName: 'Test Provider',
+          savingsAmount: 5000,
+          tokensProcessed: 100000,
+          tokensOffloaded: 50000,
+          percentageOfTotal: 20,
+          avgCostPerToken: 0.00001,
+          runsCount: 1000,
+        },
+      ];
 
       const mockFetch = vi.fn(async (url: string) => {
         if (url.includes('timeRange=7d')) {
@@ -441,7 +405,9 @@ describe('IntelligenceSavingsSource', () => {
 
       await intelligenceSavingsSource.fetchProviderSavings('7d');
 
-      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/api/savings/providers?timeRange=7d'));
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/savings/providers?timeRange=7d')
+      );
     });
   });
 
@@ -496,4 +462,3 @@ describe('IntelligenceSavingsSource', () => {
     });
   });
 });
-

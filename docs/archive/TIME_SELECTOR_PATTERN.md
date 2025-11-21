@@ -19,18 +19,18 @@ The time selector is a **button group** (not a dropdown) that provides quick tim
 ### Required Imports
 
 ```tsx
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, RefreshCw } from "lucide-react";
-import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon, RefreshCw } from 'lucide-react';
+import { DateRange } from 'react-day-picker';
+import { format } from 'date-fns';
 ```
 
 ### State Management
 
 ```tsx
-const [timeRange, setTimeRange] = useState("30d");
+const [timeRange, setTimeRange] = useState('30d');
 const [customRange, setCustomRange] = useState<DateRange | undefined>();
 const [showCustomPicker, setShowCustomPicker] = useState(false);
 const [isRefreshing, setIsRefreshing] = useState(false);
@@ -39,33 +39,35 @@ const [isRefreshing, setIsRefreshing] = useState(false);
 ### Complete JSX Implementation
 
 ```tsx
-{/* TIME RANGE CONTROLS - NOW GLOBAL */}
+{
+  /* TIME RANGE CONTROLS - NOW GLOBAL */
+}
 <div className="flex items-center gap-2 ml-2 pl-2 border-l">
   <Button
-    variant={timeRange === "1h" ? "default" : "outline"}
+    variant={timeRange === '1h' ? 'default' : 'outline'}
     size="sm"
-    onClick={() => setTimeRange("1h")}
+    onClick={() => setTimeRange('1h')}
   >
     1H
   </Button>
   <Button
-    variant={timeRange === "24h" ? "default" : "outline"}
+    variant={timeRange === '24h' ? 'default' : 'outline'}
     size="sm"
-    onClick={() => setTimeRange("24h")}
+    onClick={() => setTimeRange('24h')}
   >
     24H
   </Button>
   <Button
-    variant={timeRange === "7d" ? "default" : "outline"}
+    variant={timeRange === '7d' ? 'default' : 'outline'}
     size="sm"
-    onClick={() => setTimeRange("7d")}
+    onClick={() => setTimeRange('7d')}
   >
     7D
   </Button>
   <Button
-    variant={timeRange === "30d" ? "default" : "outline"}
+    variant={timeRange === '30d' ? 'default' : 'outline'}
     size="sm"
-    onClick={() => setTimeRange("30d")}
+    onClick={() => setTimeRange('30d')}
   >
     30D
   </Button>
@@ -73,11 +75,7 @@ const [isRefreshing, setIsRefreshing] = useState(false);
   {/* Custom date range picker */}
   <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
     <PopoverTrigger asChild>
-      <Button
-        variant={timeRange === "custom" ? "default" : "outline"}
-        size="sm"
-        className="gap-2"
-      >
+      <Button variant={timeRange === 'custom' ? 'default' : 'outline'} size="sm" className="gap-2">
         <CalendarIcon className="h-4 w-4" />
         Custom
       </Button>
@@ -89,7 +87,7 @@ const [isRefreshing, setIsRefreshing] = useState(false);
         onSelect={(range) => {
           setCustomRange(range);
           if (range?.from && range?.to) {
-            setTimeRange("custom");
+            setTimeRange('custom');
             setShowCustomPicker(false);
           }
         }}
@@ -100,9 +98,9 @@ const [isRefreshing, setIsRefreshing] = useState(false);
   </Popover>
 
   {/* Show selected custom range */}
-  {timeRange === "custom" && customRange?.from && customRange?.to && (
+  {timeRange === 'custom' && customRange?.from && customRange?.to && (
     <span className="text-sm text-muted-foreground">
-      {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+      {format(customRange.from, 'MMM d')} - {format(customRange.to, 'MMM d, yyyy')}
     </span>
   )}
 
@@ -110,7 +108,7 @@ const [isRefreshing, setIsRefreshing] = useState(false);
     <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
     Refresh
   </Button>
-</div>
+</div>;
 ```
 
 ## Layout Hierarchy
@@ -140,11 +138,13 @@ const [isRefreshing, setIsRefreshing] = useState(false);
 ## Styling Details
 
 ### Container
+
 - `flex items-center gap-2` - Horizontal layout with consistent spacing
 - `ml-2 pl-2` - Left margin and padding for visual separation
 - `border-l` - Vertical divider line (uses theme border color)
 
 ### Buttons
+
 - `size="sm"` - Small button size for compact header
 - `variant={condition ? "default" : "outline"}` - Conditional styling
   - `"default"` - Solid background when active (primary color)
@@ -153,11 +153,13 @@ const [isRefreshing, setIsRefreshing] = useState(false);
 - Custom button has `className="gap-2"` to space icon and text
 
 ### Custom Range Display
+
 - Conditional render: Only shows when `timeRange === "custom"` AND range is complete
 - `text-sm text-muted-foreground` - Smaller, muted text for subtle display
 - Date format: `"MMM d"` for start, `"MMM d, yyyy"` for end
 
 ### Calendar Popover
+
 - `PopoverContent` with `align="end"` - Right-aligns to button
 - `w-auto p-0` - Auto width, no padding (Calendar component has its own)
 - `numberOfMonths={2}` - Shows two months side-by-side
@@ -165,15 +167,15 @@ const [isRefreshing, setIsRefreshing] = useState(false);
 
 ## Key Differences from Dropdown Approach
 
-| Aspect | Button Group (Intelligence Analytics) | Dropdown (Platform Monitoring) |
-|--------|--------------------------------------|--------------------------------|
-| **Component** | Multiple `Button` components | Single `TimeRangeSelector` component |
-| **Visual** | Always visible buttons | Collapsed menu |
-| **Active State** | Button variant changes | Selected option in dropdown |
-| **Position** | Page header, flex container | Inside Card header |
-| **UX Pattern** | Immediate visual feedback | Click-to-reveal options |
-| **Space** | Takes more horizontal space | More compact |
-| **Accessibility** | Each button is focusable | Single trigger button |
+| Aspect            | Button Group (Intelligence Analytics) | Dropdown (Platform Monitoring)       |
+| ----------------- | ------------------------------------- | ------------------------------------ |
+| **Component**     | Multiple `Button` components          | Single `TimeRangeSelector` component |
+| **Visual**        | Always visible buttons                | Collapsed menu                       |
+| **Active State**  | Button variant changes                | Selected option in dropdown          |
+| **Position**      | Page header, flex container           | Inside Card header                   |
+| **UX Pattern**    | Immediate visual feedback             | Click-to-reveal options              |
+| **Space**         | Takes more horizontal space           | More compact                         |
+| **Accessibility** | Each button is focusable              | Single trigger button                |
 
 ## Refresh Button Integration
 
@@ -187,6 +189,7 @@ The Refresh button is part of the same container, appearing after the time selec
 ```
 
 **Features**:
+
 - `disabled={isRefreshing}` - Prevents multiple clicks
 - Spinning animation on icon when refreshing
 - Outline variant to match inactive time buttons

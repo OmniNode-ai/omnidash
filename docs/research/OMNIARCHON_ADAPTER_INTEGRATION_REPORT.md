@@ -11,6 +11,7 @@ Omnidash now has a fully functional `IntelligenceEventAdapter` that publishes co
 ## Current Status
 
 ### ✅ Omnidash Adapter (Complete)
+
 - **File**: `server/intelligence-event-adapter.ts`
 - **Status**: Fully implemented and tested
 - **Format**: Matches OmniClaude's ONEX event envelope format
@@ -20,6 +21,7 @@ Omnidash now has a fully functional `IntelligenceEventAdapter` that publishes co
   - Failed: `dev.archon-intelligence.intelligence.code-analysis-failed.v1`
 
 ### ✅ OmniArchon Handler (Already Exists)
+
 - **File**: `services/intelligence/src/handlers/intelligence_adapter_handler.py`
 - **Status**: Fully implemented
 - **Capabilities**:
@@ -29,6 +31,7 @@ Omnidash now has a fully functional `IntelligenceEventAdapter` that publishes co
   - Proper error handling and retry logic
 
 ### ⚠️ Integration Gap
+
 The handler exists but may not be registered/active in the Kafka consumer. Verification needed.
 
 ## Required Changes in OmniArchon
@@ -40,6 +43,7 @@ The handler exists but may not be registered/active in the Kafka consumer. Verif
 **Action**: Confirm `IntelligenceAdapterHandler` is registered in the handler registry.
 
 **Expected Code** (should already exist):
+
 ```python
 from src.handlers.intelligence_adapter_handler import IntelligenceAdapterHandler
 
@@ -49,6 +53,7 @@ self.register_handler(intelligence_handler)
 ```
 
 **Verification Command**:
+
 ```bash
 grep -n "IntelligenceAdapterHandler\|intelligence.*adapter" services/intelligence/src/kafka_consumer.py
 ```
@@ -62,11 +67,13 @@ grep -n "IntelligenceAdapterHandler\|intelligence.*adapter" services/intelligenc
 **Action**: Confirm the request topic is included in subscribed topics list.
 
 **Expected Topic**:
+
 ```
 dev.archon-intelligence.intelligence.code-analysis-requested.v1
 ```
 
 **Verification**:
+
 ```bash
 grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/kafka_consumer.py | head -20
 ```
@@ -78,6 +85,7 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
 **File**: `services/intelligence/src/handlers/intelligence_adapter_handler.py`
 
 **Status**: ✅ Handler's `can_handle()` method accepts:
+
 - `"CODE_ANALYSIS_REQUESTED"`
 - `"omninode.intelligence.event.code_analysis_requested.v1"`
 - `"intelligence.code-analysis-requested"`
@@ -89,6 +97,7 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
 **File**: `services/intelligence/src/handlers/intelligence_adapter_handler.py`
 
 **Status**: ✅ Handler publishes ONEX-compliant envelopes:
+
 - Uses `ModelEventEnvelope` with proper metadata
 - Includes `correlation_id` at top level
 - Uses `payload` key for response data
@@ -98,6 +107,7 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
 ## Event Format Compatibility
 
 ### Request Format (Omnidash → OmniArchon)
+
 ```json
 {
   "event_id": "uuid",
@@ -118,6 +128,7 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
 ```
 
 ### Response Format (OmniArchon → Omnidash)
+
 ```json
 {
   "correlation_id": "CORR-ID-UPPERCASE",
@@ -139,23 +150,28 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
 ## Testing Checklist
 
 ### Pre-Integration
+
 - [ ] Verify `IntelligenceAdapterHandler` is imported in `kafka_consumer.py`
 - [ ] Verify handler is registered in consumer's handler registry
 - [ ] Verify topic `dev.archon-intelligence.intelligence.code-analysis-requested.v1` is subscribed
 - [ ] Check logs for handler registration: `docker logs archon-intelligence | grep -i "intelligence.*adapter"`
 
 ### Integration Test
+
 1. **Publish Test Event** (from Omnidash):
+
    ```bash
    curl "http://localhost:3000/api/intelligence/events/test/patterns?path=node_*_effect.py&lang=python"
    ```
 
 2. **Monitor OmniArchon Logs**:
+
    ```bash
    docker logs -f archon-intelligence | grep -E "(CODE_ANALYSIS|intelligence.*adapter|Processing.*request)"
    ```
 
 3. **Expected Logs**:
+
    ```
    INFO: Processing CODE_ANALYSIS_REQUESTED | correlation_id=... | source_path=...
    INFO: CODE_ANALYSIS_COMPLETED published | correlation_id=...
@@ -168,6 +184,7 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
    ```
 
 ### Success Criteria
+
 - ✅ Omnidash receives response within timeout (default 5s)
 - ✅ Response contains expected payload structure
 - ✅ OmniArchon logs show successful processing
@@ -176,15 +193,18 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
 ## Troubleshooting
 
 ### Issue: Timeout (No Response)
+
 **Symptoms**: Omnidash adapter times out waiting for response
 
 **Possible Causes**:
+
 1. Handler not registered in consumer
 2. Topic not subscribed
 3. Handler throwing exception during processing
 4. Response publishing failing
 
 **Debug Steps**:
+
 ```bash
 # 1. Check handler registration
 docker exec archon-intelligence python3 -c "
@@ -205,11 +225,13 @@ docker logs archon-intelligence | grep -i "error.*intelligence.*adapter"
 ```
 
 ### Issue: Invalid Event Format
+
 **Symptoms**: Handler logs "cannot handle event" or validation errors
 
 **Fix**: Already addressed - Omnidash adapter now sends correct format matching OmniClaude pattern.
 
 ### Issue: Correlation ID Mismatch
+
 **Symptoms**: Response received but not matched to pending request
 
 **Fix**: Ensure correlation_id is UPPERCASE and matches exactly between request and response.
@@ -217,12 +239,14 @@ docker logs archon-intelligence | grep -i "error.*intelligence.*adapter"
 ## Implementation Notes
 
 ### Omnidash Adapter Updates
+
 1. ✅ Event envelope format matches OmniClaude pattern
 2. ✅ Response parsing extracts `payload` from ONEX envelope
 3. ✅ Correlation ID handling matches (UPPERCASE)
 4. ✅ Error extraction from failed responses
 
 ### OmniArchon Handler (No Changes Needed)
+
 - Handler already supports the event format we're sending
 - Handler already publishes correct response format
 - Handler already handles all required operation types
@@ -249,4 +273,3 @@ docker logs archon-intelligence | grep -i "error.*intelligence.*adapter"
 - **OmniArchon Handler**: `/Volumes/PRO-G40/Code/omniarchon/services/intelligence/src/handlers/intelligence_adapter_handler.py`
 - **Omnidash Adapter**: `server/intelligence-event-adapter.ts`
 - **Event Schemas**: `/Volumes/PRO-G40/Code/omniarchon/services/intelligence/src/events/models/intelligence_adapter_events.py`
-

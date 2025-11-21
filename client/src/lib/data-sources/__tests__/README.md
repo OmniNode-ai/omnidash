@@ -67,26 +67,31 @@ Utility functions for mocking fetch in tests:
 ## Running Tests
 
 ### Run all tests
+
 ```bash
 npm test
 ```
 
 ### Run tests in watch mode
+
 ```bash
 npm test -- --watch
 ```
 
 ### Run tests with coverage
+
 ```bash
 npm run test:coverage
 ```
 
 ### Run tests with UI
+
 ```bash
 npm run test:ui
 ```
 
 ### Run specific test file
+
 ```bash
 npm test -- agent-management-source.test.ts
 ```
@@ -122,6 +127,7 @@ Tests verify that weighted averages are calculated correctly based on request vo
 ### Testing Fallback Logic
 
 Tests verify that when primary API fails, the source falls back to:
+
 1. Alternative API endpoint
 2. Mock data with `isMock: true` flag
 
@@ -151,7 +157,11 @@ Example:
 ```typescript
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { myDataSource } from '../my-data-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 describe('MyDataSource', () => {
   beforeEach(() => {
@@ -170,10 +180,3 @@ describe('MyDataSource', () => {
   });
 });
 ```
-
-
-
-
-
-
-

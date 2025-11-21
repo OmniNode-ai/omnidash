@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 /**
  * Event Bus Verification Tests
- * 
+ *
  * Verifies that:
  * 1. Event bus API endpoints are working
  * 2. Events are being generated and stored
@@ -17,26 +17,26 @@ test.describe('Event Bus Verification', () => {
     test('should return event bus status', async ({ request }) => {
       const response = await request.get(`${BASE_URL}/api/event-bus/status`);
       expect(response.ok()).toBeTruthy();
-      
+
       const data = await response.json();
       expect(data).toHaveProperty('active');
       expect(data).toHaveProperty('connected');
       expect(data).toHaveProperty('status');
-      
-      console.log('Event Bus Status:', data);
+
+      console.warn('Event Bus Status:', data);
     });
 
     test('should query events from event bus', async ({ request }) => {
       const response = await request.get(`${BASE_URL}/api/event-bus/events?limit=10`);
       expect(response.ok()).toBeTruthy();
-      
+
       const data = await response.json();
       expect(data).toHaveProperty('events');
       expect(data).toHaveProperty('count');
       expect(Array.isArray(data.events)).toBeTruthy();
-      
-      console.log(`Found ${data.count} events`);
-      
+
+      console.warn(`Found ${data.count} events`);
+
       // If events exist, verify structure
       if (data.events.length > 0) {
         const event = data.events[0];
@@ -45,8 +45,8 @@ test.describe('Event Bus Verification', () => {
         expect(event).toHaveProperty('timestamp');
         expect(event).toHaveProperty('tenant_id');
         expect(event).toHaveProperty('payload');
-        
-        console.log('Sample event:', {
+
+        console.warn('Sample event:', {
           type: event.event_type,
           id: event.event_id,
           timestamp: event.timestamp,
@@ -59,10 +59,10 @@ test.describe('Event Bus Verification', () => {
         `${BASE_URL}/api/event-bus/events?event_types=omninode.agent.execution.completed.v1&limit=5`
       );
       expect(response.ok()).toBeTruthy();
-      
+
       const data = await response.json();
       expect(Array.isArray(data.events)).toBeTruthy();
-      
+
       // Verify all returned events match the filter
       data.events.forEach((event: any) => {
         expect(event.event_type).toBe('omninode.agent.execution.completed.v1');
@@ -72,14 +72,14 @@ test.describe('Event Bus Verification', () => {
     test('should return event statistics', async ({ request }) => {
       const response = await request.get(`${BASE_URL}/api/event-bus/statistics`);
       expect(response.ok()).toBeTruthy();
-      
+
       const data = await response.json();
       expect(data).toHaveProperty('total_events');
       expect(data).toHaveProperty('events_by_type');
       expect(data).toHaveProperty('events_by_tenant');
       expect(data).toHaveProperty('events_per_minute');
-      
-      console.log('Event Statistics:', {
+
+      console.warn('Event Statistics:', {
         total: data.total_events,
         byType: Object.keys(data.events_by_type).length,
         perMinute: data.events_per_minute.toFixed(2),
@@ -97,7 +97,7 @@ test.describe('Event Bus Verification', () => {
       await expect(page).toHaveTitle(/Intelligence|Omnidash/i);
 
       // Check for data indicators
-      const hasData = await page.locator('text=/\\d+/').count() > 0;
+      const hasData = (await page.locator('text=/\\d+/').count()) > 0;
       expect(hasData).toBeTruthy();
 
       // Take snapshot
@@ -112,7 +112,7 @@ test.describe('Event Bus Verification', () => {
       await page.waitForTimeout(2000);
 
       // Verify routing decisions or agent data is visible
-      const hasContent = await page.locator('main').count() > 0;
+      const hasContent = (await page.locator('main').count()) > 0;
       expect(hasContent).toBeTruthy();
 
       // Take snapshot
@@ -127,7 +127,7 @@ test.describe('Event Bus Verification', () => {
       await page.waitForTimeout(2000);
 
       // Check for event metrics
-      const metricsVisible = await page.locator('text=/events|total|throughput/i').count() > 0;
+      const metricsVisible = (await page.locator('text=/events|total|throughput/i').count()) > 0;
       expect(metricsVisible).toBeTruthy();
 
       // Take snapshot
@@ -142,7 +142,7 @@ test.describe('Event Bus Verification', () => {
       await page.waitForTimeout(2000);
 
       // Verify page loaded (main content exists)
-      const hasContent = await page.locator('main').count() > 0;
+      const hasContent = (await page.locator('main').count()) > 0;
       expect(hasContent).toBeTruthy();
 
       // Take snapshot (even if health data isn't visible yet)
@@ -160,14 +160,14 @@ test.describe('Event Bus Verification', () => {
       const initialCount = initialData.count;
 
       // Wait for new events to be generated (mock generator runs every 5 seconds)
-      await new Promise(resolve => setTimeout(resolve, 6000));
+      await new Promise((resolve) => setTimeout(resolve, 6000));
 
       // Get updated count
       const updatedResponse = await request.get(`${BASE_URL}/api/event-bus/events?limit=1`);
       const updatedData = await updatedResponse.json();
       const updatedCount = updatedData.count;
 
-      console.log(`Event count: ${initialCount} → ${updatedCount}`);
+      console.warn(`Event count: ${initialCount} → ${updatedCount}`);
 
       // Events should be increasing (or at least not decreasing)
       expect(updatedCount).toBeGreaterThanOrEqual(initialCount);
@@ -182,9 +182,7 @@ test.describe('Event Bus Verification', () => {
 
       if (data.events.length > 0) {
         // Find events with correlation_id
-        const eventsWithCorrelation = data.events.filter(
-          (e: any) => e.correlation_id
-        );
+        const eventsWithCorrelation = data.events.filter((e: any) => e.correlation_id);
 
         if (eventsWithCorrelation.length > 0) {
           const correlationId = eventsWithCorrelation[0].correlation_id;
@@ -197,11 +195,11 @@ test.describe('Event Bus Verification', () => {
 
           // Should have multiple events in the chain
           expect(chainData.events.length).toBeGreaterThan(0);
-          console.log(`Found ${chainData.events.length} events in chain: ${correlationId}`);
+          console.warn(`Found ${chainData.events.length} events in chain: ${correlationId}`);
 
           // Verify event types in chain
           const eventTypes = chainData.events.map((e: any) => e.event_type);
-          console.log('Event types in chain:', eventTypes);
+          console.warn('Event types in chain:', eventTypes);
         }
       }
     });
@@ -225,7 +223,7 @@ test.describe('Event Bus Verification', () => {
         expect(typeCount).toBeGreaterThanOrEqual(stats.total_events);
       }
 
-      console.log('Statistics validation passed:', {
+      console.warn('Statistics validation passed:', {
         total: stats.total_events,
         types: Object.keys(stats.events_by_type).length,
         tenants: Object.keys(stats.events_by_tenant).length,
@@ -250,10 +248,10 @@ test.describe('Event Bus Verification', () => {
       await page.waitForLoadState('networkidle');
 
       // Check for WebSocket connection indicators
-      const wsIndicators = await page.locator('text=/connected|streaming|real-time/i').count();
-      
+      const _wsIndicators = await page.locator('text=/connected|streaming|real-time/i').count();
+
       // May or may not have visible indicators, but page should load
-      const pageLoaded = await page.locator('main').count() > 0;
+      const pageLoaded = (await page.locator('main').count()) > 0;
       expect(pageLoaded).toBeTruthy();
     });
   });
@@ -275,7 +273,9 @@ test.describe('Event Bus Verification', () => {
 
           // Verify event_type format matches catalog pattern
           // Pattern can be: {tenant}.omninode.{domain}.v{version} OR omninode.{domain}.v{version} OR onex.{domain}.v{version}
-          const isValidPattern = /^([^.]+\.)?omninode\..*\.v\d+$|^([^.]+\.)?onex\..*\.v\d+$/.test(event.event_type);
+          const isValidPattern = /^([^.]+\.)?omninode\..*\.v\d+$|^([^.]+\.)?onex\..*\.v\d+$/.test(
+            event.event_type
+          );
           expect(isValidPattern).toBeTruthy();
 
           // Verify payload is an object
@@ -292,12 +292,12 @@ test.describe('Event Bus Verification', () => {
         const now = Date.now();
         data.events.forEach((event: any) => {
           const eventTime = new Date(event.timestamp).getTime();
-          
+
           // Event timestamp should be in the past (not future)
           expect(eventTime).toBeLessThanOrEqual(now);
-          
+
           // Event timestamp should be recent (within last 24 hours for mock data)
-          const oneDayAgo = now - (24 * 60 * 60 * 1000);
+          const oneDayAgo = now - 24 * 60 * 60 * 1000;
           expect(eventTime).toBeGreaterThanOrEqual(oneDayAgo);
         });
       }
@@ -326,15 +326,14 @@ test.describe('Event Bus Verification', () => {
 
       if (data.events.length > 0) {
         const eventTypes = new Set(data.events.map((e: any) => e.event_type));
-        console.log('Found event types:', Array.from(eventTypes));
+        console.warn('Found event types:', Array.from(eventTypes));
 
         // Verify all event types match known patterns
         eventTypes.forEach((eventType) => {
-          const matches = validPatterns.some(pattern => pattern.test(eventType as string));
+          const matches = validPatterns.some((pattern) => pattern.test(eventType as string));
           expect(matches).toBeTruthy();
         });
       }
     });
   });
 });
-

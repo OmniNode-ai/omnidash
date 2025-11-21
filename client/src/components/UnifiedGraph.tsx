@@ -70,11 +70,7 @@ const LINE_HEIGHT_RATIO = 1.15; // Line height multiplier (tighter spacing)
  * Helper to split text into multiple lines that fit within a circle
  * Returns array of lines with word wrapping
  */
-function wrapTextForCircle(
-  text: string,
-  radius: number,
-  fontSize: number
-): string[] {
+function wrapTextForCircle(text: string, radius: number, fontSize: number): string[] {
   const words = text.split(' ');
   const lines: string[] = [];
   const charWidth = fontSize * CHAR_WIDTH_RATIO;
@@ -138,8 +134,7 @@ function wrapTextForCircle(
  */
 function calculateTextDisplay(
   text: string,
-  radius: number,
-  fontFamily: string = 'IBM Plex Sans, sans-serif'
+  radius: number
 ): { fontSize: number; lines: string[]; needsEllipsis: boolean } {
   // Start with maximum font size for this radius
   let fontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, radius * 0.24));
@@ -151,11 +146,11 @@ function calculateTextDisplay(
 
   // Try to fit text with current font size
   let lines = wrapTextForCircle(text, radius, fontSize);
-  let needsEllipsis = lines.some(line => line.includes('…'));
+  let needsEllipsis = lines.some((line) => line.includes('…'));
 
   // Dynamic font sizing (iOS-style): Aggressively reduce font size until text fits
   let attempts = 0;
-  const maxAttempts = 8;  // More attempts for better fitting
+  const maxAttempts = 8; // More attempts for better fitting
 
   while (needsEllipsis && fontSize > MIN_FONT_SIZE && attempts < maxAttempts) {
     // Reduce font size by 15% (more aggressive than before)
@@ -163,7 +158,7 @@ function calculateTextDisplay(
 
     // Recalculate with smaller font
     lines = wrapTextForCircle(text, radius, fontSize);
-    needsEllipsis = lines.some(line => line.includes('…'));
+    needsEllipsis = lines.some((line) => line.includes('…'));
 
     attempts++;
   }
@@ -215,8 +210,8 @@ function calculateHierarchyLayout(
   const VERTICAL_PADDING = Math.max(60, height * 0.1);
   const MIN_NODE_SPACING = 150; // Minimum horizontal spacing between nodes
 
-  const usableWidth = width - (HORIZONTAL_PADDING * 2);
-  const usableHeight = height - (VERTICAL_PADDING * 2);
+  const usableWidth = width - HORIZONTAL_PADDING * 2;
+  const usableHeight = height - VERTICAL_PADDING * 2;
 
   // Build adjacency list
   const children: Record<string, string[]> = {};
@@ -279,7 +274,6 @@ function calculateHierarchyLayout(
     const nodeCount = nodeIds.length;
 
     // Calculate spacing based on node count and available width
-    const totalMinSpacing = (nodeCount - 1) * MIN_NODE_SPACING;
     const actualSpacing = Math.max(MIN_NODE_SPACING, usableWidth / (nodeCount + 1));
 
     // Center the nodes horizontally
@@ -288,7 +282,7 @@ function calculateHierarchyLayout(
 
     nodeIds.forEach((id, i) => {
       positions[id] = {
-        x: nodeCount === 1 ? width / 2 : startX + (i * actualSpacing),
+        x: nodeCount === 1 ? width / 2 : startX + i * actualSpacing,
         y: VERTICAL_PADDING + (level + 0.5) * levelHeight,
       };
     });
@@ -304,7 +298,6 @@ export function UnifiedGraph({
   width = '100%',
   height = 500,
   interactive = true,
-  zoomable = false,
   title,
   subtitle,
   onNodeClick,
@@ -329,9 +322,12 @@ export function UnifiedGraph({
 
       const rect = containerRef.current.getBoundingClientRect();
       const w = typeof width === 'number' ? width : rect.width || 800;
-      const h = typeof height === 'number' ? height :
-               (typeof height === 'string' && height.includes('vh')) ?
-               window.innerHeight * 0.7 : 600; // Default to 70vh or 600px
+      const h =
+        typeof height === 'number'
+          ? height
+          : typeof height === 'string' && height.includes('vh')
+            ? window.innerHeight * 0.7
+            : 600; // Default to 70vh or 600px
 
       setDimensions({ width: w, height: h });
     };
@@ -487,7 +483,9 @@ export function UnifiedGraph({
   const handleClick = (e: React.MouseEvent) => {
     if (!interactive || !onNodeClick) return;
 
-    const rect = (renderMode === 'canvas' ? canvasRef.current : svgRef.current)?.getBoundingClientRect();
+    const rect = (
+      renderMode === 'canvas' ? canvasRef.current : svgRef.current
+    )?.getBoundingClientRect();
     if (!rect) return;
 
     const x = e.clientX - rect.left;
@@ -513,7 +511,9 @@ export function UnifiedGraph({
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!interactive) return;
 
-    const rect = (renderMode === 'canvas' ? canvasRef.current : svgRef.current)?.getBoundingClientRect();
+    const rect = (
+      renderMode === 'canvas' ? canvasRef.current : svgRef.current
+    )?.getBoundingClientRect();
     if (!rect) return;
 
     const x = e.clientX - rect.left;
@@ -551,9 +551,7 @@ export function UnifiedGraph({
                 {hoveredNode ? (
                   <>
                     <span className="font-medium">{hoveredNode.label}</span>
-                    {hoveredNode.type && (
-                      <span className="text-xs ml-2">({hoveredNode.type})</span>
-                    )}
+                    {hoveredNode.type && <span className="text-xs ml-2">({hoveredNode.type})</span>}
                   </>
                 ) : (
                   subtitle
@@ -626,11 +624,13 @@ export function UnifiedGraph({
 
               if (!sourcePos || !targetPos) return null;
 
-              const color = (edge.type && defaultColorScheme[edge.type as keyof typeof defaultColorScheme]) || '#94a3b8';
+              const color =
+                (edge.type && defaultColorScheme[edge.type as keyof typeof defaultColorScheme]) ||
+                '#94a3b8';
               const strokeWidth = edge.weight ? 1 + edge.weight * 2 : 1;
 
               // Calculate target node radius to adjust line endpoint
-              const targetNode = nodes.find(n => n.id === edge.target);
+              const targetNode = nodes.find((n) => n.id === edge.target);
               const targetRadius = targetNode?.size ?? 30;
 
               // Calculate edge angle and adjust endpoint to stop at node edge
@@ -728,7 +728,10 @@ export function UnifiedGraph({
               if (!pos) return null;
 
               const radius = node.size || 30; // Default to 30px for better readability
-              const color = node.color || (node.type && defaultColorScheme[node.type as keyof typeof defaultColorScheme]) || '#3b82f6';
+              const color =
+                node.color ||
+                (node.type && defaultColorScheme[node.type as keyof typeof defaultColorScheme]) ||
+                '#3b82f6';
 
               // Calculate optimal text display using helper function with multi-line support
               const { fontSize, lines, needsEllipsis } = calculateTextDisplay(node.label, radius);
@@ -766,11 +769,7 @@ export function UnifiedGraph({
                     fontSize={fontSize}
                   >
                     {lines.map((line, i) => (
-                      <tspan
-                        key={i}
-                        x={pos.x}
-                        dy={i === 0 ? 0 : lineHeight}
-                      >
+                      <tspan key={i} x={pos.x} dy={i === 0 ? 0 : lineHeight}>
                         {line}
                       </tspan>
                     ))}
@@ -798,10 +797,7 @@ export function UnifiedGraph({
         <div className="mt-4 flex flex-wrap gap-3 text-xs">
           {Object.entries(defaultColorScheme).map(([type, color]) => (
             <div key={type} className="flex items-center gap-1.5">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: color }}
-              />
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
               <span className="text-muted-foreground capitalize">{type}</span>
             </div>
           ))}

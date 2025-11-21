@@ -1,31 +1,21 @@
-import { MetricCard } from "@/components/MetricCard";
-import { QualityGatePanel } from "@/components/QualityGatePanel";
-import { PerformanceThresholds } from "@/components/PerformanceThresholds";
-import { RealtimeChart } from "@/components/RealtimeChart";
-import { MockDataBadge } from "@/components/MockDataBadge";
-import { ensureTimeSeries } from "@/components/mockUtils";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
-import { ExportButton } from "@/components/ExportButton";
-import { Code, Search, CheckCircle, Gauge, AlertTriangle, FileCode, Shield } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { codeIntelligenceSource } from "@/lib/data-sources";
-import { POLLING_INTERVAL_SLOW, getPollingInterval } from "@/lib/constants/query-config";
-
-// Types from data source
-import type { CodeAnalysisData, ComplianceData } from "@/lib/data-sources/code-intelligence-source";
+import { MetricCard } from '@/components/MetricCard';
+import { QualityGatePanel } from '@/components/QualityGatePanel';
+import { PerformanceThresholds } from '@/components/PerformanceThresholds';
+import { RealtimeChart } from '@/components/RealtimeChart';
+import { MockDataBadge } from '@/components/MockDataBadge';
+import { ensureTimeSeries } from '@/components/mockUtils';
+import { Gauge, AlertTriangle, FileCode, Shield } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { codeIntelligenceSource } from '@/lib/data-sources';
+import { POLLING_INTERVAL_SLOW, getPollingInterval } from '@/lib/constants/query-config';
 
 export default function CodeIntelligence() {
-  const [timeRange, setTimeRange] = useState(() => {
+  const [timeRange] = useState(() => {
     return localStorage.getItem('dashboard-timerange') || '24h';
   });
-
-  const handleTimeRangeChange = (value: string) => {
-    setTimeRange(value);
-    localStorage.setItem('dashboard-timerange', value);
-  };
 
   // Use centralized data source
   const { data: intelligenceData, isLoading } = useQuery({
@@ -37,48 +27,115 @@ export default function CodeIntelligence() {
 
   const codeAnalysis = intelligenceData?.codeAnalysis;
   const complianceData = intelligenceData?.compliance;
-  const usingMockData = intelligenceData?.isMock || false;
   const isLoadingCompliance = isLoading;
 
   // Mock data for gates and thresholds (not yet available from API)
   const usingMockGates = true;
   const gates = [
-    { id: '1', name: 'Code Coverage', status: 'passed' as const, threshold: '> 80%', currentValue: '87%' },
-    { id: '2', name: 'Cyclomatic Complexity', status: codeAnalysis && codeAnalysis.avg_complexity > 10 ? 'warning' as const : 'passed' as const, threshold: '< 10', currentValue: codeAnalysis ? codeAnalysis.avg_complexity.toFixed(1) : '7.2' },
-    { id: '3', name: 'Response Time', status: 'warning' as const, threshold: '< 200ms', currentValue: '185ms' },
-    { id: '4', name: 'Error Rate', status: 'passed' as const, threshold: '< 1%', currentValue: '0.3%' },
-    { id: '5', name: 'Security Vulnerabilities', status: codeAnalysis && codeAnalysis.security_issues > 0 ? 'failed' as const : 'passed' as const, threshold: '= 0', currentValue: codeAnalysis ? codeAnalysis.security_issues.toString() : '2' },
-    { id: '6', name: 'Code Duplication', status: 'passed' as const, threshold: '< 3%', currentValue: '1.8%' },
+    {
+      id: '1',
+      name: 'Code Coverage',
+      status: 'passed' as const,
+      threshold: '> 80%',
+      currentValue: '87%',
+    },
+    {
+      id: '2',
+      name: 'Cyclomatic Complexity',
+      status:
+        codeAnalysis && codeAnalysis.avg_complexity > 10
+          ? ('warning' as const)
+          : ('passed' as const),
+      threshold: '< 10',
+      currentValue: codeAnalysis ? codeAnalysis.avg_complexity.toFixed(1) : '7.2',
+    },
+    {
+      id: '3',
+      name: 'Response Time',
+      status: 'warning' as const,
+      threshold: '< 200ms',
+      currentValue: '185ms',
+    },
+    {
+      id: '4',
+      name: 'Error Rate',
+      status: 'passed' as const,
+      threshold: '< 1%',
+      currentValue: '0.3%',
+    },
+    {
+      id: '5',
+      name: 'Security Vulnerabilities',
+      status:
+        codeAnalysis && codeAnalysis.security_issues > 0
+          ? ('failed' as const)
+          : ('passed' as const),
+      threshold: '= 0',
+      currentValue: codeAnalysis ? codeAnalysis.security_issues.toString() : '2',
+    },
+    {
+      id: '6',
+      name: 'Code Duplication',
+      status: 'passed' as const,
+      threshold: '< 3%',
+      currentValue: '1.8%',
+    },
   ];
 
   const usingMockThresholds = true;
   const thresholds = [
-    { id: '1', name: 'API Response Time', current: 145, max: 200, unit: 'ms', warning: 70, critical: 90 },
+    {
+      id: '1',
+      name: 'API Response Time',
+      current: 145,
+      max: 200,
+      unit: 'ms',
+      warning: 70,
+      critical: 90,
+    },
     { id: '2', name: 'Memory Usage', current: 5.2, max: 8, unit: 'GB', warning: 75, critical: 90 },
-    { id: '3', name: 'Database Connections', current: 450, max: 1000, unit: 'conns', warning: 70, critical: 85 },
-    { id: '4', name: 'CPU Utilization', current: 68, max: 100, unit: '%', warning: 70, critical: 90 },
+    {
+      id: '3',
+      name: 'Database Connections',
+      current: 450,
+      max: 1000,
+      unit: 'conns',
+      warning: 70,
+      critical: 85,
+    },
+    {
+      id: '4',
+      name: 'CPU Utilization',
+      current: 68,
+      max: 100,
+      unit: '%',
+      warning: 70,
+      critical: 90,
+    },
   ];
-  
-  // Track which data sources are using mock data
-  const usingMockCodeAnalysis = !codeAnalysis || (codeAnalysis.files_analyzed === 0 && !isLoading);
-  const usingMockCompliance = !complianceData || (complianceData.summary.totalFiles === 0 && !isLoadingCompliance);
 
   // Transform complexity trend for chart
   const searchDataRaw = codeAnalysis?.complexity_trend
-    ? codeAnalysis.complexity_trend.map(item => ({
-        time: new Date(item.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    ? codeAnalysis.complexity_trend.map((item) => ({
+        time: new Date(item.timestamp).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
         value: item.value,
       }))
-    : [] as Array<{ time: string; value: number }>;
+    : ([] as Array<{ time: string; value: number }>);
   const { data: searchData, isMock: isSearchMock } = ensureTimeSeries(searchDataRaw, 220, 80);
 
   // Transform quality trend for chart
   const qualityDataRaw = codeAnalysis?.quality_trend
-    ? codeAnalysis.quality_trend.map(item => ({
-        time: new Date(item.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    ? codeAnalysis.quality_trend.map((item) => ({
+        time: new Date(item.timestamp).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
         value: item.value,
       }))
-    : [] as Array<{ time: string; value: number }>;
+    : ([] as Array<{ time: string; value: number }>);
   const { data: qualityData, isMock: isQualityMock } = ensureTimeSeries(qualityDataRaw, 82, 8);
 
   return (
@@ -86,31 +143,39 @@ export default function CodeIntelligence() {
       <Card>
         <CardHeader>
           <CardTitle>Code Intelligence Metrics</CardTitle>
-          <CardDescription>Overview of code quality, complexity, and security issues across analyzed files</CardDescription>
+          <CardDescription>
+            Overview of code quality, complexity, and security issues across analyzed files
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-4 gap-6">
             <MetricCard
               label="Files Analyzed"
-              value={isLoading ? '...' : (codeAnalysis?.files_analyzed?.toLocaleString() || '0')}
+              value={isLoading ? '...' : codeAnalysis?.files_analyzed?.toLocaleString() || '0'}
               icon={FileCode}
               status="healthy"
             />
             <MetricCard
               label="Avg Complexity"
-              value={isLoading ? '...' : (codeAnalysis?.avg_complexity?.toFixed(1) || '0')}
+              value={isLoading ? '...' : codeAnalysis?.avg_complexity?.toFixed(1) || '0'}
               icon={Gauge}
               status={codeAnalysis && codeAnalysis.avg_complexity > 10 ? 'warning' : 'healthy'}
             />
             <MetricCard
               label="Code Smells"
-              value={isLoading ? '...' : (codeAnalysis?.code_smells?.toString() || '0')}
+              value={isLoading ? '...' : codeAnalysis?.code_smells?.toString() || '0'}
               icon={AlertTriangle}
-              status={codeAnalysis && codeAnalysis.code_smells > 10 ? 'warning' : codeAnalysis && codeAnalysis.code_smells > 0 ? 'warning' : 'healthy'}
+              status={
+                codeAnalysis && codeAnalysis.code_smells > 10
+                  ? 'warning'
+                  : codeAnalysis && codeAnalysis.code_smells > 0
+                    ? 'warning'
+                    : 'healthy'
+              }
             />
             <MetricCard
               label="Security Issues"
-              value={isLoading ? '...' : (codeAnalysis?.security_issues?.toString() || '0')}
+              value={isLoading ? '...' : codeAnalysis?.security_issues?.toString() || '0'}
               icon={AlertTriangle}
               status={codeAnalysis && codeAnalysis.security_issues > 0 ? 'error' : 'healthy'}
             />
@@ -148,19 +213,25 @@ export default function CodeIntelligence() {
             <div>
               <h3 className="text-lg font-semibold">ONEX Compliance Coverage</h3>
               <p className="text-sm text-muted-foreground">
-                {isLoadingCompliance ? 'Loading...' : `${complianceData?.summary.totalFiles || 0} files tracked`}
+                {isLoadingCompliance
+                  ? 'Loading...'
+                  : `${complianceData?.summary.totalFiles || 0} files tracked`}
               </p>
             </div>
           </div>
           <div className="text-right">
-            <div className={`text-3xl font-bold ${
-              (complianceData?.summary.compliancePercentage || 0) >= 80
-                ? 'text-green-500'
-                : (complianceData?.summary.compliancePercentage || 0) >= 60
-                ? 'text-yellow-500'
-                : 'text-red-500'
-            }`}>
-              {isLoadingCompliance ? '...' : `${Math.max(0, Math.min(100, complianceData?.summary.compliancePercentage || 0)).toFixed(1)}%`}
+            <div
+              className={`text-3xl font-bold ${
+                (complianceData?.summary.compliancePercentage || 0) >= 80
+                  ? 'text-green-500'
+                  : (complianceData?.summary.compliancePercentage || 0) >= 60
+                    ? 'text-yellow-500'
+                    : 'text-red-500'
+              }`}
+            >
+              {isLoadingCompliance
+                ? '...'
+                : `${Math.max(0, Math.min(100, complianceData?.summary.compliancePercentage || 0)).toFixed(1)}%`}
             </div>
             <div className="text-xs text-muted-foreground mt-1">Compliance Rate</div>
           </div>
@@ -177,7 +248,8 @@ export default function CodeIntelligence() {
             <Progress
               value={
                 complianceData?.summary.totalFiles
-                  ? (complianceData.summary.compliantFiles / complianceData.summary.totalFiles) * 100
+                  ? (complianceData.summary.compliantFiles / complianceData.summary.totalFiles) *
+                    100
                   : 0
               }
               className="h-2 bg-green-500/20"
@@ -193,7 +265,8 @@ export default function CodeIntelligence() {
             <Progress
               value={
                 complianceData?.summary.totalFiles
-                  ? (complianceData.summary.nonCompliantFiles / complianceData.summary.totalFiles) * 100
+                  ? (complianceData.summary.nonCompliantFiles / complianceData.summary.totalFiles) *
+                    100
                   : 0
               }
               className="h-2 bg-red-500/20"
@@ -246,11 +319,11 @@ export default function CodeIntelligence() {
           <div className="mt-6">
             <RealtimeChart
               title="Compliance Trend"
-              data={complianceData.trend.map(t => ({
+              data={complianceData.trend.map((t) => ({
                 time: new Date(t.period).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
-                  hour: timeRange === '24h' ? '2-digit' : undefined
+                  hour: timeRange === '24h' ? '2-digit' : undefined,
                 }),
                 value: t.compliancePercentage,
               }))}

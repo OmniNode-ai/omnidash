@@ -1,25 +1,11 @@
-import React from "react";
-import { DetailModal } from "./DetailModal";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { 
-  Bot, 
-  Settings, 
-  Play, 
-  Download, 
-  RefreshCw, 
-  Code, 
-  Zap, 
-  Clock, 
-  CheckCircle, 
-  XCircle,
-  Activity,
-  TrendingUp,
-  Target
-} from "lucide-react";
+import React from 'react';
+import { DetailModal } from './DetailModal';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Settings, Play, Download, RefreshCw, Clock } from 'lucide-react';
 
 interface Agent {
   id: string;
@@ -59,16 +45,15 @@ interface AgentRegistryDetailModalProps {
   onClose: () => void;
 }
 
-export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegistryDetailModalProps) {
+export function AgentRegistryDetailModal({
+  agent,
+  isOpen,
+  onClose,
+}: AgentRegistryDetailModalProps) {
   if (!agent) return null;
 
   return (
-    <DetailModal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={agent.title}
-      subtitle={agent.name}
-    >
+    <DetailModal isOpen={isOpen} onClose={onClose} title={agent.title} subtitle={agent.name}>
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -82,7 +67,7 @@ export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegist
             <h3 className="font-semibold mb-2">Description</h3>
             <p className="text-sm text-muted-foreground">{agent.description}</p>
           </div>
-          
+
           {agent.activationTriggers && agent.activationTriggers.length > 0 && (
             <div>
               <h3 className="font-semibold mb-2">Activation Triggers</h3>
@@ -108,7 +93,8 @@ export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegist
             <Card className="p-4">
               <div className="text-xs text-muted-foreground mb-1">Avg Execution Time</div>
               <div className="text-2xl font-bold font-mono">
-                {agent.performance?.avgExecutionTime != null || agent.performance?.avgResponseTime != null
+                {agent.performance?.avgExecutionTime != null ||
+                agent.performance?.avgResponseTime != null
                   ? `${(agent.performance.avgExecutionTime || agent.performance.avgResponseTime || 0).toFixed(0)}ms`
                   : 'N/A'}
               </div>
@@ -119,7 +105,11 @@ export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegist
             <Card className="p-4">
               <div className="text-xs text-muted-foreground mb-1">Total Runs</div>
               <div className="text-lg font-semibold">
-                {(agent.performance?.totalRuns || agent.performance?.totalExecutions || 0).toLocaleString()}
+                {(
+                  agent.performance?.totalRuns ||
+                  agent.performance?.totalExecutions ||
+                  0
+                ).toLocaleString()}
               </div>
             </Card>
             <Card className="p-4">
@@ -144,9 +134,7 @@ export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegist
                       {capability.level}
                     </Badge>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {capability.description}
-                  </div>
+                  <div className="text-xs text-muted-foreground">{capability.description}</div>
                 </Card>
               ))
             ) : (
@@ -171,7 +159,11 @@ export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegist
                   <span className="text-muted-foreground">Target: 95%</span>
                 </div>
                 <Progress
-                  value={agent.performance?.successRate != null ? Math.max(0, Math.min(100, agent.performance.successRate)) : 0}
+                  value={
+                    agent.performance?.successRate != null
+                      ? Math.max(0, Math.min(100, agent.performance.successRate))
+                      : 0
+                  }
                   className="h-2"
                 />
               </div>
@@ -182,7 +174,8 @@ export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegist
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>
-                    {agent.performance?.avgExecutionTime != null || agent.performance?.avgResponseTime != null
+                    {agent.performance?.avgExecutionTime != null ||
+                    agent.performance?.avgResponseTime != null
                       ? `${(agent.performance.avgExecutionTime || agent.performance.avgResponseTime || 0).toFixed(0)}ms`
                       : 'N/A'}
                   </span>
@@ -190,8 +183,19 @@ export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegist
                 </div>
                 <Progress
                   value={
-                    agent.performance?.avgExecutionTime != null || agent.performance?.avgResponseTime != null
-                      ? Math.max(0, Math.min(100, (2000 - (agent.performance.avgExecutionTime || agent.performance.avgResponseTime || 0)) / 20))
+                    agent.performance?.avgExecutionTime != null ||
+                    agent.performance?.avgResponseTime != null
+                      ? Math.max(
+                          0,
+                          Math.min(
+                            100,
+                            (2000 -
+                              (agent.performance.avgExecutionTime ||
+                                agent.performance.avgResponseTime ||
+                                0)) /
+                              20
+                          )
+                        )
                       : 0
                   }
                   className="h-2"
@@ -210,7 +214,9 @@ export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegist
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Temperature</div>
-                  <div className="text-sm font-mono">{agent.configuration.temperature ?? 'N/A'}</div>
+                  <div className="text-sm font-mono">
+                    {agent.configuration.temperature ?? 'N/A'}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Max Tokens</div>
@@ -218,7 +224,9 @@ export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegist
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Timeout</div>
-                  <div className="text-sm font-mono">{agent.configuration.timeout ? `${agent.configuration.timeout}s` : 'N/A'}</div>
+                  <div className="text-sm font-mono">
+                    {agent.configuration.timeout ? `${agent.configuration.timeout}s` : 'N/A'}
+                  </div>
                 </div>
               </div>
             </div>
@@ -236,7 +244,13 @@ export function AgentRegistryDetailModal({ agent, isOpen, onClose }: AgentRegist
                       {new Date(log.timestamp).toLocaleString()}
                     </span>
                     <Badge
-                      variant={log.level === "ERROR" ? "destructive" : log.level === "WARN" ? "secondary" : "default"}
+                      variant={
+                        log.level === 'ERROR'
+                          ? 'destructive'
+                          : log.level === 'WARN'
+                            ? 'secondary'
+                            : 'default'
+                      }
                       className="text-xs"
                     >
                       {log.level}

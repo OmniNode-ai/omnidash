@@ -1,10 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { AgentSummary, RoutingStats, AgentExecution } from '../agent-management-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 // Mock the USE_MOCK_DATA constant to false so tests can validate real API logic
 vi.mock('../../mock-data', async () => {
-  const actual = await vi.importActual('../../mock-data') as any;
+  const actual = (await vi.importActual('../../mock-data')) as any;
   return {
     ...actual,
     USE_MOCK_DATA: false, // Force API mode for tests
@@ -40,9 +44,7 @@ describe('AgentManagementDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await agentManagementSource.fetchSummary('24h');
@@ -63,9 +65,7 @@ describe('AgentManagementDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await agentManagementSource.fetchSummary('24h');
@@ -75,11 +75,7 @@ describe('AgentManagementDataSource', () => {
     });
 
     it('should handle empty agent array from intelligence API', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/agents/summary', createMockResponse([])]]));
 
       const result = await agentManagementSource.fetchSummary('24h');
 
@@ -157,9 +153,7 @@ describe('AgentManagementDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await agentManagementSource.fetchSummary('24h');
@@ -180,16 +174,10 @@ describe('AgentManagementDataSource', () => {
           enhanced_fuzzy_matching: 1000,
           exact_match: 500,
         },
-        topAgents: [
-          { agentId: 'agent-1', agentName: 'Agent 1', usage: 500, successRate: 95 },
-        ],
+        topAgents: [{ agentId: 'agent-1', agentName: 'Agent 1', usage: 500, successRate: 95 }],
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing/stats', createMockResponse(mockStats)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing/stats', createMockResponse(mockStats)]]));
 
       const result = await agentManagementSource.fetchRoutingStats('24h');
 
@@ -265,11 +253,7 @@ describe('AgentManagementDataSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/executions', createMockResponse(mockExecutions)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/executions', createMockResponse(mockExecutions)]]));
 
       const result = await agentManagementSource.fetchRecentExecutions('24h', 10);
 
@@ -346,9 +330,7 @@ describe('AgentManagementDataSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/routing/decisions', createMockResponse(mockDecisions)],
-        ])
+        new Map([['/api/intelligence/routing/decisions', createMockResponse(mockDecisions)]])
       );
 
       const result = await agentManagementSource.fetchRecentDecisions(10);
@@ -358,11 +340,7 @@ describe('AgentManagementDataSource', () => {
     });
 
     it('should return mock data when API returns empty array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/routing/decisions', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/routing/decisions', createMockResponse([])]]));
 
       const result = await agentManagementSource.fetchRecentDecisions(10);
 
@@ -399,9 +377,7 @@ describe('AgentManagementDataSource', () => {
       }));
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/routing/decisions', createMockResponse(mockDecisions)],
-        ])
+        new Map([['/api/intelligence/routing/decisions', createMockResponse(mockDecisions)]])
       );
 
       const result = await agentManagementSource.fetchRecentDecisions(5);
@@ -413,11 +389,7 @@ describe('AgentManagementDataSource', () => {
     it('should handle network errors gracefully', async () => {
       const networkError = new Error('Network connection lost');
 
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/routing/decisions', networkError],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/routing/decisions', networkError]]));
 
       const result = await agentManagementSource.fetchRecentDecisions(10);
 
@@ -430,7 +402,13 @@ describe('AgentManagementDataSource', () => {
   describe('fetchAll', () => {
     it('should combine all data sources correctly', async () => {
       const mockAgents = [
-        { agent: 'agent-1', totalRequests: 100, successRate: 0.95, avgRoutingTime: 1200, avgConfidence: 0.92 },
+        {
+          agent: 'agent-1',
+          totalRequests: 100,
+          successRate: 0.95,
+          avgRoutingTime: 1200,
+          avgConfidence: 0.92,
+        },
       ];
       const mockStats: RoutingStats = {
         totalDecisions: 100,
@@ -482,7 +460,13 @@ describe('AgentManagementDataSource', () => {
 
     it('should mark as mock if any source returns mock data', async () => {
       const mockAgents = [
-        { agent: 'agent-1', totalRequests: 100, successRate: 0.95, avgRoutingTime: 1200, avgConfidence: 0.92 },
+        {
+          agent: 'agent-1',
+          totalRequests: 100,
+          successRate: 0.95,
+          avgRoutingTime: 1200,
+          avgConfidence: 0.92,
+        },
       ];
 
       setupFetchMock(
@@ -499,4 +483,3 @@ describe('AgentManagementDataSource', () => {
     });
   });
 });
-

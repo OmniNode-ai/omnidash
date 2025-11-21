@@ -1,4 +1,4 @@
-import { expect, afterEach, vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
@@ -27,7 +27,7 @@ afterEach(() => {
     // Vitest is available, ensure timers are cleared
     try {
       (globalThis as any).vi.useRealTimers();
-    } catch (e) {
+    } catch {
       // Ignore errors
     }
   }
@@ -38,13 +38,13 @@ global.ResizeObserver = class ResizeObserver {
   observe = vi.fn();
   unobserve = vi.fn();
   disconnect = vi.fn();
-  constructor(callback: ResizeObserverCallback) {}
+  constructor(_callback: ResizeObserverCallback) {}
 } as any;
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -72,8 +72,7 @@ if (typeof Element !== 'undefined') {
   Element.prototype.hasPointerCapture = vi.fn(() => false);
   Element.prototype.setPointerCapture = vi.fn();
   Element.prototype.releasePointerCapture = vi.fn();
-  
+
   // Mock scrollIntoView for Radix UI Select
   Element.prototype.scrollIntoView = vi.fn();
 }
-

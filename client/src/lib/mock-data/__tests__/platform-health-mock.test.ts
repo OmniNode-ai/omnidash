@@ -2,11 +2,11 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { PlatformHealthMockData } from '../platform-health-mock';
 import { MockDataGenerator } from '../config';
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 describe('PlatformHealthMockData', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('generates health data with degraded service when random threshold hit', () => {
     vi.spyOn(MockDataGenerator, 'randomFloat').mockImplementation(() => 99.9);
     vi.spyOn(MockDataGenerator, 'randomInt').mockImplementation((min, max) => {
@@ -28,14 +28,16 @@ describe('PlatformHealthMockData', () => {
     expect(health).toHaveProperty('status', 'degraded');
     expect(health.database?.name).toBe('PostgreSQL');
     expect(health.kafka?.name).toBe('Kafka/Redpanda');
-    expect(health.services.some(service => service.status === 'degraded')).toBe(true);
-    expect(health.services.every(service => typeof service.latency_ms === 'number')).toBe(true);
+    expect(health.services.some((service) => service.status === 'degraded')).toBe(true);
+    expect(health.services.every((service) => typeof service.latency_ms === 'number')).toBe(true);
   });
 
   it('maps service health statuses correctly', () => {
     let call = 0;
     const statuses: Array<'healthy' | 'degraded' | 'down'> = ['healthy', 'degraded', 'down'];
-    vi.spyOn(MockDataGenerator, 'healthStatus').mockImplementation(() => statuses[(call++) % statuses.length]);
+    vi.spyOn(MockDataGenerator, 'healthStatus').mockImplementation(
+      () => statuses[call++ % statuses.length]
+    );
 
     const result = PlatformHealthMockData.generateServices();
 

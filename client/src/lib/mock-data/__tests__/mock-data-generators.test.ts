@@ -36,7 +36,9 @@ describe('MockDataGenerator Utilities', () => {
   describe('uuid', () => {
     it('generates valid UUID v4 format', () => {
       const uuid = MockDataGenerator.uuid();
-      expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      expect(uuid).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
     });
 
     it('generates unique UUIDs', () => {
@@ -722,7 +724,7 @@ describe('PlatformHealthMockData', () => {
       let foundDegraded = false;
       for (let i = 0; i < 50; i++) {
         const health = PlatformHealthMockData.generateHealth();
-        if (health.services.some(s => s.status === 'degraded')) {
+        if (health.services.some((s) => s.status === 'degraded')) {
           foundDegraded = true;
           break;
         }
@@ -846,7 +848,7 @@ describe('PlatformHealthMockData', () => {
 
     it('generates unique IDs for each service', () => {
       const registry = PlatformHealthMockData.generateServiceRegistry();
-      const ids = registry.map(r => r.id);
+      const ids = registry.map((r) => r.id);
       const uniqueIds = new Set(ids);
 
       expect(uniqueIds.size).toBe(registry.length);
@@ -928,7 +930,13 @@ describe('IntelligenceOperationsMockData', () => {
         expect(failure).toHaveProperty('count');
         expect(failure).toHaveProperty('lastOccurrence');
 
-        expect(['timeout', 'validation_error', 'connection_error', 'rate_limit', 'parse_error']).toContain(failure.errorType);
+        expect([
+          'timeout',
+          'validation_error',
+          'connection_error',
+          'rate_limit',
+          'parse_error',
+        ]).toContain(failure.errorType);
         expect(failure.count).toBeGreaterThanOrEqual(1);
         expect(failure.count).toBeLessThanOrEqual(15);
         expect(typeof failure.lastOccurrence).toBe('string');
@@ -950,8 +958,12 @@ describe('IntelligenceOperationsMockData', () => {
       expect(health.manifestSizeStats.maxSizeKb).toBeLessThanOrEqual(300);
 
       // Logical consistency
-      expect(health.manifestSizeStats.minSizeKb).toBeLessThanOrEqual(health.manifestSizeStats.avgSizeKb);
-      expect(health.manifestSizeStats.avgSizeKb).toBeLessThanOrEqual(health.manifestSizeStats.maxSizeKb);
+      expect(health.manifestSizeStats.minSizeKb).toBeLessThanOrEqual(
+        health.manifestSizeStats.avgSizeKb
+      );
+      expect(health.manifestSizeStats.avgSizeKb).toBeLessThanOrEqual(
+        health.manifestSizeStats.maxSizeKb
+      );
     });
 
     it('generates latency trend with 20 data points', () => {
@@ -990,10 +1002,18 @@ describe('IntelligenceOperationsMockData', () => {
       expect(health.serviceHealth).toHaveProperty('qdrant');
 
       ['postgresql', 'omniarchon', 'qdrant'].forEach((service) => {
-        expect(health.serviceHealth[service as keyof typeof health.serviceHealth]).toHaveProperty('status');
-        expect(health.serviceHealth[service as keyof typeof health.serviceHealth]).toHaveProperty('latencyMs');
-        expect(['up', 'down']).toContain(health.serviceHealth[service as keyof typeof health.serviceHealth].status);
-        expect(health.serviceHealth[service as keyof typeof health.serviceHealth].latencyMs).toBeGreaterThan(0);
+        expect(health.serviceHealth[service as keyof typeof health.serviceHealth]).toHaveProperty(
+          'status'
+        );
+        expect(health.serviceHealth[service as keyof typeof health.serviceHealth]).toHaveProperty(
+          'latencyMs'
+        );
+        expect(['up', 'down']).toContain(
+          health.serviceHealth[service as keyof typeof health.serviceHealth].status
+        );
+        expect(
+          health.serviceHealth[service as keyof typeof health.serviceHealth].latencyMs
+        ).toBeGreaterThan(0);
       });
     });
   });
@@ -1015,7 +1035,13 @@ describe('IntelligenceOperationsMockData', () => {
         expect(typeof op.period).toBe('string');
         expect(op.operationsPerMinute).toBeGreaterThanOrEqual(5);
         expect(op.operationsPerMinute).toBeLessThanOrEqual(30);
-        expect(['pattern_discovery', 'manifest_generation', 'quality_assessment', 'code_analysis', 'agent_routing']).toContain(op.actionType);
+        expect([
+          'pattern_discovery',
+          'manifest_generation',
+          'quality_assessment',
+          'code_analysis',
+          'agent_routing',
+        ]).toContain(op.actionType);
       });
     });
 
@@ -1086,7 +1112,14 @@ describe('IntelligenceOperationsMockData', () => {
         expect(typeof action.id).toBe('string');
         expect(typeof action.correlationId).toBe('string');
         expect(typeof action.agentName).toBe('string');
-        expect(['tool_call', 'decision', 'error', 'success', 'manifest_injection', 'pattern_match']).toContain(action.actionType);
+        expect([
+          'tool_call',
+          'decision',
+          'error',
+          'success',
+          'manifest_injection',
+          'pattern_match',
+        ]).toContain(action.actionType);
         expect(typeof action.actionName).toBe('string');
         expect(typeof action.debugMode).toBe('boolean');
         expect(action.durationMs).toBeGreaterThanOrEqual(100);
@@ -1106,7 +1139,7 @@ describe('IntelligenceOperationsMockData', () => {
 
     it('generates unique IDs for each action', () => {
       const actions = IntelligenceOperationsMockData.generateAgentActions(30);
-      const ids = actions.map(a => a.id);
+      const ids = actions.map((a) => a.id);
       const uniqueIds = new Set(ids);
 
       expect(uniqueIds.size).toBe(actions.length);
@@ -1114,7 +1147,7 @@ describe('IntelligenceOperationsMockData', () => {
 
     it('occasionally sets debug mode', () => {
       const actions = IntelligenceOperationsMockData.generateAgentActions(100);
-      const debugActions = actions.filter(a => a.debugMode);
+      const debugActions = actions.filter((a) => a.debugMode);
 
       // With 10% probability, expect roughly 10 debug actions out of 100
       expect(debugActions.length).toBeGreaterThanOrEqual(0);
@@ -1193,7 +1226,13 @@ describe('IntelligenceOperationsMockData', () => {
         expect(typeof event.message).toBe('string');
         expect(event.message.length).toBeGreaterThan(0);
         expect(typeof event.timestamp).toBe('string');
-        expect(['agent-router', 'pattern-engine', 'manifest-generator', 'quality-checker', 'code-analyzer']).toContain(event.source);
+        expect([
+          'agent-router',
+          'pattern-engine',
+          'manifest-generator',
+          'quality-checker',
+          'code-analyzer',
+        ]).toContain(event.source);
       });
     });
 
@@ -1209,7 +1248,7 @@ describe('IntelligenceOperationsMockData', () => {
 
     it('generates unique IDs for each event', () => {
       const events = IntelligenceOperationsMockData.generateLiveEvents(25);
-      const ids = events.map(e => e.id);
+      const ids = events.map((e) => e.id);
       const uniqueIds = new Set(ids);
 
       expect(uniqueIds.size).toBe(events.length);
@@ -1277,16 +1316,18 @@ describe('KnowledgeGraphMockData', () => {
 
         expect(typeof node.id).toBe('string');
         expect(typeof node.label).toBe('string');
-        expect(['pattern', 'service', 'agent', 'api', 'database', 'component']).toContain(node.type);
+        expect(['pattern', 'service', 'agent', 'api', 'database', 'component']).toContain(
+          node.type
+        );
       });
     });
 
     it('generates correct proportion of node types', () => {
       const nodes = KnowledgeGraphMockData.generateNodes(50);
 
-      const patterns = nodes.filter(n => n.type === 'pattern');
-      const services = nodes.filter(n => n.type === 'service');
-      const agents = nodes.filter(n => n.type === 'agent');
+      const patterns = nodes.filter((n) => n.type === 'pattern');
+      const services = nodes.filter((n) => n.type === 'service');
+      const agents = nodes.filter((n) => n.type === 'agent');
 
       // 40% patterns, 20% services, 25% agents
       expect(patterns.length).toBeGreaterThanOrEqual(15);
@@ -1299,7 +1340,7 @@ describe('KnowledgeGraphMockData', () => {
 
     it('generates pattern nodes with quality and usage', () => {
       const nodes = KnowledgeGraphMockData.generateNodes(50);
-      const patterns = nodes.filter(n => n.type === 'pattern');
+      const patterns = nodes.filter((n) => n.type === 'pattern');
 
       patterns.forEach((pattern) => {
         expect(pattern).toHaveProperty('quality');
@@ -1310,13 +1351,19 @@ describe('KnowledgeGraphMockData', () => {
         expect(pattern.quality).toBeLessThanOrEqual(0.99);
         expect(pattern.usage).toBeGreaterThanOrEqual(5);
         expect(pattern.usage).toBeLessThanOrEqual(100);
-        expect(['authentication', 'data-processing', 'error-handling', 'caching', 'validation']).toContain(pattern.category);
+        expect([
+          'authentication',
+          'data-processing',
+          'error-handling',
+          'caching',
+          'validation',
+        ]).toContain(pattern.category);
       });
     });
 
     it('generates service nodes with status and uptime', () => {
       const nodes = KnowledgeGraphMockData.generateNodes(50);
-      const services = nodes.filter(n => n.type === 'service');
+      const services = nodes.filter((n) => n.type === 'service');
 
       services.forEach((service) => {
         expect(service).toHaveProperty('status');
@@ -1330,7 +1377,7 @@ describe('KnowledgeGraphMockData', () => {
 
     it('generates agent nodes with activeRuns and successRate', () => {
       const nodes = KnowledgeGraphMockData.generateNodes(50);
-      const agents = nodes.filter(n => n.type === 'agent');
+      const agents = nodes.filter((n) => n.type === 'agent');
 
       agents.forEach((agent) => {
         expect(agent).toHaveProperty('activeRuns');
@@ -1345,7 +1392,7 @@ describe('KnowledgeGraphMockData', () => {
 
     it('generates unique node IDs', () => {
       const nodes = KnowledgeGraphMockData.generateNodes(50);
-      const ids = nodes.map(n => n.id);
+      const ids = nodes.map((n) => n.id);
       const uniqueIds = new Set(ids);
 
       expect(uniqueIds.size).toBe(nodes.length);
@@ -1372,7 +1419,9 @@ describe('KnowledgeGraphMockData', () => {
 
         expect(typeof edge.source).toBe('string');
         expect(typeof edge.target).toBe('string');
-        expect(['uses', 'depends-on', 'calls', 'implements', 'extends', 'relates-to']).toContain(edge.type);
+        expect(['uses', 'depends-on', 'calls', 'implements', 'extends', 'relates-to']).toContain(
+          edge.type
+        );
         expect(edge.weight).toBeGreaterThanOrEqual(1);
         expect(edge.weight).toBeLessThanOrEqual(10);
       });
@@ -1381,7 +1430,7 @@ describe('KnowledgeGraphMockData', () => {
     it('generates edges connecting valid nodes', () => {
       const nodes = KnowledgeGraphMockData.generateNodes(20);
       const edges = KnowledgeGraphMockData.generateEdges(nodes, 25);
-      const nodeIds = nodes.map(n => n.id);
+      const nodeIds = nodes.map((n) => n.id);
 
       edges.forEach((edge) => {
         expect(nodeIds).toContain(edge.source);
@@ -1394,7 +1443,7 @@ describe('KnowledgeGraphMockData', () => {
       const nodes = KnowledgeGraphMockData.generateNodes(20);
       const edges = KnowledgeGraphMockData.generateEdges(nodes, 30);
 
-      const edgeKeys = edges.map(e => `${e.source}-${e.target}`);
+      const edgeKeys = edges.map((e) => `${e.source}-${e.target}`);
       const uniqueEdgeKeys = new Set(edgeKeys);
 
       expect(uniqueEdgeKeys.size).toBe(edges.length);
@@ -1420,7 +1469,7 @@ describe('KnowledgeGraphMockData', () => {
 
     it('generates graph with valid node-edge relationships', () => {
       const data = KnowledgeGraphMockData.generateAll(30, 40);
-      const nodeIds = data.nodes.map(n => n.id);
+      const nodeIds = data.nodes.map((n) => n.id);
 
       data.edges.forEach((edge) => {
         expect(nodeIds).toContain(edge.source);

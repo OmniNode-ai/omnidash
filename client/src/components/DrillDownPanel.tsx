@@ -4,14 +4,14 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+} from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 import {
   useAgentDetails,
   usePatternDetails,
@@ -19,7 +19,7 @@ import {
   type AgentDetails,
   type PatternDetails,
   type ServiceDetails,
-} from "@/hooks/useDrillDownData";
+} from '@/hooks/useDrillDownData';
 
 interface Activity {
   id?: string;
@@ -38,7 +38,7 @@ interface DrillDownPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  type?: "agent" | "pattern" | "service" | "gate" | "generic";
+  type?: 'agent' | 'pattern' | 'service' | 'gate' | 'generic';
 
   // Legacy: pass data directly
   data?: Record<string, any> & {
@@ -56,45 +56,45 @@ export function DrillDownPanel({
   onOpenChange,
   title,
   data,
-  type = "generic",
+  type = 'generic',
   entityId,
-  timeWindow = "24h"
+  timeWindow = '24h',
 }: DrillDownPanelProps) {
-
   // Fetch data based on type and entityId
   const agentQuery = useAgentDetails(
-    type === "agent" ? (entityId ?? null) : null,
+    type === 'agent' ? (entityId ?? null) : null,
     timeWindow,
     open && !!entityId && !data
   );
 
   const patternQuery = usePatternDetails(
-    type === "pattern" ? (entityId ?? null) : null,
+    type === 'pattern' ? (entityId ?? null) : null,
     open && !!entityId && !data
   );
 
   const serviceQuery = useServiceDetails(
-    type === "service" ? (entityId ?? null) : null,
+    type === 'service' ? (entityId ?? null) : null,
     open && !!entityId && !data
   );
 
   // Determine which data source to use
-  const resolvedData = data ||
-    (type === "agent" ? agentQuery.data : null) ||
-    (type === "pattern" ? patternQuery.data : null) ||
-    (type === "service" ? serviceQuery.data : null);
+  const resolvedData =
+    data ||
+    (type === 'agent' ? agentQuery.data : null) ||
+    (type === 'pattern' ? patternQuery.data : null) ||
+    (type === 'service' ? serviceQuery.data : null);
 
-  const isLoading = !data && (
-    (type === "agent" && agentQuery.isLoading) ||
-    (type === "pattern" && patternQuery.isLoading) ||
-    (type === "service" && serviceQuery.isLoading)
-  );
+  const isLoading =
+    !data &&
+    ((type === 'agent' && agentQuery.isLoading) ||
+      (type === 'pattern' && patternQuery.isLoading) ||
+      (type === 'service' && serviceQuery.isLoading));
 
-  const error = !data && (
-    (type === "agent" && agentQuery.error) ||
-    (type === "pattern" && patternQuery.error) ||
-    (type === "service" && serviceQuery.error)
-  );
+  const error =
+    !data &&
+    ((type === 'agent' && agentQuery.error) ||
+      (type === 'pattern' && patternQuery.error) ||
+      (type === 'service' && serviceQuery.error));
 
   const renderLoadingState = () => (
     <div className="space-y-6">
@@ -120,9 +120,7 @@ export function DrillDownPanel({
   const renderErrorState = (err: Error) => (
     <Alert variant="destructive">
       <AlertCircle className="h-4 w-4" />
-      <AlertDescription>
-        Failed to load details: {err.message}
-      </AlertDescription>
+      <AlertDescription>Failed to load details: {err.message}</AlertDescription>
     </Alert>
   );
 
@@ -131,13 +129,15 @@ export function DrillDownPanel({
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-4">
           <div className="text-xs text-muted-foreground mb-1">Status</div>
-          <Badge variant={agentData.status === "active" ? "default" : "secondary"}>
+          <Badge variant={agentData.status === 'active' ? 'default' : 'secondary'}>
             {agentData.status}
           </Badge>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground mb-1">Success Rate</div>
-          <div className="text-2xl font-bold font-mono">{Math.max(0, Math.min(100, agentData.successRate))}%</div>
+          <div className="text-2xl font-bold font-mono">
+            {Math.max(0, Math.min(100, agentData.successRate))}%
+          </div>
         </Card>
       </div>
 
@@ -154,17 +154,21 @@ export function DrillDownPanel({
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Current Task</span>
-            <span className="text-sm">{agentData.currentTask || "Idle"}</span>
+            <span className="text-sm">{agentData.currentTask || 'Idle'}</span>
           </div>
           {agentData.metrics && (
             <>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Avg Confidence</span>
-                <span className="font-mono text-sm">{(agentData.metrics.avgConfidence * 100).toFixed(1)}%</span>
+                <span className="font-mono text-sm">
+                  {(agentData.metrics.avgConfidence * 100).toFixed(1)}%
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Avg Routing Time</span>
-                <span className="font-mono text-sm">{agentData.metrics.avgRoutingTime.toFixed(1)}ms</span>
+                <span className="font-mono text-sm">
+                  {agentData.metrics.avgRoutingTime.toFixed(1)}ms
+                </span>
               </div>
             </>
           )}
@@ -177,7 +181,7 @@ export function DrillDownPanel({
         <h4 className="text-sm font-semibold mb-3">Recent Activity</h4>
         <ScrollArea className="h-48">
           <div className="space-y-2">
-            {(agentData.recentActivity && agentData.recentActivity.length > 0) ? (
+            {agentData.recentActivity && agentData.recentActivity.length > 0 ? (
               agentData.recentActivity.map((activity: Activity, i: number) => (
                 <div key={activity.id || i} className="text-xs p-2 rounded-md bg-secondary/50">
                   <div className="font-mono text-muted-foreground">
@@ -200,11 +204,15 @@ export function DrillDownPanel({
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-4">
           <div className="text-xs text-muted-foreground mb-1">Quality Score</div>
-          <div className="text-2xl font-bold font-mono">{Math.max(0, Math.min(100, Math.round(patternData.quality)))}%</div>
+          <div className="text-2xl font-bold font-mono">
+            {Math.max(0, Math.min(100, Math.round(patternData.quality)))}%
+          </div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground mb-1">Usage Count</div>
-          <div className="text-2xl font-bold font-mono">{patternData.usage || patternData.usageCount}x</div>
+          <div className="text-2xl font-bold font-mono">
+            {patternData.usage || patternData.usageCount}x
+          </div>
         </Card>
       </div>
 
@@ -224,8 +232,11 @@ export function DrillDownPanel({
           {patternData.trend !== undefined && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Trend</span>
-              <span className={`font-mono text-sm ${patternData.trend > 0 ? 'text-status-healthy' : 'text-status-error'}`}>
-                {patternData.trend > 0 ? '+' : ''}{patternData.trend}%
+              <span
+                className={`font-mono text-sm ${patternData.trend > 0 ? 'text-status-healthy' : 'text-status-error'}`}
+              >
+                {patternData.trend > 0 ? '+' : ''}
+                {patternData.trend}%
               </span>
             </div>
           )}
@@ -238,13 +249,11 @@ export function DrillDownPanel({
         <h4 className="text-sm font-semibold mb-3">Usage Examples</h4>
         <ScrollArea className="h-48">
           <div className="space-y-2">
-            {(patternData.usageExamples && patternData.usageExamples.length > 0) ? (
+            {patternData.usageExamples && patternData.usageExamples.length > 0 ? (
               patternData.usageExamples.map((example: UsageExample, i: number) => (
                 <div key={example.id || i} className="text-xs p-3 rounded-md bg-secondary/50">
                   <div className="font-mono mb-1">{example.project}</div>
-                  <div className="text-muted-foreground">
-                    Used in module: {example.module}
-                  </div>
+                  <div className="text-muted-foreground">Used in module: {example.module}</div>
                 </div>
               ))
             ) : (
@@ -261,13 +270,15 @@ export function DrillDownPanel({
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-4">
           <div className="text-xs text-muted-foreground mb-1">Status</div>
-          <Badge variant={serviceData.status === "healthy" ? "default" : "destructive"}>
+          <Badge variant={serviceData.status === 'healthy' ? 'default' : 'destructive'}>
             {serviceData.status}
           </Badge>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground mb-1">Uptime</div>
-          <div className="text-2xl font-bold font-mono">{Math.max(0, Math.min(100, serviceData.uptime))}%</div>
+          <div className="text-2xl font-bold font-mono">
+            {Math.max(0, Math.min(100, serviceData.uptime))}%
+          </div>
         </Card>
       </div>
 
@@ -338,19 +349,17 @@ export function DrillDownPanel({
     if (!resolvedData) {
       return (
         <Alert>
-          <AlertDescription>
-            No data available
-          </AlertDescription>
+          <AlertDescription>No data available</AlertDescription>
         </Alert>
       );
     }
 
     switch (type) {
-      case "agent":
+      case 'agent':
         return renderAgentContent(resolvedData);
-      case "pattern":
+      case 'pattern':
         return renderPatternContent(resolvedData);
-      case "service":
+      case 'service':
         return renderServiceContent(resolvedData);
       default:
         return renderGenericContent(resolvedData);
@@ -364,9 +373,7 @@ export function DrillDownPanel({
           <SheetTitle>{title}</SheetTitle>
           <SheetDescription>Detailed information and metrics</SheetDescription>
         </SheetHeader>
-        <div className="mt-6">
-          {renderContent()}
-        </div>
+        <div className="mt-6">{renderContent()}</div>
       </SheetContent>
     </Sheet>
   );

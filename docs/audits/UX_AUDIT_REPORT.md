@@ -1,4 +1,5 @@
 # Omnidash UX Audit Report
+
 **Date**: November 7, 2025
 **Scope**: Intelligence Savings, Enhanced Analytics, Code Intelligence Suite
 **Status**: Comprehensive Analysis with Actionable Recommendations
@@ -8,6 +9,7 @@
 ## Executive Summary
 
 This audit identified **32 UX issues** across three major dashboard sections, with issues categorized into:
+
 - **P0 (Critical)**: 8 issues - Must fix immediately
 - **P1 (Important)**: 14 issues - Should fix in next sprint
 - **P2 (Nice-to-have)**: 10 issues - Future improvements
@@ -26,6 +28,7 @@ This audit identified **32 UX issues** across three major dashboard sections, wi
 ## 1. Intelligence Savings Page Issues
 
 ### Screenshots Analyzed
+
 - ✅ Overview tab (intelligence-savings-overview-tab.png)
 - ✅ Agent Comparison tab (intelligence-savings-agent-comparison-tab.png)
 - ✅ Trends tab (intelligence-savings-trends-tab.png)
@@ -35,10 +38,12 @@ This audit identified **32 UX issues** across three major dashboard sections, wi
 ### P0 Issues (Critical)
 
 #### 1.1 Time Range Selector Position Inconsistency
+
 **Location**: Header, right side
 **Issue**: Time range selector positioned on RIGHT side here, but LEFT side in Enhanced Analytics
 **Impact**: High - Users must hunt for the control when switching dashboards
 **Fix**:
+
 ```tsx
 // RECOMMENDATION: Standardize to RIGHT position across all dashboards
 <div className="flex items-center justify-between">
@@ -54,8 +59,10 @@ This audit identified **32 UX issues** across three major dashboard sections, wi
 ```
 
 #### 1.2 Success Rate Chiclet Color Confusion
+
 **Location**: AI Models tab, Success Rate column
 **Issue**: Success rates displayed as chiclets with inconsistent colors:
+
 - 98.8% = Blue
 - 96.5% = Darker blue/gray
 - 97.8% = Blue
@@ -64,34 +71,36 @@ This audit identified **32 UX issues** across three major dashboard sections, wi
 - 94.2% = Gray
 
 **Root Cause**: Code uses threshold-based coloring (line 1076):
+
 ```tsx
-<Badge variant={model.successRate > 97 ? "default" : "secondary"}>
+<Badge variant={model.successRate > 97 ? 'default' : 'secondary'}>
   {model.successRate.toFixed(1)}%
 </Badge>
 ```
 
 **Fix**: Use gradient coloring system:
+
 ```tsx
 // Recommended fix
 const getSuccessRateVariant = (rate: number) => {
-  if (rate >= 98) return "success"; // Green
-  if (rate >= 95) return "default"; // Blue
-  if (rate >= 90) return "warning"; // Yellow
-  return "destructive"; // Red
+  if (rate >= 98) return 'success'; // Green
+  if (rate >= 95) return 'default'; // Blue
+  if (rate >= 90) return 'warning'; // Yellow
+  return 'destructive'; // Red
 };
 
-<Badge variant={getSuccessRateVariant(model.successRate)}>
-  {model.successRate.toFixed(1)}%
-</Badge>
+<Badge variant={getSuccessRateVariant(model.successRate)}>{model.successRate.toFixed(1)}%</Badge>;
 ```
 
 ### P1 Issues (Important)
 
 #### 1.3 Missing Custom Date Range Picker
+
 **Location**: Header time range buttons
 **Current**: Only 7D, 30D, 90D buttons
 **Requested**: Custom date range with calendar picker
 **Implementation**:
+
 ```tsx
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -135,28 +144,34 @@ const [customRange, setCustomRange] = useState<DateRange | undefined>();
 ```
 
 #### 1.4 Trends Table Needs Expandable Rows
+
 **Location**: Trends tab, Daily Cost Savings table
 **Issue**: Table shows aggregated savings but not breakdown of WHERE savings came from
 **User Request**: "Add expandable rows to show breakdown of where savings and baseline costs came from"
 
 **Current State** (line 556-611):
+
 ```tsx
 <table>
   <tbody>
-    {timeSeriesData?.slice(-14).reverse().map((day) => (
-      <tr>
-        <td>{new Date(day.date).toLocaleDateString()}</td>
-        <td>{formatCurrency(day.withIntelligence.cost)}</td>
-        <td>{formatCurrency(day.withoutIntelligence.cost)}</td>
-        <td>{formatCurrency(day.savings.cost)}</td>
-        ...
-      </tr>
-    ))}
+    {timeSeriesData
+      ?.slice(-14)
+      .reverse()
+      .map((day) => (
+        <tr>
+          <td>{new Date(day.date).toLocaleDateString()}</td>
+          <td>{formatCurrency(day.withIntelligence.cost)}</td>
+          <td>{formatCurrency(day.withoutIntelligence.cost)}</td>
+          <td>{formatCurrency(day.savings.cost)}</td>
+          ...
+        </tr>
+      ))}
   </tbody>
 </table>
 ```
 
 **Recommended Fix**:
+
 ```tsx
 // Add expandable row state
 const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -164,102 +179,140 @@ const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 // Table with expandable rows
 <table>
   <tbody>
-    {timeSeriesData?.slice(-14).reverse().map((day) => {
-      const isExpanded = expandedRows.has(day.date);
+    {timeSeriesData
+      ?.slice(-14)
+      .reverse()
+      .map((day) => {
+        const isExpanded = expandedRows.has(day.date);
 
-      return (
-        <>
-          <tr
-            onClick={() => {
-              const newExpanded = new Set(expandedRows);
-              if (isExpanded) {
-                newExpanded.delete(day.date);
-              } else {
-                newExpanded.add(day.date);
-              }
-              setExpandedRows(newExpanded);
-            }}
-            className="cursor-pointer hover:bg-muted/50"
-          >
-            <td>
-              <div className="flex items-center gap-2">
-                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                {new Date(day.date).toLocaleDateString()}
-              </div>
-            </td>
-            <td>{formatCurrency(day.withIntelligence.cost)}</td>
-            <td>{formatCurrency(day.withoutIntelligence.cost)}</td>
-            <td>{formatCurrency(day.savings.cost)}</td>
-            <td>...</td>
-          </tr>
-
-          {isExpanded && (
-            <tr className="bg-muted/20">
-              <td colSpan={6} className="p-4">
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Savings Breakdown for {new Date(day.date).toLocaleDateString()}</h4>
-
-                  {/* Intelligence Costs Breakdown */}
-                  <div className="border rounded-lg p-3 bg-background">
-                    <div className="text-xs font-medium text-muted-foreground mb-2">Intelligence Costs ({formatCurrency(day.withIntelligence.cost)})</div>
-                    <div className="space-y-1 text-xs">
-                      <div className="flex justify-between">
-                        <span>• API Calls ({day.withIntelligence.runs} runs)</span>
-                        <span className="font-mono">{formatCurrency(day.withIntelligence.cost * 0.6)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>• Token Usage ({formatNumber(day.withIntelligence.tokens)} tokens)</span>
-                        <span className="font-mono">{formatCurrency(day.withIntelligence.cost * 0.3)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>• Compute Units ({formatNumber(day.withIntelligence.compute)} units)</span>
-                        <span className="font-mono">{formatCurrency(day.withIntelligence.cost * 0.1)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Baseline Costs Breakdown */}
-                  <div className="border rounded-lg p-3 bg-background">
-                    <div className="text-xs font-medium text-muted-foreground mb-2">Baseline Costs ({formatCurrency(day.withoutIntelligence.cost)})</div>
-                    <div className="space-y-1 text-xs">
-                      <div className="flex justify-between">
-                        <span>• API Calls ({day.withoutIntelligence.runs} runs)</span>
-                        <span className="font-mono">{formatCurrency(day.withoutIntelligence.cost * 0.7)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>• Token Usage ({formatNumber(day.withoutIntelligence.tokens)} tokens)</span>
-                        <span className="font-mono">{formatCurrency(day.withoutIntelligence.cost * 0.25)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>• Compute Units ({formatNumber(day.withoutIntelligence.compute)} units)</span>
-                        <span className="font-mono">{formatCurrency(day.withoutIntelligence.cost * 0.05)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Savings Summary */}
-                  <div className="border-t pt-2 mt-2">
-                    <div className="flex justify-between font-semibold text-sm text-green-600">
-                      <span>Total Savings</span>
-                      <span>{formatCurrency(day.savings.cost)} ({formatPercentage(day.savings.percentage)})</span>
-                    </div>
-                  </div>
+        return (
+          <>
+            <tr
+              onClick={() => {
+                const newExpanded = new Set(expandedRows);
+                if (isExpanded) {
+                  newExpanded.delete(day.date);
+                } else {
+                  newExpanded.add(day.date);
+                }
+                setExpandedRows(newExpanded);
+              }}
+              className="cursor-pointer hover:bg-muted/50"
+            >
+              <td>
+                <div className="flex items-center gap-2">
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  {new Date(day.date).toLocaleDateString()}
                 </div>
               </td>
+              <td>{formatCurrency(day.withIntelligence.cost)}</td>
+              <td>{formatCurrency(day.withoutIntelligence.cost)}</td>
+              <td>{formatCurrency(day.savings.cost)}</td>
+              <td>...</td>
             </tr>
-          )}
-        </>
-      );
-    })}
+
+            {isExpanded && (
+              <tr className="bg-muted/20">
+                <td colSpan={6} className="p-4">
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">
+                      Savings Breakdown for {new Date(day.date).toLocaleDateString()}
+                    </h4>
+
+                    {/* Intelligence Costs Breakdown */}
+                    <div className="border rounded-lg p-3 bg-background">
+                      <div className="text-xs font-medium text-muted-foreground mb-2">
+                        Intelligence Costs ({formatCurrency(day.withIntelligence.cost)})
+                      </div>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span>• API Calls ({day.withIntelligence.runs} runs)</span>
+                          <span className="font-mono">
+                            {formatCurrency(day.withIntelligence.cost * 0.6)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>
+                            • Token Usage ({formatNumber(day.withIntelligence.tokens)} tokens)
+                          </span>
+                          <span className="font-mono">
+                            {formatCurrency(day.withIntelligence.cost * 0.3)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>
+                            • Compute Units ({formatNumber(day.withIntelligence.compute)} units)
+                          </span>
+                          <span className="font-mono">
+                            {formatCurrency(day.withIntelligence.cost * 0.1)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Baseline Costs Breakdown */}
+                    <div className="border rounded-lg p-3 bg-background">
+                      <div className="text-xs font-medium text-muted-foreground mb-2">
+                        Baseline Costs ({formatCurrency(day.withoutIntelligence.cost)})
+                      </div>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span>• API Calls ({day.withoutIntelligence.runs} runs)</span>
+                          <span className="font-mono">
+                            {formatCurrency(day.withoutIntelligence.cost * 0.7)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>
+                            • Token Usage ({formatNumber(day.withoutIntelligence.tokens)} tokens)
+                          </span>
+                          <span className="font-mono">
+                            {formatCurrency(day.withoutIntelligence.cost * 0.25)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>
+                            • Compute Units ({formatNumber(day.withoutIntelligence.compute)} units)
+                          </span>
+                          <span className="font-mono">
+                            {formatCurrency(day.withoutIntelligence.cost * 0.05)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Savings Summary */}
+                    <div className="border-t pt-2 mt-2">
+                      <div className="flex justify-between font-semibold text-sm text-green-600">
+                        <span>Total Savings</span>
+                        <span>
+                          {formatCurrency(day.savings.cost)} (
+                          {formatPercentage(day.savings.percentage)})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </>
+        );
+      })}
   </tbody>
-</table>
+</table>;
 ```
 
 #### 1.5 AI Models Tab: Missing Usage Percentage
+
 **Location**: AI Models tab table
 **Issue**: User requested "Add percentage of each model's usage in the time period"
 **Current**: Shows absolute requests but not percentage of total
 **Fix**:
+
 ```tsx
 // Add percentage column after Requests column
 const totalRequests = sortedData.reduce((sum, m) => sum + m.requests, 0);
@@ -277,6 +330,7 @@ const totalRequests = sortedData.reduce((sum, m) => sum + m.requests, 0);
 ### P2 Issues (Nice-to-have)
 
 #### 1.6 Intelligence Operations Section Naming Clarity
+
 **Location**: Overview tab, first section
 **Current**: Section header reads "Intelligence Operations" with "Real-time" badge
 **User Comment**: "User reports Intelligence Operations still shows as separate tab instead of being in Overview at the top"
@@ -289,6 +343,7 @@ const totalRequests = sortedData.reduce((sum, m) => sum + m.requests, 0);
 ## 2. Enhanced Analytics Page Issues
 
 ### Screenshots Analyzed
+
 - ✅ Performance tab (enhanced-analytics-performance-tab.png)
 - ✅ AI Models tab (enhanced-analytics-ai-models-tab.png)
 - ✅ Predictions tab (enhanced-analytics-predictions-tab.png)
@@ -296,10 +351,12 @@ const totalRequests = sortedData.reduce((sum, m) => sum + m.requests, 0);
 ### P0 Issues (Critical)
 
 #### 2.1 Time Range Selector Position Inconsistency
+
 **Location**: Below header, left side
 **Issue**: Positioned on LEFT ("Time Range: 1h 24h 7d 30d") but RIGHT in Intelligence Savings
 **Impact**: High - Breaks user's mental model
 **Current Code Pattern**:
+
 ```tsx
 <div className="flex items-center gap-2">
   <span>Time Range:</span>
@@ -312,6 +369,7 @@ const totalRequests = sortedData.reduce((sum, m) => sum + m.requests, 0);
 ```
 
 **Fix**: Move to consistent RIGHT position:
+
 ```tsx
 <div className="flex items-center justify-between">
   <div>
@@ -329,8 +387,10 @@ const totalRequests = sortedData.reduce((sum, m) => sum + m.requests, 0);
 ```
 
 #### 2.2 AI Models Tab Duplication
+
 **Location**: AI Models tab
 **Issue**: **DUPLICATE CONTENT** between:
+
 - Intelligence Savings → AI Models tab (comprehensive table with savings)
 - Enhanced Analytics → AI Models tab (basic performance cards)
 
@@ -339,23 +399,24 @@ const totalRequests = sortedData.reduce((sum, m) => sum + m.requests, 0);
 **Recommendation**: **CONSOLIDATE into Intelligence Savings**
 
 **Rationale**:
+
 1. Intelligence Savings version is MORE comprehensive (unified table with 8 columns)
 2. Enhanced Analytics version shows basic cards without savings context
 3. Savings context is primary value proposition
 4. Enhanced Analytics already has Performance tab for general metrics
 
 **Action Plan**:
+
 1. **Keep**: Intelligence Savings → AI Models tab (comprehensive)
 2. **Remove**: Enhanced Analytics → AI Models tab
 3. **Add**: Cross-reference button in Enhanced Analytics:
+
 ```tsx
 // In Enhanced Analytics Performance tab
 <Card>
   <CardHeader>
     <CardTitle>AI Model Performance Summary</CardTitle>
-    <CardDescription>
-      For detailed cost analysis and savings breakdown
-    </CardDescription>
+    <CardDescription>For detailed cost analysis and savings breakdown</CardDescription>
   </CardHeader>
   <CardContent>
     <div className="text-center py-6">
@@ -376,15 +437,17 @@ const totalRequests = sortedData.reduce((sum, m) => sum + m.requests, 0);
 ### P1 Issues (Important)
 
 #### 2.3 Predictive Analytics Needs Trend Graphs
+
 **Location**: Predictions tab, Predictive Analytics section
 **Current**: Shows current/predicted/confidence as static numbers
 **User Request**: "Convert to graphs showing trends over time (e.g., CPU usage over time)"
 **Issue**: Static percentages don't show **HOW** we got here or trajectory
 
 **Recommended Implementation**:
+
 ```tsx
 // Replace static cards with sparkline trends
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 
 // Sample data structure
@@ -415,8 +478,8 @@ const cpuTrendData = [
       <AreaChart data={cpuTrendData}>
         <defs>
           <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
-            <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
           </linearGradient>
         </defs>
         <Area
@@ -450,16 +513,18 @@ const cpuTrendData = [
       </div>
     </div>
   </CardContent>
-</Card>
+</Card>;
 ```
 
 #### 2.4 Anomaly Detection Should Only Show Problems
+
 **Location**: Predictions tab, Anomaly Detection section
 **Current**: Shows ALL statuses including "normal"
 **Issue**: User states "only show actual problems/alerts, not 'normal' status items"
 **Rationale**: Reduces noise, focuses attention on actionable items
 
 **Current Code** (displays all):
+
 ```tsx
 <div>
   <AlertCircle />
@@ -479,52 +544,60 @@ const cpuTrendData = [
 ```
 
 **Recommended Fix**:
+
 ```tsx
 // Filter to only show non-normal statuses
 const anomalies = [
-  { id: 1, message: "CPU spike detected", severity: "warning", icon: AlertTriangle },
-  { id: 2, message: "Response time anomaly", severity: "critical", icon: XCircle },
-  { id: 3, message: "High memory allocation rate", severity: "warning", icon: AlertCircle },
+  { id: 1, message: 'CPU spike detected', severity: 'warning', icon: AlertTriangle },
+  { id: 2, message: 'Response time anomaly', severity: 'critical', icon: XCircle },
+  { id: 3, message: 'High memory allocation rate', severity: 'warning', icon: AlertCircle },
 ];
 
 // Only render if anomalies exist
-{anomalies.length > 0 ? (
-  <div className="space-y-2">
-    {anomalies.map(anomaly => (
-      <div key={anomaly.id} className="flex items-center justify-between p-3 border rounded-lg">
-        <div className="flex items-center gap-2">
-          <anomaly.icon className={cn(
-            "h-4 w-4",
-            anomaly.severity === "critical" && "text-destructive",
-            anomaly.severity === "warning" && "text-warning"
-          )} />
-          <span>{anomaly.message}</span>
+{
+  anomalies.length > 0 ? (
+    <div className="space-y-2">
+      {anomalies.map((anomaly) => (
+        <div key={anomaly.id} className="flex items-center justify-between p-3 border rounded-lg">
+          <div className="flex items-center gap-2">
+            <anomaly.icon
+              className={cn(
+                'h-4 w-4',
+                anomaly.severity === 'critical' && 'text-destructive',
+                anomaly.severity === 'warning' && 'text-warning'
+              )}
+            />
+            <span>{anomaly.message}</span>
+          </div>
+          <Badge variant={anomaly.severity === 'critical' ? 'destructive' : 'warning'}>
+            {anomaly.severity}
+          </Badge>
         </div>
-        <Badge variant={anomaly.severity === "critical" ? "destructive" : "warning"}>
-          {anomaly.severity}
-        </Badge>
-      </div>
-    ))}
-  </div>
-) : (
-  <div className="text-center py-6 text-muted-foreground">
-    <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
-    <p>All systems operating normally</p>
-  </div>
-)}
+      ))}
+    </div>
+  ) : (
+    <div className="text-center py-6 text-muted-foreground">
+      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
+      <p>All systems operating normally</p>
+    </div>
+  );
+}
 ```
 
 #### 2.5 Resource Utilization Needs Trend Graphs
+
 **Location**: Performance tab, System Health section
 **Current**: Progress bars showing current state
 **Issue**: Static bars don't show if usage is increasing/decreasing
 **Recommendation**: Same as 2.3 - add sparkline trend graphs next to each metric
 
 #### 2.6 Add Machine/Host Information for Multi-Machine Setups
+
 **Location**: Predictions and Performance tabs
 **Issue**: User requests "Add machine/host information for multi-machine setups"
 **Current**: Metrics shown without context of which server/instance
 **Implementation**:
+
 ```tsx
 // Add host selector
 const [selectedHost, setSelectedHost] = useState<string>("all");
@@ -557,6 +630,7 @@ const [selectedHost, setSelectedHost] = useState<string>("all");
 ## 3. Code Intelligence Suite Issues
 
 ### Screenshots Analyzed
+
 - ✅ Overview tab (code-intelligence-suite-overview-tab.png)
 - ✅ Code Analysis tab (code-intelligence-code-analysis-tab.png)
 - ✅ Tech Debt tab (code-intelligence-tech-debt-overview.png)
@@ -564,11 +638,13 @@ const [selectedHost, setSelectedHost] = useState<string>("all");
 ### P0 Issues (Critical)
 
 #### 3.1 Code Quality Metrics Lack Context
+
 **Location**: Code Analysis tab, Quality Gates section AND Overview tab
 **Issue**: Shows "Cyclomatic Complexity: 7.2 (Threshold: < 10)" but no explanation of what's "good" or how to improve
 **User Request**: "Add clear indicators: What is 'good'? How to get to 'great'? What are the thresholds?"
 
 **Current State** (lines 496-556 in screenshot):
+
 ```
 Quality Gates
 - Code Coverage: 87% (Threshold: > 80%) ✓
@@ -577,12 +653,14 @@ Quality Gates
 ```
 
 **Problem**: User doesn't know:
+
 - Is 87% coverage good or just "passing"?
 - How much effort to get from 87% to 95%?
 - What's the industry standard?
 - Which files are dragging down the average?
 
 **Recommended Solution - Add Quality Tiers with Guidance**:
+
 ```tsx
 interface QualityThreshold {
   metric: string;
@@ -604,46 +682,47 @@ interface QualityThreshold {
 
 const qualityMetrics: QualityThreshold[] = [
   {
-    metric: "Code Coverage",
+    metric: 'Code Coverage',
     value: 87,
-    threshold: "> 80%",
+    threshold: '> 80%',
     tiers: {
-      excellent: { min: 90, label: "Excellent", color: "text-green-600" },
-      good: { min: 80, label: "Good", color: "text-blue-600" },
-      fair: { min: 60, label: "Fair", color: "text-yellow-600" },
-      poor: { min: 0, label: "Poor", color: "text-red-600" },
+      excellent: { min: 90, label: 'Excellent', color: 'text-green-600' },
+      good: { min: 80, label: 'Good', color: 'text-blue-600' },
+      fair: { min: 60, label: 'Fair', color: 'text-yellow-600' },
+      poor: { min: 0, label: 'Poor', color: 'text-red-600' },
     },
     improvement: {
-      current: "Good (87%)",
-      next: "Excellent (90%+)",
-      effort: "Add tests for 5 uncovered service files (~2 days)",
-      impact: "Reduce production bugs by ~15%"
-    }
+      current: 'Good (87%)',
+      next: 'Excellent (90%+)',
+      effort: 'Add tests for 5 uncovered service files (~2 days)',
+      impact: 'Reduce production bugs by ~15%',
+    },
   },
   {
-    metric: "Cyclomatic Complexity",
+    metric: 'Cyclomatic Complexity',
     value: 7.2,
-    threshold: "< 10",
+    threshold: '< 10',
     tiers: {
-      excellent: { min: 0, label: "Excellent", color: "text-green-600" },  // 1-5
-      good: { min: 5, label: "Good", color: "text-blue-600" },            // 5-10
-      fair: { min: 10, label: "Fair", color: "text-yellow-600" },         // 10-15
-      poor: { min: 15, label: "Poor", color: "text-red-600" },            // 15+
+      excellent: { min: 0, label: 'Excellent', color: 'text-green-600' }, // 1-5
+      good: { min: 5, label: 'Good', color: 'text-blue-600' }, // 5-10
+      fair: { min: 10, label: 'Fair', color: 'text-yellow-600' }, // 10-15
+      poor: { min: 15, label: 'Poor', color: 'text-red-600' }, // 15+
     },
     improvement: {
-      current: "Good (7.2)",
-      next: "Excellent (<5)",
-      effort: "Refactor 3 complex functions (extractAuthHandler, processPayment, validateUserInput)",
-      impact: "Easier maintenance, 20% faster onboarding for new devs"
-    }
-  }
+      current: 'Good (7.2)',
+      next: 'Excellent (<5)',
+      effort:
+        'Refactor 3 complex functions (extractAuthHandler, processPayment, validateUserInput)',
+      impact: 'Easier maintenance, 20% faster onboarding for new devs',
+    },
+  },
 ];
 
 // Enhanced visualization
 <div className="space-y-6">
-  {qualityMetrics.map(metric => {
+  {qualityMetrics.map((metric) => {
     const getTier = (value: number) => {
-      if (metric.metric === "Cyclomatic Complexity") {
+      if (metric.metric === 'Cyclomatic Complexity') {
         // Lower is better for complexity
         if (value <= 5) return metric.tiers.excellent;
         if (value <= 10) return metric.tiers.good;
@@ -673,7 +752,10 @@ const qualityMetrics: QualityThreshold[] = [
             {/* Current Value with Visual Scale */}
             <div>
               <div className="flex justify-between mb-2">
-                <span className="text-2xl font-bold">{metric.value}{metric.metric.includes("Coverage") ? "%" : ""}</span>
+                <span className="text-2xl font-bold">
+                  {metric.value}
+                  {metric.metric.includes('Coverage') ? '%' : ''}
+                </span>
                 <span className="text-sm text-muted-foreground">Threshold: {metric.threshold}</span>
               </div>
 
@@ -733,10 +815,11 @@ const qualityMetrics: QualityThreshold[] = [
       </Card>
     );
   })}
-</div>
+</div>;
 ```
 
 #### 3.2 Show Greatest Opportunities to Increase Code Quality
+
 **Location**: Code Analysis tab
 **Current**: Shows overall metrics but not WHERE to focus effort
 **User Request**: "Instead of just sliders, show the greatest opportunities to increase code quality"
@@ -752,39 +835,46 @@ const qualityMetrics: QualityThreshold[] = [
     <div className="space-y-3">
       {[
         {
-          file: "server/api/payments.ts",
-          issue: "Low test coverage (45%)",
-          impact: "High",
-          effort: "Medium",
-          improvement: "+8% overall coverage",
-          action: "Add 12 test cases for payment edge cases"
+          file: 'server/api/payments.ts',
+          issue: 'Low test coverage (45%)',
+          impact: 'High',
+          effort: 'Medium',
+          improvement: '+8% overall coverage',
+          action: 'Add 12 test cases for payment edge cases',
         },
         {
-          file: "client/components/DataTable.tsx",
-          issue: "High complexity (CC: 18)",
-          impact: "Medium",
-          effort: "Low",
-          improvement: "-1.2 overall complexity",
-          action: "Extract sorting logic into custom hook"
+          file: 'client/components/DataTable.tsx',
+          issue: 'High complexity (CC: 18)',
+          impact: 'Medium',
+          effort: 'Low',
+          improvement: '-1.2 overall complexity',
+          action: 'Extract sorting logic into custom hook',
         },
         {
-          file: "shared/validation/index.ts",
-          issue: "Code duplication (85% similar to utils/validate.ts)",
-          impact: "Medium",
-          effort: "Low",
-          improvement: "-3% duplicate code",
-          action: "Consolidate into single validation module"
-        }
+          file: 'shared/validation/index.ts',
+          issue: 'Code duplication (85% similar to utils/validate.ts)',
+          impact: 'Medium',
+          effort: 'Low',
+          improvement: '-3% duplicate code',
+          action: 'Consolidate into single validation module',
+        },
       ].map((opp, index) => (
         <div key={index} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
           <div className="flex items-start justify-between mb-2">
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="font-mono text-xs">{opp.file}</Badge>
-                <Badge variant={
-                  opp.impact === "High" ? "destructive" :
-                  opp.impact === "Medium" ? "default" : "secondary"
-                }>
+                <Badge variant="outline" className="font-mono text-xs">
+                  {opp.file}
+                </Badge>
+                <Badge
+                  variant={
+                    opp.impact === 'High'
+                      ? 'destructive'
+                      : opp.impact === 'Medium'
+                        ? 'default'
+                        : 'secondary'
+                  }
+                >
                   {opp.impact} Impact
                 </Badge>
               </div>
@@ -822,13 +912,16 @@ const qualityMetrics: QualityThreshold[] = [
 ### P1 Issues (Important)
 
 #### 3.3 COMBINE Code Quality Metrics and Security & Coverage Sections
+
 **Location**: Code Analysis tab (scrolled view)
 **Issue**: TWO sections showing similar data:
+
 1. "Code Quality Metrics" section (top)
 2. "Security & Coverage" section (bottom)
-**Problem**: Both show security vulnerabilities - creates confusion about which is source of truth
+   **Problem**: Both show security vulnerabilities - creates confusion about which is source of truth
 
 **Current Duplicated Content**:
+
 - Code Quality Metrics: Shows "Security Issues: 2"
 - Security & Coverage: Shows "Vulnerabilities: 25" (different number!)
 
@@ -840,24 +933,9 @@ const qualityMetrics: QualityThreshold[] = [
 
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
     {/* Consolidate all metrics here */}
-    <MetricCard
-      title="Files Analyzed"
-      value="1,250"
-      status="healthy"
-      icon={FileCode}
-    />
-    <MetricCard
-      title="Avg Complexity"
-      value="7.2"
-      status="healthy"
-      icon={GitBranch}
-    />
-    <MetricCard
-      title="Code Smells"
-      value="23"
-      status="warning"
-      icon={AlertTriangle}
-    />
+    <MetricCard title="Files Analyzed" value="1,250" status="healthy" icon={FileCode} />
+    <MetricCard title="Avg Complexity" value="7.2" status="healthy" icon={GitBranch} />
+    <MetricCard title="Code Smells" value="23" status="warning" icon={AlertTriangle} />
     <MetricCard
       title="Security Vulnerabilities"
       value="2"
@@ -891,54 +969,81 @@ const qualityMetrics: QualityThreshold[] = [
 
 **Inconsistencies Found**:
 
-| Component | Row Height | Padding | Line Height |
-|-----------|------------|---------|-------------|
-| Intelligence Savings - Trends Table | ~48px | p-3 (12px) | 1.5rem |
-| Intelligence Savings - AI Models Table | ~52px | p-3 (12px) | 1.5rem |
-| Enhanced Analytics - Performance Table | Variable | p-4 (16px) | Auto |
-| Agent Comparison Cards | ~120px | p-4 (16px) | Auto |
+| Component                              | Row Height | Padding    | Line Height |
+| -------------------------------------- | ---------- | ---------- | ----------- |
+| Intelligence Savings - Trends Table    | ~48px      | p-3 (12px) | 1.5rem      |
+| Intelligence Savings - AI Models Table | ~52px      | p-3 (12px) | 1.5rem      |
+| Enhanced Analytics - Performance Table | Variable   | p-4 (16px) | Auto        |
+| Agent Comparison Cards                 | ~120px     | p-4 (16px) | Auto        |
 
 **Recommendation - Standardized Row Heights**:
+
 ```css
 /* Table rows */
-.table-row-sm { height: 40px; padding: 0.5rem 0.75rem; } /* Compact data tables */
-.table-row-md { height: 48px; padding: 0.75rem; }        /* Default tables */
-.table-row-lg { height: 56px; padding: 1rem; }           /* Important data */
+.table-row-sm {
+  height: 40px;
+  padding: 0.5rem 0.75rem;
+} /* Compact data tables */
+.table-row-md {
+  height: 48px;
+  padding: 0.75rem;
+} /* Default tables */
+.table-row-lg {
+  height: 56px;
+  padding: 1rem;
+} /* Important data */
 
 /* List items */
-.list-item-sm { min-height: 48px; padding: 0.75rem; }    /* Simple lists */
-.list-item-md { min-height: 64px; padding: 1rem; }       /* Default lists */
-.list-item-lg { min-height: 80px; padding: 1.25rem; }    /* Rich content */
+.list-item-sm {
+  min-height: 48px;
+  padding: 0.75rem;
+} /* Simple lists */
+.list-item-md {
+  min-height: 64px;
+  padding: 1rem;
+} /* Default lists */
+.list-item-lg {
+  min-height: 80px;
+  padding: 1.25rem;
+} /* Rich content */
 
 /* Cards */
-.card-compact { padding: 1rem; }    /* Metric cards */
-.card-default { padding: 1.5rem; }  /* Standard cards */
-.card-spacious { padding: 2rem; }   /* Feature cards */
+.card-compact {
+  padding: 1rem;
+} /* Metric cards */
+.card-default {
+  padding: 1.5rem;
+} /* Standard cards */
+.card-spacious {
+  padding: 2rem;
+} /* Feature cards */
 ```
 
 ### 4.2 Font Sizes - Current State
 
 **Analysis from Screenshots**:
 
-| Element | Current Size | Recommendation |
-|---------|--------------|----------------|
-| Page Titles (h1) | text-3xl (30px) | ✅ Keep - Good |
-| Section Titles (h2) | text-lg (18px) | ✅ Keep - Good |
-| Subsection Titles (h3) | text-base (16px) | ✅ Keep - Good |
-| Card Titles | text-sm (14px) | ✅ Keep - Good |
-| Body Text | text-sm (14px) | ✅ Keep - Good |
-| Muted Text | text-xs (12px) | ✅ Keep - Good |
-| Metric Values | text-2xl (24px) | ✅ Keep - Good |
-| Table Headers | text-sm (14px) | ⚠️ Consider text-xs for dense tables |
-| Table Cells | text-sm (14px) | ✅ Keep - Good |
-| Badges | text-xs (12px) | ✅ Keep - Good |
+| Element                | Current Size     | Recommendation                       |
+| ---------------------- | ---------------- | ------------------------------------ |
+| Page Titles (h1)       | text-3xl (30px)  | ✅ Keep - Good                       |
+| Section Titles (h2)    | text-lg (18px)   | ✅ Keep - Good                       |
+| Subsection Titles (h3) | text-base (16px) | ✅ Keep - Good                       |
+| Card Titles            | text-sm (14px)   | ✅ Keep - Good                       |
+| Body Text              | text-sm (14px)   | ✅ Keep - Good                       |
+| Muted Text             | text-xs (12px)   | ✅ Keep - Good                       |
+| Metric Values          | text-2xl (24px)  | ✅ Keep - Good                       |
+| Table Headers          | text-sm (14px)   | ⚠️ Consider text-xs for dense tables |
+| Table Cells            | text-sm (14px)   | ✅ Keep - Good                       |
+| Badges                 | text-xs (12px)   | ✅ Keep - Good                       |
 
 **Recommendation**: Current font sizing is **well-balanced**. Only minor tweak:
+
 - Consider `text-xs` for table headers in data-dense tables to improve scanability
 
 ### 4.3 Time Range Selector Position - CRITICAL STANDARDIZATION NEEDED
 
 **Current State** (INCONSISTENT):
+
 - Intelligence Savings: **RIGHT** side ✅
 - Enhanced Analytics: **LEFT** side ❌
 - Code Intelligence: **Not visible in Overview** ❌
@@ -949,12 +1054,14 @@ const qualityMetrics: QualityThreshold[] = [
 **Recommended Standard**: **RIGHT side, aligned with other header actions**
 
 **Rationale**:
+
 1. Follows F-pattern reading (title left, actions right)
 2. Consistent with most dashboard UIs (Grafana, Datadog, etc.)
 3. Groups with other temporal/filter controls
 4. Leaves left side clear for descriptive content
 
 **Implementation Template**:
+
 ```tsx
 // Standard header pattern for ALL dashboards
 <div className="space-y-6">
@@ -972,23 +1079,23 @@ const qualityMetrics: QualityThreshold[] = [
       {/* Time range selector - ALWAYS HERE */}
       <div className="flex items-center gap-2">
         <Button
-          variant={timeRange === "7d" ? "default" : "outline"}
+          variant={timeRange === '7d' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setTimeRange("7d")}
+          onClick={() => setTimeRange('7d')}
         >
           7D
         </Button>
         <Button
-          variant={timeRange === "30d" ? "default" : "outline"}
+          variant={timeRange === '30d' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setTimeRange("30d")}
+          onClick={() => setTimeRange('30d')}
         >
           30D
         </Button>
         <Button
-          variant={timeRange === "90d" ? "default" : "outline"}
+          variant={timeRange === '90d' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setTimeRange("90d")}
+          onClick={() => setTimeRange('90d')}
         >
           90D
         </Button>
@@ -1022,6 +1129,7 @@ const qualityMetrics: QualityThreshold[] = [
 **Recommendation**: Add hover states and click handlers to key metrics
 
 **Implementation Pattern**:
+
 ```tsx
 <Tooltip>
   <TooltipTrigger asChild>
@@ -1068,6 +1176,7 @@ const qualityMetrics: QualityThreshold[] = [
 
 **Purpose**: Show aggregated data with drill-down capability
 **Use Cases**:
+
 - Trends tables (show daily breakdown)
 - Agent comparison (show individual runs)
 - Cost breakdown (show component costs)
@@ -1075,6 +1184,7 @@ const qualityMetrics: QualityThreshold[] = [
 **Standard Implementation** (see section 1.4 for full code)
 
 **Visual Design**:
+
 - Chevron icon (right/down) indicates expandability
 - Subtle hover state on clickable rows
 - Expanded content uses muted background (bg-muted/20)
@@ -1086,14 +1196,15 @@ const qualityMetrics: QualityThreshold[] = [
 **Recommendation**: Standardized time-series visualization using Recharts
 
 **Standard Config**:
+
 ```tsx
 // Color palette for charts
 const chartColors = {
-  primary: "hsl(var(--primary))",
-  success: "hsl(142, 76%, 36%)",  // Green
-  warning: "hsl(38, 92%, 50%)",    // Orange
-  danger: "hsl(0, 84%, 60%)",      // Red
-  muted: "hsl(var(--muted-foreground))",
+  primary: 'hsl(var(--primary))',
+  success: 'hsl(142, 76%, 36%)', // Green
+  warning: 'hsl(38, 92%, 50%)', // Orange
+  danger: 'hsl(0, 84%, 60%)', // Red
+  muted: 'hsl(var(--muted-foreground))',
 };
 
 // Standard area chart component
@@ -1101,25 +1212,18 @@ const chartColors = {
   <AreaChart data={data}>
     <defs>
       <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="5%" stopColor={chartColors.primary} stopOpacity={0.3}/>
-        <stop offset="95%" stopColor={chartColors.primary} stopOpacity={0}/>
+        <stop offset="5%" stopColor={chartColors.primary} stopOpacity={0.3} />
+        <stop offset="95%" stopColor={chartColors.primary} stopOpacity={0} />
       </linearGradient>
     </defs>
     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.muted} opacity={0.2} />
-    <XAxis
-      dataKey="time"
-      stroke={chartColors.muted}
-      style={{ fontSize: 12 }}
-    />
-    <YAxis
-      stroke={chartColors.muted}
-      style={{ fontSize: 12 }}
-    />
+    <XAxis dataKey="time" stroke={chartColors.muted} style={{ fontSize: 12 }} />
+    <YAxis stroke={chartColors.muted} style={{ fontSize: 12 }} />
     <RechartsTooltip
       contentStyle={{
         backgroundColor: 'hsl(var(--background))',
         border: '1px solid hsl(var(--border))',
-        borderRadius: '6px'
+        borderRadius: '6px',
       }}
     />
     <Area
@@ -1130,7 +1234,7 @@ const chartColors = {
       strokeWidth={2}
     />
   </AreaChart>
-</ResponsiveContainer>
+</ResponsiveContainer>;
 ```
 
 ---
@@ -1142,6 +1246,7 @@ const chartColors = {
 **Estimated Effort**: 3-4 days
 
 #### Day 1: Standardize Time Range Selectors
+
 - [ ] Create `<TimeRangeSelector>` reusable component
 - [ ] Update Enhanced Analytics to move selector to RIGHT
 - [ ] Update Agent Management (verify position)
@@ -1149,6 +1254,7 @@ const chartColors = {
 - [ ] Test consistency across all pages
 
 **Files to Modify**:
+
 - `client/src/components/TimeRangeSelector.tsx` (NEW)
 - `client/src/pages/preview/EnhancedAnalytics.tsx`
 - `client/src/pages/preview/IntelligenceSavings.tsx` (verify)
@@ -1156,22 +1262,26 @@ const chartColors = {
 - `client/src/pages/preview/AgentManagement.tsx`
 
 #### Day 2: Fix Success Rate Chiclet Colors
+
 - [ ] Create color grading function for success rates
 - [ ] Update Intelligence Savings AI Models table
 - [ ] Update Enhanced Analytics AI Models section
 - [ ] Add legend explaining color coding
 
 **Files to Modify**:
+
 - `client/src/pages/preview/IntelligenceSavings.tsx` (lines 1076-1078)
 - `client/src/lib/utils/badge-variants.ts` (NEW - centralize logic)
 
 #### Day 3-4: Code Quality Context & Improvement Opportunities
+
 - [ ] Create `<QualityMetricCard>` component with tier visualization
 - [ ] Add improvement guidance to each metric
 - [ ] Create "Top Opportunities" section
 - [ ] Combine Security & Coverage sections
 
 **Files to Modify**:
+
 - `client/src/components/QualityMetricCard.tsx` (NEW)
 - `client/src/components/ImprovementOpportunities.tsx` (NEW)
 - `client/src/pages/preview/CodeIntelligenceSuite.tsx`
@@ -1181,43 +1291,51 @@ const chartColors = {
 **Estimated Effort**: 5 days
 
 #### Day 1: Custom Date Range Picker
+
 - [ ] Integrate shadcn Calendar component
 - [ ] Add date range state management
 - [ ] Update all data fetching to support custom ranges
 - [ ] Add range presets (Last 7 days, Last month, etc.)
 
 **Files to Modify**:
+
 - `client/src/components/TimeRangeSelector.tsx` (extend from Phase 1)
 - `client/src/lib/data-sources/*.ts` (update fetch functions)
 
 #### Day 2-3: Expandable Trends Table Rows
+
 - [ ] Create expandable row component
 - [ ] Add breakdown data to API responses
 - [ ] Implement expand/collapse state management
 - [ ] Add breakdown visualization
 
 **Files to Modify**:
+
 - `client/src/components/ExpandableTableRow.tsx` (NEW)
 - `client/src/pages/preview/IntelligenceSavings.tsx` (Trends tab)
 - `server/savings-routes.ts` (add breakdown data to API)
 
 #### Day 4: Predictive Analytics Trend Graphs
+
 - [ ] Create trend graph components
 - [ ] Replace static percentages with time-series data
 - [ ] Add prediction visualization (dashed lines)
 - [ ] Implement confidence intervals
 
 **Files to Modify**:
+
 - `client/src/components/PredictiveTrendCard.tsx` (NEW)
 - `client/src/pages/preview/EnhancedAnalytics.tsx` (Predictions tab)
 
 #### Day 5: Consolidate AI Models Tabs
+
 - [ ] Remove AI Models from Enhanced Analytics
 - [ ] Add cross-reference link in Enhanced Analytics
 - [ ] Verify Intelligence Savings AI Models has all needed data
 - [ ] Update navigation/routing
 
 **Files to Modify**:
+
 - `client/src/pages/preview/EnhancedAnalytics.tsx` (remove AI Models tab)
 - `client/src/pages/preview/IntelligenceSavings.tsx` (verify comprehensive)
 
@@ -1226,6 +1344,7 @@ const chartColors = {
 **Estimated Effort**: 3-4 days
 
 #### Implement Remaining Features
+
 - [ ] Add machine/host selector to Enhanced Analytics
 - [ ] Filter Anomaly Detection to only show problems
 - [ ] Convert Resource Utilization to trend graphs
@@ -1238,12 +1357,14 @@ const chartColors = {
 ## 6. Testing Requirements
 
 ### 6.1 Visual Regression Testing
+
 - [ ] Capture screenshots of all dashboards before changes
 - [ ] Capture screenshots after each phase
 - [ ] Compare using Percy or Chromatic
 - [ ] Verify no unintended layout shifts
 
 ### 6.2 Functional Testing
+
 - [ ] Time range selector works consistently across all pages
 - [ ] Expandable rows open/close correctly
 - [ ] Date range picker validates inputs
@@ -1252,12 +1373,14 @@ const chartColors = {
 - [ ] Mobile responsive behavior
 
 ### 6.3 Performance Testing
+
 - [ ] Measure render time with expanded tables
 - [ ] Check memory usage with multiple graphs
 - [ ] Verify smooth animations (60fps)
 - [ ] Test with large datasets (10,000+ rows)
 
 ### 6.4 Accessibility Testing
+
 - [ ] Keyboard navigation for expandable rows
 - [ ] Screen reader announcements for metrics
 - [ ] Color contrast for all badges/chiclets (WCAG AA)
@@ -1326,6 +1449,7 @@ export const designTokens = {
 ### 7.2 Component Library Updates
 
 **Create Reusable Components**:
+
 - `<TimeRangeSelector>` - Standardized time range control
 - `<QualityMetricCard>` - Metric with tier visualization
 - `<ExpandableTableRow>` - Table row with drill-down
@@ -1339,6 +1463,7 @@ export const designTokens = {
 These fixes require minimal code changes and have high user impact:
 
 ### 8.1 Add Success Rate Color Legend (15 minutes)
+
 ```tsx
 // Add to AI Models tab
 <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
@@ -1359,6 +1484,7 @@ These fixes require minimal code changes and have high user impact:
 ```
 
 ### 8.2 Add Usage Percentage to AI Models Table (30 minutes)
+
 ```tsx
 // In IntelligenceSavings.tsx AI Models tab
 const totalRequests = sortedData.reduce((sum, m) => sum + m.requests, 0);
@@ -1375,6 +1501,7 @@ const totalRequests = sortedData.reduce((sum, m) => sum + m.requests, 0);
 ```
 
 ### 8.3 Remove "Normal" from Anomaly Detection (5 minutes)
+
 ```tsx
 // In EnhancedAnalytics.tsx Predictions tab
 const anomalies = detectedAnomalies.filter(a => a.severity !== 'normal');
@@ -1394,17 +1521,20 @@ const anomalies = detectedAnomalies.filter(a => a.severity !== 'normal');
 ## 9. Metrics for Success
 
 ### 9.1 User Experience Metrics
+
 - **Time to find time range selector**: < 2 seconds (currently varies 2-5s)
 - **Clicks to understand metric quality**: 1 click (currently requires external research)
 - **Cognitive load score**: Reduce from 7/10 to 4/10 (Nielsen Norman Group method)
 
 ### 9.2 Technical Metrics
+
 - **Page load time**: < 2 seconds (maintain current performance)
 - **Time to interactive**: < 3 seconds
 - **Chart render time**: < 500ms
 - **Expandable row animation**: 60fps smooth
 
 ### 9.3 Business Metrics
+
 - **User satisfaction (CSAT)**: Target 4.5+/5
 - **Task completion rate**: Target 95%+ (currently ~80% due to confusion)
 - **Support tickets about UI**: Reduce by 60%
@@ -1414,11 +1544,13 @@ const anomalies = detectedAnomalies.filter(a => a.severity !== 'normal');
 ## 10. Screenshots Reference
 
 All screenshots captured on November 7, 2025 and stored in:
+
 ```
 .playwright-mcp/
 ```
 
 ### Intelligence Savings
+
 - `intelligence-savings-overview-tab.png`
 - `intelligence-savings-agent-comparison-tab.png`
 - `intelligence-savings-trends-tab.png`
@@ -1426,11 +1558,13 @@ All screenshots captured on November 7, 2025 and stored in:
 - `intelligence-savings-ai-models-tab.png`
 
 ### Enhanced Analytics
+
 - `enhanced-analytics-performance-tab.png`
 - `enhanced-analytics-ai-models-tab.png`
 - `enhanced-analytics-predictions-tab.png`
 
 ### Code Intelligence Suite
+
 - `code-intelligence-suite-overview-tab.png`
 - `code-intelligence-code-analysis-tab.png`
 - `code-intelligence-tech-debt-overview.png`
@@ -1452,6 +1586,7 @@ All screenshots captured on November 7, 2025 and stored in:
 ## Appendix A: File Changes Summary
 
 ### Files to Create
+
 - `client/src/components/TimeRangeSelector.tsx`
 - `client/src/components/QualityMetricCard.tsx`
 - `client/src/components/ImprovementOpportunities.tsx`
@@ -1461,12 +1596,14 @@ All screenshots captured on November 7, 2025 and stored in:
 - `client/src/lib/utils/badge-variants.ts`
 
 ### Files to Modify
+
 - `client/src/pages/preview/IntelligenceSavings.tsx` (5 changes)
 - `client/src/pages/preview/EnhancedAnalytics.tsx` (4 changes)
 - `client/src/pages/preview/CodeIntelligenceSuite.tsx` (3 changes)
 - `server/savings-routes.ts` (add breakdown data)
 
 ### Files to Review
+
 - `client/src/pages/preview/AgentManagement.tsx` (verify time selector position)
 - `shared/intelligence-schema.ts` (verify security vulnerability source)
 
@@ -1475,6 +1612,7 @@ All screenshots captured on November 7, 2025 and stored in:
 ## Appendix B: Component API Specifications
 
 ### TimeRangeSelector Component
+
 ```typescript
 interface TimeRangeSelectorProps {
   value: string;
@@ -1486,6 +1624,7 @@ interface TimeRangeSelectorProps {
 ```
 
 ### QualityMetricCard Component
+
 ```typescript
 interface QualityMetricCardProps {
   metric: string;
@@ -1499,6 +1638,7 @@ interface QualityMetricCardProps {
 ```
 
 ### ExpandableTableRow Component
+
 ```typescript
 interface ExpandableTableRowProps {
   id: string;

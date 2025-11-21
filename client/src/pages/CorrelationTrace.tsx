@@ -1,13 +1,13 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Search, Clock, CheckCircle, AlertCircle, Code, Database, Zap } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ExportButton } from "@/components/ExportButton";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { USE_MOCK_DATA } from "@/lib/mock-data/config";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Search, Clock, AlertCircle, Code, Database, Zap } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { ExportButton } from '@/components/ExportButton';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { USE_MOCK_DATA } from '@/lib/mock-data/config';
 
 // TypeScript interfaces for trace events
 interface TraceEvent {
@@ -32,11 +32,15 @@ interface TraceResponse {
 }
 
 export default function CorrelationTrace() {
-  const [correlationId, setCorrelationId] = useState("");
+  const [correlationId, setCorrelationId] = useState('');
   const [searchId, setSearchId] = useState<string | null>(null);
 
   // Fetch trace data when searchId changes, or show sample trace when no search ID
-  const { data: traceData, isLoading, error } = useQuery<TraceResponse>({
+  const {
+    data: traceData,
+    isLoading,
+    error,
+  } = useQuery<TraceResponse>({
     queryKey: [`/api/intelligence/trace/${searchId || 'sample'}`],
     queryFn: async () => {
       // If USE_MOCK_DATA is enabled or no search ID, return mock data
@@ -52,7 +56,7 @@ export default function CorrelationTrace() {
               timestamp: new Date(now - 4000).toISOString(),
               agentName: 'Router',
               details: { decision: 'polymorphic-agent', confidence: 0.94 },
-              durationMs: 45
+              durationMs: 45,
             },
             {
               id: '2',
@@ -60,7 +64,7 @@ export default function CorrelationTrace() {
               timestamp: new Date(now - 3950).toISOString(),
               agentName: 'Polymorphic Agent',
               details: { patternId: 'auth-pattern', injected: true },
-              durationMs: 12
+              durationMs: 12,
             },
             {
               id: '3',
@@ -68,7 +72,7 @@ export default function CorrelationTrace() {
               timestamp: new Date(now - 3900).toISOString(),
               agentName: 'Polymorphic Agent',
               details: { action: 'code-generation', status: 'success' },
-              durationMs: 1200
+              durationMs: 1200,
             },
             {
               id: '4',
@@ -76,16 +80,16 @@ export default function CorrelationTrace() {
               timestamp: new Date(now - 2700).toISOString(),
               agentName: 'Code Reviewer',
               details: { action: 'code-review', status: 'success' },
-              durationMs: 800
-            }
+              durationMs: 800,
+            },
           ],
           summary: {
             totalEvents: 4,
             routingDecisions: 1,
             actions: 2,
             errors: 0,
-            totalDurationMs: 2057
-          }
+            totalDurationMs: 2057,
+          },
         };
       }
       // Try to fetch real trace
@@ -277,9 +281,7 @@ export default function CorrelationTrace() {
           <Card>
             <CardHeader>
               <CardTitle>Execution Timeline</CardTitle>
-              <CardDescription>
-                Events sorted by timestamp (newest first)
-              </CardDescription>
+              <CardDescription>Events sorted by timestamp (newest first)</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -288,7 +290,9 @@ export default function CorrelationTrace() {
                     <div className="flex items-start gap-4">
                       {/* Timeline Indicator */}
                       <div className="flex flex-col items-center">
-                        <div className={`rounded-full p-2 border ${getEventColor(event.eventType)}`}>
+                        <div
+                          className={`rounded-full p-2 border ${getEventColor(event.eventType)}`}
+                        >
                           {getEventIcon(event.eventType)}
                         </div>
                         {index < traceData.events.length - 1 && (
@@ -368,8 +372,8 @@ export default function CorrelationTrace() {
               <Search className="w-12 h-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">Start Tracing</h3>
               <p className="text-muted-foreground max-w-md">
-                Enter a correlation ID above to trace the complete execution flow across all
-                systems and view detailed event timelines
+                Enter a correlation ID above to trace the complete execution flow across all systems
+                and view detailed event timelines
               </p>
             </div>
           </CardContent>

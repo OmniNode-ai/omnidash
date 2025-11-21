@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { checkAllServices } from '../service-health';
 import { intelligenceDb } from '../storage';
 import { eventConsumer } from '../event-consumer';
-import { sql } from 'drizzle-orm';
 import { Kafka } from 'kafkajs';
 
 // Mock dependencies
@@ -38,11 +37,13 @@ describe('Service Health Checks', () => {
   // or we can test the exported checkAllServices function which calls them all
   describe('checkPostgreSQL (via checkAllServices)', () => {
     it('should return up status when database is healthy', async () => {
-      const mockResult = [{
-        check: 1,
-        current_time: new Date(),
-        pg_version: 'PostgreSQL 15.0',
-      }];
+      const mockResult = [
+        {
+          check: 1,
+          current_time: new Date(),
+          pg_version: 'PostgreSQL 15.0',
+        },
+      ];
 
       vi.mocked(intelligenceDb.execute).mockResolvedValue(mockResult as any);
 
@@ -52,9 +53,12 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(() => ({
-        admin: () => mockAdmin,
-      } as any));
+      vi.mocked(Kafka).mockImplementation(
+        () =>
+          ({
+            admin: () => mockAdmin,
+          }) as any
+      );
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -67,7 +71,7 @@ describe('Service Health Checks', () => {
       } as any);
 
       const results = await checkAllServices();
-      const pgResult = results.find(r => r.service === 'PostgreSQL');
+      const pgResult = results.find((r) => r.service === 'PostgreSQL');
 
       expect(pgResult).toBeDefined();
       expect(pgResult?.status).toBe('up');
@@ -85,9 +89,12 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(() => ({
-        admin: () => mockAdmin,
-      } as any));
+      vi.mocked(Kafka).mockImplementation(
+        () =>
+          ({
+            admin: () => mockAdmin,
+          }) as any
+      );
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -100,7 +107,7 @@ describe('Service Health Checks', () => {
       } as any);
 
       const results = await checkAllServices();
-      const pgResult = results.find(r => r.service === 'PostgreSQL');
+      const pgResult = results.find((r) => r.service === 'PostgreSQL');
 
       expect(pgResult).toBeDefined();
       expect(pgResult?.status).toBe('down');
@@ -119,9 +126,12 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(() => ({
-        admin: () => mockAdmin,
-      } as any));
+      vi.mocked(Kafka).mockImplementation(
+        () =>
+          ({
+            admin: () => mockAdmin,
+          }) as any
+      );
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -134,7 +144,7 @@ describe('Service Health Checks', () => {
       } as any);
 
       const results = await checkAllServices();
-      const kafkaResult = results.find(r => r.service === 'Kafka/Redpanda');
+      const kafkaResult = results.find((r) => r.service === 'Kafka/Redpanda');
 
       expect(kafkaResult).toBeDefined();
       expect(kafkaResult?.status).toBe('up');
@@ -152,9 +162,12 @@ describe('Service Health Checks', () => {
         connect: vi.fn().mockRejectedValue(new Error('Connection refused')),
       };
 
-      vi.mocked(Kafka).mockImplementation(() => ({
-        admin: () => mockAdmin,
-      } as any));
+      vi.mocked(Kafka).mockImplementation(
+        () =>
+          ({
+            admin: () => mockAdmin,
+          }) as any
+      );
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -167,7 +180,7 @@ describe('Service Health Checks', () => {
       } as any);
 
       const results = await checkAllServices();
-      const kafkaResult = results.find(r => r.service === 'Kafka/Redpanda');
+      const kafkaResult = results.find((r) => r.service === 'Kafka/Redpanda');
 
       expect(kafkaResult).toBeDefined();
       expect(kafkaResult?.status).toBe('down');
@@ -186,9 +199,12 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(() => ({
-        admin: () => mockAdmin,
-      } as any));
+      vi.mocked(Kafka).mockImplementation(
+        () =>
+          ({
+            admin: () => mockAdmin,
+          }) as any
+      );
 
       const mockResponse = {
         ok: true,
@@ -204,7 +220,7 @@ describe('Service Health Checks', () => {
       } as any);
 
       const results = await checkAllServices();
-      const omniarchonResult = results.find(r => r.service === 'Omniarchon');
+      const omniarchonResult = results.find((r) => r.service === 'Omniarchon');
 
       expect(omniarchonResult).toBeDefined();
       expect(omniarchonResult?.status).toBe('up');
@@ -222,9 +238,12 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(() => ({
-        admin: () => mockAdmin,
-      } as any));
+      vi.mocked(Kafka).mockImplementation(
+        () =>
+          ({
+            admin: () => mockAdmin,
+          }) as any
+      );
 
       const mockResponse = {
         ok: false,
@@ -239,7 +258,7 @@ describe('Service Health Checks', () => {
       } as any);
 
       const results = await checkAllServices();
-      const omniarchonResult = results.find(r => r.service === 'Omniarchon');
+      const omniarchonResult = results.find((r) => r.service === 'Omniarchon');
 
       expect(omniarchonResult).toBeDefined();
       expect(omniarchonResult?.status).toBe('down');
@@ -255,9 +274,12 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(() => ({
-        admin: () => mockAdmin,
-      } as any));
+      vi.mocked(Kafka).mockImplementation(
+        () =>
+          ({
+            admin: () => mockAdmin,
+          }) as any
+      );
 
       vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'));
 
@@ -266,7 +288,7 @@ describe('Service Health Checks', () => {
       } as any);
 
       const results = await checkAllServices();
-      const omniarchonResult = results.find(r => r.service === 'Omniarchon');
+      const omniarchonResult = results.find((r) => r.service === 'Omniarchon');
 
       expect(omniarchonResult).toBeDefined();
       expect(omniarchonResult?.status).toBe('down');
@@ -285,9 +307,12 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(() => ({
-        admin: () => mockAdmin,
-      } as any));
+      vi.mocked(Kafka).mockImplementation(
+        () =>
+          ({
+            admin: () => mockAdmin,
+          }) as any
+      );
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -302,7 +327,7 @@ describe('Service Health Checks', () => {
       } as any);
 
       const results = await checkAllServices();
-      const eventConsumerResult = results.find(r => r.service === 'Event Consumer');
+      const eventConsumerResult = results.find((r) => r.service === 'Event Consumer');
 
       expect(eventConsumerResult).toBeDefined();
       expect(eventConsumerResult?.status).toBe('up');
@@ -318,9 +343,12 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(() => ({
-        admin: () => mockAdmin,
-      } as any));
+      vi.mocked(Kafka).mockImplementation(
+        () =>
+          ({
+            admin: () => mockAdmin,
+          }) as any
+      );
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -335,7 +363,7 @@ describe('Service Health Checks', () => {
       } as any);
 
       const results = await checkAllServices();
-      const eventConsumerResult = results.find(r => r.service === 'Event Consumer');
+      const eventConsumerResult = results.find((r) => r.service === 'Event Consumer');
 
       expect(eventConsumerResult).toBeDefined();
       expect(eventConsumerResult?.status).toBe('down');
@@ -350,9 +378,12 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(() => ({
-        admin: () => mockAdmin,
-      } as any));
+      vi.mocked(Kafka).mockImplementation(
+        () =>
+          ({
+            admin: () => mockAdmin,
+          }) as any
+      );
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -365,7 +396,7 @@ describe('Service Health Checks', () => {
       });
 
       const results = await checkAllServices();
-      const eventConsumerResult = results.find(r => r.service === 'Event Consumer');
+      const eventConsumerResult = results.find((r) => r.service === 'Event Consumer');
 
       expect(eventConsumerResult).toBeDefined();
       expect(eventConsumerResult?.status).toBe('down');
@@ -385,9 +416,12 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(() => ({
-        admin: () => mockAdmin,
-      } as any));
+      vi.mocked(Kafka).mockImplementation(
+        () =>
+          ({
+            admin: () => mockAdmin,
+          }) as any
+      );
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -410,4 +444,3 @@ describe('Service Health Checks', () => {
     });
   });
 });
-

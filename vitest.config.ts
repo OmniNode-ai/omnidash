@@ -28,7 +28,7 @@ export default defineConfig({
     poolOptions: {
       threads: {
         singleThread: false,
-        maxThreads: 2,  // Max 2 worker threads
+        maxThreads: 2, // Max 2 worker threads
         minThreads: 1,
         isolate: true, // Isolate each test file for better cleanup
       },
@@ -40,12 +40,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'client/src/tests/',
-        '*.config.*',
-        'dist/',
-      ],
+      exclude: ['node_modules/', 'client/src/tests/', '*.config.*', 'dist/'],
     },
   },
   resolve: {
@@ -56,8 +51,3 @@ export default defineConfig({
     },
   },
 });
-
-
-
-
-

@@ -9,7 +9,7 @@ const {
   mockConsumerRun,
   mockAdminConnect,
   mockAdminDisconnect,
-  mockAdminListTopics
+  mockAdminListTopics,
 } = vi.hoisted(() => ({
   mockConsumerConnect: vi.fn(),
   mockConsumerDisconnect: vi.fn(),
@@ -46,7 +46,6 @@ vi.mock('../storage', () => ({
 
 // Import after mocks are set up - this will use our mocks
 import { EventConsumer } from '../event-consumer';
-import { intelligenceDb } from '../storage';
 
 describe('EventConsumer', () => {
   let consumer: InstanceType<typeof EventConsumer>;
@@ -68,7 +67,7 @@ describe('EventConsumer', () => {
     vi.useRealTimers(); // Clean up timers after each test
     try {
       await consumer.stop();
-    } catch (e) {
+    } catch {
       // Ignore cleanup errors
     }
   });
@@ -190,9 +189,11 @@ describe('EventConsumer', () => {
       startPromise.catch(() => {});
       await vi.advanceTimersByTimeAsync(1000);
       await expect(startPromise).rejects.toThrow('Kafka connection failed after 5 attempts');
-      expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({
-        message: expect.stringContaining('Kafka connection failed after 5 attempts')
-      }));
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Kafka connection failed after 5 attempts'),
+        })
+      );
       vi.useRealTimers();
     }, 2000);
   });
@@ -349,7 +350,7 @@ describe('EventConsumer', () => {
       }
 
       const metrics = consumer.getAgentMetrics();
-      const agentMetric = metrics.find(m => m.agent === 'agent-api');
+      const agentMetric = metrics.find((m) => m.agent === 'agent-api');
 
       expect(agentMetric).toBeDefined();
       expect(agentMetric?.totalRequests).toBe(3);
@@ -419,7 +420,7 @@ describe('EventConsumer', () => {
       }
 
       const metrics = consumer.getAgentMetrics();
-      const agentMetric = metrics.find(m => m.agent === 'agent-test');
+      const agentMetric = metrics.find((m) => m.agent === 'agent-test');
 
       expect(agentMetric?.successRate).toBe(0.75); // 3/4 = 75%
     });
@@ -529,7 +530,7 @@ describe('EventConsumer', () => {
 
     it('should retry with exponential backoff on failure', async () => {
       vi.useFakeTimers();
-      
+
       // Fail 2 times, then succeed
       mockConsumerConnect
         .mockRejectedValueOnce(new Error('Connection refused'))
@@ -538,45 +539,43 @@ describe('EventConsumer', () => {
 
       const connectPromise = consumer.connectWithRetry(5);
       connectPromise.catch(() => {});
-      
+
       // Fast-forward through delays: 1s + 2s = 3s
       await vi.advanceTimersByTimeAsync(3000);
-      
+
       await connectPromise;
 
       // Should have tried 3 times (2 failures + 1 success)
       expect(mockConsumerConnect).toHaveBeenCalledTimes(3);
-      
+
       vi.useRealTimers();
     });
 
     it('should throw error after max retries', async () => {
       vi.useFakeTimers();
-      
+
       const maxRetries = 3;
       vi.clearAllMocks(); // Ensure clean state before this test
       mockConsumerConnect.mockRejectedValue(new Error('Connection refused'));
 
       const connectPromise = consumer.connectWithRetry(maxRetries);
       connectPromise.catch(() => {});
-      
+
       // Fast-forward through all retry delays: 1s + 2s = 3s
       await vi.advanceTimersByTimeAsync(3000);
-      
-      await expect(connectPromise).rejects.toThrow(
-        'Kafka connection failed after 3 attempts'
-      );
+
+      await expect(connectPromise).rejects.toThrow('Kafka connection failed after 3 attempts');
 
       // Should have tried exactly maxRetries times
       expect(mockConsumerConnect).toHaveBeenCalledTimes(maxRetries);
-      
+
       vi.useRealTimers();
     }, 5000); // Reduced timeout since we're using fake timers
 
     it('should respect max delay of 30 seconds', async () => {
       // Use fake timers to avoid waiting for real delays
       vi.useFakeTimers();
-      
+
       // Mock high retry count to test max delay cap
       // Delays: 1s, 2s, 4s, 8s, 16s, 30s (capped), 30s (capped), 30s (capped)
       // Need 7+ failures to actually hit the 30s cap (since 2^5 = 32s, but cap is 30s)
@@ -591,34 +590,32 @@ describe('EventConsumer', () => {
         .mockResolvedValueOnce(undefined); // Success on 8th attempt
 
       const connectPromise = consumer.connectWithRetry(10);
-      
+
       // Fast-forward through all delays: 1s + 2s + 4s + 8s + 16s + 30s + 30s = 91s
       await vi.advanceTimersByTimeAsync(91000);
-      
+
       await connectPromise;
 
       // Verify it was called 8 times (7 failures + 1 success)
       expect(mockConsumerConnect).toHaveBeenCalledTimes(8);
-      
+
       vi.useRealTimers();
     }, 10000); // Reduced timeout since we're using fake timers
 
     it('should handle non-Error exceptions', async () => {
       vi.useFakeTimers();
-      
-      mockConsumerConnect
-        .mockRejectedValueOnce('String error')
-        .mockResolvedValueOnce(undefined);
+
+      mockConsumerConnect.mockRejectedValueOnce('String error').mockResolvedValueOnce(undefined);
 
       const connectPromise = consumer.connectWithRetry(5);
-      
+
       // Fast-forward through the 1s delay
       await vi.advanceTimersByTimeAsync(1000);
-      
+
       await connectPromise;
 
       expect(mockConsumerConnect).toHaveBeenCalledTimes(2);
-      
+
       vi.useRealTimers();
     }, 5000); // Reduced timeout since we're using fake timers
 
@@ -661,9 +658,9 @@ describe('EventConsumer', () => {
           value: {
             toString: () => {
               throw new Error('Network connection error');
-            }
-          }
-        }
+            },
+          },
+        },
       };
 
       const handlerPromise = eachMessageHandler(testMessage);
@@ -703,7 +700,6 @@ describe('EventConsumer', () => {
       vi.useFakeTimers();
       vi.clearAllMocks(); // Clear after start
 
-      const reconnectError = new Error('Kafka connection failed after 5 attempts: Connection failed');
       mockConsumerConnect.mockRejectedValue(new Error('Connection failed'));
 
       const errorSpy = vi.fn();
@@ -716,9 +712,9 @@ describe('EventConsumer', () => {
           value: {
             toString: () => {
               throw new Error('Kafka connection lost - broker unreachable');
-            }
-          }
-        }
+            },
+          },
+        },
       };
 
       const handlerPromise = eachMessageHandler(testMessage);
@@ -970,7 +966,7 @@ describe('EventConsumer', () => {
       (consumer as any).pruneOldData();
 
       // Should not log pruning message (only logs when totalRemoved > 0)
-      const pruningLogs = consoleSpy.mock.calls.filter(call =>
+      const pruningLogs = consoleSpy.mock.calls.filter((call) =>
         call[0]?.includes('🧹 Pruned old data')
       );
       expect(pruningLogs.length).toBe(0);

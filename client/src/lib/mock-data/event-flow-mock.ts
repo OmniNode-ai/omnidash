@@ -24,15 +24,7 @@ export class EventFlowMockData {
       'success',
     ];
 
-    const sources = [
-      'agent',
-      'router',
-      'intelligence',
-      'api',
-      'cache',
-      'database',
-      'queue',
-    ];
+    const sources = ['agent', 'router', 'intelligence', 'api', 'cache', 'database', 'queue'];
 
     for (let i = 0; i < count; i++) {
       const type = Gen.randomItem(eventTypes);
@@ -118,20 +110,18 @@ export class EventFlowMockData {
       });
     }
 
-    return events.sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+    return events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 
   /**
    * Calculate metrics from events
    */
-  static calculateMetrics(events: Event[]): EventMetrics {
+  static calculateMetrics(_events: Event[]): EventMetrics {
     const typeCount = new Map<string, number>();
     let totalProcessingTime = 0;
     let processingTimeCount = 0;
 
-    events.forEach((event) => {
+    _events.forEach((event) => {
       typeCount.set(event.type, (typeCount.get(event.type) || 0) + 1);
       if (event.data?.durationMs) {
         totalProcessingTime += event.data.durationMs;
@@ -140,13 +130,13 @@ export class EventFlowMockData {
     });
 
     const now = Date.now();
-    const recentEvents = events.filter((e) => {
+    const recentEvents = _events.filter((e) => {
       const eventTime = new Date(e.timestamp).getTime();
       return now - eventTime < 60000;
     });
 
     return {
-      totalEvents: events.length,
+      totalEvents: _events.length,
       uniqueTypes: typeCount.size,
       eventsPerMinute: recentEvents.length,
       avgProcessingTime:
@@ -158,7 +148,7 @@ export class EventFlowMockData {
   /**
    * Generate chart data from events
    */
-  static generateChartData(events: Event[]): EventChartData {
+  static generateChartData(_events: Event[]): EventChartData {
     // Throughput chart
     const throughput = Gen.generateTimeSeries(20, 10, 100, 1);
 

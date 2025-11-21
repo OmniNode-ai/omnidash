@@ -1,45 +1,40 @@
-import React, { useState, useEffect } from "react";
-import { MockDataBadge } from "@/components/MockDataBadge";
-import { useQuery } from "@tanstack/react-query";
-import { intelligenceSavingsSource, intelligenceAnalyticsSource } from "@/lib/data-sources";
-import { getPollingInterval } from "@/lib/constants/query-config";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState } from 'react';
+import { MockDataBadge } from '@/components/MockDataBadge';
+import { useQuery } from '@tanstack/react-query';
+import { intelligenceSavingsSource, intelligenceAnalyticsSource } from '@/lib/data-sources';
+import { getPollingInterval } from '@/lib/constants/query-config';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   TrendingUp,
-  TrendingDown,
   DollarSign,
   Zap,
   Brain,
   Clock,
-  BarChart3,
   Activity,
   Target,
-  ArrowUpRight,
-  ArrowDownRight,
-  Calculator,
-  Cpu,
-  Database,
-  Network,
   Info,
   CheckCircle2,
-  Gauge,
   ChevronDown,
   ChevronRight,
   CalendarIcon,
-  Lightbulb
-} from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
-import { getSuccessRateVariant } from "@/lib/utils";
+  Lightbulb,
+  Cpu,
+  Database,
+  ArrowDownRight,
+  ArrowUpRight,
+} from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DateRange } from 'react-day-picker';
+import { format } from 'date-fns';
+import { getSuccessRateVariant } from '@/lib/utils';
 
-interface SavingsMetrics {
+interface _SavingsMetrics {
   totalSavings: number;
   monthlySavings: number;
   weeklySavings: number;
@@ -54,7 +49,7 @@ interface SavingsMetrics {
   timeSaved: number;
 }
 
-interface AgentComparison {
+interface _AgentComparison {
   agentId: string;
   agentName: string;
   withIntelligence: {
@@ -80,7 +75,7 @@ interface AgentComparison {
   };
 }
 
-interface TimeSeriesData {
+interface _TimeSeriesData {
   date: string;
   withIntelligence: {
     tokens: number;
@@ -102,7 +97,7 @@ interface TimeSeriesData {
   };
 }
 
-interface ProviderSavings {
+interface _ProviderSavings {
   providerId: string;
   providerName: string;
   savingsAmount: number;
@@ -132,17 +127,33 @@ interface UnifiedModelData {
 }
 
 export default function IntelligenceSavings() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [timeRange, setTimeRange] = useState("30d");
+  const [activeTab, setActiveTab] = useState('overview');
+  const [timeRange, setTimeRange] = useState('30d');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [sortColumn, setSortColumn] = React.useState<
+    | 'model'
+    | 'requests'
+    | 'avgResponseTime'
+    | 'successRate'
+    | 'cost'
+    | 'tokens'
+    | 'usagePercentage'
+    | 'savingsAmount'
+    | 'costPerRequest'
+    | 'tokensOffloaded'
+    | 'avgCostPerToken'
+    | 'runsCount'
+    | 'costPerToken'
+  >('cost');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
 
   // Use centralized data source
-  const { data: savingsData, isLoading } = useQuery({
+  const { data: savingsData, isLoading: _isLoading } = useQuery({
     queryKey: ['savings-all', timeRange, customRange],
     queryFn: () => {
-      if (timeRange === "custom" && customRange?.from && customRange?.to) {
+      if (timeRange === 'custom' && customRange?.from && customRange?.to) {
         // Note: fetchCustomRange would need to be implemented in the data source
         // For now, falls back to fetchAll
         return intelligenceSavingsSource.fetchAll(timeRange);
@@ -153,7 +164,7 @@ export default function IntelligenceSavings() {
   });
 
   // Fetch intelligence operations metrics
-  const { data: intelligenceMetricsData, isLoading: intelligenceLoading } = useQuery({
+  const { data: intelligenceMetricsData } = useQuery({
     queryKey: ['intelligence-metrics', timeRange],
     queryFn: () => intelligenceAnalyticsSource.fetchMetrics(timeRange),
     refetchInterval: getPollingInterval(60000),
@@ -167,17 +178,13 @@ export default function IntelligenceSavings() {
   const intelligenceMetrics = intelligenceMetricsData?.data;
   const usingMockIntelligence = intelligenceMetricsData?.isMock || false;
 
-  const metricsLoading = isLoading && !savingsMetrics;
-  const agentsLoading = isLoading && agentComparisons.length === 0;
-  const timeseriesLoading = isLoading && timeSeriesData.length === 0;
-
   // Data is now managed by TanStack Query, no need for local state
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 2
+      minimumFractionDigits: 2,
     }).format(amount);
   };
 
@@ -211,32 +218,32 @@ export default function IntelligenceSavings() {
         <div className="flex items-center gap-2">
           {(usingMockData || usingMockIntelligence) && <MockDataBadge />}
           <Button
-            variant={timeRange === "7d" ? "default" : "outline"}
+            variant={timeRange === '7d' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setTimeRange("7d")}
+            onClick={() => setTimeRange('7d')}
           >
             7D
           </Button>
           <Button
-            variant={timeRange === "30d" ? "default" : "outline"}
+            variant={timeRange === '30d' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setTimeRange("30d")}
+            onClick={() => setTimeRange('30d')}
           >
             30D
           </Button>
           <Button
-            variant={timeRange === "90d" ? "default" : "outline"}
+            variant={timeRange === '90d' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setTimeRange("90d")}
+            onClick={() => setTimeRange('90d')}
           >
             90D
           </Button>
-          
+
           {/* Custom date range picker */}
           <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
             <PopoverTrigger asChild>
               <Button
-                variant={timeRange === "custom" ? "default" : "outline"}
+                variant={timeRange === 'custom' ? 'default' : 'outline'}
                 size="sm"
                 className="gap-2"
               >
@@ -251,7 +258,7 @@ export default function IntelligenceSavings() {
                 onSelect={(range) => {
                   setCustomRange(range);
                   if (range?.from && range?.to) {
-                    setTimeRange("custom");
+                    setTimeRange('custom');
                     setShowCustomPicker(false);
                   }
                 }}
@@ -260,11 +267,11 @@ export default function IntelligenceSavings() {
               />
             </PopoverContent>
           </Popover>
-          
+
           {/* Show selected custom range */}
-          {timeRange === "custom" && customRange?.from && customRange?.to && (
+          {timeRange === 'custom' && customRange?.from && customRange?.to && (
             <span className="text-sm text-muted-foreground">
-              {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+              {format(customRange.from, 'MMM d')} - {format(customRange.to, 'MMM d, yyyy')}
             </span>
           )}
         </div>
@@ -285,70 +292,68 @@ export default function IntelligenceSavings() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <CardTitle>Intelligence Operations</CardTitle>
-                <Badge variant="outline" className="text-xs">Real-time</Badge>
+                <Badge variant="outline" className="text-xs">
+                  Real-time
+                </Badge>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Queries</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {formatNumber(intelligenceMetrics?.totalQueries || 0)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Intelligence operations in {timeRange}
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Queries</CardTitle>
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {formatNumber(intelligenceMetrics?.totalQueries || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Intelligence operations in {timeRange}
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {intelligenceMetrics?.successRate?.toFixed(1) || "0.0"}%
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Query success rate
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {intelligenceMetrics?.successRate?.toFixed(1) || '0.0'}%
+                    </div>
+                    <p className="text-xs text-muted-foreground">Query success rate</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {intelligenceMetrics?.avgResponseTime
-                      ? `${(intelligenceMetrics.avgResponseTime / 1000).toFixed(2)}s`
-                      : "0.00s"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Average across all queries
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {intelligenceMetrics?.avgResponseTime
+                        ? `${(intelligenceMetrics.avgResponseTime / 1000).toFixed(2)}s`
+                        : '0.00s'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Average across all queries</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.totalSavings || 0)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Total cost savings achieved
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {formatCurrency(savingsMetrics?.totalSavings || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Total cost savings achieved</p>
+                  </CardContent>
+                </Card>
               </div>
             </CardContent>
           </Card>
@@ -364,7 +369,10 @@ export default function IntelligenceSavings() {
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
                     <p className="text-xs">
-                      <strong>Methodology:</strong> Savings calculated by comparing agent performance with intelligence (pattern injection, optimized routing) vs baseline (standard AI agents). Includes token reduction (34%), local compute offload (12%), and avoided API calls (8%).
+                      <strong>Methodology:</strong> Savings calculated by comparing agent
+                      performance with intelligence (pattern injection, optimized routing) vs
+                      baseline (standard AI agents). Includes token reduction (34%), local compute
+                      offload (12%), and avoided API calls (8%).
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -372,57 +380,59 @@ export default function IntelligenceSavings() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Daily Savings</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.dailySavings || 0)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Average daily cost reduction
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Daily Savings</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {formatCurrency(savingsMetrics?.dailySavings || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Average daily cost reduction</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Weekly Savings</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.weeklySavings || 0)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Projected weekly savings
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Weekly Savings</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {formatCurrency(savingsMetrics?.weeklySavings || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Projected weekly savings</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Monthly Savings</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(savingsMetrics?.monthlySavings || 0)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Projected monthly savings
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Monthly Savings</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {formatCurrency(savingsMetrics?.monthlySavings || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Projected monthly savings</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Efficiency Gain</CardTitle>
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatPercentage(savingsMetrics?.efficiencyGain || 0)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Average improvement across all agents
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Efficiency Gain</CardTitle>
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {formatPercentage(savingsMetrics?.efficiencyGain || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Average improvement across all agents
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
             </CardContent>
           </Card>
@@ -439,16 +449,24 @@ export default function IntelligenceSavings() {
                     </TooltipTrigger>
                     <TooltipContent className="max-w-md">
                       <div className="space-y-2 text-sm">
-                        <p><strong>Intelligence Tokens:</strong> Actual token usage with pattern injection, manifest optimization, and intelligent caching enabled.</p>
-                        <p><strong>Baseline Tokens:</strong> Estimated usage if agents ran without intelligence features, based on standard AI agent behavior.</p>
-                        <p><strong>Token Savings:</strong> Reduction achieved through pattern caching (40%), local model offloading (25%), optimized routing (20%), and other optimizations (15%).</p>
+                        <p>
+                          <strong>Intelligence Tokens:</strong> Actual token usage with pattern
+                          injection, manifest optimization, and intelligent caching enabled.
+                        </p>
+                        <p>
+                          <strong>Baseline Tokens:</strong> Estimated usage if agents ran without
+                          intelligence features, based on standard AI agent behavior.
+                        </p>
+                        <p>
+                          <strong>Token Savings:</strong> Reduction achieved through pattern caching
+                          (40%), local model offloading (25%), optimized routing (20%), and other
+                          optimizations (15%).
+                        </p>
                       </div>
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <CardDescription>
-                  Intelligence system vs baseline agent runs
-                </CardDescription>
+                <CardDescription>Intelligence system vs baseline agent runs</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -457,22 +475,27 @@ export default function IntelligenceSavings() {
                     <span className="text-sm font-medium">With Intelligence</span>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold">{formatNumber(savingsMetrics?.intelligenceRuns || 0)} runs</div>
+                    <div className="font-bold">
+                      {formatNumber(savingsMetrics?.intelligenceRuns || 0)} runs
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {formatNumber(savingsMetrics?.avgTokensPerRun || 0)} tokens/run
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Cpu className="h-4 w-4 text-gray-600" />
                     <span className="text-sm font-medium">Without Intelligence</span>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold">{formatNumber(savingsMetrics?.baselineRuns || 0)} runs</div>
+                    <div className="font-bold">
+                      {formatNumber(savingsMetrics?.baselineRuns || 0)} runs
+                    </div>
                     <div className="text-sm text-muted-foreground">
-                      {formatNumber(Math.round((savingsMetrics?.avgTokensPerRun || 0) * 1.6))} tokens/run
+                      {formatNumber(Math.round((savingsMetrics?.avgTokensPerRun || 0) * 1.6))}{' '}
+                      tokens/run
                     </div>
                   </div>
                 </div>
@@ -481,7 +504,8 @@ export default function IntelligenceSavings() {
                   <div className="flex justify-between text-sm">
                     <span>Token Savings</span>
                     <span className="font-medium text-green-600">
-                      {formatNumber(Math.round((savingsMetrics?.avgTokensPerRun || 0) * 0.4))} tokens/run
+                      {formatNumber(Math.round((savingsMetrics?.avgTokensPerRun || 0) * 0.4))}{' '}
+                      tokens/run
                     </span>
                   </div>
                   <Progress value={40} className="h-2" />
@@ -504,18 +528,22 @@ export default function IntelligenceSavings() {
                     <span className="text-sm font-medium">With Intelligence</span>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold">{savingsMetrics?.avgComputePerRun?.toFixed(1) || 0} units</div>
+                    <div className="font-bold">
+                      {savingsMetrics?.avgComputePerRun?.toFixed(1) || 0} units
+                    </div>
                     <div className="text-sm text-muted-foreground">per run</div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Database className="h-4 w-4 text-gray-600" />
                     <span className="text-sm font-medium">Without Intelligence</span>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold">{((savingsMetrics?.avgComputePerRun || 0) * 1.6).toFixed(1)} units</div>
+                    <div className="font-bold">
+                      {((savingsMetrics?.avgComputePerRun || 0) * 1.6).toFixed(1)} units
+                    </div>
                     <div className="text-sm text-muted-foreground">per run</div>
                   </div>
                 </div>
@@ -544,9 +572,9 @@ export default function IntelligenceSavings() {
             <CardContent>
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Token savings are calculated by comparing actual usage with the intelligence system enabled
-                  versus projected usage without it. Our intelligence system achieves token reduction through
-                  multiple optimization techniques:
+                  Token savings are calculated by comparing actual usage with the intelligence
+                  system enabled versus projected usage without it. Our intelligence system achieves
+                  token reduction through multiple optimization techniques:
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -633,7 +661,8 @@ export default function IntelligenceSavings() {
                         <div className="text-sm font-medium">Token Usage</div>
                         <div className="flex items-center gap-2">
                           <div className="text-sm text-muted-foreground">
-                            {formatNumber(agent.withIntelligence.avgTokens)} vs {formatNumber(agent.withoutIntelligence.avgTokens)}
+                            {formatNumber(agent.withIntelligence.avgTokens)} vs{' '}
+                            {formatNumber(agent.withoutIntelligence.avgTokens)}
                           </div>
                           <ArrowDownRight className="h-4 w-4 text-green-600" />
                         </div>
@@ -646,7 +675,8 @@ export default function IntelligenceSavings() {
                         <div className="text-sm font-medium">Compute Usage</div>
                         <div className="flex items-center gap-2">
                           <div className="text-sm text-muted-foreground">
-                            {agent.withIntelligence.avgCompute.toFixed(1)} vs {agent.withoutIntelligence.avgCompute.toFixed(1)}
+                            {agent.withIntelligence.avgCompute.toFixed(1)} vs{' '}
+                            {agent.withoutIntelligence.avgCompute.toFixed(1)}
                           </div>
                           <ArrowDownRight className="h-4 w-4 text-green-600" />
                         </div>
@@ -659,7 +689,8 @@ export default function IntelligenceSavings() {
                         <div className="text-sm font-medium">Cost per Run</div>
                         <div className="flex items-center gap-2">
                           <div className="text-sm text-muted-foreground">
-                            {formatCurrency(agent.withIntelligence.cost)} vs {formatCurrency(agent.withoutIntelligence.cost)}
+                            {formatCurrency(agent.withIntelligence.cost)} vs{' '}
+                            {formatCurrency(agent.withoutIntelligence.cost)}
                           </div>
                           <ArrowDownRight className="h-4 w-4 text-green-600" />
                         </div>
@@ -674,7 +705,8 @@ export default function IntelligenceSavings() {
                         <div className="text-sm font-medium">Success Rate</div>
                         <div className="flex items-center gap-2">
                           <div className="text-sm text-muted-foreground">
-                            {formatPercentage(agent.withIntelligence.successRate)} vs {formatPercentage(agent.withoutIntelligence.successRate)}
+                            {formatPercentage(agent.withIntelligence.successRate)} vs{' '}
+                            {formatPercentage(agent.withoutIntelligence.successRate)}
                           </div>
                           <ArrowUpRight className="h-4 w-4 text-green-600" />
                         </div>
@@ -684,13 +716,12 @@ export default function IntelligenceSavings() {
                         <div className="text-sm font-medium">Average Time</div>
                         <div className="flex items-center gap-2">
                           <div className="text-sm text-muted-foreground">
-                            {agent.withIntelligence.avgTime}min vs {agent.withoutIntelligence.avgTime}min
+                            {agent.withIntelligence.avgTime}min vs{' '}
+                            {agent.withoutIntelligence.avgTime}min
                           </div>
                           <ArrowDownRight className="h-4 w-4 text-green-600" />
                         </div>
-                        <div className="text-xs text-green-600">
-                          -{agent.savings.time}min/run
-                        </div>
+                        <div className="text-xs text-green-600">-{agent.savings.time}min/run</div>
                       </div>
                     </div>
                   </div>
@@ -726,11 +757,11 @@ export default function IntelligenceSavings() {
                         </tr>
                       </thead>
                       <tbody>
-                        {[...timeSeriesData?.slice(-14) || []].reverse().map((day, index) => (
+                        {[...(timeSeriesData?.slice(-14) || [])].reverse().map((day, index) => (
                           <React.Fragment key={day.date}>
                             {/* Main row - clickable */}
                             <tr
-                              className={`cursor-pointer ${index % 2 === 0 ? "bg-background hover:bg-muted/30" : "bg-muted/50 hover:bg-muted/70"}`}
+                              className={`cursor-pointer ${index % 2 === 0 ? 'bg-background hover:bg-muted/30' : 'bg-muted/50 hover:bg-muted/70'}`}
                               onClick={() => toggleRow(day.date)}
                             >
                               <td className="p-3">
@@ -740,19 +771,31 @@ export default function IntelligenceSavings() {
                                   ) : (
                                     <ChevronRight className="h-4 w-4" />
                                   )}
-                                  <span className="font-medium">{new Date(day.date).toLocaleDateString()}</span>
+                                  <span className="font-medium">
+                                    {new Date(day.date).toLocaleDateString()}
+                                  </span>
                                 </div>
                               </td>
-                              <td className="text-right p-3">{formatCurrency(day.withIntelligence.cost)}</td>
-                              <td className="text-right p-3">{formatCurrency(day.withoutIntelligence.cost)}</td>
-                              <td className="text-right p-3 text-green-600 font-semibold">{formatCurrency(day.savings.cost)}</td>
                               <td className="text-right p-3">
-                                <Badge variant={day.savings.percentage > 30 ? "default" : "secondary"}>
+                                {formatCurrency(day.withIntelligence.cost)}
+                              </td>
+                              <td className="text-right p-3">
+                                {formatCurrency(day.withoutIntelligence.cost)}
+                              </td>
+                              <td className="text-right p-3 text-green-600 font-semibold">
+                                {formatCurrency(day.savings.cost)}
+                              </td>
+                              <td className="text-right p-3">
+                                <Badge
+                                  variant={day.savings.percentage > 30 ? 'default' : 'secondary'}
+                                >
                                   {formatPercentage(day.savings.percentage)}
                                 </Badge>
                               </td>
                               <td className="text-right p-3 text-muted-foreground">
-                                {formatNumber(day.withIntelligence.runs + day.withoutIntelligence.runs)}
+                                {formatNumber(
+                                  day.withIntelligence.runs + day.withoutIntelligence.runs
+                                )}
                               </td>
                             </tr>
 
@@ -764,36 +807,52 @@ export default function IntelligenceSavings() {
                                     <div className="font-semibold text-base">Cost Breakdown</div>
                                     <div className="grid grid-cols-2 gap-6">
                                       <div className="space-y-3 p-4 bg-background rounded-lg border">
-                                        <div className="text-sm font-medium text-muted-foreground">Intelligence Costs</div>
+                                        <div className="text-sm font-medium text-muted-foreground">
+                                          Intelligence Costs
+                                        </div>
                                         <div className="space-y-2 text-base">
                                           <div className="flex justify-between">
                                             <span>Token costs:</span>
-                                            <span className="font-mono">{formatCurrency(day.withIntelligence.cost * 0.6)}</span>
+                                            <span className="font-mono">
+                                              {formatCurrency(day.withIntelligence.cost * 0.6)}
+                                            </span>
                                           </div>
                                           <div className="flex justify-between">
                                             <span>Compute costs:</span>
-                                            <span className="font-mono">{formatCurrency(day.withIntelligence.cost * 0.3)}</span>
+                                            <span className="font-mono">
+                                              {formatCurrency(day.withIntelligence.cost * 0.3)}
+                                            </span>
                                           </div>
                                           <div className="flex justify-between">
                                             <span>API overhead:</span>
-                                            <span className="font-mono">{formatCurrency(day.withIntelligence.cost * 0.1)}</span>
+                                            <span className="font-mono">
+                                              {formatCurrency(day.withIntelligence.cost * 0.1)}
+                                            </span>
                                           </div>
                                         </div>
                                       </div>
                                       <div className="space-y-3 p-4 bg-background rounded-lg border">
-                                        <div className="text-sm font-medium text-muted-foreground">Baseline Costs</div>
+                                        <div className="text-sm font-medium text-muted-foreground">
+                                          Baseline Costs
+                                        </div>
                                         <div className="space-y-2 text-base">
                                           <div className="flex justify-between">
                                             <span>Token costs:</span>
-                                            <span className="font-mono">{formatCurrency(day.withoutIntelligence.cost * 0.7)}</span>
+                                            <span className="font-mono">
+                                              {formatCurrency(day.withoutIntelligence.cost * 0.7)}
+                                            </span>
                                           </div>
                                           <div className="flex justify-between">
                                             <span>Compute costs:</span>
-                                            <span className="font-mono">{formatCurrency(day.withoutIntelligence.cost * 0.25)}</span>
+                                            <span className="font-mono">
+                                              {formatCurrency(day.withoutIntelligence.cost * 0.25)}
+                                            </span>
                                           </div>
                                           <div className="flex justify-between">
                                             <span>API calls:</span>
-                                            <span className="font-mono">{formatCurrency(day.withoutIntelligence.cost * 0.05)}</span>
+                                            <span className="font-mono">
+                                              {formatCurrency(day.withoutIntelligence.cost * 0.05)}
+                                            </span>
                                           </div>
                                         </div>
                                       </div>
@@ -817,24 +876,48 @@ export default function IntelligenceSavings() {
                         <tr>
                           <td className="p-3">Total ({timeSeriesData?.length || 0} days)</td>
                           <td className="text-right p-3">
-                            {formatCurrency(timeSeriesData?.reduce((sum, d) => sum + d.withIntelligence.cost, 0) || 0)}
+                            {formatCurrency(
+                              timeSeriesData?.reduce(
+                                (sum, d) => sum + d.withIntelligence.cost,
+                                0
+                              ) || 0
+                            )}
                           </td>
                           <td className="text-right p-3">
-                            {formatCurrency(timeSeriesData?.reduce((sum, d) => sum + d.withoutIntelligence.cost, 0) || 0)}
+                            {formatCurrency(
+                              timeSeriesData?.reduce(
+                                (sum, d) => sum + d.withoutIntelligence.cost,
+                                0
+                              ) || 0
+                            )}
                           </td>
                           <td className="text-right p-3 text-green-600">
-                            {formatCurrency(timeSeriesData?.reduce((sum, d) => sum + d.savings.cost, 0) || 0)}
+                            {formatCurrency(
+                              timeSeriesData?.reduce((sum, d) => sum + d.savings.cost, 0) || 0
+                            )}
                           </td>
                           <td className="text-right p-3">
                             {(() => {
-                              const totalBaseline = timeSeriesData?.reduce((sum, d) => sum + d.withoutIntelligence.cost, 0) || 0;
-                              const totalSavings = timeSeriesData?.reduce((sum, d) => sum + d.savings.cost, 0) || 0;
-                              const avgEfficiency = totalBaseline > 0 ? (totalSavings / totalBaseline) * 100 : 0;
+                              const totalBaseline =
+                                timeSeriesData?.reduce(
+                                  (sum, d) => sum + d.withoutIntelligence.cost,
+                                  0
+                                ) || 0;
+                              const totalSavings =
+                                timeSeriesData?.reduce((sum, d) => sum + d.savings.cost, 0) || 0;
+                              const avgEfficiency =
+                                totalBaseline > 0 ? (totalSavings / totalBaseline) * 100 : 0;
                               return formatPercentage(avgEfficiency);
                             })()}
                           </td>
                           <td className="text-right p-3">
-                            {formatNumber(timeSeriesData?.reduce((sum, d) => sum + d.withIntelligence.runs + d.withoutIntelligence.runs, 0) || 0)}
+                            {formatNumber(
+                              timeSeriesData?.reduce(
+                                (sum, d) =>
+                                  sum + d.withIntelligence.runs + d.withoutIntelligence.runs,
+                                0
+                              ) || 0
+                            )}
                           </td>
                         </tr>
                       </tfoot>
@@ -852,8 +935,9 @@ export default function IntelligenceSavings() {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">
                         <p className="text-xs">
-                          Shows daily token consumption with intelligence vs estimated baseline usage.
-                          Reduction % indicates how much fewer tokens were used compared to standard AI agents.
+                          Shows daily token consumption with intelligence vs estimated baseline
+                          usage. Reduction % indicates how much fewer tokens were used compared to
+                          standard AI agents.
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -870,14 +954,31 @@ export default function IntelligenceSavings() {
                         </tr>
                       </thead>
                       <tbody>
-                        {[...timeSeriesData?.slice(-10) || []].reverse().map((day, index) => (
-                          <tr key={day.date} className={index % 2 === 0 ? "bg-background hover:bg-muted/30" : "bg-muted/50 hover:bg-muted/70"}>
-                            <td className="p-3 font-medium">{new Date(day.date).toLocaleDateString()}</td>
-                            <td className="text-right p-3">{formatNumber(day.withIntelligence.tokens)}</td>
-                            <td className="text-right p-3">{formatNumber(day.withoutIntelligence.tokens)}</td>
-                            <td className="text-right p-3 text-green-600 font-semibold">{formatNumber(day.savings.tokens)}</td>
+                        {[...(timeSeriesData?.slice(-10) || [])].reverse().map((day, index) => (
+                          <tr
+                            key={day.date}
+                            className={
+                              index % 2 === 0
+                                ? 'bg-background hover:bg-muted/30'
+                                : 'bg-muted/50 hover:bg-muted/70'
+                            }
+                          >
+                            <td className="p-3 font-medium">
+                              {new Date(day.date).toLocaleDateString()}
+                            </td>
                             <td className="text-right p-3">
-                              <Badge variant={day.savings.percentage > 30 ? "default" : "secondary"}>
+                              {formatNumber(day.withIntelligence.tokens)}
+                            </td>
+                            <td className="text-right p-3">
+                              {formatNumber(day.withoutIntelligence.tokens)}
+                            </td>
+                            <td className="text-right p-3 text-green-600 font-semibold">
+                              {formatNumber(day.savings.tokens)}
+                            </td>
+                            <td className="text-right p-3">
+                              <Badge
+                                variant={day.savings.percentage > 30 ? 'default' : 'secondary'}
+                              >
                                 {formatPercentage(day.savings.percentage)}
                               </Badge>
                             </td>
@@ -888,19 +989,37 @@ export default function IntelligenceSavings() {
                         <tr>
                           <td className="p-3">Total</td>
                           <td className="text-right p-3">
-                            {formatNumber(timeSeriesData?.reduce((sum, d) => sum + d.withIntelligence.tokens, 0) || 0)}
+                            {formatNumber(
+                              timeSeriesData?.reduce(
+                                (sum, d) => sum + d.withIntelligence.tokens,
+                                0
+                              ) || 0
+                            )}
                           </td>
                           <td className="text-right p-3">
-                            {formatNumber(timeSeriesData?.reduce((sum, d) => sum + d.withoutIntelligence.tokens, 0) || 0)}
+                            {formatNumber(
+                              timeSeriesData?.reduce(
+                                (sum, d) => sum + d.withoutIntelligence.tokens,
+                                0
+                              ) || 0
+                            )}
                           </td>
                           <td className="text-right p-3 text-green-600">
-                            {formatNumber(timeSeriesData?.reduce((sum, d) => sum + d.savings.tokens, 0) || 0)}
+                            {formatNumber(
+                              timeSeriesData?.reduce((sum, d) => sum + d.savings.tokens, 0) || 0
+                            )}
                           </td>
                           <td className="text-right p-3">
                             {(() => {
-                              const totalBaseline = timeSeriesData?.reduce((sum, d) => sum + d.withoutIntelligence.tokens, 0) || 0;
-                              const totalSavings = timeSeriesData?.reduce((sum, d) => sum + d.savings.tokens, 0) || 0;
-                              const avgReduction = totalBaseline > 0 ? (totalSavings / totalBaseline) * 100 : 0;
+                              const totalBaseline =
+                                timeSeriesData?.reduce(
+                                  (sum, d) => sum + d.withoutIntelligence.tokens,
+                                  0
+                                ) || 0;
+                              const totalSavings =
+                                timeSeriesData?.reduce((sum, d) => sum + d.savings.tokens, 0) || 0;
+                              const avgReduction =
+                                totalBaseline > 0 ? (totalSavings / totalBaseline) * 100 : 0;
                               return formatPercentage(avgReduction);
                             })()}
                           </td>
@@ -940,15 +1059,21 @@ export default function IntelligenceSavings() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                           <div className="text-muted-foreground text-xs">Savings</div>
-                          <div className="font-bold text-green-600">{formatCurrency(provider.savingsAmount)}</div>
+                          <div className="font-bold text-green-600">
+                            {formatCurrency(provider.savingsAmount)}
+                          </div>
                         </div>
                         <div>
                           <div className="text-muted-foreground text-xs">Tokens Offloaded</div>
-                          <div className="font-medium">{formatNumber(provider.tokensOffloaded)}</div>
+                          <div className="font-medium">
+                            {formatNumber(provider.tokensOffloaded)}
+                          </div>
                         </div>
                         <div>
                           <div className="text-muted-foreground text-xs">Total Processed</div>
-                          <div className="font-medium">{formatNumber(provider.tokensProcessed)}</div>
+                          <div className="font-medium">
+                            {formatNumber(provider.tokensProcessed)}
+                          </div>
                         </div>
                         <div>
                           <div className="text-muted-foreground text-xs">Runs</div>
@@ -957,10 +1082,7 @@ export default function IntelligenceSavings() {
                       </div>
                     </div>
                     <div className="ml-4">
-                      <Progress
-                        value={provider.percentageOfTotal}
-                        className="h-2 w-24"
-                      />
+                      <Progress value={provider.percentageOfTotal} className="h-2 w-24" />
                     </div>
                   </div>
                 ))}
@@ -971,10 +1093,15 @@ export default function IntelligenceSavings() {
                     <span>Total Savings Across All Providers</span>
                     <div className="text-right text-green-600">
                       <div className="font-bold">
-                        {formatCurrency(providerSavings?.reduce((sum, p) => sum + p.savingsAmount, 0) || 0)}
+                        {formatCurrency(
+                          providerSavings?.reduce((sum, p) => sum + p.savingsAmount, 0) || 0
+                        )}
                       </div>
                       <div className="text-xs font-normal text-muted-foreground">
-                        {formatNumber(providerSavings?.reduce((sum, p) => sum + p.tokensOffloaded, 0) || 0)} tokens offloaded
+                        {formatNumber(
+                          providerSavings?.reduce((sum, p) => sum + p.tokensOffloaded, 0) || 0
+                        )}{' '}
+                        tokens offloaded
                       </div>
                     </div>
                   </div>
@@ -988,9 +1115,7 @@ export default function IntelligenceSavings() {
             <Card>
               <CardHeader>
                 <CardTitle>Provider Distribution</CardTitle>
-                <CardDescription>
-                  Savings distribution across AI providers
-                </CardDescription>
+                <CardDescription>Savings distribution across AI providers</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -1012,12 +1137,11 @@ export default function IntelligenceSavings() {
                             <div className={`w-3 h-3 rounded-full ${color}`}></div>
                             <span className="font-medium">{provider.providerName}</span>
                           </div>
-                          <span className="font-bold">{formatCurrency(provider.savingsAmount)}</span>
+                          <span className="font-bold">
+                            {formatCurrency(provider.savingsAmount)}
+                          </span>
                         </div>
-                        <Progress
-                          value={provider.percentageOfTotal}
-                          className="h-2"
-                        />
+                        <Progress value={provider.percentageOfTotal} className="h-2" />
                         <div className="flex justify-between text-xs text-muted-foreground">
                           <span>{provider.percentageOfTotal.toFixed(1)}%</span>
                           <span>{formatNumber(provider.tokensOffloaded)} tokens</span>
@@ -1032,28 +1156,37 @@ export default function IntelligenceSavings() {
             <Card>
               <CardHeader>
                 <CardTitle>Top Performing Providers</CardTitle>
-                <CardDescription>
-                  Providers ranked by cost efficiency
-                </CardDescription>
+                <CardDescription>Providers ranked by cost efficiency</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {providerSavings
-                    ?.sort((a, b) => (b.savingsAmount / b.tokensProcessed) - (a.savingsAmount / a.tokensProcessed))
+                    ?.sort(
+                      (a, b) =>
+                        b.savingsAmount / b.tokensProcessed - a.savingsAmount / a.tokensProcessed
+                    )
                     ?.slice(0, 3)
                     ?.map((provider, index) => {
-                      const efficiency = ((provider.savingsAmount / provider.tokensProcessed) * 1000000).toFixed(2);
+                      const efficiency = (
+                        (provider.savingsAmount / provider.tokensProcessed) *
+                        1000000
+                      ).toFixed(2);
                       const rankColors = ['text-yellow-400', 'text-gray-400', 'text-orange-400'];
                       const rankBgs = [
                         'bg-yellow-500/10 border border-yellow-500/20',
                         'bg-gray-500/10 border border-gray-500/20',
-                        'bg-orange-500/10 border border-orange-500/20'
+                        'bg-orange-500/10 border border-orange-500/20',
                       ];
 
                       return (
-                        <div key={provider.providerId} className={`p-4 rounded-lg ${rankBgs[index]}`}>
+                        <div
+                          key={provider.providerId}
+                          className={`p-4 rounded-lg ${rankBgs[index]}`}
+                        >
                           <div className="flex items-center gap-3 mb-2">
-                            <div className={`text-2xl font-bold ${rankColors[index]}`}>#{index + 1}</div>
+                            <div className={`text-2xl font-bold ${rankColors[index]}`}>
+                              #{index + 1}
+                            </div>
                             <div className="flex-1">
                               <div className="font-semibold">{provider.providerName}</div>
                               <div className="text-sm text-muted-foreground">
@@ -1064,11 +1197,15 @@ export default function IntelligenceSavings() {
                           <div className="grid grid-cols-2 gap-2 text-sm mt-3">
                             <div>
                               <div className="text-xs text-muted-foreground">Total Savings</div>
-                              <div className="font-bold text-green-600">{formatCurrency(provider.savingsAmount)}</div>
+                              <div className="font-bold text-green-600">
+                                {formatCurrency(provider.savingsAmount)}
+                              </div>
                             </div>
                             <div>
                               <div className="text-xs text-muted-foreground">Avg Cost/Token</div>
-                              <div className="font-medium">${(provider.avgCostPerToken * 1000000).toFixed(2)}/M</div>
+                              <div className="font-medium">
+                                ${(provider.avgCostPerToken * 1000000).toFixed(2)}/M
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1082,9 +1219,7 @@ export default function IntelligenceSavings() {
           <Card>
             <CardHeader>
               <CardTitle>Efficiency Metrics</CardTitle>
-              <CardDescription>
-                Performance improvements across different metrics
-              </CardDescription>
+              <CardDescription>Performance improvements across different metrics</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1118,12 +1253,54 @@ export default function IntelligenceSavings() {
               {(() => {
                 // Mock data from EnhancedAnalytics-style performance metrics
                 const aiModelPerformance = [
-                  { model: "Claude Sonnet 4.5", requests: 4850, avgResponseTime: 1.2, cost: 18500, successRate: 98.8, tokens: 2800000 },
-                  { model: "Local Models", requests: 6200, avgResponseTime: 0.8, cost: 12000, successRate: 96.5, tokens: 1500000 },
-                  { model: "GPT-4 Turbo", requests: 2100, avgResponseTime: 1.5, cost: 8000, successRate: 97.8, tokens: 950000 },
-                  { model: "Claude Opus", requests: 980, avgResponseTime: 2.1, cost: 4200, successRate: 99.2, tokens: 680000 },
-                  { model: "GPT-4o", requests: 1420, avgResponseTime: 1.1, cost: 1500, successRate: 95.5, tokens: 420000 },
-                  { model: "Claude Haiku", requests: 2870, avgResponseTime: 0.6, cost: 800, successRate: 94.2, tokens: 320000 }
+                  {
+                    model: 'Claude Sonnet 4.5',
+                    requests: 4850,
+                    avgResponseTime: 1.2,
+                    cost: 18500,
+                    successRate: 98.8,
+                    tokens: 2800000,
+                  },
+                  {
+                    model: 'Local Models',
+                    requests: 6200,
+                    avgResponseTime: 0.8,
+                    cost: 12000,
+                    successRate: 96.5,
+                    tokens: 1500000,
+                  },
+                  {
+                    model: 'GPT-4 Turbo',
+                    requests: 2100,
+                    avgResponseTime: 1.5,
+                    cost: 8000,
+                    successRate: 97.8,
+                    tokens: 950000,
+                  },
+                  {
+                    model: 'Claude Opus',
+                    requests: 980,
+                    avgResponseTime: 2.1,
+                    cost: 4200,
+                    successRate: 99.2,
+                    tokens: 680000,
+                  },
+                  {
+                    model: 'GPT-4o',
+                    requests: 1420,
+                    avgResponseTime: 1.1,
+                    cost: 1500,
+                    successRate: 95.5,
+                    tokens: 420000,
+                  },
+                  {
+                    model: 'Claude Haiku',
+                    requests: 2870,
+                    avgResponseTime: 0.6,
+                    cost: 800,
+                    successRate: 94.2,
+                    tokens: 320000,
+                  },
                 ];
 
                 // Merge with provider savings data
@@ -1138,7 +1315,7 @@ export default function IntelligenceSavings() {
                     tokens: perf.tokens,
                     savingsAmount: providerData?.savingsAmount || 0,
                     tokensOffloaded: providerData?.tokensOffloaded || 0,
-                    avgCostPerToken: providerData?.avgCostPerToken || (perf.cost / perf.tokens),
+                    avgCostPerToken: providerData?.avgCostPerToken || perf.cost / perf.tokens,
                     runsCount: providerData?.runsCount || perf.requests,
                     costPerRequest: perf.cost / perf.requests,
                     costPerToken: perf.cost / perf.tokens,
@@ -1147,13 +1324,10 @@ export default function IntelligenceSavings() {
 
                 // Calculate usage percentages
                 const totalRequests = unifiedData.reduce((sum, m) => sum + m.requests, 0);
-                const dataWithUsage = unifiedData.map(model => ({
+                const dataWithUsage = unifiedData.map((model) => ({
                   ...model,
-                  usagePercentage: (model.requests / totalRequests) * 100
+                  usagePercentage: (model.requests / totalRequests) * 100,
                 }));
-
-                const [sortColumn, setSortColumn] = React.useState<keyof UnifiedModelData | 'usagePercentage'>('cost');
-                const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
 
                 const handleSort = (column: keyof UnifiedModelData | 'usagePercentage') => {
                   if (sortColumn === column) {
@@ -1180,7 +1354,9 @@ export default function IntelligenceSavings() {
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">Total Models</CardTitle>
+                          <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Total Models
+                          </CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold">{unifiedData.length}</div>
@@ -1188,7 +1364,9 @@ export default function IntelligenceSavings() {
                       </Card>
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">Total Requests</CardTitle>
+                          <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Total Requests
+                          </CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold">
@@ -1198,7 +1376,9 @@ export default function IntelligenceSavings() {
                       </Card>
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">Total Cost</CardTitle>
+                          <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Total Cost
+                          </CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold">
@@ -1208,24 +1388,39 @@ export default function IntelligenceSavings() {
                       </Card>
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">Avg Success Rate</CardTitle>
+                          <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Avg Success Rate
+                          </CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold">
-                            {(unifiedData.reduce((sum, m) => sum + m.successRate, 0) / unifiedData.length).toFixed(1)}%
+                            {(
+                              unifiedData.reduce((sum, m) => sum + m.successRate, 0) /
+                              unifiedData.length
+                            ).toFixed(1)}
+                            %
                           </div>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">Most Used Model</CardTitle>
+                          <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Most Used Model
+                          </CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold truncate">
-                            {dataWithUsage.sort((a, b) => b.usagePercentage - a.usagePercentage)[0].model.split(' ')[0]}
+                            {
+                              dataWithUsage
+                                .sort((a, b) => b.usagePercentage - a.usagePercentage)[0]
+                                .model.split(' ')[0]
+                            }
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {dataWithUsage.sort((a, b) => b.usagePercentage - a.usagePercentage)[0].usagePercentage.toFixed(1)}% of requests
+                            {dataWithUsage
+                              .sort((a, b) => b.usagePercentage - a.usagePercentage)[0]
+                              .usagePercentage.toFixed(1)}
+                            % of requests
                           </div>
                         </CardContent>
                       </Card>
@@ -1242,14 +1437,23 @@ export default function IntelligenceSavings() {
                           {dataWithUsage
                             .sort((a, b) => b.usagePercentage - a.usagePercentage)
                             .map((model, index) => {
-                              const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-cyan-500'];
+                              const colors = [
+                                'bg-blue-500',
+                                'bg-green-500',
+                                'bg-purple-500',
+                                'bg-orange-500',
+                                'bg-pink-500',
+                                'bg-cyan-500',
+                              ];
                               const color = colors[index % colors.length];
 
                               return (
                                 <div key={model.model} className="space-y-1">
                                   <div className="flex items-center justify-between text-sm">
                                     <span className="font-medium">{model.model}</span>
-                                    <span className="text-muted-foreground">{model.usagePercentage.toFixed(1)}%</span>
+                                    <span className="text-muted-foreground">
+                                      {model.usagePercentage.toFixed(1)}%
+                                    </span>
                                   </div>
                                   <div className="relative w-full bg-muted rounded-full h-2">
                                     <div
@@ -1292,7 +1496,9 @@ export default function IntelligenceSavings() {
                                 <div className="flex items-center gap-1">
                                   Model
                                   {sortColumn === 'model' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                    <span className="text-xs">
+                                      {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </span>
                                   )}
                                 </div>
                               </th>
@@ -1303,7 +1509,9 @@ export default function IntelligenceSavings() {
                                 <div className="flex items-center justify-end gap-1">
                                   Requests
                                   {sortColumn === 'requests' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                    <span className="text-xs">
+                                      {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </span>
                                   )}
                                 </div>
                               </th>
@@ -1314,7 +1522,9 @@ export default function IntelligenceSavings() {
                                 <div className="flex items-center justify-end gap-1">
                                   Usage %
                                   {sortColumn === 'usagePercentage' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                    <span className="text-xs">
+                                      {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </span>
                                   )}
                                 </div>
                               </th>
@@ -1325,7 +1535,9 @@ export default function IntelligenceSavings() {
                                 <div className="flex items-center justify-end gap-1">
                                   Avg Response
                                   {sortColumn === 'avgResponseTime' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                    <span className="text-xs">
+                                      {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </span>
                                   )}
                                 </div>
                               </th>
@@ -1336,7 +1548,9 @@ export default function IntelligenceSavings() {
                                 <div className="flex items-center justify-end gap-1">
                                   Success Rate
                                   {sortColumn === 'successRate' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                    <span className="text-xs">
+                                      {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </span>
                                   )}
                                 </div>
                               </th>
@@ -1347,7 +1561,9 @@ export default function IntelligenceSavings() {
                                 <div className="flex items-center justify-end gap-1">
                                   Total Cost
                                   {sortColumn === 'cost' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                    <span className="text-xs">
+                                      {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </span>
                                   )}
                                 </div>
                               </th>
@@ -1358,7 +1574,9 @@ export default function IntelligenceSavings() {
                                 <div className="flex items-center justify-end gap-1">
                                   Cost/Request
                                   {sortColumn === 'costPerRequest' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                    <span className="text-xs">
+                                      {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </span>
                                   )}
                                 </div>
                               </th>
@@ -1369,7 +1587,9 @@ export default function IntelligenceSavings() {
                                 <div className="flex items-center justify-end gap-1">
                                   Tokens
                                   {sortColumn === 'tokens' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                    <span className="text-xs">
+                                      {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </span>
                                   )}
                                 </div>
                               </th>
@@ -1380,7 +1600,9 @@ export default function IntelligenceSavings() {
                                 <div className="flex items-center justify-end gap-1">
                                   Savings
                                   {sortColumn === 'savingsAmount' && (
-                                    <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                    <span className="text-xs">
+                                      {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </span>
                                   )}
                                 </div>
                               </th>
@@ -1390,13 +1612,19 @@ export default function IntelligenceSavings() {
                             {sortedData.map((model, index) => (
                               <tr
                                 key={model.model}
-                                className={index % 2 === 0 ? "bg-background hover:bg-muted/30" : "bg-muted/50 hover:bg-muted/70"}
+                                className={
+                                  index % 2 === 0
+                                    ? 'bg-background hover:bg-muted/30'
+                                    : 'bg-muted/50 hover:bg-muted/70'
+                                }
                               >
                                 <td className="p-3 font-medium">{model.model}</td>
                                 <td className="text-right p-3">{formatNumber(model.requests)}</td>
                                 <td className="text-right p-3">
                                   <div className="flex items-center justify-end gap-2">
-                                    <span className="font-medium">{model.usagePercentage.toFixed(1)}%</span>
+                                    <span className="font-medium">
+                                      {model.usagePercentage.toFixed(1)}%
+                                    </span>
                                     <div className="w-16 bg-muted rounded-full h-2">
                                       <div
                                         className="bg-blue-500 h-2 rounded-full"
@@ -1405,13 +1633,17 @@ export default function IntelligenceSavings() {
                                     </div>
                                   </div>
                                 </td>
-                                <td className="text-right p-3">{model.avgResponseTime.toFixed(1)}s</td>
+                                <td className="text-right p-3">
+                                  {model.avgResponseTime.toFixed(1)}s
+                                </td>
                                 <td className="text-right p-3">
                                   <Badge variant={getSuccessRateVariant(model.successRate)}>
                                     {model.successRate.toFixed(1)}%
                                   </Badge>
                                 </td>
-                                <td className="text-right p-3 font-semibold">{formatCurrency(model.cost)}</td>
+                                <td className="text-right p-3 font-semibold">
+                                  {formatCurrency(model.cost)}
+                                </td>
                                 <td className="text-right p-3 text-muted-foreground">
                                   {formatCurrency(model.costPerRequest)}
                                 </td>
@@ -1432,10 +1664,18 @@ export default function IntelligenceSavings() {
                               </td>
                               <td className="text-right p-3">100%</td>
                               <td className="text-right p-3">
-                                {(sortedData.reduce((sum, m) => sum + m.avgResponseTime, 0) / sortedData.length).toFixed(1)}s
+                                {(
+                                  sortedData.reduce((sum, m) => sum + m.avgResponseTime, 0) /
+                                  sortedData.length
+                                ).toFixed(1)}
+                                s
                               </td>
                               <td className="text-right p-3">
-                                {(sortedData.reduce((sum, m) => sum + m.successRate, 0) / sortedData.length).toFixed(1)}%
+                                {(
+                                  sortedData.reduce((sum, m) => sum + m.successRate, 0) /
+                                  sortedData.length
+                                ).toFixed(1)}
+                                %
                               </td>
                               <td className="text-right p-3">
                                 {formatCurrency(sortedData.reduce((sum, m) => sum + m.cost, 0))}
@@ -1445,7 +1685,9 @@ export default function IntelligenceSavings() {
                                 {formatNumber(sortedData.reduce((sum, m) => sum + m.tokens, 0))}
                               </td>
                               <td className="text-right p-3 text-green-600">
-                                {formatCurrency(sortedData.reduce((sum, m) => sum + m.savingsAmount, 0))}
+                                {formatCurrency(
+                                  sortedData.reduce((sum, m) => sum + m.savingsAmount, 0)
+                                )}
                               </td>
                             </tr>
                           </tfoot>
@@ -1466,9 +1708,14 @@ export default function IntelligenceSavings() {
                               .sort((a, b) => a.costPerRequest - b.costPerRequest)
                               .slice(0, 3)
                               .map((model, index) => (
-                                <div key={model.model} className="flex items-center justify-between p-3 border rounded-lg">
+                                <div
+                                  key={model.model}
+                                  className="flex items-center justify-between p-3 border rounded-lg"
+                                >
                                   <div className="flex items-center gap-2">
-                                    <div className="font-bold text-lg text-muted-foreground">#{index + 1}</div>
+                                    <div className="font-bold text-lg text-muted-foreground">
+                                      #{index + 1}
+                                    </div>
                                     <div>
                                       <div className="font-semibold">{model.model}</div>
                                       <div className="text-xs text-muted-foreground">
@@ -1496,9 +1743,14 @@ export default function IntelligenceSavings() {
                               .sort((a, b) => b.successRate - a.successRate)
                               .slice(0, 3)
                               .map((model, index) => (
-                                <div key={model.model} className="flex items-center justify-between p-3 border rounded-lg">
+                                <div
+                                  key={model.model}
+                                  className="flex items-center justify-between p-3 border rounded-lg"
+                                >
                                   <div className="flex items-center gap-2">
-                                    <div className="font-bold text-lg text-muted-foreground">#{index + 1}</div>
+                                    <div className="font-bold text-lg text-muted-foreground">
+                                      #{index + 1}
+                                    </div>
                                     <div>
                                       <div className="font-semibold">{model.model}</div>
                                       <div className="text-xs text-muted-foreground">
@@ -1506,9 +1758,7 @@ export default function IntelligenceSavings() {
                                       </div>
                                     </div>
                                   </div>
-                                  <Badge variant="default">
-                                    {model.successRate.toFixed(1)}%
-                                  </Badge>
+                                  <Badge variant="default">{model.successRate.toFixed(1)}%</Badge>
                                 </div>
                               ))}
                           </div>

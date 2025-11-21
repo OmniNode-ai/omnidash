@@ -1,4 +1,10 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Pagination,
   PaginationContent,
@@ -7,10 +13,10 @@ import {
   PaginationNext,
   PaginationPrevious,
   PaginationEllipsis,
-} from "@/components/ui/pagination";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
+} from '@/components/ui/pagination';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
 export interface PaginationState {
   page: number;
@@ -30,7 +36,7 @@ export function TablePagination({
   totalItems,
   pageSizeOptions = [10, 25, 50, 100],
 }: TablePaginationProps) {
-  const [jumpToPage, setJumpToPage] = useState("");
+  const [jumpToPage, setJumpToPage] = useState('');
 
   const totalPages = Math.ceil(totalItems / pagination.pageSize);
   const startItem = (pagination.page - 1) * pagination.pageSize + 1;
@@ -50,7 +56,7 @@ export function TablePagination({
     const page = parseInt(jumpToPage);
     if (!isNaN(page) && page >= 1 && page <= totalPages) {
       handlePageChange(page);
-      setJumpToPage("");
+      setJumpToPage('');
     }
   };
 
@@ -105,10 +111,7 @@ export function TablePagination({
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Rows per page:</span>
-          <Select
-            value={pagination.pageSize.toString()}
-            onValueChange={handlePageSizeChange}
-          >
+          <Select value={pagination.pageSize.toString()} onValueChange={handlePageSizeChange}>
             <SelectTrigger className="w-20 h-9">
               <SelectValue />
             </SelectTrigger>
@@ -134,9 +137,7 @@ export function TablePagination({
             <PaginationPrevious
               onClick={() => handlePageChange(pagination.page - 1)}
               className={
-                pagination.page === 1
-                  ? "pointer-events-none opacity-50"
-                  : "cursor-pointer"
+                pagination.page === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'
               }
             />
           </PaginationItem>
@@ -163,9 +164,7 @@ export function TablePagination({
             <PaginationNext
               onClick={() => handlePageChange(pagination.page + 1)}
               className={
-                pagination.page === totalPages
-                  ? "pointer-events-none opacity-50"
-                  : "cursor-pointer"
+                pagination.page === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'
               }
             />
           </PaginationItem>
@@ -189,12 +188,7 @@ export function TablePagination({
           placeholder="Page"
           className="w-20 h-9"
         />
-        <Button
-          size="sm"
-          onClick={handleJumpToPage}
-          disabled={!jumpToPage}
-          className="h-9"
-        >
+        <Button size="sm" onClick={handleJumpToPage} disabled={!jumpToPage} className="h-9">
           Go
         </Button>
       </div>

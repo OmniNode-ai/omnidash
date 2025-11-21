@@ -15,10 +15,7 @@ export interface MockResponseOptions {
  * Create a mock fetch response
  * Returns a Response object with JSON body that can be read multiple times
  */
-export function createMockResponse<T>(
-  data: T,
-  options: MockResponseOptions = {}
-): Response {
+export function createMockResponse<T>(data: T, options: MockResponseOptions = {}): Response {
   const {
     status = 200,
     statusText = 'OK',
@@ -27,7 +24,7 @@ export function createMockResponse<T>(
 
   // Store body as string so it can be read multiple times
   const bodyText = JSON.stringify(data);
-  
+
   // Create headers object
   const headerObj = new Headers();
   Object.entries(headers).forEach(([key, value]) => {
@@ -44,77 +41,82 @@ export function createMockResponse<T>(
 /**
  * Create a mock fetch that returns an error
  */
-export function createMockFetchError(message: string = 'Network error'): Response {
+export function createMockFetchError(
+  status: number = 500,
+  statusText: string = 'Internal Server Error'
+): Response {
   return new Response(null, {
-    status: 500,
-    statusText: 'Internal Server Error',
+    status,
+    statusText,
   });
 }
 
 /**
  * Setup global fetch mock with a response map
+ * Accepts Response objects, Error objects, or plain objects (serialized as JSON)
  */
 export function setupFetchMock(
-  responses: Map<string, Response | Error>
+  responses: Map<string, Response | Error | unknown> | Record<string, Response | Error | unknown>
 ): void {
   // Cache body texts to avoid reading Response bodies multiple times
   const bodyTextCache = new Map<Response, string>();
-  
+
   async function getBodyText(response: Response): Promise<string> {
     if (!bodyTextCache.has(response)) {
       // Clone the response before reading to avoid "Body is unusable" errors
-      // Check if clone method exists (Response objects have it, but plain objects don't)
-      if (typeof response.clone === 'function') {
-        const cloned = response.clone();
-        const text = await cloned.text();
-        bodyTextCache.set(response, text);
-        return text;
-      } else {
-        // For non-Response objects, try to get body text directly
-        // This handles cases where a plain object is passed instead of a Response
-        const text = JSON.stringify(response);
-        bodyTextCache.set(response, text);
-        return text;
-      }
+      const cloned = response.clone();
+      const text = await cloned.text();
+      bodyTextCache.set(response, text);
+      return text;
     }
     return bodyTextCache.get(response)!;
   }
-  
-  global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
-      // Find matching response
-      for (const [pattern, response] of Array.from(responses.entries())) {
-        if (url.includes(pattern)) {
-          if (response instanceof Error) {
-            throw response;
-          }
-          // Handle plain objects that aren't Response instances
-          if (!(response instanceof Response)) {
-            // If it's a plain object with ok/status, create a proper Response
-            if (typeof response === 'object' && 'ok' in response && 'status' in response) {
-              const status = (response as any).status || 500;
-              const statusText = (response as any).statusText || 'Internal Server Error';
-              return new Response(null, { status, statusText });
-            }
-            // Otherwise, try to serialize it as JSON
-            return new Response(JSON.stringify(response), {
-              status: 200,
-              statusText: 'OK',
-              headers: { 'Content-Type': 'application/json' },
-            });
-          }
-          // Get body text (cached) and create new Response each time to allow multiple reads
-          const bodyText = await getBodyText(response);
+  global.fetch = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit): Promise<Response> => {
+    const url =
+      typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
-          return new Response(bodyText, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers,
+    // Convert responses to entries array (works for both Map and Record)
+    const entries =
+      responses instanceof Map ? Array.from(responses.entries()) : Object.entries(responses);
+
+    // Find matching response
+    for (const [pattern, response] of entries) {
+      if (url.includes(pattern)) {
+        if (response instanceof Error) {
+          throw response;
+        }
+        // Handle plain objects that aren't Response instances
+        if (!(response instanceof Response)) {
+          // If it's a plain object with ok/status, create a proper Response
+          if (
+            typeof response === 'object' &&
+            response !== null &&
+            'ok' in response &&
+            'status' in response
+          ) {
+            const status = (response as any).status || 500;
+            const statusText = (response as any).statusText || 'Internal Server Error';
+            return new Response(null, { status, statusText });
+          }
+          // Otherwise, try to serialize it as JSON
+          return new Response(JSON.stringify(response), {
+            status: 200,
+            statusText: 'OK',
+            headers: { 'Content-Type': 'application/json' },
           });
         }
+        // Get body text (cached) and create new Response each time to allow multiple reads
+        const bodyText = await getBodyText(response);
+
+        return new Response(bodyText, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
       }
-    
+    }
+
     // Default: 404 not found
     return new Response(null, { status: 404, statusText: 'Not Found' });
   }) as typeof fetch;
@@ -135,4 +137,3 @@ export function resetFetchMock(): void {
     };
   }
 }
-

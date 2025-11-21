@@ -61,9 +61,7 @@ describe('Alert Routes', () => {
         timestamp: Date.now(),
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/alerts/active')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/alerts/active').expect(200);
 
       expect(response.body).toHaveProperty('alerts');
       expect(Array.isArray(response.body.alerts)).toBe(true);
@@ -98,13 +96,9 @@ describe('Alert Routes', () => {
         timestamp: Date.now(),
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/alerts/active')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/alerts/active').expect(200);
 
-      const errorAlert = response.body.alerts.find((a: any) =>
-        a.message.includes('Error rate')
-      );
+      const errorAlert = response.body.alerts.find((a: any) => a.message.includes('Error rate'));
       expect(errorAlert).toBeDefined();
       expect(errorAlert.level).toBe('critical');
       expect(errorAlert.message).toContain('15.0%');
@@ -130,13 +124,9 @@ describe('Alert Routes', () => {
         timestamp: Date.now(),
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/alerts/active')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/alerts/active').expect(200);
 
-      const errorAlert = response.body.alerts.find((a: any) =>
-        a.message.includes('Error rate')
-      );
+      const errorAlert = response.body.alerts.find((a: any) => a.message.includes('Error rate'));
       expect(errorAlert).toBeDefined();
       expect(errorAlert.level).toBe('warning');
     });
@@ -161,9 +151,7 @@ describe('Alert Routes', () => {
         timestamp: Date.now(),
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/alerts/active')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/alerts/active').expect(200);
 
       const injectionAlert = response.body.alerts.find((a: any) =>
         a.message.includes('Manifest injection')
@@ -192,9 +180,7 @@ describe('Alert Routes', () => {
         timestamp: Date.now(),
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/alerts/active')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/alerts/active').expect(200);
 
       const injectionAlert = response.body.alerts.find((a: any) =>
         a.message.includes('Manifest injection')
@@ -223,9 +209,7 @@ describe('Alert Routes', () => {
         timestamp: Date.now(),
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/alerts/active')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/alerts/active').expect(200);
 
       const responseTimeAlert = response.body.alerts.find((a: any) =>
         a.message.includes('response time')
@@ -251,13 +235,11 @@ describe('Alert Routes', () => {
         errorRate: 0.02,
         injectionSuccessRate: 0.98,
         avgResponseTime: 500,
-        successRate: 0.80, // 80% success rate
+        successRate: 0.8, // 80% success rate
         timestamp: Date.now(),
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/alerts/active')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/alerts/active').expect(200);
 
       const successRateAlert = response.body.alerts.find((a: any) =>
         a.message.includes('Low success rate')
@@ -280,13 +262,11 @@ describe('Alert Routes', () => {
         errorRate: 0.15,
         injectionSuccessRate: 0.85,
         avgResponseTime: 2500,
-        successRate: 0.80,
+        successRate: 0.8,
         timestamp: Date.now(),
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/alerts/active')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/alerts/active').expect(200);
 
       expect(response.body.alerts.length).toBeGreaterThan(1);
       expect(response.body.alerts.some((a: any) => a.level === 'critical')).toBe(true);
@@ -298,9 +278,7 @@ describe('Alert Routes', () => {
 
       vi.mocked(getAllAlertMetrics).mockRejectedValue(new Error('Database error'));
 
-      const response = await request(app)
-        .get('/api/intelligence/alerts/active')
-        .expect(500);
+      const response = await request(app).get('/api/intelligence/alerts/active').expect(500);
 
       expect(response.body).toHaveProperty('error');
       expect(response.body.error).toBe('Failed to fetch active alerts');
@@ -328,9 +306,7 @@ describe('Alert Routes', () => {
         timestamp: Date.now(),
       });
 
-      const response = await request(app)
-        .get('/api/intelligence/alerts/active')
-        .expect(200);
+      const response = await request(app).get('/api/intelligence/alerts/active').expect(200);
 
       if (response.body.alerts.length > 0) {
         const alert = response.body.alerts[0];
@@ -346,4 +322,3 @@ describe('Alert Routes', () => {
     });
   });
 });
-

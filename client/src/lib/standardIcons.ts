@@ -71,7 +71,7 @@ import {
   DollarSign,
   Check,
   Circle,
-} from "lucide-react";
+} from 'lucide-react';
 
 /**
  * Activity & Status Icons

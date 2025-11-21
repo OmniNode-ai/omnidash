@@ -87,16 +87,7 @@ export class PatternLearningMockData {
       'Performance',
     ];
 
-    const languages = [
-      'TypeScript',
-      'Python',
-      'JavaScript',
-      'Rust',
-      'Go',
-      'Java',
-      'Ruby',
-      'C++',
-    ];
+    const languages = ['TypeScript', 'Python', 'JavaScript', 'Rust', 'Go', 'Java', 'Ruby', 'C++'];
 
     const descriptions = {
       Authentication: [
@@ -177,12 +168,7 @@ export class PatternLearningMockData {
         'Context-aware logger',
         'Performance logging',
       ],
-      Security: [
-        'Input sanitization',
-        'XSS prevention',
-        'CSRF token validation',
-        'Rate limiting',
-      ],
+      Security: ['Input sanitization', 'XSS prevention', 'CSRF token validation', 'Rate limiting'],
       Performance: [
         'Memoization pattern',
         'Lazy loading',
@@ -242,9 +228,7 @@ export class PatternLearningMockData {
 
     return languages.map((lang, idx) => {
       const isLast = idx === languages.length - 1;
-      const percentage = isLast
-        ? remainingPercentage
-        : parseFloat((lang.weight * 100).toFixed(1));
+      const percentage = isLast ? remainingPercentage : parseFloat((lang.weight * 100).toFixed(1));
 
       remainingPercentage -= percentage;
 

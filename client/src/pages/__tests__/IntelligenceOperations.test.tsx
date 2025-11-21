@@ -35,9 +35,7 @@ function renderWithClient(ui: React.ReactNode) {
     },
   });
 
-  const result = render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
+  const result = render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 
   return { queryClient, ...result };
 }
@@ -67,50 +65,76 @@ describe('IntelligenceOperations page', () => {
     vi.useRealTimers();
   });
 
-  function mockFetchResponses(options: { hasRecentActions?: boolean; transformationTotal?: number } = {}) {
+  function mockFetchResponses(
+    options: { hasRecentActions?: boolean; transformationTotal?: number } = {}
+  ) {
     fetchSpy.mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
 
       if (url.includes('/api/intelligence/transformations/summary')) {
         const total = options.transformationTotal ?? 4;
-        return Promise.resolve(new Response(JSON.stringify({
-          summary: {
-            totalTransformations: total,
-            uniqueSourceAgents: 3,
-            uniqueTargetAgents: 2,
-            avgTransformationTimeMs: 150,
-            successRate: 0.92,
-            mostCommonTransformation: total > 0
-              ? { source: 'agent-api-architect', target: 'agent-polymorphic-agent', count: 3 }
-              : null,
-          },
-          sankey: {
-            nodes: [
-              { id: 'agent-api-architect', label: 'API Architect' },
-              { id: 'agent-polymorphic-agent', label: 'Polymorphic Agent' },
-              { id: 'agent-testing', label: 'Testing Agent' },
-            ],
-            links: total > 0 ? [
-              { source: 'agent-api-architect', target: 'agent-polymorphic-agent', value: 3, avgConfidence: 0.9 },
-              { source: 'agent-polymorphic-agent', target: 'agent-testing', value: 1, avgConfidence: 0.8 },
-            ] : [],
-          },
-        }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              summary: {
+                totalTransformations: total,
+                uniqueSourceAgents: 3,
+                uniqueTargetAgents: 2,
+                avgTransformationTimeMs: 150,
+                successRate: 0.92,
+                mostCommonTransformation:
+                  total > 0
+                    ? { source: 'agent-api-architect', target: 'agent-polymorphic-agent', count: 3 }
+                    : null,
+              },
+              sankey: {
+                nodes: [
+                  { id: 'agent-api-architect', label: 'API Architect' },
+                  { id: 'agent-polymorphic-agent', label: 'Polymorphic Agent' },
+                  { id: 'agent-testing', label: 'Testing Agent' },
+                ],
+                links:
+                  total > 0
+                    ? [
+                        {
+                          source: 'agent-api-architect',
+                          target: 'agent-polymorphic-agent',
+                          value: 3,
+                          avgConfidence: 0.9,
+                        },
+                        {
+                          source: 'agent-polymorphic-agent',
+                          target: 'agent-testing',
+                          value: 1,
+                          avgConfidence: 0.8,
+                        },
+                      ]
+                    : [],
+              },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        );
       }
 
       if (url.includes('/api/intelligence/health/manifest-injection')) {
-        return Promise.resolve(new Response(JSON.stringify({
-          successRate: 0.82,
-          avgLatencyMs: 120,
-          failedInjections: [],
-          manifestSizeStats: { avgSizeKb: 12, minSizeKb: 4, maxSizeKb: 22 },
-          latencyTrend: [],
-          serviceHealth: {
-            postgresql: { status: 'up', latencyMs: 30 },
-            omniarchon: { status: 'up', latencyMs: 45 },
-            qdrant: { status: 'up', latencyMs: 50 },
-          },
-        }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              successRate: 0.82,
+              avgLatencyMs: 120,
+              failedInjections: [],
+              manifestSizeStats: { avgSizeKb: 12, minSizeKb: 4, maxSizeKb: 22 },
+              latencyTrend: [],
+              serviceHealth: {
+                postgresql: { status: 'up', latencyMs: 30 },
+                omniarchon: { status: 'up', latencyMs: 45 },
+                qdrant: { status: 'up', latencyMs: 50 },
+              },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        );
       }
 
       if (url.includes('/api/intelligence/actions/recent')) {
@@ -129,30 +153,39 @@ describe('IntelligenceOperations page', () => {
               },
             ]
           : [];
-        return Promise.resolve(new Response(JSON.stringify(payload), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }));
+        return Promise.resolve(
+          new Response(JSON.stringify(payload), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
       }
 
       if (url.includes('/api/intelligence/documents/top-accessed')) {
-        return Promise.resolve(new Response(JSON.stringify([
-          {
-            id: 'doc-1',
-            repository: 'awesome-service',
-            filePath: 'src/agents/router.ts',
-            accessCount: 12,
-            lastAccessedAt: new Date().toISOString(),
-            trend: 'up',
-            trendPercentage: 18,
-          },
-        ]), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        return Promise.resolve(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'doc-1',
+                repository: 'awesome-service',
+                filePath: 'src/agents/router.ts',
+                accessCount: 12,
+                lastAccessedAt: new Date().toISOString(),
+                trend: 'up',
+                trendPercentage: 18,
+              },
+            ]),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        );
       }
 
-      return Promise.resolve(new Response(JSON.stringify([]), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }));
+      return Promise.resolve(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
     });
   }
 
@@ -177,9 +210,7 @@ describe('IntelligenceOperations page', () => {
         { time: '10:00', value: 5 },
         { time: '10:05', value: 7 },
       ],
-      qualityChartData: [
-        { time: '10:00', value: 2.5 },
-      ],
+      qualityChartData: [{ time: '10:00', value: 2.5 }],
       operations: [
         {
           id: 'op-1',
@@ -214,9 +245,7 @@ describe('IntelligenceOperations page', () => {
     expect(screen.getByText('3.4')).toBeInTheDocument();
     expect(screen.getByText('Quality Improvement Impact')).toBeInTheDocument();
     expect(screen.getByText('Manifest Injection')).toBeInTheDocument();
-    expect(
-      await screen.findByText(/Read File executed by Routing Agent/i)
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Read File executed by Routing Agent/i)).toBeInTheDocument();
     expect(fetchSpy).toHaveBeenCalled();
 
     result.unmount();

@@ -125,7 +125,9 @@ describe('PatternLearning page', () => {
 
   it('shows loading screen when summary or pattern list queries are pending', () => {
     vi.mocked(patternLearningSource.fetchSummary).mockImplementation(() => new Promise(() => {}));
-    vi.mocked(patternLearningSource.fetchPatternList).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(patternLearningSource.fetchPatternList).mockImplementation(
+      () => new Promise(() => {})
+    );
     vi.mocked(patternLearningSource.fetchTrends).mockResolvedValue([]);
     vi.mocked(patternLearningSource.fetchQualityTrends).mockResolvedValue([]);
     vi.mocked(patternLearningSource.fetchDiscovery).mockResolvedValue({ data: [], isMock: false });
