@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 
+// Use vi.hoisted to set environment variables and create mocks before module loading
 // Create mock functions using vi.hoisted() so they're available during module loading
+vi.hoisted(() => {
+  process.env.KAFKA_BROKERS = 'localhost:9092';
+  process.env.KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092';
+});
+
+// Create mock functions for Kafka operations
 const {
   mockConsumerConnect,
   mockConsumerDisconnect,
@@ -79,23 +86,24 @@ describe('EventConsumer', () => {
       expect(consumer).toBeInstanceOf(EventEmitter);
     });
 
-    it('should handle missing KAFKA_BROKERS environment variable', () => {
+    it('should throw error when KAFKA_BROKERS environment variable is missing', () => {
       delete process.env.KAFKA_BOOTSTRAP_SERVERS;
       delete process.env.KAFKA_BROKERS;
 
-      const newConsumer = new EventConsumer();
-      expect(newConsumer).toBeDefined();
+      expect(() => new EventConsumer()).toThrow(
+        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required'
+      );
     });
   });
 
   describe('validateConnection', () => {
-    it('should return false when KAFKA_BROKERS is not configured', async () => {
+    it('should throw error when KAFKA_BROKERS is not configured', async () => {
       delete process.env.KAFKA_BOOTSTRAP_SERVERS;
       delete process.env.KAFKA_BROKERS;
 
-      const testConsumer = new EventConsumer();
-      const result = await testConsumer.validateConnection();
-      expect(result).toBe(false);
+      expect(() => new EventConsumer()).toThrow(
+        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required'
+      );
     });
 
     it('should successfully validate broker connection', async () => {

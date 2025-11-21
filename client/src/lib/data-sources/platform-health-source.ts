@@ -6,28 +6,25 @@ import {
   safeParseResponse,
 } from '../schemas/api-response-schemas';
 
+// Platform health response from /api/intelligence/services/health
+// See server/intelligence-routes.ts line 3251 and server/service-health.ts
 export interface PlatformHealth {
-  status: string;
-  uptime: number;
-  database?: {
-    name: string;
-    status: string;
-    uptime: string;
-    latency_ms: number;
-  };
-  kafka?: {
-    name: string;
-    status: string;
-    uptime: string;
-    latency_ms: number;
-  };
+  timestamp: string;
+  overallStatus: 'healthy' | 'unhealthy' | 'error';
   services: Array<{
-    name: string;
-    status: string;
-    latency?: number;
-    latency_ms?: number;
-    uptime?: number;
+    service: string; // Service name (e.g., "PostgreSQL", "Kafka/Redpanda", "Omniarchon")
+    status: 'up' | 'down' | 'warning';
+    latencyMs?: number;
+    error?: string;
+    details?: Record<string, any>;
   }>;
+  summary?: {
+    total: number;
+    up: number;
+    down: number;
+    warning: number;
+  };
+  error?: string; // Present when overallStatus is 'error'
 }
 
 export interface PlatformServices {
@@ -59,7 +56,9 @@ class PlatformHealthSource {
     }
 
     try {
-      const response = await fetch(`/api/intelligence/platform/health?timeWindow=${timeRange}`);
+      // Use relative path - all intelligence APIs are served by the same Express backend (port 3000)
+      // See server/intelligence-routes.ts line 3251 for endpoint implementation
+      const response = await fetch(`/api/intelligence/services/health?timeWindow=${timeRange}`);
       if (response.ok) {
         const rawData = await response.json();
         // Validate API response with Zod schema
@@ -88,6 +87,8 @@ class PlatformHealthSource {
     }
 
     try {
+      // Use relative path - all intelligence APIs are served by the same Express backend (port 3000)
+      // See server/intelligence-routes.ts line 2908 for endpoint implementation
       const response = await fetch('/api/intelligence/platform/services');
       if (response.ok) {
         const rawData = await response.json();

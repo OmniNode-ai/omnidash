@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { getIntelligenceDb } from './storage';
 import { patternLineageNodes } from '../shared/intelligence-schema';
 import { getAllAlertMetrics } from './alert-helpers';
+import { getOmniarchonUrl } from './utils/service-urls';
 
 export const alertRouter = Router();
 
@@ -41,7 +42,7 @@ async function getHealthCheckStatus(): Promise<HealthCheckCache> {
   const [omniarchonResult, dbResult] = await Promise.allSettled([
     // Check Omniarchon health with short timeout
     (async () => {
-      const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+      const omniarchonUrl = getOmniarchonUrl();
       try {
         const healthResponse = await fetch(`${omniarchonUrl}/health`, {
           signal: AbortSignal.timeout(500),

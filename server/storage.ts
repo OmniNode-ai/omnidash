@@ -61,10 +61,22 @@ function getIntelligenceConnectionString(): string {
   }
 
   // Build connection string from individual environment variables
-  const host = process.env.POSTGRES_HOST || '192.168.86.200';
-  const port = process.env.POSTGRES_PORT || '5436';
-  const database = process.env.POSTGRES_DATABASE || 'omninode_bridge';
-  const user = process.env.POSTGRES_USER || 'postgres';
+  const host = process.env.POSTGRES_HOST;
+  const port = process.env.POSTGRES_PORT;
+  const database = process.env.POSTGRES_DATABASE;
+  const user = process.env.POSTGRES_USER;
+
+  if (!host || !port || !database || !user) {
+    throw new Error(
+      'Database connection requires POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE, and POSTGRES_USER environment variables. ' +
+        'Set them in .env file. Example:\n' +
+        '  POSTGRES_HOST=192.168.86.200\n' +
+        '  POSTGRES_PORT=5436\n' +
+        '  POSTGRES_DATABASE=omninode_bridge\n' +
+        '  POSTGRES_USER=postgres\n' +
+        '  POSTGRES_PASSWORD=your_password'
+    );
+  }
 
   return `postgresql://${user}:${password}@${host}:${port}/${database}`;
 }

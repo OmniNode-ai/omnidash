@@ -8,15 +8,32 @@ import { eventConsumer } from '../event-consumer';
 import { checkAllServices } from '../service-health';
 import { dbAdapter } from '../db-adapter';
 
-// Mock dependencies
-const mockDb = {
-  select: vi.fn().mockReturnThis(),
-  from: vi.fn().mockReturnThis(),
-  where: vi.fn().mockReturnThis(),
-  orderBy: vi.fn().mockReturnThis(),
-  limit: vi.fn().mockResolvedValue([]),
-  execute: vi.fn().mockResolvedValue([]),
+// Mock dependencies - create a proper query builder mock that chains correctly
+const createMockQueryBuilder = () => {
+  const builder: any = {
+    select: vi.fn(),
+    from: vi.fn(),
+    where: vi.fn(),
+    orderBy: vi.fn(),
+    limit: vi.fn(),
+    offset: vi.fn(),
+    groupBy: vi.fn(),
+    execute: vi.fn().mockResolvedValue([]),
+  };
+
+  // Make all methods return the builder for chaining
+  builder.select.mockReturnValue(builder);
+  builder.from.mockReturnValue(builder);
+  builder.where.mockReturnValue(builder);
+  builder.orderBy.mockReturnValue(builder);
+  builder.limit.mockReturnValue(builder);
+  builder.offset.mockReturnValue(builder);
+  builder.groupBy.mockReturnValue(builder);
+
+  return builder;
 };
+
+const mockDb = createMockQueryBuilder();
 
 vi.mock('../storage', () => ({
   getIntelligenceDb: vi.fn(() => mockDb),
@@ -65,7 +82,7 @@ vi.mock('../db-adapter', () => ({
 
 function resetSelectMock() {
   vi.mocked(mockDb.select).mockReset();
-  vi.mocked(mockDb.select).mockReturnThis();
+  vi.mocked(mockDb.select).mockReturnValue(mockDb);
 }
 
 describe('Intelligence Routes', () => {
@@ -76,6 +93,16 @@ describe('Intelligence Routes', () => {
     app.use(express.json());
     app.use('/api/intelligence', intelligenceRouter);
     vi.clearAllMocks();
+
+    // Reset mockDb chain after clearing mocks
+    mockDb.select.mockReturnValue(mockDb);
+    mockDb.from.mockReturnValue(mockDb);
+    mockDb.where.mockReturnValue(mockDb);
+    mockDb.orderBy.mockReturnValue(mockDb);
+    mockDb.limit.mockReturnValue(mockDb);
+    mockDb.offset.mockReturnValue(mockDb);
+    mockDb.groupBy.mockReturnValue(mockDb);
+    mockDb.execute.mockResolvedValue([]);
   });
 
   describe('GET /api/intelligence/db/test/count', () => {
@@ -640,24 +667,48 @@ describe('Intelligence Routes', () => {
       vi.mocked(mockDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
 
       // Mock the top patterns query (when no patternIdsParam)
-      vi.mocked(mockDb.select).mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ id: 'pattern-1' }, { id: 'pattern-2' }]),
-          }),
-        }),
-      } as any);
+      const limitMock = {
+        limit: vi.fn().mockResolvedValue([{ id: 'pattern-1' }, { id: 'pattern-2' }]),
+        offset: vi.fn().mockReturnThis(),
+        execute: vi.fn().mockResolvedValue([{ id: 'pattern-1' }, { id: 'pattern-2' }]),
+      };
+      const orderByMock = {
+        orderBy: vi.fn().mockReturnValue(limitMock),
+        limit: vi.fn().mockReturnValue(limitMock),
+        where: vi.fn().mockReturnThis(),
+        groupBy: vi.fn().mockReturnThis(),
+      };
+      const fromMock = {
+        from: vi.fn().mockReturnValue(orderByMock),
+        where: vi.fn().mockReturnValue(orderByMock),
+        orderBy: vi.fn().mockReturnValue(orderByMock),
+        limit: vi.fn().mockReturnValue(limitMock),
+      };
+      vi.mocked(mockDb.select).mockReturnValueOnce(fromMock as any);
 
       // Mock the edges query
-      vi.mocked(mockDb.select).mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi
-            .fn()
-            .mockResolvedValue([
-              { source: 'pattern-1', target: 'pattern-2', type: 'modified_from', weight: '1.0' },
-            ]),
-        }),
-      } as any);
+      const edgesWhereMock = {
+        where: vi
+          .fn()
+          .mockResolvedValue([
+            { source: 'pattern-1', target: 'pattern-2', type: 'modified_from', weight: '1.0' },
+          ]),
+        orderBy: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        groupBy: vi.fn().mockReturnThis(),
+        execute: vi
+          .fn()
+          .mockResolvedValue([
+            { source: 'pattern-1', target: 'pattern-2', type: 'modified_from', weight: '1.0' },
+          ]),
+      };
+      const edgesFromMock = {
+        from: vi.fn().mockReturnValue(edgesWhereMock),
+        where: vi.fn().mockReturnValue(edgesWhereMock),
+        orderBy: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+      };
+      vi.mocked(mockDb.select).mockReturnValueOnce(edgesFromMock as any);
 
       const response = await request(app)
         .get('/api/intelligence/patterns/relationships')

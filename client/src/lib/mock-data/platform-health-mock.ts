@@ -7,84 +7,77 @@ import type { PlatformHealth, PlatformServices } from '../data-sources/platform-
 
 export class PlatformHealthMockData {
   /**
-   * Generate mock platform health data
+   * Generate mock platform health data matching /api/intelligence/services/health response format
+   * See server/intelligence-routes.ts line 3251 and server/service-health.ts
    */
   static generateHealth(): PlatformHealth {
-    const databaseUptime = Gen.randomFloat(99.5, 99.99, 2);
-    const kafkaUptime = Gen.randomFloat(99.3, 99.98, 2);
     const databaseLatency = Gen.randomInt(5, 30);
     const kafkaLatency = Gen.randomInt(15, 60);
 
-    const databaseStatus =
-      Math.random() > 0.05 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'down';
-    const kafkaStatus =
-      Math.random() > 0.05 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'down';
-
-    const services = [
-      { name: 'PostgreSQL', status: 'up', latency_ms: databaseLatency, uptime: databaseUptime },
+    // Generate service health checks matching ServiceHealthCheck interface
+    const services: PlatformHealth['services'] = [
       {
-        name: 'OmniArchon',
-        status: 'up',
-        latency_ms: Gen.randomInt(20, 80),
-        uptime: Gen.randomFloat(99.0, 99.9, 2),
+        service: 'PostgreSQL',
+        status: Math.random() > 0.05 ? 'up' : Math.random() > 0.5 ? 'warning' : 'down',
+        latencyMs: databaseLatency,
+        details: {
+          version: 'PostgreSQL 14.0',
+          currentTime: new Date().toISOString(),
+        },
       },
       {
-        name: 'Qdrant',
-        status: 'up',
-        latency_ms: Gen.randomInt(10, 50),
-        uptime: Gen.randomFloat(99.2, 99.95, 2),
-      },
-      { name: 'Kafka/Redpanda', status: 'up', latency_ms: kafkaLatency, uptime: kafkaUptime },
-      {
-        name: 'Redis Cache',
-        status: 'up',
-        latency_ms: Gen.randomInt(2, 15),
-        uptime: Gen.randomFloat(99.8, 99.99, 2),
+        service: 'Kafka/Redpanda',
+        status: Math.random() > 0.05 ? 'up' : Math.random() > 0.5 ? 'warning' : 'down',
+        latencyMs: kafkaLatency,
+        details: {
+          brokers: ['192.168.86.200:29092'],
+          topicCount: Gen.randomInt(15, 25),
+        },
       },
       {
-        name: 'API Gateway',
-        status: 'up',
-        latency_ms: Gen.randomInt(25, 100),
-        uptime: Gen.randomFloat(99.1, 99.9, 2),
+        service: 'Omniarchon',
+        status: Math.random() > 0.05 ? 'up' : Math.random() > 0.5 ? 'warning' : 'down',
+        latencyMs: Gen.randomInt(20, 80),
+        details: {
+          url: 'http://localhost:8053',
+          statusCode: 200,
+        },
+      },
+      {
+        service: 'Event Consumer',
+        status: Math.random() > 0.05 ? 'up' : 'down',
+        details: {
+          isRunning: true,
+          eventsProcessed: Gen.randomInt(1000, 5000),
+          recentActionsCount: Gen.randomInt(50, 200),
+        },
       },
     ];
 
     // Randomly degrade one service (10% chance)
     if (Math.random() < 0.1) {
       const idx = Gen.randomInt(0, services.length - 1);
-      services[idx].status = 'degraded';
-      services[idx].latency_ms = Gen.randomInt(200, 500);
+      services[idx].status = 'warning';
+      services[idx].latencyMs = Gen.randomInt(200, 500);
     }
 
-    // Calculate overall status based on service health
-    const hasDown = services.some((s) => s.status === 'down');
-    const hasDegraded = services.some((s) => s.status === 'degraded');
-    const overallStatus = hasDown ? 'down' : hasDegraded ? 'degraded' : 'up';
+    // Calculate summary
+    const summary = {
+      total: services.length,
+      up: services.filter((s) => s.status === 'up').length,
+      down: services.filter((s) => s.status === 'down').length,
+      warning: services.filter((s) => s.status === 'warning').length,
+    };
 
-    // Calculate average uptime
-    const avgUptime = services.reduce((sum, s) => sum + s.uptime, 0) / services.length;
+    // Calculate overall status
+    const allUp = services.every((s) => s.status === 'up');
+    const overallStatus: PlatformHealth['overallStatus'] = allUp ? 'healthy' : 'unhealthy';
 
     return {
-      status: overallStatus,
-      uptime: avgUptime,
-      database: {
-        name: 'PostgreSQL',
-        status: databaseStatus,
-        uptime: `${databaseUptime.toFixed(2)}%`,
-        latency_ms: databaseLatency,
-      },
-      kafka: {
-        name: 'Kafka/Redpanda',
-        status: kafkaStatus,
-        uptime: `${kafkaUptime.toFixed(2)}%`,
-        latency_ms: kafkaLatency,
-      },
-      services: services.map((s) => ({
-        name: s.name,
-        status: s.status,
-        latency_ms: s.latency_ms,
-        uptime: s.uptime,
-      })),
+      timestamp: new Date().toISOString(),
+      overallStatus,
+      services,
+      summary,
     };
   }
 

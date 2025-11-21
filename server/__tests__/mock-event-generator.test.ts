@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Ensure NODE_ENV and VITEST are set for these tests
 process.env.NODE_ENV = 'test';
 process.env.VITEST = 'true';
+// Set Kafka environment variables required for tests
+process.env.KAFKA_BROKERS = 'localhost:9092';
+process.env.KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092';
 
 const connectMock = vi.fn();
 const sendMock = vi.fn();

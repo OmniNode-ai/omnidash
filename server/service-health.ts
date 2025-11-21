@@ -7,6 +7,7 @@ import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 import { eventConsumer } from './event-consumer';
 import { Kafka } from 'kafkajs';
+import { getOmniarchonUrl } from './utils/service-urls';
 
 export interface ServiceHealthCheck {
   service: string;
@@ -141,7 +142,7 @@ async function checkKafka(): Promise<ServiceHealthCheck> {
 
 async function checkOmniarchon(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
-  const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+  const omniarchonUrl = getOmniarchonUrl();
 
   try {
     const response = await fetch(`${omniarchonUrl}/health`, {
