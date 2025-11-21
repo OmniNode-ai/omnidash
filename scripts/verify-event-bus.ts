@@ -1,6 +1,8 @@
+/* eslint-disable no-console */
+
 /**
  * Event Bus Verification Script
- * 
+ *
  * Verifies that:
  * 1. Event bus API endpoints are working
  * 2. Events are being generated and stored
@@ -35,7 +37,7 @@ async function verifyEventBus() {
     }
     const eventsData = await eventsResponse.json();
     console.log(`   ✅ Found ${eventsData.count} events`);
-    
+
     if (eventsData.events.length > 0) {
       console.log(`   - Sample events:`);
       eventsData.events.slice(0, 3).forEach((event: any, i: number) => {
@@ -45,7 +47,7 @@ async function verifyEventBus() {
         console.log(`        Source: ${event.source}`);
       });
     } else {
-      console.log('   ⚠️  No events found yet (waiting for mock generator...)');
+      console.warn('   ⚠️  No events found yet (waiting for mock generator...)');
     }
     console.log('');
 
@@ -89,9 +91,9 @@ async function verifyEventBus() {
 
       let allValid = true;
       eventTypes.forEach((eventType) => {
-        const matches = validPatterns.some(pattern => pattern.test(eventType));
+        const matches = validPatterns.some((pattern) => pattern.test(eventType));
         if (!matches) {
-          console.log(`   ❌ Invalid event type: ${eventType}`);
+          console.warn(`   ❌ Invalid event type: ${eventType}`);
           allValid = false;
         }
       });
@@ -105,9 +107,7 @@ async function verifyEventBus() {
     // 5. Check event chains
     if (eventsData.events.length > 0) {
       console.log('5. Checking Event Chains...');
-      const eventsWithCorrelation = eventsData.events.filter(
-        (e: any) => e.correlation_id
-      );
+      const eventsWithCorrelation = eventsData.events.filter((e: any) => e.correlation_id);
 
       if (eventsWithCorrelation.length > 0) {
         const correlationId = eventsWithCorrelation[0].correlation_id;
@@ -115,7 +115,7 @@ async function verifyEventBus() {
           `${BASE_URL}/api/event-bus/events?correlation_id=${encodeURIComponent(correlationId)}`
         );
         if (!chainResponse.ok) {
-          console.log(
+          console.warn(
             `   ⚠️  Correlation chain request failed: ${chainResponse.status} ${chainResponse.statusText}`
           );
         } else {
@@ -125,7 +125,7 @@ async function verifyEventBus() {
           console.log(`   - Event types: ${chainTypes.join(', ')}`);
         }
       } else {
-        console.log('   ⚠️  No events with correlation_id found');
+        console.warn('   ⚠️  No events with correlation_id found');
       }
       console.log('');
     }
@@ -154,4 +154,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { verifyEventBus };
-

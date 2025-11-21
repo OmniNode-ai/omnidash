@@ -65,7 +65,7 @@ describe('MockEventGenerator', () => {
 
   it('clears interval and disconnects on stop', async () => {
     vi.useFakeTimers();
-    
+
     const generator = new MockEventGenerator();
 
     // Simulate running state
@@ -76,7 +76,7 @@ describe('MockEventGenerator', () => {
 
     expect(disconnectMock).toHaveBeenCalled();
     expect((generator as any).intervalId).toBeUndefined();
-    
+
     vi.useRealTimers();
   });
 });

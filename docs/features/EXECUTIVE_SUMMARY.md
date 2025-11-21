@@ -46,6 +46,7 @@
 ### Advanced Features Awaiting Data ⏳
 
 **Schema Ready, No Data Yet:**
+
 - Document Freshness Tracking (0 records)
 - Pattern Quality Metrics (0 records)
 - Pattern PR Intelligence (0 records)
@@ -57,20 +58,21 @@
 
 ### 🚀 Quick Wins (12h total, High ROI)
 
-| Integration | Dashboard | Effort | Impact | Data Status |
-|-------------|-----------|--------|--------|-------------|
-| **Routing Strategy Breakdown** | Agent Ops | 1h | High | ✅ Ready |
-| **Task Completion Velocity** | Developer XP | 2h | Medium | ⚠️ Low volume |
-| **ONEX Stamp Coverage** | Code Intel | 2h | Medium | ⚠️ Low volume |
-| **Document Access Ranking** | Code Intel | 3h | Medium | ✅ Ready |
-| **Node Service Registry** | Platform Health | 2h | Medium | ✅ Ready |
-| **Pattern Language Breakdown** | Pattern Learning | 2h | High | ✅ Ready |
+| Integration                    | Dashboard        | Effort | Impact | Data Status   |
+| ------------------------------ | ---------------- | ------ | ------ | ------------- |
+| **Routing Strategy Breakdown** | Agent Ops        | 1h     | High   | ✅ Ready      |
+| **Task Completion Velocity**   | Developer XP     | 2h     | Medium | ⚠️ Low volume |
+| **ONEX Stamp Coverage**        | Code Intel       | 2h     | Medium | ⚠️ Low volume |
+| **Document Access Ranking**    | Code Intel       | 3h     | Medium | ✅ Ready      |
+| **Node Service Registry**      | Platform Health  | 2h     | Medium | ✅ Ready      |
+| **Pattern Language Breakdown** | Pattern Learning | 2h     | High   | ✅ Ready      |
 
 **Total Quick Wins Impact**: 6 new dashboard widgets, 12 hours effort
 
 ### 📊 Most Valuable Data Sources
 
 **Immediate Value (Data Exists)**:
+
 1. `agent_routing_decisions` (209 records/24h) - routing intelligence
 2. `pattern_lineage_nodes` (1,033 patterns) - code pattern discovery
 3. `agent_actions` (205 records/24h) - agent activity tracking
@@ -78,6 +80,7 @@
 5. `pattern_lineage_events` (30 MB) - pattern evolution history
 
 **Future Value (Awaiting Data)**:
+
 1. `document_freshness` - documentation quality alerts
 2. `pattern_pr_intelligence` - pattern adoption tracking
 3. `pattern_quality_metrics` - code quality trends
@@ -87,18 +90,19 @@
 
 ## Service Status
 
-| Service | Port | Status | Capabilities |
-|---------|------|--------|-------------|
+| Service                     | Port | Status     | Capabilities                     |
+| --------------------------- | ---- | ---------- | -------------------------------- |
 | **Omniarchon Intelligence** | 8053 | ✅ Healthy | Memgraph, Ollama, quality trends |
-| **PostgreSQL Database** | 5436 | ✅ Healthy | 39 tables, real-time events |
-| **Kafka/Redpanda** | 9092 | ✅ Active | 4 topics, event streaming |
-| **Omnidash API** | 3000 | ✅ Working | Serving real data |
+| **PostgreSQL Database**     | 5436 | ✅ Healthy | 39 tables, real-time events      |
+| **Kafka/Redpanda**          | 9092 | ✅ Active  | 4 topics, event streaming        |
+| **Omnidash API**            | 3000 | ✅ Working | Serving real data                |
 
 ---
 
 ## Current Agent Activity (Last 24h)
 
 **Top 5 Agents by Routing Count**:
+
 1. `agent-polymorphic-agent` - 46 requests (0.812 confidence)
 2. `repository-crawler` - 17 requests (0.912 confidence)
 3. `agent-debug-intelligence` - 15 requests (0.853 confidence)
@@ -106,12 +110,14 @@
 5. `pr-review` - 11 requests (0.932 confidence)
 
 **Routing Strategy Distribution**:
+
 - Trigger-based: 114 (54.5%)
 - AI-based: 90 (43.1%)
 - Explicit request: 3 (1.4%)
 - Direct invocation: 1 (0.5%)
 
 **Pattern Discovery**:
+
 - 686 Python function patterns
 - 287 Python class patterns
 - 60 code patterns
@@ -131,6 +137,7 @@
 ## Recommended Action Plan
 
 ### Week 1: Foundation (12h)
+
 ✅ Implement 6 quick win integrations
 ✅ Add routing strategy breakdown to Agent Operations
 ✅ Add pattern language breakdown to Pattern Learning
@@ -139,12 +146,14 @@
 ✅ Add task velocity to Developer Experience
 
 ### Week 2: Enhancement (15h)
+
 🔨 Implement 3 medium complexity features
 🔨 Document dependency graph visualization
 🔨 Workflow state tracking
 🔨 Pattern discovery timeline
 
 ### Ongoing: Data Monitoring
+
 🔍 Monitor empty tables for data population
 🔍 Track document_freshness for freshness alerts
 🔍 Watch pattern_quality_metrics for quality trends
@@ -179,16 +188,19 @@
 ## Return on Investment
 
 ### High ROI (Do First)
+
 - **Routing strategy breakdown** - 1h effort, immediate visibility into routing intelligence
 - **Pattern language breakdown** - 2h effort, understand code pattern distribution
 - **Document access ranking** - 3h effort, identify important documentation
 
 ### Medium ROI (Do Next)
+
 - **Node service registry** - 2h effort, infrastructure visibility
 - **Task completion velocity** - 2h effort, development productivity tracking
 - **ONEX stamp coverage** - 2h effort, compliance tracking
 
 ### Future ROI (Await Data)
+
 - **Document freshness** - 2h when ready, high value for doc quality
 - **Pattern PR intelligence** - 4h when ready, adoption metrics
 - **Quality trends** - 3h when ready, code quality tracking
@@ -198,17 +210,20 @@
 ## Success Metrics
 
 **Integration Progress**:
+
 - Phase 1 (Quick Wins): 6 widgets / 12h → 33% dashboard enhancement
 - Phase 2 (Medium): 3 features / 15h → 17% dashboard enhancement
 - **Total Impact**: 9 new visualizations, 50% dashboard functionality increase
 
 **Data Coverage**:
+
 - Current: 10 tables actively used (26% of available tables)
 - Phase 1: 16 tables used (41% coverage)
 - Phase 2: 20 tables used (51% coverage)
 - Target: 25+ tables used (64% coverage)
 
 **User Value**:
+
 - **Agent Operations**: 6 new insights (routing, quality, workflows)
 - **Pattern Learning**: 3 new insights (language, timeline, PRs)
 - **Code Intelligence**: 3 new insights (docs, stamps, quality)
@@ -251,6 +266,7 @@
 📊 **This Summary**: `EXECUTIVE_SUMMARY.md` (you are here)
 
 **Database Access**:
+
 ```bash
 # Replace <your_password> with actual password from .env file
 PGPASSWORD='<your_password>' \
@@ -258,6 +274,7 @@ PGPASSWORD='<your_password>' \
 ```
 
 **Service Endpoints**:
+
 - Omnidash: http://localhost:3000
 - Omniarchon: http://localhost:8053
 - Database: 192.168.86.200:5436

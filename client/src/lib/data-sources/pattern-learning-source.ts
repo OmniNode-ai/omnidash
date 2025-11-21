@@ -1,6 +1,6 @@
 // Pattern Learning Data Source
 import { USE_MOCK_DATA, PatternLearningMockData } from '../mock-data';
-import { fallbackChain, withFallback, ensureNumeric, ensureString } from '../defensive-transform-logger';
+import { fallbackChain, withFallback } from '../defensive-transform-logger';
 import {
   patternSummarySchema,
   patternTrendSchema,
@@ -76,40 +76,44 @@ class PatternLearningSource {
         const data = safeParseResponse(patternSummarySchema, rawData, 'pattern-summary');
         // Transform API response with defensive logging, handling both camelCase and snake_case
         return {
-          totalPatterns: fallbackChain(
-            'totalPatterns',
-            { context: 'pattern-summary' },
-            [
-              { value: data?.totalPatterns, label: 'camelCase totalPatterns' },
-              { value: (rawData as any)?.total_patterns, label: 'snake_case total_patterns', level: 'warn' },
-              { value: 0, label: 'default zero', level: 'error' }
-            ]
-          ),
-          newPatternsToday: fallbackChain(
-            'newPatternsToday',
-            { context: 'pattern-summary' },
-            [
-              { value: data?.newPatternsToday, label: 'camelCase newPatternsToday' },
-              { value: (rawData as any)?.new_patterns_today, label: 'snake_case new_patterns_today', level: 'warn' },
-              { value: 0, label: 'default zero', level: 'error' }
-            ]
-          ),
-          avgQualityScore: fallbackChain(
-            'avgQualityScore',
-            { context: 'pattern-summary' },
-            [
-              { value: data?.avgQualityScore, label: 'camelCase avgQualityScore' },
-              { value: (rawData as any)?.avg_quality_score, label: 'snake_case avg_quality_score', level: 'warn' },
-              { value: 0, label: 'default zero', level: 'error' }
-            ]
-          ),
+          totalPatterns: fallbackChain('totalPatterns', { context: 'pattern-summary' }, [
+            { value: data?.totalPatterns, label: 'camelCase totalPatterns' },
+            {
+              value: (rawData as any)?.total_patterns,
+              label: 'snake_case total_patterns',
+              level: 'warn',
+            },
+            { value: 0, label: 'default zero', level: 'error' },
+          ]),
+          newPatternsToday: fallbackChain('newPatternsToday', { context: 'pattern-summary' }, [
+            { value: data?.newPatternsToday, label: 'camelCase newPatternsToday' },
+            {
+              value: (rawData as any)?.new_patterns_today,
+              label: 'snake_case new_patterns_today',
+              level: 'warn',
+            },
+            { value: 0, label: 'default zero', level: 'error' },
+          ]),
+          avgQualityScore: fallbackChain('avgQualityScore', { context: 'pattern-summary' }, [
+            { value: data?.avgQualityScore, label: 'camelCase avgQualityScore' },
+            {
+              value: (rawData as any)?.avg_quality_score,
+              label: 'snake_case avg_quality_score',
+              level: 'warn',
+            },
+            { value: 0, label: 'default zero', level: 'error' },
+          ]),
           activeLearningCount: fallbackChain(
             'activeLearningCount',
             { context: 'pattern-summary' },
             [
               { value: data?.activeLearningCount, label: 'camelCase activeLearningCount' },
-              { value: (rawData as any)?.active_learning_count, label: 'snake_case active_learning_count', level: 'warn' },
-              { value: 0, label: 'default zero', level: 'error' }
+              {
+                value: (rawData as any)?.active_learning_count,
+                label: 'snake_case active_learning_count',
+                level: 'warn',
+              },
+              { value: 0, label: 'default zero', level: 'error' },
             ]
           ),
         };
@@ -137,8 +141,12 @@ class PatternLearningSource {
         const rawData = await response.json();
         // Handle both validated data and raw data (for cases where validation fails but we have data)
         const validatedData = parseArrayResponse(patternTrendSchema, rawData, 'pattern-trends');
-        const dataArray = Array.isArray(rawData) ? rawData : (validatedData.length > 0 ? validatedData : []);
-        
+        const dataArray = Array.isArray(rawData)
+          ? rawData
+          : validatedData.length > 0
+            ? validatedData
+            : [];
+
         if (dataArray.length > 0) {
           // Transform to ensure proper format with defensive logging
           return dataArray.map((item: any, index: number) => ({
@@ -154,8 +162,12 @@ class PatternLearningSource {
               { id: index, context: 'pattern-trends' },
               [
                 { value: item.manifestsGenerated, label: 'camelCase manifestsGenerated' },
-                { value: item.manifests_generated, label: 'snake_case manifests_generated', level: 'warn' },
-                { value: 0, label: 'default zero', level: 'error' }
+                {
+                  value: item.manifests_generated,
+                  label: 'snake_case manifests_generated',
+                  level: 'warn',
+                },
+                { value: 0, label: 'default zero', level: 'error' },
               ]
             ),
             avgPatternsPerManifest: fallbackChain(
@@ -163,8 +175,12 @@ class PatternLearningSource {
               { id: index, context: 'pattern-trends' },
               [
                 { value: item.avgPatternsPerManifest, label: 'camelCase avgPatternsPerManifest' },
-                { value: item.avg_patterns_per_manifest, label: 'snake_case avg_patterns_per_manifest', level: 'warn' },
-                { value: 0, label: 'default zero', level: 'error' }
+                {
+                  value: item.avg_patterns_per_manifest,
+                  label: 'snake_case avg_patterns_per_manifest',
+                  level: 'warn',
+                },
+                { value: 0, label: 'default zero', level: 'error' },
               ]
             ),
             avgQueryTimeMs: fallbackChain(
@@ -172,8 +188,12 @@ class PatternLearningSource {
               { id: index, context: 'pattern-trends' },
               [
                 { value: item.avgQueryTimeMs, label: 'camelCase avgQueryTimeMs' },
-                { value: item.avg_query_time_ms, label: 'snake_case avg_query_time_ms', level: 'warn' },
-                { value: 0, label: 'default zero', level: 'error' }
+                {
+                  value: item.avg_query_time_ms,
+                  label: 'snake_case avg_query_time_ms',
+                  level: 'warn',
+                },
+                { value: 0, label: 'default zero', level: 'error' },
               ]
             ),
           }));
@@ -197,13 +217,19 @@ class PatternLearningSource {
     }
 
     try {
-      const response = await fetch(`/api/intelligence/patterns/quality-trends?timeWindow=${timeWindow}`);
+      const response = await fetch(
+        `/api/intelligence/patterns/quality-trends?timeWindow=${timeWindow}`
+      );
       if (response.ok) {
         const rawData = await response.json();
         // Handle both validated data and raw data (for cases where validation fails but we have data)
         const validatedData = parseArrayResponse(qualityTrendSchema, rawData, 'quality-trends');
-        const dataArray = Array.isArray(rawData) ? rawData : (validatedData.length > 0 ? validatedData : []);
-        
+        const dataArray = Array.isArray(rawData)
+          ? rawData
+          : validatedData.length > 0
+            ? validatedData
+            : [];
+
         if (dataArray.length > 0) {
           // Transform to ensure proper format with defensive logging
           return dataArray.map((item: any, index: number) => ({
@@ -214,22 +240,18 @@ class PatternLearningSource {
               { id: index, context: 'quality-trends' },
               'warn'
             ),
-            avgQuality: fallbackChain(
-              'avgQuality',
-              { id: index, context: 'quality-trends' },
-              [
-                { value: item.avgQuality, label: 'camelCase avgQuality' },
-                { value: item.avg_quality, label: 'snake_case avg_quality', level: 'warn' },
-                { value: 0, label: 'default zero', level: 'error' }
-              ]
-            ),
+            avgQuality: fallbackChain('avgQuality', { id: index, context: 'quality-trends' }, [
+              { value: item.avgQuality, label: 'camelCase avgQuality' },
+              { value: item.avg_quality, label: 'snake_case avg_quality', level: 'warn' },
+              { value: 0, label: 'default zero', level: 'error' },
+            ]),
             manifestCount: fallbackChain(
               'manifestCount',
               { id: index, context: 'quality-trends' },
               [
                 { value: item.manifestCount, label: 'camelCase manifestCount' },
                 { value: item.manifest_count, label: 'snake_case manifest_count', level: 'warn' },
-                { value: 0, label: 'default zero', level: 'error' }
+                { value: 0, label: 'default zero', level: 'error' },
               ]
             ),
           }));
@@ -253,7 +275,9 @@ class PatternLearningSource {
     }
 
     try {
-      const response = await fetch(`/api/intelligence/patterns/list?limit=${limit}&timeWindow=${timeWindow}`);
+      const response = await fetch(
+        `/api/intelligence/patterns/list?limit=${limit}&timeWindow=${timeWindow}`
+      );
       if (response.ok) {
         const data = await response.json();
         if (data && data.length > 0) {
@@ -278,13 +302,23 @@ class PatternLearningSource {
     }
 
     try {
-      const response = await fetch(`/api/intelligence/patterns/by-language?timeWindow=${timeWindow}`);
+      const response = await fetch(
+        `/api/intelligence/patterns/by-language?timeWindow=${timeWindow}`
+      );
       if (response.ok) {
         const rawData = await response.json();
         // Handle both validated data and raw data (for cases where validation fails but we have data)
-        const validatedData = parseArrayResponse(languageBreakdownApiSchema, rawData, 'language-breakdown');
-        const dataArray = Array.isArray(rawData) ? rawData : (validatedData.length > 0 ? validatedData : []);
-        
+        const validatedData = parseArrayResponse(
+          languageBreakdownApiSchema,
+          rawData,
+          'language-breakdown'
+        );
+        const dataArray = Array.isArray(rawData)
+          ? rawData
+          : validatedData.length > 0
+            ? validatedData
+            : [];
+
         if (dataArray.length > 0) {
           // Calculate total for percentages with defensive logging
           const total = dataArray.reduce((sum: number, item: any, index: number) => {
@@ -294,7 +328,7 @@ class PatternLearningSource {
               [
                 { value: item.pattern_count, label: 'snake_case pattern_count' },
                 { value: item.count, label: 'count field', level: 'warn' },
-                { value: 0, label: 'default zero', level: 'error' }
+                { value: 0, label: 'default zero', level: 'error' },
               ]
             );
             return sum + count;
@@ -308,7 +342,7 @@ class PatternLearningSource {
               [
                 { value: item.pattern_count, label: 'snake_case pattern_count' },
                 { value: item.count, label: 'count field', level: 'warn' },
-                { value: 0, label: 'default zero', level: 'error' }
+                { value: 0, label: 'default zero', level: 'error' },
               ]
             );
             return {
@@ -371,8 +405,3 @@ class PatternLearningSource {
 }
 
 export const patternLearningSource = new PatternLearningSource();
-
-
-
-
-

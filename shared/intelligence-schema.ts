@@ -1,4 +1,14 @@
-import { pgTable, uuid, text, varchar, integer, numeric, boolean, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  varchar,
+  integer,
+  numeric,
+  boolean,
+  jsonb,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 
 /**
@@ -150,7 +160,9 @@ export const patternQualityMetrics = pgTable('pattern_quality_metrics', {
   patternId: uuid('pattern_id').notNull().unique(),
   qualityScore: numeric('quality_score', { precision: 10, scale: 6 }).notNull(),
   confidence: numeric('confidence', { precision: 10, scale: 6 }).notNull(),
-  measurementTimestamp: timestamp('measurement_timestamp', { withTimezone: true }).notNull().defaultNow(),
+  measurementTimestamp: timestamp('measurement_timestamp', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   version: text('version').default('1.0.0'),
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

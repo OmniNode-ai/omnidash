@@ -9,12 +9,12 @@
 
 All critical infrastructure components have comprehensive test coverage with **109 total tests** across 3 files. Tests were added in commits **d4517d2** and **f1c6ba0** following PR #9 review feedback.
 
-| Component | Test File | Tests | Lines of Code | Status |
-|-----------|-----------|-------|---------------|---------|
-| **EventConsumer** | `server/__tests__/event-consumer.test.ts` | 38 | 932 | ✅ Pass |
-| **WebSocket Server** | `server/__tests__/websocket.test.ts` | 16 | 681 | ✅ Pass |
-| **DatabaseAdapter** | `server/__tests__/db-adapter.test.ts` | 55 | 793 | ✅ Pass |
-| **TOTAL** | | **109** | **2,406** | ✅ Pass |
+| Component            | Test File                                 | Tests   | Lines of Code | Status  |
+| -------------------- | ----------------------------------------- | ------- | ------------- | ------- |
+| **EventConsumer**    | `server/__tests__/event-consumer.test.ts` | 38      | 932           | ✅ Pass |
+| **WebSocket Server** | `server/__tests__/websocket.test.ts`      | 16      | 681           | ✅ Pass |
+| **DatabaseAdapter**  | `server/__tests__/db-adapter.test.ts`     | 55      | 793           | ✅ Pass |
+| **TOTAL**            |                                           | **109** | **2,406**     | ✅ Pass |
 
 ---
 
@@ -28,17 +28,20 @@ All critical infrastructure components have comprehensive test coverage with **1
 #### Test Categories
 
 **Initialization & Configuration** (3 tests)
+
 - ✅ EventEmitter initialization
 - ✅ Missing KAFKA_BROKERS environment variable handling
 - ✅ Default configuration setup
 
 **Connection Validation** (4 tests)
+
 - ✅ Kafka broker reachability validation
 - ✅ Topic discovery (list topics)
 - ✅ Connection error handling
 - ✅ Non-Error exception handling
 
 **Lifecycle Management** (5 tests)
+
 - ✅ Start consumer and subscribe to topics
 - ✅ Emit "connected" event on successful connection
 - ✅ Prevent duplicate starts
@@ -46,6 +49,7 @@ All critical infrastructure components have comprehensive test coverage with **1
 - ✅ Disconnect consumer and emit "disconnected" event
 
 **Connection Retry with Exponential Backoff** (5 tests)
+
 - ✅ First attempt success
 - ✅ Retry with exponential backoff (1s, 2s, 4s, 8s...)
 - ✅ Max retry failure (throw error after 5 attempts)
@@ -53,24 +57,29 @@ All critical infrastructure components have comprehensive test coverage with **1
 - ✅ Non-Error exception handling
 
 **Event Processing - Routing Decisions** (3 tests)
+
 - ✅ Handle routing decision events with snake_case fields
 - ✅ Skip routing decisions without agent name
 - ✅ Accumulate metrics for multiple routing decisions
 
 **Event Processing - Agent Actions** (2 tests)
+
 - ✅ Handle agent action events
 - ✅ Track success rate for success and error actions
 
 **Error Handling** (2 tests)
+
 - ✅ Emit error event for malformed JSON
 - ✅ Continue processing after error
 
 **Reconnection on Connection Loss** (3 tests)
+
 - ✅ Attempt reconnection on connection error during message processing
 - ✅ Do not attempt reconnection on non-connection errors
 - ✅ Emit error if reconnection fails
 
 **Data Pruning (24-hour retention)** (7 tests)
+
 - ✅ Prune old actions after 24 hours
 - ✅ Prune old routing decisions after 24 hours
 - ✅ Prune old transformations after 24 hours
@@ -80,6 +89,7 @@ All critical infrastructure components have comprehensive test coverage with **1
 - ✅ Do not log when no old data to prune
 
 **Getter Methods** (4 tests)
+
 - ✅ `getRecentActions()` with limit
 - ✅ `getRecentActions()` without limit (all)
 - ✅ `getHealthStatus()` returns correct status
@@ -103,30 +113,36 @@ All critical infrastructure components have comprehensive test coverage with **1
 #### Test Categories
 
 **Connection Management** (3 tests)
+
 - ✅ Accept client connections and send welcome message
 - ✅ Send initial state message (metrics, actions, routing, health)
 - ✅ Handle client disconnection and cleanup
 
 **Subscription Management** (4 tests)
+
 - ✅ Filter events by client subscriptions
 - ✅ Handle subscribe action (array and string topics)
 - ✅ Handle unsubscribe action
 - ✅ Default to "all" when all subscriptions are removed
 
 **Message Handling** (3 tests)
+
 - ✅ Handle invalid subscription requests gracefully
 - ✅ Respond to ping messages (PONG)
 - ✅ Handle getState action
 
 **Event Broadcasting** (3 tests)
+
 - ✅ Broadcast consumer status events (connected, disconnected)
 - ✅ Broadcast error events
 - ✅ Send messages only to clients with open connections
 
 **Multi-Client Support** (1 test)
+
 - ✅ Support multiple concurrent clients with different subscriptions
 
 **Memory Leak Prevention** (2 tests)
+
 - ✅ Remove EventConsumer listeners when server closes
 - ✅ Prevent memory leaks across multiple server restarts
 - ✅ Clean up all server resources when server closes
@@ -150,6 +166,7 @@ All critical infrastructure components have comprehensive test coverage with **1
 #### Test Categories
 
 **Security - SQL Injection Prevention** (6 tests)
+
 - ✅ Prevent SQL injection with malicious string inputs
 - ✅ Validate filter fields against schema (whitelist check)
 - ✅ Handle SQL injection attempts in array values (IN clause)
@@ -158,6 +175,7 @@ All critical infrastructure components have comprehensive test coverage with **1
 - ✅ Test injection via WHERE clause with special characters
 
 **CRUD Operations - Query** (7 tests)
+
 - ✅ Execute basic query with limit and offset
 - ✅ Apply WHERE conditions correctly
 - ✅ Apply ORDER BY correctly (ascending)
@@ -167,36 +185,43 @@ All critical infrastructure components have comprehensive test coverage with **1
 - ✅ Handle empty result set
 
 **CRUD Operations - Insert** (3 tests)
+
 - ✅ Insert record with automatic timestamp generation
 - ✅ Return array when multiple records inserted
 - ✅ Throw error for invalid table name
 
 **CRUD Operations - Update** (3 tests)
+
 - ✅ Update record with automatic updatedAt timestamp (if column exists)
 - ✅ Require WHERE condition for safety
 - ✅ Throw error for invalid table name
 
 **CRUD Operations - Delete** (3 tests)
+
 - ✅ Delete record matching WHERE condition
 - ✅ Require WHERE condition for safety
 - ✅ Throw error for invalid table name
 
 **CRUD Operations - Upsert** (3 tests)
+
 - ✅ Perform upsert with conflict resolution on id
 - ✅ Throw error if conflict columns not found
 - ✅ Throw error for invalid table name
 
 **CRUD Operations - Count** (4 tests)
+
 - ✅ Count all records in table
 - ✅ Count records matching WHERE condition
 - ✅ Return 0 for empty result
 - ✅ Throw error for invalid table name
 
 **CRUD Operations - Execute Raw SQL** (2 tests)
+
 - ✅ Execute raw SQL query
 - ✅ Handle empty result
 
 **Helper Methods** (6 tests)
+
 - ✅ `getTable()` returns correct table for known table names
 - ✅ `getTable()` returns undefined for unknown table names
 - ✅ `getColumn()` returns column when it exists
@@ -205,6 +230,7 @@ All critical infrastructure components have comprehensive test coverage with **1
 - ✅ `hasColumn()` returns false when column does not exist
 
 **WHERE Condition Building** (9 tests)
+
 - ✅ Handle equality conditions
 - ✅ Handle array values (IN clause)
 - ✅ Handle `$gt` operator (greater than)
@@ -217,6 +243,7 @@ All critical infrastructure components have comprehensive test coverage with **1
 - ✅ Return empty array for all invalid columns
 
 **Error Handling** (5 tests)
+
 - ✅ Handle database connection errors gracefully
 - ✅ Handle query execution errors
 - ✅ Handle insert errors
@@ -224,6 +251,7 @@ All critical infrastructure components have comprehensive test coverage with **1
 - ✅ Handle delete errors
 
 **Connection Management** (4 tests)
+
 - ✅ `connect()` exists for API consistency (no-op)
 - ✅ Event bus enabled when KAFKA_BROKERS is set
 - ✅ Event bus enabled when KAFKA_BOOTSTRAP_SERVERS is set
@@ -263,6 +291,7 @@ npm run test:ui
 ### Test Output Summary
 
 From recent test run:
+
 ```
 ✓ server/__tests__/db-adapter.test.ts (55 tests) 139ms
 ✓ server/__tests__/websocket.test.ts (16 tests) 6883ms
@@ -277,23 +306,26 @@ Note: Event consumer tests take longer due to exponential backoff retry logic (s
 
 ### Estimated Line Coverage
 
-| Component | Estimated Coverage | Confidence |
-|-----------|-------------------|------------|
-| **EventConsumer** | >85% | High - All major code paths tested |
-| **WebSocket** | >90% | High - Simple API, full path coverage |
-| **DatabaseAdapter** | >85% | High - All CRUD operations + error paths |
+| Component           | Estimated Coverage | Confidence                               |
+| ------------------- | ------------------ | ---------------------------------------- |
+| **EventConsumer**   | >85%               | High - All major code paths tested       |
+| **WebSocket**       | >90%               | High - Simple API, full path coverage    |
+| **DatabaseAdapter** | >85%               | High - All CRUD operations + error paths |
 
 ### Coverage Gaps (Minimal)
 
 **EventConsumer**:
+
 - Some edge cases in event deserialization (malformed timestamps, missing required fields)
 - Kafka admin operations (createTopics, deleteTopics) - not used in production
 
 **WebSocket**:
+
 - Rare edge cases: client disconnection during message send
 - Connection limit enforcement (not implemented yet)
 
 **DatabaseAdapter**:
+
 - Some Drizzle ORM internal error paths
 - Transaction management (not implemented yet)
 
@@ -332,11 +364,11 @@ All identified gaps are non-critical and do not affect core functionality.
 
 ### Test Additions Summary
 
-| Date | Commit | Component | Tests Added |
-|------|--------|-----------|-------------|
-| 2024-11-11 | d4517d2 | EventConsumer | 38 |
-| 2024-11-11 | f1c6ba0 | WebSocket | 16 |
-| 2024-11-11 | f1c6ba0 | DatabaseAdapter | 55 |
+| Date       | Commit  | Component       | Tests Added |
+| ---------- | ------- | --------------- | ----------- |
+| 2024-11-11 | d4517d2 | EventConsumer   | 38          |
+| 2024-11-11 | f1c6ba0 | WebSocket       | 16          |
+| 2024-11-11 | f1c6ba0 | DatabaseAdapter | 55          |
 
 ---
 

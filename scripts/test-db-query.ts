@@ -1,4 +1,6 @@
 #!/usr/bin/env tsx
+/* eslint-disable no-console */
+
 /**
  * Test script to query agent_actions table and understand actionType values
  */
@@ -10,7 +12,8 @@ import { sql } from 'drizzle-orm';
 
 config();
 
-const connectionString = process.env.DATABASE_URL ||
+const connectionString =
+  process.env.DATABASE_URL ||
   `postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge`;
 
 const pool = new Pool({ connectionString });
@@ -28,7 +31,7 @@ async function main() {
     ORDER BY count DESC
     LIMIT 20
   `);
-  console.table(actionTypes.rows);
+  console.log(JSON.stringify(actionTypes.rows, null, 2));
 
   // 2. Check success/error distribution by agent
   console.log('\n=== SUCCESS/ERROR DISTRIBUTION BY AGENT ===');
@@ -46,7 +49,7 @@ async function main() {
     ORDER BY total DESC
     LIMIT 10
   `);
-  console.table(agentStats.rows);
+  console.log(JSON.stringify(agentStats.rows, null, 2));
 
   // 3. Check total unique agents
   console.log('\n=== TOTAL STATS (24h) ===');
@@ -57,7 +60,7 @@ async function main() {
     FROM agent_actions
     WHERE created_at > NOW() - INTERVAL '24 hours'
   `);
-  console.table(totalStats.rows);
+  console.log(JSON.stringify(totalStats.rows, null, 2));
 
   // 4. Sample recent actions
   console.log('\n=== SAMPLE RECENT ACTIONS ===');
@@ -71,7 +74,7 @@ async function main() {
     ORDER BY created_at DESC
     LIMIT 10
   `);
-  console.table(recentActions.rows);
+  console.log(JSON.stringify(recentActions.rows, null, 2));
 
   // 5. Check for quality score data
   console.log('\n=== CHECKING FOR QUALITY SCORE DATA ===');
@@ -81,7 +84,7 @@ async function main() {
     WHERE table_name = 'agent_actions'
     ORDER BY ordinal_position
   `);
-  console.table(qualityCheck.rows);
+  console.log(JSON.stringify(qualityCheck.rows, null, 2));
 
   await pool.end();
   console.log('\nDone!');

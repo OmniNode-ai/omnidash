@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { agentRegistrySource } from '../agent-registry-source';
 import type { AgentDefinition, RecentActivity } from '../agent-registry-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 // Mock the USE_MOCK_DATA flag to ensure tests use real fetch
 vi.mock('../../mock-data', () => ({
@@ -34,16 +38,22 @@ describe('AgentRegistrySource', () => {
   describe('fetchAgents', () => {
     it('should return agents from API', async () => {
       const mockAgents: AgentDefinition[] = [
-        { id: 'agent-1', name: 'Code Generator', description: 'Generates code', category: 'development' },
+        {
+          id: 'agent-1',
+          name: 'Code Generator',
+          description: 'Generates code',
+          category: 'development',
+        },
         { id: 'agent-2', name: 'Test Agent', description: 'Runs tests', category: 'quality' },
-        { id: 'agent-3', name: 'Doc Writer', description: 'Writes docs', category: 'documentation' },
+        {
+          id: 'agent-3',
+          name: 'Doc Writer',
+          description: 'Writes docs',
+          category: 'documentation',
+        },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse(mockAgents)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse(mockAgents)]]));
 
       const result = await agentRegistrySource.fetchAgents();
 
@@ -73,9 +83,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should not apply "all" category filter', async () => {
-      const mockAgents: AgentDefinition[] = [
-        { id: 'agent-1', name: 'Test Agent' },
-      ];
+      const mockAgents: AgentDefinition[] = [{ id: 'agent-1', name: 'Test Agent' }];
 
       const mockFetch = vi.fn(async (url: string) => {
         // URL should NOT include category=all
@@ -91,9 +99,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should apply search filter', async () => {
-      const mockAgents: AgentDefinition[] = [
-        { id: 'agent-1', name: 'Code Generator' },
-      ];
+      const mockAgents: AgentDefinition[] = [{ id: 'agent-1', name: 'Code Generator' }];
 
       const mockFetch = vi.fn(async (url: string) => {
         if (url.includes('search=code')) {
@@ -131,9 +137,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should not apply "all" status filter', async () => {
-      const mockAgents: AgentDefinition[] = [
-        { id: 'agent-1', name: 'Test Agent' },
-      ];
+      const mockAgents: AgentDefinition[] = [{ id: 'agent-1', name: 'Test Agent' }];
 
       const mockFetch = vi.fn(async (url: string) => {
         // URL should NOT include status=all
@@ -154,7 +158,11 @@ describe('AgentRegistrySource', () => {
       ];
 
       const mockFetch = vi.fn(async (url: string) => {
-        if (url.includes('category=quality') && url.includes('search=test') && url.includes('status=active')) {
+        if (
+          url.includes('category=quality') &&
+          url.includes('search=test') &&
+          url.includes('status=active')
+        ) {
           return createMockResponse(mockAgents);
         }
         return createMockResponse([]);
@@ -180,15 +188,11 @@ describe('AgentRegistrySource', () => {
         { id: 'agent-2', name: 'Review Agent', category: 'quality' },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse(mockAgents)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse(mockAgents)]]));
 
       const result = await agentRegistrySource.fetchAgents();
 
-      result.data.forEach(agent => {
+      result.data.forEach((agent) => {
         expect(agent).toHaveProperty('id');
         expect(agent).toHaveProperty('name');
         expect(agent.id).toBeTruthy();
@@ -197,11 +201,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should return empty array when API returns non-array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse({ agents: [] })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse({ agents: [] })]]));
 
       const result = await agentRegistrySource.fetchAgents();
 
@@ -210,11 +210,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should return empty mock data when API fails', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse(null, { status: 500 })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse(null, { status: 500 })]]));
 
       const result = await agentRegistrySource.fetchAgents();
 
@@ -223,11 +219,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should handle network error gracefully', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', new Error('Network connection failed')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', new Error('Network connection failed')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -247,11 +239,7 @@ describe('AgentRegistrySource', () => {
     it('should return categories from API', async () => {
       const mockCategories = ['Development', 'Quality', 'Infrastructure', 'Documentation'];
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/categories', createMockResponse(mockCategories)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/categories', createMockResponse(mockCategories)]]));
 
       const result = await agentRegistrySource.fetchCategories();
 
@@ -263,26 +251,18 @@ describe('AgentRegistrySource', () => {
     it('should validate categories are strings', async () => {
       const mockCategories = ['Development', 'Quality'];
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/categories', createMockResponse(mockCategories)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/categories', createMockResponse(mockCategories)]]));
 
       const result = await agentRegistrySource.fetchCategories();
 
-      result.data.forEach(category => {
+      result.data.forEach((category) => {
         expect(typeof category).toBe('string');
         expect(category).toBeTruthy();
       });
     });
 
     it('should return empty array when API returns non-array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/categories', createMockResponse({ categories: [] })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/categories', createMockResponse({ categories: [] })]]));
 
       const result = await agentRegistrySource.fetchCategories();
 
@@ -292,9 +272,7 @@ describe('AgentRegistrySource', () => {
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/agents/categories', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/agents/categories', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await agentRegistrySource.fetchCategories();
@@ -304,11 +282,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should handle network error gracefully', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/categories', new Error('Connection timeout')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/categories', new Error('Connection timeout')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -332,11 +306,7 @@ describe('AgentRegistrySource', () => {
         errorRate: 0.05,
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/performance', createMockResponse(mockPerformance)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/performance', createMockResponse(mockPerformance)]]));
 
       const result = await agentRegistrySource.fetchPerformance();
 
@@ -346,9 +316,7 @@ describe('AgentRegistrySource', () => {
 
     it('should return empty object when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/agents/performance', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/agents/performance', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await agentRegistrySource.fetchPerformance();
@@ -358,11 +326,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should handle network error gracefully', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/performance', new Error('API unreachable')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/performance', new Error('API unreachable')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -387,11 +351,7 @@ describe('AgentRegistrySource', () => {
         routingTime: 500,
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing', createMockResponse(mockRouting)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing', createMockResponse(mockRouting)]]));
 
       const result = await agentRegistrySource.fetchRouting();
 
@@ -400,11 +360,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should return empty object when API fails', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing', createMockResponse(null, { status: 500 })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing', createMockResponse(null, { status: 500 })]]));
 
       const result = await agentRegistrySource.fetchRouting();
 
@@ -413,11 +369,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should handle network error gracefully', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/routing', new Error('Network error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/routing', new Error('Network error')]]));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -456,9 +408,7 @@ describe('AgentRegistrySource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/actions/recent', createMockResponse(mockActivity)],
-        ])
+        new Map([['/api/intelligence/actions/recent', createMockResponse(mockActivity)]])
       );
 
       const result = await agentRegistrySource.fetchRecentActivity(20);
@@ -515,14 +465,12 @@ describe('AgentRegistrySource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/actions/recent', createMockResponse(mockActivity)],
-        ])
+        new Map([['/api/intelligence/actions/recent', createMockResponse(mockActivity)]])
       );
 
       const result = await agentRegistrySource.fetchRecentActivity(10);
 
-      result.data.forEach(activity => {
+      result.data.forEach((activity) => {
         expect(activity).toHaveProperty('id');
         expect(activity).toHaveProperty('agentId');
         expect(activity).toHaveProperty('agentName');
@@ -533,9 +481,7 @@ describe('AgentRegistrySource', () => {
 
     it('should return empty array when API returns non-array', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/actions/recent', createMockResponse({ activities: [] })],
-        ])
+        new Map([['/api/intelligence/actions/recent', createMockResponse({ activities: [] })]])
       );
 
       const result = await agentRegistrySource.fetchRecentActivity(20);
@@ -546,9 +492,7 @@ describe('AgentRegistrySource', () => {
 
     it('should handle network error gracefully', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/actions/recent', new Error('Connection failed')],
-        ])
+        new Map([['/api/intelligence/actions/recent', new Error('Connection failed')]])
       );
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -594,9 +538,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should mark as mock if any source fails', async () => {
-      const mockAgents: AgentDefinition[] = [
-        { id: 'agent-1', name: 'Test Agent' },
-      ];
+      const mockAgents: AgentDefinition[] = [{ id: 'agent-1', name: 'Test Agent' }];
       const mockCategories = ['Development'];
 
       setupFetchMock(
@@ -618,7 +560,11 @@ describe('AgentRegistrySource', () => {
       const mockCategories: string[] = [];
 
       const mockFetch = vi.fn(async (url: string) => {
-        if (url.includes('/api/agents/agents') && url.includes('category=quality') && url.includes('search=test')) {
+        if (
+          url.includes('/api/agents/agents') &&
+          url.includes('category=quality') &&
+          url.includes('search=test')
+        ) {
           return createMockResponse(mockAgents);
         }
         if (url.includes('/api/agents/categories')) {
@@ -644,11 +590,7 @@ describe('AgentRegistrySource', () => {
 
   describe('edge cases', () => {
     it('should handle empty API response', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse([])]]));
 
       const result = await agentRegistrySource.fetchAgents();
       expect(result.isMock).toBe(false);
@@ -656,11 +598,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should handle non-array API response', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', createMockResponse({ agents: [] })],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', createMockResponse({ agents: [] })]]));
 
       const result = await agentRegistrySource.fetchAgents();
       expect(result.isMock).toBe(false);
@@ -668,11 +606,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should handle network errors gracefully', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', new Error('Network error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', new Error('Network error')]]));
 
       const result = await agentRegistrySource.fetchAgents();
       expect(result.isMock).toBe(true);
@@ -691,11 +625,7 @@ describe('AgentRegistrySource', () => {
     });
 
     it('should handle fetch timeout', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/agents/agents', new Error('Timeout')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/agents/agents', new Error('Timeout')]]));
 
       const result = await agentRegistrySource.fetchAgents();
       expect(result.isMock).toBe(true);

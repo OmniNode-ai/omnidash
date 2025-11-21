@@ -49,11 +49,7 @@ describe('EventBusExplorer', () => {
         },
       },
     });
-    const result = render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>
-    );
+    const result = render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
     return { queryClient, ...result };
   };
 
@@ -129,9 +125,14 @@ describe('EventBusExplorer', () => {
     queryClient = result.queryClient;
 
     // Wait for the event to be displayed - look for the event type badge
-    await waitFor(() => {
-      expect(screen.getByText(/omninode\.intelligence\.query\.requested\.v1/)).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(
+          screen.getByText(/omninode\.intelligence\.query\.requested\.v1/)
+        ).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
 
     // Check that the events count is displayed
     expect(screen.getByText(/Events \(1\)/)).toBeInTheDocument();
@@ -162,9 +163,12 @@ describe('EventBusExplorer', () => {
     const result = renderWithClient(<EventBusExplorer />);
     queryClient = result.queryClient;
 
-    await waitFor(() => {
-      expect(screen.getByText(/Try adjusting your filters/)).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText(/Try adjusting your filters/)).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
 
     // Also check that Events (0) is displayed
     expect(screen.getByText(/Events \(0\)/)).toBeInTheDocument();
@@ -172,4 +176,3 @@ describe('EventBusExplorer', () => {
     result.unmount();
   });
 });
-

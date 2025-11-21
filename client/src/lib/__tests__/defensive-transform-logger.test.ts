@@ -13,56 +13,40 @@ describe('defensive-transform-logger', () => {
 
   describe('fallbackChain', () => {
     it('should return first non-null value', () => {
-      const result = fallbackChain(
-        'testField',
-        { context: 'test' },
-        [
-          { value: 'first', label: 'first option' },
-          { value: 'second', label: 'second option' },
-          { value: 'third', label: 'third option' },
-        ]
-      );
+      const result = fallbackChain('testField', { context: 'test' }, [
+        { value: 'first', label: 'first option' },
+        { value: 'second', label: 'second option' },
+        { value: 'third', label: 'third option' },
+      ]);
 
       expect(result).toBe('first');
     });
 
     it('should fall back to second option when first is null', () => {
-      const result = fallbackChain(
-        'testField',
-        { context: 'test' },
-        [
-          { value: null, label: 'first option' },
-          { value: 'second', label: 'second option' },
-          { value: 'third', label: 'third option' },
-        ]
-      );
+      const result = fallbackChain('testField', { context: 'test' }, [
+        { value: null, label: 'first option' },
+        { value: 'second', label: 'second option' },
+        { value: 'third', label: 'third option' },
+      ]);
 
       expect(result).toBe('second');
     });
 
     it('should fall back to last option when all others are null', () => {
-      const result = fallbackChain(
-        'testField',
-        { context: 'test' },
-        [
-          { value: null, label: 'first option' },
-          { value: undefined, label: 'second option' },
-          { value: 'default', label: 'default option' },
-        ]
-      );
+      const result = fallbackChain('testField', { context: 'test' }, [
+        { value: null, label: 'first option' },
+        { value: undefined, label: 'second option' },
+        { value: 'default', label: 'default option' },
+      ]);
 
       expect(result).toBe('default');
     });
 
     it('should handle numeric values', () => {
-      const result = fallbackChain(
-        'count',
-        { context: 'test' },
-        [
-          { value: null, label: 'first' },
-          { value: 42, label: 'second' },
-        ]
-      );
+      const result = fallbackChain('count', { context: 'test' }, [
+        { value: null, label: 'first' },
+        { value: 42, label: 'second' },
+      ]);
 
       expect(result).toBe(42);
     });
@@ -124,4 +108,3 @@ describe('defensive-transform-logger', () => {
     });
   });
 });
-

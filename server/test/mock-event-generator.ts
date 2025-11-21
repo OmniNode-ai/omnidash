@@ -30,21 +30,111 @@ class MockEventGenerator {
 
   // Realistic agent configurations based on the 52-agent system
   private agents: MockAgentConfig[] = [
-    { name: 'agent-api-architect', specialization: 'API Design', avgConfidence: 0.92, avgRoutingTime: 85, actionTypes: ['Read', 'Write', 'Edit', 'Task'] },
-    { name: 'agent-performance', specialization: 'Performance Optimization', avgConfidence: 0.89, avgRoutingTime: 95, actionTypes: ['Read', 'Grep', 'Bash', 'Edit'] },
-    { name: 'agent-debug-intelligence', specialization: 'Debugging', avgConfidence: 0.87, avgRoutingTime: 110, actionTypes: ['Read', 'Grep', 'Bash', 'Task'] },
-    { name: 'agent-python-fastapi-expert', specialization: 'Python/FastAPI', avgConfidence: 0.94, avgRoutingTime: 75, actionTypes: ['Read', 'Write', 'Edit', 'Bash'] },
-    { name: 'agent-testing', specialization: 'Testing', avgConfidence: 0.88, avgRoutingTime: 90, actionTypes: ['Read', 'Write', 'Bash', 'Task'] },
-    { name: 'agent-ui-testing', specialization: 'UI Testing', avgConfidence: 0.85, avgRoutingTime: 105, actionTypes: ['Read', 'Write', 'Task'] },
-    { name: 'agent-repository-setup', specialization: 'Repository Setup', avgConfidence: 0.91, avgRoutingTime: 80, actionTypes: ['Bash', 'Write', 'Edit'] },
-    { name: 'agent-structured-logging', specialization: 'Logging', avgConfidence: 0.86, avgRoutingTime: 95, actionTypes: ['Read', 'Edit', 'Grep'] },
-    { name: 'agent-ast-generator', specialization: 'AST Generation', avgConfidence: 0.93, avgRoutingTime: 70, actionTypes: ['Read', 'Write', 'Task'] },
-    { name: 'agent-multi-step-framework', specialization: 'Multi-Step Workflows', avgConfidence: 0.90, avgRoutingTime: 100, actionTypes: ['Task', 'Read', 'Write'] },
-    { name: 'polymorphic-agent', specialization: 'Orchestration', avgConfidence: 0.95, avgRoutingTime: 65, actionTypes: ['Task', 'Read', 'AskUserQuestion'] },
-    { name: 'agent-database-specialist', specialization: 'Database', avgConfidence: 0.89, avgRoutingTime: 90, actionTypes: ['Read', 'Edit', 'Bash', 'Task'] },
-    { name: 'agent-security-expert', specialization: 'Security', avgConfidence: 0.92, avgRoutingTime: 85, actionTypes: ['Read', 'Grep', 'Edit', 'Task'] },
-    { name: 'agent-devops-automation', specialization: 'DevOps', avgConfidence: 0.87, avgRoutingTime: 110, actionTypes: ['Bash', 'Read', 'Write'] },
-    { name: 'agent-frontend-specialist', specialization: 'Frontend', avgConfidence: 0.88, avgRoutingTime: 95, actionTypes: ['Read', 'Write', 'Edit', 'Task'] },
+    {
+      name: 'agent-api-architect',
+      specialization: 'API Design',
+      avgConfidence: 0.92,
+      avgRoutingTime: 85,
+      actionTypes: ['Read', 'Write', 'Edit', 'Task'],
+    },
+    {
+      name: 'agent-performance',
+      specialization: 'Performance Optimization',
+      avgConfidence: 0.89,
+      avgRoutingTime: 95,
+      actionTypes: ['Read', 'Grep', 'Bash', 'Edit'],
+    },
+    {
+      name: 'agent-debug-intelligence',
+      specialization: 'Debugging',
+      avgConfidence: 0.87,
+      avgRoutingTime: 110,
+      actionTypes: ['Read', 'Grep', 'Bash', 'Task'],
+    },
+    {
+      name: 'agent-python-fastapi-expert',
+      specialization: 'Python/FastAPI',
+      avgConfidence: 0.94,
+      avgRoutingTime: 75,
+      actionTypes: ['Read', 'Write', 'Edit', 'Bash'],
+    },
+    {
+      name: 'agent-testing',
+      specialization: 'Testing',
+      avgConfidence: 0.88,
+      avgRoutingTime: 90,
+      actionTypes: ['Read', 'Write', 'Bash', 'Task'],
+    },
+    {
+      name: 'agent-ui-testing',
+      specialization: 'UI Testing',
+      avgConfidence: 0.85,
+      avgRoutingTime: 105,
+      actionTypes: ['Read', 'Write', 'Task'],
+    },
+    {
+      name: 'agent-repository-setup',
+      specialization: 'Repository Setup',
+      avgConfidence: 0.91,
+      avgRoutingTime: 80,
+      actionTypes: ['Bash', 'Write', 'Edit'],
+    },
+    {
+      name: 'agent-structured-logging',
+      specialization: 'Logging',
+      avgConfidence: 0.86,
+      avgRoutingTime: 95,
+      actionTypes: ['Read', 'Edit', 'Grep'],
+    },
+    {
+      name: 'agent-ast-generator',
+      specialization: 'AST Generation',
+      avgConfidence: 0.93,
+      avgRoutingTime: 70,
+      actionTypes: ['Read', 'Write', 'Task'],
+    },
+    {
+      name: 'agent-multi-step-framework',
+      specialization: 'Multi-Step Workflows',
+      avgConfidence: 0.9,
+      avgRoutingTime: 100,
+      actionTypes: ['Task', 'Read', 'Write'],
+    },
+    {
+      name: 'polymorphic-agent',
+      specialization: 'Orchestration',
+      avgConfidence: 0.95,
+      avgRoutingTime: 65,
+      actionTypes: ['Task', 'Read', 'AskUserQuestion'],
+    },
+    {
+      name: 'agent-database-specialist',
+      specialization: 'Database',
+      avgConfidence: 0.89,
+      avgRoutingTime: 90,
+      actionTypes: ['Read', 'Edit', 'Bash', 'Task'],
+    },
+    {
+      name: 'agent-security-expert',
+      specialization: 'Security',
+      avgConfidence: 0.92,
+      avgRoutingTime: 85,
+      actionTypes: ['Read', 'Grep', 'Edit', 'Task'],
+    },
+    {
+      name: 'agent-devops-automation',
+      specialization: 'DevOps',
+      avgConfidence: 0.87,
+      avgRoutingTime: 110,
+      actionTypes: ['Bash', 'Read', 'Write'],
+    },
+    {
+      name: 'agent-frontend-specialist',
+      specialization: 'Frontend',
+      avgConfidence: 0.88,
+      avgRoutingTime: 95,
+      actionTypes: ['Read', 'Write', 'Edit', 'Task'],
+    },
   ];
 
   private userRequests = [
@@ -101,7 +191,7 @@ class MockEventGenerator {
 
         // Start continuous event generation (every 3 seconds)
         this.intervalId = setInterval(() => {
-          this.publishRandomEvents().catch(err => {
+          this.publishRandomEvents().catch((err) => {
             console.error('Error publishing random events:', err);
           });
         }, 3000);
@@ -168,7 +258,8 @@ class MockEventGenerator {
       user_request: this.userRequests[Math.floor(Math.random() * this.userRequests.length)],
       selected_agent: agent.name,
       confidence_score: Math.max(0, Math.min(1, confidence)), // Clamp to 0-1
-      routing_strategy: this.routingStrategies[Math.floor(Math.random() * this.routingStrategies.length)],
+      routing_strategy:
+        this.routingStrategies[Math.floor(Math.random() * this.routingStrategies.length)],
       routing_time_ms: Math.max(10, routingTime), // Minimum 10ms
       alternatives: this.generateAlternatives(agent),
       reasoning: `Selected ${agent.name} based on ${agent.specialization} specialization`,
@@ -213,7 +304,7 @@ class MockEventGenerator {
     const count = 2 + Math.floor(Math.random() * 3);
     const alternatives = [];
 
-    const otherAgents = this.agents.filter(a => a.name !== selectedAgent.name);
+    const otherAgents = this.agents.filter((a) => a.name !== selectedAgent.name);
     for (let i = 0; i < count && i < otherAgents.length; i++) {
       const alt = otherAgents[i];
       alternatives.push({
@@ -244,7 +335,9 @@ class MockEventGenerator {
 async function main() {
   const args = process.argv.slice(2);
   const continuous = args.includes('--continuous') || args.includes('-c');
-  const initialBatch = parseInt(args.find(arg => arg.startsWith('--batch='))?.split('=')[1] || '100');
+  const initialBatch = parseInt(
+    args.find((arg) => arg.startsWith('--batch='))?.split('=')[1] || '100'
+  );
 
   const generator = new MockEventGenerator();
 

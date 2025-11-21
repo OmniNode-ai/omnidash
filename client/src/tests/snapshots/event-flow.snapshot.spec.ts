@@ -39,7 +39,7 @@ test.describe('Event Flow Dashboard', () => {
     // Look for status indicators or badges
     const statusElements = page.locator('[class*="badge"], [class*="status"]');
 
-    if (await statusElements.count() > 0) {
+    if ((await statusElements.count()) > 0) {
       const firstStatus = statusElements.first();
       await expect(firstStatus).toHaveScreenshot('event-flow-status.png');
     }

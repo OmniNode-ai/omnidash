@@ -49,6 +49,7 @@ This document defines the mandatory UI standards for all dashboard pages in Omni
 ```
 
 **Key Requirements**:
+
 - ✅ Root container MUST use `space-y-6` for vertical spacing
 - ✅ Header MUST use `flex items-center justify-between` for horizontal layout
 - ✅ Title MUST be `h1` with `text-3xl font-bold`
@@ -60,20 +61,20 @@ This document defines the mandatory UI standards for all dashboard pages in Omni
 **REQUIRED Elements** (in order):
 
 1. **Title Group** (left side):
+
    ```tsx
    <div>
      <h1 className="text-3xl font-bold">Dashboard Name</h1>
-     <p className="ty-subtitle">
-       Descriptive subtitle explaining dashboard purpose
-     </p>
+     <p className="ty-subtitle">Descriptive subtitle explaining dashboard purpose</p>
    </div>
    ```
 
 2. **Toolbar Group** (right side):
+
    ```tsx
    <div className="flex items-center gap-2">
      {/* 1. Mock Data Badge (conditional) */}
-     {(usingMockData) && <MockDataBadge />}
+     {usingMockData && <MockDataBadge />}
 
      {/* 2. Primary Action Buttons */}
      <Button variant="outline" size="sm">
@@ -87,10 +88,18 @@ This document defines the mandatory UI standards for all dashboard pages in Omni
 
      {/* 3. Divider + Time Range Selector */}
      <div className="flex items-center gap-2 ml-2 pl-2 border-l">
-       <Button variant={timeRange === "1h" ? "default" : "outline"} size="sm">1H</Button>
-       <Button variant={timeRange === "24h" ? "default" : "outline"} size="sm">24H</Button>
-       <Button variant={timeRange === "7d" ? "default" : "outline"} size="sm">7D</Button>
-       <Button variant={timeRange === "30d" ? "default" : "outline"} size="sm">30D</Button>
+       <Button variant={timeRange === '1h' ? 'default' : 'outline'} size="sm">
+         1H
+       </Button>
+       <Button variant={timeRange === '24h' ? 'default' : 'outline'} size="sm">
+         24H
+       </Button>
+       <Button variant={timeRange === '7d' ? 'default' : 'outline'} size="sm">
+         7D
+       </Button>
+       <Button variant={timeRange === '30d' ? 'default' : 'outline'} size="sm">
+         30D
+       </Button>
        {/* Custom date range picker */}
      </div>
 
@@ -111,6 +120,7 @@ This document defines the mandatory UI standards for all dashboard pages in Omni
    ```
 
 **Component Requirements**:
+
 - ✅ All buttons MUST use `variant="outline"` and `size="sm"`
 - ✅ All icons MUST be 16×16px (`w-4 h-4`) with `mr-2` spacing
 - ✅ Time range buttons MUST use `variant="default"` when active
@@ -120,6 +130,7 @@ This document defines the mandatory UI standards for all dashboard pages in Omni
 ### 1.3 Prohibited Patterns
 
 **❌ DO NOT USE**:
+
 - `SectionHeader` component (legacy pattern, being deprecated)
 - `TimeRangeSelector` component (use inline time range buttons instead)
 - `ExportButton` component (use Button with icon instead)
@@ -139,6 +150,7 @@ This section defines the **critical rules** for when and how to use Card wrapper
 After analyzing compliant pages, we've identified **two valid patterns** for card wrapper hierarchy:
 
 #### Pattern A: Flat Hierarchy (RECOMMENDED)
+
 **Used by**: Intelligence Analytics, Agent Operations, Pattern Learning
 
 ```tsx
@@ -149,9 +161,7 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
       <h1 className="text-3xl font-bold">Dashboard Title</h1>
       <p className="ty-subtitle">Description</p>
     </div>
-    <div className="flex items-center gap-2">
-      {/* Toolbar buttons */}
-    </div>
+    <div className="flex items-center gap-2">{/* Toolbar buttons */}</div>
   </div>
 
   {/* Tabs - OUTSIDE any Card (if applicable) */}
@@ -173,6 +183,7 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 ```
 
 **Characteristics**:
+
 - ✅ Header is plain divs (no Card wrapper)
 - ✅ Tabs are direct children of root (no Card wrapper)
 - ✅ Content uses DashboardSection or individual Cards
@@ -180,6 +191,7 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 - ✅ Better for dashboards with multiple distinct sections
 
 #### Pattern B: Nested Hierarchy
+
 **Used by**: Platform Monitoring, some composite dashboards
 
 ```tsx
@@ -190,13 +202,9 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
       <div className="flex items-center justify-between">
         <div>
           <CardTitle className="text-3xl">Dashboard Title</CardTitle>
-          <CardDescription className="text-base mt-2">
-            Description
-          </CardDescription>
+          <CardDescription className="text-base mt-2">Description</CardDescription>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Toolbar buttons */}
-        </div>
+        <div className="flex items-center gap-2">{/* Toolbar buttons */}</div>
       </div>
     </CardHeader>
 
@@ -215,6 +223,7 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 ```
 
 **Characteristics**:
+
 - ✅ Single outer Card wraps entire page content
 - ✅ Header becomes CardHeader with CardTitle
 - ✅ Tabs are inside CardContent
@@ -224,12 +233,14 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 ### 2.3 Decision Matrix
 
 **Use Pattern A (Flat) when**:
+
 - Dashboard has multiple independent sections
 - Content sections need visual separation
 - Dashboard feels like a "collection of widgets"
 - Examples: Intelligence Analytics, Agent Operations
 
 **Use Pattern B (Nested) when**:
+
 - Dashboard is a single cohesive view
 - Content is tightly related
 - Tabs organize different aspects of same data
@@ -270,7 +281,9 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 **When individual sections need Card wrappers**:
 
 ```tsx
-{/* Pattern A with section-level cards */}
+{
+  /* Pattern A with section-level cards */
+}
 <DashboardSection title="Section Title">
   <Card>
     <CardHeader>
@@ -278,14 +291,15 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
     </CardHeader>
     <CardContent>
       <div className="grid grid-cols-4 gap-4">
-        <Card>...</Card>  {/* Nested metric cards */}
+        <Card>...</Card> {/* Nested metric cards */}
       </div>
     </CardContent>
   </Card>
-</DashboardSection>
+</DashboardSection>;
 ```
 
 **When this is acceptable**:
+
 - Section has complex internal structure
 - Subsection needs its own header/actions
 - Content is hierarchically organized
@@ -294,9 +308,12 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 ### 2.6 Common Mistakes
 
 **❌ WRONG: Header inside Card but outside CardHeader**
+
 ```tsx
 <Card>
-  <div className="flex items-center justify-between">  {/* ❌ Wrong level */}
+  <div className="flex items-center justify-between">
+    {' '}
+    {/* ❌ Wrong level */}
     <h1>Title</h1>
   </div>
   <CardContent>...</CardContent>
@@ -304,10 +321,13 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 ```
 
 **✅ CORRECT: Header in proper Card component**
+
 ```tsx
 <Card>
   <CardHeader>
-    <div className="flex items-center justify-between">  {/* ✅ Correct */}
+    <div className="flex items-center justify-between">
+      {' '}
+      {/* ✅ Correct */}
       <CardTitle className="text-3xl">Title</CardTitle>
     </div>
   </CardHeader>
@@ -316,23 +336,31 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 ```
 
 **❌ WRONG: Tabs inside DashboardSection**
+
 ```tsx
-<DashboardSection title="Section">  {/* ❌ Wrong container */}
+<DashboardSection title="Section">
+  {' '}
+  {/* ❌ Wrong container */}
   <Tabs>...</Tabs>
 </DashboardSection>
 ```
 
 **✅ CORRECT: Tabs as direct child or in CardContent**
-```tsx
-{/* Pattern A */}
-<Tabs>...</Tabs>
 
-{/* Pattern B */}
+```tsx
+{
+  /* Pattern A */
+}
+<Tabs>...</Tabs>;
+
+{
+  /* Pattern B */
+}
 <Card>
   <CardContent>
     <Tabs>...</Tabs>
   </CardContent>
-</Card>
+</Card>;
 ```
 
 ### 2.7 Before/After Examples
@@ -340,6 +368,7 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 #### Example 1: Inconsistent Header Placement
 
 **BEFORE (Inconsistent)**:
+
 ```tsx
 <div className="space-y-6">
   {/* Header outside Card */}
@@ -358,6 +387,7 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 ```
 
 **AFTER (Pattern A - Consistent Flat)**:
+
 ```tsx
 <div className="space-y-6">
   <div className="flex items-center justify-between">
@@ -365,9 +395,7 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
       <h1 className="text-3xl font-bold">Title</h1>
       <p className="ty-subtitle">Description</p>
     </div>
-    <div className="flex items-center gap-2">
-      {/* Toolbar */}
-    </div>
+    <div className="flex items-center gap-2">{/* Toolbar */}</div>
   </div>
 
   <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -378,6 +406,7 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 ```
 
 **AFTER (Pattern B - Consistent Nested)**:
+
 ```tsx
 <div className="space-y-6">
   <Card>
@@ -387,9 +416,7 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
           <CardTitle className="text-3xl">Title</CardTitle>
           <CardDescription>Description</CardDescription>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Toolbar */}
-        </div>
+        <div className="flex items-center gap-2">{/* Toolbar */}</div>
       </div>
     </CardHeader>
     <CardContent>
@@ -402,11 +429,13 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 ### 2.8 Reference Implementations
 
 **Pattern A (Flat) Examples**:
+
 - `client/src/pages/preview/IntelligenceAnalytics.tsx` (lines 214-322)
 - `client/src/pages/AgentOperations.tsx` (lines 360-424)
 - `client/src/pages/PatternLearning.tsx` (lines 157-192)
 
 **Pattern B (Nested) Examples**:
+
 - `client/src/pages/preview/PlatformMonitoring.tsx` (lines 95-421)
 
 ### 2.9 Validation Checklist
@@ -414,6 +443,7 @@ After analyzing compliant pages, we've identified **two valid patterns** for car
 Add these to your code review checklist:
 
 **Card Hierarchy Checks**:
+
 - [ ] **CH1**: Chose Pattern A or Pattern B (not mixed)
 - [ ] **CH2**: Header placement matches chosen pattern
 - [ ] **CH3**: Tabs placement matches chosen pattern
@@ -431,6 +461,7 @@ Add these to your code review checklist:
 ### 3.1 Standard Time Ranges
 
 **REQUIRED**: All dashboards MUST support these time ranges:
+
 - `1h` - Last 1 hour
 - `24h` - Last 24 hours
 - `7d` - Last 7 days
@@ -440,16 +471,16 @@ Add these to your code review checklist:
 ### 3.2 Implementation Pattern
 
 ```tsx
-const [timeRange, setTimeRange] = useState("30d");
+const [timeRange, setTimeRange] = useState('30d');
 const [customRange, setCustomRange] = useState<DateRange | undefined>();
 const [showCustomPicker, setShowCustomPicker] = useState(false);
 
 // Time range buttons
 <div className="flex items-center gap-2 ml-2 pl-2 border-l">
   <Button
-    variant={timeRange === "1h" ? "default" : "outline"}
+    variant={timeRange === '1h' ? 'default' : 'outline'}
     size="sm"
-    onClick={() => setTimeRange("1h")}
+    onClick={() => setTimeRange('1h')}
   >
     1H
   </Button>
@@ -458,11 +489,7 @@ const [showCustomPicker, setShowCustomPicker] = useState(false);
   {/* Custom date range picker */}
   <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
     <PopoverTrigger asChild>
-      <Button
-        variant={timeRange === "custom" ? "default" : "outline"}
-        size="sm"
-        className="gap-2"
-      >
+      <Button variant={timeRange === 'custom' ? 'default' : 'outline'} size="sm" className="gap-2">
         <CalendarIcon className="h-4 w-4" />
         Custom
       </Button>
@@ -474,7 +501,7 @@ const [showCustomPicker, setShowCustomPicker] = useState(false);
         onSelect={(range) => {
           setCustomRange(range);
           if (range?.from && range?.to) {
-            setTimeRange("custom");
+            setTimeRange('custom');
             setShowCustomPicker(false);
           }
         }}
@@ -485,15 +512,16 @@ const [showCustomPicker, setShowCustomPicker] = useState(false);
   </Popover>
 
   {/* Show selected custom range */}
-  {timeRange === "custom" && customRange?.from && customRange?.to && (
+  {timeRange === 'custom' && customRange?.from && customRange?.to && (
     <span className="text-sm text-muted-foreground">
-      {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+      {format(customRange.from, 'MMM d')} - {format(customRange.to, 'MMM d, yyyy')}
     </span>
   )}
-</div>
+</div>;
 ```
 
 **Requirements**:
+
 - ✅ Time range state MUST be in component state
 - ✅ Selected time range MUST show with `variant="default"`
 - ✅ Custom range MUST use Popover + Calendar components
@@ -519,6 +547,7 @@ const { data: metricsResult, isLoading } = useQuery({
 ### 4.1 Purpose
 
 `DashboardSection` is the **REQUIRED** wrapper for all metric card groups. It provides:
+
 - Consistent card header structure
 - Optional status legend
 - Optional mock data badge
@@ -527,7 +556,7 @@ const { data: metricsResult, isLoading } = useQuery({
 ### 4.2 Usage Pattern
 
 ```tsx
-import { DashboardSection } from "@/components/DashboardSection";
+import { DashboardSection } from '@/components/DashboardSection';
 
 <DashboardSection
   title="Section Title"
@@ -539,10 +568,11 @@ import { DashboardSection } from "@/components/DashboardSection";
     <Card>...</Card>
     <Card>...</Card>
   </div>
-</DashboardSection>
+</DashboardSection>;
 ```
 
 **Props**:
+
 - `title` (required): Section heading
 - `description` (optional): Subtitle/description
 - `showStatusLegend` (optional, default `false`): Show color legend
@@ -552,12 +582,14 @@ import { DashboardSection } from "@/components/DashboardSection";
 ### 4.3 Requirements
 
 **REQUIRED**:
+
 - ✅ All metric card groups MUST be wrapped in `DashboardSection`
 - ✅ Section titles MUST be descriptive and concise
 - ✅ Use `showStatusLegend={true}` when cards use status colors
 - ✅ Use `showMockBadge={true}` when section uses mock data
 
 **PROHIBITED**:
+
 - ❌ Direct Card grids without DashboardSection wrapper
 - ❌ Custom section header implementations
 - ❌ Bare divs with custom titles
@@ -569,6 +601,7 @@ import { DashboardSection } from "@/components/DashboardSection";
 ### 5.1 When to Use Tabs
 
 Use tabs when dashboard has multiple distinct views/categories:
+
 - Overview/Summary tabs
 - Different data perspectives (Intelligence, Savings, Analytics)
 - Grouped functionality sections
@@ -576,9 +609,9 @@ Use tabs when dashboard has multiple distinct views/categories:
 ### 5.2 Implementation Pattern
 
 ```tsx
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const [activeTab, setActiveTab] = useState("overview");
+const [activeTab, setActiveTab] = useState('overview');
 
 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
   <TabsList className="grid w-full grid-cols-4">
@@ -595,10 +628,11 @@ const [activeTab, setActiveTab] = useState("overview");
   <TabsContent value="intelligence" className="space-y-6">
     <DashboardSection title="...">...</DashboardSection>
   </TabsContent>
-</Tabs>
+</Tabs>;
 ```
 
 **Requirements**:
+
 - ✅ TabsList MUST use `grid w-full` with appropriate column count
 - ✅ TabsContent MUST use `space-y-6` for vertical spacing
 - ✅ Tab names MUST be concise (1-3 words)
@@ -626,6 +660,7 @@ If dashboard doesn't need tabs, content sections can be direct children:
 **REQUIRED**: Use these responsive grid patterns:
 
 #### 4-Column Grid (Metrics)
+
 ```tsx
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
   <Card>...</Card>
@@ -636,6 +671,7 @@ If dashboard doesn't need tabs, content sections can be direct children:
 ```
 
 #### 3-Column Grid
+
 ```tsx
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
   <Card>...</Card>
@@ -645,6 +681,7 @@ If dashboard doesn't need tabs, content sections can be direct children:
 ```
 
 #### 2-Column Grid (Charts)
+
 ```tsx
 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
   <Card>...</Card>
@@ -653,6 +690,7 @@ If dashboard doesn't need tabs, content sections can be direct children:
 ```
 
 #### Asymmetric Grid
+
 ```tsx
 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
   <div className="xl:col-span-2">
@@ -663,6 +701,7 @@ If dashboard doesn't need tabs, content sections can be direct children:
 ```
 
 **Requirements**:
+
 - ✅ Always start with `grid-cols-1` for mobile
 - ✅ Use `md:` prefix for tablet breakpoint
 - ✅ Use `lg:` or `xl:` prefix for desktop breakpoint
@@ -672,6 +711,7 @@ If dashboard doesn't need tabs, content sections can be direct children:
 ### 6.2 Card Structure
 
 **Standard Metric Card**:
+
 ```tsx
 <Card>
   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -680,14 +720,13 @@ If dashboard doesn't need tabs, content sections can be direct children:
   </CardHeader>
   <CardContent>
     <div className="text-2xl font-bold">Value</div>
-    <p className="text-xs text-muted-foreground">
-      Contextual description
-    </p>
+    <p className="text-xs text-muted-foreground">Contextual description</p>
   </CardContent>
 </Card>
 ```
 
 **Requirements**:
+
 - ✅ CardHeader MUST use horizontal flex layout for label/icon
 - ✅ Icon MUST be 16×16px (`h-4 w-4`)
 - ✅ Primary value MUST use `text-2xl font-bold`
@@ -722,7 +761,8 @@ if (isLoading) {
 if (error) {
   return (
     <div className="bg-destructive/10 border border-destructive rounded-lg p-4 text-destructive">
-      <strong>Error loading data:</strong> {error instanceof Error ? error.message : 'Unknown error'}
+      <strong>Error loading data:</strong>{' '}
+      {error instanceof Error ? error.message : 'Unknown error'}
     </div>
   );
 }
@@ -737,6 +777,7 @@ if (error) {
 **REQUIRED**: Show MockDataBadge when using mock data:
 
 #### Global Mock Data (entire dashboard)
+
 ```tsx
 <div className="flex items-center gap-2">
   {usingMockData && <MockDataBadge />}
@@ -745,11 +786,9 @@ if (error) {
 ```
 
 #### Section-Specific Mock Data
+
 ```tsx
-<DashboardSection
-  title="Section Title"
-  showMockBadge={usingMockData}
->
+<DashboardSection title="Section Title" showMockBadge={usingMockData}>
   {/* Content */}
 </DashboardSection>
 ```
@@ -778,6 +817,7 @@ const usingMockData = result?.isMock || false;
 **Mobile First**: Always design for mobile first, then scale up.
 
 **Breakpoints**:
+
 - **Mobile**: Base styles (no prefix)
 - **Tablet**: `md:` prefix (768px+)
 - **Desktop**: `lg:` prefix (1024px+)
@@ -786,10 +826,12 @@ const usingMockData = result?.isMock || false;
 ### 9.2 Toolbar Responsive Behavior
 
 **Desktop** (default):
+
 - Full toolbar visible
 - All buttons inline
 
 **Mobile** (to be implemented):
+
 - Consider collapsing to dropdown/menu
 - Prioritize most important actions
 - Time range selector may need simplification
@@ -811,6 +853,7 @@ const usingMockData = result?.isMock || false;
 ### 10.2 Card Padding
 
 Standard card padding is handled by shadcn/ui Card components:
+
 - CardHeader: default padding
 - CardContent: default padding
 - Custom padding only when necessary
@@ -822,6 +865,7 @@ Standard card padding is handled by shadcn/ui Card components:
 ### 11.1 Semantic HTML
 
 **REQUIRED**:
+
 - ✅ Use `<h1>` for page title (only one per page)
 - ✅ Use proper heading hierarchy (h1 → h2 → h3)
 - ✅ Use semantic buttons (`<button>` or `Button` component)
@@ -830,6 +874,7 @@ Standard card padding is handled by shadcn/ui Card components:
 ### 11.2 Keyboard Navigation
 
 **REQUIRED**:
+
 - ✅ All interactive elements must be keyboard accessible
 - ✅ Tab order must be logical
 - ✅ Focus indicators must be visible
@@ -837,6 +882,7 @@ Standard card padding is handled by shadcn/ui Card components:
 ### 11.3 Color Contrast
 
 **REQUIRED**:
+
 - ✅ Text must meet WCAG AA contrast ratios
 - ✅ Status colors must be distinguishable
 - ✅ Use text labels in addition to color coding
@@ -850,6 +896,7 @@ Use this checklist to audit any dashboard page:
 ### ✅ Critical (Must Pass)
 
 #### Layout & Structure
+
 - [ ] **C1**: Root container uses `space-y-6`
 - [ ] **C2**: Header uses `flex items-center justify-between`
 - [ ] **C3**: Title is `h1` with `text-3xl font-bold` (or CardTitle if Pattern B)
@@ -857,6 +904,7 @@ Use this checklist to audit any dashboard page:
 - [ ] **C5**: Toolbar is in header flex container (not separate)
 
 #### Card Hierarchy (NEW)
+
 - [ ] **C6**: Chose either Pattern A (Flat) or Pattern B (Nested) - not mixed
 - [ ] **C7**: Header placement matches chosen pattern (plain divs for A, CardHeader for B)
 - [ ] **C8**: Tabs placement matches chosen pattern (outside Card for A, inside CardContent for B)
@@ -864,11 +912,13 @@ Use this checklist to audit any dashboard page:
 - [ ] **C10**: DashboardSection used correctly (Pattern A only, not for Pattern B)
 
 #### Time Range & Controls
+
 - [ ] **C11**: Time range selector has all 5 options (1H, 24H, 7D, 30D, Custom)
 - [ ] **C12**: Time range selector has visual divider (`border-l`)
 - [ ] **C13**: Time selector is in header toolbar (not separate section)
 
 #### Components & Styling
+
 - [ ] **C14**: Buttons use `variant="outline"` and `size="sm"`
 - [ ] **C15**: Icons are 16×16px (`w-4 h-4`)
 - [ ] **C16**: Loading state is implemented
@@ -934,6 +984,7 @@ Use this checklist to audit any dashboard page:
 **Step 1: Update Header Structure**
 
 BEFORE (non-compliant):
+
 ```tsx
 <SectionHeader
   title="Page Title"
@@ -946,6 +997,7 @@ BEFORE (non-compliant):
 ```
 
 AFTER (compliant):
+
 ```tsx
 <div className="flex items-center justify-between">
   <div>
@@ -962,9 +1014,7 @@ AFTER (compliant):
       <Eye className="w-4 h-4 mr-2" />
       Export Report
     </Button>
-    <div className="flex items-center gap-2 ml-2 pl-2 border-l">
-      {/* Time range buttons */}
-    </div>
+    <div className="flex items-center gap-2 ml-2 pl-2 border-l">{/* Time range buttons */}</div>
     <Button variant="outline" size="sm">
       <RefreshCw className="w-4 h-4 mr-2" />
       Refresh
@@ -976,6 +1026,7 @@ AFTER (compliant):
 **Step 2: Wrap Cards in DashboardSection**
 
 BEFORE:
+
 ```tsx
 <div className="grid grid-cols-4 gap-6">
   <MetricCard ... />
@@ -983,6 +1034,7 @@ BEFORE:
 ```
 
 AFTER:
+
 ```tsx
 <DashboardSection title="Metrics">
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -995,7 +1047,7 @@ AFTER:
 
 ```tsx
 // Add state
-const [timeRange, setTimeRange] = useState("30d");
+const [timeRange, setTimeRange] = useState('30d');
 
 // Update queries
 const { data: result } = useQuery({
@@ -1027,12 +1079,14 @@ See `client/src/pages/preview/IntelligenceAnalytics.tsx` for full implementation
 ### When should I use Pattern A vs Pattern B?
 
 **Use Pattern A (Flat Hierarchy)**:
+
 - Your dashboard is a collection of independent widgets/sections
 - Content sections feel modular and could be rearranged
 - Multiple distinct data sources or concerns
 - Example: Intelligence Analytics with distinct Intelligence/Savings/Analytics tabs
 
 **Use Pattern B (Nested Hierarchy)**:
+
 - Your dashboard is a single unified view
 - All content relates to one primary concern
 - Tabs are different perspectives on the same data
@@ -1047,6 +1101,7 @@ Use tabs when your dashboard has 2+ distinct views or categories. Single-view da
 ### Can I customize the toolbar buttons?
 
 Yes, but maintain:
+
 - `variant="outline"` and `size="sm"`
 - 16×16px icons (`w-4 h-4`)
 - Consistent gap spacing (`gap-2`)
@@ -1065,12 +1120,14 @@ Yes! Place them after the time range selector and maintain consistent styling.
 ## 17. Enforcement
 
 **All new dashboard pages MUST**:
+
 1. Pass all Critical checklist items (C1-C18) including NEW Card Hierarchy checks (C6-C10)
 2. Pass at least 75% of Important items (I1-I8)
 3. Be reviewed against this standard before merging
 4. Choose and consistently apply either Pattern A or Pattern B
 
 **All existing dashboard pages SHOULD**:
+
 1. Be migrated to this standard during feature work
 2. Be audited quarterly for compliance
 3. Have migration tracked in technical debt backlog
@@ -1081,6 +1138,7 @@ Yes! Place them after the time range selector and maintain consistent styling.
 ## Change Log
 
 ### 2025-11-10 - v1.1
+
 - **MAJOR**: Added comprehensive Card Wrapper Hierarchy section (Section 2)
 - Documented two valid patterns: Pattern A (Flat) and Pattern B (Nested)
 - Added decision matrix for choosing between patterns
@@ -1090,6 +1148,7 @@ Yes! Place them after the time range selector and maintain consistent styling.
 - Reference implementations: IntelligenceAnalytics.tsx (Pattern A), PlatformMonitoring.tsx (Pattern B)
 
 ### 2025-11-10 - v1.0
+
 - Initial standards document
 - Based on Intelligence Analytics reference implementation
 - Defined critical, important, and nice-to-have requirements

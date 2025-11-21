@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { eventFlowSource } from '../event-flow-source';
-import { createMockResponse, createMockFetchError, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import {
+  createMockResponse,
+  createMockFetchError,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 // Mock the USE_MOCK_DATA flag to false so we can test real API paths
 vi.mock('../../mock-data/config', () => ({
@@ -32,11 +37,7 @@ describe('EventFlowSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/events', createMockResponse(mockEvents)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/events', createMockResponse(mockEvents)]]));
 
       const result = await eventFlowSource.fetchEvents(100);
 
@@ -48,11 +49,7 @@ describe('EventFlowSource', () => {
     });
 
     it('should return mock data when API fails', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/events', createMockFetchError('Server error')],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/events', createMockFetchError()]]));
 
       const result = await eventFlowSource.fetchEvents(100);
 
@@ -79,11 +76,7 @@ describe('EventFlowSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/events', createMockResponse(mockEvents)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/events', createMockResponse(mockEvents)]]));
 
       const result = await eventFlowSource.fetchEvents(100);
 
@@ -110,11 +103,7 @@ describe('EventFlowSource', () => {
         },
       ];
 
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/events', createMockResponse(mockEvents)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/events', createMockResponse(mockEvents)]]));
 
       const result = await eventFlowSource.fetchEvents(100);
 
@@ -126,11 +115,7 @@ describe('EventFlowSource', () => {
     });
 
     it('should handle empty events array', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/events', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/events', createMockResponse([])]]));
 
       const result = await eventFlowSource.fetchEvents(100);
 

@@ -64,6 +64,7 @@ client/src/tests/snapshots/
 ## Configuration
 
 All configuration in `playwright.config.ts`:
+
 - Base URL: `http://localhost:3000`
 - Viewports: Desktop (1920×1080), Laptop (1366×768), Tablet (iPad), Mobile (iPhone 12)
 - Max diff threshold: 1%

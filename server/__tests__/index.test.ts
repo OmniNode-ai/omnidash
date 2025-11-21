@@ -155,7 +155,9 @@ describe('server/index bootstrap', () => {
     expect(validateConnectionMock).toHaveBeenCalled();
     expect(startMock).toHaveBeenCalled();
     expect(consoleErrorSpy).toHaveBeenCalledWith('❌ Failed to start event consumer:', failure);
-    expect(consoleErrorSpy).toHaveBeenCalledWith('   Intelligence endpoints will not receive real-time data');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '   Intelligence endpoints will not receive real-time data'
+    );
     expect(setupWebSocketMock).toHaveBeenCalledWith(mockServer);
 
     consoleErrorSpy.mockRestore();

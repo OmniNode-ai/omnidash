@@ -5,6 +5,7 @@ This guide helps you migrate existing tests to use the new standardized test uti
 ## Quick Reference
 
 ### ❌ Old Pattern (Causes Hangs)
+
 ```typescript
 describe('MyComponent', () => {
   it('renders', () => {
@@ -19,11 +20,13 @@ describe('MyComponent', () => {
 ```
 
 **Problems:**
+
 - No cleanup → Memory leaks
 - No timer cleanup → Hanging tests
 - No query cancellation → "Cannot flush pending work" errors
 
 ### ✅ New Pattern (Recommended)
+
 ```typescript
 import { createTestLifecycle } from '@/tests/test-utils';
 
@@ -43,6 +46,7 @@ describe('MyComponent', () => {
 ```
 
 **Benefits:**
+
 - ✅ Automatic QueryClient creation with test-safe config
 - ✅ Automatic cleanup prevents memory leaks
 - ✅ No hanging tests from uncancelled queries
@@ -125,6 +129,7 @@ describe('MyComponent', () => {
 ### Scenario 1: Basic Component Test
 
 **Before:**
+
 ```typescript
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -143,6 +148,7 @@ describe('MyComponent', () => {
 ```
 
 **After:**
+
 ```typescript
 import { screen } from '@testing-library/react';
 import { createTestLifecycle } from '@/tests/test-utils';
@@ -163,6 +169,7 @@ describe('MyComponent', () => {
 ### Scenario 2: Test with Async Data Fetching
 
 **Before:**
+
 ```typescript
 describe('MyComponent', () => {
   it('fetches and displays data', async () => {
@@ -184,6 +191,7 @@ describe('MyComponent', () => {
 ```
 
 **After:**
+
 ```typescript
 import { createTestLifecycle } from '@/tests/test-utils';
 
@@ -208,6 +216,7 @@ describe('MyComponent', () => {
 ### Scenario 3: Multiple Tests with Shared Setup
 
 **Before:**
+
 ```typescript
 describe('MyComponent', () => {
   let queryClient: QueryClient;
@@ -235,6 +244,7 @@ describe('MyComponent', () => {
 ```
 
 **After:**
+
 ```typescript
 import { createTestLifecycle } from '@/tests/test-utils';
 
@@ -259,6 +269,7 @@ describe('MyComponent', () => {
 ### Scenario 4: Tests with Multiple Renders
 
 **Before:**
+
 ```typescript
 describe('MyComponent', () => {
   it('renders multiple times', async () => {
@@ -286,6 +297,7 @@ describe('MyComponent', () => {
 ```
 
 **After:**
+
 ```typescript
 import { createTestLifecycle } from '@/tests/test-utils';
 
@@ -317,6 +329,7 @@ describe('MyComponent', () => {
 **Cause:** Missing or non-async cleanup in afterEach
 
 **Fix:**
+
 ```typescript
 // ❌ Wrong
 afterEach(() => {
@@ -334,6 +347,7 @@ afterEach(async () => {
 **Cause:** Queries not cancelled, timers not cleared
 
 **Fix:** Ensure afterEach is async and awaited:
+
 ```typescript
 afterEach(async () => {
   await lifecycle.afterEach();
@@ -345,6 +359,7 @@ afterEach(async () => {
 **Cause:** Reusing QueryClient across tests
 
 **Fix:** Use lifecycle manager which creates fresh QueryClient per test:
+
 ```typescript
 const lifecycle = createTestLifecycle(); // Fresh QueryClient per test
 ```
@@ -354,6 +369,7 @@ const lifecycle = createTestLifecycle(); // Fresh QueryClient per test
 **Cause:** Not unmounting before second render
 
 **Fix:**
+
 ```typescript
 const { unmount } = lifecycle.render(<MyComponent />);
 // ... assertions ...
@@ -364,28 +380,33 @@ lifecycle.render(<MyComponent />);
 ## Step-by-Step Migration Process
 
 1. **Import the utilities:**
+
    ```typescript
    import { createTestLifecycle } from '@/tests/test-utils';
    ```
 
 2. **Create lifecycle manager:**
+
    ```typescript
    const lifecycle = createTestLifecycle();
    ```
 
 3. **Add lifecycle hooks:**
+
    ```typescript
    beforeEach(() => lifecycle.beforeEach());
    afterEach(async () => await lifecycle.afterEach());
    ```
 
 4. **Replace render calls:**
+
    ```typescript
    // Before: render(<QueryClientProvider client={queryClient}>...)
    // After:  lifecycle.render(<MyComponent />)
    ```
 
 5. **Make async tests properly async:**
+
    ```typescript
    it('test name', async () => {
      lifecycle.render(<MyComponent />);
@@ -413,6 +434,7 @@ After migrating a test file:
 ## Examples
 
 See `client/src/tests/__tests__/test-utils.test.tsx` for comprehensive examples of:
+
 - Lifecycle manager pattern
 - Manual tracking pattern
 - Multiple renders in one test

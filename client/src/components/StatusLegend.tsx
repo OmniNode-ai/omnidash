@@ -1,5 +1,3 @@
-import { cn } from "@/lib/utils";
-
 export function StatusLegend() {
   return (
     <div className="flex gap-6 text-sm">

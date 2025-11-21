@@ -23,7 +23,7 @@ export function DemoModeProvider({ children }: { children: ReactNode }) {
   }, [isDemoMode]);
 
   const toggleDemoMode = () => {
-    setIsDemoMode(prev => !prev);
+    setIsDemoMode((prev) => !prev);
   };
 
   return (
@@ -40,10 +40,3 @@ export function useDemoMode() {
   }
   return context;
 }
-
-
-
-
-
-
-

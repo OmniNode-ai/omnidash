@@ -11,15 +11,14 @@ describe('EventSearchBar', () => {
   it('should render search bar', () => {
     const onFilterChange = vi.fn();
     render(<EventSearchBar onFilterChange={onFilterChange} />);
-    
+
     expect(screen.getByText('Search & Filter Events')).toBeInTheDocument();
   });
 
   it('should call onFilterChange when filters change', async () => {
-    const user = userEvent.setup();
     const onFilterChange = vi.fn();
     render(<EventSearchBar onFilterChange={onFilterChange} eventTypes={['type1', 'type2']} />);
-    
+
     // Wait for initial filter change
     await waitFor(() => {
       expect(onFilterChange).toHaveBeenCalled();
@@ -30,16 +29,15 @@ describe('EventSearchBar', () => {
     const user = userEvent.setup();
     const onFilterChange = vi.fn();
     render(<EventSearchBar onFilterChange={onFilterChange} />);
-    
+
     const toggleButton = screen.getByText(/Show Advanced/);
     await user.click(toggleButton);
-    
+
     expect(screen.getByText(/Hide Advanced/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Tenant ID/)).toBeInTheDocument();
   });
 
   it('should disable clear button when no filters are active', async () => {
-    const user = userEvent.setup();
     const onFilterChange = vi.fn();
     render(<EventSearchBar onFilterChange={onFilterChange} eventTypes={['type1']} />);
 
@@ -111,4 +109,3 @@ describe('EventSearchBar', () => {
     expect(clearButton).toBeDisabled();
   });
 });
-

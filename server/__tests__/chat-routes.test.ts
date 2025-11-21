@@ -14,9 +14,7 @@ describe('Chat Routes', () => {
 
   describe('GET /api/chat/history', () => {
     it('should return chat history with demo messages', async () => {
-      const response = await request(app)
-        .get('/api/chat/history')
-        .expect(200);
+      const response = await request(app).get('/api/chat/history').expect(200);
 
       expect(response.body).toHaveProperty('messages');
       expect(Array.isArray(response.body.messages)).toBe(true);
@@ -32,9 +30,7 @@ describe('Chat Routes', () => {
     });
 
     it('should return messages with valid timestamps', async () => {
-      const response = await request(app)
-        .get('/api/chat/history')
-        .expect(200);
+      const response = await request(app).get('/api/chat/history').expect(200);
 
       response.body.messages.forEach((msg: any) => {
         expect(msg.timestamp).toBeDefined();
@@ -56,10 +52,7 @@ describe('Chat Routes', () => {
 
   describe('POST /api/chat/send', () => {
     it('should return 400 for missing message field', async () => {
-      const response = await request(app)
-        .post('/api/chat/send')
-        .send({})
-        .expect(400);
+      const response = await request(app).post('/api/chat/send').send({}).expect(400);
 
       expect(response.body).toHaveProperty('error');
       expect(response.body).toHaveProperty('message');
@@ -67,10 +60,7 @@ describe('Chat Routes', () => {
     });
 
     it('should return 400 for non-string message', async () => {
-      const response = await request(app)
-        .post('/api/chat/send')
-        .send({ message: 123 })
-        .expect(400);
+      const response = await request(app).post('/api/chat/send').send({ message: 123 }).expect(400);
 
       expect(response.body).toHaveProperty('error');
       expect(response.body.message).toContain('must be a string');
@@ -107,4 +97,3 @@ describe('Chat Routes', () => {
     });
   });
 });
-

@@ -38,11 +38,13 @@ export const agentManifestInjections = pgTable('agent_manifest_injections', {
 **File**: `server/intelligence-routes.ts`
 
 #### Endpoint 1: Pattern Summary
+
 ```
 GET /api/intelligence/patterns/summary
 ```
 
 **Response**:
+
 ```json
 {
   "totalPatterns": 25000,
@@ -55,14 +57,17 @@ GET /api/intelligence/patterns/summary
 **Implementation**: Aggregates pattern counts, quality scores, and active learning metrics from all manifest injections.
 
 #### Endpoint 2: Pattern Trends
+
 ```
 GET /api/intelligence/patterns/trends?timeWindow=7d
 ```
 
 **Query Parameters**:
+
 - `timeWindow`: "24h" (hourly), "7d" (daily), "30d" (daily)
 
 **Response**:
+
 ```json
 [
   {
@@ -77,16 +82,19 @@ GET /api/intelligence/patterns/trends?timeWindow=7d
 **Implementation**: Time-series data showing pattern discovery rate over time with configurable granularity (hourly/daily).
 
 #### Endpoint 3: Pattern List
+
 ```
 GET /api/intelligence/patterns/list?limit=50&offset=0
 ```
 
 **Query Parameters**:
+
 - `limit`: number of patterns (default: 50, max: 200)
 - `offset`: pagination offset (default: 0)
 - `category`: filter by category (optional)
 
 **Response**:
+
 ```json
 [
   {
@@ -104,11 +112,13 @@ GET /api/intelligence/patterns/list?limit=50&offset=0
 **Implementation**: Lists patterns grouped by agent with usage statistics and trend analysis (up/down/stable based on 7-day vs 14-day comparison).
 
 #### Endpoint 4: Pattern Performance
+
 ```
 GET /api/intelligence/patterns/performance
 ```
 
 **Response**:
+
 ```json
 [
   {
@@ -130,15 +140,24 @@ GET /api/intelligence/patterns/performance
 Added type definitions for all responses:
 
 ```typescript
-interface PatternSummary { /* ... */ }
-interface PatternTrend { /* ... */ }
-interface PatternListItem { /* ... */ }
-interface PatternPerformance { /* ... */ }
+interface PatternSummary {
+  /* ... */
+}
+interface PatternTrend {
+  /* ... */
+}
+interface PatternListItem {
+  /* ... */
+}
+interface PatternPerformance {
+  /* ... */
+}
 ```
 
 ### 4. Error Handling
 
 All endpoints include comprehensive error handling:
+
 - Try-catch blocks around database queries
 - Proper HTTP status codes (200 for success, 500 for errors)
 - Detailed error messages with stack traces in development
@@ -149,6 +168,7 @@ All endpoints include comprehensive error handling:
 ### Prerequisites
 
 1. **Environment Variables** (`.env` file):
+
 ```bash
 # IMPORTANT: Replace <your_password> with actual password from .env file
 DATABASE_URL="postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge"
@@ -165,6 +185,7 @@ POSTGRES_PASSWORD=<your_password>
 ### Manual Testing
 
 Start the server:
+
 ```bash
 npm run dev
 ```
@@ -188,16 +209,19 @@ curl http://localhost:3000/api/intelligence/patterns/performance | jq
 ### Expected Behavior
 
 **If database has data**:
+
 - Endpoints return JSON with aggregated metrics
 - Trends show time-series data
 - List shows patterns with usage statistics
 - Performance shows query breakdown by source
 
 **If database is empty**:
+
 - Endpoints return zero values or empty arrays
 - No errors should occur
 
 **If database is unreachable**:
+
 - 500 status code with error message
 - Error logged to console
 
@@ -266,6 +290,7 @@ const { data: trends } = useQuery({
 ### Caching Strategy
 
 For production, consider adding:
+
 1. **Redis Caching**: Cache aggregated results for 1-5 minutes
 2. **Response Headers**: Add Cache-Control headers
 3. **Query Result Caching**: Drizzle supports query result caching
@@ -273,6 +298,7 @@ For production, consider adding:
 ## Success Criteria
 
 ✅ **All 4 endpoints implemented**
+
 - `/patterns/summary` - Pattern metrics
 - `/patterns/trends` - Time-series data
 - `/patterns/list` - Pattern listing with pagination
@@ -291,18 +317,21 @@ For production, consider adding:
 ## Next Steps
 
 ### Phase 1: Dashboard Integration (Recommended Next)
+
 1. Update `client/src/pages/PatternLearning.tsx` to use real API endpoints
 2. Replace mock data with `useQuery` hooks
 3. Add loading and error states
 4. Test with real data
 
 ### Phase 2: Real-Time Updates (Optional)
+
 1. Add WebSocket support for live pattern discovery events
 2. Subscribe to Kafka `agent-manifest-injections` topic
 3. Broadcast events to connected clients
 4. Update dashboard in real-time
 
 ### Phase 3: Advanced Features (Future)
+
 1. Add Qdrant integration for pattern similarity search
 2. Implement pattern relationship graph visualization
 3. Add pattern quality improvement recommendations

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AgentRunTracker, AgentRunSchema } from '../agent-run-tracker';
+import { AgentRunTracker } from '../agent-run-tracker';
 
 describe('AgentRunTracker', () => {
   beforeEach(() => {
@@ -65,7 +65,7 @@ describe('AgentRunTracker', () => {
       const runs = AgentRunTracker.getRunsForAgent('agent-1');
 
       expect(Array.isArray(runs)).toBe(true);
-      expect(runs.every(r => r.agentId === 'agent-1')).toBe(true);
+      expect(runs.every((r) => r.agentId === 'agent-1')).toBe(true);
     });
 
     it('should filter runs by withIntelligence flag', () => {
@@ -93,7 +93,7 @@ describe('AgentRunTracker', () => {
 
       const runs = AgentRunTracker.getRunsForAgent('agent-1', true);
 
-      expect(runs.every(r => r.agentId === 'agent-1' && r.withIntelligence === true)).toBe(true);
+      expect(runs.every((r) => r.agentId === 'agent-1' && r.withIntelligence === true)).toBe(true);
     });
   });
 
@@ -211,7 +211,7 @@ describe('AgentRunTracker', () => {
       const startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
       // Add runs for comparison - must be within date range
-      const run1 = AgentRunTracker.recordRun({
+      AgentRunTracker.recordRun({
         agentId: 'test-agent',
         agentName: 'Test Agent',
         withIntelligence: true,
@@ -222,7 +222,7 @@ describe('AgentRunTracker', () => {
         cost: 0.05,
       });
 
-      const run2 = AgentRunTracker.recordRun({
+      AgentRunTracker.recordRun({
         agentId: 'test-agent',
         agentName: 'Test Agent',
         withIntelligence: false,
@@ -492,4 +492,3 @@ describe('AgentRunTracker', () => {
     });
   });
 });
-

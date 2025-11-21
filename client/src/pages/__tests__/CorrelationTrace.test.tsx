@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 
@@ -18,9 +17,7 @@ function renderWithClient(ui: React.ReactNode) {
     },
   });
 
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
 
 describe('CorrelationTrace page', () => {
@@ -62,14 +59,16 @@ describe('CorrelationTrace page', () => {
   it('shows error card when trace fetch fails for searched ID', async () => {
     vi.resetModules();
     vi.doMock('@tanstack/react-query', async () => {
-      const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query');
+      const actual =
+        await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query');
       return {
         ...actual,
-        useQuery: () => ({
-          data: undefined,
-          error: new Error('Failed to fetch trace'),
-          isLoading: false,
-        } as any),
+        useQuery: () =>
+          ({
+            data: undefined,
+            error: new Error('Failed to fetch trace'),
+            isLoading: false,
+          }) as any,
       };
     });
 

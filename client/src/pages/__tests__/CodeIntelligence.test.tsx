@@ -96,7 +96,11 @@ describe('CodeIntelligence page', () => {
         ],
         trend: [
           { period: new Date().toISOString(), compliancePercentage: 92, totalFiles: 300 },
-          { period: new Date(Date.now() - 86400000).toISOString(), compliancePercentage: 89, totalFiles: 280 },
+          {
+            period: new Date(Date.now() - 86400000).toISOString(),
+            compliancePercentage: 89,
+            totalFiles: 280,
+          },
         ],
       },
       isMock: false,

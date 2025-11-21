@@ -1,12 +1,12 @@
 /**
  * Event Bus Data Source
- * 
+ *
  * Subscribes to all events from Kafka/Redpanda event bus and provides:
  * 1. Event storage in PostgreSQL for historical queries
  * 2. Real-time event streaming via WebSocket
  * 3. Query APIs for data sources to consume events
  * 4. Event transformation to normalized data source formats
- * 
+ *
  * Architecture:
  * - Subscribes to all topics matching event catalog patterns
  * - Normalizes event envelope structure
@@ -18,7 +18,7 @@
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import { EventEmitter } from 'events';
 import { intelligenceDb } from './storage';
-import { sql, SQL, inArray } from 'drizzle-orm';
+import { sql, SQL } from 'drizzle-orm';
 
 /**
  * Normalized event envelope structure matching event catalog
@@ -35,12 +35,12 @@ export interface EventBusEvent {
   causation_id?: string;
   schema_ref: string;
   payload: Record<string, any>;
-  
+
   // Kafka metadata
   topic: string;
   partition: number;
   offset: string;
-  
+
   // Processing metadata
   processed_at: Date;
   stored_at?: Date;
@@ -95,7 +95,7 @@ export interface EventStatistics {
 
 /**
  * EventBusDataSource - Main class for event bus integration
- * 
+ *
  * Events emitted:
  * - 'event': When new event is received (EventBusEvent)
  * - 'event:stored': When event is stored in database (EventBusEvent)
@@ -108,7 +108,7 @@ export class EventBusDataSource extends EventEmitter {
   private consumer: Consumer | null = null;
   private isRunning = false;
   private isConnected = false;
-  
+
   // Event type patterns from event catalog
   private readonly EVENT_PATTERNS = [
     // Intelligence domain
@@ -147,14 +147,15 @@ export class EventBusDataSource extends EventEmitter {
 
   constructor() {
     super();
-    
-    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092';
-    
+
+    const brokers =
+      process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092';
+
     this.kafka = new Kafka({
       brokers: brokers.split(','),
       clientId: 'omnidash-event-bus-data-source',
     });
-    
+
     this.consumer = this.kafka.consumer({
       groupId: 'omnidash-event-bus-datasource-v1',
     });
@@ -165,7 +166,7 @@ export class EventBusDataSource extends EventEmitter {
    */
   async validateConnection(): Promise<boolean> {
     const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
-    
+
     if (!brokers) {
       console.warn('[EventBusDataSource] KAFKA_BROKERS not configured');
       return false;
@@ -176,8 +177,10 @@ export class EventBusDataSource extends EventEmitter {
       await admin.connect();
       const topics = await admin.listTopics();
       await admin.disconnect();
-      
-      console.log(`[EventBusDataSource] Kafka broker reachable: ${brokers} (${topics.length} topics)`);
+
+      console.log(
+        `[EventBusDataSource] Kafka broker reachable: ${brokers} (${topics.length} topics)`
+      );
       return true;
     } catch (error) {
       console.error(`[EventBusDataSource] Kafka broker unreachable: ${brokers}`, error);
@@ -264,7 +267,7 @@ export class EventBusDataSource extends EventEmitter {
 
     try {
       await this.initializeSchema();
-      
+
       if (!this.consumer) {
         throw new Error('Consumer not initialized');
       }
@@ -281,21 +284,23 @@ export class EventBusDataSource extends EventEmitter {
 
       // Filter out Kafka internal topics and filter topics that match event patterns
       const internalTopics = ['__consumer_offsets', '__transaction_state', '__schema'];
-      const eventTopics = topics.filter(topic => {
+      const eventTopics = topics.filter((topic) => {
         // Skip Kafka internal topics
-        if (internalTopics.some(internal => topic.startsWith(internal))) {
+        if (internalTopics.some((internal) => topic.startsWith(internal))) {
           return false;
         }
         // Extract event_type from topic (format: {tenant}.omninode.{domain}.v1)
         // Or use topic name directly if it matches pattern
-        return this.EVENT_PATTERNS.some(pattern => pattern.test(topic));
+        return this.EVENT_PATTERNS.some((pattern) => pattern.test(topic));
       });
 
       if (eventTopics.length === 0) {
-        console.warn('[EventBusDataSource] No matching event topics found, subscribing to all non-internal topics');
+        console.warn(
+          '[EventBusDataSource] No matching event topics found, subscribing to all non-internal topics'
+        );
         // Subscribe to all non-internal topics as fallback
-        const nonInternalTopics = topics.filter(topic => 
-          !internalTopics.some(internal => topic.startsWith(internal))
+        const nonInternalTopics = topics.filter(
+          (topic) => !internalTopics.some((internal) => topic.startsWith(internal))
         );
         await this.consumer.subscribe({ topics: nonInternalTopics, fromBeginning: false });
       } else {
@@ -329,7 +334,7 @@ export class EventBusDataSource extends EventEmitter {
 
       // Skip Kafka internal topics (they contain binary data, not JSON)
       const internalTopics = ['__consumer_offsets', '__transaction_state', '__schema'];
-      if (internalTopics.some(internal => topic.startsWith(internal))) {
+      if (internalTopics.some((internal) => topic.startsWith(internal))) {
         return; // Silently skip internal topics
       }
 
@@ -342,16 +347,17 @@ export class EventBusDataSource extends EventEmitter {
           return;
         }
         eventData = JSON.parse(messageValue);
-      } catch (error) {
+      } catch {
         // Only log if it's not an internal topic (we already filtered those)
-        console.warn(`[EventBusDataSource] Error parsing message from ${topic}:${partition}:${offset} - skipping`);
+        console.warn(
+          `[EventBusDataSource] Error parsing message from ${topic}:${partition}:${offset} - skipping`
+        );
         return;
       }
 
       // Extract event_type from message (could be in payload or headers)
-      const eventType = eventData.event_type || 
-                       message.headers?.['x-event-type']?.toString() ||
-                       topic; // Fallback to topic name
+      const eventType =
+        eventData.event_type || message.headers?.['x-event-type']?.toString() || topic; // Fallback to topic name
 
       // Normalize event envelope
       const normalizedEvent: EventBusEvent = {
@@ -361,7 +367,8 @@ export class EventBusDataSource extends EventEmitter {
         tenant_id: eventData.tenant_id || message.headers?.['x-tenant']?.toString() || 'default',
         namespace: eventData.namespace || '',
         source: eventData.source || message.headers?.['x-source']?.toString() || 'unknown',
-        correlation_id: eventData.correlation_id || message.headers?.['x-correlation-id']?.toString(),
+        correlation_id:
+          eventData.correlation_id || message.headers?.['x-correlation-id']?.toString(),
         causation_id: eventData.causation_id || message.headers?.['x-causation-id']?.toString(),
         schema_ref: eventData.schema_ref || '',
         payload: eventData.payload || eventData, // Use payload if exists, otherwise whole event
@@ -428,7 +435,7 @@ export class EventBusDataSource extends EventEmitter {
     try {
       // Build WHERE conditions
       const conditions: SQL[] = [];
-      
+
       if (options.event_types && options.event_types.length > 0) {
         const eventTypes = options.event_types;
         // Use PostgreSQL ANY() with array for better performance than OR chain
@@ -479,23 +486,34 @@ export class EventBusDataSource extends EventEmitter {
       // Use conditional SQL fragments instead of sql.raw() for extra safety
       const validOrderBy = ['timestamp', 'processed_at', 'stored_at', 'created_at'] as const;
       const validDirection = ['asc', 'desc'] as const;
-      const safeOrderBy = validOrderBy.includes((options.order_by || 'timestamp') as typeof validOrderBy[number])
-        ? (options.order_by || 'timestamp') as typeof validOrderBy[number]
+      const safeOrderBy = validOrderBy.includes(
+        (options.order_by || 'timestamp') as (typeof validOrderBy)[number]
+      )
+        ? ((options.order_by || 'timestamp') as (typeof validOrderBy)[number])
         : 'timestamp';
-      const safeDirection = validDirection.includes((options.order_direction || 'desc').toLowerCase() as typeof validDirection[number])
-        ? (options.order_direction || 'desc').toLowerCase() as typeof validDirection[number]
+      const safeDirection = validDirection.includes(
+        (options.order_direction || 'desc').toLowerCase() as (typeof validDirection)[number]
+      )
+        ? ((options.order_direction || 'desc').toLowerCase() as (typeof validDirection)[number])
         : 'desc';
-      
+
       // Build ORDER BY using conditional fragments (safer than sql.raw)
-      const orderByClause = safeDirection === 'asc'
-        ? (safeOrderBy === 'timestamp' ? sql`ORDER BY timestamp ASC`
-          : safeOrderBy === 'processed_at' ? sql`ORDER BY processed_at ASC`
-          : safeOrderBy === 'stored_at' ? sql`ORDER BY stored_at ASC`
-          : sql`ORDER BY created_at ASC`)
-        : (safeOrderBy === 'timestamp' ? sql`ORDER BY timestamp DESC`
-          : safeOrderBy === 'processed_at' ? sql`ORDER BY processed_at DESC`
-          : safeOrderBy === 'stored_at' ? sql`ORDER BY stored_at DESC`
-          : sql`ORDER BY created_at DESC`);
+      const orderByClause =
+        safeDirection === 'asc'
+          ? safeOrderBy === 'timestamp'
+            ? sql`ORDER BY timestamp ASC`
+            : safeOrderBy === 'processed_at'
+              ? sql`ORDER BY processed_at ASC`
+              : safeOrderBy === 'stored_at'
+                ? sql`ORDER BY stored_at ASC`
+                : sql`ORDER BY created_at ASC`
+          : safeOrderBy === 'timestamp'
+            ? sql`ORDER BY timestamp DESC`
+            : safeOrderBy === 'processed_at'
+              ? sql`ORDER BY processed_at DESC`
+              : safeOrderBy === 'stored_at'
+                ? sql`ORDER BY stored_at DESC`
+                : sql`ORDER BY created_at DESC`;
 
       // Build LIMIT/OFFSET
       const limitClause = options.limit ? sql`LIMIT ${options.limit}` : sql``;
@@ -516,7 +534,7 @@ export class EventBusDataSource extends EventEmitter {
       `;
 
       const result = await intelligenceDb.execute(query);
-      
+
       return result.rows.map((row: any) => ({
         event_type: row.event_type,
         event_id: row.event_id,
@@ -545,7 +563,7 @@ export class EventBusDataSource extends EventEmitter {
    */
   async getStatistics(timeRange?: { start: Date; end: Date }): Promise<EventStatistics> {
     try {
-      const timeFilter = timeRange 
+      const timeFilter = timeRange
         ? sql`WHERE timestamp >= ${timeRange.start}::timestamptz AND timestamp <= ${timeRange.end}::timestamptz`
         : sql``;
 
@@ -600,7 +618,9 @@ export class EventBusDataSource extends EventEmitter {
       // Calculate events per minute
       let eventsPerMinute = 0;
       if (totalRow.oldest_event && totalRow.newest_event) {
-        const timeDiff = new Date(totalRow.newest_event as string).getTime() - new Date(totalRow.oldest_event as string).getTime();
+        const timeDiff =
+          new Date(totalRow.newest_event as string).getTime() -
+          new Date(totalRow.oldest_event as string).getTime();
         const minutes = timeDiff / (1000 * 60);
         if (minutes > 0) {
           eventsPerMinute = parseInt(totalRow.total_events as string) / minutes;
@@ -657,10 +677,10 @@ export class EventBusDataSource extends EventEmitter {
   async injectEvent(event: EventBusEvent): Promise<void> {
     // Emit for real-time processing
     this.emit('event', event);
-    
+
     // Store in database
     await this.storeEvent(event);
-    
+
     // Emit stored event
     this.emit('event:stored', event);
   }
@@ -668,4 +688,3 @@ export class EventBusDataSource extends EventEmitter {
 
 // Export singleton instance
 export const eventBusDataSource = new EventBusDataSource();
-

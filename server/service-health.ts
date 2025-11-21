@@ -37,13 +37,15 @@ export async function checkAllServices(): Promise<ServiceHealthCheck[]> {
 async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
   try {
-    const result = await intelligenceDb.execute(sql`SELECT 1 as check, NOW() as current_time, version() as pg_version`);
+    const result = await intelligenceDb.execute(
+      sql`SELECT 1 as check, NOW() as current_time, version() as pg_version`
+    );
     const latency = Date.now() - startTime;
-    
+
     // Parse result (handle different return types)
-    const rows = Array.isArray(result) ? result : (result?.rows || result || []);
+    const rows = Array.isArray(result) ? result : result?.rows || result || [];
     const firstRow = rows[0] || {};
-    
+
     return {
       service: 'PostgreSQL',
       status: latency < 1000 ? 'up' : 'warning',
@@ -66,7 +68,7 @@ async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
 async function checkKafka(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
   const brokers = (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(',');
-  
+
   try {
     // Create a test Kafka client
     const kafka = new Kafka({
@@ -80,7 +82,7 @@ async function checkKafka(): Promise<ServiceHealthCheck> {
     const admin = kafka.admin();
     await admin.connect();
     const latency = Date.now() - startTime;
-    
+
     // Try to list topics to verify full connectivity
     try {
       const topics = await admin.listTopics();
@@ -95,7 +97,7 @@ async function checkKafka(): Promise<ServiceHealthCheck> {
           topicCount: topics.length,
         },
       };
-    } catch (listError) {
+    } catch {
       await admin.disconnect();
       // Connection worked but listing failed - still consider it up
       return {
@@ -125,7 +127,7 @@ async function checkKafka(): Promise<ServiceHealthCheck> {
 async function checkOmniarchon(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
   const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
-  
+
   try {
     const response = await fetch(`${omniarchonUrl}/health`, {
       method: 'GET',
@@ -180,7 +182,7 @@ async function checkOmniarchon(): Promise<ServiceHealthCheck> {
 async function checkEventConsumer(): Promise<ServiceHealthCheck> {
   try {
     const health = eventConsumer.getHealthStatus();
-    
+
     return {
       service: 'Event Consumer',
       status: health.status === 'healthy' ? 'up' : 'down',
@@ -198,4 +200,3 @@ async function checkEventConsumer(): Promise<ServiceHealthCheck> {
     };
   }
 }
-

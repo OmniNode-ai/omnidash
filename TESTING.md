@@ -75,6 +75,7 @@ describe('MyComponent', () => {
 ### 1. Always Clean Up Resources
 
 **Problem**: Query clients, timers, and components that aren't cleaned up cause:
+
 - Tests to hang indefinitely
 - Memory leaks that slow down test suites
 - Flaky tests due to state pollution
@@ -87,9 +88,9 @@ let queryClient: QueryClient | null = null;
 afterEach(async () => {
   // Clean up query client
   if (queryClient) {
-    queryClient.clear();              // Clear cache
+    queryClient.clear(); // Clear cache
     await queryClient.cancelQueries(); // Cancel in-flight queries
-    queryClient = null;               // Release reference
+    queryClient = null; // Release reference
   }
 
   // Clean up timers
@@ -101,6 +102,7 @@ afterEach(async () => {
 ### 2. Prevent Automatic Refetching
 
 **Problem**: TanStack Query automatically refetches data in many scenarios:
+
 - When window regains focus
 - At intervals (polling)
 - When data becomes stale
@@ -114,11 +116,11 @@ This causes tests to hang waiting for refetches that never complete.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: false,              // No retries on failure
-      refetchInterval: false,    // No polling
+      retry: false, // No retries on failure
+      refetchInterval: false, // No polling
       refetchOnWindowFocus: false, // No refetch on focus
-      gcTime: Infinity,          // Cache never expires
-      staleTime: Infinity,       // Data never stale
+      gcTime: Infinity, // Cache never expires
+      staleTime: Infinity, // Data never stale
     },
   },
 });
@@ -132,9 +134,9 @@ const queryClient = new QueryClient({
 
 ```typescript
 beforeEach(() => {
-  vi.clearAllMocks();        // Clear mock call history
-  vi.useRealTimers();        // Reset to real timers
-  localStorage.clear();      // Clear localStorage mocks
+  vi.clearAllMocks(); // Clear mock call history
+  vi.useRealTimers(); // Reset to real timers
+  localStorage.clear(); // Clear localStorage mocks
   // Reset any module-level state
 });
 ```
@@ -181,6 +183,7 @@ it('handles retry logic', async () => {
 ### ❌ Creating Query Clients Without Cleanup
 
 **Bad Example**:
+
 ```typescript
 function render() {
   const queryClient = new QueryClient(); // Lost reference!
@@ -190,6 +193,7 @@ function render() {
 ```
 
 **Good Example**:
+
 ```typescript
 let queryClient: QueryClient | null = null;
 
@@ -202,7 +206,9 @@ afterEach(async () => {
 });
 
 it('test', () => {
-  queryClient = new QueryClient({ /* config */ });
+  queryClient = new QueryClient({
+    /* config */
+  });
   // Now we can clean it up
 });
 ```
@@ -210,6 +216,7 @@ it('test', () => {
 ### ❌ Forgetting to Unmount Components
 
 **Bad Example**:
+
 ```typescript
 it('test', () => {
   render(<Component />);
@@ -219,6 +226,7 @@ it('test', () => {
 ```
 
 **Good Example**:
+
 ```typescript
 it('test', () => {
   const result = render(<Component />);
@@ -232,6 +240,7 @@ it('test', () => {
 ### ❌ Inconsistent Query Configuration
 
 **Bad Example**:
+
 ```typescript
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -241,6 +250,7 @@ const queryClient = new QueryClient({
 ```
 
 **Good Example**:
+
 ```typescript
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -258,6 +268,7 @@ const queryClient = new QueryClient({
 ### ❌ Not Resetting Timers
 
 **Bad Example**:
+
 ```typescript
 beforeEach(() => {
   vi.clearAllMocks();
@@ -266,6 +277,7 @@ beforeEach(() => {
 ```
 
 **Good Example**:
+
 ```typescript
 beforeEach(() => {
   vi.clearAllMocks();
@@ -281,6 +293,7 @@ afterEach(() => {
 ### ❌ Mocking After Import
 
 **Bad Example**:
+
 ```typescript
 import { myFunction } from './module';
 
@@ -290,6 +303,7 @@ vi.mock('./module', () => ({
 ```
 
 **Good Example**:
+
 ```typescript
 vi.mock('./module', () => ({
   myFunction: vi.fn(),
@@ -407,6 +421,7 @@ describe('MyPage', () => {
 ```
 
 **Key Points**:
+
 - Track `queryClient` at module level
 - Use `renderWithClient` helper function
 - Clean up in `afterEach`
@@ -446,6 +461,7 @@ describe('MyComponent', () => {
 ```
 
 **Key Points**:
+
 - No query client needed
 - Still unmount components
 - Keep tests simple and focused
@@ -471,11 +487,7 @@ describe('MyDataSource', () => {
       { id: 2, name: 'Item 2' },
     ];
 
-    setupFetchMock(
-      new Map([
-        ['/api/items', createMockResponse(mockData)],
-      ])
-    );
+    setupFetchMock(new Map([['/api/items', createMockResponse(mockData)]]));
 
     const result = await myDataSource.fetchItems();
 
@@ -484,11 +496,7 @@ describe('MyDataSource', () => {
   });
 
   it('returns mock data on API failure', async () => {
-    setupFetchMock(
-      new Map([
-        ['/api/items', createMockResponse(null, { status: 500 })],
-      ])
-    );
+    setupFetchMock(new Map([['/api/items', createMockResponse(null, { status: 500 })]]));
 
     const result = await myDataSource.fetchItems();
 
@@ -499,6 +507,7 @@ describe('MyDataSource', () => {
 ```
 
 **Key Points**:
+
 - Reset fetch mocks in `beforeEach`
 - Test both success and failure cases
 - Verify `isMock` flag correctly
@@ -558,9 +567,7 @@ describe('EventConsumer', () => {
   it('handles retry logic with fake timers', async () => {
     vi.useFakeTimers();
 
-    mockConnect
-      .mockRejectedValueOnce(new Error('Failed'))
-      .mockResolvedValueOnce(undefined);
+    mockConnect.mockRejectedValueOnce(new Error('Failed')).mockResolvedValueOnce(undefined);
 
     const connectPromise = consumer.connectWithRetry(3);
 
@@ -577,6 +584,7 @@ describe('EventConsumer', () => {
 ```
 
 **Key Points**:
+
 - Use `vi.hoisted()` for mocks needed during module load
 - Mock BEFORE importing
 - Clean up instances in `afterEach`
@@ -641,17 +649,20 @@ describe('MyComponent', () => {
 ### Tests Hang Indefinitely
 
 **Symptoms**:
+
 - Test suite never completes
 - Tests stuck in "RUNNING" state
 - No error messages
 
 **Likely Causes**:
+
 1. Query client not cleaned up
 2. Polling enabled (`refetchInterval` not false)
 3. Timers not reset between tests
 4. Component not unmounted
 
 **Solutions**:
+
 ```typescript
 // 1. Add query client cleanup
 afterEach(async () => {
@@ -690,17 +701,20 @@ result.unmount();
 ### Memory Leaks
 
 **Symptoms**:
+
 - Test suite gets progressively slower
 - High memory usage
 - "Exceeded timeout" errors
 
 **Likely Causes**:
+
 1. Query clients not released
 2. Event listeners not removed
 3. Intervals/timeouts not cleared
 4. Large objects held in closures
 
 **Solutions**:
+
 ```typescript
 // Track all resources
 let queryClient: QueryClient | null = null;
@@ -727,17 +741,20 @@ afterEach(async () => {
 ### Flaky Tests
 
 **Symptoms**:
+
 - Tests pass sometimes, fail other times
 - Different results on different runs
 - Race conditions
 
 **Likely Causes**:
+
 1. State pollution between tests
 2. Timing issues with async operations
 3. Mock state not reset
 4. Shared module state
 
 **Solutions**:
+
 ```typescript
 // 1. Reset all state
 beforeEach(() => {
@@ -747,9 +764,12 @@ beforeEach(() => {
 });
 
 // 2. Use waitFor with appropriate timeouts
-await waitFor(() => {
-  expect(screen.getByText('Expected')).toBeInTheDocument();
-}, { timeout: 5000 });
+await waitFor(
+  () => {
+    expect(screen.getByText('Expected')).toBeInTheDocument();
+  },
+  { timeout: 5000 }
+);
 
 // 3. Reset mocks properly
 beforeEach(() => {
@@ -776,12 +796,14 @@ beforeEach(() => {
 ### "Cannot access X before initialization"
 
 **Symptoms**:
+
 - ReferenceError during test setup
 - Mocks not working
 
 **Likely Cause**: Importing before mocking
 
 **Solution**:
+
 ```typescript
 // ❌ Bad: Import before mock
 import { myFunction } from './module';
@@ -797,10 +819,12 @@ import { myFunction } from './module';
 ### Fake Timers Not Advancing
 
 **Symptoms**:
+
 - Tests timeout when using `vi.useFakeTimers()`
 - Promises never resolve
 
 **Solution**:
+
 ```typescript
 it('handles delayed operations', async () => {
   vi.useFakeTimers();
@@ -851,10 +875,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: false,
-      refetchInterval: false,        // Add these
-      refetchOnWindowFocus: false,   // Add these
-      gcTime: Infinity,              // Add these
-      staleTime: Infinity,           // Add these
+      refetchInterval: false, // Add these
+      refetchOnWindowFocus: false, // Add these
+      gcTime: Infinity, // Add these
+      staleTime: Infinity, // Add these
     },
   },
 });
@@ -947,6 +971,7 @@ These test files demonstrate all best practices:
 ### Global Test Setup
 
 See `client/src/tests/setup.ts` for global test configuration:
+
 - ResizeObserver mock
 - matchMedia mock
 - localStorage mock

@@ -18,6 +18,7 @@ With the new Event Bus Data Source implementation, we can create powerful new UI
 A dedicated dashboard for exploring and analyzing events from the event bus.
 
 **Features**:
+
 - **Event Query Interface**: Filter by event type, tenant, namespace, correlation_id, time range
 - **Event Chain Visualization**: Visual timeline showing event chains with correlation/causation relationships
 - **Real-time Event Stream**: Live feed of events as they arrive
@@ -27,6 +28,7 @@ A dedicated dashboard for exploring and analyzing events from the event bus.
 - **Event Details Modal**: Click any event to see full payload, metadata, and related events
 
 **Components Needed**:
+
 - `EventBusExplorer.tsx` - Main page
 - `EventChainVisualization.tsx` - Timeline component for event chains
 - `EventQueryBuilder.tsx` - Advanced filter UI
@@ -42,12 +44,14 @@ A dedicated dashboard for exploring and analyzing events from the event bus.
 Improve the existing `EventFlow.tsx` to use the new event bus data source.
 
 **Current Issues**:
+
 - Uses old `eventFlowSource` that may not have all event types
 - Limited filtering capabilities
 - No event chain visualization
 - Basic event display
 
 **Improvements**:
+
 - ✅ Integrate with `/api/event-bus/events` endpoint
 - ✅ Add event type filter dropdown
 - ✅ Add correlation_id search
@@ -64,6 +68,7 @@ Improve the existing `EventFlow.tsx` to use the new event bus data source.
 A new component to visualize event chains and their relationships.
 
 **Features**:
+
 - **Timeline View**: Horizontal timeline showing event sequence
 - **Causation Links**: Visual lines connecting events via `causation_id`
 - **Correlation Groups**: Group events by `correlation_id`
@@ -72,6 +77,7 @@ A new component to visualize event chains and their relationships.
 - **Export Chain**: Export entire event chain as JSON
 
 **Visual Design**:
+
 ```
 [Requested] ──→ [Started] ──→ [Completed]
    ↓              ↓              ↓
@@ -87,6 +93,7 @@ correlation_id  causation_id  causation_id
 A reusable widget showing event bus statistics.
 
 **Features**:
+
 - Total events count
 - Events by type (pie chart)
 - Events by tenant (bar chart)
@@ -105,12 +112,14 @@ A reusable widget showing event bus statistics.
 Improve the existing `EventFeed.tsx` component.
 
 **Current Limitations**:
+
 - Basic event display
 - Limited filtering
 - No event chain grouping
 - No correlation/causation visualization
 
 **Improvements**:
+
 - ✅ Group events by correlation_id
 - ✅ Show causation relationships
 - ✅ Filter by event type
@@ -127,6 +136,7 @@ Improve the existing `EventFeed.tsx` component.
 Create a consistent badge system for event types.
 
 **Features**:
+
 - Color coding by domain (intelligence, agent, code, metadata, etc.)
 - Icon per domain
 - Hover tooltip with event description
@@ -136,6 +146,7 @@ Create a consistent badge system for event types.
 **Component**: `EventTypeBadge.tsx`
 
 **Color Scheme**:
+
 - Intelligence: Blue
 - Agent: Green
 - Code: Purple
@@ -152,6 +163,7 @@ Create a consistent badge system for event types.
 A powerful search and filter component.
 
 **Features**:
+
 - Search by event type (autocomplete)
 - Search by correlation_id
 - Search by tenant_id
@@ -170,6 +182,7 @@ A powerful search and filter component.
 Enhance the existing `EventDetailModal.tsx` to show event bus specific data.
 
 **New Features**:
+
 - Show full event envelope (event_type, event_id, timestamp, tenant_id, etc.)
 - Show correlation_id and causation_id with links
 - Show related events (same correlation_id)
@@ -188,6 +201,7 @@ Enhance the existing `EventDetailModal.tsx` to show event bus specific data.
 A status indicator showing event bus connectivity.
 
 **Features**:
+
 - Connection status (connected/disconnected)
 - Last event timestamp
 - Events per minute
@@ -203,6 +217,7 @@ A status indicator showing event bus connectivity.
 A chart showing event type distribution over time.
 
 **Features**:
+
 - Stacked area chart
 - Time range selector
 - Filter by tenant
@@ -218,6 +233,7 @@ A chart showing event type distribution over time.
 A dedicated view for exploring event correlations.
 
 **Features**:
+
 - Search by correlation_id
 - Show all events in a correlation
 - Visual timeline
@@ -233,6 +249,7 @@ A dedicated view for exploring event correlations.
 A better way to view event payloads.
 
 **Features**:
+
 - Syntax-highlighted JSON
 - Collapsible sections
 - Search within payload
@@ -260,21 +277,25 @@ Update existing dashboards to optionally use event bus data:
 ## 🎯 Implementation Priority
 
 ### Phase 1 (High Impact, Low Effort)
+
 1. ✅ Enhanced Event Flow Dashboard (integrate new API)
 2. ✅ Event Statistics Widget
 3. ✅ Event Search & Filter Bar
 
 ### Phase 2 (High Impact, Medium Effort)
+
 4. ✅ Event Bus Explorer Dashboard
 5. ✅ Event Chain Visualization
 6. ✅ Enhanced Event Feed Component
 
 ### Phase 3 (Medium Impact, Medium Effort)
+
 7. ✅ Event Type Badge System
 8. ✅ Event Detail Modal Enhancement
 9. ✅ Event Bus Health Indicator
 
 ### Phase 4 (Nice to Have)
+
 10. ✅ Event Type Distribution Chart
 11. ✅ Event Correlation Explorer
 12. ✅ Event Payload Viewer
@@ -285,23 +306,27 @@ Update existing dashboards to optionally use event bus data:
 ## 🎨 Design Considerations
 
 ### Color Scheme
+
 - Use consistent colors for event domains
 - Status colors: success (green), error (red), warning (yellow), info (blue)
 - Use opacity for hover states
 - Dark mode support
 
 ### Typography
+
 - Monospace font for event IDs, correlation IDs
 - Regular font for event messages
 - Small font for timestamps
 
 ### Interactions
+
 - Smooth transitions for real-time updates
 - Loading states for queries
 - Error states with retry
 - Empty states with helpful messages
 
 ### Performance
+
 - Virtual scrolling for large event lists
 - Debounced search/filter
 - Pagination for event queries
@@ -343,16 +368,16 @@ client/src/
 ```typescript
 class EventBusSource {
   // Query events with filters
-  async queryEvents(options: EventQueryOptions): Promise<EventBusEvent[]>
-  
+  async queryEvents(options: EventQueryOptions): Promise<EventBusEvent[]>;
+
   // Get statistics
-  async getStatistics(timeRange?: TimeRange): Promise<EventStatistics>
-  
+  async getStatistics(timeRange?: TimeRange): Promise<EventStatistics>;
+
   // Get status
-  async getStatus(): Promise<EventBusStatus>
-  
+  async getStatus(): Promise<EventBusStatus>;
+
   // Get event chain by correlation_id
-  async getEventChain(correlationId: string): Promise<EventBusEvent[]>
+  async getEventChain(correlationId: string): Promise<EventBusEvent[]>;
 }
 ```
 
@@ -388,6 +413,6 @@ class EventBusSource {
 ---
 
 **See Also**:
+
 - `EVENT_BUS_DATA_SOURCE_IMPLEMENTATION.md` - API documentation
 - `EVENT_TO_COMPONENT_MAPPING.md` - Event mapping reference
-

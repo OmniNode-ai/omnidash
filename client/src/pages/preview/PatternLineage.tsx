@@ -1,29 +1,27 @@
-import React, { useState, useMemo } from "react";
-import { MockDataBadge } from "@/components/MockDataBadge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UnifiedGraph, type GraphNode, type GraphEdge } from "@/components/UnifiedGraph";
+import React, { useState, useMemo } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { UnifiedGraph, type GraphNode, type GraphEdge } from '@/components/UnifiedGraph';
 import {
   Clock,
-  Search,
-  Download,
-  RefreshCw,
-  Settings,
   GitBranch,
   TrendingUp,
   AlertTriangle,
   CheckCircle,
-  ArrowRight,
-  Code,
   Users,
   Calendar,
   Activity,
-  Zap
-} from "lucide-react";
+} from 'lucide-react';
 
 interface PatternVersion {
   version: string;
@@ -48,316 +46,311 @@ interface PatternEvolution {
 }
 
 const PatternLineage: React.FC = () => {
-  const [activeView, setActiveView] = useState("timeline");
-  const [selectedPattern, setSelectedPattern] = useState<string>("auth-pattern");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
+  const [activeView, setActiveView] = useState('timeline');
+  const [selectedPattern, setSelectedPattern] = useState<string>('auth-pattern');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
 
   // Mock data for pattern evolution - showing version history over time
   const patternEvolutions: PatternEvolution[] = [
     {
-      id: "auth-pattern",
-      name: "Authentication Pattern",
-      category: "Security",
-      description: "Centralized authentication logic with JWT token management",
-      firstVersion: "1.0.0",
-      currentVersion: "2.1.0",
+      id: 'auth-pattern',
+      name: 'Authentication Pattern',
+      category: 'Security',
+      description: 'Centralized authentication logic with JWT token management',
+      firstVersion: '1.0.0',
+      currentVersion: '2.1.0',
       totalVersions: 8,
       versions: [
         {
-          version: "2.1.0",
-          date: "2024-01-15",
+          version: '2.1.0',
+          date: '2024-01-15',
           changes: [
-            "Added OAuth2 support",
-            "Improved JWT validation with better error messages",
-            "Added support for refresh tokens",
-            "Performance optimization for token verification"
+            'Added OAuth2 support',
+            'Improved JWT validation with better error messages',
+            'Added support for refresh tokens',
+            'Performance optimization for token verification',
           ],
           breaking: false,
           performance: 95,
           stability: 98,
-          author: "Team Alpha",
-          status: 'current'
+          author: 'Team Alpha',
+          status: 'current',
         },
         {
-          version: "2.0.0",
-          date: "2023-12-01",
+          version: '2.0.0',
+          date: '2023-12-01',
           changes: [
-            "Major API redesign for better usability",
-            "Migrated from sessions to JWT tokens",
-            "Added multi-factor authentication support",
-            "Breaking: Changed authentication middleware signature"
+            'Major API redesign for better usability',
+            'Migrated from sessions to JWT tokens',
+            'Added multi-factor authentication support',
+            'Breaking: Changed authentication middleware signature',
           ],
           breaking: true,
           performance: 90,
           stability: 95,
-          author: "Team Alpha",
-          status: 'deprecated'
+          author: 'Team Alpha',
+          status: 'deprecated',
         },
         {
-          version: "1.9.0",
-          date: "2023-11-15",
+          version: '1.9.0',
+          date: '2023-11-15',
           changes: [
-            "Fixed memory leak in session management",
-            "Performance improvements for token validation",
-            "Added logging for authentication failures"
+            'Fixed memory leak in session management',
+            'Performance improvements for token validation',
+            'Added logging for authentication failures',
           ],
           breaking: false,
           performance: 88,
           stability: 92,
-          author: "Team Alpha",
-          status: 'deprecated'
+          author: 'Team Alpha',
+          status: 'deprecated',
         },
         {
-          version: "1.8.0",
-          date: "2023-10-20",
+          version: '1.8.0',
+          date: '2023-10-20',
           changes: [
-            "Added support for custom authentication strategies",
-            "Improved error handling"
+            'Added support for custom authentication strategies',
+            'Improved error handling',
           ],
           breaking: false,
           performance: 85,
           stability: 90,
-          author: "Team Alpha",
-          status: 'legacy'
+          author: 'Team Alpha',
+          status: 'legacy',
         },
         {
-          version: "1.7.0",
-          date: "2023-09-10",
-          changes: [
-            "Added password reset functionality",
-            "Improved session security"
-          ],
+          version: '1.7.0',
+          date: '2023-09-10',
+          changes: ['Added password reset functionality', 'Improved session security'],
           breaking: false,
           performance: 82,
           stability: 88,
-          author: "Team Beta",
-          status: 'legacy'
-        }
-      ]
+          author: 'Team Beta',
+          status: 'legacy',
+        },
+      ],
     },
     {
-      id: "error-handling",
-      name: "Error Handling",
-      category: "Error Management",
-      description: "Standardized error handling and exception management",
-      firstVersion: "1.0.0",
-      currentVersion: "1.8.2",
+      id: 'error-handling',
+      name: 'Error Handling',
+      category: 'Error Management',
+      description: 'Standardized error handling and exception management',
+      firstVersion: '1.0.0',
+      currentVersion: '1.8.2',
       totalVersions: 6,
       versions: [
         {
-          version: "1.8.2",
-          date: "2024-01-10",
+          version: '1.8.2',
+          date: '2024-01-10',
           changes: [
-            "Fixed memory leak in error aggregation",
-            "Added new error types for network failures",
-            "Improved error context propagation"
+            'Fixed memory leak in error aggregation',
+            'Added new error types for network failures',
+            'Improved error context propagation',
           ],
           breaking: false,
           performance: 88,
           stability: 95,
-          author: "Team Beta",
-          status: 'current'
+          author: 'Team Beta',
+          status: 'current',
         },
         {
-          version: "1.8.0",
-          date: "2023-12-20",
+          version: '1.8.0',
+          date: '2023-12-20',
           changes: [
-            "Enhanced logging integration",
-            "Better error context with stack traces",
-            "Added error categorization"
+            'Enhanced logging integration',
+            'Better error context with stack traces',
+            'Added error categorization',
           ],
           breaking: false,
           performance: 85,
           stability: 90,
-          author: "Team Beta",
-          status: 'deprecated'
+          author: 'Team Beta',
+          status: 'deprecated',
         },
         {
-          version: "1.7.0",
-          date: "2023-11-05",
-          changes: [
-            "Added async error handling support",
-            "Improved error reporting"
-          ],
+          version: '1.7.0',
+          date: '2023-11-05',
+          changes: ['Added async error handling support', 'Improved error reporting'],
           breaking: false,
           performance: 82,
           stability: 88,
-          author: "Team Beta",
-          status: 'legacy'
-        }
-      ]
+          author: 'Team Beta',
+          status: 'legacy',
+        },
+      ],
     },
     {
-      id: "data-validation",
-      name: "Data Validation",
-      category: "Data Management",
-      description: "Comprehensive data validation with schema-based rules",
-      firstVersion: "1.0.0",
-      currentVersion: "3.0.1",
+      id: 'data-validation',
+      name: 'Data Validation',
+      category: 'Data Management',
+      description: 'Comprehensive data validation with schema-based rules',
+      firstVersion: '1.0.0',
+      currentVersion: '3.0.1',
       totalVersions: 10,
       versions: [
         {
-          version: "3.0.1",
-          date: "2024-01-20",
+          version: '3.0.1',
+          date: '2024-01-20',
           changes: [
-            "Fixed bug in array validation",
-            "Performance optimization for large objects",
-            "Added custom error messages"
+            'Fixed bug in array validation',
+            'Performance optimization for large objects',
+            'Added custom error messages',
           ],
           breaking: false,
           performance: 92,
           stability: 97,
-          author: "Team Gamma",
-          status: 'current'
+          author: 'Team Gamma',
+          status: 'current',
         },
         {
-          version: "3.0.0",
-          date: "2024-01-05",
+          version: '3.0.0',
+          date: '2024-01-05',
           changes: [
-            "Complete rewrite using Zod schema validation",
-            "Breaking: Changed validation API",
-            "Added TypeScript type inference",
-            "50% performance improvement"
+            'Complete rewrite using Zod schema validation',
+            'Breaking: Changed validation API',
+            'Added TypeScript type inference',
+            '50% performance improvement',
           ],
           breaking: true,
           performance: 90,
           stability: 93,
-          author: "Team Gamma",
-          status: 'deprecated'
+          author: 'Team Gamma',
+          status: 'deprecated',
         },
         {
-          version: "2.5.0",
-          date: "2023-12-10",
-          changes: [
-            "Added async validation support",
-            "Improved error messages"
-          ],
+          version: '2.5.0',
+          date: '2023-12-10',
+          changes: ['Added async validation support', 'Improved error messages'],
           breaking: false,
           performance: 78,
           stability: 90,
-          author: "Team Gamma",
-          status: 'legacy'
-        }
-      ]
+          author: 'Team Gamma',
+          status: 'legacy',
+        },
+      ],
     },
     {
-      id: "api-pattern",
-      name: "API Response Pattern",
-      category: "API Design",
-      description: "Standardized API response format and status handling",
-      firstVersion: "1.0.0",
-      currentVersion: "2.3.0",
+      id: 'api-pattern',
+      name: 'API Response Pattern',
+      category: 'API Design',
+      description: 'Standardized API response format and status handling',
+      firstVersion: '1.0.0',
+      currentVersion: '2.3.0',
       totalVersions: 7,
       versions: [
         {
-          version: "2.3.0",
-          date: "2024-01-18",
+          version: '2.3.0',
+          date: '2024-01-18',
           changes: [
-            "Added pagination support",
-            "Improved response compression",
-            "Added response caching headers"
+            'Added pagination support',
+            'Improved response compression',
+            'Added response caching headers',
           ],
           breaking: false,
           performance: 90,
           stability: 95,
-          author: "Team Delta",
-          status: 'current'
+          author: 'Team Delta',
+          status: 'current',
         },
         {
-          version: "2.2.0",
-          date: "2023-12-15",
-          changes: [
-            "Added HATEOAS links support",
-            "Improved error response format"
-          ],
+          version: '2.2.0',
+          date: '2023-12-15',
+          changes: ['Added HATEOAS links support', 'Improved error response format'],
           breaking: false,
           performance: 88,
           stability: 92,
-          author: "Team Delta",
-          status: 'deprecated'
-        }
-      ]
+          author: 'Team Delta',
+          status: 'deprecated',
+        },
+      ],
     },
     {
-      id: "caching-pattern",
-      name: "Caching Pattern",
-      category: "Performance",
-      description: "Multi-layer caching with intelligent invalidation",
-      firstVersion: "1.0.0",
-      currentVersion: "2.0.0",
+      id: 'caching-pattern',
+      name: 'Caching Pattern',
+      category: 'Performance',
+      description: 'Multi-layer caching with intelligent invalidation',
+      firstVersion: '1.0.0',
+      currentVersion: '2.0.0',
       totalVersions: 5,
       versions: [
         {
-          version: "2.0.0",
-          date: "2024-01-14",
+          version: '2.0.0',
+          date: '2024-01-14',
           changes: [
-            "Complete redesign with Redis support",
-            "Breaking: Changed cache key format",
-            "Added distributed caching",
-            "75% performance improvement"
+            'Complete redesign with Redis support',
+            'Breaking: Changed cache key format',
+            'Added distributed caching',
+            '75% performance improvement',
           ],
           breaking: true,
           performance: 98,
           stability: 96,
-          author: "Team Epsilon",
-          status: 'current'
+          author: 'Team Epsilon',
+          status: 'current',
         },
         {
-          version: "1.5.0",
-          date: "2023-11-20",
-          changes: [
-            "Added LRU cache strategy",
-            "Improved cache invalidation"
-          ],
+          version: '1.5.0',
+          date: '2023-11-20',
+          changes: ['Added LRU cache strategy', 'Improved cache invalidation'],
           breaking: false,
           performance: 85,
           stability: 90,
-          author: "Team Epsilon",
-          status: 'legacy'
-        }
-      ]
-    }
+          author: 'Team Epsilon',
+          status: 'legacy',
+        },
+      ],
+    },
   ];
 
-  const filteredPatterns = patternEvolutions.filter(pattern => {
-    const matchesSearch = pattern.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         pattern.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === "all" || pattern.category === filterCategory;
+  const filteredPatterns = patternEvolutions.filter((pattern) => {
+    const matchesSearch =
+      pattern.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pattern.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = filterCategory === 'all' || pattern.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const selectedPatternData = patternEvolutions.find(p => p.id === selectedPattern);
+  const selectedPatternData = patternEvolutions.find((p) => p.id === selectedPattern);
 
   // Memoize layout config to prevent infinite re-renders
   const hierarchyLayout = useMemo(() => ({ type: 'hierarchy' as const }), []);
 
   // Memoize color scheme to prevent infinite re-renders
-  const graphColorScheme = useMemo(() => ({
-    breaking: '#ef4444',
-    evolution: '#3b82f6',
-    current: '#10b981',
-    deprecated: '#f59e0b',
-    legacy: '#6b7280'
-  }), []);
+  const graphColorScheme = useMemo(
+    () => ({
+      breaking: '#ef4444',
+      evolution: '#3b82f6',
+      current: '#10b981',
+      deprecated: '#f59e0b',
+      legacy: '#6b7280',
+    }),
+    []
+  );
 
   // Convert pattern evolution to graph format for tree view
-  const graphNodes: GraphNode[] = selectedPatternData?.versions.map((version, index) => ({
-    id: `${selectedPattern}-${version.version}`,
-    label: `v${version.version}`,
-    type: version.status,
-    color: version.status === 'current' ? '#10b981' : version.status === 'deprecated' ? '#f59e0b' : '#6b7280',
-    size: Math.max(30, version.stability * 0.6), // Increased minimum size for better readability
-    metadata: {
-      version: version.version,
-      date: version.date,
-      changes: version.changes.length,
-      breaking: version.breaking,
-      performance: version.performance,
-      stability: version.stability,
-      author: version.author
-    }
-  })) || [];
+  const graphNodes: GraphNode[] =
+    selectedPatternData?.versions.map((version) => ({
+      id: `${selectedPattern}-${version.version}`,
+      label: `v${version.version}`,
+      type: version.status,
+      color:
+        version.status === 'current'
+          ? '#10b981'
+          : version.status === 'deprecated'
+            ? '#f59e0b'
+            : '#6b7280',
+      size: Math.max(30, version.stability * 0.6), // Increased minimum size for better readability
+      metadata: {
+        version: version.version,
+        date: version.date,
+        changes: version.changes.length,
+        breaking: version.breaking,
+        performance: version.performance,
+        stability: version.stability,
+        author: version.author,
+      },
+    })) || [];
 
   // Create edges showing version progression with labels
   const graphEdges: GraphEdge[] = [];
@@ -370,9 +363,13 @@ const PatternLineage: React.FC = () => {
       let label = 'evolved to';
       if (current.breaking) {
         label = 'breaking →';
-      } else if (current.changes.some(c => c.toLowerCase().includes('fix'))) {
+      } else if (current.changes.some((c) => c.toLowerCase().includes('fix'))) {
         label = 'fixed in';
-      } else if (current.changes.some(c => c.toLowerCase().includes('optimize') || c.toLowerCase().includes('performance'))) {
+      } else if (
+        current.changes.some(
+          (c) => c.toLowerCase().includes('optimize') || c.toLowerCase().includes('performance')
+        )
+      ) {
         label = 'optimized →';
       }
 
@@ -381,7 +378,7 @@ const PatternLineage: React.FC = () => {
         target: `${selectedPattern}-${current.version}`,
         weight: current.breaking ? 1 : 0.5,
         type: current.breaking ? 'breaking' : 'evolution',
-        label: label
+        label: label,
       });
     }
   }
@@ -438,22 +435,22 @@ const PatternLineage: React.FC = () => {
       {/* View Toggle */}
       <div className="flex gap-2">
         <Button
-          variant={activeView === "timeline" ? "default" : "outline"}
-          onClick={() => setActiveView("timeline")}
+          variant={activeView === 'timeline' ? 'default' : 'outline'}
+          onClick={() => setActiveView('timeline')}
         >
           <Clock className="w-4 h-4 mr-2" />
           Timeline View
         </Button>
         <Button
-          variant={activeView === "tree" ? "default" : "outline"}
-          onClick={() => setActiveView("tree")}
+          variant={activeView === 'tree' ? 'default' : 'outline'}
+          onClick={() => setActiveView('tree')}
         >
           <GitBranch className="w-4 h-4 mr-2" />
           Tree View
         </Button>
         <Button
-          variant={activeView === "comparison" ? "default" : "outline"}
-          onClick={() => setActiveView("comparison")}
+          variant={activeView === 'comparison' ? 'default' : 'outline'}
+          onClick={() => setActiveView('comparison')}
         >
           <Activity className="w-4 h-4 mr-2" />
           Version Comparison
@@ -495,7 +492,7 @@ const PatternLineage: React.FC = () => {
       )}
 
       {/* Timeline View */}
-      {activeView === "timeline" && selectedPatternData && (
+      {activeView === 'timeline' && selectedPatternData && (
         <Card>
           <CardHeader>
             <CardTitle>Version Timeline</CardTitle>
@@ -515,13 +512,15 @@ const PatternLineage: React.FC = () => {
                   <div className="flex gap-4">
                     {/* Timeline dot */}
                     <div className="flex flex-col items-center">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                        version.status === 'current'
-                          ? 'bg-green-100 text-green-600'
-                          : version.status === 'deprecated'
-                          ? 'bg-orange-100 text-orange-600'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
+                      <div
+                        className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                          version.status === 'current'
+                            ? 'bg-green-100 text-green-600'
+                            : version.status === 'deprecated'
+                              ? 'bg-orange-100 text-orange-600'
+                              : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
                         {version.status === 'current' ? (
                           <CheckCircle className="w-6 h-6" />
                         ) : version.breaking ? (
@@ -561,7 +560,9 @@ const PatternLineage: React.FC = () => {
                           <div className="text-sm font-medium">Changes:</div>
                           <ul className="list-disc list-inside space-y-1">
                             {version.changes.map((change, i) => (
-                              <li key={i} className="text-sm text-muted-foreground">{change}</li>
+                              <li key={i} className="text-sm text-muted-foreground">
+                                {change}
+                              </li>
                             ))}
                           </ul>
                         </div>
@@ -603,7 +604,7 @@ const PatternLineage: React.FC = () => {
       )}
 
       {/* Tree View */}
-      {activeView === "tree" && selectedPatternData && (
+      {activeView === 'tree' && selectedPatternData && (
         <Card>
           <CardHeader>
             <CardTitle>Version Tree</CardTitle>
@@ -627,93 +628,109 @@ const PatternLineage: React.FC = () => {
       )}
 
       {/* Version Comparison View */}
-      {activeView === "comparison" && selectedPatternData && selectedPatternData.versions.length >= 2 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Version Comparison</CardTitle>
-            <CardDescription>
-              Compare metrics and changes between different versions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {selectedPatternData.versions.slice(0, 2).map((version) => (
-                <div key={version.version} className="border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <h3 className="text-lg font-semibold">v{version.version}</h3>
-                    <Badge variant={version.status === 'current' ? 'default' : 'secondary'}>
-                      {version.status}
-                    </Badge>
-                  </div>
+      {activeView === 'comparison' &&
+        selectedPatternData &&
+        selectedPatternData.versions.length >= 2 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Version Comparison</CardTitle>
+              <CardDescription>
+                Compare metrics and changes between different versions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedPatternData.versions.slice(0, 2).map((version) => (
+                  <div key={version.version} className="border rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <h3 className="text-lg font-semibold">v{version.version}</h3>
+                      <Badge variant={version.status === 'current' ? 'default' : 'secondary'}>
+                        {version.status}
+                      </Badge>
+                    </div>
 
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">Release Date</div>
-                      <div className="text-sm">{version.date}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">Author</div>
-                      <div className="text-sm">{version.author}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">Performance</div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-muted rounded-full h-2">
-                          <div
-                            className="bg-green-600 h-2 rounded-full"
-                            style={{ width: `${version.performance}%` }}
-                          />
+                    <div className="space-y-3">
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">
+                          Release Date
                         </div>
-                        <span className="text-sm font-medium">{version.performance}%</span>
+                        <div className="text-sm">{version.date}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">Author</div>
+                        <div className="text-sm">{version.author}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">
+                          Performance
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-muted rounded-full h-2">
+                            <div
+                              className="bg-green-600 h-2 rounded-full"
+                              style={{ width: `${version.performance}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium">{version.performance}%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">
+                          Stability
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-muted rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{ width: `${version.stability}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium">{version.stability}%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">
+                          Changes ({version.changes.length})
+                        </div>
+                        <ul className="list-disc list-inside space-y-1 text-sm">
+                          {version.changes.slice(0, 3).map((change, i) => (
+                            <li key={i} className="text-muted-foreground">
+                              {change}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">Stability</div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-muted rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${version.stability}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium">{version.stability}%</span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">Changes ({version.changes.length})</div>
-                      <ul className="list-disc list-inside space-y-1 text-sm">
-                        {version.changes.slice(0, 3).map((change, i) => (
-                          <li key={i} className="text-muted-foreground">{change}</li>
-                        ))}
-                      </ul>
-                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {selectedPatternData.versions.length >= 2 && (
-              <div className="mt-4 p-4 bg-muted rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
-                  <h4 className="font-semibold">Key Improvements</h4>
-                </div>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>
-                    Performance: +{selectedPatternData.versions[0].performance - selectedPatternData.versions[1].performance}%
-                  </li>
-                  <li>
-                    Stability: +{selectedPatternData.versions[0].stability - selectedPatternData.versions[1].stability}%
-                  </li>
-                  <li>
-                    {selectedPatternData.versions[0].changes.length} new changes
-                  </li>
-                </ul>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+
+              {selectedPatternData.versions.length >= 2 && (
+                <div className="mt-4 p-4 bg-muted rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="w-5 h-5 text-green-600" />
+                    <h4 className="font-semibold">Key Improvements</h4>
+                  </div>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    <li>
+                      Performance: +
+                      {selectedPatternData.versions[0].performance -
+                        selectedPatternData.versions[1].performance}
+                      %
+                    </li>
+                    <li>
+                      Stability: +
+                      {selectedPatternData.versions[0].stability -
+                        selectedPatternData.versions[1].stability}
+                      %
+                    </li>
+                    <li>{selectedPatternData.versions[0].changes.length} new changes</li>
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
     </div>
   );
 };

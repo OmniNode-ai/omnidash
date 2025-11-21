@@ -15,9 +15,10 @@ test.describe('Key UI Components', () => {
 
   test('should match metric card component', async ({ page }) => {
     // Find first metric card
-    const metricCard = page.locator('[data-testid="metric-card"]').first().or(
-      page.locator('.rounded-lg.border').first()
-    );
+    const metricCard = page
+      .locator('[data-testid="metric-card"]')
+      .first()
+      .or(page.locator('.rounded-lg.border').first());
 
     if (await metricCard.isVisible().catch(() => false)) {
       await expect(metricCard).toHaveScreenshot('component-metric-card.png');
@@ -36,9 +37,9 @@ test.describe('Key UI Components', () => {
 
   test('should match theme toggle button', async ({ page }) => {
     // Look for theme toggle button
-    const themeToggle = page.locator('button[aria-label*="theme"]').or(
-      page.locator('[data-testid="theme-toggle"]')
-    );
+    const themeToggle = page
+      .locator('button[aria-label*="theme"]')
+      .or(page.locator('[data-testid="theme-toggle"]'));
 
     if (await themeToggle.isVisible().catch(() => false)) {
       await expect(themeToggle).toHaveScreenshot('component-theme-toggle.png');
@@ -55,9 +56,10 @@ test.describe('Key UI Components', () => {
 
   test('should match status badge component', async ({ page }) => {
     // Look for status badges across the page
-    const statusBadge = page.locator('[class*="badge"]').first().or(
-      page.locator('[class*="status"]').first()
-    );
+    const statusBadge = page
+      .locator('[class*="badge"]')
+      .first()
+      .or(page.locator('[class*="status"]').first());
 
     if (await statusBadge.isVisible().catch(() => false)) {
       await expect(statusBadge).toHaveScreenshot('component-status-badge.png');

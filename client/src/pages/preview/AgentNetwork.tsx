@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { agentNetworkSource } from "@/lib/data-sources";
-import { getPollingInterval } from "@/lib/constants/query-config";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { MockDataBadge } from "@/components/MockDataBadge";
-import { UnifiedGraph, type GraphNode, type GraphEdge } from "@/components/UnifiedGraph";
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { agentNetworkSource } from '@/lib/data-sources';
+import { getPollingInterval } from '@/lib/constants/query-config';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { MockDataBadge } from '@/components/MockDataBadge';
+import { UnifiedGraph, type GraphNode, type GraphEdge } from '@/components/UnifiedGraph';
 import {
   Network,
   Search,
@@ -19,8 +19,8 @@ import {
   Server,
   Workflow,
   BookOpen,
-  Activity
-} from "lucide-react";
+  Activity,
+} from 'lucide-react';
 
 interface AgentNode {
   id: string;
@@ -43,7 +43,7 @@ interface AgentConnection {
   from: string;
   to: string;
   strength: number;
-  type: "routing"; // Only routing connections exist in reality
+  type: 'routing'; // Only routing connections exist in reality
 }
 
 export default function AgentNetwork() {
@@ -76,88 +76,114 @@ export default function AgentNetwork() {
     if (usingMockData) {
       // Mock data fallback
       const mockNodes: AgentNode[] = [
-      {
-        id: "agent-polymorphic-agent",
-        name: "agent-polymorphic-agent",
-        title: "Polymorphic Agent (Polly)",
-        category: "coordination",
-        color: "purple",
-        x: 400,
-        y: 200,
-        size: 80,
-        connections: ["agent-api-architect", "agent-debug-intelligence", "agent-frontend-developer", "agent-performance", "agent-testing"],
-        performance: { successRate: 88.9, efficiency: 85, totalRuns: 3456 }
-      },
-      {
-        id: "agent-api-architect",
-        name: "agent-api-architect",
-        title: "API Architect",
-        category: "architecture",
-        color: "blue",
-        x: 200,
-        y: 100,
-        size: 60,
-        connections: ["agent-debug-intelligence", "agent-performance"],
-        performance: { successRate: 94.2, efficiency: 92, totalRuns: 1247 }
-      },
-      {
-        id: "agent-debug-intelligence",
-        name: "agent-debug-intelligence",
-        title: "Debug Intelligence",
-        category: "development",
-        color: "red",
-        x: 200,
-        y: 300,
-        size: 70,
-        connections: ["agent-performance", "agent-testing"],
-        performance: { successRate: 91.8, efficiency: 88, totalRuns: 2156 }
-      },
-      {
-        id: "agent-frontend-developer",
-        name: "agent-frontend-developer",
-        title: "Frontend Developer",
-        category: "development",
-        color: "cyan",
-        x: 600,
-        y: 100,
-        size: 65,
-        connections: ["agent-testing", "agent-performance"],
-        performance: { successRate: 96.4, efficiency: 94, totalRuns: 1892 }
-      },
-      {
-        id: "agent-performance",
-        name: "agent-performance",
-        title: "Performance Specialist",
-        category: "quality",
-        color: "green",
-        x: 400,
-        y: 400,
-        size: 55,
-        connections: ["agent-debug-intelligence", "agent-testing"],
-        performance: { successRate: 93.7, efficiency: 91, totalRuns: 1456 }
-      },
-      {
-        id: "agent-testing",
-        name: "agent-testing",
-        title: "Testing Specialist",
-        category: "quality",
-        color: "green",
-        x: 600,
-        y: 300,
-        size: 60,
-        connections: ["agent-debug-intelligence", "agent-frontend-developer"],
-        performance: { successRate: 95.2, efficiency: 89, totalRuns: 2034 }
-      }
-    ];
+        {
+          id: 'agent-polymorphic-agent',
+          name: 'agent-polymorphic-agent',
+          title: 'Polymorphic Agent (Polly)',
+          category: 'coordination',
+          color: 'purple',
+          x: 400,
+          y: 200,
+          size: 80,
+          connections: [
+            'agent-api-architect',
+            'agent-debug-intelligence',
+            'agent-frontend-developer',
+            'agent-performance',
+            'agent-testing',
+          ],
+          performance: { successRate: 88.9, efficiency: 85, totalRuns: 3456 },
+        },
+        {
+          id: 'agent-api-architect',
+          name: 'agent-api-architect',
+          title: 'API Architect',
+          category: 'architecture',
+          color: 'blue',
+          x: 200,
+          y: 100,
+          size: 60,
+          connections: ['agent-debug-intelligence', 'agent-performance'],
+          performance: { successRate: 94.2, efficiency: 92, totalRuns: 1247 },
+        },
+        {
+          id: 'agent-debug-intelligence',
+          name: 'agent-debug-intelligence',
+          title: 'Debug Intelligence',
+          category: 'development',
+          color: 'red',
+          x: 200,
+          y: 300,
+          size: 70,
+          connections: ['agent-performance', 'agent-testing'],
+          performance: { successRate: 91.8, efficiency: 88, totalRuns: 2156 },
+        },
+        {
+          id: 'agent-frontend-developer',
+          name: 'agent-frontend-developer',
+          title: 'Frontend Developer',
+          category: 'development',
+          color: 'cyan',
+          x: 600,
+          y: 100,
+          size: 65,
+          connections: ['agent-testing', 'agent-performance'],
+          performance: { successRate: 96.4, efficiency: 94, totalRuns: 1892 },
+        },
+        {
+          id: 'agent-performance',
+          name: 'agent-performance',
+          title: 'Performance Specialist',
+          category: 'quality',
+          color: 'green',
+          x: 400,
+          y: 400,
+          size: 55,
+          connections: ['agent-debug-intelligence', 'agent-testing'],
+          performance: { successRate: 93.7, efficiency: 91, totalRuns: 1456 },
+        },
+        {
+          id: 'agent-testing',
+          name: 'agent-testing',
+          title: 'Testing Specialist',
+          category: 'quality',
+          color: 'green',
+          x: 600,
+          y: 300,
+          size: 60,
+          connections: ['agent-debug-intelligence', 'agent-frontend-developer'],
+          performance: { successRate: 95.2, efficiency: 89, totalRuns: 2034 },
+        },
+      ];
 
-    // Only routing connections: Polly → Selected Agents (the truth!)
-    const mockConnections: AgentConnection[] = [
-      { from: "agent-polymorphic-agent", to: "agent-api-architect", strength: 0.9, type: "routing" },
-      { from: "agent-polymorphic-agent", to: "agent-debug-intelligence", strength: 0.8, type: "routing" },
-      { from: "agent-polymorphic-agent", to: "agent-frontend-developer", strength: 0.7, type: "routing" },
-      { from: "agent-polymorphic-agent", to: "agent-performance", strength: 0.6, type: "routing" },
-      { from: "agent-polymorphic-agent", to: "agent-testing", strength: 0.5, type: "routing" }
-    ];
+      // Only routing connections: Polly → Selected Agents (the truth!)
+      const mockConnections: AgentConnection[] = [
+        {
+          from: 'agent-polymorphic-agent',
+          to: 'agent-api-architect',
+          strength: 0.9,
+          type: 'routing',
+        },
+        {
+          from: 'agent-polymorphic-agent',
+          to: 'agent-debug-intelligence',
+          strength: 0.8,
+          type: 'routing',
+        },
+        {
+          from: 'agent-polymorphic-agent',
+          to: 'agent-frontend-developer',
+          strength: 0.7,
+          type: 'routing',
+        },
+        {
+          from: 'agent-polymorphic-agent',
+          to: 'agent-performance',
+          strength: 0.6,
+          type: 'routing',
+        },
+        { from: 'agent-polymorphic-agent', to: 'agent-testing', strength: 0.5, type: 'routing' },
+      ];
 
       setNodes(mockNodes);
       setConnections(mockConnections);
@@ -166,7 +192,7 @@ export default function AgentNetwork() {
     }
 
     // Transform live agent data to nodes
-    let nodes: AgentNode[] = agents.map((agent: any, index: number) => {
+    let nodes: AgentNode[] = agents.map((agent: any) => {
       return {
         id: agent.id || agent.name,
         name: agent.name || agent.id,
@@ -178,12 +204,24 @@ export default function AgentNetwork() {
         size: Math.max(40, Math.min(80, (agent.performance?.totalRuns || 0) / 50)),
         connections: [], // Will be populated from routing data
         performance: {
-          successRate: Math.max(0, Math.min(100, ((agent.performance?.successRate || 0) <= 1
-            ? (agent.performance?.successRate || 0) * 100
-            : (agent.performance?.successRate || 0)))),
-          efficiency: Math.max(0, Math.min(100, ((agent.performance?.efficiency || 0) <= 1
-            ? (agent.performance?.efficiency || 0) * 100
-            : (agent.performance?.efficiency || 0)))),
+          successRate: Math.max(
+            0,
+            Math.min(
+              100,
+              (agent.performance?.successRate || 0) <= 1
+                ? (agent.performance?.successRate || 0) * 100
+                : agent.performance?.successRate || 0
+            )
+          ),
+          efficiency: Math.max(
+            0,
+            Math.min(
+              100,
+              (agent.performance?.efficiency || 0) <= 1
+                ? (agent.performance?.efficiency || 0) * 100
+                : agent.performance?.efficiency || 0
+            )
+          ),
           totalRuns: agent.performance?.totalRuns || 0,
         },
       };
@@ -196,21 +234,23 @@ export default function AgentNetwork() {
     if (Array.isArray(routingData) && routingData.length > 0) {
       routingData.forEach((decision: any) => {
         // Find polymorphic agent (usually the main coordinator)
-        const polyAgent = nodes.find(n => n.name.includes('polymorphic') || n.name.includes('polly'));
-        const targetAgent = nodes.find(n => n.id === decision.agent || n.name === decision.agent);
-        
+        const polyAgent = nodes.find(
+          (n) => n.name.includes('polymorphic') || n.name.includes('polly')
+        );
+        const targetAgent = nodes.find((n) => n.id === decision.agent || n.name === decision.agent);
+
         if (polyAgent && targetAgent && polyAgent.id !== targetAgent.id) {
           // Check if connection already exists
           const existing = connections.find(
-            c => c.from === polyAgent.id && c.to === targetAgent.id
+            (c) => c.from === polyAgent.id && c.to === targetAgent.id
           );
-          
+
           if (!existing) {
             connections.push({
               from: polyAgent.id,
               to: targetAgent.id,
               strength: decision.confidence / 100 || 0.7,
-              type: "routing",
+              type: 'routing',
             });
           }
         }
@@ -218,40 +258,54 @@ export default function AgentNetwork() {
     }
 
     // Update node connections list (only routing connections exist)
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       node.connections = connections
-        .filter(c => c.from === node.id || c.to === node.id)
-        .map(c => c.from === node.id ? c.to : c.from);
+        .filter((c) => c.from === node.id || c.to === node.id)
+        .map((c) => (c.from === node.id ? c.to : c.from));
     });
 
     setNodes(nodes);
     setConnections(connections);
     setIsLoading(false);
-  }, [agentsData, routingData, queryLoading]);
+  }, [agentsData, routingData, queryLoading, networkData?.isMock]);
 
   const usingMockData = networkData?.isMock || !agentsData || agentsData.length === 0;
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case "development": return Code;
-      case "architecture": return Layers;
-      case "quality": return TestTube;
-      case "infrastructure": return Server;
-      case "coordination": return Workflow;
-      case "documentation": return BookOpen;
-      default: return Bot;
+      case 'development':
+        return Code;
+      case 'architecture':
+        return Layers;
+      case 'quality':
+        return TestTube;
+      case 'infrastructure':
+        return Server;
+      case 'coordination':
+        return Workflow;
+      case 'documentation':
+        return BookOpen;
+      default:
+        return Bot;
     }
   };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "development": return "#3B82F6";
-      case "architecture": return "#8B5CF6";
-      case "quality": return "#10B981";
-      case "infrastructure": return "#F59E0B";
-      case "coordination": return "#EC4899";
-      case "documentation": return "#6B7280";
-      default: return "#6B7280";
+      case 'development':
+        return '#3B82F6';
+      case 'architecture':
+        return '#8B5CF6';
+      case 'quality':
+        return '#10B981';
+      case 'infrastructure':
+        return '#F59E0B';
+      case 'coordination':
+        return '#EC4899';
+      case 'documentation':
+        return '#6B7280';
+      default:
+        return '#6B7280';
     }
   };
 
@@ -260,8 +314,8 @@ export default function AgentNetwork() {
     if (nodes.length === 0) return { type: 'circular' as const };
 
     // Find Polly (polymorphic agent) to place in center
-    const polyIndex = nodes.findIndex(n =>
-      n.id.includes('polymorphic') || n.name.includes('polly')
+    const polyIndex = nodes.findIndex(
+      (n) => n.id.includes('polymorphic') || n.name.includes('polly')
     );
 
     if (polyIndex === -1) {
@@ -295,19 +349,22 @@ export default function AgentNetwork() {
   }, [nodes]);
 
   // Memoize color scheme
-  const graphColorScheme = useMemo(() => ({
-    routing: '#8B5CF6',
-    development: '#3B82F6',
-    architecture: '#8B5CF6',
-    quality: '#10B981',
-    infrastructure: '#F59E0B',
-    coordination: '#EC4899',
-    documentation: '#6B7280'
-  }), []);
+  const graphColorScheme = useMemo(
+    () => ({
+      routing: '#8B5CF6',
+      development: '#3B82F6',
+      architecture: '#8B5CF6',
+      quality: '#10B981',
+      infrastructure: '#F59E0B',
+      coordination: '#EC4899',
+      documentation: '#6B7280',
+    }),
+    []
+  );
 
   // Convert nodes to GraphNode format
   const graphNodes: GraphNode[] = useMemo(() => {
-    return nodes.map(node => ({
+    return nodes.map((node) => ({
       id: node.id,
       label: node.title,
       type: node.category,
@@ -317,24 +374,24 @@ export default function AgentNetwork() {
         name: node.name,
         category: node.category,
         performance: node.performance,
-        connections: node.connections
-      }
+        connections: node.connections,
+      },
     }));
   }, [nodes]);
 
   // Convert connections to GraphEdge format
   const graphEdges: GraphEdge[] = useMemo(() => {
-    return connections.map(conn => ({
+    return connections.map((conn) => ({
       source: conn.from,
       target: conn.to,
       weight: conn.strength,
       type: conn.type,
-      label: undefined
+      label: undefined,
     }));
   }, [connections]);
 
   const handleNodeClick = (node: GraphNode) => {
-    const agentNode = nodes.find(n => n.id === node.id);
+    const agentNode = nodes.find((n) => n.id === node.id);
     setSelectedNode(agentNode || null);
   };
 
@@ -356,13 +413,13 @@ export default function AgentNetwork() {
           <h1 className="text-3xl font-bold">Agent Network</h1>
           <p className="text-muted-foreground">
             Visualize agent routing patterns. The graph shows the simple routing architecture:
-            <strong> Polly (polymorphic-agent)</strong> receives user requests and routes them to specialized agents.
-            <strong> Purple lines</strong> show routing decisions (which agent handles which requests).
+            <strong> Polly (polymorphic-agent)</strong> receives user requests and routes them to
+            specialized agents.
+            <strong> Purple lines</strong> show routing decisions (which agent handles which
+            requests).
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {usingMockData && <MockDataBadge />}
-        </div>
+        <div className="flex items-center gap-2">{usingMockData && <MockDataBadge />}</div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -387,7 +444,9 @@ export default function AgentNetwork() {
             <Card>
               <CardHeader>
                 <CardTitle>Agents</CardTitle>
-                <CardDescription>Standardized agent cards for clarity and consistency</CardDescription>
+                <CardDescription>
+                  Standardized agent cards for clarity and consistency
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -415,15 +474,21 @@ export default function AgentNetwork() {
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div className="border rounded p-2">
                           <div className="text-xs text-muted-foreground">Success</div>
-                          <div className="text-sm font-medium">{Math.max(0, Math.min(100, n.performance.successRate)).toFixed(1)}%</div>
+                          <div className="text-sm font-medium">
+                            {Math.max(0, Math.min(100, n.performance.successRate)).toFixed(1)}%
+                          </div>
                         </div>
                         <div className="border rounded p-2">
                           <div className="text-xs text-muted-foreground">Efficiency</div>
-                          <div className="text-sm font-medium">{Math.max(0, Math.min(100, n.performance.efficiency)).toFixed(1)}%</div>
+                          <div className="text-sm font-medium">
+                            {Math.max(0, Math.min(100, n.performance.efficiency)).toFixed(1)}%
+                          </div>
                         </div>
                         <div className="border rounded p-2">
                           <div className="text-xs text-muted-foreground">Runs</div>
-                          <div className="text-sm font-medium">{n.performance.totalRuns.toLocaleString()}</div>
+                          <div className="text-sm font-medium">
+                            {n.performance.totalRuns.toLocaleString()}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -458,15 +523,25 @@ export default function AgentNetwork() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Success Rate</span>
-                      <span className="font-medium">{Math.max(0, Math.min(100, selectedNode.performance.successRate)).toFixed(1)}%</span>
+                      <span className="font-medium">
+                        {Math.max(0, Math.min(100, selectedNode.performance.successRate)).toFixed(
+                          1
+                        )}
+                        %
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Efficiency</span>
-                      <span className="font-medium">{Math.max(0, Math.min(100, selectedNode.performance.efficiency)).toFixed(1)}%</span>
+                      <span className="font-medium">
+                        {Math.max(0, Math.min(100, selectedNode.performance.efficiency)).toFixed(1)}
+                        %
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Total Runs</span>
-                      <span className="font-medium">{selectedNode.performance.totalRuns.toLocaleString()}</span>
+                      <span className="font-medium">
+                        {selectedNode.performance.totalRuns.toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -474,10 +549,10 @@ export default function AgentNetwork() {
                 <div>
                   <div className="text-sm font-medium mb-2">Connections</div>
                   <div className="space-y-1">
-                    {selectedNode.connections.map(connectionId => {
-                      const connection = nodes.find(n => n.id === connectionId);
+                    {selectedNode.connections.map((connectionId) => {
+                      const connection = nodes.find((n) => n.id === connectionId);
                       if (!connection) return null;
-                      
+
                       const Icon = getCategoryIcon(connection.category);
                       return (
                         <div key={connectionId} className="flex items-center gap-2 text-sm">
@@ -507,7 +582,7 @@ export default function AgentNetwork() {
                     <Network className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p>Select an agent node to view its details and connections</p>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div className="text-sm font-medium">Network Stats</div>
                     <div className="grid grid-cols-2 gap-2 text-xs">

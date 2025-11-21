@@ -72,7 +72,7 @@ describe('DateRangeFilter', () => {
     const value: DateRangeValue = {
       preset: 'custom',
       start: '2025-01-15',
-      end: '2025-01-10'
+      end: '2025-01-10',
     };
 
     render(<DateRangeFilter value={value} onChange={mockOnChange} />);
@@ -88,7 +88,7 @@ describe('DateRangeFilter', () => {
     const value: DateRangeValue = {
       preset: 'custom',
       start: '2025-01-15',
-      end: '2025-01-15'
+      end: '2025-01-15',
     };
 
     render(<DateRangeFilter value={value} onChange={mockOnChange} />);
@@ -103,7 +103,7 @@ describe('DateRangeFilter', () => {
     const value: DateRangeValue = {
       preset: 'custom',
       start: '2025-01-10',
-      end: '2025-01-20'
+      end: '2025-01-20',
     };
 
     render(<DateRangeFilter value={value} onChange={mockOnChange} />);
@@ -118,7 +118,7 @@ describe('DateRangeFilter', () => {
     const value: DateRangeValue = {
       preset: 'custom',
       start: undefined,
-      end: undefined
+      end: undefined,
     };
 
     render(<DateRangeFilter value={value} onChange={mockOnChange} />);
@@ -133,7 +133,7 @@ describe('DateRangeFilter', () => {
     const value: DateRangeValue = {
       preset: 'custom',
       start: '2025-01-15',
-      end: undefined
+      end: undefined,
     };
 
     render(<DateRangeFilter value={value} onChange={mockOnChange} />);
@@ -148,7 +148,7 @@ describe('DateRangeFilter', () => {
     const value: DateRangeValue = {
       preset: 'custom',
       start: undefined,
-      end: '2025-01-15'
+      end: '2025-01-15',
     };
 
     render(<DateRangeFilter value={value} onChange={mockOnChange} />);
@@ -163,7 +163,7 @@ describe('DateRangeFilter', () => {
     const value: DateRangeValue = {
       preset: 'custom',
       start: '2025-01-20',
-      end: '2025-01-10'
+      end: '2025-01-10',
     };
 
     const { container } = render(<DateRangeFilter value={value} onChange={mockOnChange} />);
@@ -180,7 +180,7 @@ describe('DateRangeFilter', () => {
     const value: DateRangeValue = {
       preset: 'custom',
       start: '2025-01-20',
-      end: '2025-01-10'
+      end: '2025-01-10',
     };
 
     const { container } = render(<DateRangeFilter value={value} onChange={mockOnChange} />);
@@ -197,7 +197,7 @@ describe('DateRangeFilter', () => {
     const value: DateRangeValue = {
       preset: 'custom',
       start: '2025-01-20',
-      end: '2025-01-10'
+      end: '2025-01-10',
     };
 
     render(<DateRangeFilter value={value} onChange={mockOnChange} />);
@@ -213,7 +213,7 @@ describe('DateRangeFilter', () => {
     const value: DateRangeValue = {
       preset: 'custom',
       start: '2025-01-20',
-      end: '2025-01-10'
+      end: '2025-01-10',
     };
 
     render(<DateRangeFilter value={value} onChange={mockOnChange} />);
@@ -237,12 +237,7 @@ describe('DateRangeFilter', () => {
       expect(screen.getByTestId('date-range-error')).toBeInTheDocument();
     });
 
-    rerender(
-      <DateRangeFilter
-        value={{ preset: '7d' }}
-        onChange={mockOnChange}
-      />
-    );
+    rerender(<DateRangeFilter value={{ preset: '7d' }} onChange={mockOnChange} />);
 
     await waitFor(() => {
       expect(screen.queryByTestId('date-range-error')).not.toBeInTheDocument();

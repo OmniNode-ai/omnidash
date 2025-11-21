@@ -83,9 +83,14 @@ export function clearAlertMetricsCache(): void {
  */
 async function getErrorRateUncached(timeWindow: string): Promise<number> {
   try {
-    const interval = timeWindow === '1 hour' ? '1 hour' :
-                     timeWindow === '10 minutes' ? '10 minutes' :
-                     timeWindow === '24 hours' ? '24 hours' : '10 minutes';
+    const interval =
+      timeWindow === '1 hour'
+        ? '1 hour'
+        : timeWindow === '10 minutes'
+          ? '10 minutes'
+          : timeWindow === '24 hours'
+            ? '24 hours'
+            : '10 minutes';
 
     // Optimized query - only count, no full table scan
     const [result] = await intelligenceDb
@@ -116,8 +121,8 @@ async function getErrorRateUncached(timeWindow: string): Promise<number> {
  */
 async function getManifestInjectionSuccessRateUncached(timeWindow: string): Promise<number> {
   try {
-    const interval = timeWindow === '1 hour' ? '1 hour' :
-                     timeWindow === '24 hours' ? '24 hours' : '1 hour';
+    const interval =
+      timeWindow === '1 hour' ? '1 hour' : timeWindow === '24 hours' ? '24 hours' : '1 hour';
 
     const [result] = await intelligenceDb
       .select({
@@ -147,9 +152,14 @@ async function getManifestInjectionSuccessRateUncached(timeWindow: string): Prom
  */
 async function getAvgResponseTimeUncached(timeWindow: string): Promise<number> {
   try {
-    const interval = timeWindow === '10 minutes' ? '10 minutes' :
-                     timeWindow === '1 hour' ? '1 hour' :
-                     timeWindow === '24 hours' ? '24 hours' : '10 minutes';
+    const interval =
+      timeWindow === '10 minutes'
+        ? '10 minutes'
+        : timeWindow === '1 hour'
+          ? '1 hour'
+          : timeWindow === '24 hours'
+            ? '24 hours'
+            : '10 minutes';
 
     const [result] = await intelligenceDb
       .select({
@@ -174,8 +184,8 @@ async function getAvgResponseTimeUncached(timeWindow: string): Promise<number> {
  */
 async function getSuccessRateUncached(timeWindow: string): Promise<number> {
   try {
-    const interval = timeWindow === '1 hour' ? '1 hour' :
-                     timeWindow === '24 hours' ? '24 hours' : '1 hour';
+    const interval =
+      timeWindow === '1 hour' ? '1 hour' : timeWindow === '24 hours' ? '24 hours' : '1 hour';
 
     const [result] = await intelligenceDb
       .select({
@@ -204,22 +214,22 @@ async function getSuccessRateUncached(timeWindow: string): Promise<number> {
  * Legacy public functions for backward compatibility
  * Use getAllAlertMetrics() for best performance
  */
-export async function getErrorRate(timeWindow: string): Promise<number> {
+export async function getErrorRate(_timeWindow: string): Promise<number> {
   const metrics = await getAllAlertMetrics();
   return metrics.errorRate;
 }
 
-export async function getManifestInjectionSuccessRate(timeWindow: string): Promise<number> {
+export async function getManifestInjectionSuccessRate(_timeWindow: string): Promise<number> {
   const metrics = await getAllAlertMetrics();
   return metrics.injectionSuccessRate;
 }
 
-export async function getAvgResponseTime(timeWindow: string): Promise<number> {
+export async function getAvgResponseTime(_timeWindow: string): Promise<number> {
   const metrics = await getAllAlertMetrics();
   return metrics.avgResponseTime;
 }
 
-export async function getSuccessRate(timeWindow: string): Promise<number> {
+export async function getSuccessRate(_timeWindow: string): Promise<number> {
   const metrics = await getAllAlertMetrics();
   return metrics.successRate;
 }

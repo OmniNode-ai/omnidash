@@ -5,6 +5,7 @@ This document explains the ESLint rules enforced for test files to prevent memor
 ## Overview
 
 Custom ESLint rules have been configured specifically for test files (`**/*.test.ts`, `**/*.test.tsx`, `**/__tests__/**/*`) to enforce:
+
 - **Vitest best practices**
 - **Memory leak prevention**
 - **Proper cleanup patterns**
@@ -25,6 +26,7 @@ npm run lint:fix
 ### 1. Vitest Best Practices
 
 #### `vitest/expect-expect` (error)
+
 Ensures every test has at least one `expect()` assertion.
 
 **Why**: Tests without assertions don't validate behavior and waste CI resources.
@@ -43,6 +45,7 @@ test('should render component', () => {
 ```
 
 #### `vitest/no-disabled-tests` (warn)
+
 Warns about disabled tests (`test.skip`).
 
 **Why**: Disabled tests indicate incomplete work or issues that should be addressed or removed.
@@ -60,6 +63,7 @@ test('should handle edge case', () => {
 ```
 
 #### `vitest/no-focused-tests` (error)
+
 Prevents focused tests (`test.only`, `describe.only`) from being committed.
 
 **Why**: Focused tests skip other tests in CI, causing false positives.
@@ -77,6 +81,7 @@ test('should work', () => {
 ```
 
 #### `vitest/valid-expect` (error)
+
 Ensures `expect()` calls are valid and properly formed.
 
 **Why**: Invalid expect calls lead to silent test failures.
@@ -92,6 +97,7 @@ expect(promise).resolves.toBe(value);
 ```
 
 #### `vitest/no-identical-title` (warn)
+
 Warns about tests with identical titles.
 
 **Why**: Duplicate titles cause confusion in test reports.
@@ -99,18 +105,27 @@ Warns about tests with identical titles.
 ```typescript
 // ⚠️ Warning - duplicate titles
 describe('UserService', () => {
-  test('should create user', () => { /* ... */ });
-  test('should create user', () => { /* ... */ }); // Duplicate!
+  test('should create user', () => {
+    /* ... */
+  });
+  test('should create user', () => {
+    /* ... */
+  }); // Duplicate!
 });
 
 // ✅ Good - unique titles
 describe('UserService', () => {
-  test('should create user with valid data', () => { /* ... */ });
-  test('should create user with defaults', () => { /* ... */ });
+  test('should create user with valid data', () => {
+    /* ... */
+  });
+  test('should create user with defaults', () => {
+    /* ... */
+  });
 });
 ```
 
 #### `vitest/prefer-hooks-in-order` (warn)
+
 Enforces consistent hook ordering (beforeEach → test → afterEach).
 
 **Why**: Consistent ordering improves readability and maintainability.
@@ -118,35 +133,53 @@ Enforces consistent hook ordering (beforeEach → test → afterEach).
 ```typescript
 // ⚠️ Warning - hooks out of order
 describe('MyTest', () => {
-  test('should work', () => { /* ... */ });
-  beforeEach(() => { /* ... */ });
-  afterEach(() => { /* ... */ });
+  test('should work', () => {
+    /* ... */
+  });
+  beforeEach(() => {
+    /* ... */
+  });
+  afterEach(() => {
+    /* ... */
+  });
 });
 
 // ✅ Good - hooks before tests
 describe('MyTest', () => {
-  beforeEach(() => { /* ... */ });
-  afterEach(() => { /* ... */ });
-  test('should work', () => { /* ... */ });
+  beforeEach(() => {
+    /* ... */
+  });
+  afterEach(() => {
+    /* ... */
+  });
+  test('should work', () => {
+    /* ... */
+  });
 });
 ```
 
 #### `vitest/require-top-level-describe` (warn)
+
 Encourages wrapping tests in describe blocks.
 
 **Why**: Organized tests with describe blocks improve test structure and readability.
 
 ```typescript
 // ⚠️ Warning - no describe block
-test('should work', () => { /* ... */ });
+test('should work', () => {
+  /* ... */
+});
 
 // ✅ Good - wrapped in describe
 describe('MyComponent', () => {
-  test('should work', () => { /* ... */ });
+  test('should work', () => {
+    /* ... */
+  });
 });
 ```
 
 #### `vitest/prefer-to-be` (warn)
+
 Prefer specific matchers like `toBeNull()` over generic `toBe(null)`.
 
 **Why**: Specific matchers provide better error messages.
@@ -160,6 +193,7 @@ expect(value).toBeNull();
 ```
 
 #### `vitest/require-hook` (warn)
+
 Ensures hooks are inside describe blocks.
 
 **Why**: Prevents hooks from affecting unrelated tests.
@@ -170,7 +204,9 @@ beforeEach(() => {
   // Affects ALL tests in file!
 });
 
-test('should work', () => { /* ... */ });
+test('should work', () => {
+  /* ... */
+});
 
 // ✅ Good - hook scoped to describe
 describe('MyTest', () => {
@@ -178,11 +214,14 @@ describe('MyTest', () => {
     // Only affects tests in this describe
   });
 
-  test('should work', () => { /* ... */ });
+  test('should work', () => {
+    /* ... */
+  });
 });
 ```
 
 #### `vitest/no-duplicate-hooks` (error)
+
 Prevents duplicate hooks in the same scope.
 
 **Why**: Multiple identical hooks indicate confusion or mistakes.
@@ -190,8 +229,12 @@ Prevents duplicate hooks in the same scope.
 ```typescript
 // ❌ Bad - duplicate hooks
 describe('MyTest', () => {
-  beforeEach(() => { /* setup 1 */ });
-  beforeEach(() => { /* setup 2 */ });
+  beforeEach(() => {
+    /* setup 1 */
+  });
+  beforeEach(() => {
+    /* setup 2 */
+  });
 });
 
 // ✅ Good - single hook
@@ -277,7 +320,9 @@ describe('MyTest', () => {
   });
 
   test('should work', () => {
-    setTimeout(() => { /* ... */ }, 1000);
+    setTimeout(() => {
+      /* ... */
+    }, 1000);
     // Timer still pending!
   });
 });
@@ -294,7 +339,9 @@ describe('MyTest', () => {
   });
 
   test('should work', () => {
-    setTimeout(() => { /* ... */ }, 1000);
+    setTimeout(() => {
+      /* ... */
+    }, 1000);
     // Timer cleaned up
   });
 });
@@ -322,6 +369,7 @@ describe('ComponentName', () => {
 ```
 
 **Why This Pattern Works**:
+
 1. **beforeEach**: Initializes fake timers before each test
 2. **afterEach**: Clears pending timers and restores real timers
 3. **Scoped**: Only affects tests in the describe block
@@ -331,9 +379,11 @@ describe('ComponentName', () => {
 ## Configuration Files
 
 ### `.eslintrc.json`
+
 Main ESLint configuration with TypeScript, React, and Vitest plugins.
 
 ### `.eslintignore`
+
 Specifies files/directories to exclude from linting (node_modules, dist, coverage, etc.).
 
 ## Integration with CI/CD
@@ -361,6 +411,7 @@ describe('MyTest', () => {
 ```
 
 **Fix**: Move to beforeEach
+
 ```typescript
 // ✅ Fixed
 describe('MyTest', () => {
@@ -387,6 +438,7 @@ test.only('should work', () => {
 ```
 
 **Fix**: Remove .only
+
 ```typescript
 // ✅ Fixed
 test('should work', () => {
@@ -404,6 +456,7 @@ test('should render', () => {
 ```
 
 **Fix**: Add assertion
+
 ```typescript
 // ✅ Fixed
 test('should render', () => {

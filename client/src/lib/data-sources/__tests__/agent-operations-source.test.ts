@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { agentOperationsSource } from '../agent-operations-source';
-import type { AgentSummary, RecentAction, HealthStatus } from '../agent-operations-source';
-import { createMockResponse, setupFetchMock, resetFetchMock } from '../../../tests/utils/mock-fetch';
+import type { HealthStatus } from '../agent-operations-source';
+import {
+  createMockResponse,
+  setupFetchMock,
+  resetFetchMock,
+} from '../../../tests/utils/mock-fetch';
 
 describe('AgentOperationsSource', () => {
   beforeEach(() => {
@@ -29,9 +33,7 @@ describe('AgentOperationsSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await agentOperationsSource.fetchSummary('24h');
@@ -52,30 +54,26 @@ describe('AgentOperationsSource', () => {
           agent: 'agent-1',
           totalRequests: 100,
           successRate: null,
-          avgConfidence: 0.90,
+          avgConfidence: 0.9,
           avgRoutingTime: 1000,
         },
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(mockAgents)],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(mockAgents)]])
       );
 
       const result = await agentOperationsSource.fetchSummary('24h');
 
-        // avgConfidence 0.90 should be converted to 90% (0.90 * 100)
-        // Allow tolerance for floating point calculations and potential mock data fallback
-        expect(result.data.successRate).toBeGreaterThanOrEqual(85);
-        expect(result.data.successRate).toBeLessThanOrEqual(98);
+      // avgConfidence 0.90 should be converted to 90% (0.90 * 100)
+      // Allow tolerance for floating point calculations and potential mock data fallback
+      expect(result.data.successRate).toBeGreaterThanOrEqual(85);
+      expect(result.data.successRate).toBeLessThanOrEqual(98);
     });
 
     it('should return mock data when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/agents/summary', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/agents/summary', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await agentOperationsSource.fetchSummary('24h');
@@ -103,9 +101,7 @@ describe('AgentOperationsSource', () => {
       ];
 
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/actions/recent', createMockResponse(mockActions)],
-        ])
+        new Map([['/api/intelligence/actions/recent', createMockResponse(mockActions)]])
       );
 
       const result = await agentOperationsSource.fetchRecentActions('24h', 100);
@@ -115,11 +111,7 @@ describe('AgentOperationsSource', () => {
     });
 
     it('should return empty array when no data (not marked as mock if API succeeded)', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/actions/recent', createMockResponse([])],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/actions/recent', createMockResponse([])]]));
 
       const result = await agentOperationsSource.fetchRecentActions('24h', 100);
 
@@ -139,11 +131,7 @@ describe('AgentOperationsSource', () => {
         ],
       };
 
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/health', createMockResponse(mockHealth)],
-        ])
-      );
+      setupFetchMock(new Map([['/api/intelligence/health', createMockResponse(mockHealth)]]));
 
       const result = await agentOperationsSource.fetchHealth();
 
@@ -153,9 +141,7 @@ describe('AgentOperationsSource', () => {
 
     it('should return mock health when API fails', async () => {
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/health', createMockResponse(null, { status: 500 })],
-        ])
+        new Map([['/api/intelligence/health', createMockResponse(null, { status: 500 })]])
       );
 
       const result = await agentOperationsSource.fetchHealth();
@@ -213,10 +199,10 @@ describe('AgentOperationsSource', () => {
       const result = agentOperationsSource.transformOperationsStatus(operationsData);
 
       expect(result.length).toBe(2);
-      const toolCall = result.find(op => op.id === 'tool_call');
+      const toolCall = result.find((op) => op.id === 'tool_call');
       expect(toolCall?.status).toBe('running');
       expect(toolCall?.count).toBe(15); // 10 + 5
-      const decision = result.find(op => op.id === 'decision');
+      const decision = result.find((op) => op.id === 'decision');
       expect(decision?.status).toBe('idle');
     });
   });
@@ -224,10 +210,23 @@ describe('AgentOperationsSource', () => {
   describe('fetchAll', () => {
     it('should combine all data sources and transform correctly', async () => {
       const mockAgents = [
-        { agent: 'agent-1', totalRequests: 100, successRate: 0.95, avgConfidence: 0.92, avgRoutingTime: 1000 },
+        {
+          agent: 'agent-1',
+          totalRequests: 100,
+          successRate: 0.95,
+          avgConfidence: 0.92,
+          avgRoutingTime: 1000,
+        },
       ];
       const mockActions = [
-        { id: 'action-1', agentId: 'agent-1', agentName: 'agent-1', action: 'test', status: 'completed', timestamp: '2024-01-01T00:00:00Z' },
+        {
+          id: 'action-1',
+          agentId: 'agent-1',
+          agentName: 'agent-1',
+          action: 'test',
+          status: 'completed',
+          timestamp: '2024-01-01T00:00:00Z',
+        },
       ];
       const mockHealth: HealthStatus = {
         status: 'healthy',
@@ -236,9 +235,7 @@ describe('AgentOperationsSource', () => {
       const mockOperations = [
         { period: '2024-01-01T12:00:00Z', operationsPerMinute: 10, actionType: 'tool_call' },
       ];
-      const mockQuality = [
-        { period: '2024-01-01T12:00:00Z', avgQualityImprovement: 0.85 },
-      ];
+      const mockQuality = [{ period: '2024-01-01T12:00:00Z', avgQualityImprovement: 0.85 }];
 
       setupFetchMock(
         new Map([
@@ -262,4 +259,3 @@ describe('AgentOperationsSource', () => {
     });
   });
 });
-

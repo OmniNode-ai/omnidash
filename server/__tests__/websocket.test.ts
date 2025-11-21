@@ -142,10 +142,16 @@ async function connectAndCollect(port: number): Promise<{
   return { ws, messages };
 }
 
-// TODO(omnidash-394): Re-enable once global test suite finishes within CI timeout.
-// Full WebSocket integration suite spins up real HTTP + WS servers and still causes
-// Vitest to report open handles when thousands of other tests run. Temporarily skipping
-// to unblock CI until we migrate these to lighter-weight unit tests.
+/**
+ * TODO(omnidash-394): Re-enable once global test suite finishes within CI timeout.
+ *
+ * Full WebSocket integration suite spins up real HTTP + WS servers and still causes
+ * Vitest to report open handles when thousands of other tests run. Temporarily skipping
+ * to unblock CI until we migrate these to lighter-weight unit tests.
+ *
+ * This is intentionally disabled - not a code issue.
+ */
+// eslint-disable-next-line vitest/no-disabled-tests
 describe.skip('WebSocket Server', () => {
   let httpServer: HTTPServer | null;
   let wss: WebSocket.Server | null;
@@ -205,24 +211,28 @@ describe.skip('WebSocket Server', () => {
     messages.length = 0;
 
     // Subscribe to 'actions' FIRST (so we have a subscription)
-    ws.send(JSON.stringify({
-      action: 'subscribe',
-      topics: ['actions'],
-    }));
+    ws.send(
+      JSON.stringify({
+        action: 'subscribe',
+        topics: ['actions'],
+      })
+    );
 
     await new Promise((resolve) => setTimeout(resolve, 100));
     messages.length = 0;
 
     // THEN unsubscribe from 'all' (so 'all' won't be re-added)
-    ws.send(JSON.stringify({
-      action: 'unsubscribe',
-      topics: ['all'],
-    }));
+    ws.send(
+      JSON.stringify({
+        action: 'unsubscribe',
+        topics: ['all'],
+      })
+    );
 
     // Wait for subscription confirmation
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const subMsg = messages.find(m => m.type === 'SUBSCRIPTION_UPDATED');
+    const subMsg = messages.find((m) => m.type === 'SUBSCRIPTION_UPDATED');
     expect(subMsg.subscriptions).toContain('actions');
     expect(subMsg.subscriptions).not.toContain('all');
 
@@ -249,15 +259,9 @@ describe.skip('WebSocket Server', () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Should only receive 'actions' events (AGENT_ACTION)
-    const actionMessages = messages.filter(
-      (m) => m.type === 'AGENT_ACTION'
-    );
-    const metricMessages = messages.filter(
-      (m) => m.type === 'AGENT_METRIC_UPDATE'
-    );
-    const routingMessages = messages.filter(
-      (m) => m.type === 'ROUTING_DECISION'
-    );
+    const actionMessages = messages.filter((m) => m.type === 'AGENT_ACTION');
+    const metricMessages = messages.filter((m) => m.type === 'AGENT_METRIC_UPDATE');
+    const routingMessages = messages.filter((m) => m.type === 'ROUTING_DECISION');
 
     expect(actionMessages.length).toBeGreaterThan(0);
     expect(metricMessages.length).toBe(0);
@@ -295,7 +299,7 @@ describe.skip('WebSocket Server', () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Should receive error message
-    const errorMessage = messages.find(m => m.type === 'ERROR');
+    const errorMessage = messages.find((m) => m.type === 'ERROR');
     expect(errorMessage).toBeDefined();
     expect(errorMessage.message).toContain('Invalid message format');
 
@@ -317,7 +321,7 @@ describe.skip('WebSocket Server', () => {
     // Wait for pong response
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    const pongMessage = messages.find(m => m.type === 'PONG');
+    const pongMessage = messages.find((m) => m.type === 'PONG');
     expect(pongMessage).toBeDefined();
 
     ws.close();
@@ -335,7 +339,7 @@ describe.skip('WebSocket Server', () => {
     // Wait for response
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    const stateMessage = messages.find(m => m.type === 'CURRENT_STATE');
+    const stateMessage = messages.find((m) => m.type === 'CURRENT_STATE');
     expect(stateMessage).toBeDefined();
     expect(stateMessage.data).toHaveProperty('metrics');
     expect(stateMessage.data).toHaveProperty('recentActions');
@@ -362,7 +366,7 @@ describe.skip('WebSocket Server', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Verify subscription
-    const subMsg1 = messages.find(m => m.type === 'SUBSCRIPTION_UPDATED');
+    const subMsg1 = messages.find((m) => m.type === 'SUBSCRIPTION_UPDATED');
     expect(subMsg1.subscriptions).toContain('actions');
     expect(subMsg1.subscriptions).toContain('metrics');
     expect(subMsg1.subscriptions).toContain('routing');
@@ -381,7 +385,7 @@ describe.skip('WebSocket Server', () => {
     // Wait for unsubscribe confirmation
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const subMsg2 = messages.find(m => m.type === 'SUBSCRIPTION_UPDATED');
+    const subMsg2 = messages.find((m) => m.type === 'SUBSCRIPTION_UPDATED');
     expect(subMsg2).toBeDefined();
     expect(subMsg2.subscriptions).toContain('all');
     expect(subMsg2.subscriptions).toContain('routing');
@@ -403,7 +407,7 @@ describe.skip('WebSocket Server', () => {
     // Wait for response
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const subMsg = messages.find(m => m.type === 'SUBSCRIPTION_UPDATED');
+    const subMsg = messages.find((m) => m.type === 'SUBSCRIPTION_UPDATED');
     // Should revert to 'all' since no subscriptions remain
     expect(subMsg.subscriptions).toContain('all');
     expect(subMsg.subscriptions.length).toBe(1);
@@ -428,7 +432,7 @@ describe.skip('WebSocket Server', () => {
     // Wait for message
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    const statusMessage = messages.find(m => m.type === 'CONSUMER_STATUS');
+    const statusMessage = messages.find((m) => m.type === 'CONSUMER_STATUS');
     expect(statusMessage).toBeDefined();
     expect(statusMessage.data.status).toBe('connected');
 
@@ -452,7 +456,7 @@ describe.skip('WebSocket Server', () => {
     // Wait for message
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    const errorMessage = messages.find(m => m.type === 'ERROR');
+    const errorMessage = messages.find((m) => m.type === 'ERROR');
     expect(errorMessage).toBeDefined();
     expect(errorMessage.data.message).toContain('Test error');
 
@@ -470,20 +474,18 @@ describe.skip('WebSocket Server', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const subMsg1 = messages.find(m => m.type === 'SUBSCRIPTION_UPDATED');
+    const subMsg1 = messages.find((m) => m.type === 'SUBSCRIPTION_UPDATED');
     expect(subMsg1.subscriptions).toContain('actions');
 
     // Clear messages
     messages.length = 0;
 
     // Subscribe with array (multiple topics)
-    ws.send(
-      JSON.stringify({ action: 'subscribe', topics: ['metrics', 'routing'] })
-    );
+    ws.send(JSON.stringify({ action: 'subscribe', topics: ['metrics', 'routing'] }));
 
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const subMsg2 = messages.find(m => m.type === 'SUBSCRIPTION_UPDATED');
+    const subMsg2 = messages.find((m) => m.type === 'SUBSCRIPTION_UPDATED');
     expect(subMsg2.subscriptions).toContain('metrics');
     expect(subMsg2.subscriptions).toContain('routing');
 
@@ -573,14 +575,21 @@ describe.skip('WebSocket Server', () => {
 
   it('should remove EventConsumer listeners when server closes', async () => {
     // Count listeners before closing
-    const eventNames = ['metricUpdate', 'actionUpdate', 'routingUpdate', 'error', 'connected', 'disconnected'];
-    const initialListenerCounts = eventNames.map(event => ({
+    const eventNames = [
+      'metricUpdate',
+      'actionUpdate',
+      'routingUpdate',
+      'error',
+      'connected',
+      'disconnected',
+    ];
+    const initialListenerCounts = eventNames.map((event) => ({
       event,
-      count: mockEventConsumer.listenerCount(event)
+      count: mockEventConsumer.listenerCount(event),
     }));
 
     // Verify listeners were added (should be exactly 1 per event)
-    initialListenerCounts.forEach(({ event, count }) => {
+    initialListenerCounts.forEach(({ count }) => {
       expect(count).toBe(1); // Each event should have exactly 1 listener from this server
     });
 
@@ -588,13 +597,13 @@ describe.skip('WebSocket Server', () => {
     await closeWebSocketServer(wss, httpServer);
 
     // Verify all listeners were removed (should be exactly 0)
-    const finalListenerCounts = eventNames.map(event => ({
+    const finalListenerCounts = eventNames.map((event) => ({
       event,
-      count: mockEventConsumer.listenerCount(event)
+      count: mockEventConsumer.listenerCount(event),
     }));
 
     // Each event should have ZERO listeners (complete cleanup)
-    finalListenerCounts.forEach(({ event, count }) => {
+    finalListenerCounts.forEach(({ count }) => {
       expect(count).toBe(0); // No memory leaks - all listeners removed
     });
   });
@@ -639,8 +648,15 @@ describe.skip('WebSocket Server', () => {
     expect(finalCount).toBe(0); // No memory leaks - all listeners removed
 
     // Verify for all event types
-    const allEvents = ['metricUpdate', 'actionUpdate', 'routingUpdate', 'error', 'connected', 'disconnected'];
-    allEvents.forEach(event => {
+    const allEvents = [
+      'metricUpdate',
+      'actionUpdate',
+      'routingUpdate',
+      'error',
+      'connected',
+      'disconnected',
+    ];
+    allEvents.forEach((event) => {
       expect(mockEventConsumer.listenerCount(event)).toBe(0);
     });
   });

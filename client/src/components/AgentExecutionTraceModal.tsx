@@ -353,7 +353,7 @@ export function AgentExecutionTraceModal({
               </div>
             ) : (
               <div className="space-y-3">
-                {trace.actions.map((action, index) => (
+                {trace.actions.map((action, _index) => (
                   <Card key={action.id}>
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">

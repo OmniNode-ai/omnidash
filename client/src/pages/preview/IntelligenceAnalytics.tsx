@@ -1,18 +1,36 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { intelligenceAnalyticsSource } from "@/lib/data-sources";
-import { intelligenceSavingsSource } from "@/lib/data-sources/intelligence-savings-source";
-import { POLLING_INTERVAL_SLOW, POLLING_INTERVAL_MEDIUM, STALE_TIME_IMMEDIATE, getPollingInterval } from "@/lib/constants/query-config";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { intelligenceAnalyticsSource } from '@/lib/data-sources';
+import { intelligenceSavingsSource } from '@/lib/data-sources/intelligence-savings-source';
+import {
+  POLLING_INTERVAL_SLOW,
+  POLLING_INTERVAL_MEDIUM,
+  STALE_TIME_IMMEDIATE,
+  getPollingInterval,
+} from '@/lib/constants/query-config';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   TrendingUp,
   TrendingDown,
@@ -23,16 +41,10 @@ import {
   BarChart3,
   Activity,
   Target,
-  ArrowUpRight,
-  ArrowDownRight,
-  Calculator,
   Cpu,
   Database,
-  Network,
   Code,
   TestTube,
-  Server,
-  Users,
   Eye,
   Settings,
   RefreshCw,
@@ -40,17 +52,17 @@ import {
   Filter,
   CalendarIcon,
   ChevronDown,
-  ChevronRight
-} from "lucide-react";
-import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
+  ChevronRight,
+} from 'lucide-react';
+import { DateRange } from 'react-day-picker';
+import { format } from 'date-fns';
 
 // Import existing components
-import { EnhancedAnalytics } from "./EnhancedAnalytics";
-import { MockDataBadge } from "@/components/MockDataBadge";
+import { EnhancedAnalytics } from './EnhancedAnalytics';
+import { MockDataBadge } from '@/components/MockDataBadge';
 
 // Mock data interfaces
-interface IntelligenceMetrics {
+interface _IntelligenceMetrics {
   totalQueries: number;
   avgResponseTime: number;
   successRate: number;
@@ -62,12 +74,12 @@ interface IntelligenceMetrics {
 }
 
 // Types imported from data source
-import type { SavingsMetrics } from "@/lib/data-sources/intelligence-analytics-source";
-import { Info } from "lucide-react";
+import type { SavingsMetrics as _SavingsMetrics } from '@/lib/data-sources/intelligence-analytics-source';
+import { Info } from 'lucide-react';
 
 export default function IntelligenceAnalytics() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [timeRange, setTimeRange] = useState("30d");
+  const [activeTab, setActiveTab] = useState('overview');
+  const [timeRange, setTimeRange] = useState('30d');
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -79,66 +91,319 @@ export default function IntelligenceAnalytics() {
   const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
 
   // Mock pattern data for detailed view
-  const patternDetails: Record<string, Array<{ name: string; description: string; usageCount: number; effectiveness: number }>> = {
-    "API Integration": [
-      { name: "REST API Retry Pattern", description: "Automatic retry logic with exponential backoff for failed API requests", usageCount: 142, effectiveness: 94 },
-      { name: "GraphQL Query Optimization", description: "Optimized query batching and caching for GraphQL endpoints", usageCount: 89, effectiveness: 87 },
-      { name: "Rate Limiting Handler", description: "Intelligent rate limiting with queue management", usageCount: 67, effectiveness: 91 },
-      { name: "API Response Caching", description: "Smart caching layer for frequently accessed API responses", usageCount: 54, effectiveness: 88 },
-      { name: "Webhook Event Processing", description: "Reliable webhook handling with event deduplication", usageCount: 43, effectiveness: 92 },
-      { name: "OAuth Token Refresh", description: "Automatic OAuth token refresh before expiration", usageCount: 38, effectiveness: 96 },
-      { name: "API Circuit Breaker", description: "Circuit breaker pattern for failing API endpoints", usageCount: 32, effectiveness: 89 },
-      { name: "Request Throttling", description: "Adaptive request throttling based on server capacity", usageCount: 28, effectiveness: 85 },
-      { name: "API Versioning Strategy", description: "Backward-compatible API versioning implementation", usageCount: 24, effectiveness: 90 },
-      { name: "Multipart Upload Handler", description: "Chunked file upload with resume capability", usageCount: 19, effectiveness: 93 },
+  const patternDetails: Record<
+    string,
+    Array<{ name: string; description: string; usageCount: number; effectiveness: number }>
+  > = {
+    'API Integration': [
+      {
+        name: 'REST API Retry Pattern',
+        description: 'Automatic retry logic with exponential backoff for failed API requests',
+        usageCount: 142,
+        effectiveness: 94,
+      },
+      {
+        name: 'GraphQL Query Optimization',
+        description: 'Optimized query batching and caching for GraphQL endpoints',
+        usageCount: 89,
+        effectiveness: 87,
+      },
+      {
+        name: 'Rate Limiting Handler',
+        description: 'Intelligent rate limiting with queue management',
+        usageCount: 67,
+        effectiveness: 91,
+      },
+      {
+        name: 'API Response Caching',
+        description: 'Smart caching layer for frequently accessed API responses',
+        usageCount: 54,
+        effectiveness: 88,
+      },
+      {
+        name: 'Webhook Event Processing',
+        description: 'Reliable webhook handling with event deduplication',
+        usageCount: 43,
+        effectiveness: 92,
+      },
+      {
+        name: 'OAuth Token Refresh',
+        description: 'Automatic OAuth token refresh before expiration',
+        usageCount: 38,
+        effectiveness: 96,
+      },
+      {
+        name: 'API Circuit Breaker',
+        description: 'Circuit breaker pattern for failing API endpoints',
+        usageCount: 32,
+        effectiveness: 89,
+      },
+      {
+        name: 'Request Throttling',
+        description: 'Adaptive request throttling based on server capacity',
+        usageCount: 28,
+        effectiveness: 85,
+      },
+      {
+        name: 'API Versioning Strategy',
+        description: 'Backward-compatible API versioning implementation',
+        usageCount: 24,
+        effectiveness: 90,
+      },
+      {
+        name: 'Multipart Upload Handler',
+        description: 'Chunked file upload with resume capability',
+        usageCount: 19,
+        effectiveness: 93,
+      },
     ],
-    "Data Transformation": [
-      { name: "JSON Schema Validation", description: "Runtime JSON schema validation with detailed error messages", usageCount: 156, effectiveness: 92 },
-      { name: "Data Normalization Pipeline", description: "Standardized data transformation pipeline for consistent formats", usageCount: 134, effectiveness: 88 },
-      { name: "Type-Safe Data Mapping", description: "TypeScript-based data mapping with compile-time checks", usageCount: 98, effectiveness: 95 },
-      { name: "CSV to JSON Converter", description: "Efficient CSV parsing with type inference", usageCount: 76, effectiveness: 86 },
-      { name: "XML Data Parser", description: "Robust XML parsing with namespace support", usageCount: 62, effectiveness: 84 },
-      { name: "Data Aggregation Pipeline", description: "High-performance data aggregation with streaming support", usageCount: 54, effectiveness: 90 },
-      { name: "Field Encryption/Decryption", description: "Transparent field-level encryption for sensitive data", usageCount: 47, effectiveness: 97 },
-      { name: "Date Format Standardization", description: "Automatic date format detection and conversion", usageCount: 41, effectiveness: 89 },
-      { name: "Data Deduplication", description: "Efficient duplicate detection and removal", usageCount: 35, effectiveness: 91 },
-      { name: "Nested Object Flattening", description: "Smart flattening of deeply nested data structures", usageCount: 29, effectiveness: 87 },
+    'Data Transformation': [
+      {
+        name: 'JSON Schema Validation',
+        description: 'Runtime JSON schema validation with detailed error messages',
+        usageCount: 156,
+        effectiveness: 92,
+      },
+      {
+        name: 'Data Normalization Pipeline',
+        description: 'Standardized data transformation pipeline for consistent formats',
+        usageCount: 134,
+        effectiveness: 88,
+      },
+      {
+        name: 'Type-Safe Data Mapping',
+        description: 'TypeScript-based data mapping with compile-time checks',
+        usageCount: 98,
+        effectiveness: 95,
+      },
+      {
+        name: 'CSV to JSON Converter',
+        description: 'Efficient CSV parsing with type inference',
+        usageCount: 76,
+        effectiveness: 86,
+      },
+      {
+        name: 'XML Data Parser',
+        description: 'Robust XML parsing with namespace support',
+        usageCount: 62,
+        effectiveness: 84,
+      },
+      {
+        name: 'Data Aggregation Pipeline',
+        description: 'High-performance data aggregation with streaming support',
+        usageCount: 54,
+        effectiveness: 90,
+      },
+      {
+        name: 'Field Encryption/Decryption',
+        description: 'Transparent field-level encryption for sensitive data',
+        usageCount: 47,
+        effectiveness: 97,
+      },
+      {
+        name: 'Date Format Standardization',
+        description: 'Automatic date format detection and conversion',
+        usageCount: 41,
+        effectiveness: 89,
+      },
+      {
+        name: 'Data Deduplication',
+        description: 'Efficient duplicate detection and removal',
+        usageCount: 35,
+        effectiveness: 91,
+      },
+      {
+        name: 'Nested Object Flattening',
+        description: 'Smart flattening of deeply nested data structures',
+        usageCount: 29,
+        effectiveness: 87,
+      },
     ],
-    "Error Handling": [
-      { name: "Global Error Boundary", description: "React error boundary with automatic error reporting", usageCount: 187, effectiveness: 93 },
-      { name: "Async Error Handler", description: "Centralized async error handling with retry logic", usageCount: 145, effectiveness: 89 },
-      { name: "User-Friendly Error Messages", description: "Context-aware error message generation", usageCount: 123, effectiveness: 91 },
-      { name: "Error Logging Integration", description: "Structured error logging with stack trace capture", usageCount: 98, effectiveness: 95 },
-      { name: "Network Error Recovery", description: "Automatic recovery from transient network failures", usageCount: 87, effectiveness: 88 },
-      { name: "Validation Error Aggregation", description: "Collecting and displaying multiple validation errors", usageCount: 76, effectiveness: 90 },
-      { name: "Database Error Handler", description: "Graceful handling of database connection issues", usageCount: 64, effectiveness: 87 },
-      { name: "File System Error Recovery", description: "Robust file operation error handling", usageCount: 52, effectiveness: 86 },
-      { name: "Memory Limit Error Handler", description: "Detecting and recovering from out-of-memory conditions", usageCount: 43, effectiveness: 92 },
-      { name: "Timeout Error Management", description: "Configurable timeout handling with fallback strategies", usageCount: 38, effectiveness: 89 },
+    'Error Handling': [
+      {
+        name: 'Global Error Boundary',
+        description: 'React error boundary with automatic error reporting',
+        usageCount: 187,
+        effectiveness: 93,
+      },
+      {
+        name: 'Async Error Handler',
+        description: 'Centralized async error handling with retry logic',
+        usageCount: 145,
+        effectiveness: 89,
+      },
+      {
+        name: 'User-Friendly Error Messages',
+        description: 'Context-aware error message generation',
+        usageCount: 123,
+        effectiveness: 91,
+      },
+      {
+        name: 'Error Logging Integration',
+        description: 'Structured error logging with stack trace capture',
+        usageCount: 98,
+        effectiveness: 95,
+      },
+      {
+        name: 'Network Error Recovery',
+        description: 'Automatic recovery from transient network failures',
+        usageCount: 87,
+        effectiveness: 88,
+      },
+      {
+        name: 'Validation Error Aggregation',
+        description: 'Collecting and displaying multiple validation errors',
+        usageCount: 76,
+        effectiveness: 90,
+      },
+      {
+        name: 'Database Error Handler',
+        description: 'Graceful handling of database connection issues',
+        usageCount: 64,
+        effectiveness: 87,
+      },
+      {
+        name: 'File System Error Recovery',
+        description: 'Robust file operation error handling',
+        usageCount: 52,
+        effectiveness: 86,
+      },
+      {
+        name: 'Memory Limit Error Handler',
+        description: 'Detecting and recovering from out-of-memory conditions',
+        usageCount: 43,
+        effectiveness: 92,
+      },
+      {
+        name: 'Timeout Error Management',
+        description: 'Configurable timeout handling with fallback strategies',
+        usageCount: 38,
+        effectiveness: 89,
+      },
     ],
-    "UI Components": [
-      { name: "Data Table Component", description: "Reusable data table with sorting, filtering, and pagination", usageCount: 167, effectiveness: 94 },
-      { name: "Form Validation Framework", description: "Declarative form validation with real-time feedback", usageCount: 143, effectiveness: 91 },
-      { name: "Loading State Manager", description: "Consistent loading indicators across the application", usageCount: 128, effectiveness: 88 },
-      { name: "Modal Dialog System", description: "Accessible modal dialogs with keyboard navigation", usageCount: 112, effectiveness: 90 },
-      { name: "Responsive Navigation Menu", description: "Mobile-friendly navigation with smooth transitions", usageCount: 98, effectiveness: 92 },
-      { name: "Toast Notification System", description: "Non-intrusive toast notifications with queuing", usageCount: 87, effectiveness: 89 },
-      { name: "Infinite Scroll Component", description: "Virtualized infinite scroll for large datasets", usageCount: 74, effectiveness: 86 },
-      { name: "File Upload Widget", description: "Drag-and-drop file upload with preview", usageCount: 63, effectiveness: 93 },
-      { name: "Autocomplete Input", description: "Debounced autocomplete with keyboard navigation", usageCount: 56, effectiveness: 88 },
-      { name: "Chart Visualization Library", description: "Responsive charts with interactive tooltips", usageCount: 49, effectiveness: 91 },
+    'UI Components': [
+      {
+        name: 'Data Table Component',
+        description: 'Reusable data table with sorting, filtering, and pagination',
+        usageCount: 167,
+        effectiveness: 94,
+      },
+      {
+        name: 'Form Validation Framework',
+        description: 'Declarative form validation with real-time feedback',
+        usageCount: 143,
+        effectiveness: 91,
+      },
+      {
+        name: 'Loading State Manager',
+        description: 'Consistent loading indicators across the application',
+        usageCount: 128,
+        effectiveness: 88,
+      },
+      {
+        name: 'Modal Dialog System',
+        description: 'Accessible modal dialogs with keyboard navigation',
+        usageCount: 112,
+        effectiveness: 90,
+      },
+      {
+        name: 'Responsive Navigation Menu',
+        description: 'Mobile-friendly navigation with smooth transitions',
+        usageCount: 98,
+        effectiveness: 92,
+      },
+      {
+        name: 'Toast Notification System',
+        description: 'Non-intrusive toast notifications with queuing',
+        usageCount: 87,
+        effectiveness: 89,
+      },
+      {
+        name: 'Infinite Scroll Component',
+        description: 'Virtualized infinite scroll for large datasets',
+        usageCount: 74,
+        effectiveness: 86,
+      },
+      {
+        name: 'File Upload Widget',
+        description: 'Drag-and-drop file upload with preview',
+        usageCount: 63,
+        effectiveness: 93,
+      },
+      {
+        name: 'Autocomplete Input',
+        description: 'Debounced autocomplete with keyboard navigation',
+        usageCount: 56,
+        effectiveness: 88,
+      },
+      {
+        name: 'Chart Visualization Library',
+        description: 'Responsive charts with interactive tooltips',
+        usageCount: 49,
+        effectiveness: 91,
+      },
     ],
-    "State Management": [
-      { name: "Redux Toolkit Integration", description: "Type-safe Redux implementation with RTK Query", usageCount: 134, effectiveness: 92 },
-      { name: "React Query Cache Manager", description: "Optimized server state management with React Query", usageCount: 118, effectiveness: 95 },
-      { name: "Context API Optimization", description: "Performance-optimized React Context usage", usageCount: 102, effectiveness: 87 },
-      { name: "Local Storage Sync", description: "Automatic synchronization between state and local storage", usageCount: 89, effectiveness: 90 },
-      { name: "Zustand Store Pattern", description: "Lightweight state management with Zustand", usageCount: 76, effectiveness: 93 },
-      { name: "Form State Management", description: "React Hook Form integration for complex forms", usageCount: 67, effectiveness: 89 },
-      { name: "Optimistic Updates", description: "Optimistic UI updates with rollback capability", usageCount: 58, effectiveness: 91 },
-      { name: "State Persistence Layer", description: "Automatic state persistence across page reloads", usageCount: 51, effectiveness: 88 },
-      { name: "Derived State Computation", description: "Memoized derived state with efficient updates", usageCount: 44, effectiveness: 86 },
-      { name: "State Migration Strategy", description: "Versioned state schema with migration logic", usageCount: 37, effectiveness: 90 },
+    'State Management': [
+      {
+        name: 'Redux Toolkit Integration',
+        description: 'Type-safe Redux implementation with RTK Query',
+        usageCount: 134,
+        effectiveness: 92,
+      },
+      {
+        name: 'React Query Cache Manager',
+        description: 'Optimized server state management with React Query',
+        usageCount: 118,
+        effectiveness: 95,
+      },
+      {
+        name: 'Context API Optimization',
+        description: 'Performance-optimized React Context usage',
+        usageCount: 102,
+        effectiveness: 87,
+      },
+      {
+        name: 'Local Storage Sync',
+        description: 'Automatic synchronization between state and local storage',
+        usageCount: 89,
+        effectiveness: 90,
+      },
+      {
+        name: 'Zustand Store Pattern',
+        description: 'Lightweight state management with Zustand',
+        usageCount: 76,
+        effectiveness: 93,
+      },
+      {
+        name: 'Form State Management',
+        description: 'React Hook Form integration for complex forms',
+        usageCount: 67,
+        effectiveness: 89,
+      },
+      {
+        name: 'Optimistic Updates',
+        description: 'Optimistic UI updates with rollback capability',
+        usageCount: 58,
+        effectiveness: 91,
+      },
+      {
+        name: 'State Persistence Layer',
+        description: 'Automatic state persistence across page reloads',
+        usageCount: 51,
+        effectiveness: 88,
+      },
+      {
+        name: 'Derived State Computation',
+        description: 'Memoized derived state with efficient updates',
+        usageCount: 44,
+        effectiveness: 86,
+      },
+      {
+        name: 'State Migration Strategy',
+        description: 'Versioned state schema with migration logic',
+        usageCount: 37,
+        effectiveness: 90,
+      },
     ],
   };
 
@@ -148,17 +413,17 @@ export default function IntelligenceAnalytics() {
     queryFn: () => intelligenceAnalyticsSource.fetchMetrics(timeRange),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
   });
-  
+
   const intelligenceMetrics = metricsResult?.data;
   const usingMockMetrics = metricsResult?.isMock || false;
 
   // Recent activity from data source
-  const { data: activityResult, isLoading: activityLoading } = useQuery({
+  const { data: activityResult, isLoading: _activityLoading } = useQuery({
     queryKey: ['recent-activity'],
     queryFn: () => intelligenceAnalyticsSource.fetchRecentActivity(5),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
-  
+
   const recentActivity = activityResult?.data || [];
   const usingMockActivity = activityResult?.isMock || false;
 
@@ -214,7 +479,8 @@ export default function IntelligenceAnalytics() {
         <div>
           <h1 className="text-3xl font-bold">Intelligence Analytics</h1>
           <p className="ty-subtitle">
-            Comprehensive analytics for intelligence operations, agent performance, and cost optimization
+            Comprehensive analytics for intelligence operations, agent performance, and cost
+            optimization
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -231,30 +497,30 @@ export default function IntelligenceAnalytics() {
           {/* TIME RANGE CONTROLS - NOW GLOBAL */}
           <div className="flex items-center gap-2 ml-2 pl-2 border-l">
             <Button
-              variant={timeRange === "1h" ? "default" : "outline"}
+              variant={timeRange === '1h' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setTimeRange("1h")}
+              onClick={() => setTimeRange('1h')}
             >
               1H
             </Button>
             <Button
-              variant={timeRange === "24h" ? "default" : "outline"}
+              variant={timeRange === '24h' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setTimeRange("24h")}
+              onClick={() => setTimeRange('24h')}
             >
               24H
             </Button>
             <Button
-              variant={timeRange === "7d" ? "default" : "outline"}
+              variant={timeRange === '7d' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setTimeRange("7d")}
+              onClick={() => setTimeRange('7d')}
             >
               7D
             </Button>
             <Button
-              variant={timeRange === "30d" ? "default" : "outline"}
+              variant={timeRange === '30d' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setTimeRange("30d")}
+              onClick={() => setTimeRange('30d')}
             >
               30D
             </Button>
@@ -263,7 +529,7 @@ export default function IntelligenceAnalytics() {
             <Popover open={showCustomPicker} onOpenChange={setShowCustomPicker}>
               <PopoverTrigger asChild>
                 <Button
-                  variant={timeRange === "custom" ? "default" : "outline"}
+                  variant={timeRange === 'custom' ? 'default' : 'outline'}
                   size="sm"
                   className="gap-2"
                 >
@@ -278,7 +544,7 @@ export default function IntelligenceAnalytics() {
                   onSelect={(range) => {
                     setCustomRange(range);
                     if (range?.from && range?.to) {
-                      setTimeRange("custom");
+                      setTimeRange('custom');
                       setShowCustomPicker(false);
                     }
                   }}
@@ -289,9 +555,9 @@ export default function IntelligenceAnalytics() {
             </Popover>
 
             {/* Show selected custom range */}
-            {timeRange === "custom" && customRange?.from && customRange?.to && (
+            {timeRange === 'custom' && customRange?.from && customRange?.to && (
               <span className="text-sm text-muted-foreground">
-                {format(customRange.from, "MMM d")} - {format(customRange.to, "MMM d, yyyy")}
+                {format(customRange.from, 'MMM d')} - {format(customRange.to, 'MMM d, yyyy')}
               </span>
             )}
 
@@ -327,78 +593,92 @@ export default function IntelligenceAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Queries</CardTitle>
-                  <Brain className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {intelligenceMetrics?.totalQueries?.toLocaleString() || "0"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {intelligenceMetrics?.totalQueries ? `${intelligenceMetrics.totalQueries.toLocaleString()} queries in ${timeRange}` : "No queries yet"}
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Queries</CardTitle>
+                    <Brain className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {intelligenceMetrics?.totalQueries?.toLocaleString() || '0'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {intelligenceMetrics?.totalQueries
+                        ? `${intelligenceMetrics.totalQueries.toLocaleString()} queries in ${timeRange}`
+                        : 'No queries yet'}
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {Math.max(0, Math.min(100, intelligenceMetrics?.successRate || 0)).toFixed(1)}%
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {intelligenceMetrics?.totalQueries ? `Based on ${intelligenceMetrics.totalQueries.toLocaleString()} queries` : "No data available"}
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {Math.max(0, Math.min(100, intelligenceMetrics?.successRate || 0)).toFixed(1)}
+                      %
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {intelligenceMetrics?.totalQueries
+                        ? `Based on ${intelligenceMetrics.totalQueries.toLocaleString()} queries`
+                        : 'No data available'}
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {intelligenceMetrics?.avgResponseTime ? `${(intelligenceMetrics.avgResponseTime / 1000).toFixed(1)}s` : "0ms"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {intelligenceMetrics?.avgResponseTime ? `Average across all agents` : "No response time data"}
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {intelligenceMetrics?.avgResponseTime
+                        ? `${(intelligenceMetrics.avgResponseTime / 1000).toFixed(1)}s`
+                        : '0ms'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {intelligenceMetrics?.avgResponseTime
+                        ? `Average across all agents`
+                        : 'No response time data'}
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-sm">
-                        <p className="text-xs">
-                          <strong>Methodology:</strong> Savings calculated by comparing agent performance with intelligence (pattern injection, optimized routing) vs baseline (standard AI agents). Includes token reduction (34%), local compute offload (12%), and avoided API calls (8%).
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    ${savingsMetrics?.totalSavings?.toLocaleString() || "0"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {savingsMetrics?.totalSavings ? `Total savings in ${timeRange}` : "No savings data"}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          <p className="text-xs">
+                            <strong>Methodology:</strong> Savings calculated by comparing agent
+                            performance with intelligence (pattern injection, optimized routing) vs
+                            baseline (standard AI agents). Includes token reduction (34%), local
+                            compute offload (12%), and avoided API calls (8%).
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      ${savingsMetrics?.totalSavings?.toLocaleString() || '0'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {savingsMetrics?.totalSavings
+                        ? `Total savings in ${timeRange}`
+                        : 'No savings data'}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
             </CardContent>
           </Card>
 
@@ -409,66 +689,58 @@ export default function IntelligenceAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Quality Score</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {intelligenceMetrics?.qualityScore?.toFixed(1) || "0"}/10
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Overall code quality
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Quality Score</CardTitle>
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {intelligenceMetrics?.qualityScore?.toFixed(1) || '0'}/10
+                    </div>
+                    <p className="text-xs text-muted-foreground">Overall code quality</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">User Satisfaction</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {intelligenceMetrics?.userSatisfaction?.toFixed(1) || "0"}/10
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    User satisfaction score
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">User Satisfaction</CardTitle>
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {intelligenceMetrics?.userSatisfaction?.toFixed(1) || '0'}/10
+                    </div>
+                    <p className="text-xs text-muted-foreground">User satisfaction score</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Fallback Rate</CardTitle>
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {intelligenceMetrics?.fallbackRate?.toFixed(1) || "0"}%
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Lower is better
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Fallback Rate</CardTitle>
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {intelligenceMetrics?.fallbackRate?.toFixed(1) || '0'}%
+                    </div>
+                    <p className="text-xs text-muted-foreground">Lower is better</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Cost per Query</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    ${intelligenceMetrics?.costPerQuery?.toFixed(4) || "0"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Average cost efficiency
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Cost per Query</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      ${intelligenceMetrics?.costPerQuery?.toFixed(4) || '0'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Average cost efficiency</p>
+                  </CardContent>
+                </Card>
+              </div>
             </CardContent>
           </Card>
 
@@ -479,64 +751,56 @@ export default function IntelligenceAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Daily Savings</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    ${savingsMetrics?.dailySavings?.toFixed(2) || "0.00"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Average daily cost reduction
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Daily Savings</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      ${savingsMetrics?.dailySavings?.toFixed(2) || '0.00'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Average daily cost reduction</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Weekly Savings</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    ${savingsMetrics?.weeklySavings?.toFixed(2) || "0.00"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Projected weekly savings
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Weekly Savings</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      ${savingsMetrics?.weeklySavings?.toFixed(2) || '0.00'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Projected weekly savings</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Monthly Savings</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    ${savingsMetrics?.monthlySavings?.toFixed(2) || "0.00"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Projected monthly savings
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Monthly Savings</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      ${savingsMetrics?.monthlySavings?.toFixed(2) || '0.00'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Projected monthly savings</p>
+                  </CardContent>
+                </Card>
 
-              {/* Spacer card for consistent 4-column layout */}
-              <Card className="border-dashed opacity-50">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-transparent">Spacer</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-transparent">-</div>
-                  <p className="text-xs text-transparent">
-                    Placeholder
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                {/* Spacer card for consistent 4-column layout */}
+                <Card className="border-dashed opacity-50">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-transparent">Spacer</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-transparent">-</div>
+                    <p className="text-xs text-transparent">Placeholder</p>
+                  </CardContent>
+                </Card>
+              </div>
             </CardContent>
           </Card>
 
@@ -545,18 +809,28 @@ export default function IntelligenceAnalytics() {
             <Card>
               <CardHeader>
                 <h3 className="text-base font-medium">Recent Activity</h3>
-                <CardDescription>Latest intelligence operations and agent executions</CardDescription>
+                <CardDescription>
+                  Latest intelligence operations and agent executions
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {usingMockActivity && <MockDataBadge className="mb-3" />}
                 <div className="space-y-4">
                   {recentActivity.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
                       <div className="flex items-center gap-3 flex-1">
-                        <div className={`w-2 h-2 rounded-full ${
-                          item.status === 'completed' ? 'bg-green-500' :
-                          item.status === 'executing' ? 'bg-yellow-500' : 'bg-gray-500'
-                        }`}></div>
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            item.status === 'completed'
+                              ? 'bg-green-500'
+                              : item.status === 'executing'
+                                ? 'bg-yellow-500'
+                                : 'bg-gray-500'
+                          }`}
+                        ></div>
                         <div className="flex-1">
                           <div className="font-medium text-sm">{item.action}</div>
                           <div className="text-xs text-muted-foreground">
@@ -592,13 +866,17 @@ export default function IntelligenceAnalytics() {
           <Card>
             <CardHeader>
               <CardTitle>Query Performance Details</CardTitle>
-              <CardDescription>In-depth analysis of intelligence query execution and response patterns</CardDescription>
+              <CardDescription>
+                In-depth analysis of intelligence query execution and response patterns
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2 p-4 border rounded-lg">
                   <div className="text-sm font-medium text-muted-foreground">Total Queries</div>
-                  <div className="text-2xl font-bold">{intelligenceMetrics?.totalQueries?.toLocaleString() || "0"}</div>
+                  <div className="text-2xl font-bold">
+                    {intelligenceMetrics?.totalQueries?.toLocaleString() || '0'}
+                  </div>
                   <Progress value={85} className="h-2" />
                   <div className="text-xs text-muted-foreground">85% within target SLA</div>
                 </div>
@@ -607,18 +885,27 @@ export default function IntelligenceAnalytics() {
                   <div className="text-2xl font-bold text-green-600">
                     {Math.max(0, Math.min(100, intelligenceMetrics?.successRate || 0)).toFixed(1)}%
                   </div>
-                  <Progress value={Math.max(0, Math.min(100, intelligenceMetrics?.successRate || 0))} className="h-2" />
+                  <Progress
+                    value={Math.max(0, Math.min(100, intelligenceMetrics?.successRate || 0))}
+                    className="h-2"
+                  />
                   <div className="text-xs text-muted-foreground">Target: 95%</div>
                 </div>
                 <div className="space-y-2 p-4 border rounded-lg">
                   <div className="text-sm font-medium text-muted-foreground">Avg Response Time</div>
-                  <div className="text-2xl font-bold">{intelligenceMetrics?.avgResponseTime?.toFixed(0) || "0"}ms</div>
+                  <div className="text-2xl font-bold">
+                    {intelligenceMetrics?.avgResponseTime?.toFixed(0) || '0'}ms
+                  </div>
                   <Progress value={65} className="h-2" />
-                  <div className="text-xs text-muted-foreground">P95: {(intelligenceMetrics?.avgResponseTime || 0) * 1.5}ms</div>
+                  <div className="text-xs text-muted-foreground">
+                    P95: {(intelligenceMetrics?.avgResponseTime || 0) * 1.5}ms
+                  </div>
                 </div>
                 <div className="space-y-2 p-4 border rounded-lg">
                   <div className="text-sm font-medium text-muted-foreground">Fallback Rate</div>
-                  <div className="text-2xl font-bold text-orange-600">{intelligenceMetrics?.fallbackRate?.toFixed(1) || "0"}%</div>
+                  <div className="text-2xl font-bold text-orange-600">
+                    {intelligenceMetrics?.fallbackRate?.toFixed(1) || '0'}%
+                  </div>
                   <Progress value={intelligenceMetrics?.fallbackRate || 0} className="h-2" />
                   <div className="text-xs text-muted-foreground">Lower is better</div>
                 </div>
@@ -630,7 +917,9 @@ export default function IntelligenceAnalytics() {
           <Card>
             <CardHeader>
               <CardTitle>Quality Metrics Deep Dive</CardTitle>
-              <CardDescription>Comprehensive quality assessment across all intelligence operations</CardDescription>
+              <CardDescription>
+                Comprehensive quality assessment across all intelligence operations
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -638,36 +927,58 @@ export default function IntelligenceAnalytics() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Quality Score</span>
-                      <span className="text-lg font-bold">{intelligenceMetrics?.qualityScore?.toFixed(1) || "0"}/10</span>
+                      <span className="text-lg font-bold">
+                        {intelligenceMetrics?.qualityScore?.toFixed(1) || '0'}/10
+                      </span>
                     </div>
-                    <Progress value={(intelligenceMetrics?.qualityScore || 0) * 10} className="h-3" />
-                    <div className="text-xs text-muted-foreground">Based on code correctness, maintainability, and patterns</div>
+                    <Progress
+                      value={(intelligenceMetrics?.qualityScore || 0) * 10}
+                      className="h-3"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Based on code correctness, maintainability, and patterns
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">User Satisfaction</span>
-                      <span className="text-lg font-bold">{intelligenceMetrics?.userSatisfaction?.toFixed(1) || "0"}/10</span>
+                      <span className="text-lg font-bold">
+                        {intelligenceMetrics?.userSatisfaction?.toFixed(1) || '0'}/10
+                      </span>
                     </div>
-                    <Progress value={(intelligenceMetrics?.userSatisfaction || 0) * 10} className="h-3" />
-                    <div className="text-xs text-muted-foreground">Aggregated from user feedback and task completion</div>
+                    <Progress
+                      value={(intelligenceMetrics?.userSatisfaction || 0) * 10}
+                      className="h-3"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Aggregated from user feedback and task completion
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Cost per Query</span>
-                      <span className="text-lg font-bold">${intelligenceMetrics?.costPerQuery?.toFixed(4) || "0"}</span>
+                      <span className="text-lg font-bold">
+                        ${intelligenceMetrics?.costPerQuery?.toFixed(4) || '0'}
+                      </span>
                     </div>
                     <Progress value={45} className="h-3" />
-                    <div className="text-xs text-muted-foreground">Includes tokens, compute, and overhead</div>
+                    <div className="text-xs text-muted-foreground">
+                      Includes tokens, compute, and overhead
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Total Cost</span>
-                      <span className="text-lg font-bold">${intelligenceMetrics?.totalCost?.toFixed(2) || "0"}</span>
+                      <span className="text-lg font-bold">
+                        ${intelligenceMetrics?.totalCost?.toFixed(2) || '0'}
+                      </span>
                     </div>
                     <Progress value={70} className="h-3" />
-                    <div className="text-xs text-muted-foreground">All operations in current time period</div>
+                    <div className="text-xs text-muted-foreground">
+                      All operations in current time period
+                    </div>
                   </div>
                 </div>
               </div>
@@ -678,7 +989,9 @@ export default function IntelligenceAnalytics() {
           <Card>
             <CardHeader>
               <CardTitle>Trend Analysis</CardTitle>
-              <CardDescription>Historical trends and pattern identification across intelligence metrics</CardDescription>
+              <CardDescription>
+                Historical trends and pattern identification across intelligence metrics
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -690,21 +1003,27 @@ export default function IntelligenceAnalytics() {
                         <TrendingUp className="w-4 h-4 text-green-600" />
                         <span className="text-sm">Query volume</span>
                       </div>
-                      <Badge variant="outline" className="text-green-600">+23%</Badge>
+                      <Badge variant="outline" className="text-green-600">
+                        +23%
+                      </Badge>
                     </div>
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-green-600" />
                         <span className="text-sm">Success rate</span>
                       </div>
-                      <Badge variant="outline" className="text-green-600">+5.2%</Badge>
+                      <Badge variant="outline" className="text-green-600">
+                        +5.2%
+                      </Badge>
                     </div>
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-2">
                         <TrendingDown className="w-4 h-4 text-green-600" />
                         <span className="text-sm">Response time</span>
                       </div>
-                      <Badge variant="outline" className="text-green-600">-18%</Badge>
+                      <Badge variant="outline" className="text-green-600">
+                        -18%
+                      </Badge>
                     </div>
                   </div>
                 </div>
@@ -716,21 +1035,27 @@ export default function IntelligenceAnalytics() {
                         <TrendingUp className="w-4 h-4 text-green-600" />
                         <span className="text-sm">Cost efficiency</span>
                       </div>
-                      <Badge variant="outline" className="text-green-600">+12%</Badge>
+                      <Badge variant="outline" className="text-green-600">
+                        +12%
+                      </Badge>
                     </div>
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-2">
                         <TrendingDown className="w-4 h-4 text-green-600" />
                         <span className="text-sm">Fallback rate</span>
                       </div>
-                      <Badge variant="outline" className="text-green-600">-8.3%</Badge>
+                      <Badge variant="outline" className="text-green-600">
+                        -8.3%
+                      </Badge>
                     </div>
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-green-600" />
                         <span className="text-sm">Pattern reuse</span>
                       </div>
-                      <Badge variant="outline" className="text-green-600">+31%</Badge>
+                      <Badge variant="outline" className="text-green-600">
+                        +31%
+                      </Badge>
                     </div>
                   </div>
                 </div>
@@ -742,7 +1067,9 @@ export default function IntelligenceAnalytics() {
           <Card>
             <CardHeader>
               <CardTitle>Pattern Discovery</CardTitle>
-              <CardDescription>Emerging patterns and insights from intelligence operations</CardDescription>
+              <CardDescription>
+                Emerging patterns and insights from intelligence operations
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -788,11 +1115,11 @@ export default function IntelligenceAnalytics() {
                     </TableHeader>
                     <TableBody>
                       {[
-                        { category: "API Integration", count: 38, percentage: 27 },
-                        { category: "Data Transformation", count: 29, percentage: 20 },
-                        { category: "Error Handling", count: 24, percentage: 17 },
-                        { category: "UI Components", count: 21, percentage: 15 },
-                        { category: "State Management", count: 18, percentage: 13 }
+                        { category: 'API Integration', count: 38, percentage: 27 },
+                        { category: 'Data Transformation', count: 29, percentage: 20 },
+                        { category: 'Error Handling', count: 24, percentage: 17 },
+                        { category: 'UI Components', count: 21, percentage: 15 },
+                        { category: 'State Management', count: 18, percentage: 13 },
                       ].map((pattern) => (
                         <TableRow
                           key={pattern.category}
@@ -845,7 +1172,10 @@ export default function IntelligenceAnalytics() {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">
                         <p className="text-xs">
-                          <strong>Methodology:</strong> Savings calculated by comparing agent performance with intelligence (pattern injection, optimized routing) vs baseline (standard AI agents). Includes token reduction (34%), local compute offload (12%), and avoided API calls (8%).
+                          <strong>Methodology:</strong> Savings calculated by comparing agent
+                          performance with intelligence (pattern injection, optimized routing) vs
+                          baseline (standard AI agents). Includes token reduction (34%), local
+                          compute offload (12%), and avoided API calls (8%).
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -859,10 +1189,14 @@ export default function IntelligenceAnalytics() {
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">${savingsMetrics?.totalSavings?.toLocaleString() || "0"}</div>
+                        <div className="text-2xl font-bold">
+                          ${savingsMetrics?.totalSavings?.toLocaleString() || '0'}
+                        </div>
                         <div className="flex items-center gap-1 mt-1">
                           <TrendingUp className="h-3 w-3 text-green-600" />
-                          <span className="text-xs text-green-600 font-medium">+12% from last period</span>
+                          <span className="text-xs text-green-600 font-medium">
+                            +12% from last period
+                          </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           All savings in {timeRange}
@@ -876,10 +1210,14 @@ export default function IntelligenceAnalytics() {
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">${savingsMetrics?.dailySavings?.toFixed(2) || "0.00"}</div>
+                        <div className="text-2xl font-bold">
+                          ${savingsMetrics?.dailySavings?.toFixed(2) || '0.00'}
+                        </div>
                         <div className="flex items-center gap-1 mt-1">
                           <TrendingUp className="h-3 w-3 text-green-600" />
-                          <span className="text-xs text-green-600 font-medium">+8% vs yesterday</span>
+                          <span className="text-xs text-green-600 font-medium">
+                            +8% vs yesterday
+                          </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           Average daily cost reduction
@@ -893,10 +1231,14 @@ export default function IntelligenceAnalytics() {
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">${savingsMetrics?.weeklySavings?.toFixed(2) || "0.00"}</div>
+                        <div className="text-2xl font-bold">
+                          ${savingsMetrics?.weeklySavings?.toFixed(2) || '0.00'}
+                        </div>
                         <div className="flex items-center gap-1 mt-1">
                           <TrendingUp className="h-3 w-3 text-green-600" />
-                          <span className="text-xs text-green-600 font-medium">+15% vs last week</span>
+                          <span className="text-xs text-green-600 font-medium">
+                            +15% vs last week
+                          </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           Projected weekly savings
@@ -910,10 +1252,14 @@ export default function IntelligenceAnalytics() {
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">${savingsMetrics?.monthlySavings?.toFixed(2) || "0.00"}</div>
+                        <div className="text-2xl font-bold">
+                          ${savingsMetrics?.monthlySavings?.toFixed(2) || '0.00'}
+                        </div>
                         <div className="flex items-center gap-1 mt-1">
                           <TrendingUp className="h-3 w-3 text-green-600" />
-                          <span className="text-xs text-green-600 font-medium">+18% MoM growth</span>
+                          <span className="text-xs text-green-600 font-medium">
+                            +18% MoM growth
+                          </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           Projected monthly savings
@@ -930,27 +1276,45 @@ export default function IntelligenceAnalytics() {
                 <Card>
                   <CardHeader
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => setExpandedSection(expandedSection === 'tokens' ? null : 'tokens')}
+                    onClick={() =>
+                      setExpandedSection(expandedSection === 'tokens' ? null : 'tokens')
+                    }
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CardTitle>Token Savings Breakdown</CardTitle>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" onClick={(e) => e.stopPropagation()} />
+                            <Info
+                              className="h-4 w-4 text-muted-foreground cursor-help"
+                              onClick={(e) => e.stopPropagation()}
+                            />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-md">
                             <div className="space-y-2 text-sm">
-                              <p><strong>Intelligence Tokens:</strong> Actual token usage with pattern injection, manifest optimization, and intelligent caching enabled.</p>
-                              <p><strong>Token Savings:</strong> Reduction achieved through pattern caching (40%), local model offloading (25%), optimized routing (20%), and other optimizations (15%).</p>
+                              <p>
+                                <strong>Intelligence Tokens:</strong> Actual token usage with
+                                pattern injection, manifest optimization, and intelligent caching
+                                enabled.
+                              </p>
+                              <p>
+                                <strong>Token Savings:</strong> Reduction achieved through pattern
+                                caching (40%), local model offloading (25%), optimized routing
+                                (20%), and other optimizations (15%).
+                              </p>
                             </div>
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      {expandedSection === 'tokens' ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                      {expandedSection === 'tokens' ? (
+                        <ChevronDown className="h-5 w-5" />
+                      ) : (
+                        <ChevronRight className="h-5 w-5" />
+                      )}
                     </div>
                     <CardDescription>
-                      {Math.round((savingsMetrics?.avgTokensPerRun || 0) * 0.4).toLocaleString()} tokens saved per run
+                      {Math.round((savingsMetrics?.avgTokensPerRun || 0) * 0.4).toLocaleString()}{' '}
+                      tokens saved per run
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -960,7 +1324,9 @@ export default function IntelligenceAnalytics() {
                         <span className="text-sm font-medium">With Intelligence</span>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold">{(savingsMetrics?.intelligenceRuns || 0).toLocaleString()} runs</div>
+                        <div className="font-bold">
+                          {(savingsMetrics?.intelligenceRuns || 0).toLocaleString()} runs
+                        </div>
                         <div className="text-sm text-muted-foreground">
                           {(savingsMetrics?.avgTokensPerRun || 0).toLocaleString()} tokens/run
                         </div>
@@ -973,9 +1339,14 @@ export default function IntelligenceAnalytics() {
                         <span className="text-sm font-medium">Without Intelligence</span>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold">{(savingsMetrics?.baselineRuns || 0).toLocaleString()} runs</div>
+                        <div className="font-bold">
+                          {(savingsMetrics?.baselineRuns || 0).toLocaleString()} runs
+                        </div>
                         <div className="text-sm text-muted-foreground">
-                          {Math.round((savingsMetrics?.avgTokensPerRun || 0) * 1.6).toLocaleString()} tokens/run
+                          {Math.round(
+                            (savingsMetrics?.avgTokensPerRun || 0) * 1.6
+                          ).toLocaleString()}{' '}
+                          tokens/run
                         </div>
                       </div>
                     </div>
@@ -984,7 +1355,10 @@ export default function IntelligenceAnalytics() {
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">Total Token Savings</span>
                         <span className="font-bold text-green-600">
-                          {Math.round((savingsMetrics?.avgTokensPerRun || 0) * 0.4).toLocaleString()} tokens/run (40%)
+                          {Math.round(
+                            (savingsMetrics?.avgTokensPerRun || 0) * 0.4
+                          ).toLocaleString()}{' '}
+                          tokens/run (40%)
                         </span>
                       </div>
                       <Progress value={40} className="h-2" />
@@ -1004,7 +1378,10 @@ export default function IntelligenceAnalytics() {
                           </div>
                           <Progress value={40} className="h-1.5" />
                           <p className="text-xs text-muted-foreground pl-5">
-                            {Math.round((savingsMetrics?.avgTokensPerRun || 0) * 0.16).toLocaleString()} tokens/run saved by reusing learned patterns
+                            {Math.round(
+                              (savingsMetrics?.avgTokensPerRun || 0) * 0.16
+                            ).toLocaleString()}{' '}
+                            tokens/run saved by reusing learned patterns
                           </p>
                         </div>
 
@@ -1018,7 +1395,10 @@ export default function IntelligenceAnalytics() {
                           </div>
                           <Progress value={25} className="h-1.5" />
                           <p className="text-xs text-muted-foreground pl-5">
-                            {Math.round((savingsMetrics?.avgTokensPerRun || 0) * 0.10).toLocaleString()} tokens/run offloaded to local models
+                            {Math.round(
+                              (savingsMetrics?.avgTokensPerRun || 0) * 0.1
+                            ).toLocaleString()}{' '}
+                            tokens/run offloaded to local models
                           </p>
                         </div>
 
@@ -1032,7 +1412,10 @@ export default function IntelligenceAnalytics() {
                           </div>
                           <Progress value={20} className="h-1.5" />
                           <p className="text-xs text-muted-foreground pl-5">
-                            {Math.round((savingsMetrics?.avgTokensPerRun || 0) * 0.08).toLocaleString()} tokens/run saved by intelligent agent selection
+                            {Math.round(
+                              (savingsMetrics?.avgTokensPerRun || 0) * 0.08
+                            ).toLocaleString()}{' '}
+                            tokens/run saved by intelligent agent selection
                           </p>
                         </div>
 
@@ -1046,7 +1429,10 @@ export default function IntelligenceAnalytics() {
                           </div>
                           <Progress value={15} className="h-1.5" />
                           <p className="text-xs text-muted-foreground pl-5">
-                            {Math.round((savingsMetrics?.avgTokensPerRun || 0) * 0.06).toLocaleString()} tokens/run from manifest compression & caching
+                            {Math.round(
+                              (savingsMetrics?.avgTokensPerRun || 0) * 0.06
+                            ).toLocaleString()}{' '}
+                            tokens/run from manifest compression & caching
                           </p>
                         </div>
                       </div>
@@ -1058,27 +1444,44 @@ export default function IntelligenceAnalytics() {
                 <Card>
                   <CardHeader
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => setExpandedSection(expandedSection === 'compute' ? null : 'compute')}
+                    onClick={() =>
+                      setExpandedSection(expandedSection === 'compute' ? null : 'compute')
+                    }
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CardTitle>Compute Savings Breakdown</CardTitle>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" onClick={(e) => e.stopPropagation()} />
+                            <Info
+                              className="h-4 w-4 text-muted-foreground cursor-help"
+                              onClick={(e) => e.stopPropagation()}
+                            />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-md">
                             <div className="space-y-2 text-sm">
-                              <p><strong>Compute Units:</strong> A normalized measure of processing power used. One compute unit = 1 second of standard CPU processing or equivalent GPU/TPU time.</p>
-                              <p><strong>Savings:</strong> Achieved through CPU offload (35%), memory optimization (30%), cache hits (20%), and query optimization (15%).</p>
+                              <p>
+                                <strong>Compute Units:</strong> A normalized measure of processing
+                                power used. One compute unit = 1 second of standard CPU processing
+                                or equivalent GPU/TPU time.
+                              </p>
+                              <p>
+                                <strong>Savings:</strong> Achieved through CPU offload (35%), memory
+                                optimization (30%), cache hits (20%), and query optimization (15%).
+                              </p>
                             </div>
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      {expandedSection === 'compute' ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                      {expandedSection === 'compute' ? (
+                        <ChevronDown className="h-5 w-5" />
+                      ) : (
+                        <ChevronRight className="h-5 w-5" />
+                      )}
                     </div>
                     <CardDescription>
-                      {((savingsMetrics?.avgComputePerRun || 0) * 0.6).toFixed(1)} compute units saved per run
+                      {((savingsMetrics?.avgComputePerRun || 0) * 0.6).toFixed(1)} compute units
+                      saved per run
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1088,7 +1491,9 @@ export default function IntelligenceAnalytics() {
                         <span className="text-sm font-medium">With Intelligence</span>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold">{(savingsMetrics?.avgComputePerRun || 0).toFixed(1)} units</div>
+                        <div className="font-bold">
+                          {(savingsMetrics?.avgComputePerRun || 0).toFixed(1)} units
+                        </div>
                         <div className="text-sm text-muted-foreground">per run</div>
                       </div>
                     </div>
@@ -1099,7 +1504,9 @@ export default function IntelligenceAnalytics() {
                         <span className="text-sm font-medium">Without Intelligence</span>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold">{((savingsMetrics?.avgComputePerRun || 0) * 1.6).toFixed(1)} units</div>
+                        <div className="font-bold">
+                          {((savingsMetrics?.avgComputePerRun || 0) * 1.6).toFixed(1)} units
+                        </div>
                         <div className="text-sm text-muted-foreground">per run</div>
                       </div>
                     </div>
@@ -1108,7 +1515,8 @@ export default function IntelligenceAnalytics() {
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">Total Compute Savings</span>
                         <span className="font-bold text-green-600">
-                          {((savingsMetrics?.avgComputePerRun || 0) * 0.6).toFixed(1)} units/run (37.5%)
+                          {((savingsMetrics?.avgComputePerRun || 0) * 0.6).toFixed(1)} units/run
+                          (37.5%)
                         </span>
                       </div>
                       <Progress value={37.5} className="h-2" />
@@ -1128,7 +1536,8 @@ export default function IntelligenceAnalytics() {
                           </div>
                           <Progress value={35} className="h-1.5" />
                           <p className="text-xs text-muted-foreground pl-5">
-                            {((savingsMetrics?.avgComputePerRun || 0) * 0.21).toFixed(2)} units/run offloaded to local processing
+                            {((savingsMetrics?.avgComputePerRun || 0) * 0.21).toFixed(2)} units/run
+                            offloaded to local processing
                           </p>
                         </div>
 
@@ -1142,7 +1551,8 @@ export default function IntelligenceAnalytics() {
                           </div>
                           <Progress value={30} className="h-1.5" />
                           <p className="text-xs text-muted-foreground pl-5">
-                            {((savingsMetrics?.avgComputePerRun || 0) * 0.18).toFixed(2)} units/run from efficient memory management
+                            {((savingsMetrics?.avgComputePerRun || 0) * 0.18).toFixed(2)} units/run
+                            from efficient memory management
                           </p>
                         </div>
 
@@ -1156,7 +1566,8 @@ export default function IntelligenceAnalytics() {
                           </div>
                           <Progress value={20} className="h-1.5" />
                           <p className="text-xs text-muted-foreground pl-5">
-                            {((savingsMetrics?.avgComputePerRun || 0) * 0.12).toFixed(2)} units/run from pattern and result caching
+                            {((savingsMetrics?.avgComputePerRun || 0) * 0.12).toFixed(2)} units/run
+                            from pattern and result caching
                           </p>
                         </div>
 
@@ -1170,7 +1581,8 @@ export default function IntelligenceAnalytics() {
                           </div>
                           <Progress value={15} className="h-1.5" />
                           <p className="text-xs text-muted-foreground pl-5">
-                            {((savingsMetrics?.avgComputePerRun || 0) * 0.09).toFixed(2)} units/run from database and API optimization
+                            {((savingsMetrics?.avgComputePerRun || 0) * 0.09).toFixed(2)} units/run
+                            from database and API optimization
                           </p>
                         </div>
                       </div>
@@ -1207,14 +1619,21 @@ export default function IntelligenceAnalytics() {
                           <TableCell className="font-medium">{agent.agentName}</TableCell>
                           <TableCell className="text-right">
                             {(savingsMetrics?.intelligenceRuns || 0) > 0
-                              ? Math.round((savingsMetrics?.intelligenceRuns || 0) * (agent.savings.percentage / 100) / agentComparisons.length)
+                              ? Math.round(
+                                  ((savingsMetrics?.intelligenceRuns || 0) *
+                                    (agent.savings.percentage / 100)) /
+                                    agentComparisons.length
+                                )
                               : 0}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
                               <span>{agent.savings.tokens.toLocaleString()}</span>
                               <div className="w-16">
-                                <Progress value={Math.min(100, (agent.savings.tokens / 2000) * 100)} className="h-1.5" />
+                                <Progress
+                                  value={Math.min(100, (agent.savings.tokens / 2000) * 100)}
+                                  className="h-1.5"
+                                />
                               </div>
                             </div>
                           </TableCell>
@@ -1222,7 +1641,10 @@ export default function IntelligenceAnalytics() {
                             <div className="flex items-center justify-end gap-2">
                               <span>{agent.savings.compute.toFixed(1)} units</span>
                               <div className="w-16">
-                                <Progress value={Math.min(100, (agent.savings.compute / 1) * 100)} className="h-1.5" />
+                                <Progress
+                                  value={Math.min(100, (agent.savings.compute / 1) * 100)}
+                                  className="h-1.5"
+                                />
                               </div>
                             </div>
                           </TableCell>
@@ -1230,7 +1652,9 @@ export default function IntelligenceAnalytics() {
                             ${agent.savings.cost.toFixed(3)}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Badge variant={agent.savings.percentage > 40 ? "default" : "secondary"}>
+                            <Badge
+                              variant={agent.savings.percentage > 40 ? 'default' : 'secondary'}
+                            >
                               {agent.savings.percentage.toFixed(1)}%
                             </Badge>
                           </TableCell>
@@ -1267,7 +1691,9 @@ export default function IntelligenceAnalytics() {
                           onClick={() => setSelectedProvider(provider)}
                         >
                           <TableCell className="font-medium">{provider.providerName}</TableCell>
-                          <TableCell className="text-right">{provider.runsCount.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">
+                            {provider.runsCount.toLocaleString()}
+                          </TableCell>
                           <TableCell className="text-right">
                             {(provider.tokensProcessed / 1000).toFixed(0)}K
                           </TableCell>
@@ -1276,7 +1702,9 @@ export default function IntelligenceAnalytics() {
                               <span>{(provider.tokensOffloaded / 1000).toFixed(0)}K</span>
                               <div className="w-16">
                                 <Progress
-                                  value={(provider.tokensOffloaded / provider.tokensProcessed) * 100}
+                                  value={
+                                    (provider.tokensOffloaded / provider.tokensProcessed) * 100
+                                  }
                                   className="h-1.5"
                                 />
                               </div>
@@ -1287,7 +1715,9 @@ export default function IntelligenceAnalytics() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <span className="text-sm">{provider.percentageOfTotal.toFixed(1)}%</span>
+                              <span className="text-sm">
+                                {provider.percentageOfTotal.toFixed(1)}%
+                              </span>
                               <div className="w-16">
                                 <Progress value={provider.percentageOfTotal} className="h-1.5" />
                               </div>
@@ -1304,7 +1734,9 @@ export default function IntelligenceAnalytics() {
               <Card>
                 <CardHeader>
                   <CardTitle>Overall Efficiency Metrics</CardTitle>
-                  <CardDescription>Aggregate performance improvements across all operations</CardDescription>
+                  <CardDescription>
+                    Aggregate performance improvements across all operations
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1354,11 +1786,15 @@ export default function IntelligenceAnalytics() {
       </Tabs>
 
       {/* Pattern Details Dialog */}
-      <Dialog open={selectedPatternCategory !== null} onOpenChange={(open) => !open && setSelectedPatternCategory(null)}>
+      <Dialog
+        open={selectedPatternCategory !== null}
+        onOpenChange={(open) => !open && setSelectedPatternCategory(null)}
+      >
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">
-              {selectedPatternCategory} - {patternDetails[selectedPatternCategory || ""]?.length || 0} Patterns
+              {selectedPatternCategory} -{' '}
+              {patternDetails[selectedPatternCategory || '']?.length || 0} Patterns
             </DialogTitle>
             <DialogDescription>
               Detailed view of patterns in the {selectedPatternCategory} category
@@ -1385,13 +1821,13 @@ export default function IntelligenceAnalytics() {
                         <TableCell className="text-sm text-muted-foreground max-w-md">
                           {pattern.description}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {pattern.usageCount}
-                        </TableCell>
+                        <TableCell className="text-right font-mono">{pattern.usageCount}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Progress value={pattern.effectiveness} className="w-16 h-2" />
-                            <span className="text-sm font-medium w-12">{pattern.effectiveness}%</span>
+                            <span className="text-sm font-medium w-12">
+                              {pattern.effectiveness}%
+                            </span>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1403,7 +1839,12 @@ export default function IntelligenceAnalytics() {
               {patternDetails[selectedPatternCategory].length > 10 && (
                 <div className="flex items-center justify-between pt-4 border-t">
                   <div className="text-sm text-muted-foreground">
-                    Showing {((patternDialogPage - 1) * 10) + 1} to {Math.min(patternDialogPage * 10, patternDetails[selectedPatternCategory].length)} of {patternDetails[selectedPatternCategory].length} patterns
+                    Showing {(patternDialogPage - 1) * 10 + 1} to{' '}
+                    {Math.min(
+                      patternDialogPage * 10,
+                      patternDetails[selectedPatternCategory].length
+                    )}{' '}
+                    of {patternDetails[selectedPatternCategory].length} patterns
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -1415,13 +1856,17 @@ export default function IntelligenceAnalytics() {
                       Previous
                     </Button>
                     <div className="text-sm">
-                      Page {patternDialogPage} of {Math.ceil(patternDetails[selectedPatternCategory].length / 10)}
+                      Page {patternDialogPage} of{' '}
+                      {Math.ceil(patternDetails[selectedPatternCategory].length / 10)}
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setPatternDialogPage(patternDialogPage + 1)}
-                      disabled={patternDialogPage >= Math.ceil(patternDetails[selectedPatternCategory].length / 10)}
+                      disabled={
+                        patternDialogPage >=
+                        Math.ceil(patternDetails[selectedPatternCategory].length / 10)
+                      }
                     >
                       Next
                     </Button>
@@ -1434,14 +1879,18 @@ export default function IntelligenceAnalytics() {
       </Dialog>
 
       {/* Agent Savings Details Dialog */}
-      <Dialog open={selectedAgent !== null} onOpenChange={(open) => !open && setSelectedAgent(null)}>
+      <Dialog
+        open={selectedAgent !== null}
+        onOpenChange={(open) => !open && setSelectedAgent(null)}
+      >
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">
               {selectedAgent?.agentName} - Savings Breakdown
             </DialogTitle>
             <DialogDescription>
-              Detailed analysis of how this agent achieved {selectedAgent?.savings.tokens.toLocaleString()} token savings
+              Detailed analysis of how this agent achieved{' '}
+              {selectedAgent?.savings.tokens.toLocaleString()} token savings
             </DialogDescription>
           </DialogHeader>
 
@@ -1491,7 +1940,8 @@ export default function IntelligenceAnalytics() {
                     </div>
                     <Progress value={38} className="h-2 mb-2" />
                     <p className="text-sm text-muted-foreground">
-                      Reused {Math.round((savingsMetrics?.intelligenceRuns || 100) * 0.15)} cached responses instead of making new API calls
+                      Reused {Math.round((savingsMetrics?.intelligenceRuns || 100) * 0.15)} cached
+                      responses instead of making new API calls
                     </p>
                   </div>
 
@@ -1507,7 +1957,8 @@ export default function IntelligenceAnalytics() {
                     </div>
                     <Progress value={32} className="h-2 mb-2" />
                     <p className="text-sm text-muted-foreground">
-                      Leveraged {Math.round((savingsMetrics?.intelligenceRuns || 100) * 0.21)} learned patterns from previous executions
+                      Leveraged {Math.round((savingsMetrics?.intelligenceRuns || 100) * 0.21)}{' '}
+                      learned patterns from previous executions
                     </p>
                   </div>
 
@@ -1523,7 +1974,8 @@ export default function IntelligenceAnalytics() {
                     </div>
                     <Progress value={18} className="h-2 mb-2" />
                     <p className="text-sm text-muted-foreground">
-                      Routed {Math.round((savingsMetrics?.intelligenceRuns || 100) * 0.12)} tasks to more efficient models
+                      Routed {Math.round((savingsMetrics?.intelligenceRuns || 100) * 0.12)} tasks to
+                      more efficient models
                     </p>
                   </div>
 
@@ -1554,15 +2006,21 @@ export default function IntelligenceAnalytics() {
                     <div className="space-y-1">
                       <div className="flex justify-between text-sm">
                         <span>Tokens/run:</span>
-                        <span className="font-mono">{selectedAgent.withIntelligence.avgTokens.toLocaleString()}</span>
+                        <span className="font-mono">
+                          {selectedAgent.withIntelligence.avgTokens.toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Compute/run:</span>
-                        <span className="font-mono">{selectedAgent.withIntelligence.avgCompute.toFixed(1)} units</span>
+                        <span className="font-mono">
+                          {selectedAgent.withIntelligence.avgCompute.toFixed(1)} units
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Success rate:</span>
-                        <span className="font-mono text-green-600">{selectedAgent.withIntelligence.successRate.toFixed(1)}%</span>
+                        <span className="font-mono text-green-600">
+                          {selectedAgent.withIntelligence.successRate.toFixed(1)}%
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1571,15 +2029,21 @@ export default function IntelligenceAnalytics() {
                     <div className="space-y-1">
                       <div className="flex justify-between text-sm">
                         <span>Tokens/run:</span>
-                        <span className="font-mono">{selectedAgent.withoutIntelligence.avgTokens.toLocaleString()}</span>
+                        <span className="font-mono">
+                          {selectedAgent.withoutIntelligence.avgTokens.toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Compute/run:</span>
-                        <span className="font-mono">{selectedAgent.withoutIntelligence.avgCompute.toFixed(1)} units</span>
+                        <span className="font-mono">
+                          {selectedAgent.withoutIntelligence.avgCompute.toFixed(1)} units
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Success rate:</span>
-                        <span className="font-mono text-orange-600">{selectedAgent.withoutIntelligence.successRate.toFixed(1)}%</span>
+                        <span className="font-mono text-orange-600">
+                          {selectedAgent.withoutIntelligence.successRate.toFixed(1)}%
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1591,14 +2055,18 @@ export default function IntelligenceAnalytics() {
       </Dialog>
 
       {/* Provider Savings Details Dialog */}
-      <Dialog open={selectedProvider !== null} onOpenChange={(open) => !open && setSelectedProvider(null)}>
+      <Dialog
+        open={selectedProvider !== null}
+        onOpenChange={(open) => !open && setSelectedProvider(null)}
+      >
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">
               {selectedProvider?.providerName} - Provider Breakdown
             </DialogTitle>
             <DialogDescription>
-              Detailed cost analysis for {selectedProvider?.providerName} showing ${selectedProvider?.savingsAmount.toLocaleString()} in savings
+              Detailed cost analysis for {selectedProvider?.providerName} showing $
+              {selectedProvider?.savingsAmount.toLocaleString()} in savings
             </DialogDescription>
           </DialogHeader>
 
@@ -1647,7 +2115,9 @@ export default function IntelligenceAnalytics() {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Tokens processed:</span>
-                        <span className="font-mono">{selectedProvider.tokensProcessed.toLocaleString()}</span>
+                        <span className="font-mono">
+                          {selectedProvider.tokensProcessed.toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Tokens offloaded to local models:</span>
@@ -1657,10 +2127,15 @@ export default function IntelligenceAnalytics() {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Avg cost per token:</span>
-                        <span className="font-mono">${(selectedProvider.avgCostPerToken * 1000000).toFixed(2)}/M</span>
+                        <span className="font-mono">
+                          ${(selectedProvider.avgCostPerToken * 1000000).toFixed(2)}/M
+                        </span>
                       </div>
                       <Progress
-                        value={(selectedProvider.tokensOffloaded / selectedProvider.tokensProcessed) * 100}
+                        value={
+                          (selectedProvider.tokensOffloaded / selectedProvider.tokensProcessed) *
+                          100
+                        }
                         className="h-2"
                       />
                     </div>
@@ -1677,7 +2152,9 @@ export default function IntelligenceAnalytics() {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Total API calls:</span>
-                        <span className="font-mono">{selectedProvider.runsCount.toLocaleString()}</span>
+                        <span className="font-mono">
+                          {selectedProvider.runsCount.toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Cached responses:</span>
@@ -1698,13 +2175,13 @@ export default function IntelligenceAnalytics() {
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-medium">Compute Optimization</span>
                       <span className="text-lg font-bold text-purple-600">
-                        ${(selectedProvider.savingsAmount * 0.10).toFixed(2)}
+                        ${(selectedProvider.savingsAmount * 0.1).toFixed(2)}
                       </span>
                     </div>
                     <div className="space-y-2 text-sm">
                       <p className="text-muted-foreground">
-                        Optimized compute usage through efficient memory management, parallel processing,
-                        and smart resource allocation
+                        Optimized compute usage through efficient memory management, parallel
+                        processing, and smart resource allocation
                       </p>
                       <div className="flex justify-between">
                         <span>Resource efficiency gain:</span>
@@ -1722,12 +2199,16 @@ export default function IntelligenceAnalytics() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Total runs:</span>
-                      <span className="font-mono font-semibold">{selectedProvider.runsCount.toLocaleString()}</span>
+                      <span className="font-mono font-semibold">
+                        {selectedProvider.runsCount.toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Avg tokens/run:</span>
                       <span className="font-mono font-semibold">
-                        {Math.round(selectedProvider.tokensProcessed / selectedProvider.runsCount).toLocaleString()}
+                        {Math.round(
+                          selectedProvider.tokensProcessed / selectedProvider.runsCount
+                        ).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -1759,12 +2240,13 @@ export default function IntelligenceAnalytics() {
       </Dialog>
 
       {/* Activity Event Trace Dialog */}
-      <Dialog open={selectedActivity !== null} onOpenChange={(open) => !open && setSelectedActivity(null)}>
+      <Dialog
+        open={selectedActivity !== null}
+        onOpenChange={(open) => !open && setSelectedActivity(null)}
+      >
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl">
-              {selectedActivity?.agent} - Event Trace
-            </DialogTitle>
+            <DialogTitle className="text-xl">{selectedActivity?.agent} - Event Trace</DialogTitle>
             <DialogDescription>
               Detailed execution trace for {selectedActivity?.action} operation
             </DialogDescription>
@@ -1777,28 +2259,25 @@ export default function IntelligenceAnalytics() {
                 <div className="border rounded-lg p-4">
                   <div className="text-sm text-muted-foreground">Status</div>
                   <div className="text-2xl font-bold">
-                    <Badge variant={selectedActivity.status === 'completed' ? 'default' : 'secondary'} className="text-lg">
+                    <Badge
+                      variant={selectedActivity.status === 'completed' ? 'default' : 'secondary'}
+                      className="text-lg"
+                    >
                       {selectedActivity.status}
                     </Badge>
                   </div>
                 </div>
                 <div className="border rounded-lg p-4">
                   <div className="text-sm text-muted-foreground">Duration</div>
-                  <div className="text-2xl font-bold text-blue-600">
-                    1.2s
-                  </div>
+                  <div className="text-2xl font-bold text-blue-600">1.2s</div>
                 </div>
                 <div className="border rounded-lg p-4">
                   <div className="text-sm text-muted-foreground">Tool Calls</div>
-                  <div className="text-2xl font-bold text-purple-600">
-                    8
-                  </div>
+                  <div className="text-2xl font-bold text-purple-600">8</div>
                 </div>
                 <div className="border rounded-lg p-4">
                   <div className="text-sm text-muted-foreground">Tokens Used</div>
-                  <div className="text-2xl font-bold text-green-600">
-                    2,345
-                  </div>
+                  <div className="text-2xl font-bold text-green-600">2,345</div>
                 </div>
               </div>
 
@@ -1808,26 +2287,56 @@ export default function IntelligenceAnalytics() {
                 <div className="space-y-3">
                   {[
                     { time: '0ms', event: 'Agent Initialization', type: 'start', icon: Activity },
-                    { time: '45ms', event: 'Pattern Lookup in Qdrant', type: 'tool', icon: Database },
-                    { time: '120ms', event: 'Retrieved 3 relevant patterns', type: 'success', icon: Target },
+                    {
+                      time: '45ms',
+                      event: 'Pattern Lookup in Qdrant',
+                      type: 'tool',
+                      icon: Database,
+                    },
+                    {
+                      time: '120ms',
+                      event: 'Retrieved 3 relevant patterns',
+                      type: 'success',
+                      icon: Target,
+                    },
                     { time: '180ms', event: 'Manifest Generation', type: 'tool', icon: Code },
-                    { time: '350ms', event: 'LLM Call - Claude Sonnet 4', type: 'llm', icon: Brain },
+                    {
+                      time: '350ms',
+                      event: 'LLM Call - Claude Sonnet 4',
+                      type: 'llm',
+                      icon: Brain,
+                    },
                     { time: '980ms', event: 'Response Validation', type: 'tool', icon: TestTube },
                     { time: '1150ms', event: 'Quality Gate Check', type: 'tool', icon: Target },
-                    { time: '1200ms', event: selectedActivity.status === 'completed' ? 'Execution Complete' : 'Execution In Progress', type: selectedActivity.status === 'completed' ? 'complete' : 'executing', icon: selectedActivity.status === 'completed' ? Target : Activity },
+                    {
+                      time: '1200ms',
+                      event:
+                        selectedActivity.status === 'completed'
+                          ? 'Execution Complete'
+                          : 'Execution In Progress',
+                      type: selectedActivity.status === 'completed' ? 'complete' : 'executing',
+                      icon: selectedActivity.status === 'completed' ? Target : Activity,
+                    },
                   ].map((step, idx) => {
                     const Icon = step.icon;
                     return (
                       <div key={idx} className="flex items-start gap-4 p-3 border rounded-lg">
                         <div className="flex flex-col items-center">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            step.type === 'start' ? 'bg-blue-100 text-blue-600' :
-                            step.type === 'tool' ? 'bg-purple-100 text-purple-600' :
-                            step.type === 'llm' ? 'bg-green-100 text-green-600' :
-                            step.type === 'success' ? 'bg-green-100 text-green-600' :
-                            step.type === 'complete' ? 'bg-green-100 text-green-600' :
-                            'bg-yellow-100 text-yellow-600'
-                          }`}>
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              step.type === 'start'
+                                ? 'bg-blue-100 text-blue-600'
+                                : step.type === 'tool'
+                                  ? 'bg-purple-100 text-purple-600'
+                                  : step.type === 'llm'
+                                    ? 'bg-green-100 text-green-600'
+                                    : step.type === 'success'
+                                      ? 'bg-green-100 text-green-600'
+                                      : step.type === 'complete'
+                                        ? 'bg-green-100 text-green-600'
+                                        : 'bg-yellow-100 text-yellow-600'
+                            }`}
+                          >
                             <Icon className="w-4 h-4" />
                           </div>
                           {idx < 7 && <div className="w-0.5 h-8 bg-border mt-1"></div>}
@@ -1856,19 +2365,63 @@ export default function IntelligenceAnalytics() {
                   </TableHeader>
                   <TableBody>
                     {[
-                      { tool: 'Qdrant', action: 'Vector search for similar patterns', duration: '75ms', result: 'Success' },
-                      { tool: 'PostgreSQL', action: 'Retrieve agent manifest history', duration: '38ms', result: 'Success' },
-                      { tool: 'Manifest Generator', action: 'Generate optimized manifest', duration: '170ms', result: 'Success' },
-                      { tool: 'Claude API', action: 'Generate solution with patterns', duration: '630ms', result: 'Success' },
-                      { tool: 'Code Validator', action: 'Validate TypeScript syntax', duration: '22ms', result: 'Success' },
-                      { tool: 'Quality Gate', action: 'Run quality checks (8 gates)', duration: '50ms', result: 'Success' },
-                      { tool: 'Database', action: 'Store execution metrics', duration: '15ms', result: 'Success' },
-                      { tool: 'Kafka', action: 'Publish completion event', duration: '20ms', result: 'Success' },
+                      {
+                        tool: 'Qdrant',
+                        action: 'Vector search for similar patterns',
+                        duration: '75ms',
+                        result: 'Success',
+                      },
+                      {
+                        tool: 'PostgreSQL',
+                        action: 'Retrieve agent manifest history',
+                        duration: '38ms',
+                        result: 'Success',
+                      },
+                      {
+                        tool: 'Manifest Generator',
+                        action: 'Generate optimized manifest',
+                        duration: '170ms',
+                        result: 'Success',
+                      },
+                      {
+                        tool: 'Claude API',
+                        action: 'Generate solution with patterns',
+                        duration: '630ms',
+                        result: 'Success',
+                      },
+                      {
+                        tool: 'Code Validator',
+                        action: 'Validate TypeScript syntax',
+                        duration: '22ms',
+                        result: 'Success',
+                      },
+                      {
+                        tool: 'Quality Gate',
+                        action: 'Run quality checks (8 gates)',
+                        duration: '50ms',
+                        result: 'Success',
+                      },
+                      {
+                        tool: 'Database',
+                        action: 'Store execution metrics',
+                        duration: '15ms',
+                        result: 'Success',
+                      },
+                      {
+                        tool: 'Kafka',
+                        action: 'Publish completion event',
+                        duration: '20ms',
+                        result: 'Success',
+                      },
                     ].map((call, idx) => (
                       <TableRow key={idx}>
                         <TableCell className="font-medium">{call.tool}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{call.action}</TableCell>
-                        <TableCell className="text-right font-mono text-sm">{call.duration}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {call.action}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {call.duration}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Badge variant="outline" className="text-green-600">
                             {call.result}

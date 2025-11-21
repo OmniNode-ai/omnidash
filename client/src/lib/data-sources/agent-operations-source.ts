@@ -87,51 +87,100 @@ class AgentOperationsSource {
         // Validate API response with Zod schema
         const agents = parseArrayResponse(agentMetricsApiSchema, rawAgents, 'agent-summary');
         if (agents.length > 0) {
-          const totalRuns = agents.reduce((sum, a) => sum + ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'agent-summary-total-runs' }), 0);
-          const activeAgents = agents.filter(a => ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'agent-summary-active-check' }) > 0).length;
-          const totalRequestsForAvg = agents.reduce((sum, a) => sum + ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'agent-summary-avg-calc' }), 0);
+          const totalRuns = agents.reduce(
+            (sum, a) =>
+              sum +
+              ensureNumeric('totalRequests', a.totalRequests, 0, {
+                id: a.agent,
+                context: 'agent-summary-total-runs',
+              }),
+            0
+          );
+          const activeAgents = agents.filter(
+            (a) =>
+              ensureNumeric('totalRequests', a.totalRequests, 0, {
+                id: a.agent,
+                context: 'agent-summary-active-check',
+              }) > 0
+          ).length;
+          const totalRequestsForAvg = agents.reduce(
+            (sum, a) =>
+              sum +
+              ensureNumeric('totalRequests', a.totalRequests, 0, {
+                id: a.agent,
+                context: 'agent-summary-avg-calc',
+              }),
+            0
+          );
           // Calculate weighted average success rate (request volume weighted, not simple average)
           // Detect format: if any value > 1, assume percentage format, else decimal (0-1)
           // Check both successRate and avgConfidence for format detection
-          const sampleAgent = agents.find(a => (a.successRate != null) || (a.avgConfidence != null));
+          const sampleAgent = agents.find((a) => a.successRate != null || a.avgConfidence != null);
           const sampleValue = sampleAgent
             ? fallbackChain(
                 'successRate',
                 { id: sampleAgent.agent || 'unknown', context: 'agent-summary-format-detection' },
                 [
                   { value: sampleAgent.successRate, label: 'successRate field' },
-                  { value: sampleAgent.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
-                  { value: undefined, label: 'no format detection available', level: 'debug' }
+                  {
+                    value: sampleAgent.avgConfidence,
+                    label: 'avgConfidence field (legacy)',
+                    level: 'warn',
+                  },
+                  { value: undefined, label: 'no format detection available', level: 'debug' },
                 ]
               )
             : undefined;
           const isDecimalFormat = sampleValue != null && sampleValue <= 1;
 
-          const avgSuccessRate = totalRequestsForAvg > 0
-            ? Math.max(0, Math.min(100, agents.reduce((sum, a) => {
-                const weight = ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'agent-summary-weight' }) / totalRequestsForAvg;
-                const rate = fallbackChain(
-                  'successRate',
-                  { id: a.agent || 'unknown', context: 'agent-summary-rate' },
-                  [
-                    { value: a.successRate, label: 'successRate field' },
-                    { value: a.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
-                    { value: 0, label: 'default zero', level: 'error' }
-                  ]
-                );
-                // Convert decimal to percentage if needed
-                const rateAsPercentage = isDecimalFormat ? rate * 100 : rate;
-                return sum + (rateAsPercentage * weight);
-              }, 0)))
-            : 0;
+          const avgSuccessRate =
+            totalRequestsForAvg > 0
+              ? Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    agents.reduce((sum, a) => {
+                      const weight =
+                        ensureNumeric('totalRequests', a.totalRequests, 0, {
+                          id: a.agent,
+                          context: 'agent-summary-weight',
+                        }) / totalRequestsForAvg;
+                      const rate = fallbackChain(
+                        'successRate',
+                        { id: a.agent || 'unknown', context: 'agent-summary-rate' },
+                        [
+                          { value: a.successRate, label: 'successRate field' },
+                          {
+                            value: a.avgConfidence,
+                            label: 'avgConfidence field (legacy)',
+                            level: 'warn',
+                          },
+                          { value: 0, label: 'default zero', level: 'error' },
+                        ]
+                      );
+                      // Convert decimal to percentage if needed
+                      const rateAsPercentage = isDecimalFormat ? rate * 100 : rate;
+                      return sum + rateAsPercentage * weight;
+                    }, 0)
+                  )
+                )
+              : 0;
           // Weighted average execution time based on request volume
-          const avgExecutionTimeMs = totalRequestsForAvg > 0
-            ? agents.reduce((sum, a) => {
-                const weight = ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'agent-summary-exec-time-weight' }) / totalRequestsForAvg;
-                const routingTime = ensureNumeric('avgRoutingTime', a.avgRoutingTime, 0, { id: a.agent, context: 'agent-summary-exec-time' });
-                return sum + (routingTime * weight);
-              }, 0)
-            : 0;
+          const avgExecutionTimeMs =
+            totalRequestsForAvg > 0
+              ? agents.reduce((sum, a) => {
+                  const weight =
+                    ensureNumeric('totalRequests', a.totalRequests, 0, {
+                      id: a.agent,
+                      context: 'agent-summary-exec-time-weight',
+                    }) / totalRequestsForAvg;
+                  const routingTime = ensureNumeric('avgRoutingTime', a.avgRoutingTime, 0, {
+                    id: a.agent,
+                    context: 'agent-summary-exec-time',
+                  });
+                  return sum + routingTime * weight;
+                }, 0)
+              : 0;
           const avgExecutionTime = avgExecutionTimeMs / 1000; // Convert to seconds
 
           return {
@@ -179,7 +228,10 @@ class AgentOperationsSource {
     return { data: AgentOperationsMockData.generatePerAgentMetrics(), isMock: true };
   }
 
-  async fetchRecentActions(timeRange: string, limit: number = 100): Promise<{ data: RecentAction[]; isMock: boolean }> {
+  async fetchRecentActions(
+    timeRange: string,
+    limit: number = 100
+  ): Promise<{ data: RecentAction[]; isMock: boolean }> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
 
@@ -189,7 +241,9 @@ class AgentOperationsSource {
     }
 
     try {
-      const res = await fetch(`/api/intelligence/actions/recent?limit=${limit}&timeWindow=${timeRange}`);
+      const res = await fetch(
+        `/api/intelligence/actions/recent?limit=${limit}&timeWindow=${timeRange}`
+      );
       if (res.ok) {
         const rawData = await res.json();
         // Validate API response with Zod schema
@@ -238,17 +292,19 @@ class AgentOperationsSource {
       // Generate mock operations data in the format expected by the chart
       const mockOperations = AgentOperationsMockData.generateOperations(8);
       return {
-        data: mockOperations.map(op => ({
+        data: mockOperations.map((op) => ({
           actionType: op.id,
           operationsPerMinute: op.count / 60,
           period: new Date().toISOString(),
         })),
-        isMock: true
+        isMock: true,
       };
     }
 
     try {
-      const res = await fetch(`/api/intelligence/metrics/operations-per-minute?timeWindow=${timeRange}`);
+      const res = await fetch(
+        `/api/intelligence/metrics/operations-per-minute?timeWindow=${timeRange}`
+      );
       if (res.ok) {
         const data = await res.json();
         return { data: Array.isArray(data) ? data : [], isMock: false };
@@ -267,11 +323,11 @@ class AgentOperationsSource {
     if (USE_MOCK_DATA && !isTestEnv) {
       const chartData = AgentOperationsMockData.generateQualityChart(20);
       return {
-        data: chartData.map(point => ({
+        data: chartData.map((point) => ({
           period: new Date().toISOString(),
           avgQualityImprovement: point.value / 100,
         })),
-        isMock: true
+        isMock: true,
       };
     }
 
@@ -291,27 +347,38 @@ class AgentOperationsSource {
     if (!operationsData || operationsData.length === 0) return [];
 
     const aggregated = new Map<string, number>();
-    operationsData.forEach(item => {
-      const time = new Date(item.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    operationsData.forEach((item) => {
+      const time = new Date(item.period).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
       const existing = aggregated.get(time) || 0;
-      const opsPerMinute = ensureNumeric('operationsPerMinute', item.operationsPerMinute, 0, { context: 'operations-chart-transform' });
+      const opsPerMinute = ensureNumeric('operationsPerMinute', item.operationsPerMinute, 0, {
+        context: 'operations-chart-transform',
+      });
       aggregated.set(time, existing + opsPerMinute);
     });
 
-    return [...Array.from(aggregated.entries())
-      .map(([time, value]) => ({ time, value }))]
-      .reverse();
+    return [
+      ...Array.from(aggregated.entries()).map(([time, value]) => ({ time, value })),
+    ].reverse();
   }
 
   transformQualityForChart(qualityData: any[]): ChartDataPoint[] {
     if (!qualityData || qualityData.length === 0) return [];
 
-    return [...qualityData
-      .map(item => ({
-        time: new Date(item.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        value: ensureNumeric('avgQualityImprovement', item.avgQualityImprovement, 0, { context: 'quality-chart-transform' }) * 100,
-      }))]
-      .reverse();
+    return [
+      ...qualityData.map((item) => ({
+        time: new Date(item.period).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        value:
+          ensureNumeric('avgQualityImprovement', item.avgQualityImprovement, 0, {
+            context: 'quality-chart-transform',
+          }) * 100,
+      })),
+    ].reverse();
   }
 
   transformOperationsStatus(operationsData: any[]): OperationStatus[] {
@@ -319,12 +386,16 @@ class AgentOperationsSource {
 
     const grouped = new Map<string, { name: string; count: number; totalOps: number }>();
 
-    operationsData.forEach(item => {
-      const actionType = withFallback('actionType', item.actionType, 'unknown', { context: 'operations-status-transform' });
+    operationsData.forEach((item) => {
+      const actionType = withFallback('actionType', item.actionType, 'unknown', {
+        context: 'operations-status-transform',
+      });
       const name = actionType.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
       const existing = grouped.get(actionType) || { name, count: 0, totalOps: 0 };
       existing.count += 1;
-      const opsPerMinute = ensureNumeric('operationsPerMinute', item.operationsPerMinute, 0, { context: 'operations-status-transform' });
+      const opsPerMinute = ensureNumeric('operationsPerMinute', item.operationsPerMinute, 0, {
+        context: 'operations-status-transform',
+      });
       existing.totalOps += opsPerMinute;
       grouped.set(actionType, existing);
     });
@@ -332,21 +403,22 @@ class AgentOperationsSource {
     return Array.from(grouped.entries()).map(([id, data]) => ({
       id,
       name: data.name,
-      status: data.totalOps > 0 ? 'running' as const : 'idle' as const,
+      status: data.totalOps > 0 ? ('running' as const) : ('idle' as const),
       count: Math.round(data.totalOps),
       avgTime: 'N/A',
     }));
   }
 
   async fetchAll(timeRange: string): Promise<AgentOperationsData> {
-    const [summary, recentActions, perAgentMetrics, health, operationsData, qualityData] = await Promise.all([
-      this.fetchSummary(timeRange),
-      this.fetchRecentActions(timeRange, 100),
-      this.fetchPerAgentMetrics(timeRange),
-      this.fetchHealth(),
-      this.fetchOperationsData(timeRange),
-      this.fetchQualityImpactData(timeRange),
-    ]);
+    const [summary, recentActions, perAgentMetrics, health, operationsData, qualityData] =
+      await Promise.all([
+        this.fetchSummary(timeRange),
+        this.fetchRecentActions(timeRange, 100),
+        this.fetchPerAgentMetrics(timeRange),
+        this.fetchHealth(),
+        this.fetchOperationsData(timeRange),
+        this.fetchQualityImpactData(timeRange),
+      ]);
 
     // Transform data for charts and operations
     const chartData = this.transformOperationsForChart(operationsData.data);
@@ -354,15 +426,26 @@ class AgentOperationsSource {
     const operations = this.transformOperationsStatus(operationsData.data);
 
     const totalOperations = operations.length;
-    const runningOperations = operations.filter(op => op.status === 'running').length;
-    const totalOpsPerMinute = operationsData.data.reduce((sum: number, item: any) =>
-      sum + ensureNumeric('operationsPerMinute', item.operationsPerMinute, 0, { context: 'operations-summary-total' }), 0
+    const runningOperations = operations.filter((op) => op.status === 'running').length;
+    const totalOpsPerMinute = operationsData.data.reduce(
+      (sum: number, item: any) =>
+        sum +
+        ensureNumeric('operationsPerMinute', item.operationsPerMinute, 0, {
+          context: 'operations-summary-total',
+        }),
+      0
     );
-    const avgQualityImprovement = qualityData.data.length > 0
-      ? qualityData.data.reduce((sum: number, item: any) =>
-          sum + ensureNumeric('avgQualityImprovement', item.avgQualityImprovement, 0, { context: 'quality-summary-avg' }), 0
-        ) / qualityData.data.length
-      : 0;
+    const avgQualityImprovement =
+      qualityData.data.length > 0
+        ? qualityData.data.reduce(
+            (sum: number, item: any) =>
+              sum +
+              ensureNumeric('avgQualityImprovement', item.avgQualityImprovement, 0, {
+                context: 'quality-summary-avg',
+              }),
+            0
+          ) / qualityData.data.length
+        : 0;
 
     return {
       summary: summary.data,
@@ -376,10 +459,15 @@ class AgentOperationsSource {
       runningOperations,
       totalOpsPerMinute,
       avgQualityImprovement,
-      isMock: summary.isMock || recentActions.isMock || perAgentMetrics.isMock || health.isMock || operationsData.isMock || qualityData.isMock,
+      isMock:
+        summary.isMock ||
+        recentActions.isMock ||
+        perAgentMetrics.isMock ||
+        health.isMock ||
+        operationsData.isMock ||
+        qualityData.isMock,
     };
   }
 }
 
 export const agentOperationsSource = new AgentOperationsSource();
-

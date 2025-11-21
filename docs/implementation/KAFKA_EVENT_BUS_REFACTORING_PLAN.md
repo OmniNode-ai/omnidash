@@ -11,6 +11,7 @@ Refactor the Omnidash intelligence dashboard from direct PostgreSQL queries to a
 ## Current Architecture Problems
 
 ### Direct Database Coupling Issues
+
 1. **Tight Coupling**: Dashboard directly queries PostgreSQL at 192.168.86.200:5436
 2. **Ignores Event Bus**: Existing Kafka infrastructure (192.168.86.200:9092) not utilized
 3. **Slow Queries**: Database queries add 50-200ms latency per request
@@ -20,6 +21,7 @@ Refactor the Omnidash intelligence dashboard from direct PostgreSQL queries to a
 ## Target Architecture
 
 ### Event-Driven Flow
+
 ```
 Kafka Topics → Event Consumer → In-Memory Cache → Fast API (<10ms)
      ↓
@@ -27,6 +29,7 @@ WebSocket Broadcasts → Dashboard (real-time updates)
 ```
 
 ### Key Components
+
 1. **Event Consumer** (server/event-consumer.ts)
 2. **In-Memory Aggregation** (Maps, sliding windows)
 3. **Refactored APIs** (server/intelligence-routes.ts)
@@ -37,6 +40,7 @@ WebSocket Broadcasts → Dashboard (real-time updates)
 **Kafka Brokers**: 192.168.86.200:9092
 
 **Topics**:
+
 - `agent-routing-decisions` - Agent selection events (~1K/day)
 - `agent-transformation-events` - Agent transformations (~1K/day)
 - `router-performance-metrics` - Performance metrics (~1K/day)
@@ -76,12 +80,15 @@ class EventConsumer {
   private consumer: any;
 
   // In-memory aggregations
-  private agentMetrics = new Map<string, {
-    count: number;
-    totalRoutingTime: number;
-    totalConfidence: number;
-    lastSeen: Date;
-  }>();
+  private agentMetrics = new Map<
+    string,
+    {
+      count: number;
+      totalRoutingTime: number;
+      totalConfidence: number;
+      lastSeen: Date;
+    }
+  >();
 
   private recentActions: AgentAction[] = [];
   private maxActions = 100;
@@ -106,7 +113,7 @@ class EventConsumer {
         'agent-routing-decisions',
         'agent-transformation-events',
         'router-performance-metrics',
-        'agent-actions'
+        'agent-actions',
       ],
       fromBeginning: false, // Only new events
     });
@@ -233,7 +240,7 @@ intelligenceRouter.get('/agents/summary', async (req, res) => {
     console.error('Error fetching agent summary:', error);
     res.status(500).json({
       error: 'Failed to fetch agent summary',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -251,7 +258,7 @@ intelligenceRouter.get('/actions/recent', async (req, res) => {
     console.error('Error fetching recent actions:', error);
     res.status(500).json({
       error: 'Failed to fetch recent actions',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -269,7 +276,7 @@ intelligenceRouter.get('/health', async (req, res) => {
     res.status(503).json({
       status: 'unhealthy',
       error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -297,7 +304,7 @@ import { eventConsumer } from './event-consumer';
   // ... rest of server setup
 
   const port = parseInt(process.env.PORT || '3000', 10);
-  server.listen(port, "0.0.0.0", () => {
+  server.listen(port, '0.0.0.0', () => {
     log(`serving on port ${port}`);
   });
 
@@ -313,12 +320,14 @@ import { eventConsumer } from './event-consumer';
 ### Phase 4: Remove PostgreSQL Dependencies (Day 5)
 
 **Files to Clean Up**:
+
 1. Remove `server/storage.ts` PostgreSQL connection (keep user auth if needed)
 2. Remove `shared/intelligence-schema.ts` (or keep for documentation)
 3. Remove `pg` and `drizzle-orm` dependencies
 4. Update package.json
 
 **Keep**:
+
 - kafkajs (already installed)
 - ws (already installed)
 - Express and other core dependencies
@@ -326,16 +335,21 @@ import { eventConsumer } from './event-consumer';
 ## Data Structure Design
 
 ### Agent Metrics Aggregation
+
 ```typescript
-Map<agentName, {
-  count: number,              // Total requests
-  totalRoutingTime: number,   // Sum for averaging
-  totalConfidence: number,    // Sum for averaging
-  lastSeen: Date              // For 24h cleanup
-}>
+Map<
+  agentName,
+  {
+    count: number; // Total requests
+    totalRoutingTime: number; // Sum for averaging
+    totalConfidence: number; // Sum for averaging
+    lastSeen: Date; // For 24h cleanup
+  }
+>;
 ```
 
 ### Recent Actions Storage
+
 ```typescript
 AgentAction[] {
   id: string,
@@ -352,18 +366,21 @@ AgentAction[] {
 ## Performance Benefits
 
 ### Current (PostgreSQL)
+
 - API Response Time: 50-200ms
 - Database Queries: 3-5 per page load
 - Real-Time Updates: Polling every 10-30s
 - Memory Usage: Minimal (stateless)
 
 ### Target (Event Bus)
+
 - API Response Time: <10ms (in-memory)
 - Database Queries: 0 (event-driven)
 - Real-Time Updates: <100ms (WebSocket)
 - Memory Usage: ~50MB (24h of events)
 
 ### Improvement
+
 - **10-20x faster** API responses
 - **Zero database coupling**
 - **True real-time** updates
@@ -371,18 +388,21 @@ AgentAction[] {
 ## Migration Path
 
 ### Step 1: Parallel Run (Week 1)
+
 - Keep PostgreSQL queries running
 - Add event consumer in parallel
 - Compare results for validation
 - Monitor memory usage
 
 ### Step 2: Gradual Cutover (Week 2)
+
 - Switch health endpoint to events
 - Switch actions endpoint to events
 - Switch metrics endpoint to events
 - Monitor for issues
 
 ### Step 3: Full Migration (Week 3)
+
 - Remove PostgreSQL dependencies
 - Delete old query code
 - Update documentation
@@ -391,6 +411,7 @@ AgentAction[] {
 ## Testing Strategy
 
 ### Unit Tests
+
 ```typescript
 describe('EventConsumer', () => {
   it('should aggregate routing decisions correctly', () => {
@@ -408,12 +429,14 @@ describe('EventConsumer', () => {
 ```
 
 ### Integration Tests
+
 - Connect to test Kafka broker
 - Publish test events
 - Verify aggregations
 - Check API responses
 
 ### E2E Tests
+
 - Start full server
 - Publish real events
 - Query API endpoints
@@ -422,6 +445,7 @@ describe('EventConsumer', () => {
 ## Rollback Plan
 
 If issues occur:
+
 1. Stop event consumer
 2. Re-enable PostgreSQL queries
 3. Restart server

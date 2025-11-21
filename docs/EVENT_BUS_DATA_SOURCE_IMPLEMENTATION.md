@@ -12,6 +12,7 @@ The EventBusDataSource has been implemented to provide a foundation for event bu
 ### 1. Core EventBusDataSource Class (`server/event-bus-data-source.ts`)
 
 **Features**:
+
 - ✅ Subscribes to all event topics matching event catalog patterns
 - ✅ Normalizes event envelope structure (event_type, event_id, timestamp, tenant_id, etc.)
 - ✅ Stores events in PostgreSQL with proper indexing
@@ -20,6 +21,7 @@ The EventBusDataSource has been implemented to provide a foundation for event bu
 - ✅ Graceful error handling and connection validation
 
 **Key Methods**:
+
 - `validateConnection()` - Validates Kafka broker reachability
 - `initializeSchema()` - Creates database table and indexes
 - `start()` - Starts consuming events from Kafka
@@ -30,6 +32,7 @@ The EventBusDataSource has been implemented to provide a foundation for event bu
 ### 2. API Routes (`server/event-bus-routes.ts`)
 
 **Endpoints**:
+
 - `GET /api/event-bus/events` - Query events with filters
 - `GET /api/event-bus/statistics` - Get event statistics
 - `GET /api/event-bus/status` - Get data source status
@@ -72,6 +75,7 @@ CREATE TABLE event_bus_events (
 ```
 
 **Indexes**:
+
 - `event_type` - For filtering by event type
 - `tenant_id` - For tenant isolation
 - `correlation_id` - For request/response tracking
@@ -82,6 +86,7 @@ CREATE TABLE event_bus_events (
 ## Event Pattern Matching
 
 The data source subscribes to topics matching these patterns:
+
 - `{tenant}.omninode.intelligence.*.v{version}`
 - `{tenant}.omninode.agent.*.v{version}`
 - `{tenant}.omninode.metadata.*.v{version}`
@@ -113,7 +118,7 @@ const events = await eventBusDataSource.queryEvents({
   end_time: new Date('2025-11-13'),
   limit: 100,
   order_by: 'timestamp',
-  order_direction: 'desc'
+  order_direction: 'desc',
 });
 ```
 
@@ -122,7 +127,7 @@ const events = await eventBusDataSource.queryEvents({
 ```typescript
 const stats = await eventBusDataSource.getStatistics({
   start: new Date('2025-11-01'),
-  end: new Date('2025-11-13')
+  end: new Date('2025-11-13'),
 });
 
 console.log(`Total events: ${stats.total_events}`);
@@ -146,12 +151,14 @@ curl "http://localhost:3000/api/event-bus/status"
 ## Next Steps
 
 ### Phase 1: Integration with Existing Data Sources
+
 - [ ] Update `intelligence-analytics-source.ts` to use EventBusDataSource
 - [ ] Update `agent-management-source.ts` to use EventBusDataSource
 - [ ] Update `code-intelligence-source.ts` to use EventBusDataSource
 - [ ] Update `platform-health-source.ts` to use EventBusDataSource
 
 ### Phase 2: Create Missing Data Sources
+
 - [ ] `database-operations-source.ts` - Database event tracking
 - [ ] `vault-operations-source.ts` - Vault audit tracking
 - [ ] `consul-operations-source.ts` - Service discovery tracking
@@ -161,11 +168,13 @@ curl "http://localhost:3000/api/event-bus/status"
 - [ ] `logging-source.ts` - Log aggregation
 
 ### Phase 3: WebSocket Integration
+
 - [ ] Integrate EventBusDataSource events with WebSocket server
 - [ ] Broadcast events to connected clients in real-time
 - [ ] Add event filtering/subscription per client
 
 ### Phase 4: Data Transformation
+
 - [ ] Create transformers for each event type → data source format
 - [ ] Implement event aggregation for metrics
 - [ ] Add caching for frequently accessed events
@@ -173,6 +182,7 @@ curl "http://localhost:3000/api/event-bus/status"
 ## Configuration
 
 **Environment Variables**:
+
 - `KAFKA_BROKERS` or `KAFKA_BOOTSTRAP_SERVERS` - Kafka broker addresses (comma-separated)
 - `DATABASE_URL` - PostgreSQL connection string
 - `ENABLE_REAL_TIME_EVENTS` - Enable WebSocket real-time events (default: false)
@@ -182,16 +192,19 @@ curl "http://localhost:3000/api/event-bus/status"
 To test the implementation:
 
 1. **Start Kafka/Redpanda**:
+
    ```bash
    # Ensure Kafka is running and accessible
    ```
 
 2. **Start the server**:
+
    ```bash
    npm run dev
    ```
 
 3. **Verify connection**:
+
    ```bash
    curl http://localhost:3000/api/event-bus/status
    ```
@@ -216,4 +229,3 @@ To test the implementation:
 - `EVENT_MAPPING_QUICK_REFERENCE.md` - Quick reference guide
 - `MVP_EVENT_CATALOG.md` - Complete event catalog
 - `EVENT_BUS_INTEGRATION_GUIDE.md` - Integration guide
-

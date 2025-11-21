@@ -1,6 +1,6 @@
 import { MockDataGenerator as Gen, USE_MOCK_DATA } from '../mock-data/config';
 import type { SavingsMetrics } from './intelligence-savings-source';
-import { fallbackChain, withFallback, ensureNumeric, ensureString } from '../defensive-transform-logger';
+import { fallbackChain, withFallback, ensureNumeric } from '../defensive-transform-logger';
 import {
   agentMetricsApiSchema,
   recentActionSchema,
@@ -30,7 +30,7 @@ export interface RecentActivity {
   action: string;
   agent: string;
   time: string;
-  status: "completed" | "executing" | "failed" | "pending";
+  status: 'completed' | 'executing' | 'failed' | 'pending';
   timestamp: string;
 }
 
@@ -40,8 +40,13 @@ class IntelligenceAnalyticsDataSource {
    * Defaults unknown statuses to 'pending' to prevent runtime errors in UI components.
    */
   private normalizeStatus(status: string): RecentActivity['status'] {
-    const validStatuses: RecentActivity['status'][] = ['completed', 'executing', 'failed', 'pending'];
-    return validStatuses.includes(status as RecentActivity['status']) 
+    const validStatuses: RecentActivity['status'][] = [
+      'completed',
+      'executing',
+      'failed',
+      'pending',
+    ];
+    return validStatuses.includes(status as RecentActivity['status'])
       ? (status as RecentActivity['status'])
       : 'pending';
   }
@@ -58,7 +63,7 @@ class IntelligenceAnalyticsDataSource {
           successRate: 94.0,
           fallbackRate: 6.0,
           costPerQuery: 0.0012,
-          totalCost: 18.50,
+          totalCost: 18.5,
           qualityScore: 8.7,
           userSatisfaction: 8.9,
         },
@@ -74,20 +79,40 @@ class IntelligenceAnalyticsDataSource {
         // Validate API response with Zod schema
         const agents = parseArrayResponse(agentMetricsApiSchema, rawAgents, 'intelligence-metrics');
         if (agents.length > 0) {
-          const totalRequests = agents.reduce((sum, a) =>
-            sum + ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-metrics-total' }), 0
+          const totalRequests = agents.reduce(
+            (sum, a) =>
+              sum +
+              ensureNumeric('totalRequests', a.totalRequests, 0, {
+                id: a.agent,
+                context: 'intelligence-metrics-total',
+              }),
+            0
           );
           // Use weighted average for routing time based on request volume (more accurate)
-          const totalRequestsForAvg = agents.reduce((sum, a) =>
-            sum + ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-metrics-avg' }), 0
+          const totalRequestsForAvg = agents.reduce(
+            (sum, a) =>
+              sum +
+              ensureNumeric('totalRequests', a.totalRequests, 0, {
+                id: a.agent,
+                context: 'intelligence-metrics-avg',
+              }),
+            0
           );
-          const avgRoutingTime = totalRequestsForAvg > 0
-            ? agents.reduce((sum, a) => {
-                const weight = ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-metrics-weight' }) / totalRequestsForAvg;
-                const routingTime = ensureNumeric('avgRoutingTime', a.avgRoutingTime, 0, { id: a.agent, context: 'intelligence-metrics-routing-time' });
-                return sum + (routingTime * weight);
-              }, 0)
-            : 0;
+          const avgRoutingTime =
+            totalRequestsForAvg > 0
+              ? agents.reduce((sum, a) => {
+                  const weight =
+                    ensureNumeric('totalRequests', a.totalRequests, 0, {
+                      id: a.agent,
+                      context: 'intelligence-metrics-weight',
+                    }) / totalRequestsForAvg;
+                  const routingTime = ensureNumeric('avgRoutingTime', a.avgRoutingTime, 0, {
+                    id: a.agent,
+                    context: 'intelligence-metrics-routing-time',
+                  });
+                  return sum + routingTime * weight;
+                }, 0)
+              : 0;
           // Calculate weighted average success rate (based on request volume, not simple average)
           // Detect format: check all non-zero samples to determine if values are decimal (0-1) or percentage (0-100)
           // Ignore zeros as they don't indicate format (0% = 0.0 in both formats)
@@ -99,38 +124,52 @@ class IntelligenceAnalyticsDataSource {
                 [
                   { value: a.successRate, label: 'successRate field' },
                   { value: a.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
-                  { value: undefined, label: 'no sample available', level: 'debug' }
+                  { value: undefined, label: 'no sample available', level: 'debug' },
                 ]
               );
               return rate != null ? rate : undefined;
             })
             .filter((v): v is number => v != null && v > 0);
-          
+
           // If we have non-zero samples, check if all are <= 1 (decimal format)
           // If any sample > 1, assume percentage format
           // Default to percentage format if no samples available
-          const isDecimalFormat = nonZeroSamples.length > 0
-            ? nonZeroSamples.every(v => v <= 1)
-            : false;
-          
-          const avgSuccessRate = totalRequestsForAvg > 0
-            ? Math.max(0, Math.min(100, agents.reduce((sum, a) => {
-                const weight = ensureNumeric('totalRequests', a.totalRequests, 0, { id: a.agent, context: 'intelligence-success-rate-weight' }) / totalRequestsForAvg;
-                const rate = fallbackChain(
-                  'successRate',
-                  { id: a.agent || 'unknown', context: 'intelligence-success-rate' },
-                  [
-                    { value: a.successRate, label: 'successRate field' },
-                    { value: a.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
-                    { value: 0, label: 'default zero', level: 'error' }
-                  ]
-                );
-                // Convert decimal to percentage if needed
-                const rateAsPercentage = isDecimalFormat ? rate * 100 : rate;
-                return sum + (rateAsPercentage * weight);
-              }, 0)))
-            : 0;
-          
+          const isDecimalFormat =
+            nonZeroSamples.length > 0 ? nonZeroSamples.every((v) => v <= 1) : false;
+
+          const avgSuccessRate =
+            totalRequestsForAvg > 0
+              ? Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    agents.reduce((sum, a) => {
+                      const weight =
+                        ensureNumeric('totalRequests', a.totalRequests, 0, {
+                          id: a.agent,
+                          context: 'intelligence-success-rate-weight',
+                        }) / totalRequestsForAvg;
+                      const rate = fallbackChain(
+                        'successRate',
+                        { id: a.agent || 'unknown', context: 'intelligence-success-rate' },
+                        [
+                          { value: a.successRate, label: 'successRate field' },
+                          {
+                            value: a.avgConfidence,
+                            label: 'avgConfidence field (legacy)',
+                            level: 'warn',
+                          },
+                          { value: 0, label: 'default zero', level: 'error' },
+                        ]
+                      );
+                      // Convert decimal to percentage if needed
+                      const rateAsPercentage = isDecimalFormat ? rate * 100 : rate;
+                      return sum + rateAsPercentage * weight;
+                    }, 0)
+                  )
+                )
+              : 0;
+
           return {
             data: {
               totalQueries: Math.max(0, totalRequests),
@@ -158,7 +197,7 @@ class IntelligenceAnalyticsDataSource {
         successRate: 94.0, // 94% from script
         fallbackRate: 6.0,
         costPerQuery: 0.0012,
-        totalCost: 18.50,
+        totalCost: 18.5,
         qualityScore: 8.7,
         userSatisfaction: 8.9,
       },
@@ -166,7 +205,9 @@ class IntelligenceAnalyticsDataSource {
     };
   }
 
-  async fetchRecentActivity(limit: number = 5): Promise<{ data: RecentActivity[]; isMock: boolean }> {
+  async fetchRecentActivity(
+    limit: number = 5
+  ): Promise<{ data: RecentActivity[]; isMock: boolean }> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
 
@@ -174,11 +215,41 @@ class IntelligenceAnalyticsDataSource {
     if (USE_MOCK_DATA && !isTestEnv) {
       return {
         data: [
-          { action: "API optimization query", agent: "agent-performance", time: "2m ago", status: "completed", timestamp: new Date(Date.now() - 120000).toISOString() },
-          { action: "Debug database connection", agent: "agent-debug-intelligence", time: "5m ago", status: "completed", timestamp: new Date(Date.now() - 300000).toISOString() },
-          { action: "Create React component", agent: "agent-frontend-developer", time: "8m ago", status: "executing", timestamp: new Date(Date.now() - 480000).toISOString() },
-          { action: "Write unit tests", agent: "agent-testing", time: "12m ago", status: "completed", timestamp: new Date(Date.now() - 720000).toISOString() },
-          { action: "Design microservices", agent: "agent-api-architect", time: "15m ago", status: "completed", timestamp: new Date(Date.now() - 900000).toISOString() },
+          {
+            action: 'API optimization query',
+            agent: 'agent-performance',
+            time: '2m ago',
+            status: 'completed',
+            timestamp: new Date(Date.now() - 120000).toISOString(),
+          },
+          {
+            action: 'Debug database connection',
+            agent: 'agent-debug-intelligence',
+            time: '5m ago',
+            status: 'completed',
+            timestamp: new Date(Date.now() - 300000).toISOString(),
+          },
+          {
+            action: 'Create React component',
+            agent: 'agent-frontend-developer',
+            time: '8m ago',
+            status: 'executing',
+            timestamp: new Date(Date.now() - 480000).toISOString(),
+          },
+          {
+            action: 'Write unit tests',
+            agent: 'agent-testing',
+            time: '12m ago',
+            status: 'completed',
+            timestamp: new Date(Date.now() - 720000).toISOString(),
+          },
+          {
+            action: 'Design microservices',
+            agent: 'agent-api-architect',
+            time: '15m ago',
+            status: 'completed',
+            timestamp: new Date(Date.now() - 900000).toISOString(),
+          },
         ],
         isMock: true,
       };
@@ -190,11 +261,21 @@ class IntelligenceAnalyticsDataSource {
       if (response.ok) {
         const rawActions = await response.json();
         // Validate API response with Zod schema
-        const actions = parseArrayResponse(recentActionSchema, rawActions, 'recent-activity-actions');
+        const actions = parseArrayResponse(
+          recentActionSchema,
+          rawActions,
+          'recent-activity-actions'
+        );
         if (actions.length > 0) {
           const activities: RecentActivity[] = actions.map((action: any) => ({
-            action: withFallback('action', action.action, 'Unknown action', { id: action.id, context: 'recent-activity-action' }),
-            agent: withFallback('agentName', action.agentName, 'unknown', { id: action.id, context: 'recent-activity-agent' }),
+            action: withFallback('action', action.action, 'Unknown action', {
+              id: action.id,
+              context: 'recent-activity-action',
+            }),
+            agent: withFallback('agentName', action.agentName, 'unknown', {
+              id: action.id,
+              context: 'recent-activity-agent',
+            }),
             time: this.formatTimeAgo(action.timestamp),
             status: this.normalizeStatus(action.status),
             timestamp: action.timestamp,
@@ -212,27 +293,23 @@ class IntelligenceAnalyticsDataSource {
       if (response.ok) {
         const rawExecutions = await response.json();
         // Validate API response with Zod schema
-        const executions = parseArrayResponse(executionSchema, rawExecutions, 'recent-activity-executions');
+        const executions = parseArrayResponse(
+          executionSchema,
+          rawExecutions,
+          'recent-activity-executions'
+        );
         if (executions.length > 0) {
           const activities: RecentActivity[] = executions.map((exec: Execution) => ({
-            action: fallbackChain(
-              'query',
-              { id: exec.id, context: 'executions-action' },
-              [
-                { value: exec.query, label: 'query field' },
-                { value: exec.actionName, label: 'actionName field (fallback)', level: 'warn' },
-                { value: 'Task execution', label: 'default task execution', level: 'error' }
-              ]
-            ),
-            agent: fallbackChain(
-              'agentName',
-              { id: exec.id, context: 'executions-agent' },
-              [
-                { value: exec.agentName, label: 'agentName field' },
-                { value: exec.agentId, label: 'agentId field (fallback)', level: 'warn' },
-                { value: 'unknown', label: 'default unknown', level: 'error' }
-              ]
-            ),
+            action: fallbackChain('query', { id: exec.id, context: 'executions-action' }, [
+              { value: exec.query, label: 'query field' },
+              { value: exec.actionName, label: 'actionName field (fallback)', level: 'warn' },
+              { value: 'Task execution', label: 'default task execution', level: 'error' },
+            ]),
+            agent: fallbackChain('agentName', { id: exec.id, context: 'executions-agent' }, [
+              { value: exec.agentName, label: 'agentName field' },
+              { value: exec.agentId, label: 'agentId field (fallback)', level: 'warn' },
+              { value: 'unknown', label: 'default unknown', level: 'error' },
+            ]),
             time: this.formatTimeAgo(exec.startedAt),
             status: this.normalizeStatus(exec.status),
             timestamp: exec.startedAt,
@@ -247,17 +324,49 @@ class IntelligenceAnalyticsDataSource {
     // Mock data fallback
     return {
       data: [
-        { action: "API optimization query", agent: "agent-performance", time: "2m ago", status: "completed", timestamp: new Date(Date.now() - 120000).toISOString() },
-        { action: "Debug database connection", agent: "agent-debug-intelligence", time: "5m ago", status: "completed", timestamp: new Date(Date.now() - 300000).toISOString() },
-        { action: "Create React component", agent: "agent-frontend-developer", time: "8m ago", status: "executing", timestamp: new Date(Date.now() - 480000).toISOString() },
-        { action: "Write unit tests", agent: "agent-testing", time: "12m ago", status: "completed", timestamp: new Date(Date.now() - 720000).toISOString() },
-        { action: "Design microservices", agent: "agent-api-architect", time: "15m ago", status: "completed", timestamp: new Date(Date.now() - 900000).toISOString() },
+        {
+          action: 'API optimization query',
+          agent: 'agent-performance',
+          time: '2m ago',
+          status: 'completed',
+          timestamp: new Date(Date.now() - 120000).toISOString(),
+        },
+        {
+          action: 'Debug database connection',
+          agent: 'agent-debug-intelligence',
+          time: '5m ago',
+          status: 'completed',
+          timestamp: new Date(Date.now() - 300000).toISOString(),
+        },
+        {
+          action: 'Create React component',
+          agent: 'agent-frontend-developer',
+          time: '8m ago',
+          status: 'executing',
+          timestamp: new Date(Date.now() - 480000).toISOString(),
+        },
+        {
+          action: 'Write unit tests',
+          agent: 'agent-testing',
+          time: '12m ago',
+          status: 'completed',
+          timestamp: new Date(Date.now() - 720000).toISOString(),
+        },
+        {
+          action: 'Design microservices',
+          agent: 'agent-api-architect',
+          time: '15m ago',
+          status: 'completed',
+          timestamp: new Date(Date.now() - 900000).toISOString(),
+        },
       ],
       isMock: true,
     };
   }
 
-  async fetchAgentPerformance(timeRange: string): Promise<{ data: AgentPerformance[]; isMock: boolean }> {
+  async fetchAgentPerformance(
+    timeRange: string
+  ): Promise<{ data: AgentPerformance[]; isMock: boolean }> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
 
@@ -329,19 +438,18 @@ class IntelligenceAnalyticsDataSource {
                 [
                   { value: a.successRate, label: 'successRate field' },
                   { value: a.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
-                  { value: undefined, label: 'no sample available', level: 'debug' }
+                  { value: undefined, label: 'no sample available', level: 'debug' },
                 ]
               );
               return rate != null ? rate : undefined;
             })
             .filter((v): v is number => v != null && v > 0);
-          
+
           // If we have non-zero samples, check if all are <= 1 (decimal format)
           // If any sample > 1, assume percentage format
           // Default to percentage format if no samples available
-          const isDecimalFormat = nonZeroSamples.length > 0
-            ? nonZeroSamples.every(v => v <= 1)
-            : false;
+          const isDecimalFormat =
+            nonZeroSamples.length > 0 ? nonZeroSamples.every((v) => v <= 1) : false;
 
           const performance: AgentPerformance[] = agents.map((agent: AgentMetricsApi) => {
             const rawSuccessRate = fallbackChain(
@@ -349,26 +457,85 @@ class IntelligenceAnalyticsDataSource {
               { id: agent.agent || 'unknown', context: 'agent-performance-success-rate' },
               [
                 { value: agent.successRate, label: 'successRate field' },
-                { value: agent.avgConfidence, label: 'avgConfidence field (legacy)', level: 'warn' },
-                { value: 0, label: 'default zero', level: 'error' }
+                {
+                  value: agent.avgConfidence,
+                  label: 'avgConfidence field (legacy)',
+                  level: 'warn',
+                },
+                { value: 0, label: 'default zero', level: 'error' },
               ]
             );
             const successRate = isDecimalFormat ? rawSuccessRate * 100 : rawSuccessRate;
             const clampedSuccessRate = Math.max(0, Math.min(100, successRate));
 
             return {
-              agentId: withFallback('agent', agent.agent, 'unknown', { context: 'agent-performance-id' }),
-              agentName: agent.agent?.replace('agent-', '').replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown Agent',
-              totalRuns: Math.max(0, ensureNumeric('totalRequests', agent.totalRequests, 0, { id: agent.agent, context: 'agent-performance-total-runs' })),
-              avgResponseTime: Math.max(0, ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, { id: agent.agent, context: 'agent-performance-response-time' })),
-              avgExecutionTime: Math.max(0, ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, { id: agent.agent, context: 'agent-performance-exec-time' })),
+              agentId: withFallback('agent', agent.agent, 'unknown', {
+                context: 'agent-performance-id',
+              }),
+              agentName:
+                agent.agent
+                  ?.replace('agent-', '')
+                  .replace(/-/g, ' ')
+                  .replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown Agent',
+              totalRuns: Math.max(
+                0,
+                ensureNumeric('totalRequests', agent.totalRequests, 0, {
+                  id: agent.agent,
+                  context: 'agent-performance-total-runs',
+                })
+              ),
+              avgResponseTime: Math.max(
+                0,
+                ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, {
+                  id: agent.agent,
+                  context: 'agent-performance-response-time',
+                })
+              ),
+              avgExecutionTime: Math.max(
+                0,
+                ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, {
+                  id: agent.agent,
+                  context: 'agent-performance-exec-time',
+                })
+              ),
               successRate: clampedSuccessRate,
               efficiency: clampedSuccessRate, // Use success rate as efficiency proxy
-              avgQualityScore: Math.max(0, Math.min(10, ensureNumeric('avgConfidence', agent.avgConfidence, 0, { id: agent.agent, context: 'agent-performance-quality' }) * 10)),
-              popularity: Math.max(0, ensureNumeric('totalRequests', agent.totalRequests, 0, { id: agent.agent, context: 'agent-performance-popularity' })),
-              costPerSuccess: Math.max(0, 0.001 * ensureNumeric('avgTokens', agent.avgTokens, 1000, { id: agent.agent, context: 'agent-performance-tokens' }) / 1000), // Ensure positive
-              p95Latency: Math.max(0, ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, { id: agent.agent, context: 'agent-performance-latency' }) * 1.5), // Ensure positive
-              lastUsed: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+              avgQualityScore: Math.max(
+                0,
+                Math.min(
+                  10,
+                  ensureNumeric('avgConfidence', agent.avgConfidence, 0, {
+                    id: agent.agent,
+                    context: 'agent-performance-quality',
+                  }) * 10
+                )
+              ),
+              popularity: Math.max(
+                0,
+                ensureNumeric('totalRequests', agent.totalRequests, 0, {
+                  id: agent.agent,
+                  context: 'agent-performance-popularity',
+                })
+              ),
+              costPerSuccess: Math.max(
+                0,
+                (0.001 *
+                  ensureNumeric('avgTokens', agent.avgTokens, 1000, {
+                    id: agent.agent,
+                    context: 'agent-performance-tokens',
+                  })) /
+                  1000
+              ), // Ensure positive
+              p95Latency: Math.max(
+                0,
+                ensureNumeric('avgRoutingTime', agent.avgRoutingTime, 0, {
+                  id: agent.agent,
+                  context: 'agent-performance-latency',
+                }) * 1.5
+              ), // Ensure positive
+              lastUsed: new Date(
+                Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000
+              ).toISOString(),
             };
           });
 
@@ -512,7 +679,7 @@ class IntelligenceAnalyticsDataSource {
     const then = new Date(timestamp).getTime();
     const diffMs = now - then;
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 1) return 'just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
@@ -538,4 +705,3 @@ export interface AgentPerformance {
 }
 
 export const intelligenceAnalyticsSource = new IntelligenceAnalyticsDataSource();
-

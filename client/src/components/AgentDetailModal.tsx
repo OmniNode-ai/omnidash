@@ -1,27 +1,21 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { DetailModal } from "./DetailModal";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { DetailModal } from './DetailModal';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Bot,
   Clock,
   CheckCircle,
   XCircle,
-  TrendingUp,
-  Code,
   Settings,
-  FileText,
   Play,
   Download,
-  RefreshCw,
   ChevronDown,
   ChevronUp,
-  Zap,
-} from "lucide-react";
+} from 'lucide-react';
 
 export interface AgentPerformance {
   agentId: string;
@@ -38,7 +32,7 @@ export interface AgentPerformance {
 interface AgentExecution {
   id: string;
   query: string;
-  status: "pending" | "executing" | "completed" | "failed";
+  status: 'pending' | 'executing' | 'completed' | 'failed';
   startedAt: string;
   completedAt?: string;
   duration?: number;
@@ -64,19 +58,25 @@ interface AgentDetailModalProps {
   agent: AgentPerformance | null;
   isOpen: boolean;
   onClose: () => void;
-  onNavigate?: (type: string, id: string) => void;
 }
 
-function ExpandableContent({ summary, fullContent, maxLength = 200 }: { summary?: string; fullContent: string; maxLength?: number }) {
+function ExpandableContent({
+  summary,
+  fullContent,
+  maxLength = 200,
+}: {
+  summary?: string;
+  fullContent: string;
+  maxLength?: number;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
   const shouldTruncate = fullContent.length > maxLength;
-  const displayText = isExpanded || !shouldTruncate ? fullContent : fullContent.slice(0, maxLength) + "...";
+  const displayText =
+    isExpanded || !shouldTruncate ? fullContent : fullContent.slice(0, maxLength) + '...';
 
   return (
     <div className="space-y-2">
-      {summary && (
-        <div className="text-sm text-muted-foreground">{summary}</div>
-      )}
+      {summary && <div className="text-sm text-muted-foreground">{summary}</div>}
       <div className="text-sm">
         <pre className="whitespace-pre-wrap font-mono bg-muted p-3 rounded-lg text-xs overflow-x-auto">
           {displayText}
@@ -106,8 +106,8 @@ function ExpandableContent({ summary, fullContent, maxLength = 200 }: { summary?
   );
 }
 
-export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDetailModalProps) {
-  const [activeTab, setActiveTab] = useState("overview");
+export function AgentDetailModal({ agent, isOpen, onClose }: AgentDetailModalProps) {
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Fetch execution history
   const { data: executions, isLoading: executionsLoading } = useQuery<AgentExecution[]>({
@@ -118,15 +118,17 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
       // In production, fetch from /api/agents/${agentId}/executions
       return [
         {
-          id: "exec-1",
-          query: "Analyze the database connection issues in the authentication service and provide recommendations for fixing timeout errors.",
-          status: "completed",
+          id: 'exec-1',
+          query:
+            'Analyze the database connection issues in the authentication service and provide recommendations for fixing timeout errors.',
+          status: 'completed',
           startedAt: new Date(Date.now() - 3600000).toISOString(),
           completedAt: new Date(Date.now() - 3580000).toISOString(),
           duration: 20,
           result: {
             success: true,
-            output: "The database connection timeout issues are caused by insufficient connection pool size. The current pool size is 5, but peak load requires at least 20 connections. Additionally, connection retry logic is missing, causing immediate failures. Recommendations:\n\n1. Increase connection pool size to 25 with a maximum of 50\n2. Implement exponential backoff retry logic\n3. Add connection health checks\n4. Monitor connection usage patterns",
+            output:
+              'The database connection timeout issues are caused by insufficient connection pool size. The current pool size is 5, but peak load requires at least 20 connections. Additionally, connection retry logic is missing, causing immediate failures. Recommendations:\n\n1. Increase connection pool size to 25 with a maximum of 50\n2. Implement exponential backoff retry logic\n3. Add connection health checks\n4. Monitor connection usage patterns',
             qualityScore: 0.92,
             metrics: {
               tokensUsed: 1250,
@@ -136,20 +138,20 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
           },
           routingDecision: {
             confidence: 0.89,
-            strategy: "direct-routing",
-            alternatives: ["agent-debug-intelligence"],
+            strategy: 'direct-routing',
+            alternatives: ['agent-debug-intelligence'],
           },
         },
         {
-          id: "exec-2",
-          query: "Create a React component for user profile display with edit functionality",
-          status: "completed",
+          id: 'exec-2',
+          query: 'Create a React component for user profile display with edit functionality',
+          status: 'completed',
           startedAt: new Date(Date.now() - 7200000).toISOString(),
           completedAt: new Date(Date.now() - 7180000).toISOString(),
           duration: 25,
           result: {
             success: true,
-            output: "Created UserProfile.tsx component with edit functionality...",
+            output: 'Created UserProfile.tsx component with edit functionality...',
             qualityScore: 0.88,
             metrics: {
               tokensUsed: 2100,
@@ -159,19 +161,19 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
           },
           routingDecision: {
             confidence: 0.91,
-            strategy: "direct-routing",
+            strategy: 'direct-routing',
           },
         },
         {
-          id: "exec-3",
-          query: "Fix memory leak in event processing pipeline",
-          status: "failed",
+          id: 'exec-3',
+          query: 'Fix memory leak in event processing pipeline',
+          status: 'failed',
           startedAt: new Date(Date.now() - 10800000).toISOString(),
           completedAt: new Date(Date.now() - 10790000).toISOString(),
           duration: 10,
           result: {
             success: false,
-            error: "Timeout: Analysis exceeded maximum execution time of 10 seconds",
+            error: 'Timeout: Analysis exceeded maximum execution time of 10 seconds',
             qualityScore: 0.0,
             metrics: {
               tokensUsed: 850,
@@ -181,8 +183,8 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
           },
           routingDecision: {
             confidence: 0.65,
-            strategy: "fallback-routing",
-            alternatives: ["agent-performance", "agent-debug-intelligence"],
+            strategy: 'fallback-routing',
+            alternatives: ['agent-performance', 'agent-debug-intelligence'],
           },
         },
       ];
@@ -193,12 +195,7 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
   if (!agent) return null;
 
   return (
-    <DetailModal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={agent.agentName}
-      subtitle={agent.agentId}
-    >
+    <DetailModal isOpen={isOpen} onClose={onClose} title={agent.agentName} subtitle={agent.agentId}>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -215,7 +212,9 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
                 <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{Math.max(0, Math.min(100, agent.successRate)).toFixed(1)}%</div>
+                <div className="text-3xl font-bold">
+                  {Math.max(0, Math.min(100, agent.successRate)).toFixed(1)}%
+                </div>
                 <Progress value={Math.max(0, Math.min(100, agent.successRate))} className="mt-2" />
               </CardContent>
             </Card>
@@ -248,7 +247,10 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{agent.avgQualityScore.toFixed(1)}/10</div>
-                <Progress value={Math.max(0, Math.min(100, agent.avgQualityScore * 10))} className="mt-2" />
+                <Progress
+                  value={Math.max(0, Math.min(100, agent.avgQualityScore * 10))}
+                  className="mt-2"
+                />
               </CardContent>
             </Card>
           </div>
@@ -262,14 +264,18 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span>Efficiency</span>
-                  <span className="font-medium">{Math.max(0, Math.min(100, agent.efficiency)).toFixed(1)}%</span>
+                  <span className="font-medium">
+                    {Math.max(0, Math.min(100, agent.efficiency)).toFixed(1)}%
+                  </span>
                 </div>
                 <Progress value={Math.max(0, Math.min(100, agent.efficiency))} />
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span>Popularity</span>
-                  <span className="font-medium">{Math.max(0, Math.min(100, agent.popularity)).toFixed(1)}%</span>
+                  <span className="font-medium">
+                    {Math.max(0, Math.min(100, agent.popularity)).toFixed(1)}%
+                  </span>
                 </div>
                 <Progress value={Math.max(0, Math.min(100, agent.popularity))} />
               </div>
@@ -306,9 +312,9 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <CardTitle className="text-base flex items-center gap-2">
-                          {exec.status === "completed" ? (
+                          {exec.status === 'completed' ? (
                             <CheckCircle className="w-4 h-4 text-green-500" />
-                          ) : exec.status === "failed" ? (
+                          ) : exec.status === 'failed' ? (
                             <XCircle className="w-4 h-4 text-red-500" />
                           ) : (
                             <Clock className="w-4 h-4 text-yellow-500" />
@@ -322,11 +328,11 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
                       </div>
                       <Badge
                         variant={
-                          exec.status === "completed"
-                            ? "default"
-                            : exec.status === "failed"
-                            ? "destructive"
-                            : "secondary"
+                          exec.status === 'completed'
+                            ? 'default'
+                            : exec.status === 'failed'
+                              ? 'destructive'
+                              : 'secondary'
                         }
                       >
                         {exec.status}
@@ -336,10 +342,7 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
                   <CardContent className="space-y-4">
                     <div>
                       <div className="text-sm font-medium mb-2">Query</div>
-                      <ExpandableContent
-                        fullContent={exec.query}
-                        maxLength={150}
-                      />
+                      <ExpandableContent fullContent={exec.query} maxLength={150} />
                     </div>
 
                     {exec.result && (
@@ -348,7 +351,7 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
                         {exec.result.success ? (
                           <ExpandableContent
                             summary={`Quality Score: ${((exec.result.qualityScore || 0) * 100).toFixed(1)}%`}
-                            fullContent={exec.result.output || "No output"}
+                            fullContent={exec.result.output || 'No output'}
                             maxLength={200}
                           />
                         ) : (
@@ -363,7 +366,9 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
                           <div className="text-muted-foreground">Tokens</div>
-                          <div className="font-medium">{exec.result.metrics.tokensUsed?.toLocaleString()}</div>
+                          <div className="font-medium">
+                            {exec.result.metrics.tokensUsed?.toLocaleString()}
+                          </div>
                         </div>
                         <div>
                           <div className="text-muted-foreground">Compute</div>
@@ -381,12 +386,15 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
                         <div className="text-sm font-medium mb-2">Routing Decision</div>
                         <div className="text-sm space-y-1">
                           <div>Strategy: {exec.routingDecision.strategy}</div>
-                          <div>Confidence: {(exec.routingDecision.confidence * 100).toFixed(1)}%</div>
-                          {exec.routingDecision.alternatives && exec.routingDecision.alternatives.length > 0 && (
-                            <div>
-                              Alternatives: {exec.routingDecision.alternatives.join(", ")}
-                            </div>
-                          )}
+                          <div>
+                            Confidence: {(exec.routingDecision.confidence * 100).toFixed(1)}%
+                          </div>
+                          {exec.routingDecision.alternatives &&
+                            exec.routingDecision.alternatives.length > 0 && (
+                              <div>
+                                Alternatives: {exec.routingDecision.alternatives.join(', ')}
+                              </div>
+                            )}
                         </div>
                       </div>
                     )}
@@ -442,15 +450,28 @@ export function AgentDetailModal({ agent, isOpen, onClose, onNavigate }: AgentDe
             <CardContent>
               <div className="space-y-2 font-mono text-xs">
                 {[
-                  { time: "14:32:15", level: "INFO", message: "Agent initialized successfully" },
-                  { time: "14:32:16", level: "INFO", message: "Starting execution exec-1" },
-                  { time: "14:32:18", level: "DEBUG", message: "Routing decision: direct-routing (confidence: 0.89)" },
-                  { time: "14:32:25", level: "INFO", message: "Execution completed in 20s" },
-                  { time: "14:32:26", level: "INFO", message: "Quality score: 0.92" },
+                  { time: '14:32:15', level: 'INFO', message: 'Agent initialized successfully' },
+                  { time: '14:32:16', level: 'INFO', message: 'Starting execution exec-1' },
+                  {
+                    time: '14:32:18',
+                    level: 'DEBUG',
+                    message: 'Routing decision: direct-routing (confidence: 0.89)',
+                  },
+                  { time: '14:32:25', level: 'INFO', message: 'Execution completed in 20s' },
+                  { time: '14:32:26', level: 'INFO', message: 'Quality score: 0.92' },
                 ].map((log, idx) => (
                   <div key={idx} className="flex gap-4">
                     <span className="text-muted-foreground w-20">{log.time}</span>
-                    <Badge variant={log.level === "ERROR" ? "destructive" : log.level === "WARN" ? "secondary" : "outline"} className="w-16 text-xs">
+                    <Badge
+                      variant={
+                        log.level === 'ERROR'
+                          ? 'destructive'
+                          : log.level === 'WARN'
+                            ? 'secondary'
+                            : 'outline'
+                      }
+                      className="w-16 text-xs"
+                    >
                       {log.level}
                     </Badge>
                     <span className="flex-1">{log.message}</span>

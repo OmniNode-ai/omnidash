@@ -170,7 +170,9 @@ class ArchitectureNetworksSource {
     };
   }
 
-  async fetchKnowledgeEntities(timeRange: string): Promise<{ data: KnowledgeEntity[]; isMock: boolean }> {
+  async fetchKnowledgeEntities(
+    timeRange: string
+  ): Promise<{ data: KnowledgeEntity[]; isMock: boolean }> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
 
@@ -247,4 +249,3 @@ class ArchitectureNetworksSource {
 }
 
 export const architectureNetworksSource = new ArchitectureNetworksSource();
-

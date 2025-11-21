@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 // Schema for tracking agent runs
 export const AgentRunSchema = z.object({
@@ -12,14 +12,16 @@ export const AgentRunSchema = z.object({
   duration: z.number(), // in seconds
   success: z.boolean(),
   cost: z.number(),
-  metadata: z.object({
-    model: z.string().optional(),
-    provider: z.string().optional(),
-    complexity: z.string().optional(),
-    contextSize: z.number().optional(),
-    intelligenceFeatures: z.array(z.string()).optional(),
-    patternsUsed: z.array(z.string()).optional(),
-  }).optional(),
+  metadata: z
+    .object({
+      model: z.string().optional(),
+      provider: z.string().optional(),
+      complexity: z.string().optional(),
+      contextSize: z.number().optional(),
+      intelligenceFeatures: z.array(z.string()).optional(),
+      patternsUsed: z.array(z.string()).optional(),
+    })
+    .optional(),
 });
 
 export type AgentRun = z.infer<typeof AgentRunSchema>;
@@ -42,9 +44,11 @@ export class AgentRunTracker {
     agentRuns.push(run);
     // Only log in non-test environments to avoid flooding test output
     if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
-      console.log(`Recorded agent run: ${run.agentId} (${run.withIntelligence ? 'with' : 'without'} intelligence)`);
+      console.log(
+        `Recorded agent run: ${run.agentId} (${run.withIntelligence ? 'with' : 'without'} intelligence)`
+      );
     }
-    
+
     return run;
   }
 
@@ -52,7 +56,7 @@ export class AgentRunTracker {
    * Get all agent runs within a time range
    */
   static getRunsInRange(startDate: Date, endDate: Date): AgentRun[] {
-    return agentRuns.filter(run => {
+    return agentRuns.filter((run) => {
       const runDate = new Date(run.timestamp);
       return runDate >= startDate && runDate <= endDate;
     });
@@ -62,7 +66,7 @@ export class AgentRunTracker {
    * Get runs for a specific agent
    */
   static getRunsForAgent(agentId: string, withIntelligence?: boolean): AgentRun[] {
-    return agentRuns.filter(run => {
+    return agentRuns.filter((run) => {
       if (withIntelligence !== undefined) {
         return run.agentId === agentId && run.withIntelligence === withIntelligence;
       }
@@ -76,8 +80,8 @@ export class AgentRunTracker {
    */
   static calculateSavingsMetrics(startDate: Date, endDate: Date) {
     const runs = this.getRunsInRange(startDate, endDate);
-    const intelligenceRuns = runs.filter(run => run.withIntelligence);
-    const baselineRuns = runs.filter(run => !run.withIntelligence);
+    const intelligenceRuns = runs.filter((run) => run.withIntelligence);
+    const baselineRuns = runs.filter((run) => !run.withIntelligence);
 
     // Helper function to round to 2 decimal places
     const round2 = (value: number): number => Math.round(value * 100) / 100;
@@ -113,11 +117,14 @@ export class AgentRunTracker {
 
     // Calculate average cost per run for each type
     const avgBaselineCost = baselineRuns.length > 0 ? baselineCost / baselineRuns.length : 0;
-    const avgIntelligenceCost = intelligenceRuns.length > 0 ? intelligenceCost / intelligenceRuns.length : 0;
+    const avgIntelligenceCost =
+      intelligenceRuns.length > 0 ? intelligenceCost / intelligenceRuns.length : 0;
     const avgBaselineTokens = baselineRuns.length > 0 ? baselineTokens / baselineRuns.length : 0;
-    const avgIntelligenceTokens = intelligenceRuns.length > 0 ? intelligenceTokens / intelligenceRuns.length : 0;
+    const avgIntelligenceTokens =
+      intelligenceRuns.length > 0 ? intelligenceTokens / intelligenceRuns.length : 0;
     const avgBaselineTime = baselineRuns.length > 0 ? baselineTime / baselineRuns.length : 0;
-    const avgIntelligenceTime = intelligenceRuns.length > 0 ? intelligenceTime / intelligenceRuns.length : 0;
+    const avgIntelligenceTime =
+      intelligenceRuns.length > 0 ? intelligenceTime / intelligenceRuns.length : 0;
 
     // Calculate savings PER RUN
     const savingsPerRun = avgBaselineCost - avgIntelligenceCost;
@@ -132,12 +139,13 @@ export class AgentRunTracker {
     // Allow negative savings to detect performance regressions
     const costSavings = rawCostSavings;
     const timeSavedHours = rawTimeSavings / 3600; // Convert seconds to hours
-    const efficiencyGain = baselineTokens > 0
-      ? (rawTokenSavings / baselineTokens) * 100
-      : 0;
+    const efficiencyGain = baselineTokens > 0 ? (rawTokenSavings / baselineTokens) * 100 : 0;
 
     // Calculate time period in days for extrapolation (allow negative values)
-    const timePeriodDays = Math.max(1, (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const timePeriodDays = Math.max(
+      1,
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
     const dailySavings = costSavings / timePeriodDays;
     const weeklySavings = dailySavings * 7;
     const monthlySavings = dailySavings * 30;
@@ -177,12 +185,12 @@ export class AgentRunTracker {
     // Helper function to round to 2 decimal places
     const round2 = (value: number): number => Math.round(value * 100) / 100;
 
-    const intelligenceRuns = this.getRunsForAgent(agentId, true).filter(run => {
+    const intelligenceRuns = this.getRunsForAgent(agentId, true).filter((run) => {
       const runDate = new Date(run.timestamp);
       return runDate >= startDate && runDate <= endDate;
     });
 
-    const baselineRuns = this.getRunsForAgent(agentId, false).filter(run => {
+    const baselineRuns = this.getRunsForAgent(agentId, false).filter((run) => {
       const runDate = new Date(run.timestamp);
       return runDate >= startDate && runDate <= endDate;
     });
@@ -192,18 +200,36 @@ export class AgentRunTracker {
     }
 
     const intelligenceAvg = {
-      avgTokens: round2(intelligenceRuns.reduce((sum, run) => sum + run.tokensUsed, 0) / intelligenceRuns.length),
-      avgCompute: round2(intelligenceRuns.reduce((sum, run) => sum + run.computeUnits, 0) / intelligenceRuns.length),
-      avgTime: round2(intelligenceRuns.reduce((sum, run) => sum + run.duration, 0) / intelligenceRuns.length),
-      successRate: round2((intelligenceRuns.filter(run => run.success).length / intelligenceRuns.length) * 100),
-      cost: round2(intelligenceRuns.reduce((sum, run) => sum + run.cost, 0) / intelligenceRuns.length),
+      avgTokens: round2(
+        intelligenceRuns.reduce((sum, run) => sum + run.tokensUsed, 0) / intelligenceRuns.length
+      ),
+      avgCompute: round2(
+        intelligenceRuns.reduce((sum, run) => sum + run.computeUnits, 0) / intelligenceRuns.length
+      ),
+      avgTime: round2(
+        intelligenceRuns.reduce((sum, run) => sum + run.duration, 0) / intelligenceRuns.length
+      ),
+      successRate: round2(
+        (intelligenceRuns.filter((run) => run.success).length / intelligenceRuns.length) * 100
+      ),
+      cost: round2(
+        intelligenceRuns.reduce((sum, run) => sum + run.cost, 0) / intelligenceRuns.length
+      ),
     };
 
     const baselineAvg = {
-      avgTokens: round2(baselineRuns.reduce((sum, run) => sum + run.tokensUsed, 0) / baselineRuns.length),
-      avgCompute: round2(baselineRuns.reduce((sum, run) => sum + run.computeUnits, 0) / baselineRuns.length),
-      avgTime: round2(baselineRuns.reduce((sum, run) => sum + run.duration, 0) / baselineRuns.length),
-      successRate: round2((baselineRuns.filter(run => run.success).length / baselineRuns.length) * 100),
+      avgTokens: round2(
+        baselineRuns.reduce((sum, run) => sum + run.tokensUsed, 0) / baselineRuns.length
+      ),
+      avgCompute: round2(
+        baselineRuns.reduce((sum, run) => sum + run.computeUnits, 0) / baselineRuns.length
+      ),
+      avgTime: round2(
+        baselineRuns.reduce((sum, run) => sum + run.duration, 0) / baselineRuns.length
+      ),
+      successRate: round2(
+        (baselineRuns.filter((run) => run.success).length / baselineRuns.length) * 100
+      ),
       cost: round2(baselineRuns.reduce((sum, run) => sum + run.cost, 0) / baselineRuns.length),
     };
 
@@ -212,7 +238,11 @@ export class AgentRunTracker {
       compute: round2(baselineAvg.avgCompute - intelligenceAvg.avgCompute),
       time: round2(baselineAvg.avgTime - intelligenceAvg.avgTime),
       cost: round2(baselineAvg.cost - intelligenceAvg.cost),
-      percentage: round2(baselineAvg.cost > 0 ? ((baselineAvg.cost - intelligenceAvg.cost) / baselineAvg.cost) * 100 : 0),
+      percentage: round2(
+        baselineAvg.cost > 0
+          ? ((baselineAvg.cost - intelligenceAvg.cost) / baselineAvg.cost) * 100
+          : 0
+      ),
     };
 
     return {
@@ -228,7 +258,7 @@ export class AgentRunTracker {
    * Get all unique agent IDs
    */
   static getAgentIds(): string[] {
-    return Array.from(new Set(agentRuns.map(run => run.agentId)));
+    return Array.from(new Set(agentRuns.map((run) => run.agentId)));
   }
 
   /**
@@ -236,17 +266,17 @@ export class AgentRunTracker {
    */
   static generateMockData() {
     const agents = [
-      { id: "agent-debug-intelligence", name: "Debug Intelligence Agent" },
-      { id: "agent-code-quality-analyzer", name: "Code Quality Analyzer" },
-      { id: "agent-architect", name: "Architecture Agent" },
-      { id: "agent-performance", name: "Performance Agent" },
-      { id: "agent-testing", name: "Testing Agent" },
-      { id: "agent-refactoring", name: "Refactoring Agent" },
+      { id: 'agent-debug-intelligence', name: 'Debug Intelligence Agent' },
+      { id: 'agent-code-quality-analyzer', name: 'Code Quality Analyzer' },
+      { id: 'agent-architect', name: 'Architecture Agent' },
+      { id: 'agent-performance', name: 'Performance Agent' },
+      { id: 'agent-testing', name: 'Testing Agent' },
+      { id: 'agent-refactoring', name: 'Refactoring Agent' },
     ];
 
-    const models = ["claude-3.5-sonnet", "claude-3.5-haiku", "gpt-4", "gpt-3.5-turbo"];
-    const providers = ["anthropic", "openai", "together", "zai"];
-    const complexities = ["low", "medium", "high"];
+    const models = ['claude-3.5-sonnet', 'claude-3.5-haiku', 'gpt-4', 'gpt-3.5-turbo'];
+    const providers = ['anthropic', 'openai', 'together', 'zai'];
+    const complexities = ['low', 'medium', 'high'];
 
     const now = Date.now();
     const msPerDay = 24 * 60 * 60 * 1000;
@@ -288,7 +318,7 @@ export class AgentRunTracker {
           computeUnits: baseCompute,
           duration: Math.round(baseDuration),
           success: Math.random() > 0.1, // 90% success rate
-          cost: (baseTokens * 0.0001) + (baseCompute * 0.05),
+          cost: baseTokens * 0.0001 + baseCompute * 0.05,
           metadata: {
             model: models[Math.floor(Math.random() * models.length)],
             provider: providers[Math.floor(Math.random() * providers.length)],
@@ -325,23 +355,19 @@ export class AgentRunTracker {
           computeUnits: baseCompute * intelligenceFactor,
           duration: Math.round(baseDuration * intelligenceFactor),
           success: Math.random() > 0.1, // 90% success rate
-          cost: (baseTokens * intelligenceFactor * 0.0001) + (baseCompute * intelligenceFactor * 0.05),
+          cost: baseTokens * intelligenceFactor * 0.0001 + baseCompute * intelligenceFactor * 0.05,
           metadata: {
             model: models[Math.floor(Math.random() * models.length)],
             provider: providers[Math.floor(Math.random() * providers.length)],
             complexity: complexities[Math.floor(Math.random() * complexities.length)],
             contextSize: Math.floor(100000 + Math.random() * 200000),
             intelligenceFeatures: [
-              "pattern_matching",
-              "context_optimization",
-              "smart_caching",
-              "predictive_analysis"
+              'pattern_matching',
+              'context_optimization',
+              'smart_caching',
+              'predictive_analysis',
             ],
-            patternsUsed: [
-              "debug_pattern_001",
-              "quality_pattern_002",
-              "arch_pattern_003"
-            ],
+            patternsUsed: ['debug_pattern_001', 'quality_pattern_002', 'arch_pattern_003'],
           },
         };
 
@@ -351,7 +377,9 @@ export class AgentRunTracker {
 
     // Only log in non-test environments to avoid flooding test output
     if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
-      console.log(`Generated ${agentRuns.length} mock agent runs (${totalDays} days, balanced distribution)`);
+      console.log(
+        `Generated ${agentRuns.length} mock agent runs (${totalDays} days, balanced distribution)`
+      );
     }
   }
 

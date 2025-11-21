@@ -1,15 +1,15 @@
-import { MetricCard } from "@/components/MetricCard";
-import { PatternNetwork } from "@/components/PatternNetwork";
-import { DrillDownModal } from "@/components/DrillDownModal";
-import { Card } from "@/components/ui/card";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
-import { ExportButton } from "@/components/ExportButton";
-import { Database, Network, Link, TrendingUp } from "lucide-react";
-import { useState } from "react";
-import { MockBadge } from "@/components/MockBadge";
-import { useQuery } from "@tanstack/react-query";
-import { knowledgeGraphSource } from "@/lib/data-sources";
-import { POLLING_INTERVAL_VERY_SLOW, getPollingInterval } from "@/lib/constants/query-config";
+import { MetricCard } from '@/components/MetricCard';
+import { PatternNetwork } from '@/components/PatternNetwork';
+import { DrillDownModal } from '@/components/DrillDownModal';
+import { Card } from '@/components/ui/card';
+import { TimeRangeSelector } from '@/components/TimeRangeSelector';
+import { ExportButton } from '@/components/ExportButton';
+import { Database, Network, Link, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import { MockBadge } from '@/components/MockBadge';
+import { useQuery } from '@tanstack/react-query';
+import { knowledgeGraphSource } from '@/lib/data-sources';
+import { POLLING_INTERVAL_VERY_SLOW, getPollingInterval } from '@/lib/constants/query-config';
 
 // Graph data interfaces from omniarchon endpoint
 interface GraphNode {
@@ -66,10 +66,12 @@ export default function KnowledgeGraph() {
   });
 
   // Transform to expected format
-  const graphData: KnowledgeGraphResponse = graphDataResult ? {
-    nodes: graphDataResult.nodes,
-    edges: graphDataResult.edges.map(e => ({ ...e, relationship: e.type || 'related' })),
-  } : { nodes: [], edges: [] };
+  const graphData: KnowledgeGraphResponse = graphDataResult
+    ? {
+        nodes: graphDataResult.nodes,
+        edges: graphDataResult.edges.map((e) => ({ ...e, relationship: e.type || 'related' })),
+      }
+    : { nodes: [], edges: [] };
 
   // Map GraphNode data to Pattern format for PatternNetwork component
   const patterns: Pattern[] = (graphData?.nodes || []).map((node) => ({
@@ -90,15 +92,18 @@ export default function KnowledgeGraph() {
   }));
 
   // Calculate relationship type statistics
-  const relationshipTypes = relationships.reduce((acc, rel) => {
-    const existing = acc.find(r => r.type === rel.type);
-    if (existing) {
-      existing.count++;
-    } else {
-      acc.push({ id: rel.type, type: rel.type, count: 1 });
-    }
-    return acc;
-  }, [] as Array<{ id: string; type: string; count: number }>);
+  const relationshipTypes = relationships.reduce(
+    (acc, rel) => {
+      const existing = acc.find((r) => r.type === rel.type);
+      if (existing) {
+        existing.count++;
+      } else {
+        acc.push({ id: rel.type, type: rel.type, count: 1 });
+      }
+      return acc;
+    },
+    [] as Array<{ id: string; type: string; count: number }>
+  );
 
   // Calculate metrics from real data
   const totalNodes = patterns.length;
@@ -106,7 +111,7 @@ export default function KnowledgeGraph() {
 
   // Calculate connected components (simplified - count patterns with at least one relationship)
   const connectedNodeIds = new Set<string>();
-  relationships.forEach(rel => {
+  relationships.forEach((rel) => {
     connectedNodeIds.add(rel.source);
     connectedNodeIds.add(rel.target);
   });
@@ -115,9 +120,8 @@ export default function KnowledgeGraph() {
   // Calculate graph density: actual edges / possible edges
   // For directed graph: density = edges / (nodes * (nodes - 1))
   const maxPossibleEdges = totalNodes * (totalNodes - 1);
-  const graphDensity = maxPossibleEdges > 0
-    ? (totalRelationships / maxPossibleEdges).toFixed(2)
-    : '0.00';
+  const graphDensity =
+    maxPossibleEdges > 0 ? (totalRelationships / maxPossibleEdges).toFixed(2) : '0.00';
 
   const handleNodeClick = (pattern: Pattern) => {
     setSelectedNode(pattern);
@@ -130,13 +134,20 @@ export default function KnowledgeGraph() {
         <div>
           <h1 className="text-3xl font-semibold mb-2">Knowledge Graph</h1>
           <p className="text-muted-foreground">
-            {isLoading ? 'Loading...' : `Interactive exploration of ${totalNodes} nodes and their relationships`}
+            {isLoading
+              ? 'Loading...'
+              : `Interactive exploration of ${totalNodes} nodes and their relationships`}
           </p>
         </div>
         <div className="flex items-center gap-4">
           <TimeRangeSelector value={timeRange} onChange={handleTimeRangeChange} />
           <ExportButton
-            data={{ nodes: patterns, edges: relationships, relationshipTypes, metrics: { totalNodes, totalRelationships, connectedComponents, graphDensity } }}
+            data={{
+              nodes: patterns,
+              edges: relationships,
+              relationshipTypes,
+              metrics: { totalNodes, totalRelationships, connectedComponents, graphDensity },
+            }}
             filename={`knowledge-graph-${timeRange}-${new Date().toISOString().split('T')[0]}`}
             disabled={isLoading || patterns.length === 0}
           />
@@ -183,9 +194,30 @@ export default function KnowledgeGraph() {
               <MockBadge label="MOCK DATA: Knowledge Graph" />
               <PatternNetwork
                 patterns={[
-                  { id: 'p1', name: 'Event Bus Producer', quality: 0.92, usage: 12, category: 'effect', language: 'python' },
-                  { id: 'p2', name: 'Semantic Cache Reducer', quality: 0.88, usage: 9, category: 'reducer', language: 'python' },
-                  { id: 'p3', name: 'Pattern Similarity Scorer', quality: 0.9, usage: 14, category: 'compute', language: 'python' },
+                  {
+                    id: 'p1',
+                    name: 'Event Bus Producer',
+                    quality: 0.92,
+                    usage: 12,
+                    category: 'effect',
+                    language: 'python',
+                  },
+                  {
+                    id: 'p2',
+                    name: 'Semantic Cache Reducer',
+                    quality: 0.88,
+                    usage: 9,
+                    category: 'reducer',
+                    language: 'python',
+                  },
+                  {
+                    id: 'p3',
+                    name: 'Pattern Similarity Scorer',
+                    quality: 0.9,
+                    usage: 14,
+                    category: 'compute',
+                    language: 'python',
+                  },
                 ]}
                 height={600}
                 onPatternClick={handleNodeClick}
@@ -213,7 +245,7 @@ export default function KnowledgeGraph() {
                 ].map((rel) => (
                   <div key={rel.id} className="p-3 rounded-lg border border-card-border">
                     <div className="text-sm font-medium font-mono mb-1">
-                      {rel.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                      {rel.type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                     </div>
                     <div className="text-2xl font-bold font-mono">{rel.count.toLocaleString()}</div>
                   </div>
@@ -223,12 +255,9 @@ export default function KnowledgeGraph() {
           ) : (
             <div className="space-y-3">
               {relationshipTypes.slice(0, 6).map((rel) => (
-                <div
-                  key={rel.id}
-                  className="p-3 rounded-lg border border-card-border"
-                >
+                <div key={rel.id} className="p-3 rounded-lg border border-card-border">
                   <div className="text-sm font-medium font-mono mb-1">
-                    {rel.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                    {rel.type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                   </div>
                   <div className="text-2xl font-bold font-mono">{rel.count.toLocaleString()}</div>
                 </div>
@@ -267,7 +296,7 @@ export default function KnowledgeGraph() {
       <DrillDownModal
         open={panelOpen}
         onOpenChange={setPanelOpen}
-        title={selectedNode?.name || "Node Details"}
+        title={selectedNode?.name || 'Node Details'}
         data={selectedNode || {}}
         type="pattern"
         variant="modal"

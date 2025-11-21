@@ -19,21 +19,31 @@ Platform Monitoring dashboard uses light-mode color schemes that don't work in d
 ```typescript
 const getStatusColor = (status: string) => {
   switch (status) {
-    case "healthy": return "text-green-600 bg-green-100";      // ❌ Light mode only
-    case "degraded": return "text-yellow-600 bg-yellow-100";   // ❌ Light mode only
-    case "critical": return "text-red-600 bg-red-100";         // ❌ Light mode only
-    case "maintenance": return "text-blue-600 bg-blue-100";    // ❌ Light mode only
-    default: return "text-gray-600 bg-gray-100";
+    case 'healthy':
+      return 'text-green-600 bg-green-100'; // ❌ Light mode only
+    case 'degraded':
+      return 'text-yellow-600 bg-yellow-100'; // ❌ Light mode only
+    case 'critical':
+      return 'text-red-600 bg-red-100'; // ❌ Light mode only
+    case 'maintenance':
+      return 'text-blue-600 bg-blue-100'; // ❌ Light mode only
+    default:
+      return 'text-gray-600 bg-gray-100';
   }
 };
 
 const getSeverityColor = (severity: string) => {
   switch (severity) {
-    case "low": return "text-blue-600 bg-blue-100";            // ❌ Light mode only
-    case "medium": return "text-yellow-600 bg-yellow-100";     // ❌ Light mode only
-    case "high": return "text-orange-600 bg-orange-100";       // ❌ Light mode only
-    case "critical": return "text-red-600 bg-red-100";         // ❌ Light mode only
-    default: return "text-gray-600 bg-gray-100";
+    case 'low':
+      return 'text-blue-600 bg-blue-100'; // ❌ Light mode only
+    case 'medium':
+      return 'text-yellow-600 bg-yellow-100'; // ❌ Light mode only
+    case 'high':
+      return 'text-orange-600 bg-orange-100'; // ❌ Light mode only
+    case 'critical':
+      return 'text-red-600 bg-red-100'; // ❌ Light mode only
+    default:
+      return 'text-gray-600 bg-gray-100';
   }
 };
 ```
@@ -48,16 +58,22 @@ const getSeverityColor = (severity: string) => {
 const getStatusColor = (status: string) => {
   switch (status) {
     // Higher contrast in dark mode: dimmer bg, brighter text
-    case "completed": return "text-green-400 bg-green-900/30 border border-green-700/40";   // ✅
-    case "executing": return "text-blue-400 bg-blue-900/30 border border-blue-700/40";      // ✅
-    case "failed": return "text-red-400 bg-red-900/30 border border-red-700/40";            // ✅
-    case "pending": return "text-yellow-400 bg-yellow-900/30 border border-yellow-700/40";  // ✅
-    default: return "text-muted-foreground bg-muted border border-border/60";
+    case 'completed':
+      return 'text-green-400 bg-green-900/30 border border-green-700/40'; // ✅
+    case 'executing':
+      return 'text-blue-400 bg-blue-900/30 border border-blue-700/40'; // ✅
+    case 'failed':
+      return 'text-red-400 bg-red-900/30 border border-red-700/40'; // ✅
+    case 'pending':
+      return 'text-yellow-400 bg-yellow-900/30 border border-yellow-700/40'; // ✅
+    default:
+      return 'text-muted-foreground bg-muted border border-border/60';
   }
 };
 ```
 
 **Why this works:**
+
 - `text-green-400` - Bright text for dark backgrounds
 - `bg-green-900/30` - Dark background with 30% opacity
 - `border-green-700/40` - Subtle border with 40% opacity
@@ -73,22 +89,32 @@ const getStatusColor = (status: string) => {
 const getStatusColor = (status: string) => {
   switch (status) {
     // Dark-mode-friendly colors matching Agent Management pattern
-    case "healthy": return "text-green-400 bg-green-900/30 border border-green-700/40";
-    case "degraded": return "text-yellow-400 bg-yellow-900/30 border border-yellow-700/40";
-    case "critical": return "text-red-400 bg-red-900/30 border border-red-700/40";
-    case "maintenance": return "text-blue-400 bg-blue-900/30 border border-blue-700/40";
-    default: return "text-muted-foreground bg-muted border border-border/60";
+    case 'healthy':
+      return 'text-green-400 bg-green-900/30 border border-green-700/40';
+    case 'degraded':
+      return 'text-yellow-400 bg-yellow-900/30 border border-yellow-700/40';
+    case 'critical':
+      return 'text-red-400 bg-red-900/30 border border-red-700/40';
+    case 'maintenance':
+      return 'text-blue-400 bg-blue-900/30 border border-blue-700/40';
+    default:
+      return 'text-muted-foreground bg-muted border border-border/60';
   }
 };
 
 const getSeverityColor = (severity: string) => {
   switch (severity) {
     // Map severity to status colors for consistency
-    case "low": return "text-blue-400 bg-blue-900/30 border border-blue-700/40";
-    case "medium": return "text-yellow-400 bg-yellow-900/30 border border-yellow-700/40";
-    case "high": return "text-orange-400 bg-orange-900/30 border border-orange-700/40";
-    case "critical": return "text-red-400 bg-red-900/30 border border-red-700/40";
-    default: return "text-muted-foreground bg-muted border border-border/60";
+    case 'low':
+      return 'text-blue-400 bg-blue-900/30 border border-blue-700/40';
+    case 'medium':
+      return 'text-yellow-400 bg-yellow-900/30 border border-yellow-700/40';
+    case 'high':
+      return 'text-orange-400 bg-orange-900/30 border border-orange-700/40';
+    case 'critical':
+      return 'text-red-400 bg-red-900/30 border border-red-700/40';
+    default:
+      return 'text-muted-foreground bg-muted border border-border/60';
   }
 };
 ```
@@ -104,6 +130,7 @@ The badges throughout the file need to ensure the border class is applied. Curre
 This is correct and will work with the new color functions that include `border` classes.
 
 **Verification Points:**
+
 - Line 220: Service Status badges
 - Lines 252-257: Recent Incidents severity and status badges
 - Line 328: Service monitoring badges
@@ -118,11 +145,14 @@ This is correct and will work with the new color functions that include `border`
 **Lines 27-33** - Status color function:
 
 ```typescript
-const getStatusColor = (status: Service["status"]) => {
+const getStatusColor = (status: Service['status']) => {
   switch (status) {
-    case "healthy": return "bg-status-healthy";   // ❌ Fixed HSL color
-    case "degraded": return "bg-status-warning";  // ❌ Fixed HSL color
-    case "down": return "bg-status-error";        // ❌ Fixed HSL color
+    case 'healthy':
+      return 'bg-status-healthy'; // ❌ Fixed HSL color
+    case 'degraded':
+      return 'bg-status-warning'; // ❌ Fixed HSL color
+    case 'down':
+      return 'bg-status-error'; // ❌ Fixed HSL color
   }
 };
 ```
@@ -164,11 +194,14 @@ Replace the status color usage with Tailwind's adaptive color scales:
 **Update lines 27-33:**
 
 ```typescript
-const getStatusColor = (status: Service["status"]) => {
+const getStatusColor = (status: Service['status']) => {
   switch (status) {
-    case "healthy": return "bg-green-500";    // ✅ Adapts to dark mode automatically
-    case "degraded": return "bg-yellow-500";  // ✅ Adapts to dark mode automatically
-    case "down": return "bg-red-500";         // ✅ Adapts to dark mode automatically
+    case 'healthy':
+      return 'bg-green-500'; // ✅ Adapts to dark mode automatically
+    case 'degraded':
+      return 'bg-yellow-500'; // ✅ Adapts to dark mode automatically
+    case 'down':
+      return 'bg-red-500'; // ✅ Adapts to dark mode automatically
   }
 };
 ```
@@ -205,11 +238,14 @@ const getStatusColor = (status: Service["status"]) => {
 For even better dark mode support, use the same pattern as Agent Management:
 
 ```typescript
-const getStatusBadgeColor = (status: Service["status"]) => {
+const getStatusBadgeColor = (status: Service['status']) => {
   switch (status) {
-    case "healthy": return "text-green-400 bg-green-900/30 border-green-700/40";
-    case "degraded": return "text-yellow-400 bg-yellow-900/30 border-yellow-700/40";
-    case "down": return "text-red-400 bg-red-900/30 border-red-700/40";
+    case 'healthy':
+      return 'text-green-400 bg-green-900/30 border-green-700/40';
+    case 'degraded':
+      return 'text-yellow-400 bg-yellow-900/30 border-yellow-700/40';
+    case 'down':
+      return 'text-red-400 bg-red-900/30 border-red-700/40';
   }
 };
 ```
@@ -223,18 +259,22 @@ const getStatusBadgeColor = (status: Service["status"]) => {
 ### Current Inconsistencies
 
 **ServiceStatusGrid.tsx (line 69):**
+
 ```typescript
 <div className={cn("h-2 w-2 rounded-full", getStatusColor(service.status))} />
 ```
+
 Uses colored dot indicator.
 
 **PlatformMonitoring.tsx (lines 136-139, 208-212):**
+
 ```typescript
 <div className={`w-3 h-3 rounded-full ${
   systemStatus?.overall === 'healthy' ? 'bg-green-500' :
   systemStatus?.overall === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'
 }`}></div>
 ```
+
 Uses inline color classes instead of helper function.
 
 ### Fix Implementation
@@ -246,12 +286,17 @@ Uses inline color classes instead of helper function.
 ```typescript
 const getStatusIndicatorColor = (status: string) => {
   switch (status) {
-    case "healthy": return "bg-green-500";
-    case "degraded": return "bg-yellow-500";
-    case "critical":
-    case "down": return "bg-red-500";
-    case "maintenance": return "bg-blue-500";
-    default: return "bg-gray-500";
+    case 'healthy':
+      return 'bg-green-500';
+    case 'degraded':
+      return 'bg-yellow-500';
+    case 'critical':
+    case 'down':
+      return 'bg-red-500';
+    case 'maintenance':
+      return 'bg-blue-500';
+    default:
+      return 'bg-gray-500';
   }
 };
 ```
@@ -275,6 +320,7 @@ const getStatusIndicatorColor = (status: string) => {
 ### Problem
 
 Agent Management uses proper text hierarchy:
+
 - Main text: `text-foreground` or `font-medium` (inherits foreground)
 - Secondary text: `text-muted-foreground font-normal`
 - Metric values: `text-2xl font-bold text-foreground`
@@ -284,6 +330,7 @@ Platform Monitoring sometimes uses `text-sm` without color specification, which 
 ### Fix Implementation
 
 **General Rule:** Always specify semantic color classes:
+
 - Primary content: `text-foreground` (or omit for default)
 - Secondary/metadata: `text-muted-foreground`
 - Status-specific: `text-green-400`, `text-red-400`, etc. (for dark mode)
@@ -294,25 +341,25 @@ Platform Monitoring sometimes uses `text-sm` without color specification, which 
 
 ### PlatformMonitoring.tsx (`client/src/pages/preview/PlatformMonitoring.tsx`)
 
-| Lines | Current Issue | Fix Action |
-|-------|---------------|------------|
-| 61-69 | Light-mode status colors | Replace with dark-mode-friendly colors |
-| 71-79 | Light-mode severity colors | Replace with dark-mode-friendly colors |
-| 136-139 | Inline status indicator colors | Use helper function |
-| 208-212 | Inline status indicator colors | Use helper function |
-| 220 | Badge with light colors | Works after color function update |
-| 252-257 | Badges with light colors | Works after color function update |
-| 328 | Badge with light colors | Works after color function update |
-| 386-391 | Badges with light colors | Works after color function update |
+| Lines   | Current Issue                  | Fix Action                             |
+| ------- | ------------------------------ | -------------------------------------- |
+| 61-69   | Light-mode status colors       | Replace with dark-mode-friendly colors |
+| 71-79   | Light-mode severity colors     | Replace with dark-mode-friendly colors |
+| 136-139 | Inline status indicator colors | Use helper function                    |
+| 208-212 | Inline status indicator colors | Use helper function                    |
+| 220     | Badge with light colors        | Works after color function update      |
+| 252-257 | Badges with light colors       | Works after color function update      |
+| 328     | Badge with light colors        | Works after color function update      |
+| 386-391 | Badges with light colors       | Works after color function update      |
 
 ### ServiceStatusGrid.tsx (`client/src/components/ServiceStatusGrid.tsx`)
 
-| Lines | Current Issue | Fix Action |
-|-------|---------------|------------|
-| 27-33 | Fixed HSL status colors | Use Tailwind adaptive colors |
+| Lines | Current Issue                    | Fix Action                   |
+| ----- | -------------------------------- | ---------------------------- |
+| 27-33 | Fixed HSL status colors          | Use Tailwind adaptive colors |
 | 62-66 | Icon container with fixed colors | Use Tailwind adaptive colors |
-| 69 | Status dot with fixed colors | Works after helper update |
-| 85-95 | Badge with fixed colors | Use Tailwind adaptive colors |
+| 69    | Status dot with fixed colors     | Works after helper update    |
+| 85-95 | Badge with fixed colors          | Use Tailwind adaptive colors |
 
 ---
 
@@ -361,33 +408,48 @@ After implementing fixes, verify:
 const getStatusColor = (status: string) => {
   switch (status) {
     // Dark-mode-friendly colors matching Agent Management pattern
-    case "healthy": return "text-green-400 bg-green-900/30 border border-green-700/40";
-    case "degraded": return "text-yellow-400 bg-yellow-900/30 border border-yellow-700/40";
-    case "critical": return "text-red-400 bg-red-900/30 border border-red-700/40";
-    case "maintenance": return "text-blue-400 bg-blue-900/30 border border-blue-700/40";
-    default: return "text-muted-foreground bg-muted border border-border/60";
+    case 'healthy':
+      return 'text-green-400 bg-green-900/30 border border-green-700/40';
+    case 'degraded':
+      return 'text-yellow-400 bg-yellow-900/30 border border-yellow-700/40';
+    case 'critical':
+      return 'text-red-400 bg-red-900/30 border border-red-700/40';
+    case 'maintenance':
+      return 'text-blue-400 bg-blue-900/30 border border-blue-700/40';
+    default:
+      return 'text-muted-foreground bg-muted border border-border/60';
   }
 };
 
 const getSeverityColor = (severity: string) => {
   switch (severity) {
     // Map severity to status colors for consistency
-    case "low": return "text-blue-400 bg-blue-900/30 border border-blue-700/40";
-    case "medium": return "text-yellow-400 bg-yellow-900/30 border border-yellow-700/40";
-    case "high": return "text-orange-400 bg-orange-900/30 border border-orange-700/40";
-    case "critical": return "text-red-400 bg-red-900/30 border border-red-700/40";
-    default: return "text-muted-foreground bg-muted border border-border/60";
+    case 'low':
+      return 'text-blue-400 bg-blue-900/30 border border-blue-700/40';
+    case 'medium':
+      return 'text-yellow-400 bg-yellow-900/30 border border-yellow-700/40';
+    case 'high':
+      return 'text-orange-400 bg-orange-900/30 border border-orange-700/40';
+    case 'critical':
+      return 'text-red-400 bg-red-900/30 border border-red-700/40';
+    default:
+      return 'text-muted-foreground bg-muted border border-border/60';
   }
 };
 
 const getStatusIndicatorColor = (status: string) => {
   switch (status) {
-    case "healthy": return "bg-green-500";
-    case "degraded": return "bg-yellow-500";
-    case "critical":
-    case "down": return "bg-red-500";
-    case "maintenance": return "bg-blue-500";
-    default: return "bg-gray-500";
+    case 'healthy':
+      return 'bg-green-500';
+    case 'degraded':
+      return 'bg-yellow-500';
+    case 'critical':
+    case 'down':
+      return 'bg-red-500';
+    case 'maintenance':
+      return 'bg-blue-500';
+    default:
+      return 'bg-gray-500';
   }
 };
 ```
@@ -395,11 +457,14 @@ const getStatusIndicatorColor = (status: string) => {
 ### ServiceStatusGrid.tsx (Lines 27-33)
 
 ```typescript
-const getStatusColor = (status: Service["status"]) => {
+const getStatusColor = (status: Service['status']) => {
   switch (status) {
-    case "healthy": return "bg-green-500";
-    case "degraded": return "bg-yellow-500";
-    case "down": return "bg-red-500";
+    case 'healthy':
+      return 'bg-green-500';
+    case 'degraded':
+      return 'bg-yellow-500';
+    case 'down':
+      return 'bg-red-500';
   }
 };
 ```
@@ -439,6 +504,7 @@ const getStatusColor = (status: Service["status"]) => {
 
 **Health Chicklets:** Bright green (#48d597) on dark gray - poor contrast
 **Recent Incidents:**
+
 - "high" badge: `text-orange-600 bg-orange-100` - light orange on dark = invisible
 - "resolved" badge: default outline - no color distinction
 
@@ -446,6 +512,7 @@ const getStatusColor = (status: Service["status"]) => {
 
 **Health Chicklets:** Green-500 (adapts to theme) on dark cards - proper contrast
 **Recent Incidents:**
+
 - "high" badge: `text-orange-400 bg-orange-900/30 border-orange-700/40` - visible in dark theme
 - "resolved" badge: Can be mapped to success variant or use status color
 

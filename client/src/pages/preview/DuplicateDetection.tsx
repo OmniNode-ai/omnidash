@@ -1,18 +1,23 @@
-import React, { useState } from "react";
-import { MockDataBadge } from "@/components/MockDataBadge";
-import { SavingsTooltip } from "@/components/SavingsTooltip";
-import { RefactorPlanModal } from "@/components/RefactorPlanModal";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { DuplicateDetailModal } from "@/components/DuplicateDetailModal";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import React, { useState } from 'react';
+import { MockDataBadge } from '@/components/MockDataBadge';
+import { SavingsTooltip } from '@/components/SavingsTooltip';
+import { RefactorPlanModal } from '@/components/RefactorPlanModal';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { DuplicateDetailModal } from '@/components/DuplicateDetailModal';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import {
   BarChart,
   Bar,
@@ -21,41 +26,22 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  ResponsiveContainer,
-  PieChart as RechartsPieChart,
-  Pie,
   Cell,
-  Legend
-} from "recharts";
+} from 'recharts';
 import {
   Search,
-  Filter,
   RefreshCw,
   Download,
   Eye,
   Code,
-  Copy,
   Zap,
   CheckCircle,
-  AlertTriangle,
   Clock,
   DollarSign,
   Target,
   Layers,
-  FileText,
-  GitBranch,
-  Settings,
   BarChart3,
-  PieChart,
-  LineChart,
-  Activity,
-  Database,
-  Cpu,
-  HardDrive,
-  Network,
-  Shield,
-  Lightbulb
-} from "lucide-react";
+} from 'lucide-react';
 
 interface DuplicateCode {
   id: string;
@@ -124,10 +110,10 @@ interface RefactoringStep {
 }
 
 const DuplicateDetection: React.FC = () => {
-  const [activeView, setActiveView] = useState("detection");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [activeView, setActiveView] = useState('detection');
+  const [searchTerm, setSearchTerm] = useState('');
   const [similarityThreshold, setSimilarityThreshold] = useState(80);
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [showOnlyHighImpact, setShowOnlyHighImpact] = useState(false);
   const [selectedDuplicate, setSelectedDuplicate] = useState<DuplicateCode | null>(null);
   const [showRefactorPlan, setShowRefactorPlan] = useState(false);
@@ -135,266 +121,383 @@ const DuplicateDetection: React.FC = () => {
   // Mock data for duplicate code - organized into 15 clusters
   const duplicateCode: DuplicateCode[] = [
     {
-      id: "1",
-      title: "API Response Wrapper",
-      description: "Standard response formatting logic repeated across multiple API endpoints",
+      id: '1',
+      title: 'API Response Wrapper',
+      description: 'Standard response formatting logic repeated across multiple API endpoints',
       similarity: 95,
       occurrences: 12,
       totalLines: 180,
       files: [
-        { path: "src/api/products.ts", lines: 15, startLine: 32, endLine: 47, lastModified: "2024-01-14", author: "Jane Smith", complexity: 3, testCoverage: 90 },
-        { path: "src/api/users.ts", lines: 15, startLine: 45, endLine: 60, lastModified: "2024-01-15", author: "John Doe", complexity: 3, testCoverage: 85 },
-        { path: "src/api/payments.ts", lines: 15, startLine: 51, endLine: 66, lastModified: "2024-01-12", author: "Alice Brown", complexity: 3, testCoverage: 92 },
-        { path: "src/api/orders.ts", lines: 15, startLine: 28, endLine: 43, lastModified: "2024-01-13", author: "Bob Johnson", complexity: 3, testCoverage: 78 }
+        {
+          path: 'src/api/products.ts',
+          lines: 15,
+          startLine: 32,
+          endLine: 47,
+          lastModified: '2024-01-14',
+          author: 'Jane Smith',
+          complexity: 3,
+          testCoverage: 90,
+        },
+        {
+          path: 'src/api/users.ts',
+          lines: 15,
+          startLine: 45,
+          endLine: 60,
+          lastModified: '2024-01-15',
+          author: 'John Doe',
+          complexity: 3,
+          testCoverage: 85,
+        },
+        {
+          path: 'src/api/payments.ts',
+          lines: 15,
+          startLine: 51,
+          endLine: 66,
+          lastModified: '2024-01-12',
+          author: 'Alice Brown',
+          complexity: 3,
+          testCoverage: 92,
+        },
+        {
+          path: 'src/api/orders.ts',
+          lines: 15,
+          startLine: 28,
+          endLine: 43,
+          lastModified: '2024-01-13',
+          author: 'Bob Johnson',
+          complexity: 3,
+          testCoverage: 78,
+        },
       ],
-      category: "API Design",
+      category: 'API Design',
       severity: 'high',
       refactoringComplexity: 4,
       estimatedSavings: 25000,
-      timeToRefactor: "2-3 days",
-      patterns: ["Response Builder", "Error Handling"],
-      suggestedReplacement: "StandardResponse<T> utility class",
-      upgradePath: "Extract to shared utility and update all endpoints",
-      bestImplementation: "src/api/payments.ts", // Highest test coverage
-      clusterId: "cluster-1"
+      timeToRefactor: '2-3 days',
+      patterns: ['Response Builder', 'Error Handling'],
+      suggestedReplacement: 'StandardResponse<T> utility class',
+      upgradePath: 'Extract to shared utility and update all endpoints',
+      bestImplementation: 'src/api/payments.ts', // Highest test coverage
+      clusterId: 'cluster-1',
     },
     {
-      id: "2",
-      title: "Database Query Builder",
-      description: "Similar query construction logic across different data access layers",
+      id: '2',
+      title: 'Database Query Builder',
+      description: 'Similar query construction logic across different data access layers',
       similarity: 88,
       occurrences: 8,
       totalLines: 120,
       files: [
-        { path: "src/db/user-queries.ts", lines: 15, startLine: 12, endLine: 27, lastModified: "2024-01-10", author: "John Doe", complexity: 6, testCoverage: 70 },
-        { path: "src/db/product-queries.ts", lines: 15, startLine: 8, endLine: 23, lastModified: "2024-01-09", author: "Jane Smith", complexity: 6, testCoverage: 75 },
-        { path: "src/db/order-queries.ts", lines: 15, startLine: 15, endLine: 30, lastModified: "2024-01-08", author: "Bob Johnson", complexity: 6, testCoverage: 65 }
+        {
+          path: 'src/db/user-queries.ts',
+          lines: 15,
+          startLine: 12,
+          endLine: 27,
+          lastModified: '2024-01-10',
+          author: 'John Doe',
+          complexity: 6,
+          testCoverage: 70,
+        },
+        {
+          path: 'src/db/product-queries.ts',
+          lines: 15,
+          startLine: 8,
+          endLine: 23,
+          lastModified: '2024-01-09',
+          author: 'Jane Smith',
+          complexity: 6,
+          testCoverage: 75,
+        },
+        {
+          path: 'src/db/order-queries.ts',
+          lines: 15,
+          startLine: 15,
+          endLine: 30,
+          lastModified: '2024-01-08',
+          author: 'Bob Johnson',
+          complexity: 6,
+          testCoverage: 65,
+        },
       ],
-      category: "Data Access",
+      category: 'Data Access',
       severity: 'medium',
       refactoringComplexity: 7,
       estimatedSavings: 18000,
-      timeToRefactor: "1-2 weeks",
-      patterns: ["Query Builder", "ORM Pattern"],
-      suggestedReplacement: "Generic QueryBuilder<T> class",
-      upgradePath: "Implement ORM query builder pattern"
+      timeToRefactor: '1-2 weeks',
+      patterns: ['Query Builder', 'ORM Pattern'],
+      suggestedReplacement: 'Generic QueryBuilder<T> class',
+      upgradePath: 'Implement ORM query builder pattern',
     },
     {
-      id: "3",
-      title: "Form Validation Logic",
-      description: "Client-side validation rules duplicated across multiple forms",
+      id: '3',
+      title: 'Form Validation Logic',
+      description: 'Client-side validation rules duplicated across multiple forms',
       similarity: 92,
       occurrences: 6,
       totalLines: 90,
       files: [
-        { path: "src/components/UserForm.tsx", lines: 15, startLine: 25, endLine: 40, lastModified: "2024-01-05", author: "Alice Brown", complexity: 4, testCoverage: 88 },
-        { path: "src/components/ProductForm.tsx", lines: 15, startLine: 30, endLine: 45, lastModified: "2024-01-04", author: "John Doe", complexity: 4, testCoverage: 85 },
-        { path: "src/components/OrderForm.tsx", lines: 15, startLine: 20, endLine: 35, lastModified: "2024-01-03", author: "Jane Smith", complexity: 4, testCoverage: 90 }
+        {
+          path: 'src/components/UserForm.tsx',
+          lines: 15,
+          startLine: 25,
+          endLine: 40,
+          lastModified: '2024-01-05',
+          author: 'Alice Brown',
+          complexity: 4,
+          testCoverage: 88,
+        },
+        {
+          path: 'src/components/ProductForm.tsx',
+          lines: 15,
+          startLine: 30,
+          endLine: 45,
+          lastModified: '2024-01-04',
+          author: 'John Doe',
+          complexity: 4,
+          testCoverage: 85,
+        },
+        {
+          path: 'src/components/OrderForm.tsx',
+          lines: 15,
+          startLine: 20,
+          endLine: 35,
+          lastModified: '2024-01-03',
+          author: 'Jane Smith',
+          complexity: 4,
+          testCoverage: 90,
+        },
       ],
-      category: "UI Components",
+      category: 'UI Components',
       severity: 'medium',
       refactoringComplexity: 3,
       estimatedSavings: 12000,
-      timeToRefactor: "1-2 days",
-      patterns: ["Form Validation", "Schema Validation"],
-      suggestedReplacement: "Reusable validation hook",
-      upgradePath: "Create useValidation hook with schema-based rules"
+      timeToRefactor: '1-2 days',
+      patterns: ['Form Validation', 'Schema Validation'],
+      suggestedReplacement: 'Reusable validation hook',
+      upgradePath: 'Create useValidation hook with schema-based rules',
     },
     {
-      id: "4",
-      title: "Error Handling Blocks",
-      description: "Identical try-catch error handling patterns throughout the codebase",
+      id: '4',
+      title: 'Error Handling Blocks',
+      description: 'Identical try-catch error handling patterns throughout the codebase',
       similarity: 85,
       occurrences: 15,
       totalLines: 225,
       files: [
-        { path: "src/services/user-service.ts", lines: 15, startLine: 45, endLine: 60, lastModified: "2024-01-02", author: "Bob Johnson", complexity: 5, testCoverage: 80 },
-        { path: "src/services/product-service.ts", lines: 15, startLine: 38, endLine: 53, lastModified: "2024-01-01", author: "Alice Brown", complexity: 5, testCoverage: 82 },
-        { path: "src/services/order-service.ts", lines: 15, startLine: 52, endLine: 67, lastModified: "2023-12-30", author: "John Doe", complexity: 5, testCoverage: 78 }
+        {
+          path: 'src/services/user-service.ts',
+          lines: 15,
+          startLine: 45,
+          endLine: 60,
+          lastModified: '2024-01-02',
+          author: 'Bob Johnson',
+          complexity: 5,
+          testCoverage: 80,
+        },
+        {
+          path: 'src/services/product-service.ts',
+          lines: 15,
+          startLine: 38,
+          endLine: 53,
+          lastModified: '2024-01-01',
+          author: 'Alice Brown',
+          complexity: 5,
+          testCoverage: 82,
+        },
+        {
+          path: 'src/services/order-service.ts',
+          lines: 15,
+          startLine: 52,
+          endLine: 67,
+          lastModified: '2023-12-30',
+          author: 'John Doe',
+          complexity: 5,
+          testCoverage: 78,
+        },
       ],
-      category: "Error Handling",
+      category: 'Error Handling',
       severity: 'critical',
       refactoringComplexity: 6,
       estimatedSavings: 35000,
-      timeToRefactor: "3-4 days",
-      patterns: ["Error Handler", "Exception Management"],
-      suggestedReplacement: "Centralized error handling middleware",
-      upgradePath: "Implement global error handler with custom error types"
-    }
+      timeToRefactor: '3-4 days',
+      patterns: ['Error Handler', 'Exception Management'],
+      suggestedReplacement: 'Centralized error handling middleware',
+      upgradePath: 'Implement global error handler with custom error types',
+    },
   ];
 
   // Mock data for pattern replacements
   const patternReplacements: PatternReplacement[] = [
     {
-      id: "1",
-      fromPattern: "Manual API Response Building",
-      toPattern: "ResponseBuilder Pattern",
+      id: '1',
+      fromPattern: 'Manual API Response Building',
+      toPattern: 'ResponseBuilder Pattern',
       compatibility: 95,
       migrationSteps: [
-        "Create ResponseBuilder utility class",
-        "Update all API endpoints to use ResponseBuilder",
-        "Remove duplicate response formatting code",
-        "Add comprehensive tests for ResponseBuilder"
+        'Create ResponseBuilder utility class',
+        'Update all API endpoints to use ResponseBuilder',
+        'Remove duplicate response formatting code',
+        'Add comprehensive tests for ResponseBuilder',
       ],
       benefits: [
-        "Consistent API responses",
-        "Reduced code duplication",
-        "Easier maintenance",
-        "Better error handling"
+        'Consistent API responses',
+        'Reduced code duplication',
+        'Easier maintenance',
+        'Better error handling',
       ],
       risks: [
-        "Breaking changes to existing API contracts",
-        "Potential performance impact",
-        "Testing overhead"
+        'Breaking changes to existing API contracts',
+        'Potential performance impact',
+        'Testing overhead',
       ],
-      estimatedTime: "2-3 days",
+      estimatedTime: '2-3 days',
       testCases: [
-        "Test all API endpoints return consistent format",
-        "Verify error responses are properly formatted",
-        "Performance regression testing"
-      ]
+        'Test all API endpoints return consistent format',
+        'Verify error responses are properly formatted',
+        'Performance regression testing',
+      ],
     },
     {
-      id: "2",
-      fromPattern: "Raw Database Queries",
-      toPattern: "ORM Query Builder",
+      id: '2',
+      fromPattern: 'Raw Database Queries',
+      toPattern: 'ORM Query Builder',
       compatibility: 80,
       migrationSteps: [
-        "Install and configure ORM library",
-        "Create entity models",
-        "Replace raw queries with ORM queries",
-        "Update database connection handling",
-        "Migrate existing data if needed"
+        'Install and configure ORM library',
+        'Create entity models',
+        'Replace raw queries with ORM queries',
+        'Update database connection handling',
+        'Migrate existing data if needed',
       ],
-      benefits: [
-        "Type safety",
-        "Query optimization",
-        "Database abstraction",
-        "Easier testing"
-      ],
+      benefits: ['Type safety', 'Query optimization', 'Database abstraction', 'Easier testing'],
       risks: [
-        "Learning curve for team",
-        "Potential performance issues",
-        "Migration complexity",
-        "Breaking changes"
+        'Learning curve for team',
+        'Potential performance issues',
+        'Migration complexity',
+        'Breaking changes',
       ],
-      estimatedTime: "1-2 weeks",
+      estimatedTime: '1-2 weeks',
       testCases: [
-        "Verify all queries return correct data",
-        "Performance benchmarking",
-        "Data integrity testing",
-        "Migration rollback testing"
-      ]
-    }
+        'Verify all queries return correct data',
+        'Performance benchmarking',
+        'Data integrity testing',
+        'Migration rollback testing',
+      ],
+    },
   ];
 
   // Mock data for refactoring plans
   const refactoringPlans: RefactoringPlan[] = [
     {
-      id: "1",
-      name: "API Response Standardization",
-      description: "Consolidate all API response formatting into a single utility",
-      duplicates: ["1"],
+      id: '1',
+      name: 'API Response Standardization',
+      description: 'Consolidate all API response formatting into a single utility',
+      duplicates: ['1'],
       steps: [
         {
-          id: "1",
-          description: "Create ResponseBuilder utility class",
+          id: '1',
+          description: 'Create ResponseBuilder utility class',
           order: 1,
-          estimatedTime: "4 hours",
+          estimatedTime: '4 hours',
           dependencies: [],
           automated: true,
-          files: ["src/utils/ResponseBuilder.ts"]
+          files: ['src/utils/ResponseBuilder.ts'],
         },
         {
-          id: "2",
-          description: "Update user API endpoints",
+          id: '2',
+          description: 'Update user API endpoints',
           order: 2,
-          estimatedTime: "2 hours",
-          dependencies: ["1"],
+          estimatedTime: '2 hours',
+          dependencies: ['1'],
           automated: false,
-          files: ["src/api/users.ts"]
+          files: ['src/api/users.ts'],
         },
         {
-          id: "3",
-          description: "Update product API endpoints",
+          id: '3',
+          description: 'Update product API endpoints',
           order: 3,
-          estimatedTime: "2 hours",
-          dependencies: ["1"],
+          estimatedTime: '2 hours',
+          dependencies: ['1'],
           automated: false,
-          files: ["src/api/products.ts"]
+          files: ['src/api/products.ts'],
         },
         {
-          id: "4",
-          description: "Update remaining API endpoints",
+          id: '4',
+          description: 'Update remaining API endpoints',
           order: 4,
-          estimatedTime: "4 hours",
-          dependencies: ["1"],
+          estimatedTime: '4 hours',
+          dependencies: ['1'],
           automated: false,
-          files: ["src/api/orders.ts", "src/api/payments.ts"]
+          files: ['src/api/orders.ts', 'src/api/payments.ts'],
         },
         {
-          id: "5",
-          description: "Add comprehensive tests",
+          id: '5',
+          description: 'Add comprehensive tests',
           order: 5,
-          estimatedTime: "3 hours",
-          dependencies: ["2", "3", "4"],
+          estimatedTime: '3 hours',
+          dependencies: ['2', '3', '4'],
           automated: false,
-          files: ["src/tests/ResponseBuilder.test.ts"]
-        }
+          files: ['src/tests/ResponseBuilder.test.ts'],
+        },
       ],
-      estimatedTime: "2-3 days",
+      estimatedTime: '2-3 days',
       estimatedSavings: 25000,
       riskLevel: 'low',
       prerequisites: [
-        "Backup current codebase",
-        "Ensure all tests are passing",
-        "Review API contracts with frontend team"
+        'Backup current codebase',
+        'Ensure all tests are passing',
+        'Review API contracts with frontend team',
       ],
       testPlan: [
-        "Unit tests for ResponseBuilder",
-        "Integration tests for all API endpoints",
-        "Performance regression testing",
-        "Manual API testing"
-      ]
-    }
+        'Unit tests for ResponseBuilder',
+        'Integration tests for all API endpoints',
+        'Performance regression testing',
+        'Manual API testing',
+      ],
+    },
   ];
 
   // Mock data for analytics charts
   const duplicatesByCategory = [
-    { category: "Error Handling", count: 12, color: "hsl(var(--chart-1))" },
-    { category: "API Logic", count: 8, color: "hsl(var(--chart-2))" },
-    { category: "Database Queries", count: 6, color: "hsl(var(--chart-3))" },
-    { category: "Form Validation", count: 4, color: "hsl(var(--chart-4))" },
-    { category: "Cache Management", count: 3, color: "hsl(var(--chart-5))" }
+    { category: 'Error Handling', count: 12, color: 'hsl(var(--chart-1))' },
+    { category: 'API Logic', count: 8, color: 'hsl(var(--chart-2))' },
+    { category: 'Database Queries', count: 6, color: 'hsl(var(--chart-3))' },
+    { category: 'Form Validation', count: 4, color: 'hsl(var(--chart-4))' },
+    { category: 'Cache Management', count: 3, color: 'hsl(var(--chart-5))' },
   ];
 
   const refactoringProgressData = [
-    { month: "Jun", duplicates: 58, resolved: 5 },
-    { month: "Jul", duplicates: 53, resolved: 8 },
-    { month: "Aug", duplicates: 45, resolved: 6 },
-    { month: "Sep", duplicates: 39, resolved: 4 },
-    { month: "Oct", duplicates: 35, resolved: 7 },
-    { month: "Nov", duplicates: 33, resolved: 2 }
+    { month: 'Jun', duplicates: 58, resolved: 5 },
+    { month: 'Jul', duplicates: 53, resolved: 8 },
+    { month: 'Aug', duplicates: 45, resolved: 6 },
+    { month: 'Sep', duplicates: 39, resolved: 4 },
+    { month: 'Oct', duplicates: 35, resolved: 7 },
+    { month: 'Nov', duplicates: 33, resolved: 2 },
   ];
 
   const chartConfig = {
     duplicates: {
-      label: "Duplicates",
-      color: "hsl(var(--chart-1))"
+      label: 'Duplicates',
+      color: 'hsl(var(--chart-1))',
     },
     resolved: {
-      label: "Resolved",
-      color: "hsl(var(--chart-2))"
-    }
+      label: 'Resolved',
+      color: 'hsl(var(--chart-2))',
+    },
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'destructive';
-      case 'high': return 'destructive';
-      case 'medium': return 'default';
-      case 'low': return 'secondary';
-      default: return 'outline';
+      case 'critical':
+        return 'destructive';
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'default';
+      case 'low':
+        return 'secondary';
+      default:
+        return 'outline';
     }
   };
 
@@ -410,12 +513,14 @@ const DuplicateDetection: React.FC = () => {
     return 'text-red-600';
   };
 
-  const filteredDuplicates = duplicateCode.filter(duplicate => {
-    const matchesSearch = duplicate.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         duplicate.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || duplicate.category === selectedCategory;
+  const filteredDuplicates = duplicateCode.filter((duplicate) => {
+    const matchesSearch =
+      duplicate.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      duplicate.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || duplicate.category === selectedCategory;
     const matchesSimilarity = duplicate.similarity >= similarityThreshold;
-    const matchesImpact = !showOnlyHighImpact || duplicate.severity === 'high' || duplicate.severity === 'critical';
+    const matchesImpact =
+      !showOnlyHighImpact || duplicate.severity === 'high' || duplicate.severity === 'critical';
     return matchesSearch && matchesCategory && matchesSimilarity && matchesImpact;
   });
 
@@ -453,7 +558,7 @@ const DuplicateDetection: React.FC = () => {
             className="w-64"
           />
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Label htmlFor="category">Category:</Label>
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -495,30 +600,30 @@ const DuplicateDetection: React.FC = () => {
 
       {/* View Toggle */}
       <div className="flex gap-2">
-        <Button 
-          variant={activeView === "detection" ? "default" : "outline"} 
-          onClick={() => setActiveView("detection")}
+        <Button
+          variant={activeView === 'detection' ? 'default' : 'outline'}
+          onClick={() => setActiveView('detection')}
         >
           <Search className="w-4 h-4 mr-2" />
           Detection
         </Button>
-        <Button 
-          variant={activeView === "patterns" ? "default" : "outline"} 
-          onClick={() => setActiveView("patterns")}
+        <Button
+          variant={activeView === 'patterns' ? 'default' : 'outline'}
+          onClick={() => setActiveView('patterns')}
         >
           <Layers className="w-4 h-4 mr-2" />
           Pattern Replacements
         </Button>
-        <Button 
-          variant={activeView === "plans" ? "default" : "outline"} 
-          onClick={() => setActiveView("plans")}
+        <Button
+          variant={activeView === 'plans' ? 'default' : 'outline'}
+          onClick={() => setActiveView('plans')}
         >
           <Target className="w-4 h-4 mr-2" />
           Refactoring Plans
         </Button>
-        <Button 
-          variant={activeView === "analytics" ? "default" : "outline"} 
-          onClick={() => setActiveView("analytics")}
+        <Button
+          variant={activeView === 'analytics' ? 'default' : 'outline'}
+          onClick={() => setActiveView('analytics')}
         >
           <BarChart3 className="w-4 h-4 mr-2" />
           Analytics
@@ -526,7 +631,7 @@ const DuplicateDetection: React.FC = () => {
       </div>
 
       {/* Detection View */}
-      {activeView === "detection" && (
+      {activeView === 'detection' && (
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -534,7 +639,8 @@ const DuplicateDetection: React.FC = () => {
                 <div>
                   <CardTitle>Duplicate Code Detection</CardTitle>
                   <CardDescription className="mt-1">
-                    Found <strong className="text-primary">15 duplicate clusters</strong> across {filteredDuplicates.length} instances
+                    Found <strong className="text-primary">15 duplicate clusters</strong> across{' '}
+                    {filteredDuplicates.length} instances
                   </CardDescription>
                 </div>
                 <div className="text-sm text-muted-foreground">
@@ -554,9 +660,7 @@ const DuplicateDetection: React.FC = () => {
                       <Badge variant={getSeverityColor(duplicate.severity)}>
                         {duplicate.severity}
                       </Badge>
-                      <Badge variant="outline">
-                        {duplicate.similarity}% similar
-                      </Badge>
+                      <Badge variant="outline">{duplicate.similarity}% similar</Badge>
                     </CardTitle>
                     <CardDescription>{duplicate.description}</CardDescription>
                   </div>
@@ -580,12 +684,16 @@ const DuplicateDetection: React.FC = () => {
                   </div>
                   <div>
                     <div className="text-sm font-medium text-muted-foreground">Complexity</div>
-                    <div className={`font-semibold ${getComplexityColor(duplicate.refactoringComplexity)}`}>
+                    <div
+                      className={`font-semibold ${getComplexityColor(duplicate.refactoringComplexity)}`}
+                    >
                       {duplicate.refactoringComplexity}/10
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground">Time to Refactor</div>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Time to Refactor
+                    </div>
                     <div className="font-semibold">{duplicate.timeToRefactor}</div>
                   </div>
                 </div>
@@ -605,7 +713,10 @@ const DuplicateDetection: React.FC = () => {
                       {duplicate.files.map((file, index) => {
                         const isBest = duplicate.bestImplementation === file.path;
                         return (
-                          <div key={index} className={`border rounded p-2 text-sm ${isBest ? 'border-green-500 bg-green-500/10' : ''}`}>
+                          <div
+                            key={index}
+                            className={`border rounded p-2 text-sm ${isBest ? 'border-green-500 bg-green-500/10' : ''}`}
+                          >
                             <div className="flex items-center gap-2">
                               <div className="font-medium">{file.path}</div>
                               {isBest && (
@@ -619,8 +730,18 @@ const DuplicateDetection: React.FC = () => {
                               Lines {file.startLine}-{file.endLine} • {file.lines} lines
                             </div>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Complexity: <span className={getComplexityColor(file.complexity)}>{file.complexity}/10</span></span>
-                              <span>Tests: <span className={getTestCoverageColor(file.testCoverage)}>{file.testCoverage}%</span></span>
+                              <span>
+                                Complexity:{' '}
+                                <span className={getComplexityColor(file.complexity)}>
+                                  {file.complexity}/10
+                                </span>
+                              </span>
+                              <span>
+                                Tests:{' '}
+                                <span className={getTestCoverageColor(file.testCoverage)}>
+                                  {file.testCoverage}%
+                                </span>
+                              </span>
                               <span>Modified: {file.lastModified}</span>
                             </div>
                           </div>
@@ -638,9 +759,7 @@ const DuplicateDetection: React.FC = () => {
                     </div>
                     <div>
                       <div className="text-sm font-medium mb-1">Upgrade Path:</div>
-                      <div className="text-sm text-muted-foreground">
-                        {duplicate.upgradePath}
-                      </div>
+                      <div className="text-sm text-muted-foreground">{duplicate.upgradePath}</div>
                     </div>
                   </div>
 
@@ -657,10 +776,7 @@ const DuplicateDetection: React.FC = () => {
                 </div>
 
                 <div className="flex gap-2 mt-4">
-                  <Button 
-                    size="sm" 
-                    onClick={() => setSelectedDuplicate(duplicate)}
-                  >
+                  <Button size="sm" onClick={() => setSelectedDuplicate(duplicate)}>
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
                   </Button>
@@ -672,8 +788,8 @@ const DuplicateDetection: React.FC = () => {
                     <Zap className="w-4 h-4 mr-2" />
                     Auto-Refactor
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => {
                       setSelectedDuplicate(duplicate);
@@ -691,7 +807,7 @@ const DuplicateDetection: React.FC = () => {
       )}
 
       {/* Pattern Replacements View */}
-      {activeView === "patterns" && (
+      {activeView === 'patterns' && (
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -703,14 +819,12 @@ const DuplicateDetection: React.FC = () => {
             <Card key={replacement.id}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>{replacement.fromPattern} → {replacement.toPattern}</span>
+                  <span>
+                    {replacement.fromPattern} → {replacement.toPattern}
+                  </span>
                   <div className="flex gap-2">
-                    <Badge variant="outline">
-                      {replacement.compatibility}% compatible
-                    </Badge>
-                    <Badge variant="secondary">
-                      {replacement.estimatedTime}
-                    </Badge>
+                    <Badge variant="outline">{replacement.compatibility}% compatible</Badge>
+                    <Badge variant="secondary">{replacement.estimatedTime}</Badge>
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -729,7 +843,9 @@ const DuplicateDetection: React.FC = () => {
                       <div className="text-sm font-medium mb-2">Benefits:</div>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         {replacement.benefits.map((benefit, index) => (
-                          <li key={index} className="text-green-600">{benefit}</li>
+                          <li key={index} className="text-green-600">
+                            {benefit}
+                          </li>
                         ))}
                       </ul>
                     </div>
@@ -740,7 +856,9 @@ const DuplicateDetection: React.FC = () => {
                       <div className="text-sm font-medium mb-2">Risks:</div>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         {replacement.risks.map((risk, index) => (
-                          <li key={index} className="text-red-600">{risk}</li>
+                          <li key={index} className="text-red-600">
+                            {risk}
+                          </li>
                         ))}
                       </ul>
                     </div>
@@ -776,7 +894,7 @@ const DuplicateDetection: React.FC = () => {
       )}
 
       {/* Refactoring Plans View */}
-      {activeView === "plans" && (
+      {activeView === 'plans' && (
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -790,12 +908,18 @@ const DuplicateDetection: React.FC = () => {
                 <CardTitle className="flex items-center justify-between">
                   <span>{plan.name}</span>
                   <div className="flex gap-2">
-                    <Badge variant={plan.riskLevel === 'high' ? 'destructive' : plan.riskLevel === 'medium' ? 'default' : 'secondary'}>
+                    <Badge
+                      variant={
+                        plan.riskLevel === 'high'
+                          ? 'destructive'
+                          : plan.riskLevel === 'medium'
+                            ? 'default'
+                            : 'secondary'
+                      }
+                    >
                       {plan.riskLevel} risk
                     </Badge>
-                    <Badge variant="outline">
-                      {plan.estimatedTime}
-                    </Badge>
+                    <Badge variant="outline">{plan.estimatedTime}</Badge>
                   </div>
                 </CardTitle>
                 <CardDescription>{plan.description}</CardDescription>
@@ -804,7 +928,9 @@ const DuplicateDetection: React.FC = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <SavingsTooltip className="text-sm font-medium text-muted-foreground">Estimated Savings</SavingsTooltip>
+                      <SavingsTooltip className="text-sm font-medium text-muted-foreground">
+                        Estimated Savings
+                      </SavingsTooltip>
                       <div className="text-2xl font-bold text-green-600">
                         ${plan.estimatedSavings.toLocaleString()}
                       </div>
@@ -829,7 +955,9 @@ const DuplicateDetection: React.FC = () => {
                               <span className="font-medium">{step.order}.</span>
                               <span>{step.description}</span>
                               {step.automated && (
-                                <Badge variant="secondary" className="text-xs">Automated</Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                  Automated
+                                </Badge>
                               )}
                             </div>
                             <div className="text-sm text-muted-foreground">
@@ -887,7 +1015,7 @@ const DuplicateDetection: React.FC = () => {
       )}
 
       {/* Analytics View */}
-      {activeView === "analytics" && (
+      {activeView === 'analytics' && (
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -895,58 +1023,58 @@ const DuplicateDetection: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Search className="w-5 h-5 mr-2" />
-                  Total Duplicates
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">47</div>
-                <div className="text-sm text-muted-foreground">+12 from last scan</div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Search className="w-5 h-5 mr-2" />
+                      Total Duplicates
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">47</div>
+                    <div className="text-sm text-muted-foreground">+12 from last scan</div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <DollarSign className="w-5 h-5 mr-2" />
-                  <SavingsTooltip />
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">$156K</div>
-                <div className="text-sm text-muted-foreground">Total estimated savings</div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <DollarSign className="w-5 h-5 mr-2" />
+                      <SavingsTooltip />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">$156K</div>
+                    <div className="text-sm text-muted-foreground">Total estimated savings</div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Clock className="w-5 h-5 mr-2" />
-                  Refactoring Time
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">3.2 weeks</div>
-                <div className="text-sm text-muted-foreground">Total estimated time</div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Clock className="w-5 h-5 mr-2" />
+                      Refactoring Time
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">3.2 weeks</div>
+                    <div className="text-sm text-muted-foreground">Total estimated time</div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Target className="w-5 h-5 mr-2" />
-                  High Impact
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">8</div>
-                <div className="text-sm text-muted-foreground">Critical/High severity</div>
-              </CardContent>
-            </Card>
-          </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Target className="w-5 h-5 mr-2" />
+                      High Impact
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-red-600">8</div>
+                    <div className="text-sm text-muted-foreground">Critical/High severity</div>
+                  </CardContent>
+                </Card>
+              </div>
             </CardContent>
           </Card>
 
@@ -954,7 +1082,9 @@ const DuplicateDetection: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Duplicates by Category</CardTitle>
-                <CardDescription>Distribution of duplicate code across different categories</CardDescription>
+                <CardDescription>
+                  Distribution of duplicate code across different categories
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-64">
@@ -973,10 +1103,7 @@ const DuplicateDetection: React.FC = () => {
                       content={<ChartTooltipContent />}
                       cursor={{ fill: 'rgba(0, 0, 0, 0.1)' }}
                     />
-                    <Bar
-                      dataKey="count"
-                      radius={[8, 8, 0, 0]}
-                    >
+                    <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                       {duplicatesByCategory.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -989,26 +1116,23 @@ const DuplicateDetection: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Refactoring Progress</CardTitle>
-                <CardDescription>Trend of duplicate reduction over the past 6 months</CardDescription>
+                <CardDescription>
+                  Trend of duplicate reduction over the past 6 months
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-64">
                   <RechartsLineChart data={refactoringProgressData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis
-                      dataKey="month"
-                      tick={{ fontSize: 12 }}
-                    />
+                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                     <YAxis />
-                    <ChartTooltip
-                      content={<ChartTooltipContent />}
-                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
                     <Line
                       type="monotone"
                       dataKey="duplicates"
                       stroke="hsl(var(--chart-1))"
                       strokeWidth={2}
-                      dot={{ fill: "hsl(var(--chart-1))", r: 4 }}
+                      dot={{ fill: 'hsl(var(--chart-1))', r: 4 }}
                       activeDot={{ r: 6 }}
                     />
                     <Line
@@ -1016,7 +1140,7 @@ const DuplicateDetection: React.FC = () => {
                       dataKey="resolved"
                       stroke="hsl(var(--chart-2))"
                       strokeWidth={2}
-                      dot={{ fill: "hsl(var(--chart-2))", r: 4 }}
+                      dot={{ fill: 'hsl(var(--chart-2))', r: 4 }}
                       activeDot={{ r: 6 }}
                     />
                   </RechartsLineChart>
@@ -1052,7 +1176,7 @@ const DuplicateDetection: React.FC = () => {
                 estimatedTime: '2-3 hours',
                 dependencies: [],
                 automated: false,
-                files: selectedDuplicate.files.map(f => f.path)
+                files: selectedDuplicate.files.map((f) => f.path),
               },
               {
                 id: '2',
@@ -1061,7 +1185,7 @@ const DuplicateDetection: React.FC = () => {
                 estimatedTime: '3-4 hours',
                 dependencies: ['1'],
                 automated: false,
-                files: []
+                files: [],
               },
               {
                 id: '3',
@@ -1070,7 +1194,7 @@ const DuplicateDetection: React.FC = () => {
                 estimatedTime: '4-6 hours',
                 dependencies: ['2'],
                 automated: true,
-                files: selectedDuplicate.files.map(f => f.path)
+                files: selectedDuplicate.files.map((f) => f.path),
               },
               {
                 id: '4',
@@ -1079,23 +1203,28 @@ const DuplicateDetection: React.FC = () => {
                 estimatedTime: '1-2 hours',
                 dependencies: ['3'],
                 automated: false,
-                files: []
-              }
+                files: [],
+              },
             ],
             estimatedTime: selectedDuplicate.timeToRefactor,
             estimatedSavings: selectedDuplicate.estimatedSavings,
-            riskLevel: selectedDuplicate.severity === 'critical' ? 'high' : selectedDuplicate.severity === 'high' ? 'medium' : 'low',
+            riskLevel:
+              selectedDuplicate.severity === 'critical'
+                ? 'high'
+                : selectedDuplicate.severity === 'high'
+                  ? 'medium'
+                  : 'low',
             prerequisites: [
               'All affected files committed to feature branch',
               'Test coverage > 80% for affected modules',
-              'Code review approval from tech lead'
+              'Code review approval from tech lead',
             ],
             testPlan: [
               'Unit tests for extracted utility',
               'Integration tests for all affected endpoints',
               'Performance regression tests',
-              'End-to-end smoke tests'
-            ]
+              'End-to-end smoke tests',
+            ],
           }}
           duplicateTitle={selectedDuplicate.title}
         />

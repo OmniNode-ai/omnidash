@@ -1,5 +1,7 @@
 #!/usr/bin/env tsx
 
+/* eslint-disable no-console */
+
 /**
  * Kafka Topic Checker
  *
@@ -7,7 +9,7 @@
  * Run with: npm run check-topics or tsx scripts/check-kafka-topics.ts
  */
 
-import { Kafka, Admin } from 'kafkajs';
+import { Kafka } from 'kafkajs';
 
 const kafka = new Kafka({
   brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(','),
@@ -68,7 +70,10 @@ async function checkTopics() {
 
         // Fetch consumer group offsets
         console.log('\n  📖 Consumer Offsets:\n');
-        const offsets = await admin.fetchOffsets({ groupId: CONSUMER_GROUP, topics: TOPICS_TO_CHECK });
+        const offsets = await admin.fetchOffsets({
+          groupId: CONSUMER_GROUP,
+          topics: TOPICS_TO_CHECK,
+        });
 
         for (const topic of offsets) {
           console.log(`  ${topic.topic}:`);
@@ -80,8 +85,11 @@ async function checkTopics() {
       } else {
         console.log('  ⚠️ Consumer group not found');
       }
-    } catch (error) {
-      console.log('  ⚠️ Error fetching consumer group info:', error instanceof Error ? error.message : error);
+    } catch (_error) {
+      console.error(
+        '  ⚠️ Error fetching consumer group info:',
+        _error instanceof Error ? _error.message : _error
+      );
     }
 
     console.log('\n✅ Topic check complete\n');

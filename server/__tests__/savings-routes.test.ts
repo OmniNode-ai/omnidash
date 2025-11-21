@@ -22,14 +22,27 @@ vi.mock('../agent-run-tracker', () => ({
       timeSaved: 10,
       dataAvailable: true,
     }),
+    recordRun: vi.fn(),
     getRuns: vi.fn().mockReturnValue([]),
     getRunsInRange: vi.fn().mockReturnValue([]),
     getAgentIds: vi.fn().mockReturnValue(['test-agent']),
     getAgentComparison: vi.fn().mockReturnValue({
       agentId: 'test-agent',
       agentName: 'Test Agent',
-      withIntelligence: { avgTokens: 500, avgCompute: 1.0, avgTime: 30, successRate: 95, cost: 0.05 },
-      withoutIntelligence: { avgTokens: 1000, avgCompute: 2.0, avgTime: 60, successRate: 90, cost: 0.1 },
+      withIntelligence: {
+        avgTokens: 500,
+        avgCompute: 1.0,
+        avgTime: 30,
+        successRate: 95,
+        cost: 0.05,
+      },
+      withoutIntelligence: {
+        avgTokens: 1000,
+        avgCompute: 2.0,
+        avgTime: 60,
+        successRate: 90,
+        cost: 0.1,
+      },
       savings: { tokens: 500, compute: 1.0, time: 30, cost: 0.05, percentage: 50 },
     }),
   },
@@ -60,19 +73,13 @@ describe('Savings Routes', () => {
         cost: 0.1,
       };
 
-      const response = await request(app)
-        .post('/api/savings/runs')
-        .send(runData)
-        .expect(200);
+      const response = await request(app).post('/api/savings/runs').send(runData).expect(200);
 
       expect(response.body).toHaveProperty('success', true);
     });
 
     it('should validate required fields', async () => {
-      const response = await request(app)
-        .post('/api/savings/runs')
-        .send({})
-        .expect(400);
+      const response = await request(app).post('/api/savings/runs').send({}).expect(400);
 
       expect(response.body).toHaveProperty('error');
     });
@@ -80,9 +87,7 @@ describe('Savings Routes', () => {
 
   describe('GET /api/savings/metrics', () => {
     it('should return savings metrics', async () => {
-      const response = await request(app)
-        .get('/api/savings/metrics')
-        .expect(200);
+      const response = await request(app).get('/api/savings/metrics').expect(200);
 
       expect(response.body).toHaveProperty('totalSavings');
       expect(response.body).toHaveProperty('monthlySavings');
@@ -93,21 +98,17 @@ describe('Savings Routes', () => {
     });
 
     it('should accept timeRange parameter', async () => {
-      const response = await request(app)
-        .get('/api/savings/metrics?timeRange=7d')
-        .expect(200);
+      const response = await request(app).get('/api/savings/metrics?timeRange=7d').expect(200);
 
       expect(response.body).toHaveProperty('totalSavings');
     });
 
+    // eslint-disable-next-line vitest/expect-expect
     it('should handle different time ranges', async () => {
-      await request(app)
-        .get('/api/savings/metrics?timeRange=30d')
-        .expect(200);
+      // supertest .expect() performs assertions
+      await request(app).get('/api/savings/metrics?timeRange=30d').expect(200);
 
-      await request(app)
-        .get('/api/savings/metrics?timeRange=90d')
-        .expect(200);
+      await request(app).get('/api/savings/metrics?timeRange=90d').expect(200);
     });
   });
 
@@ -138,9 +139,7 @@ describe('Savings Routes', () => {
         },
       ] as any);
 
-      const response = await request(app)
-        .get('/api/savings/agents')
-        .expect(200);
+      const response = await request(app).get('/api/savings/agents').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
@@ -148,9 +147,7 @@ describe('Savings Routes', () => {
     it('should accept timeRange parameter', async () => {
       vi.mocked(AgentRunTracker.getRuns).mockReturnValue([]);
 
-      const response = await request(app)
-        .get('/api/savings/agents?timeRange=7d')
-        .expect(200);
+      const response = await request(app).get('/api/savings/agents?timeRange=7d').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
@@ -185,9 +182,7 @@ describe('Savings Routes', () => {
         },
       ] as any);
 
-      const response = await request(app)
-        .get('/api/savings/timeseries?timeRange=7d')
-        .expect(200);
+      const response = await request(app).get('/api/savings/timeseries?timeRange=7d').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
@@ -211,9 +206,7 @@ describe('Savings Routes', () => {
         },
       ] as any);
 
-      const response = await request(app)
-        .get('/api/savings/providers?timeRange=30d')
-        .expect(200);
+      const response = await request(app).get('/api/savings/providers?timeRange=30d').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
@@ -221,12 +214,9 @@ describe('Savings Routes', () => {
 
   describe('GET /api/savings/breakdown', () => {
     it('should return cost breakdown', async () => {
-      const response = await request(app)
-        .get('/api/savings/breakdown?timeRange=30d')
-        .expect(200);
+      const response = await request(app).get('/api/savings/breakdown?timeRange=30d').expect(200);
 
       expect(response.body).toBeDefined();
     });
   });
 });
-

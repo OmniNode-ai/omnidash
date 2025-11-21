@@ -1,18 +1,24 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { 
-  Settings, 
-  Save, 
-  RefreshCw, 
-  Download, 
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+  Settings,
+  Save,
+  RefreshCw,
+  Download,
   Upload,
   Bell,
   Shield,
@@ -20,38 +26,20 @@ import {
   Database,
   Globe,
   Palette,
-  Keyboard,
   Eye,
-  EyeOff,
-  AlertTriangle,
-  CheckCircle,
   Brain,
   Lightbulb,
-  Layers,
-  Cpu,
-  HardDrive,
-  Wifi,
-  BarChart3,
-  PieChart,
-  LineChart,
-  Target,
-  Users,
-  Lock,
-  Unlock,
-  Play,
-  Pause,
-  RotateCcw
-} from "lucide-react";
+} from 'lucide-react';
 
 export default function AdvancedSettings() {
   const [settings, setSettings] = useState({
     // General Settings
-    theme: "dark",
-    language: "en",
-    timezone: "UTC",
+    theme: 'dark',
+    language: 'en',
+    timezone: 'UTC',
     autoRefresh: true,
     refreshInterval: 30,
-    
+
     // Notifications
     emailNotifications: true,
     pushNotifications: false,
@@ -59,78 +47,78 @@ export default function AdvancedSettings() {
       errorRate: 5,
       responseTime: 1000,
       cpuUsage: 80,
-      memoryUsage: 85
+      memoryUsage: 85,
     },
-    
+
     // Performance
     cacheEnabled: true,
     cacheTTL: 300,
     maxConnections: 100,
     requestTimeout: 30000,
-    
+
     // Security
     twoFactorAuth: false,
     sessionTimeout: 3600,
-    ipWhitelist: "",
+    ipWhitelist: '',
     auditLogging: true,
-    
+
     // Display
     itemsPerPage: 50,
     showTooltips: true,
     compactMode: false,
     animations: true,
-    
+
     // Data Sources
-    primaryDatabase: "postgresql",
-    backupDatabase: "mysql",
+    primaryDatabase: 'postgresql',
+    backupDatabase: 'mysql',
     enableReplication: true,
     dataRetention: 90,
-    
+
     // AI & ML Settings
-    aiModelProvider: "claude",
-    aiModelVersion: "3.5-sonnet",
+    aiModelProvider: 'claude',
+    aiModelVersion: '3.5-sonnet',
     aiCostLimit: 1000,
     aiResponseTimeout: 30000,
     enablePredictiveAnalytics: true,
     mlModelRefreshInterval: 3600,
-    
+
     // Optimization Settings
     enableAutoScaling: true,
     scalingThreshold: 75,
     enableCostOptimization: true,
-    resourceOptimizationLevel: "balanced",
+    resourceOptimizationLevel: 'balanced',
     enableCaching: true,
-    cacheStrategy: "lru",
-    
+    cacheStrategy: 'lru',
+
     // Monitoring & Alerting
     enableAdvancedMonitoring: true,
     monitoringInterval: 60,
-    alertChannels: ["email", "slack"],
+    alertChannels: ['email', 'slack'],
     enableAnomalyDetection: true,
-    anomalySensitivity: "medium",
-    
+    anomalySensitivity: 'medium',
+
     // Integration Settings
     enableWebhooks: true,
     webhookTimeout: 5000,
     enableApiRateLimiting: true,
     rateLimitRequests: 1000,
     enableCors: true,
-    corsOrigins: "*"
+    corsOrigins: '*',
   });
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState('general');
 
   const handleSettingChange = (category: string, key: string, value: any) => {
-    setSettings(prev => {
+    setSettings((prev) => {
       const categoryValue = prev[category as keyof typeof prev];
       if (typeof categoryValue === 'object' && categoryValue !== null) {
         return {
           ...prev,
           [category]: {
             ...(categoryValue as Record<string, any>),
-            [key]: value
-          }
+            [key]: value,
+          },
         };
       }
       return prev;
@@ -139,23 +127,23 @@ export default function AdvancedSettings() {
   };
 
   const handleDirectSettingChange = (key: string, value: any) => {
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
     setHasUnsavedChanges(true);
   };
 
   const handleSave = () => {
-    console.log("Saving settings:", settings);
+    // TODO: Implement settings save functionality
     setHasUnsavedChanges(false);
   };
 
   const handleReset = () => {
     setSettings({
-      theme: "dark",
-      language: "en",
-      timezone: "UTC",
+      theme: 'dark',
+      language: 'en',
+      timezone: 'UTC',
       autoRefresh: true,
       refreshInterval: 30,
       emailNotifications: true,
@@ -164,7 +152,7 @@ export default function AdvancedSettings() {
         errorRate: 5,
         responseTime: 1000,
         cpuUsage: 80,
-        memoryUsage: 85
+        memoryUsage: 85,
       },
       cacheEnabled: true,
       cacheTTL: 300,
@@ -172,18 +160,18 @@ export default function AdvancedSettings() {
       requestTimeout: 30000,
       twoFactorAuth: false,
       sessionTimeout: 3600,
-      ipWhitelist: "",
+      ipWhitelist: '',
       auditLogging: true,
       itemsPerPage: 50,
       showTooltips: true,
       compactMode: false,
       animations: true,
-      primaryDatabase: "postgresql",
-      backupDatabase: "mysql",
+      primaryDatabase: 'postgresql',
+      backupDatabase: 'mysql',
       enableReplication: true,
       dataRetention: 90,
-      aiModelProvider: "claude",
-      aiModelVersion: "3.5-sonnet",
+      aiModelProvider: 'claude',
+      aiModelVersion: '3.5-sonnet',
       aiCostLimit: 1000,
       aiResponseTimeout: 30000,
       enablePredictiveAnalytics: true,
@@ -191,29 +179,29 @@ export default function AdvancedSettings() {
       enableAutoScaling: true,
       scalingThreshold: 75,
       enableCostOptimization: true,
-      resourceOptimizationLevel: "balanced",
+      resourceOptimizationLevel: 'balanced',
       enableCaching: true,
-      cacheStrategy: "lru",
+      cacheStrategy: 'lru',
       enableAdvancedMonitoring: true,
       monitoringInterval: 60,
-      alertChannels: ["email", "slack"],
+      alertChannels: ['email', 'slack'],
       enableAnomalyDetection: true,
-      anomalySensitivity: "medium",
+      anomalySensitivity: 'medium',
       enableWebhooks: true,
       webhookTimeout: 5000,
       enableApiRateLimiting: true,
       rateLimitRequests: 1000,
       enableCors: true,
-      corsOrigins: "*"
+      corsOrigins: '*',
     });
     setHasUnsavedChanges(false);
   };
 
   const handleExport = () => {
     const dataStr = JSON.stringify(settings, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
     const exportFileDefaultName = 'omnidash-settings.json';
-    
+
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
@@ -229,8 +217,9 @@ export default function AdvancedSettings() {
           const importedSettings = JSON.parse(e.target?.result as string);
           setSettings(importedSettings);
           setHasUnsavedChanges(true);
-        } catch (error) {
-          console.error('Error importing settings:', error);
+        } catch {
+          // TODO: Show error notification to user
+          // Error importing settings
         }
       };
       reader.readAsText(file);
@@ -238,16 +227,16 @@ export default function AdvancedSettings() {
   };
 
   const tabs = [
-    { id: "general", label: "General", icon: Settings },
-    { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "performance", label: "Performance", icon: Zap },
-    { id: "security", label: "Security", icon: Shield },
-    { id: "display", label: "Display", icon: Palette },
-    { id: "data", label: "Data Sources", icon: Database },
-    { id: "ai", label: "AI & ML", icon: Brain },
-    { id: "optimization", label: "Optimization", icon: Lightbulb },
-    { id: "monitoring", label: "Monitoring", icon: Eye },
-    { id: "integration", label: "Integration", icon: Globe },
+    { id: 'general', label: 'General', icon: Settings },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'performance', label: 'Performance', icon: Zap },
+    { id: 'security', label: 'Security', icon: Shield },
+    { id: 'display', label: 'Display', icon: Palette },
+    { id: 'data', label: 'Data Sources', icon: Database },
+    { id: 'ai', label: 'AI & ML', icon: Brain },
+    { id: 'optimization', label: 'Optimization', icon: Lightbulb },
+    { id: 'monitoring', label: 'Monitoring', icon: Eye },
+    { id: 'integration', label: 'Integration', icon: Globe },
   ];
 
   return (
@@ -274,7 +263,10 @@ export default function AdvancedSettings() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button variant="outline" onClick={() => document.getElementById('import-settings')?.click()}>
+          <Button
+            variant="outline"
+            onClick={() => document.getElementById('import-settings')?.click()}
+          >
             <Upload className="w-4 h-4 mr-2" />
             Import
           </Button>
@@ -297,7 +289,7 @@ export default function AdvancedSettings() {
         {tabs.map((tab) => (
           <Button
             key={tab.id}
-            variant={activeTab === tab.id ? "default" : "outline"}
+            variant={activeTab === tab.id ? 'default' : 'outline'}
             size="sm"
             onClick={() => setActiveTab(tab.id)}
             className="flex items-center gap-2"
@@ -310,22 +302,23 @@ export default function AdvancedSettings() {
 
       {/* Tab Content */}
       <div className="space-y-4">
-        {activeTab === "general" && (
+        {activeTab === 'general' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="w-5 h-5" />
                 General Settings
               </CardTitle>
-              <CardDescription>
-                Basic application configuration and preferences
-              </CardDescription>
+              <CardDescription>Basic application configuration and preferences</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="theme">Theme</Label>
-                  <Select value={settings.theme} onValueChange={(value) => handleDirectSettingChange('theme', value)}>
+                  <Select
+                    value={settings.theme}
+                    onValueChange={(value) => handleDirectSettingChange('theme', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -339,7 +332,10 @@ export default function AdvancedSettings() {
 
                 <div className="space-y-2">
                   <Label htmlFor="language">Language</Label>
-                  <Select value={settings.language} onValueChange={(value) => handleDirectSettingChange('language', value)}>
+                  <Select
+                    value={settings.language}
+                    onValueChange={(value) => handleDirectSettingChange('language', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -354,7 +350,10 @@ export default function AdvancedSettings() {
 
                 <div className="space-y-2">
                   <Label htmlFor="timezone">Timezone</Label>
-                  <Select value={settings.timezone} onValueChange={(value) => handleDirectSettingChange('timezone', value)}>
+                  <Select
+                    value={settings.timezone}
+                    onValueChange={(value) => handleDirectSettingChange('timezone', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -373,7 +372,9 @@ export default function AdvancedSettings() {
                   <div className="space-y-2">
                     <Slider
                       value={[settings.refreshInterval]}
-                      onValueChange={(value) => handleDirectSettingChange('refreshInterval', value[0])}
+                      onValueChange={(value) =>
+                        handleDirectSettingChange('refreshInterval', value[0])
+                      }
                       max={300}
                       min={5}
                       step={5}
@@ -408,16 +409,14 @@ export default function AdvancedSettings() {
           </Card>
         )}
 
-        {activeTab === "notifications" && (
+        {activeTab === 'notifications' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="w-5 h-5" />
                 Notification Settings
               </CardTitle>
-              <CardDescription>
-                Configure how and when you receive notifications
-              </CardDescription>
+              <CardDescription>Configure how and when you receive notifications</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
@@ -430,7 +429,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.emailNotifications}
-                    onCheckedChange={(checked) => handleDirectSettingChange('emailNotifications', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('emailNotifications', checked)
+                    }
                   />
                 </div>
 
@@ -443,7 +444,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.pushNotifications}
-                    onCheckedChange={(checked) => handleDirectSettingChange('pushNotifications', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('pushNotifications', checked)
+                    }
                   />
                 </div>
               </div>
@@ -458,7 +461,13 @@ export default function AdvancedSettings() {
                     <Input
                       type="number"
                       value={settings.alertThresholds.errorRate}
-                      onChange={(e) => handleSettingChange('alertThresholds', 'errorRate', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleSettingChange(
+                          'alertThresholds',
+                          'errorRate',
+                          parseInt(e.target.value)
+                        )
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -466,7 +475,13 @@ export default function AdvancedSettings() {
                     <Input
                       type="number"
                       value={settings.alertThresholds.responseTime}
-                      onChange={(e) => handleSettingChange('alertThresholds', 'responseTime', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleSettingChange(
+                          'alertThresholds',
+                          'responseTime',
+                          parseInt(e.target.value)
+                        )
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -474,7 +489,9 @@ export default function AdvancedSettings() {
                     <Input
                       type="number"
                       value={settings.alertThresholds.cpuUsage}
-                      onChange={(e) => handleSettingChange('alertThresholds', 'cpuUsage', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleSettingChange('alertThresholds', 'cpuUsage', parseInt(e.target.value))
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -482,7 +499,13 @@ export default function AdvancedSettings() {
                     <Input
                       type="number"
                       value={settings.alertThresholds.memoryUsage}
-                      onChange={(e) => handleSettingChange('alertThresholds', 'memoryUsage', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleSettingChange(
+                          'alertThresholds',
+                          'memoryUsage',
+                          parseInt(e.target.value)
+                        )
+                      }
                     />
                   </div>
                 </div>
@@ -491,16 +514,14 @@ export default function AdvancedSettings() {
           </Card>
         )}
 
-        {activeTab === "performance" && (
+        {activeTab === 'performance' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Zap className="w-5 h-5" />
                 Performance Settings
               </CardTitle>
-              <CardDescription>
-                Optimize system performance and resource usage
-              </CardDescription>
+              <CardDescription>Optimize system performance and resource usage</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
@@ -513,7 +534,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.cacheEnabled}
-                    onCheckedChange={(checked) => handleDirectSettingChange('cacheEnabled', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('cacheEnabled', checked)
+                    }
                   />
                 </div>
 
@@ -523,7 +546,9 @@ export default function AdvancedSettings() {
                     <Input
                       type="number"
                       value={settings.cacheTTL}
-                      onChange={(e) => handleDirectSettingChange('cacheTTL', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleDirectSettingChange('cacheTTL', parseInt(e.target.value))
+                      }
                     />
                   </div>
                 )}
@@ -533,7 +558,9 @@ export default function AdvancedSettings() {
                   <Input
                     type="number"
                     value={settings.maxConnections}
-                    onChange={(e) => handleDirectSettingChange('maxConnections', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleDirectSettingChange('maxConnections', parseInt(e.target.value))
+                    }
                   />
                 </div>
 
@@ -542,7 +569,9 @@ export default function AdvancedSettings() {
                   <Input
                     type="number"
                     value={settings.requestTimeout}
-                    onChange={(e) => handleDirectSettingChange('requestTimeout', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleDirectSettingChange('requestTimeout', parseInt(e.target.value))
+                    }
                   />
                 </div>
               </div>
@@ -550,16 +579,14 @@ export default function AdvancedSettings() {
           </Card>
         )}
 
-        {activeTab === "security" && (
+        {activeTab === 'security' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="w-5 h-5" />
                 Security Settings
               </CardTitle>
-              <CardDescription>
-                Configure security features and access controls
-              </CardDescription>
+              <CardDescription>Configure security features and access controls</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
@@ -572,7 +599,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.twoFactorAuth}
-                    onCheckedChange={(checked) => handleDirectSettingChange('twoFactorAuth', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('twoFactorAuth', checked)
+                    }
                   />
                 </div>
 
@@ -581,7 +610,9 @@ export default function AdvancedSettings() {
                   <Input
                     type="number"
                     value={settings.sessionTimeout}
-                    onChange={(e) => handleDirectSettingChange('sessionTimeout', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleDirectSettingChange('sessionTimeout', parseInt(e.target.value))
+                    }
                   />
                 </div>
 
@@ -606,7 +637,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.auditLogging}
-                    onCheckedChange={(checked) => handleDirectSettingChange('auditLogging', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('auditLogging', checked)
+                    }
                   />
                 </div>
               </div>
@@ -614,7 +647,7 @@ export default function AdvancedSettings() {
           </Card>
         )}
 
-        {activeTab === "display" && (
+        {activeTab === 'display' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -629,7 +662,12 @@ export default function AdvancedSettings() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Items Per Page</Label>
-                  <Select value={settings.itemsPerPage.toString()} onValueChange={(value) => handleDirectSettingChange('itemsPerPage', parseInt(value))}>
+                  <Select
+                    value={settings.itemsPerPage.toString()}
+                    onValueChange={(value) =>
+                      handleDirectSettingChange('itemsPerPage', parseInt(value))
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -651,7 +689,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.showTooltips}
-                    onCheckedChange={(checked) => handleDirectSettingChange('showTooltips', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('showTooltips', checked)
+                    }
                   />
                 </div>
 
@@ -685,22 +725,23 @@ export default function AdvancedSettings() {
           </Card>
         )}
 
-        {activeTab === "data" && (
+        {activeTab === 'data' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="w-5 h-5" />
                 Data Source Settings
               </CardTitle>
-              <CardDescription>
-                Configure database connections and data management
-              </CardDescription>
+              <CardDescription>Configure database connections and data management</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Primary Database</Label>
-                  <Select value={settings.primaryDatabase} onValueChange={(value) => handleDirectSettingChange('primaryDatabase', value)}>
+                  <Select
+                    value={settings.primaryDatabase}
+                    onValueChange={(value) => handleDirectSettingChange('primaryDatabase', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -715,7 +756,10 @@ export default function AdvancedSettings() {
 
                 <div className="space-y-2">
                   <Label>Backup Database</Label>
-                  <Select value={settings.backupDatabase} onValueChange={(value) => handleDirectSettingChange('backupDatabase', value)}>
+                  <Select
+                    value={settings.backupDatabase}
+                    onValueChange={(value) => handleDirectSettingChange('backupDatabase', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -733,7 +777,9 @@ export default function AdvancedSettings() {
                   <Input
                     type="number"
                     value={settings.dataRetention}
-                    onChange={(e) => handleDirectSettingChange('dataRetention', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleDirectSettingChange('dataRetention', parseInt(e.target.value))
+                    }
                   />
                 </div>
 
@@ -746,7 +792,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.enableReplication}
-                    onCheckedChange={(checked) => handleDirectSettingChange('enableReplication', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('enableReplication', checked)
+                    }
                   />
                 </div>
               </div>
@@ -755,7 +803,7 @@ export default function AdvancedSettings() {
         )}
 
         {/* AI & ML Settings */}
-        {activeTab === "ai" && (
+        {activeTab === 'ai' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -770,7 +818,10 @@ export default function AdvancedSettings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>AI Model Provider</Label>
-                  <Select value={settings.aiModelProvider} onValueChange={(value) => handleDirectSettingChange('aiModelProvider', value)}>
+                  <Select
+                    value={settings.aiModelProvider}
+                    onValueChange={(value) => handleDirectSettingChange('aiModelProvider', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -785,7 +836,10 @@ export default function AdvancedSettings() {
 
                 <div className="space-y-2">
                   <Label>Model Version</Label>
-                  <Select value={settings.aiModelVersion} onValueChange={(value) => handleDirectSettingChange('aiModelVersion', value)}>
+                  <Select
+                    value={settings.aiModelVersion}
+                    onValueChange={(value) => handleDirectSettingChange('aiModelVersion', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -803,7 +857,9 @@ export default function AdvancedSettings() {
                   <Input
                     type="number"
                     value={settings.aiCostLimit}
-                    onChange={(e) => handleDirectSettingChange('aiCostLimit', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleDirectSettingChange('aiCostLimit', parseInt(e.target.value))
+                    }
                   />
                 </div>
 
@@ -812,7 +868,9 @@ export default function AdvancedSettings() {
                   <Input
                     type="number"
                     value={settings.aiResponseTimeout}
-                    onChange={(e) => handleDirectSettingChange('aiResponseTimeout', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleDirectSettingChange('aiResponseTimeout', parseInt(e.target.value))
+                    }
                   />
                 </div>
               </div>
@@ -829,7 +887,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.enablePredictiveAnalytics}
-                    onCheckedChange={(checked) => handleDirectSettingChange('enablePredictiveAnalytics', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('enablePredictiveAnalytics', checked)
+                    }
                   />
                 </div>
 
@@ -838,7 +898,9 @@ export default function AdvancedSettings() {
                   <Input
                     type="number"
                     value={settings.mlModelRefreshInterval}
-                    onChange={(e) => handleDirectSettingChange('mlModelRefreshInterval', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleDirectSettingChange('mlModelRefreshInterval', parseInt(e.target.value))
+                    }
                   />
                 </div>
               </div>
@@ -847,7 +909,7 @@ export default function AdvancedSettings() {
         )}
 
         {/* Optimization Settings */}
-        {activeTab === "optimization" && (
+        {activeTab === 'optimization' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -869,7 +931,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.enableAutoScaling}
-                    onCheckedChange={(checked) => handleDirectSettingChange('enableAutoScaling', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('enableAutoScaling', checked)
+                    }
                   />
                 </div>
 
@@ -879,7 +943,9 @@ export default function AdvancedSettings() {
                     <div className="space-y-2">
                       <Slider
                         value={[settings.scalingThreshold]}
-                        onValueChange={(value) => handleDirectSettingChange('scalingThreshold', value[0])}
+                        onValueChange={(value) =>
+                          handleDirectSettingChange('scalingThreshold', value[0])
+                        }
                         max={100}
                         min={50}
                         step={5}
@@ -903,13 +969,20 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.enableCostOptimization}
-                    onCheckedChange={(checked) => handleDirectSettingChange('enableCostOptimization', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('enableCostOptimization', checked)
+                    }
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Resource Optimization Level</Label>
-                  <Select value={settings.resourceOptimizationLevel} onValueChange={(value) => handleDirectSettingChange('resourceOptimizationLevel', value)}>
+                  <Select
+                    value={settings.resourceOptimizationLevel}
+                    onValueChange={(value) =>
+                      handleDirectSettingChange('resourceOptimizationLevel', value)
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -923,7 +996,10 @@ export default function AdvancedSettings() {
 
                 <div className="space-y-2">
                   <Label>Cache Strategy</Label>
-                  <Select value={settings.cacheStrategy} onValueChange={(value) => handleDirectSettingChange('cacheStrategy', value)}>
+                  <Select
+                    value={settings.cacheStrategy}
+                    onValueChange={(value) => handleDirectSettingChange('cacheStrategy', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -941,7 +1017,7 @@ export default function AdvancedSettings() {
         )}
 
         {/* Monitoring Settings */}
-        {activeTab === "monitoring" && (
+        {activeTab === 'monitoring' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -963,7 +1039,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.enableAdvancedMonitoring}
-                    onCheckedChange={(checked) => handleDirectSettingChange('enableAdvancedMonitoring', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('enableAdvancedMonitoring', checked)
+                    }
                   />
                 </div>
 
@@ -972,7 +1050,9 @@ export default function AdvancedSettings() {
                   <Input
                     type="number"
                     value={settings.monitoringInterval}
-                    onChange={(e) => handleDirectSettingChange('monitoringInterval', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleDirectSettingChange('monitoringInterval', parseInt(e.target.value))
+                    }
                   />
                 </div>
 
@@ -987,7 +1067,7 @@ export default function AdvancedSettings() {
                         onChange={(e) => {
                           const channels = e.target.checked
                             ? [...settings.alertChannels, 'email']
-                            : settings.alertChannels.filter(c => c !== 'email');
+                            : settings.alertChannels.filter((c) => c !== 'email');
                           handleDirectSettingChange('alertChannels', channels);
                         }}
                       />
@@ -1001,7 +1081,7 @@ export default function AdvancedSettings() {
                         onChange={(e) => {
                           const channels = e.target.checked
                             ? [...settings.alertChannels, 'slack']
-                            : settings.alertChannels.filter(c => c !== 'slack');
+                            : settings.alertChannels.filter((c) => c !== 'slack');
                           handleDirectSettingChange('alertChannels', channels);
                         }}
                       />
@@ -1019,13 +1099,20 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.enableAnomalyDetection}
-                    onCheckedChange={(checked) => handleDirectSettingChange('enableAnomalyDetection', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('enableAnomalyDetection', checked)
+                    }
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Anomaly Sensitivity</Label>
-                  <Select value={settings.anomalySensitivity} onValueChange={(value) => handleDirectSettingChange('anomalySensitivity', value)}>
+                  <Select
+                    value={settings.anomalySensitivity}
+                    onValueChange={(value) =>
+                      handleDirectSettingChange('anomalySensitivity', value)
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -1042,16 +1129,14 @@ export default function AdvancedSettings() {
         )}
 
         {/* Integration Settings */}
-        {activeTab === "integration" && (
+        {activeTab === 'integration' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="w-5 h-5" />
                 Integration Settings
               </CardTitle>
-              <CardDescription>
-                Configure external integrations and API settings
-              </CardDescription>
+              <CardDescription>Configure external integrations and API settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
@@ -1064,7 +1149,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.enableWebhooks}
-                    onCheckedChange={(checked) => handleDirectSettingChange('enableWebhooks', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('enableWebhooks', checked)
+                    }
                   />
                 </div>
 
@@ -1073,7 +1160,9 @@ export default function AdvancedSettings() {
                   <Input
                     type="number"
                     value={settings.webhookTimeout}
-                    onChange={(e) => handleDirectSettingChange('webhookTimeout', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleDirectSettingChange('webhookTimeout', parseInt(e.target.value))
+                    }
                   />
                 </div>
 
@@ -1086,7 +1175,9 @@ export default function AdvancedSettings() {
                   </div>
                   <Switch
                     checked={settings.enableApiRateLimiting}
-                    onCheckedChange={(checked) => handleDirectSettingChange('enableApiRateLimiting', checked)}
+                    onCheckedChange={(checked) =>
+                      handleDirectSettingChange('enableApiRateLimiting', checked)
+                    }
                   />
                 </div>
 
@@ -1095,7 +1186,9 @@ export default function AdvancedSettings() {
                   <Input
                     type="number"
                     value={settings.rateLimitRequests}
-                    onChange={(e) => handleDirectSettingChange('rateLimitRequests', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleDirectSettingChange('rateLimitRequests', parseInt(e.target.value))
+                    }
                   />
                 </div>
 

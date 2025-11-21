@@ -11,6 +11,7 @@
 ## Overview
 
 This document maps:
+
 1. **Event Catalog Events** → **Data Sources** → **UI Components**
 2. **Missing Events**: Data sources that need events but don't have them
 3. **Missing Data Sources**: Events that exist but don't have data sources yet
@@ -23,12 +24,14 @@ This document maps:
 ### 1. Intelligence Analytics Source (`intelligence-analytics-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchMetrics()` → IntelligenceMetrics (totalQueries, avgResponseTime, successRate, fallbackRate, costPerQuery, totalCost, qualityScore, userSatisfaction)
 - `fetchRecentActivity()` → RecentActivity[] (action, agent, time, status, timestamp)
 - `fetchAgentPerformance()` → AgentPerformance[] (agentId, agentName, totalRuns, avgResponseTime, successRate, efficiency, avgQualityScore, popularity, costPerSuccess, p95Latency, lastUsed)
 - `fetchSavingsMetrics()` → SavingsMetrics (totalSavings, monthlySavings, weeklySavings, dailySavings, intelligenceRuns, baselineRuns, avgTokensPerRun, avgComputePerRun, costPerToken, costPerCompute, efficiencyGain, timeSaved)
 
 **Maps to Events**:
+
 - ✅ `omninode.intelligence.query.completed.v1` → totalQueries, avgResponseTime, successRate
 - ✅ `omninode.intelligence.query.failed.v1` → fallbackRate
 - ✅ `omninode.agent.execution.completed.v1` → agent performance metrics
@@ -41,6 +44,7 @@ This document maps:
 - ✅ `omninode.agent.execution.failed.v1` → RecentActivity
 
 **Missing Events** (events exist but not consumed):
+
 - ❌ `omninode.intelligence.search.completed.v1` → Could add search metrics
 - ❌ `omninode.intelligence.quality.assessed.v1` → Could enhance qualityScore
 - ❌ `omninode.intelligence.performance.analyzed.v1` → Could add performance analysis
@@ -53,6 +57,7 @@ This document maps:
 ### 2. Agent Operations Source (`agent-operations-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchSummary()` → AgentSummary (totalAgents, activeAgents, totalRuns, successRate, avgExecutionTime)
 - `fetchRecentActions()` → RecentAction[] (id, agentId, agentName, action, status, timestamp, duration)
 - `fetchHealth()` → HealthStatus (status, services[])
@@ -61,6 +66,7 @@ This document maps:
 - `transformOperationsStatus()` → OperationStatus[] (id, name, status, count, avgTime)
 
 **Maps to Events**:
+
 - ✅ `omninode.agent.execution.started.v1` → totalRuns, activeAgents
 - ✅ `omninode.agent.execution.completed.v1` → successRate, avgExecutionTime, RecentActions
 - ✅ `omninode.agent.execution.failed.v1` → successRate, RecentActions
@@ -68,6 +74,7 @@ This document maps:
 - ✅ `omninode.service.health.changed.v1` → HealthStatus
 
 **Missing Events**:
+
 - ❌ `omninode.agent.routing.requested.v1` → Could add routing request metrics
 - ❌ `omninode.agent.routing.failed.v1` → Could add routing failure metrics
 - ❌ `omninode.agent.quality.gate.passed.v1` → Could add quality gate metrics
@@ -80,18 +87,21 @@ This document maps:
 ### 3. Agent Management Source (`agent-management-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchSummary()` → AgentSummary (totalAgents, activeAgents, totalRuns, successRate, avgExecutionTime)
 - `fetchRoutingStats()` → RoutingStats (totalDecisions, avgConfidence, topAgents, routingDistribution)
 - `fetchRecentExecutions()` → AgentExecution[] (id, agentId, agentName, query, status, timestamp, duration, tokensUsed, cost)
 - `fetchRecentDecisions()` → RoutingDecision[] (id, query, selectedAgent, confidence, timestamp, reasoning, alternatives)
 
 **Maps to Events**:
+
 - ✅ `omninode.agent.routing.completed.v1` → RoutingStats, RoutingDecision
 - ✅ `omninode.agent.execution.completed.v1` → AgentExecution
 - ✅ `omninode.agent.execution.started.v1` → AgentExecution
 - ✅ `omninode.agent.confidence.scored.v1` → RoutingStats (avgConfidence)
 
 **Missing Events**:
+
 - ❌ `omninode.agent.routing.requested.v1` → Could track routing requests
 - ❌ `omninode.agent.routing.failed.v1` → Could track routing failures
 - ❌ `omninode.agent.quality.gate.passed.v1` → Could add quality gate info to executions
@@ -104,17 +114,20 @@ This document maps:
 ### 4. Code Intelligence Source (`code-intelligence-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchCodeAnalysis()` → CodeAnalysisData (files_analyzed, avg_complexity, code_smells, security_issues, complexity_trend, quality_trend)
 - `fetchCompliance()` → ComplianceData (summary, statusBreakdown, nodeTypeBreakdown, trend)
 - `fetchPatternSummary()` → PatternSummaryCodeIntel (totalPatterns, activePatterns, qualityScore, usageCount, recentDiscoveries, topPatterns)
 
 **Maps to Events**:
+
 - ✅ `omninode.intelligence.quality.assessed.v1` → CodeAnalysisData (avg_complexity, code_smells, quality_trend)
 - ✅ `omninode.intelligence.compliance.validated.v1` → ComplianceData
 - ✅ `omninode.intelligence.pattern.discovered.v1` → PatternSummaryCodeIntel
 - ✅ `omninode.intelligence.performance.analyzed.v1` → Could enhance CodeAnalysisData
 
 **Missing Events**:
+
 - ❌ `omninode.intelligence.quality.requested.v1` → Could track quality assessment requests
 - ❌ `omninode.intelligence.compliance.requested.v1` → Could track compliance validation requests
 - ❌ `omninode.intelligence.pattern.matched.v1` → Could add pattern matching metrics
@@ -128,6 +141,7 @@ This document maps:
 ### 5. Pattern Learning Source (`pattern-learning-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchSummary()` → PatternSummary (totalPatterns, newPatternsToday, avgQualityScore, activeLearningCount)
 - `fetchTrends()` → PatternTrend[] (period, manifestsGenerated, avgPatternsPerManifest, avgQueryTimeMs)
 - `fetchQualityTrends()` → QualityTrend[] (period, avgQuality, manifestCount)
@@ -135,11 +149,13 @@ This document maps:
 - `fetchPatterns()` → Pattern[] (id, name, description, quality, usage, trend, trendPercentage, category, language)
 
 **Maps to Events**:
+
 - ✅ `omninode.intelligence.pattern.discovered.v1` → PatternSummary, Pattern[]
 - ✅ `omninode.intelligence.pattern.matched.v1` → Pattern[] (usage, trend)
 - ✅ `omninode.code.generation.completed.v1` → PatternTrend (manifestsGenerated)
 
 **Missing Events**:
+
 - ❌ `omninode.intelligence.pattern.discovery.requested.v1` → Could track discovery requests
 - ❌ `omninode.intelligence.pattern.discovery.completed.v1` → Could track discovery completion
 - ❌ `omninode.pattern.contributed.v1` → Could add pattern contribution metrics (planned feature)
@@ -153,10 +169,12 @@ This document maps:
 ### 6. Platform Health Source (`platform-health-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchHealth()` → PlatformHealth (status, uptime, services[])
 - `fetchServices()` → PlatformServices (services[])
 
 **Maps to Events**:
+
 - ✅ `omninode.service.health.changed.v1` → PlatformHealth
 - ✅ `omninode.service.registered.v1` → PlatformServices
 - ✅ `omninode.service.deregistered.v1` → PlatformServices
@@ -166,6 +184,7 @@ This document maps:
 - ✅ `omninode.consul.service.deregistered.v1` → PlatformServices
 
 **Missing Events**:
+
 - ❌ `omninode.database.connection.lost.v1` → Could add connection loss alerts
 - ❌ `omninode.database.connection.restored.v1` → Could add connection restoration tracking
 - ❌ `omninode.database.query.failed.v1` → Could add query failure metrics
@@ -179,15 +198,18 @@ This document maps:
 ### 7. Event Flow Source (`event-flow-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchEvents()` → EventFlowData (events[], metrics, chartData)
 - `calculateMetrics()` → EventMetrics (totalEvents, uniqueTypes, eventsPerMinute, avgProcessingTime, topicCounts)
 - `generateChartData()` → EventChartData (throughput, lag)
 
 **Maps to Events**:
+
 - ✅ **ALL EVENTS** → EventFlowData (generic event stream)
 - ✅ Event metadata → EventMetrics
 
 **Missing Events**:
+
 - ❌ No specific missing events (consumes all events generically)
 
 **Component**: Event Flow Dashboard (not yet created, but data exists)
@@ -197,15 +219,18 @@ This document maps:
 ### 8. Agent Network Source (`agent-network-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchAgents()` → Agent[] (id, name, type, status, capabilities, connections)
 - `fetchRoutingDecisions()` → RoutingDecision[] (id, query, selectedAgent, confidence, timestamp, reasoning, alternatives)
 
 **Maps to Events**:
+
 - ✅ `omninode.agent.routing.completed.v1` → RoutingDecision
 - ✅ `omninode.node.service.registered.v1` → Agent[] (via registry)
 - ✅ `onex.node.announce.v1` → Agent[] (capabilities, tools)
 
 **Missing Events**:
+
 - ❌ `omninode.node.service.deregistered.v1` → Could track agent deregistration
 - ❌ `onex.node.introspect_response.v1` → Could enhance agent capabilities
 - ❌ `omninode.agent.execution.completed.v1` → Could add execution relationships to network graph
@@ -217,16 +242,19 @@ This document maps:
 ### 9. Intelligence Savings Source (`intelligence-savings-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchMetrics()` → SavingsMetrics (totalSavings, monthlySavings, weeklySavings, dailySavings, intelligenceRuns, baselineRuns, avgTokensPerRun, avgComputePerRun, costPerToken, costPerCompute, efficiencyGain, timeSaved)
 - `fetchAgentComparisons()` → AgentComparison[] (agentId, agentName, withIntelligence, withoutIntelligence, savings)
 - `fetchTimeSeries()` → TimeSeriesData[] (date, withIntelligence, withoutIntelligence, savings, dataAvailable)
 - `fetchProviderSavings()` → ProviderSavings[] (providerId, providerName, savingsAmount, tokensProcessed, tokensOffloaded, percentageOfTotal, avgCostPerToken, runsCount)
 
 **Maps to Events**:
+
 - ✅ `omninode.agent.execution.completed.v1` → SavingsMetrics (tokensUsed, cost, duration)
 - ✅ `omninode.agent.provider.selected.v1` → ProviderSavings
 
 **Missing Events**:
+
 - ❌ `omninode.token.consumed.v1` → Could add token consumption tracking (planned feature)
 - ❌ `omninode.token.earned.v1` → Could add token earning tracking (planned feature)
 - ❌ `omninode.token.balance.updated.v1` → Could add token balance tracking (planned feature)
@@ -239,15 +267,18 @@ This document maps:
 ### 10. Knowledge Graph Source (`knowledge-graph-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchGraph()` → KnowledgeGraphData (nodes[], edges[], isMock)
 
 **Maps to Events**:
+
 - ✅ `omninode.intelligence.pattern.discovered.v1` → nodes (patterns)
 - ✅ `omninode.intelligence.pattern.matched.v1` → edges (pattern relationships)
 - ✅ `omninode.metadata.stamping.stamped.v1` → nodes (artifacts)
 - ✅ `omninode.code.generation.completed.v1` → nodes (generated code)
 
 **Missing Events**:
+
 - ❌ `omninode.metadata.tree.stamping.completed.v1` → Could add tree structure to graph
 - ❌ `omninode.metadata.orphaned.detected.v1` → Could add orphaned artifact nodes
 - ❌ `omninode.code.contract.generated.v1` → Could add contract nodes
@@ -260,14 +291,17 @@ This document maps:
 ### 11. Architecture Networks Source (`architecture-networks-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchSummary()` → ArchitectureSummary (totalNodes, totalEdges, avgDegree, communities, centralNodes)
 
 **Maps to Events**:
+
 - ✅ `omninode.node.service.registered.v1` → nodes
 - ✅ `omninode.service.registered.v1` → nodes
 - ✅ `omninode.bridge.orchestration.completed.v1` → edges (workflow relationships)
 
 **Missing Events**:
+
 - ❌ `omninode.bridge.workflow.completed.v1` → Could add workflow relationships
 - ❌ `omninode.bridge.orchestration.started.v1` → Could track orchestration starts
 - ❌ `omninode.consul.service.discovered.v1` → Could add service discovery relationships
@@ -279,14 +313,17 @@ This document maps:
 ### 12. Agent Registry Source (`agent-registry-source.ts`)
 
 **Current Data Provided**:
+
 - `fetchAgents()` → Agent[] (id, name, type, status, capabilities, metadata)
 
 **Maps to Events**:
+
 - ✅ `omninode.node.service.registered.v1` → Agent[]
 - ✅ `onex.node.announce.v1` → Agent[] (capabilities, tools)
 - ✅ `onex.node.introspect_response.v1` → Agent[] (enhanced capabilities)
 
 **Missing Events**:
+
 - ❌ `omninode.node.service.deregistered.v1` → Could track deregistration
 - ❌ `onex.registry.introspect_request.v1` → Could track registry requests
 
@@ -297,9 +334,11 @@ This document maps:
 ### 13. Developer Tools Source (`developer-tools-source.ts`)
 
 **Current Data Provided**:
+
 - Various developer tool data (needs investigation)
 
 **Maps to Events**:
+
 - ❓ Needs investigation
 
 **Component**: `DeveloperTools.tsx`
@@ -309,9 +348,11 @@ This document maps:
 ### 14. Platform Monitoring Source (`platform-monitoring-source.ts`)
 
 **Current Data Provided**:
+
 - Platform monitoring metrics (needs investigation)
 
 **Maps to Events**:
+
 - ✅ `omninode.service.health.changed.v1`
 - ✅ `omninode.database.connection.status.v1`
 - ✅ `omninode.consul.service.health.changed.v1`
@@ -324,6 +365,7 @@ This document maps:
 ## Event Catalog Events NOT Yet Consumed
 
 ### Intelligence Domain
+
 - ❌ `omninode.intelligence.search.requested.v1` → No data source
 - ❌ `omninode.intelligence.search.completed.v1` → No data source
 - ❌ `omninode.intelligence.search.failed.v1` → No data source
@@ -334,12 +376,14 @@ This document maps:
 - ❌ `omninode.intelligence.freshness.checked.v1` → No data source
 
 ### Agent Domain
+
 - ❌ `omninode.agent.routing.requested.v1` → Partially consumed (could enhance)
 - ❌ `omninode.agent.routing.failed.v1` → Not consumed
 - ❌ `omninode.agent.quality.gate.passed.v1` → Not consumed
 - ❌ `omninode.agent.quality.gate.failed.v1` → Not consumed
 
 ### Metadata Domain
+
 - ❌ `omninode.metadata.stamping.requested.v1` → No data source
 - ❌ `omninode.metadata.stamping.failed.v1` → No data source
 - ❌ `omninode.metadata.tree.stamping.requested.v1` → No data source
@@ -348,6 +392,7 @@ This document maps:
 - ❌ `omninode.metadata.orphaned.detected.v1` → No data source
 
 ### Code Generation Domain
+
 - ❌ `omninode.code.generation.requested.v1` → No data source
 - ❌ `omninode.code.generation.failed.v1` → No data source
 - ❌ `omninode.code.contract.generated.v1` → No data source
@@ -357,6 +402,7 @@ This document maps:
 - ❌ `omninode.code.validation.failed.v1` → No data source
 
 ### Database Domain
+
 - ❌ `omninode.database.query.requested.v1` → No data source
 - ❌ `omninode.database.query.completed.v1` → No data source
 - ❌ `omninode.database.query.failed.v1` → No data source
@@ -370,6 +416,7 @@ This document maps:
 - ❌ `omninode.database.connection.restored.v1` → No data source
 
 ### Consul Domain
+
 - ❌ `omninode.consul.service.register.requested.v1` → No data source
 - ❌ `omninode.consul.service.registered.v1` → Partially consumed (via Platform Health)
 - ❌ `omninode.consul.service.deregister.requested.v1` → No data source
@@ -380,6 +427,7 @@ This document maps:
 - ❌ `omninode.consul.health.status.v1` → No data source
 
 ### Vault Domain
+
 - ❌ `omninode.vault.secret.read.requested.v1` → No data source
 - ❌ `omninode.vault.secret.read.completed.v1` → No data source
 - ❌ `omninode.vault.secret.read.failed.v1` → No data source
@@ -396,6 +444,7 @@ This document maps:
 - ❌ `omninode.vault.secret.access.audited.v1` → No data source (but mentioned in Platform Health)
 
 ### Bridge Domain
+
 - ❌ `omninode.bridge.orchestration.started.v1` → No data source
 - ❌ `omninode.bridge.orchestration.completed.v1` → Partially consumed (via Architecture Networks)
 - ❌ `omninode.bridge.orchestration.failed.v1` → No data source
@@ -404,11 +453,13 @@ This document maps:
 - ❌ `omninode.bridge.workflow.failed.v1` → No data source
 
 ### Logging Domain
+
 - ❌ `omninode.logging.application.v1` → No data source
 - ❌ `omninode.logging.audit.v1` → No data source
 - ❌ `omninode.logging.security.v1` → No data source
 
 ### Registry/ONEX Domain
+
 - ❌ `onex.registry.introspect_request.v1` → No data source
 - ❌ `onex.node.introspect_response.v1` → Partially consumed (via Agent Registry)
 
@@ -500,12 +551,14 @@ This document maps:
 ## Implementation Priority
 
 ### Phase 1: Event Bus Integration
+
 1. Create `EventBusDataSource` class in omnidash backend
 2. Subscribe to all events from Kafka/Redpanda
 3. Transform events → PostgreSQL storage
 4. Push events → WebSocket → React frontend
 
 ### Phase 2: Core Missing Data Sources
+
 1. Database Operations Data Source
 2. Vault Operations Data Source
 3. Consul Operations Data Source
@@ -513,12 +566,14 @@ This document maps:
 5. Metadata Operations Data Source
 
 ### Phase 3: Enhanced Existing Data Sources
+
 1. Add missing events to Intelligence Analytics
 2. Add missing events to Agent Management
 3. Add missing events to Code Intelligence
 4. Add missing events to Platform Health
 
 ### Phase 4: New Dashboards
+
 1. Database Operations Dashboard
 2. Vault Audit Dashboard
 3. Service Discovery Dashboard
@@ -548,4 +603,3 @@ EventBusDataSource (Backend)
 **Document Version**: 1.0.0  
 **Last Updated**: November 2025  
 **Status**: Analysis Complete - Ready for Implementation
-

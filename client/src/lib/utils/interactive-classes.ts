@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 
 /**
  * Interactive Styling Utilities
@@ -23,13 +23,13 @@ import { cn } from "@/lib/utils";
  */
 export const clickableCardClasses = cn(
   // Cursor and transitions
-  "cursor-pointer transition-all duration-200",
+  'cursor-pointer transition-all duration-200',
   // Hover effects
-  "hover:shadow-lg hover:border-primary/50 hover:-translate-y-0.5",
+  'hover:shadow-lg hover:border-primary/50 hover:-translate-y-0.5',
   // Focus styles for accessibility
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
   // Active state
-  "active:scale-[0.98]"
+  'active:scale-[0.98]'
 );
 
 /**
@@ -44,10 +44,10 @@ export const clickableCardClasses = cn(
  * </tr>
  */
 export const clickableRowClasses = cn(
-  "cursor-pointer transition-colors duration-150",
-  "hover:bg-accent/50",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
-  "active:bg-accent/70"
+  'cursor-pointer transition-colors duration-150',
+  'hover:bg-accent/50',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset',
+  'active:bg-accent/70'
 );
 
 /**
@@ -61,10 +61,10 @@ export const clickableRowClasses = cn(
  * </li>
  */
 export const clickableListItemClasses = cn(
-  "cursor-pointer transition-colors duration-150",
-  "hover:bg-accent/80 hover:text-accent-foreground",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
-  "active:bg-accent"
+  'cursor-pointer transition-colors duration-150',
+  'hover:bg-accent/80 hover:text-accent-foreground',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset',
+  'active:bg-accent'
 );
 
 /**
@@ -78,8 +78,8 @@ export const clickableListItemClasses = cn(
  * </button>
  */
 export const disabledClasses = cn(
-  "opacity-50 cursor-not-allowed",
-  "hover:shadow-sm hover:translate-y-0 hover:border-card-border hover:bg-transparent"
+  'opacity-50 cursor-not-allowed',
+  'hover:shadow-sm hover:translate-y-0 hover:border-card-border hover:bg-transparent'
 );
 
 /**
@@ -106,7 +106,7 @@ export const disabledClasses = cn(
  */
 export function interactiveClasses(
   baseClasses: string,
-  variant: "card" | "row" | "list" | "subtle" = "card",
+  variant: 'card' | 'row' | 'list' | 'subtle' = 'card',
   disabled: boolean = false
 ): string {
   const variantClasses = {
@@ -114,17 +114,13 @@ export function interactiveClasses(
     row: clickableRowClasses,
     list: clickableListItemClasses,
     subtle: cn(
-      "cursor-pointer transition-opacity duration-150",
-      "hover:opacity-80",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      'cursor-pointer transition-opacity duration-150',
+      'hover:opacity-80',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary'
     ),
   };
 
-  return cn(
-    baseClasses,
-    variantClasses[variant],
-    disabled && disabledClasses
-  );
+  return cn(baseClasses, variantClasses[variant], disabled && disabledClasses);
 }
 
 /**
@@ -147,7 +143,7 @@ export function createKeyboardHandler(
   callback: (event: React.KeyboardEvent) => void
 ): (event: React.KeyboardEvent) => void {
   return (event: React.KeyboardEvent) => {
-    if (event.key === "Enter" || event.key === " ") {
+    if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       callback(event);
     }
@@ -167,18 +163,18 @@ export function createKeyboardHandler(
  * </div>
  */
 export function getInteractiveAriaProps(options: {
-  role?: "button" | "link" | "menuitem";
+  role?: 'button' | 'link' | 'menuitem';
   disabled?: boolean;
   pressed?: boolean;
   expanded?: boolean;
 }): Record<string, any> {
-  const { role = "button", disabled = false, pressed, expanded } = options;
+  const { role = 'button', disabled = false, pressed, expanded } = options;
 
   return {
     role,
     tabIndex: disabled ? -1 : 0,
-    "aria-disabled": disabled || undefined,
-    "aria-pressed": pressed,
-    "aria-expanded": expanded,
+    'aria-disabled': disabled || undefined,
+    'aria-pressed': pressed,
+    'aria-expanded': expanded,
   };
 }

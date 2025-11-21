@@ -1,17 +1,17 @@
-import { MetricCard } from "@/components/MetricCard";
-import { RealtimeChart } from "@/components/RealtimeChart";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { TimeRangeSelector } from "@/components/TimeRangeSelector";
-import { ExportButton } from "@/components/ExportButton";
-import { SectionHeader } from "@/components/SectionHeader";
-import { Users, Code, TrendingUp, Award } from "lucide-react";
-import { useState } from "react";
-import { MockBadge } from "@/components/MockBadge";
-import { ensureTimeSeries } from "@/components/mockUtils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useWebSocket } from "@/hooks/useWebSocket";
-import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from "@/lib/constants/query-config";
+import { MetricCard } from '@/components/MetricCard';
+import { RealtimeChart } from '@/components/RealtimeChart';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { TimeRangeSelector } from '@/components/TimeRangeSelector';
+import { ExportButton } from '@/components/ExportButton';
+import { SectionHeader } from '@/components/SectionHeader';
+import { Users, Code, TrendingUp, Award } from 'lucide-react';
+import { useState } from 'react';
+import { MockBadge } from '@/components/MockBadge';
+import { ensureTimeSeries } from '@/components/mockUtils';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
 
 // TypeScript interfaces for API responses
 interface Workflow {
@@ -75,13 +75,17 @@ export default function DeveloperExperience() {
   };
 
   // WebSocket for real-time updates
-  const { isConnected, connectionStatus } = useWebSocket({
+  useWebSocket({
     onMessage: (message) => {
       // Invalidate queries based on message type to trigger refetch
       switch (message.type) {
         case 'WORKFLOW_COMPLETED':
         case 'AGENT_ACTION_CREATED':
-          queryClient.invalidateQueries({ queryKey: ['http://localhost:8053/api/intelligence/developer/metrics', timeRange] });
+          queryClient.invalidateQueries({
+            queryKey: [
+              `http://localhost:8053/api/intelligence/developer/metrics?timeWindow=${timeRange}`,
+            ],
+          });
           break;
         case 'INITIAL_STATE':
           // Refresh all data on initial state
@@ -93,7 +97,11 @@ export default function DeveloperExperience() {
   });
 
   // Fetch unified developer metrics from omniarchon with standard polling
-  const { data: metricsData, isLoading: metricsLoading, error: metricsError } = useQuery<DeveloperMetricsResponse>({
+  const {
+    data: metricsData,
+    isLoading: metricsLoading,
+    error: metricsError,
+  } = useQuery<DeveloperMetricsResponse>({
     queryKey: [`http://localhost:8053/api/intelligence/developer/metrics?timeWindow=${timeRange}`],
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
@@ -110,39 +118,50 @@ export default function DeveloperExperience() {
   const productivityResponse = metricsData?.productivity;
 
   // Transform API data for chart components
-  const velocityDataRaw = (velocityResponse?.data || []).map(d => ({
+  const velocityDataRaw = (velocityResponse?.data || []).map((d) => ({
     time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     value: d.workflows_completed,
   }));
   const { data: velocityData, isMock: isVelocityMock } = ensureTimeSeries(velocityDataRaw, 12, 6);
 
-  const productivityDataRaw = (productivityResponse?.data || []).map(d => ({
+  const productivityDataRaw = (productivityResponse?.data || []).map((d) => ({
     time: new Date(d.period).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     value: d.productivity_score,
   }));
-  const { data: productivityData, isMock: isProductivityMock } = ensureTimeSeries(productivityDataRaw, 75, 10);
+  const { data: productivityData, isMock: isProductivityMock } = ensureTimeSeries(
+    productivityDataRaw,
+    75,
+    10
+  );
 
   // Transform task velocity data for charts
-  const taskVelocityChartData = (taskVelocityData || []).map(d => ({
+  const taskVelocityChartData = (taskVelocityData || []).map((d) => ({
     time: d.date.split(' ')[1] || d.date, // Use time portion if available, otherwise date
     value: d.tasksCompleted,
   }));
 
-  const avgDurationChartData = (taskVelocityData || []).map(d => ({
+  const avgDurationChartData = (taskVelocityData || []).map((d) => ({
     time: d.date.split(' ')[1] || d.date,
     value: Math.round(d.avgDurationMs / 1000), // Convert to seconds for better readability
   }));
 
   // Calculate summary metrics from task velocity data
-  const totalTasksCompleted = (taskVelocityData || []).reduce((sum, d) => sum + d.tasksCompleted, 0);
-  const avgTasksPerDay = taskVelocityData && taskVelocityData.length > 0
-    ? Math.round(totalTasksCompleted / taskVelocityData.length)
-    : 0;
-  const avgCompletionTime = taskVelocityData && taskVelocityData.length > 0
-    ? Math.round(
-        (taskVelocityData.reduce((sum, d) => sum + d.avgDurationMs, 0) / taskVelocityData.length) / 1000
-      )
-    : 0;
+  const totalTasksCompleted = (taskVelocityData || []).reduce(
+    (sum, d) => sum + d.tasksCompleted,
+    0
+  );
+  const avgTasksPerDay =
+    taskVelocityData && taskVelocityData.length > 0
+      ? Math.round(totalTasksCompleted / taskVelocityData.length)
+      : 0;
+  const avgCompletionTime =
+    taskVelocityData && taskVelocityData.length > 0
+      ? Math.round(
+          taskVelocityData.reduce((sum, d) => sum + d.avgDurationMs, 0) /
+            taskVelocityData.length /
+            1000
+        )
+      : 0;
 
   // Calculate metrics from real data
   const activeDevelopers = workflowsData?.total_developers || 0;
@@ -233,14 +252,14 @@ export default function DeveloperExperience() {
           label="Productivity Gain"
           value={`${Math.round(productivityGain)}%`}
           icon={TrendingUp}
-          status={productivityGain > 30 ? "healthy" : "warning"}
+          status={productivityGain > 30 ? 'healthy' : 'warning'}
           tooltip="Average productivity improvement from AI assistance"
         />
         <MetricCard
           label="Pattern Reuse"
           value={`${Math.round(patternReuse * 100)}%`}
           icon={Award}
-          status={patternReuse > 0.8 ? "healthy" : "warning"}
+          status={patternReuse > 0.8 ? 'healthy' : 'warning'}
           tooltip="Rate of reusing learned patterns in workflows"
         />
       </div>
@@ -270,9 +289,7 @@ export default function DeveloperExperience() {
       <div className="grid grid-cols-2 gap-6">
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold">
-              Task Completion Velocity ({timeRange})
-            </h3>
+            <h3 className="text-base font-semibold">Task Completion Velocity ({timeRange})</h3>
             <Badge variant="outline" className="text-xs">
               {totalTasksCompleted} total tasks
             </Badge>
@@ -309,9 +326,7 @@ export default function DeveloperExperience() {
 
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold">
-              Average Completion Time ({timeRange})
-            </h3>
+            <h3 className="text-base font-semibold">Average Completion Time ({timeRange})</h3>
             <Badge variant="outline" className="text-xs">
               seconds
             </Badge>
@@ -321,11 +336,7 @@ export default function DeveloperExperience() {
               <TrendingUp className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : taskVelocityData && taskVelocityData.length > 0 ? (
-            <RealtimeChart
-              title=""
-              data={avgDurationChartData}
-              color="hsl(var(--chart-4))"
-            />
+            <RealtimeChart title="" data={avgDurationChartData} color="hsl(var(--chart-4))" />
           ) : (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
               No duration data available for {timeRange}
@@ -359,12 +370,14 @@ export default function DeveloperExperience() {
                   </div>
                   <Badge
                     variant="outline"
-                    className={workflow.improvement > 0 ?
-                      "text-status-healthy border-status-healthy/30" :
-                      "text-muted-foreground border-muted/30"
+                    className={
+                      workflow.improvement > 0
+                        ? 'text-status-healthy border-status-healthy/30'
+                        : 'text-muted-foreground border-muted/30'
                     }
                   >
-                    {workflow.improvement > 0 ? '+' : ''}{workflow.improvement}%
+                    {workflow.improvement > 0 ? '+' : ''}
+                    {workflow.improvement}%
                   </Badge>
                 </div>
 

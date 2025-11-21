@@ -2,7 +2,7 @@
 import { USE_MOCK_DATA } from '../mock-data/config';
 
 export interface SystemStatus {
-  overall: "healthy" | "degraded" | "critical";
+  overall: 'healthy' | 'degraded' | 'critical';
   services: ServiceStatus[];
   uptime: number;
   lastIncident: string;
@@ -11,7 +11,7 @@ export interface SystemStatus {
 
 export interface ServiceStatus {
   name: string;
-  status: "healthy" | "degraded" | "critical" | "maintenance";
+  status: 'healthy' | 'degraded' | 'critical' | 'maintenance';
   uptime: number;
   responseTime: number;
   lastCheck: string;
@@ -33,8 +33,8 @@ export interface DeveloperMetrics {
 export interface Incident {
   id: string;
   title: string;
-  severity: "low" | "medium" | "high" | "critical";
-  status: "open" | "investigating" | "resolved" | "closed";
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  status: 'open' | 'investigating' | 'resolved' | 'closed';
   affectedServices: string[];
   startTime: string;
   endTime?: string;
@@ -56,13 +56,55 @@ class PlatformMonitoringSource {
     lastIncident: new Date(Date.now() - 86400000).toISOString(),
     responseTime: 145,
     services: [
-      { name: 'API Gateway', status: 'healthy', uptime: 99.95, responseTime: 45, lastCheck: new Date().toISOString(), dependencies: [] },
-      { name: 'Agent Service', status: 'healthy', uptime: 99.92, responseTime: 120, lastCheck: new Date().toISOString(), dependencies: ['PostgreSQL'] },
-      { name: 'PostgreSQL', status: 'healthy', uptime: 99.98, responseTime: 12, lastCheck: new Date().toISOString(), dependencies: [] },
-      { name: 'Qdrant', status: 'healthy', uptime: 99.88, responseTime: 23, lastCheck: new Date().toISOString(), dependencies: [] },
-      { name: 'Intelligence Service', status: 'healthy', uptime: 99.85, responseTime: 180, lastCheck: new Date().toISOString(), dependencies: ['PostgreSQL', 'Qdrant'] },
-      { name: 'Event Stream', status: 'healthy', uptime: 99.90, responseTime: 8, lastCheck: new Date().toISOString(), dependencies: [] },
-    ]
+      {
+        name: 'API Gateway',
+        status: 'healthy',
+        uptime: 99.95,
+        responseTime: 45,
+        lastCheck: new Date().toISOString(),
+        dependencies: [],
+      },
+      {
+        name: 'Agent Service',
+        status: 'healthy',
+        uptime: 99.92,
+        responseTime: 120,
+        lastCheck: new Date().toISOString(),
+        dependencies: ['PostgreSQL'],
+      },
+      {
+        name: 'PostgreSQL',
+        status: 'healthy',
+        uptime: 99.98,
+        responseTime: 12,
+        lastCheck: new Date().toISOString(),
+        dependencies: [],
+      },
+      {
+        name: 'Qdrant',
+        status: 'healthy',
+        uptime: 99.88,
+        responseTime: 23,
+        lastCheck: new Date().toISOString(),
+        dependencies: [],
+      },
+      {
+        name: 'Intelligence Service',
+        status: 'healthy',
+        uptime: 99.85,
+        responseTime: 180,
+        lastCheck: new Date().toISOString(),
+        dependencies: ['PostgreSQL', 'Qdrant'],
+      },
+      {
+        name: 'Event Stream',
+        status: 'healthy',
+        uptime: 99.9,
+        responseTime: 8,
+        lastCheck: new Date().toISOString(),
+        dependencies: [],
+      },
+    ],
   };
 
   private static readonly MOCK_DEVELOPER_METRICS: DeveloperMetrics = {
@@ -87,7 +129,7 @@ class PlatformMonitoringSource {
       startTime: new Date(Date.now() - 172800000).toISOString(),
       endTime: new Date(Date.now() - 86400000).toISOString(),
       description: 'Connection pool reached 95% capacity during peak load',
-      assignee: 'DevOps Team'
+      assignee: 'DevOps Team',
     },
     {
       id: 'inc-2',
@@ -97,8 +139,8 @@ class PlatformMonitoringSource {
       affectedServices: ['API Gateway', 'Agent Service'],
       startTime: new Date(Date.now() - 3600000).toISOString(),
       description: 'p95 latency increased from 1.2s to 2.5s across multiple endpoints',
-      assignee: 'Platform Team'
-    }
+      assignee: 'Platform Team',
+    },
   ];
 
   async fetchSystemStatus(timeRange: string): Promise<{ data: SystemStatus; isMock: boolean }> {
@@ -124,7 +166,9 @@ class PlatformMonitoringSource {
     return { data: PlatformMonitoringSource.MOCK_SYSTEM_STATUS, isMock: true };
   }
 
-  async fetchDeveloperMetrics(timeRange: string): Promise<{ data: DeveloperMetrics; isMock: boolean }> {
+  async fetchDeveloperMetrics(
+    timeRange: string
+  ): Promise<{ data: DeveloperMetrics; isMock: boolean }> {
     // In test environment, skip USE_MOCK_DATA check to allow test mocks to work
     const isTestEnv = import.meta.env.VITEST === 'true' || import.meta.env.VITEST === true;
 
@@ -187,10 +231,3 @@ class PlatformMonitoringSource {
 }
 
 export const platformMonitoringSource = new PlatformMonitoringSource();
-
-
-
-
-
-
-

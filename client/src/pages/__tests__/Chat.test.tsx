@@ -12,7 +12,9 @@ describe('Chat page', () => {
     render(<Chat />);
 
     expect(screen.getByText('AI Query Assistant')).toBeInTheDocument();
-    expect(screen.getByText('Ask questions about your platform using natural language')).toBeInTheDocument();
+    expect(
+      screen.getByText('Ask questions about your platform using natural language')
+    ).toBeInTheDocument();
     expect(screen.getByTestId('chat-interface')).toBeInTheDocument();
   });
 });

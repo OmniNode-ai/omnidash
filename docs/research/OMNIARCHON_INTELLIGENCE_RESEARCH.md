@@ -40,23 +40,23 @@ OmniArchon is an **intelligence platform for AI-driven development** providing:
 
 **LOCAL Services** (Docker on developer machine):
 
-| Service | Port | Purpose | Status |
-|---------|------|---------|--------|
-| archon-intelligence | 8053 | Core intelligence (78 APIs) | ✅ Running |
-| archon-search | 8055 | RAG queries, hybrid search | ✅ Available |
-| archon-bridge | 8054 | Event translation, metadata stamping | ✅ Available |
-| archon-langextract | 8156 | ML extraction, semantic analysis | ✅ Available |
-| qdrant | 6333/6334 | Vector database (1536-dim embeddings) | ✅ Available |
-| memgraph | 7687 | Knowledge graph (Cypher queries) | ✅ Available |
+| Service             | Port      | Purpose                               | Status       |
+| ------------------- | --------- | ------------------------------------- | ------------ |
+| archon-intelligence | 8053      | Core intelligence (78 APIs)           | ✅ Running   |
+| archon-search       | 8055      | RAG queries, hybrid search            | ✅ Available |
+| archon-bridge       | 8054      | Event translation, metadata stamping  | ✅ Available |
+| archon-langextract  | 8156      | ML extraction, semantic analysis      | ✅ Available |
+| qdrant              | 6333/6334 | Vector database (1536-dim embeddings) | ✅ Available |
+| memgraph            | 7687      | Knowledge graph (Cypher queries)      | ✅ Available |
 
 **REMOTE Services** (192.168.86.200):
 
-| Service | Port | Purpose | Status |
-|---------|------|---------|--------|
-| omninode-bridge-redpanda | 9092/29092 | Kafka event bus | ✅ Running |
-| omninode-bridge-postgres | 5432/5436 | Pattern traceability DB | ✅ Running |
-| omninode-bridge-onextree | 8058 | Tree indexing | ✅ Available |
-| omninode-bridge-metadata-stamping | 8057 | ONEX metadata stamping | ✅ Available |
+| Service                           | Port       | Purpose                 | Status       |
+| --------------------------------- | ---------- | ----------------------- | ------------ |
+| omninode-bridge-redpanda          | 9092/29092 | Kafka event bus         | ✅ Running   |
+| omninode-bridge-postgres          | 5432/5436  | Pattern traceability DB | ✅ Running   |
+| omninode-bridge-onextree          | 8058       | Tree indexing           | ✅ Available |
+| omninode-bridge-metadata-stamping | 8057       | ONEX metadata stamping  | ✅ Available |
 
 ---
 
@@ -66,17 +66,18 @@ OmniArchon is an **intelligence platform for AI-driven development** providing:
 
 **Intelligence Available**: ✅ **Comprehensive**
 
-| Metric | Source | How to Get |
-|--------|--------|------------|
-| **52 AI Agents Status** | PostgreSQL `agent_routing_decisions`, `agent_manifest_injections` | `GET /api/pattern-traceability/executions/summary` |
-| **Routing Success Rate** | PostgreSQL `agent_routing_decisions.actual_success` | Query: `SELECT COUNT(*) FILTER(WHERE actual_success=true) / COUNT(*) FROM agent_routing_decisions` |
-| **Agent Performance** | PostgreSQL `agent_actions`, `workflow_steps` | `GET /api/performance-analytics/trends` |
-| **Active Agents** | PostgreSQL `agent_actions` | Query: `SELECT DISTINCT agent_name FROM agent_actions WHERE created_at > NOW() - INTERVAL '1 hour'` |
-| **Agent Confidence Scores** | PostgreSQL `agent_routing_decisions.confidence_score` | Query: `SELECT agent_name, AVG(confidence_score) FROM agent_routing_decisions GROUP BY agent_name` |
+| Metric                      | Source                                                            | How to Get                                                                                          |
+| --------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **52 AI Agents Status**     | PostgreSQL `agent_routing_decisions`, `agent_manifest_injections` | `GET /api/pattern-traceability/executions/summary`                                                  |
+| **Routing Success Rate**    | PostgreSQL `agent_routing_decisions.actual_success`               | Query: `SELECT COUNT(*) FILTER(WHERE actual_success=true) / COUNT(*) FROM agent_routing_decisions`  |
+| **Agent Performance**       | PostgreSQL `agent_actions`, `workflow_steps`                      | `GET /api/performance-analytics/trends`                                                             |
+| **Active Agents**           | PostgreSQL `agent_actions`                                        | Query: `SELECT DISTINCT agent_name FROM agent_actions WHERE created_at > NOW() - INTERVAL '1 hour'` |
+| **Agent Confidence Scores** | PostgreSQL `agent_routing_decisions.confidence_score`             | Query: `SELECT agent_name, AVG(confidence_score) FROM agent_routing_decisions GROUP BY agent_name`  |
 
 **API Endpoint**: `POST /api/bridge/generate-intelligence` (archon-bridge)
 
 **Sample Query**:
+
 ```sql
 -- Agent summary for last 24 hours
 SELECT
@@ -98,22 +99,24 @@ ORDER BY total_requests DESC;
 
 **Intelligence Available**: ✅ **Comprehensive**
 
-| Metric | Source | How to Get |
-|--------|--------|------------|
-| **25,000+ Patterns** | PostgreSQL `pattern_templates` | `GET /api/pattern-learning/metrics` |
-| **Pattern Success Rates** | PostgreSQL `pattern_usage_events` | `GET /api/pattern-analytics/success-rates` |
-| **Top Patterns** | PostgreSQL `pattern_analytics` | `GET /api/pattern-analytics/top-patterns` |
-| **Emerging Patterns** | PostgreSQL `pattern_analytics` | `GET /api/pattern-analytics/emerging-patterns` |
-| **Pattern Lineage** | PostgreSQL `pattern_relationships` | `GET /api/pattern-traceability/lineage/{pattern_id}` |
+| Metric                     | Source                                       | How to Get                                                          |
+| -------------------------- | -------------------------------------------- | ------------------------------------------------------------------- |
+| **25,000+ Patterns**       | PostgreSQL `pattern_templates`               | `GET /api/pattern-learning/metrics`                                 |
+| **Pattern Success Rates**  | PostgreSQL `pattern_usage_events`            | `GET /api/pattern-analytics/success-rates`                          |
+| **Top Patterns**           | PostgreSQL `pattern_analytics`               | `GET /api/pattern-analytics/top-patterns`                           |
+| **Emerging Patterns**      | PostgreSQL `pattern_analytics`               | `GET /api/pattern-analytics/emerging-patterns`                      |
+| **Pattern Lineage**        | PostgreSQL `pattern_relationships`           | `GET /api/pattern-traceability/lineage/{pattern_id}`                |
 | **Pattern Quality Scores** | PostgreSQL `pattern_templates.quality_score` | Query: `SELECT * FROM pattern_templates ORDER BY success_rate DESC` |
 
 **API Endpoints**:
+
 - `POST /api/pattern-learning/pattern/match` - Match patterns (fuzzy + semantic)
 - `GET /api/pattern-learning/metrics` - Pattern learning metrics
 - `GET /api/pattern-analytics/top-patterns` - Top performing patterns
 - `GET /api/pattern-traceability/lineage/{pattern_id}` - Pattern evolution history
 
 **Database Schema**:
+
 ```sql
 -- Pattern templates with metadata
 pattern_templates:
@@ -137,16 +140,17 @@ pattern_usage_events:
 
 **Intelligence Available**: ✅ **Comprehensive**
 
-| Metric | Source | How to Get |
-|--------|--------|------------|
-| **168+ Operations** | MCP Tool Catalog | `archon_menu(operation="discover")` |
-| **Quality Assessments** | PostgreSQL quality snapshots | `POST /assess/code` |
-| **Performance Baselines** | PostgreSQL performance metrics | `GET /api/performance-analytics/baselines` |
-| **Optimization Opportunities** | Intelligence analysis | `GET /api/performance-analytics/optimization-opportunities` |
-| **Agent Execution Logs** | PostgreSQL `execution_traces` | `GET /api/pattern-traceability/executions/logs` |
-| **LLM Call Metrics** | PostgreSQL `llm_calls` | Query: `SELECT COUNT(*), SUM(cost_usd) FROM llm_calls WHERE created_at > NOW() - INTERVAL '24 hours'` |
+| Metric                         | Source                         | How to Get                                                                                            |
+| ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| **168+ Operations**            | MCP Tool Catalog               | `archon_menu(operation="discover")`                                                                   |
+| **Quality Assessments**        | PostgreSQL quality snapshots   | `POST /assess/code`                                                                                   |
+| **Performance Baselines**      | PostgreSQL performance metrics | `GET /api/performance-analytics/baselines`                                                            |
+| **Optimization Opportunities** | Intelligence analysis          | `GET /api/performance-analytics/optimization-opportunities`                                           |
+| **Agent Execution Logs**       | PostgreSQL `execution_traces`  | `GET /api/pattern-traceability/executions/logs`                                                       |
+| **LLM Call Metrics**           | PostgreSQL `llm_calls`         | Query: `SELECT COUNT(*), SUM(cost_usd) FROM llm_calls WHERE created_at > NOW() - INTERVAL '24 hours'` |
 
 **API Endpoints**:
+
 - `POST /assess/code` - ONEX compliance + 6-dimensional quality scoring
 - `POST /assess/document` - Document quality analysis
 - `POST /patterns/extract` - Pattern identification (60+ pattern types)
@@ -159,17 +163,18 @@ pattern_usage_events:
 
 **Intelligence Available**: ✅ **Comprehensive**
 
-| Metric | Source | How to Get |
-|--------|--------|------------|
-| **Semantic Search** | Qdrant vector DB | `POST /api/search/vector` |
-| **Code Examples** | Search service | `POST /api/search/code-examples` |
-| **Quality Gates** | Intelligence service | `POST /assess/code` |
-| **Code Patterns** | Pattern learning | `POST /patterns/extract` |
-| **Duplicate Detection** | Vector similarity | `POST /api/search/vector` with similarity threshold |
-| **Tech Debt Analysis** | Quality trends | `GET /api/quality-trends/project/{project_id}/trend` |
-| **ONEX Compliance** | Quality assessment | `POST /compliance/check` |
+| Metric                  | Source               | How to Get                                           |
+| ----------------------- | -------------------- | ---------------------------------------------------- |
+| **Semantic Search**     | Qdrant vector DB     | `POST /api/search/vector`                            |
+| **Code Examples**       | Search service       | `POST /api/search/code-examples`                     |
+| **Quality Gates**       | Intelligence service | `POST /assess/code`                                  |
+| **Code Patterns**       | Pattern learning     | `POST /patterns/extract`                             |
+| **Duplicate Detection** | Vector similarity    | `POST /api/search/vector` with similarity threshold  |
+| **Tech Debt Analysis**  | Quality trends       | `GET /api/quality-trends/project/{project_id}/trend` |
+| **ONEX Compliance**     | Quality assessment   | `POST /compliance/check`                             |
 
 **API Endpoints**:
+
 - `POST /api/search/rag` - RAG search (orchestrated, ~1000ms)
 - `POST /api/search/enhanced` - Enhanced hybrid search
 - `POST /api/search/code-examples` - Code example search
@@ -178,6 +183,7 @@ pattern_usage_events:
 - `GET /api/search/vector/stats` - Vector statistics
 
 **Vector Search Performance**:
+
 - Query latency: 50-80ms (target: <100ms)
 - Batch indexing: ~50ms/doc (target: <100ms/doc)
 - Collection: `archon_vectors` (1536-dim OpenAI ada-002)
@@ -188,15 +194,16 @@ pattern_usage_events:
 
 **Intelligence Available**: ✅ **Real-time**
 
-| Metric | Source | How to Get |
-|--------|--------|------------|
-| **Kafka Topics** | Redpanda (192.168.86.200:9092) | `docker exec omninode-bridge-redpanda rpk topic list` |
-| **Event Throughput** | Kafka metrics | `docker exec omninode-bridge-redpanda rpk group describe omnidash-consumers` |
-| **Consumer Lag** | Kafka consumer groups | `curl http://192.168.86.200:8054/kafka/metrics` |
-| **Event Types** | Event schemas | 50+ event types (see below) |
-| **Processing Latency** | Kafka metrics | `GET /kafka/metrics` (archon-intelligence) |
+| Metric                 | Source                         | How to Get                                                                   |
+| ---------------------- | ------------------------------ | ---------------------------------------------------------------------------- |
+| **Kafka Topics**       | Redpanda (192.168.86.200:9092) | `docker exec omninode-bridge-redpanda rpk topic list`                        |
+| **Event Throughput**   | Kafka metrics                  | `docker exec omninode-bridge-redpanda rpk group describe omnidash-consumers` |
+| **Consumer Lag**       | Kafka consumer groups          | `curl http://192.168.86.200:8054/kafka/metrics`                              |
+| **Event Types**        | Event schemas                  | 50+ event types (see below)                                                  |
+| **Processing Latency** | Kafka metrics                  | `GET /kafka/metrics` (archon-intelligence)                                   |
 
 **Key Event Topics**:
+
 ```
 # Intelligence Events
 dev.archon-intelligence.tree.discover.v1
@@ -220,6 +227,7 @@ omninode.codegen.request.pattern.v1
 ```
 
 **Consumer Setup**:
+
 ```bash
 # For Docker services
 KAFKA_BOOTSTRAP_SERVERS=omninode-bridge-redpanda:9092
@@ -237,15 +245,16 @@ KAFKA_CONSUMER_GROUP=omnidash-consumers
 
 **Intelligence Available**: ✅ **Comprehensive**
 
-| Metric | Source | How to Get |
-|--------|--------|------------|
-| **Entity Relationships** | Memgraph (bolt://memgraph:7687) | Cypher queries |
-| **Pattern Lineage** | Pattern relationships | `GET /api/pattern-traceability/lineage/{pattern_id}/evolution` |
-| **Code Dependencies** | Entity extraction | `GET /relationships/{entity_id}` |
-| **Architecture Graphs** | Knowledge graph | Custom Cypher queries |
-| **Cross-Project Links** | Multi-project search | `POST /api/search/cross-project` |
+| Metric                   | Source                          | How to Get                                                     |
+| ------------------------ | ------------------------------- | -------------------------------------------------------------- |
+| **Entity Relationships** | Memgraph (bolt://memgraph:7687) | Cypher queries                                                 |
+| **Pattern Lineage**      | Pattern relationships           | `GET /api/pattern-traceability/lineage/{pattern_id}/evolution` |
+| **Code Dependencies**    | Entity extraction               | `GET /relationships/{entity_id}`                               |
+| **Architecture Graphs**  | Knowledge graph                 | Custom Cypher queries                                          |
+| **Cross-Project Links**  | Multi-project search            | `POST /api/search/cross-project`                               |
 
 **API Endpoints**:
+
 - `POST /extract/code` - Code entity extraction
 - `POST /extract/document` - Document entity extraction
 - `GET /entities/search` - Entity search
@@ -253,6 +262,7 @@ KAFKA_CONSUMER_GROUP=omnidash-consumers
 - `POST /batch-index` - Batch entity indexing
 
 **Sample Cypher Queries**:
+
 ```cypher
 // Find all patterns related to a specific pattern
 MATCH (p:Pattern {id: $pattern_id})-[r:RELATED_TO]-(related:Pattern)
@@ -275,16 +285,17 @@ ORDER BY usage_count DESC
 
 **Intelligence Available**: ✅ **Comprehensive**
 
-| Metric | Source | How to Get |
-|--------|--------|------------|
-| **Service Health** | Health endpoints | `GET /health` (all services) |
-| **Database Connections** | Connection pool metrics | PostgreSQL `pg_stat_activity` |
-| **Cache Hit Rates** | Valkey metrics | `docker exec archon-valkey redis-cli INFO stats` |
-| **Event Bus Health** | Redpanda cluster | `docker exec omninode-bridge-redpanda rpk cluster health` |
-| **Error Rates** | PostgreSQL `error_events` | Query: `SELECT COUNT(*) FROM error_events WHERE created_at > NOW() - INTERVAL '1 hour'` |
-| **Query Performance** | Performance analytics | `GET /api/performance-analytics/trends` |
+| Metric                   | Source                    | How to Get                                                                              |
+| ------------------------ | ------------------------- | --------------------------------------------------------------------------------------- |
+| **Service Health**       | Health endpoints          | `GET /health` (all services)                                                            |
+| **Database Connections** | Connection pool metrics   | PostgreSQL `pg_stat_activity`                                                           |
+| **Cache Hit Rates**      | Valkey metrics            | `docker exec archon-valkey redis-cli INFO stats`                                        |
+| **Event Bus Health**     | Redpanda cluster          | `docker exec omninode-bridge-redpanda rpk cluster health`                               |
+| **Error Rates**          | PostgreSQL `error_events` | Query: `SELECT COUNT(*) FROM error_events WHERE created_at > NOW() - INTERVAL '1 hour'` |
+| **Query Performance**    | Performance analytics     | `GET /api/performance-analytics/trends`                                                 |
 
 **Health Endpoints**:
+
 ```bash
 # Core services
 curl http://localhost:8053/health  # Intelligence
@@ -308,6 +319,7 @@ curl http://localhost:8053/kafka/health
 **Cons**: Polling required for real-time updates
 
 **Implementation**:
+
 ```typescript
 // server/intelligence-api.ts
 import express from 'express';
@@ -334,7 +346,7 @@ router.post('/api/intelligence/code/search', async (req, res) => {
   const response = await fetch('http://localhost:8055/api/search/rag', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, filters })
+    body: JSON.stringify({ query, filters }),
   });
   const data = await response.json();
   res.json(data);
@@ -342,6 +354,7 @@ router.post('/api/intelligence/code/search', async (req, res) => {
 ```
 
 **Dashboard Integration**:
+
 ```typescript
 // client/src/lib/data-sources/agent-operations-source.ts
 export async function fetchAgentSummary() {
@@ -355,7 +368,7 @@ export function useAgentSummary() {
   return useQuery({
     queryKey: ['agent-summary'],
     queryFn: fetchAgentSummary,
-    refetchInterval: 10000 // Poll every 10 seconds
+    refetchInterval: 10000, // Poll every 10 seconds
   });
 }
 ```
@@ -368,6 +381,7 @@ export function useAgentSummary() {
 **Cons**: Requires database credentials, more setup
 
 **Configuration** (add to `.env`):
+
 ```bash
 # PostgreSQL Intelligence Database
 POSTGRES_HOST=192.168.86.200
@@ -380,6 +394,7 @@ DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@192.168.86.200:5436/omn
 ```
 
 **Implementation**:
+
 ```typescript
 // server/db-intelligence.ts
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -432,6 +447,7 @@ export async function getPatternMetrics() {
 **Cons**: More complex, requires WebSocket or SSE
 
 **Configuration** (add to `.env`):
+
 ```bash
 # Kafka Event Streaming
 KAFKA_BROKERS=192.168.86.200:29092  # Use 29092 for host scripts
@@ -443,17 +459,18 @@ ENABLE_REAL_TIME_EVENTS=true
 ```
 
 **Implementation**:
+
 ```typescript
 // server/kafka-consumer.ts
 import { Kafka } from 'kafkajs';
 
 const kafka = new Kafka({
   clientId: process.env.KAFKA_CLIENT_ID,
-  brokers: [process.env.KAFKA_BROKERS!]
+  brokers: [process.env.KAFKA_BROKERS!],
 });
 
 const consumer = kafka.consumer({
-  groupId: process.env.KAFKA_CONSUMER_GROUP!
+  groupId: process.env.KAFKA_CONSUMER_GROUP!,
 });
 
 export async function startEventConsumer(io: SocketIO.Server) {
@@ -464,8 +481,8 @@ export async function startEventConsumer(io: SocketIO.Server) {
       'agent-actions',
       'agent-routing-decisions',
       'omninode.intelligence.event.quality_assessed.v1',
-      'omninode.intelligence.event.pattern_learned.v1'
-    ]
+      'omninode.intelligence.event.pattern_learned.v1',
+    ],
   });
 
   await consumer.run({
@@ -476,14 +493,15 @@ export async function startEventConsumer(io: SocketIO.Server) {
       io.emit('intelligence-event', {
         topic,
         event,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
-    }
+    },
   });
 }
 ```
 
 **Client-side WebSocket**:
+
 ```typescript
 // client/src/lib/useRealtimeIntelligence.ts
 import { useEffect, useState } from 'react';
@@ -496,7 +514,7 @@ export function useRealtimeIntelligence() {
     const socket = io('http://localhost:3000');
 
     socket.on('intelligence-event', (data) => {
-      setEvents(prev => [data, ...prev].slice(0, 100)); // Keep last 100
+      setEvents((prev) => [data, ...prev].slice(0, 100)); // Keep last 100
     });
 
     return () => socket.disconnect();
@@ -511,6 +529,7 @@ export function useRealtimeIntelligence() {
 ## 4. Intelligence Data Models
 
 ### Agent Routing Decision
+
 ```typescript
 interface AgentRoutingDecision {
   id: string;
@@ -526,6 +545,7 @@ interface AgentRoutingDecision {
 ```
 
 ### Pattern Template
+
 ```typescript
 interface PatternTemplate {
   id: string;
@@ -549,6 +569,7 @@ interface PatternTemplate {
 ```
 
 ### Quality Assessment
+
 ```typescript
 interface QualityAssessment {
   quality_score: number; // 0-1
@@ -578,6 +599,7 @@ interface QualityAssessment {
 ## 5. Sample API Calls
 
 ### Assess Code Quality
+
 ```bash
 curl -X POST http://localhost:8053/assess/code \
   -H "Content-Type: application/json" \
@@ -591,11 +613,13 @@ curl -X POST http://localhost:8053/assess/code \
 ```
 
 ### Get Pattern Metrics
+
 ```bash
 curl http://localhost:8053/api/pattern-learning/metrics
 ```
 
 ### Search Code Examples
+
 ```bash
 curl -X POST http://localhost:8055/api/search/code-examples \
   -H "Content-Type: application/json" \
@@ -607,11 +631,13 @@ curl -X POST http://localhost:8055/api/search/code-examples \
 ```
 
 ### Get Agent Execution Summary
+
 ```bash
 curl "http://localhost:8053/api/pattern-traceability/executions/summary?limit=50"
 ```
 
 ### Get Performance Trends
+
 ```bash
 curl "http://localhost:8053/api/performance-analytics/trends?time_window_hours=24"
 ```
@@ -623,6 +649,7 @@ curl "http://localhost:8053/api/performance-analytics/trends?time_window_hours=2
 ### Core Tables (PostgreSQL at 192.168.86.200:5436)
 
 **Agent Intelligence**:
+
 - `agent_routing_decisions` - Agent selection with confidence scoring
 - `agent_manifest_injections` - Complete manifest snapshots
 - `agent_actions` - Tool calls, decisions, errors
@@ -631,6 +658,7 @@ curl "http://localhost:8053/api/performance-analytics/trends?time_window_hours=2
 - `endpoint_calls` - Endpoint call logs
 
 **Pattern Learning**:
+
 - `pattern_templates` - Discovered patterns with metadata
 - `pattern_usage_events` - Pattern usage tracking
 - `pattern_relationships` - Pattern similarities, conflicts, alternatives
@@ -639,6 +667,7 @@ curl "http://localhost:8053/api/performance-analytics/trends?time_window_hours=2
 - `pattern_usage_log` - Historical usage
 
 **Performance & Quality**:
+
 - `workflow_steps` - Workflow execution steps
 - `llm_calls` - LLM API calls with costs
 - `error_events` / `success_events` - Error and success tracking
@@ -652,18 +681,21 @@ curl "http://localhost:8053/api/performance-analytics/trends?time_window_hours=2
 ## 7. MCP Tools (168+ Operations)
 
 ### Discovery
+
 ```javascript
 // List all available operations
-archon_menu({ operation: "discover" })
+archon_menu({ operation: 'discover' });
 ```
 
 ### Quality Assessment (4 tools)
+
 - `assess_code_quality` - ONEX compliance + quality scoring
 - `analyze_document_quality` - Document quality analysis
 - `get_quality_patterns` - Pattern extraction
 - `check_architectural_compliance` - Architecture validation
 
 ### Performance Optimization (5 tools)
+
 - `establish_performance_baseline` - Create baselines
 - `identify_optimization_opportunities` - ROI-ranked suggestions
 - `apply_performance_optimization` - Apply optimizations
@@ -671,12 +703,14 @@ archon_menu({ operation: "discover" })
 - `monitor_performance_trends` - Trend monitoring + prediction
 
 ### Pattern Learning (7 tools)
+
 - Pattern matching (fuzzy + semantic)
 - Hybrid scoring with configurable weights
 - Semantic analysis via LangExtract
 - Metrics, cache stats, health
 
 ### Search & RAG (9 tools)
+
 - RAG search (orchestrated, ~1000ms)
 - Enhanced hybrid search
 - Code example search
@@ -690,16 +724,17 @@ archon_menu({ operation: "discover" })
 
 ## 8. Performance Benchmarks
 
-| Operation | Target | Actual | Status |
-|-----------|--------|--------|--------|
-| Vector Search | <100ms | 50-80ms | ✅ 30% better |
-| RAG Orchestration | <1200ms | ~1000ms | ✅ 17% better |
-| Lineage Query | <200ms | ~100ms | ✅ 50% better |
-| Analytics Compute | <500ms | ~245ms | ✅ 51% better |
-| Cache Hit | N/A | <100ms | ✅ 95%+ improvement |
-| Batch Indexing | <100ms/doc | ~50ms/doc | ✅ 50% better |
+| Operation         | Target     | Actual    | Status              |
+| ----------------- | ---------- | --------- | ------------------- |
+| Vector Search     | <100ms     | 50-80ms   | ✅ 30% better       |
+| RAG Orchestration | <1200ms    | ~1000ms   | ✅ 17% better       |
+| Lineage Query     | <200ms     | ~100ms    | ✅ 50% better       |
+| Analytics Compute | <500ms     | ~245ms    | ✅ 51% better       |
+| Cache Hit         | N/A        | <100ms    | ✅ 95%+ improvement |
+| Batch Indexing    | <100ms/doc | ~50ms/doc | ✅ 50% better       |
 
 **Cache Performance** (Valkey):
+
 - Memory: 512MB LRU eviction
 - TTL: 5 minutes (300s)
 - Hit rate: >60% target, 95%+ actual
@@ -753,6 +788,7 @@ archon_menu({ operation: "discover" })
 ### Immediate Actions
 
 1. **Test Intelligence API**:
+
    ```bash
    curl http://localhost:8053/health
    curl http://localhost:8053/api/pattern-learning/metrics
@@ -760,6 +796,7 @@ archon_menu({ operation: "discover" })
    ```
 
 2. **Add Database Configuration** to omnidash `.env`:
+
    ```bash
    # Intelligence Database (copy from omniarchon/.env)
    POSTGRES_HOST=192.168.86.200
@@ -775,6 +812,7 @@ archon_menu({ operation: "discover" })
    ```
 
 3. **Create Intelligence API Routes** in omnidash:
+
    ```bash
    # Create server/intelligence-routes.ts
    # Add proxy routes to omniarchon services
@@ -782,6 +820,7 @@ archon_menu({ operation: "discover" })
    ```
 
 4. **Replace Mock Data** (start with one dashboard):
+
    ```typescript
    // client/src/lib/data-sources/agent-operations-source.ts
    export async function fetchAgentSummary() {
@@ -791,6 +830,7 @@ archon_menu({ operation: "discover" })
    ```
 
 5. **Verify Data Flow**:
+
    ```bash
    # Start omnidash
    PORT=3000 npm run dev
@@ -805,17 +845,20 @@ archon_menu({ operation: "discover" })
 ## 11. Reference Documentation
 
 **OmniArchon Documentation**:
+
 - Main README: `/Volumes/PRO-G40/Code/omniarchon/README.md`
 - CLAUDE.md: `/Volumes/PRO-G40/Code/omniarchon/CLAUDE.md`
 - Intelligence Service: `/Volumes/PRO-G40/Code/omniarchon/services/intelligence/README.md`
 - Database Schema: `/Volumes/PRO-G40/Code/omniarchon/services/intelligence/database/schema/README.md`
 
 **API Documentation**:
+
 - Interactive docs (when running): `http://localhost:8053/docs`
 - Health check: `http://localhost:8053/health`
 - Pattern learning: `http://localhost:8053/api/pattern-learning/health`
 
 **Infrastructure**:
+
 - Shared config: `~/.claude/CLAUDE.md`
 - PostgreSQL: `192.168.86.200:5436` (omninode_bridge database)
 - Redpanda: `192.168.86.200:29092` (Kafka-compatible)

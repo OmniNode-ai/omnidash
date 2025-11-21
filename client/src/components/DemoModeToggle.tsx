@@ -1,14 +1,14 @@
-import { useDemoMode } from "@/contexts/DemoModeContext";
-import { Button } from "@/components/ui/button";
-import { Play, Square } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { Button } from '@/components/ui/button';
+import { Play, Square } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export function DemoModeToggle() {
   const { isDemoMode, toggleDemoMode } = useDemoMode();
 
   return (
     <Button
-      variant={isDemoMode ? "default" : "outline"}
+      variant={isDemoMode ? 'default' : 'outline'}
       size="sm"
       onClick={toggleDemoMode}
       className="relative"
@@ -32,10 +32,3 @@ export function DemoModeToggle() {
     </Button>
   );
 }
-
-
-
-
-
-
-

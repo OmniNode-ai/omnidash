@@ -10,15 +10,16 @@ The dashboard header shows **"Database connection failed"** and all dashboards a
 
 **Environment variable mismatch** between `.env` file and code expectations (RESOLVED as of 2025-11-12):
 
-| What .env has | What code expects |
-|---------------|-------------------|
-| `TRACEABILITY_DB_HOST` | `POSTGRES_HOST` |
-| `TRACEABILITY_DB_PORT` | `POSTGRES_PORT` |
-| `TRACEABILITY_DB_NAME` | `POSTGRES_DATABASE` |
-| `TRACEABILITY_DB_USER` | `POSTGRES_USER` |
+| What .env has              | What code expects   |
+| -------------------------- | ------------------- |
+| `TRACEABILITY_DB_HOST`     | `POSTGRES_HOST`     |
+| `TRACEABILITY_DB_PORT`     | `POSTGRES_PORT`     |
+| `TRACEABILITY_DB_NAME`     | `POSTGRES_DATABASE` |
+| `TRACEABILITY_DB_USER`     | `POSTGRES_USER`     |
 | `TRACEABILITY_DB_PASSWORD` | `POSTGRES_PASSWORD` |
 
 **Location of issue**:
+
 - Code: `server/storage.ts:49-51`
 - Alert check: `server/alert-routes.ts:74-85`
 - Alert displayed: `client/src/components/AlertBanner.tsx`
@@ -56,28 +57,31 @@ POSTGRES_PASSWORD=<your_password>  # Get from .env file - never commit passwords
 ## Current Data Status
 
 **Before Fix** (Database not connected):
+
 - ❌ Database connection: **FAILED**
 - 🔄 All dashboards: **Using mock data fallbacks**
 - ⚠️ Alert banner: **Showing error message**
 
 **After Fix** (Database connected):
+
 - ✅ Database connection: **Working**
 - ✅ All dashboards: **Using real PostgreSQL data**
 - ✅ Alert banner: **Clear** (no errors)
 
 ## Dashboard Integration Status
 
-| Dashboard | Real Data API | Current Status |
-|-----------|---------------|----------------|
-| Agent Management | ✅ Implemented | 🔄 Falling back to mock (DB disconnected) |
-| Pattern Learning | ✅ Implemented | 🔄 Falling back to mock (DB disconnected) |
-| Intelligence Operations | ✅ Implemented | 🔄 Falling back to mock (DB disconnected) |
-| Code Intelligence | 🔶 Partial (gates/thresholds mock) | 🔶 Partial |
-| Event Flow | ✅ Implemented (OmniArchon) | ✅ Working (not DB dependent) |
-| Knowledge Graph | ✅ Implemented (OmniArchon) | ✅ Working (not DB dependent) |
-| Platform Health | ✅ Implemented | 🔄 Falling back to mock (DB disconnected) |
+| Dashboard               | Real Data API                      | Current Status                            |
+| ----------------------- | ---------------------------------- | ----------------------------------------- |
+| Agent Management        | ✅ Implemented                     | 🔄 Falling back to mock (DB disconnected) |
+| Pattern Learning        | ✅ Implemented                     | 🔄 Falling back to mock (DB disconnected) |
+| Intelligence Operations | ✅ Implemented                     | 🔄 Falling back to mock (DB disconnected) |
+| Code Intelligence       | 🔶 Partial (gates/thresholds mock) | 🔶 Partial                                |
+| Event Flow              | ✅ Implemented (OmniArchon)        | ✅ Working (not DB dependent)             |
+| Knowledge Graph         | ✅ Implemented (OmniArchon)        | ✅ Working (not DB dependent)             |
+| Platform Health         | ✅ Implemented                     | 🔄 Falling back to mock (DB disconnected) |
 
 **Legend**:
+
 - ✅ = Fully integrated and working
 - 🔶 = Partially integrated
 - 🔄 = Working but using mock fallback due to DB issue
@@ -102,6 +106,7 @@ curl http://localhost:3000/api/intelligence/alerts/active | jq
 ## Full Documentation
 
 See `DASHBOARD_MOCK_VS_REAL_AUDIT.md` for:
+
 - Complete dashboard-by-dashboard audit
 - All API endpoints and their status
 - Data source patterns and fallback behavior
@@ -112,17 +117,20 @@ See `DASHBOARD_MOCK_VS_REAL_AUDIT.md` for:
 If the fix doesn't work:
 
 1. **Check PostgreSQL is running on 192.168.86.200:5436**
+
    ```bash
    nc -zv 192.168.86.200 5436
    ```
 
 2. **Verify password is correct**
+
    ```bash
    # Replace <your_password> with actual password from .env file
    psql "postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge" -c "SELECT 1"
    ```
 
 3. **Check server logs for detailed error messages**
+
    ```bash
    # Server will show database connection errors on startup
    PORT=3000 npm run dev

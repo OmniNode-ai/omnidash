@@ -186,16 +186,7 @@ export class MockDataGenerator {
    * Generate a realistic programming language
    */
   static programmingLanguage(): string {
-    const languages = [
-      'TypeScript',
-      'JavaScript',
-      'Python',
-      'Go',
-      'Rust',
-      'Java',
-      'C++',
-      'Ruby',
-    ];
+    const languages = ['TypeScript', 'JavaScript', 'Python', 'Go', 'Rust', 'Java', 'C++', 'Ruby'];
     return MockDataGenerator.randomItem(languages);
   }
 

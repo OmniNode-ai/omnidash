@@ -96,12 +96,12 @@ Configuration is defined in `playwright.config.ts` at the project root.
 
 ### Viewport Configurations
 
-| Project | Device | Viewport Size | Use Case |
-|---------|--------|---------------|----------|
-| chromium-desktop | Desktop Chrome | 1920×1080 | Standard desktop |
-| chromium-laptop | Desktop Chrome | 1366×768 | Laptop screens |
-| chromium-tablet | iPad Pro | 1024×1366 | Tablet portrait |
-| chromium-mobile | iPhone 12 | 390×844 | Mobile phones |
+| Project          | Device         | Viewport Size | Use Case         |
+| ---------------- | -------------- | ------------- | ---------------- |
+| chromium-desktop | Desktop Chrome | 1920×1080     | Standard desktop |
+| chromium-laptop  | Desktop Chrome | 1366×768      | Laptop screens   |
+| chromium-tablet  | iPad Pro       | 1024×1366     | Tablet portrait  |
+| chromium-mobile  | iPhone 12      | 390×844       | Mobile phones    |
 
 ## Test Structure
 
@@ -187,6 +187,7 @@ npm run test:snapshots:update -- your-feature.snapshot.spec.ts
 ### 4. Best Practices
 
 **Wait for Dynamic Content**:
+
 ```typescript
 // Wait for specific elements
 await page.waitForSelector('[data-testid="metric-card"]');
@@ -199,16 +200,18 @@ await page.waitForTimeout(500);
 ```
 
 **Handle Loading States**:
+
 ```typescript
 // Hide loading spinners for consistent snapshots
 await page.evaluate(() => {
-  document.querySelectorAll('.loading-spinner').forEach(el => {
+  document.querySelectorAll('.loading-spinner').forEach((el) => {
     el.style.display = 'none';
   });
 });
 ```
 
 **Test Both Themes**:
+
 ```typescript
 test('should match dark theme', async ({ page }) => {
   await page.evaluate(() => {
@@ -229,6 +232,7 @@ test('should match light theme', async ({ page }) => {
 ```
 
 **Component-Level Testing**:
+
 ```typescript
 test('should match metric card', async ({ page }) => {
   const card = page.locator('[data-testid="metric-card"]').first();
@@ -263,6 +267,7 @@ client/src/tests/snapshots/
 ### 1. Review Differences
 
 When a test fails, Playwright generates:
+
 - **Actual**: Current screenshot
 - **Expected**: Baseline snapshot
 - **Diff**: Visual diff highlighting changes
@@ -288,6 +293,7 @@ npm run test:snapshots:update -- agent-operations.snapshot.spec.ts
 ### 3. Unintentional Changes
 
 If the change was NOT intentional:
+
 1. Review the diff to identify the issue
 2. Fix the CSS/component code
 3. Re-run tests to verify the fix
@@ -341,6 +347,7 @@ jobs:
 **Problem**: Snapshots differ on each run
 
 **Solutions**:
+
 1. Increase wait times for dynamic content
 2. Hide loading indicators/animations
 3. Mock time-dependent content (dates, timestamps)
@@ -358,6 +365,7 @@ await page.addInitScript(() => {
 **Problem**: Test fails with "net::ERR_CONNECTION_REFUSED"
 
 **Solutions**:
+
 1. Ensure dev server is running: `npm run dev`
 2. Check port 3000 is not blocked by firewall
 3. Verify `webServer` config in `playwright.config.ts`
@@ -367,6 +375,7 @@ await page.addInitScript(() => {
 **Problem**: Snapshot files are very large (>1MB)
 
 **Solutions**:
+
 1. Test specific sections instead of full page
 2. Use lower resolution viewports for some tests
 3. Compress images (Playwright auto-compresses PNG)
@@ -376,6 +385,7 @@ await page.addInitScript(() => {
 **Problem**: Tests pass locally but fail in CI
 
 **Solutions**:
+
 1. Ensure same Playwright version
 2. Use consistent browser (Chromium only in CI)
 3. Check font rendering differences
@@ -418,10 +428,7 @@ await expect(page).toHaveScreenshot('custom.png', {
 ```typescript
 test('should mask dynamic timestamps', async ({ page }) => {
   await expect(page).toHaveScreenshot('masked.png', {
-    mask: [
-      page.locator('.timestamp'),
-      page.locator('.user-avatar'),
-    ],
+    mask: [page.locator('.timestamp'), page.locator('.user-avatar')],
   });
 });
 ```

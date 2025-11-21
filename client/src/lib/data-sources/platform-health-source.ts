@@ -59,8 +59,11 @@ class PlatformHealthSource {
     }
 
     try {
-      const omniarchonUrl = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || "http://localhost:8053";
-      const response = await fetch(`${omniarchonUrl}/api/intelligence/platform/health?timeWindow=${timeRange}`);
+      const omniarchonUrl =
+        import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+      const response = await fetch(
+        `${omniarchonUrl}/api/intelligence/platform/health?timeWindow=${timeRange}`
+      );
       if (response.ok) {
         const rawData = await response.json();
         // Validate API response with Zod schema
@@ -123,8 +126,3 @@ class PlatformHealthSource {
 }
 
 export const platformHealthSource = new PlatformHealthSource();
-
-
-
-
-

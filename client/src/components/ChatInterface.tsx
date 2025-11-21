@@ -1,16 +1,16 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Send, Search, MessageSquare, Loader2, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Send, Search, MessageSquare, Loader2, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
 }
@@ -24,7 +24,7 @@ interface Conversation {
 
 interface ChatHistoryMessage {
   id: string;
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
   timestamp: string;
 }
@@ -35,10 +35,14 @@ interface ChatHistoryResponse {
 
 export function ChatInterface() {
   // Fetch chat history from API
-  const { data: chatHistory, isLoading, error } = useQuery<ChatHistoryResponse>({
+  const {
+    data: chatHistory,
+    isLoading,
+    error,
+  } = useQuery<ChatHistoryResponse>({
     queryKey: ['chat-history'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:3000/api/chat/history');
+      const response = await fetch('/api/chat/history');
       if (!response.ok) {
         throw new Error(`Failed to fetch chat history: ${response.statusText}`);
       }
@@ -49,31 +53,33 @@ export function ChatInterface() {
 
   // Transform API response to conversations format
   const conversations: Conversation[] = chatHistory?.messages
-    ? [{
-        id: 'main-conversation',
-        title: 'Chat with AI Assistant',
-        messages: chatHistory.messages.map(msg => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        })),
-        timestamp: new Date(chatHistory.messages[0]?.timestamp || Date.now()),
-      }]
+    ? [
+        {
+          id: 'main-conversation',
+          title: 'Chat with AI Assistant',
+          messages: chatHistory.messages.map((msg) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          })),
+          timestamp: new Date(chatHistory.messages[0]?.timestamp || Date.now()),
+        },
+      ]
     : [];
 
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
-  const [input, setInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [input, setInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const currentConversation = conversations.find(c => c.id === activeConversation);
+  const currentConversation = conversations.find((c) => c.id === activeConversation);
 
   const handleSend = () => {
     if (!input.trim()) return;
     // TODO: Implement sending new messages to omniarchon API
     // For now, just clear the input as we're displaying read-only history
-    setInput("");
+    setInput('');
   };
 
-  const filteredConversations = conversations.filter(c =>
+  const filteredConversations = conversations.filter((c) =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -136,10 +142,10 @@ export function ChatInterface() {
               <div
                 key={conv.id}
                 className={cn(
-                  "p-3 rounded-lg cursor-pointer hover-elevate active-elevate-2 border",
-                  activeConversation === conv.id 
-                    ? "border-primary bg-primary/5" 
-                    : "border-card-border"
+                  'p-3 rounded-lg cursor-pointer hover-elevate active-elevate-2 border',
+                  activeConversation === conv.id
+                    ? 'border-primary bg-primary/5'
+                    : 'border-card-border'
                 )}
                 onClick={() => setActiveConversation(conv.id)}
                 data-testid={`conversation-${conv.id}`}
@@ -175,25 +181,27 @@ export function ChatInterface() {
                 <div
                   key={message.id}
                   className={cn(
-                    "flex gap-3",
-                    message.role === "user" ? "justify-end" : "justify-start"
+                    'flex gap-3',
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
                   )}
                 >
                   <div
                     className={cn(
-                      "max-w-[80%] p-4 rounded-lg",
-                      message.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary"
+                      'max-w-[80%] p-4 rounded-lg',
+                      message.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary'
                     )}
                   >
                     <div className="text-sm">{message.content}</div>
-                    <div className={cn(
-                      "text-xs mt-2",
-                      message.role === "user" 
-                        ? "text-primary-foreground/70" 
-                        : "text-muted-foreground"
-                    )}>
+                    <div
+                      className={cn(
+                        'text-xs mt-2',
+                        message.role === 'user'
+                          ? 'text-primary-foreground/70'
+                          : 'text-muted-foreground'
+                      )}
+                    >
                       {message.timestamp.toLocaleTimeString()}
                     </div>
                   </div>
@@ -205,16 +213,29 @@ export function ChatInterface() {
               <MessageSquare className="w-12 h-12 text-muted-foreground mb-4" />
               <h4 className="text-lg font-semibold mb-2">Start a New Conversation</h4>
               <p className="text-sm text-muted-foreground max-w-md">
-                Ask about agent status, pattern insights, system health, or any metrics from your platform
+                Ask about agent status, pattern insights, system health, or any metrics from your
+                platform
               </p>
               <div className="flex flex-wrap gap-2 mt-6">
-                <Badge variant="outline" className="cursor-pointer hover-elevate" onClick={() => setInput("Show me agents with high error rates")}>
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer hover-elevate"
+                  onClick={() => setInput('Show me agents with high error rates')}
+                >
                   Show me agents with high error rates
                 </Badge>
-                <Badge variant="outline" className="cursor-pointer hover-elevate" onClick={() => setInput("What's the current system health?")}>
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer hover-elevate"
+                  onClick={() => setInput("What's the current system health?")}
+                >
                   What's the current system health?
                 </Badge>
-                <Badge variant="outline" className="cursor-pointer hover-elevate" onClick={() => setInput("Top performing patterns today")}>
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer hover-elevate"
+                  onClick={() => setInput('Top performing patterns today')}
+                >
                   Top performing patterns today
                 </Badge>
               </div>
@@ -228,7 +249,7 @@ export function ChatInterface() {
               placeholder="Ask about your platform metrics..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               data-testid="input-chat-message"
             />
             <Button onClick={handleSend} data-testid="button-send-message">
