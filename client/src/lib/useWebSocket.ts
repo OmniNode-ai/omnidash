@@ -16,7 +16,7 @@ interface UseWebSocketReturn {
 }
 
 export function useWebSocket(
-  url: string = `ws://${window.location.hostname}:${window.location.port || 5000}/ws`
+  url: string = `ws://${window.location.hostname}:${window.location.port || import.meta.env.VITE_WS_PORT || 3000}/ws`
 ): UseWebSocketReturn {
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);

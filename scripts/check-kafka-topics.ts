@@ -12,7 +12,11 @@
 import { Kafka } from 'kafkajs';
 
 const kafka = new Kafka({
-  brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(','),
+  brokers: (
+    process.env.KAFKA_BROKERS ||
+    process.env.KAFKA_BOOTSTRAP_SERVERS ||
+    '192.168.86.200:29092'
+  ).split(','),
   clientId: 'omnidash-topic-checker',
 });
 

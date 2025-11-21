@@ -92,7 +92,7 @@ class PlatformHealthSource {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/api/intelligence/platform/services');
+      const response = await fetch('/api/intelligence/platform/services');
       if (response.ok) {
         const rawData = await response.json();
         // Validate API response with Zod schema

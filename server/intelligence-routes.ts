@@ -1059,7 +1059,10 @@ intelligenceRouter.get('/patterns/quality-trends', async (req, res) => {
     const hours = hoursMap[timeWindow] || 168;
 
     // Try to fetch from Omniarchon intelligence service first
-    const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+    const omniarchonUrl =
+      process.env.INTELLIGENCE_SERVICE_URL ||
+      process.env.VITE_INTELLIGENCE_SERVICE_URL ||
+      'http://localhost:8053';
     const projectId = 'default'; // Use default project for now
 
     try {
@@ -1868,7 +1871,10 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     }
 
     // Omniarchon health check
-    const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+    const omniarchonUrl =
+      process.env.INTELLIGENCE_SERVICE_URL ||
+      process.env.VITE_INTELLIGENCE_SERVICE_URL ||
+      'http://localhost:8053';
     const omniarchonStartTime = Date.now();
     try {
       const omniarchonResponse = await fetch(`${omniarchonUrl}/health`, {
@@ -2018,7 +2024,10 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Try to fetch from Omniarchon intelligence service first
-    const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+    const omniarchonUrl =
+      process.env.INTELLIGENCE_SERVICE_URL ||
+      process.env.VITE_INTELLIGENCE_SERVICE_URL ||
+      'http://localhost:8053';
 
     try {
       const omniarchonResponse = await fetch(`${omniarchonUrl}/api/quality-impact?hours=${hours}`, {

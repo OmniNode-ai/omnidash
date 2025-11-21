@@ -149,7 +149,7 @@ export class EventBusDataSource extends EventEmitter {
     super();
 
     const brokers =
-      process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092';
+      process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || '192.168.86.200:29092';
 
     this.kafka = new Kafka({
       brokers: brokers.split(','),

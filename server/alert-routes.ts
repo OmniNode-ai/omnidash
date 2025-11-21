@@ -41,7 +41,10 @@ async function getHealthCheckStatus(): Promise<HealthCheckCache> {
   const [omniarchonResult, dbResult] = await Promise.allSettled([
     // Check Omniarchon health with short timeout
     (async () => {
-      const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+      const omniarchonUrl =
+        process.env.INTELLIGENCE_SERVICE_URL ||
+        process.env.VITE_INTELLIGENCE_SERVICE_URL ||
+        'http://localhost:8053';
       try {
         const healthResponse = await fetch(`${omniarchonUrl}/health`, {
           signal: AbortSignal.timeout(500),

@@ -67,7 +67,11 @@ async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
 
 async function checkKafka(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
-  const brokers = (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(',');
+  const brokers = (
+    process.env.KAFKA_BROKERS ||
+    process.env.KAFKA_BOOTSTRAP_SERVERS ||
+    '192.168.86.200:29092'
+  ).split(',');
 
   try {
     // Create a test Kafka client
@@ -126,7 +130,10 @@ async function checkKafka(): Promise<ServiceHealthCheck> {
 
 async function checkOmniarchon(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
-  const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+  const omniarchonUrl =
+    process.env.INTELLIGENCE_SERVICE_URL ||
+    process.env.VITE_INTELLIGENCE_SERVICE_URL ||
+    'http://localhost:8053';
 
   try {
     const response = await fetch(`${omniarchonUrl}/health`, {
