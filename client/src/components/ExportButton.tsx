@@ -16,6 +16,24 @@ interface ExportButtonProps {
 }
 
 /**
+ * Sanitize value to prevent CSV injection attacks.
+ * Prefixes dangerous characters with single quote to prevent formula execution in Excel/Sheets.
+ *
+ * @param value - Value to sanitize
+ * @returns Sanitized string value
+ */
+function sanitizeCSVValue(value: any): string {
+  const strValue = String(value ?? '');
+
+  // Check if value starts with dangerous characters that could trigger formula execution
+  if (/^[=+\-@\t\r]/.test(strValue)) {
+    return `'${strValue}`; // Prefix with single quote to escape
+  }
+
+  return strValue;
+}
+
+/**
  * ExportButton component provides JSON and CSV export functionality for dashboard data.
  * Memoized to prevent unnecessary re-renders when parent state changes.
  *
@@ -23,6 +41,7 @@ interface ExportButtonProps {
  * - JSON export with pretty formatting
  * - CSV export with automatic header detection (for arrays)
  * - Handles nested objects and arrays
+ * - CSV injection protection (prevents formula execution)
  * - Client-side file download
  *
  * @param data - The data to export (can be object, array, or any JSON-serializable data)
@@ -118,10 +137,12 @@ export const ExportButton = memo(function ExportButton({
                 }
                 // Handle arrays and objects in cells
                 if (typeof value === 'object') {
-                  return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+                  const sanitized = sanitizeCSVValue(JSON.stringify(value));
+                  return `"${sanitized.replace(/"/g, '""')}"`;
                 }
-                // Escape quotes in strings
-                const stringValue = String(value).replace(/"/g, '""');
+                // Sanitize and escape quotes in strings
+                const sanitized = sanitizeCSVValue(value);
+                const stringValue = sanitized.replace(/"/g, '""');
                 return `"${stringValue}"`;
               })
               .join(',') + '\n';
@@ -151,9 +172,11 @@ export const ExportButton = memo(function ExportButton({
                 return '""';
               }
               if (typeof value === 'object') {
-                return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+                const sanitized = sanitizeCSVValue(JSON.stringify(value));
+                return `"${sanitized.replace(/"/g, '""')}"`;
               }
-              const stringValue = String(value).replace(/"/g, '""');
+              const sanitized = sanitizeCSVValue(value);
+              const stringValue = sanitized.replace(/"/g, '""');
               return `"${stringValue}"`;
             })
             .join(',') + '\n';

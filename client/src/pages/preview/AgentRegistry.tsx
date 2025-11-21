@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { agentRegistrySource } from '@/lib/data-sources';
+import { type RecentActivity } from '@/lib/data-sources/agent-registry-source';
 import { getPollingInterval } from '@/lib/constants/query-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -169,7 +170,8 @@ export default function AgentRegistry() {
   // Update state when data changes
   useEffect(() => {
     if (agentsData) {
-      setAgents(agentsData as any); // Type conversion between imported and local AgentDefinition
+      // Type assertion: data source returns flexible AgentDefinition with all required fields
+      setAgents(agentsData as AgentDefinition[]);
     }
   }, [agentsData]);
 
@@ -521,7 +523,7 @@ export default function AgentRegistry() {
             <CardContent>
               <div className="space-y-3">
                 {recentActions && recentActions.length > 0 ? (
-                  recentActions.slice(0, 5).map((action: any) => {
+                  recentActions.slice(0, 5).map((action: RecentActivity) => {
                     const agentTitle =
                       action.agentName
                         ?.replace('agent-', '')

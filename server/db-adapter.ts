@@ -23,24 +23,7 @@
 import { eq, and, gte, lte, desc, asc, sql, SQL, inArray } from 'drizzle-orm';
 import { intelligenceDb } from './storage';
 import * as schema from '@shared/intelligence-schema';
-
-// Import defensive logging helpers (server-side - need to point to client path)
-// Note: This is a server file but uses client utilities - consider extracting shared utilities
-function ensureNumeric(
-  fieldName: string,
-  value: number | string | undefined | null,
-  fallback: number,
-  context: { context: string; id?: string | number }
-): number {
-  const num = typeof value === 'string' ? parseFloat(value) : value;
-  if (typeof num !== 'number' || isNaN(num)) {
-    console.warn(
-      `[DataTransform] Invalid numeric value for '${fieldName}' in ${context.context}: ${value}, using fallback ${fallback}`
-    );
-    return fallback;
-  }
-  return num;
-}
+import { ensureNumeric } from '@shared/utils/number-utils';
 
 export interface QueryOptions {
   limit?: number;

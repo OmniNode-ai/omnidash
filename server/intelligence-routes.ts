@@ -21,6 +21,28 @@ import { checkAllServices } from './service-health';
 export const intelligenceRouter = Router();
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Convert time window to appropriate aggregation interval for PostgreSQL
+ * @param timeWindow - Time window: '24h', '7d', or '30d'
+ * @returns PostgreSQL interval string
+ */
+function getIntervalFromTimeWindow(timeWindow: string): string {
+  switch (timeWindow) {
+    case '24h':
+      return '24 hours';
+    case '7d':
+      return '7 days';
+    case '30d':
+      return '30 days';
+    default:
+      return '24 hours';
+  }
+}
+
+// ============================================================================
 // Type Definitions for Pattern Discovery Responses
 // ============================================================================
 
@@ -215,7 +237,7 @@ intelligenceRouter.get('/agents/summary', async (req, res) => {
     console.log(`[API] Event consumer metrics empty, falling back to database query`);
 
     // Fallback: query PostgreSQL directly when event stream is empty
-    const interval = timeWindow === '7d' ? '7 days' : timeWindow === '30d' ? '30 days' : '24 hours';
+    const interval = getIntervalFromTimeWindow(timeWindow);
     const rowsResult = await intelligenceDb.execute(
       sql.raw(
         `
@@ -457,14 +479,7 @@ intelligenceRouter.get('/agents/routing-strategy', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval
-    const interval =
-      timeWindow === '24h'
-        ? '24 hours'
-        : timeWindow === '7d'
-          ? '7 days'
-          : timeWindow === '30d'
-            ? '30 days'
-            : '24 hours';
+    const interval = getIntervalFromTimeWindow(timeWindow);
 
     // Query routing decisions grouped by strategy
     const strategyData = await intelligenceDb
@@ -852,14 +867,7 @@ intelligenceRouter.get('/patterns/trends', async (req, res) => {
     }
 
     // Determine time interval and truncation
-    const interval =
-      timeWindow === '24h'
-        ? '24 hours'
-        : timeWindow === '7d'
-          ? '7 days'
-          : timeWindow === '30d'
-            ? '30 days'
-            : '7 days';
+    const interval = getIntervalFromTimeWindow(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -1423,14 +1431,7 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval
-    const interval =
-      timeWindow === '24h'
-        ? '24 hours'
-        : timeWindow === '7d'
-          ? '7 days'
-          : timeWindow === '30d'
-            ? '30 days'
-            : '24 hours';
+    const interval = getIntervalFromTimeWindow(timeWindow);
 
     // Get summary statistics
     const [summaryResult] = await intelligenceDb
@@ -1938,14 +1939,7 @@ intelligenceRouter.get('/metrics/operations-per-minute', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval and truncation
-    const interval =
-      timeWindow === '24h'
-        ? '24 hours'
-        : timeWindow === '7d'
-          ? '7 days'
-          : timeWindow === '30d'
-            ? '30 days'
-            : '24 hours';
+    const interval = getIntervalFromTimeWindow(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -2019,14 +2013,7 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
     const hours = hoursMap[timeWindow] || 24;
 
     // Determine time interval and truncation for database fallback
-    const interval =
-      timeWindow === '24h'
-        ? '24 hours'
-        : timeWindow === '7d'
-          ? '7 days'
-          : timeWindow === '30d'
-            ? '30 days'
-            : '24 hours';
+    const interval = getIntervalFromTimeWindow(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -2239,14 +2226,7 @@ intelligenceRouter.get('/developer/velocity', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval and truncation
-    const interval =
-      timeWindow === '24h'
-        ? '24 hours'
-        : timeWindow === '7d'
-          ? '7 days'
-          : timeWindow === '30d'
-            ? '30 days'
-            : '24 hours';
+    const interval = getIntervalFromTimeWindow(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -2313,14 +2293,7 @@ intelligenceRouter.get('/developer/productivity', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval and truncation
-    const interval =
-      timeWindow === '24h'
-        ? '24 hours'
-        : timeWindow === '7d'
-          ? '7 days'
-          : timeWindow === '30d'
-            ? '30 days'
-            : '24 hours';
+    const interval = getIntervalFromTimeWindow(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -2400,14 +2373,7 @@ intelligenceRouter.get('/developer/task-velocity', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '7d';
 
     // Determine time interval and truncation
-    const interval =
-      timeWindow === '24h'
-        ? '24 hours'
-        : timeWindow === '7d'
-          ? '7 days'
-          : timeWindow === '30d'
-            ? '30 days'
-            : '7 days';
+    const interval = getIntervalFromTimeWindow(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -2618,14 +2584,7 @@ intelligenceRouter.get('/documents/top-accessed', async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
 
     // Determine time interval for filtering
-    const interval =
-      timeWindow === '24h'
-        ? '24 hours'
-        : timeWindow === '7d'
-          ? '7 days'
-          : timeWindow === '30d'
-            ? '30 days'
-            : '7 days';
+    const interval = getIntervalFromTimeWindow(timeWindow);
 
     // Get top accessed documents (ordered by access_count)
     const topDocuments = await intelligenceDb
@@ -2744,14 +2703,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval
-    const interval =
-      timeWindow === '24h'
-        ? '24 hours'
-        : timeWindow === '7d'
-          ? '7 days'
-          : timeWindow === '30d'
-            ? '30 days'
-            : '24 hours';
+    const interval = getIntervalFromTimeWindow(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 

@@ -10,6 +10,10 @@ import { Code, Zap, Download, AlertTriangle, CheckCircle } from 'lucide-react';
 
 import type { RefactoringOpportunity } from '@/pages/preview/TechDebtAnalysis';
 
+// Maximum cost savings value used for progress bar scale
+// This normalizes cost savings to a 0-100% progress range
+const MAX_COST_SAVINGS_FOR_PROGRESS = 50000;
+
 interface TechDebtDetailModalProps {
   opportunity: RefactoringOpportunity | null;
   isOpen: boolean;
@@ -228,7 +232,13 @@ export function TechDebtDetailModal({ opportunity, isOpen, onClose }: TechDebtDe
                   <span className="font-mono">${opportunity.costSavings.toLocaleString()}</span>
                 </div>
                 <Progress
-                  value={Math.max(0, Math.min(100, ((opportunity.costSavings || 0) / 50000) * 100))}
+                  value={Math.max(
+                    0,
+                    Math.min(
+                      100,
+                      ((opportunity.costSavings || 0) / MAX_COST_SAVINGS_FOR_PROGRESS) * 100
+                    )
+                  )}
                   className="h-2"
                 />
               </div>

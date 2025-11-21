@@ -41,10 +41,13 @@ export function createMockResponse<T>(data: T, options: MockResponseOptions = {}
 /**
  * Create a mock fetch that returns an error
  */
-export function createMockFetchError(): Response {
+export function createMockFetchError(
+  status: number = 500,
+  statusText: string = 'Internal Server Error'
+): Response {
   return new Response(null, {
-    status: 500,
-    statusText: 'Internal Server Error',
+    status,
+    statusText,
   });
 }
 
@@ -52,7 +55,9 @@ export function createMockFetchError(): Response {
  * Setup global fetch mock with a response map
  * Accepts Response objects, Error objects, or plain objects (serialized as JSON)
  */
-export function setupFetchMock(responses: Map<string, Response | Error | unknown>): void {
+export function setupFetchMock(
+  responses: Map<string, Response | Error | unknown> | Record<string, Response | Error | unknown>
+): void {
   // Cache body texts to avoid reading Response bodies multiple times
   const bodyTextCache = new Map<Response, string>();
 
@@ -71,8 +76,12 @@ export function setupFetchMock(responses: Map<string, Response | Error | unknown
     const url =
       typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
+    // Convert responses to entries array (works for both Map and Record)
+    const entries =
+      responses instanceof Map ? Array.from(responses.entries()) : Object.entries(responses);
+
     // Find matching response
-    for (const [pattern, response] of Array.from(responses.entries())) {
+    for (const [pattern, response] of entries) {
       if (url.includes(pattern)) {
         if (response instanceof Error) {
           throw response;

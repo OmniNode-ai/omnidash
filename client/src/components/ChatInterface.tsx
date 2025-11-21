@@ -42,7 +42,7 @@ export function ChatInterface() {
   } = useQuery<ChatHistoryResponse>({
     queryKey: ['chat-history'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:3000/api/chat/history');
+      const response = await fetch('/api/chat/history');
       if (!response.ok) {
         throw new Error(`Failed to fetch chat history: ${response.statusText}`);
       }
