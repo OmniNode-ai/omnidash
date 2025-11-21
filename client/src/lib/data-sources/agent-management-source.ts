@@ -316,7 +316,7 @@ class AgentManagementDataSource {
                 { value: action.id, label: 'id field' },
                 { value: action.correlationId, label: 'correlationId field', level: 'warn' },
                 {
-                  value: `unknown-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  value: `unknown-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
                   label: 'generated placeholder',
                   level: 'error',
                 },
