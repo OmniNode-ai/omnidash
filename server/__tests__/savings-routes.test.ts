@@ -22,6 +22,7 @@ vi.mock('../agent-run-tracker', () => ({
       timeSaved: 10,
       dataAvailable: true,
     }),
+    recordRun: vi.fn(),
     getRuns: vi.fn().mockReturnValue([]),
     getRunsInRange: vi.fn().mockReturnValue([]),
     getAgentIds: vi.fn().mockReturnValue(['test-agent']),
