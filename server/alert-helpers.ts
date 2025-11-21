@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { intelligenceDb } from './storage';
+import { getIntelligenceDb } from './storage';
 import {
   agentActions,
   agentManifestInjections,
@@ -93,7 +93,7 @@ async function getErrorRateUncached(timeWindow: string): Promise<number> {
             : '10 minutes';
 
     // Optimized query - only count, no full table scan
-    const [result] = await intelligenceDb
+    const [result] = await getIntelligenceDb()
       .select({
         totalActions: sql<number>`COUNT(*)::int`,
         errorActions: sql<number>`
@@ -124,7 +124,7 @@ async function getManifestInjectionSuccessRateUncached(timeWindow: string): Prom
     const interval =
       timeWindow === '1 hour' ? '1 hour' : timeWindow === '24 hours' ? '24 hours' : '1 hour';
 
-    const [result] = await intelligenceDb
+    const [result] = await getIntelligenceDb()
       .select({
         totalInjections: sql<number>`COUNT(*)::int`,
         successfulInjections: sql<number>`
@@ -161,7 +161,7 @@ async function getAvgResponseTimeUncached(timeWindow: string): Promise<number> {
             ? '24 hours'
             : '10 minutes';
 
-    const [result] = await intelligenceDb
+    const [result] = await getIntelligenceDb()
       .select({
         avgTimeMs: sql<number>`ROUND(AVG(${agentRoutingDecisions.routingTimeMs}))::int`,
       })
@@ -187,7 +187,7 @@ async function getSuccessRateUncached(timeWindow: string): Promise<number> {
     const interval =
       timeWindow === '1 hour' ? '1 hour' : timeWindow === '24 hours' ? '24 hours' : '1 hour';
 
-    const [result] = await intelligenceDb
+    const [result] = await getIntelligenceDb()
       .select({
         totalDecisions: sql<number>`COUNT(*)::int`,
         successfulDecisions: sql<number>`

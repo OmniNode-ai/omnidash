@@ -61,18 +61,31 @@ function getIntelligenceConnectionString(): string {
   }
 
   // Build connection string from individual environment variables
-  const user = process.env.POSTGRES_USER || 'postgres';
   const host = process.env.POSTGRES_HOST || '192.168.86.200';
   const port = process.env.POSTGRES_PORT || '5436';
   const database = process.env.POSTGRES_DATABASE || 'omninode_bridge';
+  const user = process.env.POSTGRES_USER || 'postgres';
 
   return `postgresql://${user}:${password}@${host}:${port}/${database}`;
 }
 
-const intelligenceConnectionString = getIntelligenceConnectionString();
+// Lazy initialization to avoid requiring env vars at module load time
+let poolInstance: InstanceType<typeof Pool> | null = null;
+let intelligenceDbInstance: ReturnType<typeof drizzle> | null = null;
 
-const pool = new Pool({
-  connectionString: intelligenceConnectionString,
-});
+function getPool(): InstanceType<typeof Pool> {
+  if (!poolInstance) {
+    const intelligenceConnectionString = getIntelligenceConnectionString();
+    poolInstance = new Pool({
+      connectionString: intelligenceConnectionString,
+    });
+  }
+  return poolInstance;
+}
 
-export const intelligenceDb = drizzle(pool);
+export function getIntelligenceDb() {
+  if (!intelligenceDbInstance) {
+    intelligenceDbInstance = drizzle(getPool());
+  }
+  return intelligenceDbInstance;
+}

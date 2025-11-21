@@ -38,10 +38,12 @@ vi.mock('kafkajs', () => ({
 }));
 
 // Mock storage module
+const mockDb = {
+  execute: vi.fn(),
+};
+
 vi.mock('../storage', () => ({
-  intelligenceDb: {
-    execute: vi.fn(),
-  },
+  getIntelligenceDb: vi.fn(() => mockDb),
 }));
 
 // Import after mocks are set up - this will use our mocks

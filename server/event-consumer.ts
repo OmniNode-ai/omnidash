@@ -1,6 +1,6 @@
 import { Kafka, Consumer } from 'kafkajs';
 import { EventEmitter } from 'events';
-import { intelligenceDb } from './storage';
+import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
@@ -120,10 +120,15 @@ export class EventConsumer extends EventEmitter {
   constructor() {
     super(); // Initialize EventEmitter
 
-    // Get brokers from environment variable
-    // If not configured, create a dummy Kafka instance that will fail validation
-    const brokers =
-      process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || '192.168.86.200:29092';
+    // Get brokers from environment variable - required, no fallback
+    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+    if (!brokers) {
+      throw new Error(
+        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
+          'Set it in .env file or export it before starting the server. ' +
+          'Example: KAFKA_BROKERS=192.168.86.200:29092'
+      );
+    }
 
     this.kafka = new Kafka({
       brokers: brokers.split(','),
@@ -309,7 +314,7 @@ export class EventConsumer extends EventEmitter {
   private async preloadFromDatabase() {
     try {
       // Load recent actions
-      const actionsResult = await intelligenceDb.execute(
+      const actionsResult = await getIntelligenceDb().execute(
         sql.raw(`
         SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
         FROM agent_actions
@@ -344,7 +349,7 @@ export class EventConsumer extends EventEmitter {
       }
 
       // Seed agent metrics using routing decisions + actions
-      const metricsResult = await intelligenceDb.execute(
+      const metricsResult = await getIntelligenceDb().execute(
         sql.raw(`
         SELECT COALESCE(ard.selected_agent, aa.agent_name) AS agent,
                COUNT(aa.id) AS total_requests,

@@ -1,14 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { checkAllServices } from '../service-health';
-import { intelligenceDb } from '../storage';
+import { getIntelligenceDb } from '../storage';
 import { eventConsumer } from '../event-consumer';
 import { Kafka } from 'kafkajs';
 
 // Mock dependencies
+const mockDb = {
+  execute: vi.fn(),
+};
+
 vi.mock('../storage', () => ({
-  intelligenceDb: {
-    execute: vi.fn(),
-  },
+  getIntelligenceDb: vi.fn(() => mockDb),
 }));
 
 vi.mock('../event-consumer', () => ({
@@ -45,7 +47,7 @@ describe('Service Health Checks', () => {
         },
       ];
 
-      vi.mocked(intelligenceDb.execute).mockResolvedValue(mockResult as any);
+      vi.mocked(mockDb.execute).mockResolvedValue(mockResult as any);
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -81,7 +83,7 @@ describe('Service Health Checks', () => {
     });
 
     it('should return down status when database connection fails', async () => {
-      vi.mocked(intelligenceDb.execute).mockRejectedValue(new Error('Connection refused'));
+      vi.mocked(mockDb.execute).mockRejectedValue(new Error('Connection refused'));
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -118,7 +120,7 @@ describe('Service Health Checks', () => {
 
   describe('checkKafka (via checkAllServices)', () => {
     it('should return up status when Kafka is healthy', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -156,7 +158,7 @@ describe('Service Health Checks', () => {
     });
 
     it('should return down status when Kafka connection fails', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
       const mockAdmin = {
         connect: vi.fn().mockRejectedValue(new Error('Connection refused')),
@@ -191,7 +193,7 @@ describe('Service Health Checks', () => {
 
   describe('checkOmniarchon (via checkAllServices)', () => {
     it('should return up status when Omniarchon is healthy', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -230,7 +232,7 @@ describe('Service Health Checks', () => {
     });
 
     it('should handle non-OK HTTP responses', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -266,7 +268,7 @@ describe('Service Health Checks', () => {
     });
 
     it('should handle fetch errors', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -299,7 +301,7 @@ describe('Service Health Checks', () => {
 
   describe('checkEventConsumer (via checkAllServices)', () => {
     it('should return up status when event consumer is healthy', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -335,7 +337,7 @@ describe('Service Health Checks', () => {
     });
 
     it('should return down status when event consumer is unhealthy', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -370,7 +372,7 @@ describe('Service Health Checks', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -408,7 +410,7 @@ describe('Service Health Checks', () => {
   describe('checkAllServices', () => {
     it('should check all services and return array of results', async () => {
       // Mock all service checks
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),

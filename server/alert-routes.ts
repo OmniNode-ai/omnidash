@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { intelligenceDb } from './storage';
+import { getIntelligenceDb } from './storage';
 import { patternLineageNodes } from '../shared/intelligence-schema';
 import { getAllAlertMetrics } from './alert-helpers';
 
@@ -41,10 +41,7 @@ async function getHealthCheckStatus(): Promise<HealthCheckCache> {
   const [omniarchonResult, dbResult] = await Promise.allSettled([
     // Check Omniarchon health with short timeout
     (async () => {
-      const omniarchonUrl =
-        process.env.INTELLIGENCE_SERVICE_URL ||
-        process.env.VITE_INTELLIGENCE_SERVICE_URL ||
-        'http://localhost:8053';
+      const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
       try {
         const healthResponse = await fetch(`${omniarchonUrl}/health`, {
           signal: AbortSignal.timeout(500),
@@ -58,7 +55,7 @@ async function getHealthCheckStatus(): Promise<HealthCheckCache> {
     // Check database connection
     (async () => {
       try {
-        await intelligenceDb
+        await getIntelligenceDb()
           .select({ check: sql<number>`1::int` })
           .from(patternLineageNodes)
           .limit(1);

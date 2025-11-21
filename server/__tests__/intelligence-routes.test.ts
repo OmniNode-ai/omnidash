@@ -2,22 +2,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { type Express } from 'express';
 import { intelligenceRouter } from '../intelligence-routes';
-import { intelligenceDb } from '../storage';
+import { getIntelligenceDb } from '../storage';
 import { intelligenceEvents } from '../intelligence-event-adapter';
 import { eventConsumer } from '../event-consumer';
 import { checkAllServices } from '../service-health';
 import { dbAdapter } from '../db-adapter';
 
 // Mock dependencies
+const mockDb = {
+  select: vi.fn().mockReturnThis(),
+  from: vi.fn().mockReturnThis(),
+  where: vi.fn().mockReturnThis(),
+  orderBy: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockResolvedValue([]),
+  execute: vi.fn().mockResolvedValue([]),
+};
+
 vi.mock('../storage', () => ({
-  intelligenceDb: {
-    select: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    orderBy: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue([]),
-    execute: vi.fn().mockResolvedValue([]),
-  },
+  getIntelligenceDb: vi.fn(() => mockDb),
 }));
 
 vi.mock('../intelligence-event-adapter', () => ({
@@ -62,8 +64,8 @@ vi.mock('../db-adapter', () => ({
 }));
 
 function resetSelectMock() {
-  vi.mocked(intelligenceDb.select).mockReset();
-  vi.mocked(intelligenceDb.select).mockReturnThis();
+  vi.mocked(mockDb.select).mockReset();
+  vi.mocked(mockDb.select).mockReturnThis();
 }
 
 describe('Intelligence Routes', () => {
@@ -199,7 +201,7 @@ describe('Intelligence Routes', () => {
 
     it('should fall back to database when event consumer is empty', async () => {
       vi.mocked(eventConsumer.getAgentMetrics).mockReturnValue([]);
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([
+      vi.mocked(mockDb.execute).mockResolvedValue([
         {
           agent: 'test-agent',
           total_requests: 50,
@@ -218,7 +220,7 @@ describe('Intelligence Routes', () => {
     // eslint-disable-next-line vitest/expect-expect
     it('should handle different time windows', async () => {
       vi.mocked(eventConsumer.getAgentMetrics).mockReturnValue([]);
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([]);
+      vi.mocked(mockDb.execute).mockResolvedValue([]);
 
       await request(app).get('/api/intelligence/agents/summary?timeWindow=7d').expect(200);
 
@@ -283,10 +285,10 @@ describe('Intelligence Routes', () => {
   describe('GET /api/intelligence/patterns/summary', () => {
     it('should return pattern summary', async () => {
       // Mock the table existence check to succeed
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
       // Mock the select query result
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockResolvedValue([
           {
             total_patterns: 100,
@@ -307,7 +309,7 @@ describe('Intelligence Routes', () => {
       const tableError = new Error('relation "pattern_lineage_nodes" does not exist');
       (tableError as any).code = '42P01';
       // Use mockRejectedValueOnce for the first execute call (table check)
-      vi.mocked(intelligenceDb.execute).mockRejectedValueOnce(tableError);
+      vi.mocked(mockDb.execute).mockRejectedValueOnce(tableError);
 
       const response = await request(app).get('/api/intelligence/patterns/summary').expect(200);
 
@@ -318,8 +320,8 @@ describe('Intelligence Routes', () => {
 
     it('should handle errors gracefully', async () => {
       // Mock table check to succeed, but select query to fail
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockRejectedValue(new Error('Database connection error')),
       } as any);
 
@@ -372,7 +374,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/agents/routing-strategy', () => {
     it('should return routing strategy breakdown', async () => {
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             groupBy: vi.fn().mockReturnValue({
@@ -394,7 +396,7 @@ describe('Intelligence Routes', () => {
 
     // eslint-disable-next-line vitest/expect-expect
     it('should accept timeWindow parameter', async () => {
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             groupBy: vi.fn().mockReturnValue({
@@ -448,9 +450,9 @@ describe('Intelligence Routes', () => {
   describe('GET /api/intelligence/patterns/recent', () => {
     it('should return recent patterns', async () => {
       // Mock table existence check
-      vi.mocked(intelligenceDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockReturnValue({
             limit: vi.fn().mockResolvedValue([
@@ -475,7 +477,7 @@ describe('Intelligence Routes', () => {
     it('should return mock data when table does not exist', async () => {
       const tableError = new Error('relation "pattern_lineage_nodes" does not exist');
       (tableError as any).code = '42P01';
-      vi.mocked(intelligenceDb.execute).mockRejectedValue(tableError);
+      vi.mocked(mockDb.execute).mockRejectedValue(tableError);
 
       const response = await request(app)
         .get('/api/intelligence/patterns/recent?limit=20')
@@ -488,10 +490,10 @@ describe('Intelligence Routes', () => {
   describe('GET /api/intelligence/patterns/trends', () => {
     it('should return pattern trends', async () => {
       // Mock table existence check
-      vi.mocked(intelligenceDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
 
       // Mock the trends query
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             groupBy: vi.fn().mockReturnValue({
@@ -518,7 +520,7 @@ describe('Intelligence Routes', () => {
     it('should return empty array when table does not exist', async () => {
       const tableError = new Error('relation "pattern_lineage_nodes" does not exist');
       (tableError as any).code = '42P01';
-      vi.mocked(intelligenceDb.execute).mockRejectedValue(tableError);
+      vi.mocked(mockDb.execute).mockRejectedValue(tableError);
 
       const response = await request(app).get('/api/intelligence/patterns/trends').expect(200);
 
@@ -529,8 +531,8 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/patterns/list', () => {
     it('should return pattern list', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
-      vi.mocked(intelligenceDb.execute).mockResolvedValueOnce({
+      vi.mocked(mockDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValueOnce({
         rows: [
           {
             id: 'test-id',
@@ -555,7 +557,7 @@ describe('Intelligence Routes', () => {
     it('should return empty array when table does not exist', async () => {
       const tableError = new Error('relation "pattern_lineage_nodes" does not exist');
       (tableError as any).code = '42P01';
-      vi.mocked(intelligenceDb.execute).mockRejectedValue(tableError);
+      vi.mocked(mockDb.execute).mockRejectedValue(tableError);
 
       const response = await request(app).get('/api/intelligence/patterns/list').expect(200);
 
@@ -607,7 +609,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/patterns/performance', () => {
     it('should return pattern performance metrics', async () => {
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             groupBy: vi.fn().mockReturnValue({
@@ -635,10 +637,10 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/patterns/relationships', () => {
     it('should return pattern relationships', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
 
       // Mock the top patterns query (when no patternIdsParam)
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockReturnValue({
             limit: vi.fn().mockResolvedValue([{ id: 'pattern-1' }, { id: 'pattern-2' }]),
@@ -647,7 +649,7 @@ describe('Intelligence Routes', () => {
       } as any);
 
       // Mock the edges query
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi
             .fn()
@@ -667,7 +669,7 @@ describe('Intelligence Routes', () => {
     it('should return empty array when table does not exist', async () => {
       const tableError = new Error('relation "pattern_lineage_nodes" does not exist');
       (tableError as any).code = '42P01';
-      vi.mocked(intelligenceDb.execute).mockRejectedValue(tableError);
+      vi.mocked(mockDb.execute).mockRejectedValue(tableError);
 
       const response = await request(app)
         .get('/api/intelligence/patterns/relationships')
@@ -680,8 +682,8 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/patterns/by-language', () => {
     it('should return language breakdown', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.execute).mockResolvedValueOnce([{ check: 1 }] as any);
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             groupBy: vi.fn().mockReturnValue({
@@ -705,7 +707,7 @@ describe('Intelligence Routes', () => {
   describe('GET /api/intelligence/transformations/summary', () => {
     it('should return transformation summary', async () => {
       // Mock the summary statistics query (first select)
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
             {
@@ -720,7 +722,7 @@ describe('Intelligence Routes', () => {
       } as any);
 
       // Mock the most common transformation query (second select)
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             groupBy: vi.fn().mockReturnValue({
@@ -735,7 +737,7 @@ describe('Intelligence Routes', () => {
       } as any);
 
       // Mock the transformation flows query (third select)
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             groupBy: vi.fn().mockReturnValue({
@@ -768,7 +770,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/developer/workflows', () => {
     it('should aggregate workflows with improvement calculation', async () => {
-      const selectMock = vi.mocked(intelligenceDb.select);
+      const selectMock = vi.mocked(mockDb.select);
       selectMock
         .mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
@@ -814,7 +816,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should handle workflow errors gracefully', async () => {
-      vi.mocked(intelligenceDb.select).mockImplementationOnce(() => {
+      vi.mocked(mockDb.select).mockImplementationOnce(() => {
         throw new Error('workflow error');
       });
 
@@ -826,7 +828,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/developer/velocity', () => {
     it('should format velocity results by hour for 24h window', async () => {
-      const selectMock = vi.mocked(intelligenceDb.select);
+      const selectMock = vi.mocked(mockDb.select);
       selectMock.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -855,7 +857,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should handle velocity errors gracefully', async () => {
-      vi.mocked(intelligenceDb.select).mockImplementationOnce(() => {
+      vi.mocked(mockDb.select).mockImplementationOnce(() => {
         throw new Error('velocity error');
       });
 
@@ -867,7 +869,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/developer/productivity', () => {
     it('should calculate productivity score from success rate and confidence', async () => {
-      const selectMock = vi.mocked(intelligenceDb.select);
+      const selectMock = vi.mocked(mockDb.select);
       selectMock.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -897,7 +899,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should handle productivity errors gracefully', async () => {
-      vi.mocked(intelligenceDb.select).mockImplementationOnce(() => {
+      vi.mocked(mockDb.select).mockImplementationOnce(() => {
         throw new Error('productivity error');
       });
 
@@ -911,7 +913,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/developer/task-velocity', () => {
     it('should return task velocity with tasks per day calculation', async () => {
-      const selectMock = vi.mocked(intelligenceDb.select);
+      const selectMock = vi.mocked(mockDb.select);
       selectMock.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -947,7 +949,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should handle task velocity errors gracefully', async () => {
-      vi.mocked(intelligenceDb.select).mockImplementationOnce(() => {
+      vi.mocked(mockDb.select).mockImplementationOnce(() => {
         throw new Error('task velocity failure');
       });
 
@@ -1073,7 +1075,7 @@ describe('Intelligence Routes', () => {
   describe('GET /api/intelligence/documents/top-accessed', () => {
     it('should return documents with trend metadata', async () => {
       const nowIso = new Date().toISOString();
-      const selectMock = vi.mocked(intelligenceDb.select);
+      const selectMock = vi.mocked(mockDb.select);
       selectMock
         .mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
@@ -1146,7 +1148,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should handle document query errors', async () => {
-      vi.mocked(intelligenceDb.select).mockImplementationOnce(() => {
+      vi.mocked(mockDb.select).mockImplementationOnce(() => {
         throw new Error('document failure');
       });
 
@@ -1162,7 +1164,7 @@ describe('Intelligence Routes', () => {
     it('should return empty structure when table missing', async () => {
       const tableError = new Error('relation "onex_compliance_stamps" does not exist') as any;
       tableError.code = '42P01';
-      vi.mocked(intelligenceDb.execute).mockRejectedValueOnce(tableError);
+      vi.mocked(mockDb.execute).mockRejectedValueOnce(tableError);
 
       const response = await request(app).get('/api/intelligence/code/compliance').expect(200);
 
@@ -1171,7 +1173,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should handle compliance errors', async () => {
-      vi.mocked(intelligenceDb.execute).mockRejectedValueOnce(new Error('db unavailable'));
+      vi.mocked(mockDb.execute).mockRejectedValueOnce(new Error('db unavailable'));
 
       const response = await request(app).get('/api/intelligence/code/compliance').expect(500);
 
@@ -1182,7 +1184,7 @@ describe('Intelligence Routes', () => {
   describe('GET /api/intelligence/platform/services', () => {
     it('should return formatted platform services', async () => {
       const serviceDate = new Date('2024-02-01T10:00:00Z');
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             orderBy: vi.fn().mockResolvedValue([
@@ -1216,7 +1218,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should handle errors fetching platform services', async () => {
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             orderBy: vi.fn().mockRejectedValue(new Error('registry unavailable')),
@@ -1250,7 +1252,7 @@ describe('Intelligence Routes', () => {
       const decisionCreatedAt = new Date('2024-01-01T00:00:00Z');
       const actionCreatedAt = new Date('2024-01-01T00:01:00Z');
 
-      vi.mocked(intelligenceDb.select)
+      vi.mocked(mockDb.select)
         .mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
@@ -1301,7 +1303,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should return 404 when execution not found', async () => {
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             limit: vi.fn().mockResolvedValue([]),
@@ -1366,7 +1368,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/patterns/:patternId/details', () => {
     it('should return pattern details with metrics', async () => {
-      vi.mocked(intelligenceDb.select)
+      vi.mocked(mockDb.select)
         .mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
@@ -1420,7 +1422,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should return 404 when pattern does not exist', async () => {
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             limit: vi.fn().mockResolvedValue([]),
@@ -1473,7 +1475,7 @@ describe('Intelligence Routes', () => {
       const correlationId = '123e4567-e89b-12d3-a456-426614174000';
 
       // Mock actions query
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
             {
@@ -1490,7 +1492,7 @@ describe('Intelligence Routes', () => {
       } as any);
 
       // Mock manifests query
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
             {
@@ -1509,7 +1511,7 @@ describe('Intelligence Routes', () => {
       } as any);
 
       // Mock routing decisions query
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
             {
