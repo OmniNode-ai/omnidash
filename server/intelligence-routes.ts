@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { intelligenceEvents } from './intelligence-event-adapter';
 import { eventConsumer } from './event-consumer';
-import { intelligenceDb } from './storage';
+import { getIntelligenceDb } from './storage';
 import {
   agentManifestInjections,
   patternLineageNodes,
@@ -17,6 +17,7 @@ import {
 } from '../shared/intelligence-schema';
 import { sql, desc, gte, eq, or, and, inArray } from 'drizzle-orm';
 import { checkAllServices } from './service-health';
+import { getOmniarchonUrl } from './utils/service-urls';
 
 export const intelligenceRouter = Router();
 
@@ -238,7 +239,7 @@ intelligenceRouter.get('/agents/summary', async (req, res) => {
 
     // Fallback: query PostgreSQL directly when event stream is empty
     const interval = getIntervalFromTimeWindow(timeWindow);
-    const rowsResult = await intelligenceDb.execute(
+    const rowsResult = await getIntelligenceDb().execute(
       sql.raw(
         `
       SELECT
@@ -324,7 +325,7 @@ intelligenceRouter.get('/actions/recent', async (req, res) => {
 
     // Fallback: pull most recent actions from PostgreSQL
     try {
-      const rowsResult = await intelligenceDb.execute(
+      const rowsResult = await getIntelligenceDb().execute(
         sql.raw(
           `
         SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
@@ -482,7 +483,7 @@ intelligenceRouter.get('/agents/routing-strategy', async (req, res) => {
     const interval = getIntervalFromTimeWindow(timeWindow);
 
     // Query routing decisions grouped by strategy
-    const strategyData = await intelligenceDb
+    const strategyData = await getIntelligenceDb()
       .select({
         strategy: agentRoutingDecisions.routingStrategy,
         count: sql<number>`COUNT(*)::int`,
@@ -604,7 +605,7 @@ intelligenceRouter.get('/patterns/discovery', async (req, res) => {
 
     // Check if table exists first - if not, return mock data
     try {
-      await intelligenceDb.execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
+      await getIntelligenceDb().execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
     } catch (tableError: any) {
       // Table doesn't exist - return mock data
       const errorCode = tableError?.code || tableError?.errno || '';
@@ -644,7 +645,7 @@ intelligenceRouter.get('/patterns/discovery', async (req, res) => {
     }
 
     // Try to get real patterns from pattern_lineage_nodes
-    const recentPatterns = await intelligenceDb
+    const recentPatterns = await getIntelligenceDb()
       .select({
         name: patternLineageNodes.patternName,
         file_path: patternLineageNodes.patternId,
@@ -733,7 +734,7 @@ intelligenceRouter.get('/patterns/summary', async (req, res) => {
   try {
     // Check if table exists first - if not, return empty summary
     try {
-      await intelligenceDb.execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
+      await getIntelligenceDb().execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
     } catch (tableError: any) {
       // Table doesn't exist - return empty summary
       const errorCode = tableError?.code || tableError?.errno || '';
@@ -750,7 +751,7 @@ intelligenceRouter.get('/patterns/summary', async (req, res) => {
     }
 
     // Get pattern summary statistics
-    const [summaryResult] = await intelligenceDb
+    const [summaryResult] = await getIntelligenceDb()
       .select({
         total_patterns: sql<number>`COUNT(*)::int`,
         languages: sql<number>`COUNT(DISTINCT ${patternLineageNodes.language})::int`,
@@ -798,7 +799,7 @@ intelligenceRouter.get('/patterns/recent', async (req, res) => {
 
     // Check if table exists first - if not, return empty array
     try {
-      await intelligenceDb.execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
+      await getIntelligenceDb().execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
     } catch (tableError: any) {
       const errorCode = tableError?.code || tableError?.errno || '';
       if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
@@ -809,7 +810,7 @@ intelligenceRouter.get('/patterns/recent', async (req, res) => {
     }
 
     // Query recent patterns
-    const patterns = await intelligenceDb
+    const patterns = await getIntelligenceDb()
       .select({
         pattern_name: patternLineageNodes.patternName,
         pattern_version: patternLineageNodes.patternVersion,
@@ -854,7 +855,7 @@ intelligenceRouter.get('/patterns/trends', async (req, res) => {
 
     // Check if table exists first - if not, return empty array
     try {
-      await intelligenceDb.execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
+      await getIntelligenceDb().execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
     } catch (tableError: any) {
       // Table doesn't exist (PostgreSQL error code 42P01 = undefined_table)
       const errorCode = tableError?.code || tableError?.errno || '';
@@ -871,7 +872,7 @@ intelligenceRouter.get('/patterns/trends', async (req, res) => {
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
-    const trends = await intelligenceDb
+    const trends = await getIntelligenceDb()
       .select({
         period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${patternLineageNodes.createdAt})::text`,
         // Actual pattern count per time period (not hardcoded 1)
@@ -928,7 +929,7 @@ intelligenceRouter.get('/patterns/list', async (req, res) => {
   try {
     // Check if table exists first - if not, return empty array
     try {
-      await intelligenceDb.execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
+      await getIntelligenceDb().execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
     } catch (tableError: any) {
       const errorCode = tableError?.code || tableError?.errno || '';
       if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
@@ -943,7 +944,7 @@ intelligenceRouter.get('/patterns/list', async (req, res) => {
 
     // Get code patterns from pattern_lineage_nodes with quality metrics
     // Use raw SQL for LEFT JOIN to avoid Drizzle ORM issues with nullable fields
-    const patterns = await intelligenceDb.execute<{
+    const patterns = await getIntelligenceDb().execute<{
       id: string;
       name: string;
       patternType: string;
@@ -1059,7 +1060,7 @@ intelligenceRouter.get('/patterns/quality-trends', async (req, res) => {
     const hours = hoursMap[timeWindow] || 168;
 
     // Try to fetch from Omniarchon intelligence service first
-    const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+    const omniarchonUrl = getOmniarchonUrl();
     const projectId = 'default'; // Use default project for now
 
     try {
@@ -1138,7 +1139,7 @@ intelligenceRouter.get('/patterns/quality-trends', async (req, res) => {
 intelligenceRouter.get('/patterns/performance', async (req, res) => {
   try {
     // Get performance metrics grouped by generation source
-    const performance = await intelligenceDb
+    const performance = await getIntelligenceDb()
       .select({
         generationSource: agentManifestInjections.generationSource,
         totalManifests: sql<number>`COUNT(*)::int`,
@@ -1203,7 +1204,7 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
   try {
     // Check if table exists first - if not, return empty array
     try {
-      await intelligenceDb.execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
+      await getIntelligenceDb().execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
     } catch (tableError: any) {
       const errorCode = tableError?.code || tableError?.errno || '';
       if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
@@ -1232,7 +1233,7 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
         nodeUuids = inputIds;
       } else {
         // Look up UUIDs by patternId (VARCHAR column)
-        const nodes = await intelligenceDb
+        const nodes = await getIntelligenceDb()
           .select({ id: patternLineageNodes.id })
           .from(patternLineageNodes)
           .where(inArray(patternLineageNodes.patternId, inputIds));
@@ -1240,7 +1241,7 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
       }
     } else {
       // Get top 50 most recent patterns
-      const topPatterns = await intelligenceDb
+      const topPatterns = await getIntelligenceDb()
         .select({ id: patternLineageNodes.id })
         .from(patternLineageNodes)
         .orderBy(desc(patternLineageNodes.createdAt))
@@ -1255,7 +1256,7 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
     }
 
     // Get real edges from database using UUIDs
-    const realEdges = await intelligenceDb
+    const realEdges = await getIntelligenceDb()
       .select({
         source: patternLineageEdges.sourceNodeId,
         target: patternLineageEdges.targetNodeId,
@@ -1280,7 +1281,7 @@ intelligenceRouter.get('/patterns/relationships', async (req, res) => {
     // If we have very few real edges, generate metadata-based relationships
     if (relationships.length < 5 && nodeUuids.length > 1) {
       // Get pattern metadata for similarity-based connections
-      const patterns = await intelligenceDb
+      const patterns = await getIntelligenceDb()
         .select({
           id: patternLineageNodes.id,
           language: patternLineageNodes.language,
@@ -1364,7 +1365,7 @@ intelligenceRouter.get('/patterns/by-language', async (req, res) => {
   try {
     // Check if table exists first - if not, return empty array
     try {
-      await intelligenceDb.execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
+      await getIntelligenceDb().execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
     } catch (tableError: any) {
       const errorCode = tableError?.code || tableError?.errno || '';
       if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
@@ -1375,7 +1376,7 @@ intelligenceRouter.get('/patterns/by-language', async (req, res) => {
     }
 
     // Query pattern_lineage_nodes grouped by language
-    const languageData = await intelligenceDb
+    const languageData = await getIntelligenceDb()
       .select({
         language: patternLineageNodes.language,
         pattern_count: sql<number>`COUNT(*)::int`,
@@ -1434,7 +1435,7 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
     const interval = getIntervalFromTimeWindow(timeWindow);
 
     // Get summary statistics
-    const [summaryResult] = await intelligenceDb
+    const [summaryResult] = await getIntelligenceDb()
       .select({
         totalTransformations: sql<number>`COUNT(*)::int`,
         uniqueSourceAgents: sql<number>`COUNT(DISTINCT ${agentTransformationEvents.sourceAgent})::int`,
@@ -1450,7 +1451,7 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
       .where(sql`${agentTransformationEvents.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
 
     // Get most common transformation
-    const mostCommonResult = await intelligenceDb
+    const mostCommonResult = await getIntelligenceDb()
       .select({
         source: agentTransformationEvents.sourceAgent,
         target: agentTransformationEvents.targetAgent,
@@ -1463,7 +1464,7 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
       .limit(1);
 
     // Get transformation flows for Sankey diagram
-    const transformationFlows = await intelligenceDb
+    const transformationFlows = await getIntelligenceDb()
       .select({
         source: agentTransformationEvents.sourceAgent,
         target: agentTransformationEvents.targetAgent,
@@ -1586,7 +1587,7 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
     // Query all relevant tables for this correlation ID
     const [actions, manifests] = await Promise.all([
       // Get agent actions
-      intelligenceDb
+      getIntelligenceDb()
         .select({
           id: agentActions.id,
           agentName: agentActions.agentName,
@@ -1600,7 +1601,7 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
         .where(eq(agentActions.correlationId, correlationId)),
 
       // Get manifest injections
-      intelligenceDb
+      getIntelligenceDb()
         .select({
           id: agentManifestInjections.id,
           agentName: agentManifestInjections.agentName,
@@ -1623,7 +1624,7 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
 
     const routingDecisions =
       routingDecisionIds.length > 0
-        ? await intelligenceDb
+        ? await getIntelligenceDb()
             .select({
               id: agentRoutingDecisions.id,
               selectedAgent: agentRoutingDecisions.selectedAgent,
@@ -1746,7 +1747,7 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Query 1: Success rate and average latency
-    const [metricsResult] = await intelligenceDb
+    const [metricsResult] = await getIntelligenceDb()
       .select({
         totalInjections: sql<number>`COUNT(*)::int`,
         successfulInjections: sql<number>`
@@ -1769,7 +1770,7 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     const avgLatencyMs = parseFloat(metricsResult?.avgLatencyMs?.toString() || '0');
 
     // Query 2: Failed injections by error type
-    const failedInjectionsQuery = await intelligenceDb
+    const failedInjectionsQuery = await getIntelligenceDb()
       .select({
         errorType: sql<string>`
           CASE
@@ -1802,7 +1803,7 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     }));
 
     // Query 3: Manifest size statistics
-    const [sizeStatsResult] = await intelligenceDb
+    const [sizeStatsResult] = await getIntelligenceDb()
       .select({
         avgSizeBytes: sql<number>`
           AVG(LENGTH(${agentManifestInjections.fullManifestSnapshot}::text))::numeric
@@ -1830,7 +1831,7 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     };
 
     // Query 4: Latency trend (hourly for last 24h)
-    const latencyTrendQuery = await intelligenceDb
+    const latencyTrendQuery = await getIntelligenceDb()
       .select({
         period: sql<string>`DATE_TRUNC('hour', ${agentManifestInjections.createdAt})::text`,
         avgLatencyMs: sql<number>`ROUND(AVG(${agentManifestInjections.totalQueryTimeMs}), 2)::numeric`,
@@ -1857,7 +1858,7 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     // PostgreSQL health check (already connected if we got here)
     const pgStartTime = Date.now();
     try {
-      await intelligenceDb.execute(sql`SELECT 1`);
+      await getIntelligenceDb().execute(sql`SELECT 1`);
       serviceHealth.postgresql = {
         status: 'up',
         latencyMs: Date.now() - pgStartTime,
@@ -1868,7 +1869,7 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     }
 
     // Omniarchon health check
-    const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+    const omniarchonUrl = getOmniarchonUrl();
     const omniarchonStartTime = Date.now();
     try {
       const omniarchonResponse = await fetch(`${omniarchonUrl}/health`, {
@@ -1944,7 +1945,7 @@ intelligenceRouter.get('/metrics/operations-per-minute', async (req, res) => {
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Query agent actions grouped by time period and action type
-    const operationsData = await intelligenceDb
+    const operationsData = await getIntelligenceDb()
       .select({
         period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt})::text`,
         actionType: agentActions.actionType,
@@ -2018,7 +2019,7 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Try to fetch from Omniarchon intelligence service first
-    const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+    const omniarchonUrl = getOmniarchonUrl();
 
     try {
       const omniarchonResponse = await fetch(`${omniarchonUrl}/api/quality-impact?hours=${hours}`, {
@@ -2061,7 +2062,7 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
 
     // Fallback: Calculate quality impact from database
     // Strategy: Compare quality scores before and after manifest injections
-    const qualityImpactData = await intelligenceDb
+    const qualityImpactData = await getIntelligenceDb()
       .select({
         period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${agentManifestInjections.createdAt})::text`,
         // Calculate average quality improvement (only for successful executions)
@@ -2129,7 +2130,7 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
 intelligenceRouter.get('/developer/workflows', async (req, res) => {
   try {
     // Query agentActions grouped by actionType
-    const workflows = await intelligenceDb
+    const workflows = await getIntelligenceDb()
       .select({
         actionType: agentActions.actionType,
         completions: sql<number>`COUNT(*)::int`,
@@ -2141,7 +2142,7 @@ intelligenceRouter.get('/developer/workflows', async (req, res) => {
       .orderBy(sql`COUNT(*) DESC`);
 
     // Get previous period for trend calculation
-    const previousWorkflows = await intelligenceDb
+    const previousWorkflows = await getIntelligenceDb()
       .select({
         actionType: agentActions.actionType,
         completions: sql<number>`COUNT(*)::int`,
@@ -2231,7 +2232,7 @@ intelligenceRouter.get('/developer/velocity', async (req, res) => {
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Query velocity metrics
-    const velocityData = await intelligenceDb
+    const velocityData = await getIntelligenceDb()
       .select({
         period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt})::text`,
         actionCount: sql<number>`COUNT(*)::int`,
@@ -2298,7 +2299,7 @@ intelligenceRouter.get('/developer/productivity', async (req, res) => {
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Query productivity metrics (using success rate only - no join due to schema mismatch)
-    const productivityData = await intelligenceDb
+    const productivityData = await getIntelligenceDb()
       .select({
         period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt})::text`,
         // Calculate success rate from action types
@@ -2378,7 +2379,7 @@ intelligenceRouter.get('/developer/task-velocity', async (req, res) => {
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Query task completion metrics grouped by date
-    const velocityData = await intelligenceDb
+    const velocityData = await getIntelligenceDb()
       .select({
         period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${taskCompletionMetrics.createdAt})::text`,
         tasksCompleted: sql<number>`COUNT(*) FILTER (WHERE ${taskCompletionMetrics.success} = TRUE)::int`,
@@ -2587,7 +2588,7 @@ intelligenceRouter.get('/documents/top-accessed', async (req, res) => {
     const interval = getIntervalFromTimeWindow(timeWindow);
 
     // Get top accessed documents (ordered by access_count)
-    const topDocuments = await intelligenceDb
+    const topDocuments = await getIntelligenceDb()
       .select({
         id: documentMetadata.id,
         repository: documentMetadata.repository,
@@ -2709,7 +2710,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
 
     // Check if table exists first - if not, return empty data
     try {
-      await intelligenceDb.execute(sql`SELECT 1 FROM onex_compliance_stamps LIMIT 1`);
+      await getIntelligenceDb().execute(sql`SELECT 1 FROM onex_compliance_stamps LIMIT 1`);
     } catch (tableError: any) {
       // Table doesn't exist (PostgreSQL error code 42P01 = undefined_table)
       // Return empty/default data structure instead of error
@@ -2738,7 +2739,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
     }
 
     // Get summary statistics
-    const [summaryResult] = await intelligenceDb
+    const [summaryResult] = await getIntelligenceDb()
       .select({
         totalFiles: sql<number>`COUNT(DISTINCT ${onexComplianceStamps.filePath})::int`,
         compliantFiles: sql<number>`
@@ -2780,7 +2781,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
     };
 
     // Get status breakdown
-    const statusBreakdownQuery = await intelligenceDb
+    const statusBreakdownQuery = await getIntelligenceDb()
       .select({
         status: onexComplianceStamps.complianceStatus,
         count: sql<number>`COUNT(DISTINCT ${onexComplianceStamps.filePath})::int`,
@@ -2796,7 +2797,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
     }));
 
     // Get node type breakdown
-    const nodeTypeBreakdownQuery = await intelligenceDb
+    const nodeTypeBreakdownQuery = await getIntelligenceDb()
       .select({
         nodeType: onexComplianceStamps.nodeType,
         totalCount: sql<number>`COUNT(DISTINCT ${onexComplianceStamps.filePath})::int`,
@@ -2824,7 +2825,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
     }));
 
     // Get compliance trend over time
-    const trendQuery = await intelligenceDb
+    const trendQuery = await getIntelligenceDb()
       .select({
         period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${onexComplianceStamps.createdAt})::text`,
         totalFiles: sql<number>`COUNT(DISTINCT ${onexComplianceStamps.filePath})::int`,
@@ -2908,7 +2909,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
 intelligenceRouter.get('/platform/services', async (req, res) => {
   try {
     // Query active services from node_service_registry
-    const services = await intelligenceDb
+    const services = await getIntelligenceDb()
       .select({
         id: nodeServiceRegistry.id,
         serviceName: nodeServiceRegistry.serviceName,
@@ -3149,14 +3150,14 @@ intelligenceRouter.get('/execution/:correlationId', async (req, res) => {
     }
 
     // Fetch routing decision
-    const routingDecision = await intelligenceDb
+    const routingDecision = await getIntelligenceDb()
       .select()
       .from(agentRoutingDecisions)
       .where(eq(agentRoutingDecisions.correlationId, correlationId))
       .limit(1);
 
     // Fetch all actions for this correlation ID
-    const actions = await intelligenceDb
+    const actions = await getIntelligenceDb()
       .select()
       .from(agentActions)
       .where(eq(agentActions.correlationId, correlationId))
@@ -3383,7 +3384,7 @@ intelligenceRouter.get('/patterns/:patternId/details', async (req, res) => {
     const { patternId } = req.params;
 
     // Query pattern from database
-    const pattern = await intelligenceDb
+    const pattern = await getIntelligenceDb()
       .select()
       .from(patternLineageNodes)
       .where(eq(patternLineageNodes.id, patternId))
@@ -3399,7 +3400,7 @@ intelligenceRouter.get('/patterns/:patternId/details', async (req, res) => {
     const patternData = pattern[0];
 
     // Get quality metrics for this pattern
-    const qualityMetrics = await intelligenceDb
+    const qualityMetrics = await getIntelligenceDb()
       .select()
       .from(patternQualityMetrics)
       .where(eq(patternQualityMetrics.patternId, patternId))
@@ -3440,7 +3441,7 @@ intelligenceRouter.get('/patterns/:patternId/details', async (req, res) => {
     // Get usage examples from manifests (using actual schema fields)
     // Parameterize the LIKE pattern to prevent SQL injection
     const likePattern = `%${patternId}%`;
-    const usageExamples = await intelligenceDb
+    const usageExamples = await getIntelligenceDb()
       .select({
         project: agentManifestInjections.agentName,
         module: agentManifestInjections.generationSource,

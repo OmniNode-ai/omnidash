@@ -1,11 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { IntelligenceEventAdapter } from '../intelligence-event-adapter';
-import { Kafka } from 'kafkajs';
 
-// Mock Kafka
+// Use vi.hoisted to set environment variables before module loading
+vi.hoisted(() => {
+  process.env.KAFKA_BROKERS = 'localhost:9092';
+  process.env.KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092';
+});
+
+// Mock Kafka BEFORE importing modules that use it
 vi.mock('kafkajs', () => ({
   Kafka: vi.fn(),
 }));
+
+import { IntelligenceEventAdapter } from '../intelligence-event-adapter';
+import { Kafka } from 'kafkajs';
 
 describe('IntelligenceEventAdapter', () => {
   let adapter: IntelligenceEventAdapter;

@@ -11,8 +11,18 @@
 
 import { Kafka } from 'kafkajs';
 
+const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+if (!brokers) {
+  console.error(
+    '❌ Error: KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required.'
+  );
+  console.error('   Set it in .env file or export it before running this script.');
+  console.error('   Example: KAFKA_BROKERS=192.168.86.200:29092');
+  process.exit(1);
+}
+
 const kafka = new Kafka({
-  brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(','),
+  brokers: brokers.split(','),
   clientId: 'omnidash-topic-checker',
 });
 

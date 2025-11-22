@@ -165,8 +165,16 @@ class MockEventGenerator {
   ];
 
   constructor() {
+    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+    if (!brokers) {
+      throw new Error(
+        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
+          'Set it in .env file or export it before running mock generator. ' +
+          'Example: KAFKA_BROKERS=192.168.86.200:29092'
+      );
+    }
     this.kafka = new Kafka({
-      brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(','),
+      brokers: brokers.split(','),
       clientId: 'omnidash-mock-generator',
     });
     this.producer = this.kafka.producer();
@@ -178,7 +186,7 @@ class MockEventGenerator {
     try {
       await this.producer!.connect();
       console.log('Mock event generator connected to Kafka');
-      console.log(`Brokers: ${process.env.KAFKA_BROKERS || '192.168.86.200:9092'}`);
+      console.log(`Brokers: ${process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS}`);
       this.isRunning = true;
 
       // Publish initial batch of events

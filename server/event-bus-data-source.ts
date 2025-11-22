@@ -17,7 +17,7 @@
 
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import { EventEmitter } from 'events';
-import { intelligenceDb } from './storage';
+import { getIntelligenceDb } from './storage';
 import { sql, SQL } from 'drizzle-orm';
 
 /**
@@ -148,8 +148,14 @@ export class EventBusDataSource extends EventEmitter {
   constructor() {
     super();
 
-    const brokers =
-      process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092';
+    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+    if (!brokers) {
+      throw new Error(
+        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
+          'Set it in .env file or export it before starting the server. ' +
+          'Example: KAFKA_BROKERS=192.168.86.200:29092'
+      );
+    }
 
     this.kafka = new Kafka({
       brokers: brokers.split(','),
@@ -195,7 +201,7 @@ export class EventBusDataSource extends EventEmitter {
     try {
       // Create events table if it doesn't exist
       // Note: "offset" is a reserved keyword in PostgreSQL, so we quote it
-      await intelligenceDb.execute(sql`
+      await getIntelligenceDb().execute(sql`
         CREATE TABLE IF NOT EXISTS event_bus_events (
           id BIGSERIAL PRIMARY KEY,
           event_type VARCHAR(255) NOT NULL,
@@ -218,33 +224,33 @@ export class EventBusDataSource extends EventEmitter {
       `);
 
       // Create indexes for common queries
-      await intelligenceDb.execute(sql`
+      await getIntelligenceDb().execute(sql`
         CREATE INDEX IF NOT EXISTS idx_event_bus_events_event_type 
         ON event_bus_events(event_type)
       `);
 
-      await intelligenceDb.execute(sql`
+      await getIntelligenceDb().execute(sql`
         CREATE INDEX IF NOT EXISTS idx_event_bus_events_tenant_id 
         ON event_bus_events(tenant_id)
       `);
 
-      await intelligenceDb.execute(sql`
+      await getIntelligenceDb().execute(sql`
         CREATE INDEX IF NOT EXISTS idx_event_bus_events_correlation_id 
         ON event_bus_events(correlation_id)
       `);
 
-      await intelligenceDb.execute(sql`
+      await getIntelligenceDb().execute(sql`
         CREATE INDEX IF NOT EXISTS idx_event_bus_events_timestamp 
         ON event_bus_events(timestamp)
       `);
 
-      await intelligenceDb.execute(sql`
+      await getIntelligenceDb().execute(sql`
         CREATE INDEX IF NOT EXISTS idx_event_bus_events_namespace 
         ON event_bus_events(namespace)
       `);
 
       // Composite index for common query patterns
-      await intelligenceDb.execute(sql`
+      await getIntelligenceDb().execute(sql`
         CREATE INDEX IF NOT EXISTS idx_event_bus_events_type_tenant_time 
         ON event_bus_events(event_type, tenant_id, timestamp)
       `);
@@ -398,7 +404,7 @@ export class EventBusDataSource extends EventEmitter {
    */
   async storeEvent(event: EventBusEvent): Promise<void> {
     try {
-      await intelligenceDb.execute(sql`
+      await getIntelligenceDb().execute(sql`
         INSERT INTO event_bus_events (
           event_type, event_id, timestamp, tenant_id, namespace, source,
           correlation_id, causation_id, schema_ref, payload,
@@ -533,7 +539,7 @@ export class EventBusDataSource extends EventEmitter {
         ${offsetClause}
       `;
 
-      const result = await intelligenceDb.execute(query);
+      const result = await getIntelligenceDb().execute(query);
 
       return result.rows.map((row: any) => ({
         event_type: row.event_type,
@@ -598,9 +604,9 @@ export class EventBusDataSource extends EventEmitter {
       `;
 
       const [totalResult, typeResult, tenantResult] = await Promise.all([
-        intelligenceDb.execute(totalQuery),
-        intelligenceDb.execute(typeQuery),
-        intelligenceDb.execute(tenantQuery),
+        getIntelligenceDb().execute(totalQuery),
+        getIntelligenceDb().execute(typeQuery),
+        getIntelligenceDb().execute(tenantQuery),
       ]);
 
       const totalRow = totalResult.rows[0];
@@ -686,5 +692,109 @@ export class EventBusDataSource extends EventEmitter {
   }
 }
 
-// Export singleton instance
-export const eventBusDataSource = new EventBusDataSource();
+// ============================================================================
+// Lazy Initialization Pattern (prevents startup crashes)
+// ============================================================================
+
+let eventBusDataSourceInstance: EventBusDataSource | null = null;
+let eventBusInitError: Error | null = null;
+
+/**
+ * Get EventBusDataSource singleton with lazy initialization
+ *
+ * This pattern prevents the application from crashing at module load time
+ * if KAFKA_BROKERS environment variable is not configured.
+ *
+ * @returns EventBusDataSource instance or null if initialization failed
+ */
+export function getEventBusDataSource(): EventBusDataSource | null {
+  // Return cached instance if already initialized
+  if (eventBusDataSourceInstance) {
+    return eventBusDataSourceInstance;
+  }
+
+  // Return null if we previously failed to initialize
+  if (eventBusInitError) {
+    return null;
+  }
+
+  // Attempt lazy initialization
+  try {
+    eventBusDataSourceInstance = new EventBusDataSource();
+    return eventBusDataSourceInstance;
+  } catch (error) {
+    eventBusInitError = error instanceof Error ? error : new Error(String(error));
+    console.warn('⚠️  EventBusDataSource initialization failed:', eventBusInitError.message);
+    console.warn('   Event storage and querying will be disabled');
+    console.warn('   Set KAFKA_BROKERS in .env file to enable event bus integration');
+    return null;
+  }
+}
+
+/**
+ * Check if EventBusDataSource is available
+ */
+export function isEventBusDataSourceAvailable(): boolean {
+  return eventBusDataSourceInstance !== null || eventBusInitError === null;
+}
+
+/**
+ * Get initialization error if EventBusDataSource failed to initialize
+ */
+export function getEventBusDataSourceError(): Error | null {
+  return eventBusInitError;
+}
+
+/**
+ * Backward compatibility: Proxy that delegates to lazy getter
+ *
+ * @deprecated Use getEventBusDataSource() for better error handling
+ */
+export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
+  get(target, prop) {
+    const instance = getEventBusDataSource();
+    if (!instance) {
+      // Return dummy implementations
+      if (
+        prop === 'start' ||
+        prop === 'stop' ||
+        prop === 'validateConnection' ||
+        prop === 'initializeSchema'
+      ) {
+        return async () => {
+          console.warn('⚠️  EventBusDataSource not available (Kafka not configured)');
+        };
+      }
+      if (prop === 'queryEvents' || prop === 'queryEventChainsOLD' || prop === 'queryEventChains') {
+        return async () => [];
+      }
+      if (prop === 'getEventChainStats') {
+        return async () => ({
+          totalChains: 0,
+          completedChains: 0,
+          activeChains: 0,
+          failedChains: 0,
+          avgChainDuration: 0,
+          avgEventsPerChain: 0,
+        });
+      }
+      if (prop === 'injectEvent') {
+        return async () => {
+          console.warn('⚠️  EventBusDataSource not available - cannot inject event');
+        };
+      }
+      // For EventEmitter methods
+      if (prop === 'on' || prop === 'once' || prop === 'emit' || prop === 'removeListener') {
+        return () => eventBusDataSource; // Return proxy for chaining
+      }
+      return undefined;
+    }
+    // Delegate to actual instance
+    const value = (instance as any)[prop];
+    // Bind methods to preserve 'this' context
+    if (typeof value === 'function') {
+      return value.bind(instance);
+    }
+    return value;
+  },
+});

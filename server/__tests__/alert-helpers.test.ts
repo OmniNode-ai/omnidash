@@ -1,16 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getAllAlertMetrics, clearAlertMetricsCache } from '../alert-helpers';
-import { intelligenceDb } from '../storage';
+import { getIntelligenceDb } from '../storage';
 
 // Mock dependencies
+const mockDb = {
+  select: vi.fn().mockReturnThis(),
+  from: vi.fn().mockReturnThis(),
+  where: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockResolvedValue([]),
+  execute: vi.fn().mockResolvedValue([]),
+};
+
 vi.mock('../storage', () => ({
-  intelligenceDb: {
-    select: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue([]),
-    execute: vi.fn().mockResolvedValue([]),
-  },
+  getIntelligenceDb: vi.fn(() => mockDb),
 }));
 
 // Mock global fetch
@@ -29,7 +31,7 @@ describe('Alert Helpers', () => {
   describe('getAllAlertMetrics', () => {
     it('should return alert metrics with default values', async () => {
       // Mock select chain to return proper result structure
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
             {
@@ -41,7 +43,7 @@ describe('Alert Helpers', () => {
       } as any);
 
       // Mock for injection success rate
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
             {
@@ -53,7 +55,7 @@ describe('Alert Helpers', () => {
       } as any);
 
       // Mock for response time
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
             {
@@ -64,7 +66,7 @@ describe('Alert Helpers', () => {
       } as any);
 
       // Mock for success rate
-      vi.mocked(intelligenceDb.select).mockReturnValueOnce({
+      vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
             {
@@ -91,7 +93,7 @@ describe('Alert Helpers', () => {
 
     it('should calculate error rate from database', async () => {
       // Mock all the select chains properly
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
             {
