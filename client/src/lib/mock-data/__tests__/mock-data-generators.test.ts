@@ -681,8 +681,15 @@ describe('PlatformHealthMockData', () => {
       expect(dbService?.service).toBe('PostgreSQL');
       expect(dbService?.status).toBeDefined();
       expect(['up', 'warning', 'down']).toContain(dbService?.status);
-      expect(dbService?.latencyMs).toBeGreaterThanOrEqual(5);
-      expect(dbService?.latencyMs).toBeLessThanOrEqual(30);
+
+      // Latency depends on status: normal (5-30ms) or degraded (200-500ms)
+      if (dbService?.status === 'warning') {
+        expect(dbService.latencyMs).toBeGreaterThanOrEqual(200);
+        expect(dbService.latencyMs).toBeLessThanOrEqual(500);
+      } else {
+        expect(dbService?.latencyMs).toBeGreaterThanOrEqual(5);
+        expect(dbService?.latencyMs).toBeLessThanOrEqual(30);
+      }
     });
 
     it('generates Kafka service health with valid structure', () => {
@@ -693,8 +700,15 @@ describe('PlatformHealthMockData', () => {
       expect(kafkaService?.service).toBe('Kafka/Redpanda');
       expect(kafkaService?.status).toBeDefined();
       expect(['up', 'warning', 'down']).toContain(kafkaService?.status);
-      expect(kafkaService?.latencyMs).toBeGreaterThanOrEqual(15);
-      expect(kafkaService?.latencyMs).toBeLessThanOrEqual(60);
+
+      // Latency depends on status: normal (15-60ms) or degraded (200-500ms)
+      if (kafkaService?.status === 'warning') {
+        expect(kafkaService.latencyMs).toBeGreaterThanOrEqual(200);
+        expect(kafkaService.latencyMs).toBeLessThanOrEqual(500);
+      } else {
+        expect(kafkaService?.latencyMs).toBeGreaterThanOrEqual(15);
+        expect(kafkaService?.latencyMs).toBeLessThanOrEqual(60);
+      }
     });
 
     it('generates services array with valid structure', () => {

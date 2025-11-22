@@ -55,7 +55,7 @@ export class PlatformHealthMockData {
     ];
 
     // Randomly degrade one service (10% chance)
-    if (Math.random() < 0.1) {
+    if (Math.random() < 0.1 && services.length > 0) {
       const idx = Gen.randomInt(0, services.length - 1);
       services[idx].status = 'warning';
       services[idx].latencyMs = Gen.randomInt(200, 500);
