@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PostgresAdapter } from '../db-adapter';
-import { intelligenceDb } from '../storage';
+import { getIntelligenceDb } from '../storage';
 import * as schema from '@shared/intelligence-schema';
 
 /**
@@ -17,14 +17,16 @@ import * as schema from '@shared/intelligence-schema';
  */
 
 // Mock the intelligenceDb
+const mockDb = {
+  select: vi.fn(),
+  insert: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+  execute: vi.fn(),
+};
+
 vi.mock('../storage', () => ({
-  intelligenceDb: {
-    select: vi.fn(),
-    insert: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    execute: vi.fn(),
-  },
+  getIntelligenceDb: vi.fn(() => mockDb),
 }));
 
 /**
@@ -84,7 +86,7 @@ describe('DatabaseAdapter - Security (SQL Injection Prevention)', () => {
     };
 
     const chain = createMockQueryChain([]);
-    vi.mocked(intelligenceDb.select).mockReturnValue(chain);
+    vi.mocked(mockDb.select).mockReturnValue(chain);
 
     // Execute query with malicious input
     await adapter.query('agent_actions', {
@@ -110,7 +112,7 @@ describe('DatabaseAdapter - Security (SQL Injection Prevention)', () => {
     };
 
     const chain = createMockQueryChain([]);
-    vi.mocked(intelligenceDb.select).mockReturnValue(chain);
+    vi.mocked(mockDb.select).mockReturnValue(chain);
 
     // Should not throw - invalid fields are silently ignored (logged as warnings)
     const result = await adapter.query('agent_actions', {
@@ -129,7 +131,7 @@ describe('DatabaseAdapter - Security (SQL Injection Prevention)', () => {
     };
 
     const chain = createMockQueryChain([]);
-    vi.mocked(intelligenceDb).select.mockReturnValue(chain);
+    vi.mocked(mockDb).select.mockReturnValue(chain);
 
     await adapter.query('agent_actions', {
       where: maliciousArrayFilter,
@@ -146,7 +148,7 @@ describe('DatabaseAdapter - Security (SQL Injection Prevention)', () => {
     };
 
     const chain = createMockQueryChain([]);
-    vi.mocked(intelligenceDb).select.mockReturnValue(chain);
+    vi.mocked(mockDb).select.mockReturnValue(chain);
 
     await adapter.query('agent_actions', {
       where: maliciousOperatorFilter,
@@ -159,11 +161,11 @@ describe('DatabaseAdapter - Security (SQL Injection Prevention)', () => {
 
   it('executeRaw uses sql.raw but caller must ensure safety', async () => {
     // executeRaw is a low-level API - caller is responsible for parameterization
-    vi.mocked(intelligenceDb).execute.mockResolvedValue([{ count: 42 }]);
+    vi.mocked(mockDb).execute.mockResolvedValue([{ count: 42 }]);
 
     const result = await adapter.executeRaw('SELECT COUNT(*) FROM agent_actions');
 
-    expect(vi.mocked(intelligenceDb).execute).toHaveBeenCalled();
+    expect(vi.mocked(mockDb).execute).toHaveBeenCalled();
     expect(result).toEqual([{ count: 42 }]);
   });
 });
@@ -188,7 +190,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
       ];
 
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb).select.mockReturnValue(chain);
+      vi.mocked(mockDb).select.mockReturnValue(chain);
 
       const result = await adapter.query('agent_actions', {
         limit: 10,
@@ -206,7 +208,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
       const mockResult = [{ id: '1', agentName: 'test-agent' }];
 
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb).select.mockReturnValue(chain);
+      vi.mocked(mockDb).select.mockReturnValue(chain);
 
       await adapter.query('agent_actions', {
         where: { agentName: 'test-agent', actionType: 'tool_call' },
@@ -220,7 +222,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
       const mockResult = [{ id: '1' }];
 
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb).select.mockReturnValue(chain);
+      vi.mocked(mockDb).select.mockReturnValue(chain);
 
       await adapter.query('agent_actions', {
         orderBy: { column: 'createdAt', direction: 'asc' },
@@ -234,7 +236,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
       const mockResult = [{ id: '1' }];
 
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb).select.mockReturnValue(chain);
+      vi.mocked(mockDb).select.mockReturnValue(chain);
 
       await adapter.query('agent_actions', {
         orderBy: { column: 'createdAt', direction: 'desc' },
@@ -248,7 +250,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
       const mockResult = [{ id: '1' }];
 
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb).select.mockReturnValue(chain);
+      vi.mocked(mockDb).select.mockReturnValue(chain);
 
       await adapter.query('agent_actions', { limit: 10 });
 
@@ -264,7 +266,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
 
     it('handles empty result set', async () => {
       const chain = createMockQueryChain([]);
-      vi.mocked(intelligenceDb).select.mockReturnValue(chain);
+      vi.mocked(mockDb).select.mockReturnValue(chain);
 
       const result = await adapter.query('agent_actions', { limit: 10 });
 
@@ -292,7 +294,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
         return chain;
       });
 
-      vi.mocked(intelligenceDb).insert.mockReturnValue(chain);
+      vi.mocked(mockDb).insert.mockReturnValue(chain);
 
       const data = {
         agentName: 'test-agent',
@@ -322,7 +324,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
       ];
 
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb).insert.mockReturnValue(chain);
+      vi.mocked(mockDb).insert.mockReturnValue(chain);
 
       const result = await adapter.insert('agent_actions', {
         agentName: 'test',
@@ -359,7 +361,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
         return chain;
       });
 
-      vi.mocked(intelligenceDb).update.mockReturnValue(chain);
+      vi.mocked(mockDb).update.mockReturnValue(chain);
 
       const result = await adapter.update(
         'agent_actions',
@@ -398,7 +400,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
       const mockResult = [{ id: '123', agentName: 'deleted-agent' }];
 
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb).delete.mockReturnValue(chain);
+      vi.mocked(mockDb).delete.mockReturnValue(chain);
 
       const result = await adapter.delete('agent_actions', { id: '123' });
 
@@ -431,7 +433,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
       ];
 
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb).insert.mockReturnValue(chain);
+      vi.mocked(mockDb).insert.mockReturnValue(chain);
 
       const result = await adapter.upsert(
         'agent_actions',
@@ -466,7 +468,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
     it('counts all records in table', async () => {
       const mockResult = [{ count: 42 }];
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb).select.mockReturnValue(chain);
+      vi.mocked(mockDb).select.mockReturnValue(chain);
 
       const result = await adapter.count('agent_actions');
 
@@ -477,7 +479,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
     it('counts records matching WHERE condition', async () => {
       const mockResult = [{ count: 15 }];
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb).select.mockReturnValue(chain);
+      vi.mocked(mockDb).select.mockReturnValue(chain);
 
       const result = await adapter.count('agent_actions', { agentName: 'test-agent' });
 
@@ -488,7 +490,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
     it('returns 0 for empty result', async () => {
       const mockResult = [{ count: null }];
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb).select.mockReturnValue(chain);
+      vi.mocked(mockDb).select.mockReturnValue(chain);
 
       const result = await adapter.count('agent_actions');
 
@@ -509,16 +511,16 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
         { id: '2', count: 20 },
       ];
 
-      vi.mocked(intelligenceDb).execute.mockResolvedValue(mockResult);
+      vi.mocked(mockDb).execute.mockResolvedValue(mockResult);
 
       const result = await adapter.executeRaw('SELECT id, COUNT(*) FROM agent_actions GROUP BY id');
 
-      expect(vi.mocked(intelligenceDb).execute).toHaveBeenCalled();
+      expect(vi.mocked(mockDb).execute).toHaveBeenCalled();
       expect(result).toEqual(mockResult);
     });
 
     it('handles empty result', async () => {
-      vi.mocked(intelligenceDb).execute.mockResolvedValue([]);
+      vi.mocked(mockDb).execute.mockResolvedValue([]);
 
       const result = await adapter.executeRaw('SELECT * FROM agent_actions WHERE 1=0');
 
@@ -701,7 +703,7 @@ describe('DatabaseAdapter - Error Handling', () => {
       throw new Error('Connection refused');
     });
 
-    vi.mocked(intelligenceDb).select.mockReturnValue(mockChain as any);
+    vi.mocked(mockDb).select.mockReturnValue(mockChain as any);
 
     await expect(adapter.query('agent_actions', { limit: 10 })).rejects.toThrow(
       'Connection refused'
@@ -729,7 +731,7 @@ describe('DatabaseAdapter - Error Handling', () => {
     // Make it thenable so it rejects when awaited
     mockChain.then = (resolve: any, reject: any) => mockChain.offset().then(resolve, reject);
 
-    vi.mocked(intelligenceDb).select.mockReturnValue(mockChain);
+    vi.mocked(mockDb).select.mockReturnValue(mockChain);
 
     await expect(adapter.query('agent_actions', { limit: 10 })).rejects.toThrow(
       'Query execution failed'
@@ -739,7 +741,7 @@ describe('DatabaseAdapter - Error Handling', () => {
   it('handles insert errors', async () => {
     const chain = createMockQueryChain(null);
     chain.returning.mockRejectedValue(new Error('Insert failed'));
-    vi.mocked(intelligenceDb).insert.mockReturnValue(chain);
+    vi.mocked(mockDb).insert.mockReturnValue(chain);
 
     await expect(
       adapter.insert('agent_actions', {
@@ -754,7 +756,7 @@ describe('DatabaseAdapter - Error Handling', () => {
   it('handles update errors', async () => {
     const chain = createMockQueryChain(null);
     chain.returning.mockRejectedValue(new Error('Update failed'));
-    vi.mocked(intelligenceDb).update.mockReturnValue(chain);
+    vi.mocked(mockDb).update.mockReturnValue(chain);
 
     await expect(
       adapter.update('agent_actions', { id: '123' }, { agentName: 'updated' })
@@ -764,7 +766,7 @@ describe('DatabaseAdapter - Error Handling', () => {
   it('handles delete errors', async () => {
     const chain = createMockQueryChain(null);
     chain.returning.mockRejectedValue(new Error('Delete failed'));
-    vi.mocked(intelligenceDb).delete.mockReturnValue(chain);
+    vi.mocked(mockDb).delete.mockReturnValue(chain);
 
     await expect(adapter.delete('agent_actions', { id: '123' })).rejects.toThrow('Delete failed');
   });
@@ -817,14 +819,14 @@ describe('DatabaseAdapter - Additional Methods', () => {
     it('should count all records when no where clause', async () => {
       const mockResult = [{ count: 42 }];
       // count() uses select({ count: ... }).from(), so we need to mock select to return chainable object
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockResolvedValue(mockResult),
       } as any);
 
       const result = await adapter.count('agent_actions');
 
       expect(result).toBe(42);
-      expect(intelligenceDb.select).toHaveBeenCalled();
+      expect(mockDb.select).toHaveBeenCalled();
     });
 
     it('should count records with where conditions', async () => {
@@ -833,7 +835,7 @@ describe('DatabaseAdapter - Additional Methods', () => {
         from: vi.fn().mockReturnThis(),
         where: vi.fn().mockResolvedValue(mockResult),
       };
-      vi.mocked(intelligenceDb.select).mockReturnValue(chain as any);
+      vi.mocked(mockDb.select).mockReturnValue(chain as any);
 
       const result = await adapter.count('agent_actions', { agentName: 'test-agent' });
 
@@ -843,7 +845,7 @@ describe('DatabaseAdapter - Additional Methods', () => {
 
     it('should return 0 when count is null or undefined', async () => {
       const mockResult = [{ count: null }];
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockResolvedValue(mockResult),
       } as any);
 
@@ -867,7 +869,7 @@ describe('DatabaseAdapter - Additional Methods', () => {
         onConflictDoUpdate: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue(mockResult),
       };
-      vi.mocked(intelligenceDb.insert).mockReturnValue(chain as any);
+      vi.mocked(mockDb.insert).mockReturnValue(chain as any);
 
       const result = await adapter.upsert(
         'agent_actions',
@@ -881,7 +883,7 @@ describe('DatabaseAdapter - Additional Methods', () => {
       );
 
       expect(result).toBeDefined();
-      expect(intelligenceDb.insert).toHaveBeenCalled();
+      expect(mockDb.insert).toHaveBeenCalled();
       expect(chain.onConflictDoUpdate).toHaveBeenCalled();
     });
 
@@ -908,16 +910,16 @@ describe('DatabaseAdapter - Additional Methods', () => {
   describe('executeRaw', () => {
     it('should execute raw SQL query', async () => {
       const mockResult = [{ id: '1', name: 'test' }];
-      vi.mocked(intelligenceDb.execute).mockResolvedValue(mockResult as any);
+      vi.mocked(mockDb.execute).mockResolvedValue(mockResult as any);
 
       const result = await adapter.executeRaw('SELECT * FROM agent_actions LIMIT 1');
 
       expect(result).toEqual(mockResult);
-      expect(intelligenceDb.execute).toHaveBeenCalled();
+      expect(mockDb.execute).toHaveBeenCalled();
     });
 
     it('should return empty array when result is not an array', async () => {
-      vi.mocked(intelligenceDb.execute).mockResolvedValue(null as any);
+      vi.mocked(mockDb.execute).mockResolvedValue(null as any);
 
       const result = await adapter.executeRaw('SELECT * FROM agent_actions');
 
@@ -930,7 +932,7 @@ describe('DatabaseAdapter - Additional Methods', () => {
       const mockResult = [{ id: '1' }];
       const chain = createMockQueryChain(mockResult);
       // query() does this.db.select().from(table), so select() must return an object with from()
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue(chain),
       } as any);
 
@@ -939,13 +941,13 @@ describe('DatabaseAdapter - Additional Methods', () => {
       });
 
       expect(result).toEqual(mockResult);
-      expect(intelligenceDb.select).toHaveBeenCalled();
+      expect(mockDb.select).toHaveBeenCalled();
     });
 
     it('should handle $gt operator', async () => {
       const mockResult = [{ id: '1' }];
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue(chain),
       } as any);
 
@@ -954,13 +956,13 @@ describe('DatabaseAdapter - Additional Methods', () => {
       });
 
       expect(result).toEqual(mockResult);
-      expect(intelligenceDb.select).toHaveBeenCalled();
+      expect(mockDb.select).toHaveBeenCalled();
     });
 
     it('should handle $gte operator', async () => {
       const mockResult = [{ id: '1' }];
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue(chain),
       } as any);
 
@@ -969,13 +971,13 @@ describe('DatabaseAdapter - Additional Methods', () => {
       });
 
       expect(result).toEqual(mockResult);
-      expect(intelligenceDb.select).toHaveBeenCalled();
+      expect(mockDb.select).toHaveBeenCalled();
     });
 
     it('should handle $lt operator', async () => {
       const mockResult = [{ id: '1' }];
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue(chain),
       } as any);
 
@@ -984,13 +986,13 @@ describe('DatabaseAdapter - Additional Methods', () => {
       });
 
       expect(result).toEqual(mockResult);
-      expect(intelligenceDb.select).toHaveBeenCalled();
+      expect(mockDb.select).toHaveBeenCalled();
     });
 
     it('should handle $lte operator', async () => {
       const mockResult = [{ id: '1' }];
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue(chain),
       } as any);
 
@@ -999,13 +1001,13 @@ describe('DatabaseAdapter - Additional Methods', () => {
       });
 
       expect(result).toEqual(mockResult);
-      expect(intelligenceDb.select).toHaveBeenCalled();
+      expect(mockDb.select).toHaveBeenCalled();
     });
 
     it('should handle $ne operator', async () => {
       const mockResult = [{ id: '1' }];
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue(chain),
       } as any);
 
@@ -1014,13 +1016,13 @@ describe('DatabaseAdapter - Additional Methods', () => {
       });
 
       expect(result).toEqual(mockResult);
-      expect(intelligenceDb.select).toHaveBeenCalled();
+      expect(mockDb.select).toHaveBeenCalled();
     });
 
     it('should skip conditions for non-existent columns', async () => {
       const mockResult = [{ id: '1' }];
       const chain = createMockQueryChain(mockResult);
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue(chain),
       } as any);
 

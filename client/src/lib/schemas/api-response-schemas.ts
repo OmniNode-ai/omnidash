@@ -288,16 +288,30 @@ export const eventChartDataSchema = z.object({
 // Platform Health Schemas
 // ===========================
 
+// Service health check result from /api/intelligence/services/health
+// See server/service-health.ts for ServiceHealthCheck interface
 export const platformServiceSchema = z.object({
-  name: z.string(),
-  status: z.string(),
-  latency: z.number().optional(),
+  service: z.string(), // Service name (e.g., "PostgreSQL", "Kafka/Redpanda")
+  status: z.enum(['up', 'down', 'warning']),
+  latencyMs: z.number().optional(),
+  error: z.string().optional(),
+  details: z.record(z.any()).optional(),
 });
 
+// Health endpoint response format from server/intelligence-routes.ts line 3251
 export const platformHealthSchema = z.object({
-  status: z.string(),
-  uptime: z.number().min(0),
+  timestamp: z.string(),
+  overallStatus: z.enum(['healthy', 'unhealthy', 'error']),
   services: z.array(platformServiceSchema),
+  summary: z
+    .object({
+      total: z.number(),
+      up: z.number(),
+      down: z.number(),
+      warning: z.number(),
+    })
+    .optional(),
+  error: z.string().optional(), // Present when overallStatus is 'error'
 });
 
 export const platformServiceDetailSchema = z.object({

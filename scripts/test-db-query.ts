@@ -12,9 +12,13 @@ import { sql } from 'drizzle-orm';
 
 config();
 
-const connectionString =
-  process.env.DATABASE_URL ||
-  `postgresql://postgres:omninode_remote_2024_secure@192.168.86.200:5436/omninode_bridge`;
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error('ERROR: DATABASE_URL environment variable is required');
+  console.error('Set it in .env file or export it before running this script');
+  console.error('Example: export DATABASE_URL="postgresql://user:pass@host:port/db"');
+  process.exit(1);
+}
 
 const pool = new Pool({ connectionString });
 const db = drizzle(pool);

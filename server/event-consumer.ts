@@ -1,6 +1,6 @@
 import { Kafka, Consumer } from 'kafkajs';
 import { EventEmitter } from 'events';
-import { intelligenceDb } from './storage';
+import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
@@ -120,10 +120,15 @@ export class EventConsumer extends EventEmitter {
   constructor() {
     super(); // Initialize EventEmitter
 
-    // Get brokers from environment variable
-    // If not configured, create a dummy Kafka instance that will fail validation
-    const brokers =
-      process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092';
+    // Get brokers from environment variable - required, no fallback
+    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+    if (!brokers) {
+      throw new Error(
+        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
+          'Set it in .env file or export it before starting the server. ' +
+          'Example: KAFKA_BROKERS=192.168.86.200:29092'
+      );
+    }
 
     this.kafka = new Kafka({
       brokers: brokers.split(','),
@@ -309,7 +314,7 @@ export class EventConsumer extends EventEmitter {
   private async preloadFromDatabase() {
     try {
       // Load recent actions
-      const actionsResult = await intelligenceDb.execute(
+      const actionsResult = await getIntelligenceDb().execute(
         sql.raw(`
         SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
         FROM agent_actions
@@ -344,7 +349,7 @@ export class EventConsumer extends EventEmitter {
       }
 
       // Seed agent metrics using routing decisions + actions
-      const metricsResult = await intelligenceDb.execute(
+      const metricsResult = await getIntelligenceDb().execute(
         sql.raw(`
         SELECT COALESCE(ard.selected_agent, aa.agent_name) AS agent,
                COUNT(aa.id) AS total_requests,
@@ -764,4 +769,136 @@ export class EventConsumer extends EventEmitter {
   }
 }
 
-export const eventConsumer = new EventConsumer();
+// ============================================================================
+// Lazy Initialization Pattern (prevents startup crashes)
+// ============================================================================
+
+let eventConsumerInstance: EventConsumer | null = null;
+let initializationError: Error | null = null;
+
+/**
+ * Get EventConsumer singleton with lazy initialization
+ *
+ * This pattern prevents the application from crashing at module load time
+ * if KAFKA_BROKERS environment variable is not configured.
+ *
+ * @returns EventConsumer instance or null if initialization failed
+ *
+ * @example
+ * ```typescript
+ * const consumer = getEventConsumer();
+ * if (!consumer) {
+ *   return res.status(503).json({ error: 'Event consumer not available' });
+ * }
+ * const metrics = consumer.getAgentMetrics();
+ * ```
+ */
+export function getEventConsumer(): EventConsumer | null {
+  // Return cached instance if already initialized
+  if (eventConsumerInstance) {
+    return eventConsumerInstance;
+  }
+
+  // Return null if we previously failed to initialize
+  if (initializationError) {
+    return null;
+  }
+
+  // Attempt lazy initialization
+  try {
+    eventConsumerInstance = new EventConsumer();
+    return eventConsumerInstance;
+  } catch (error) {
+    initializationError = error instanceof Error ? error : new Error(String(error));
+    console.warn('⚠️  EventConsumer initialization failed:', initializationError.message);
+    console.warn('   Real-time event streaming will be disabled');
+    console.warn('   Set KAFKA_BROKERS in .env file to enable event streaming');
+    return null;
+  }
+}
+
+/**
+ * Check if EventConsumer is available without attempting initialization
+ * @returns true if EventConsumer is available, false otherwise
+ */
+export function isEventConsumerAvailable(): boolean {
+  return eventConsumerInstance !== null || initializationError === null;
+}
+
+/**
+ * Get the initialization error if EventConsumer failed to initialize
+ * @returns Error object or null if no error
+ */
+export function getEventConsumerError(): Error | null {
+  return initializationError;
+}
+
+/**
+ * Backward compatibility: Proxy that delegates to lazy getter
+ *
+ * This allows existing code to continue using `eventConsumer` directly
+ * without breaking. The Proxy intercepts all property access and delegates
+ * to the lazily-initialized instance.
+ *
+ * @deprecated Use getEventConsumer() for better error handling
+ */
+export const eventConsumer = new Proxy({} as EventConsumer, {
+  get(target, prop) {
+    const instance = getEventConsumer();
+    if (!instance) {
+      // Return dummy implementations that log warnings
+      if (prop === 'validateConnection') {
+        return async () => {
+          console.warn('⚠️  EventConsumer not available (Kafka not configured)');
+          return false;
+        };
+      }
+      if (prop === 'start' || prop === 'stop') {
+        return async () => {
+          console.warn('⚠️  EventConsumer not available (Kafka not configured)');
+        };
+      }
+      if (prop === 'getHealthStatus') {
+        return () => ({
+          status: 'unhealthy',
+          eventsProcessed: 0,
+          recentActionsCount: 0,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      if (
+        prop === 'getAgentMetrics' ||
+        prop === 'getRecentActions' ||
+        prop === 'getRoutingDecisions' ||
+        prop === 'getRecentTransformations' ||
+        prop === 'getPerformanceMetrics'
+      ) {
+        return () => [];
+      }
+      if (prop === 'getPerformanceStats') {
+        return () => ({
+          totalQueries: 0,
+          cacheHitCount: 0,
+          avgRoutingDuration: 0,
+          totalRoutingDuration: 0,
+          cacheHitRate: 0,
+        });
+      }
+      if (prop === 'getActionsByAgent') {
+        return () => [];
+      }
+      // For event emitter methods, return no-op functions
+      if (prop === 'on' || prop === 'once' || prop === 'emit' || prop === 'removeListener') {
+        return () => eventConsumer; // Return proxy for chaining
+      }
+      return undefined;
+    }
+    // Delegate to actual instance
+    const value = (instance as any)[prop];
+    // Bind methods to the instance to preserve 'this' context
+    if (typeof value === 'function') {
+      return value.bind(instance);
+    }
+    return value;
+  },
+});

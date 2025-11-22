@@ -666,71 +666,77 @@ describe('PlatformHealthMockData', () => {
     it('generates health data with required structure', () => {
       const health = PlatformHealthMockData.generateHealth();
 
-      expect(health).toHaveProperty('database');
-      expect(health).toHaveProperty('kafka');
+      // New format from /api/intelligence/services/health
+      expect(health).toHaveProperty('timestamp');
+      expect(health).toHaveProperty('overallStatus');
       expect(health).toHaveProperty('services');
+      expect(health).toHaveProperty('summary');
     });
 
-    it('generates database health with valid structure', () => {
+    it('generates PostgreSQL service health with valid structure', () => {
       const health = PlatformHealthMockData.generateHealth();
+      const dbService = health.services.find((s) => s.service.toLowerCase().includes('postgres'));
 
-      expect(health.database).toHaveProperty('name', 'PostgreSQL');
-      expect(health.database).toHaveProperty('status');
-      expect(health.database).toHaveProperty('uptime');
-      expect(health.database).toHaveProperty('latency_ms');
+      expect(dbService).toBeDefined();
+      expect(dbService?.service).toBe('PostgreSQL');
+      expect(dbService?.status).toBeDefined();
+      expect(['up', 'warning', 'down']).toContain(dbService?.status);
 
-      expect(['healthy', 'degraded', 'down']).toContain(health.database.status);
-      expect(health.database.latency_ms).toBeGreaterThanOrEqual(5);
-      expect(health.database.latency_ms).toBeLessThanOrEqual(30);
-      expect(health.database.uptime).toMatch(/^\d+\.\d+%$/);
+      // Latency depends on status: normal (5-30ms) or degraded (200-500ms)
+      if (dbService?.status === 'warning') {
+        expect(dbService.latencyMs).toBeGreaterThanOrEqual(200);
+        expect(dbService.latencyMs).toBeLessThanOrEqual(500);
+      } else {
+        expect(dbService?.latencyMs).toBeGreaterThanOrEqual(5);
+        expect(dbService?.latencyMs).toBeLessThanOrEqual(30);
+      }
     });
 
-    it('generates kafka health with valid structure', () => {
+    it('generates Kafka service health with valid structure', () => {
       const health = PlatformHealthMockData.generateHealth();
+      const kafkaService = health.services.find((s) => s.service.toLowerCase().includes('kafka'));
 
-      expect(health.kafka).toHaveProperty('name', 'Kafka/Redpanda');
-      expect(health.kafka).toHaveProperty('status');
-      expect(health.kafka).toHaveProperty('uptime');
-      expect(health.kafka).toHaveProperty('latency_ms');
+      expect(kafkaService).toBeDefined();
+      expect(kafkaService?.service).toBe('Kafka/Redpanda');
+      expect(kafkaService?.status).toBeDefined();
+      expect(['up', 'warning', 'down']).toContain(kafkaService?.status);
 
-      expect(['healthy', 'degraded', 'down']).toContain(health.kafka.status);
-      expect(health.kafka.latency_ms).toBeGreaterThanOrEqual(15);
-      expect(health.kafka.latency_ms).toBeLessThanOrEqual(60);
-      expect(health.kafka.uptime).toMatch(/^\d+\.\d+%$/);
+      // Latency depends on status: normal (15-60ms) or degraded (200-500ms)
+      if (kafkaService?.status === 'warning') {
+        expect(kafkaService.latencyMs).toBeGreaterThanOrEqual(200);
+        expect(kafkaService.latencyMs).toBeLessThanOrEqual(500);
+      } else {
+        expect(kafkaService?.latencyMs).toBeGreaterThanOrEqual(15);
+        expect(kafkaService?.latencyMs).toBeLessThanOrEqual(60);
+      }
     });
 
     it('generates services array with valid structure', () => {
       const health = PlatformHealthMockData.generateHealth();
 
       expect(Array.isArray(health.services)).toBe(true);
-      expect(health.services.length).toBe(6);
+      expect(health.services.length).toBe(4); // PostgreSQL, Kafka, Omniarchon, Event Consumer
 
       health.services.forEach((service) => {
-        expect(service).toHaveProperty('name');
+        expect(service).toHaveProperty('service');
         expect(service).toHaveProperty('status');
-        expect(service).toHaveProperty('latency_ms');
-        expect(service).toHaveProperty('uptime');
-
-        expect(typeof service.name).toBe('string');
-        expect(['up', 'degraded']).toContain(service.status);
-        expect(service.latency_ms).toBeGreaterThan(0);
-        expect(service.uptime).toBeGreaterThanOrEqual(99.0);
-        expect(service.uptime).toBeLessThanOrEqual(99.99);
+        expect(typeof service.service).toBe('string');
+        expect(['up', 'down', 'warning']).toContain(service.status);
       });
     });
 
     it('occasionally degrades a service', () => {
       // Run multiple times to check degradation logic
-      let foundDegraded = false;
+      let foundWarning = false;
       for (let i = 0; i < 50; i++) {
         const health = PlatformHealthMockData.generateHealth();
-        if (health.services.some((s) => s.status === 'degraded')) {
-          foundDegraded = true;
+        if (health.services.some((s) => s.status === 'warning')) {
+          foundWarning = true;
           break;
         }
       }
-      // With 10% chance over 50 runs, we should find at least one degraded service
-      expect(foundDegraded).toBe(true);
+      // With 10% chance over 50 runs, we should find at least one warning service
+      expect(foundWarning).toBe(true);
     });
 
     it('generates different data on subsequent calls', () => {

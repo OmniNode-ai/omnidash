@@ -186,16 +186,13 @@ export default function IntelligenceOperations() {
         case 'ROUTING_DECISION':
           // Invalidate all intelligence queries when events occur
           queryClient.invalidateQueries({
-            queryKey: [
-              'http://localhost:3000/api/intelligence/health/manifest-injection',
-              timeRange,
-            ],
+            queryKey: ['/api/intelligence/health/manifest-injection', timeRange],
           });
           queryClient.invalidateQueries({
             queryKey: ['agent-operations-full', timeRange],
           });
           queryClient.invalidateQueries({
-            queryKey: ['http://localhost:3000/api/intelligence/documents/top-accessed', timeRange],
+            queryKey: ['/api/intelligence/documents/top-accessed', timeRange],
           });
           break;
       }
@@ -205,10 +202,10 @@ export default function IntelligenceOperations() {
 
   // Fetch manifest injection health data (updated via WebSocket)
   const { data: healthData, isLoading: healthLoading } = useQuery<ManifestInjectionHealth>({
-    queryKey: ['http://localhost:3000/api/intelligence/health/manifest-injection', timeRange],
+    queryKey: ['/api/intelligence/health/manifest-injection', timeRange],
     queryFn: async () => {
       const response = await fetch(
-        `http://localhost:3000/api/intelligence/health/manifest-injection?timeWindow=${timeRange}`
+        `/api/intelligence/health/manifest-injection?timeWindow=${timeRange}`
       );
       if (!response.ok) throw new Error('Failed to fetch manifest injection health');
       return response.json();
@@ -231,17 +228,17 @@ export default function IntelligenceOperations() {
 
   // Fetch recent actions as fallback if WebSocket hasn't provided data yet
   const { data: recentActionsData } = useQuery<AgentAction[]>({
-    queryKey: [`http://localhost:3000/api/intelligence/actions/recent?limit=50`],
+    queryKey: [`/api/intelligence/actions/recent?limit=50`],
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     enabled: liveEvents.length === 0, // Only fetch if no live events
   });
 
   // Fetch top accessed documents
   const { data: topDocumentsData } = useQuery<TopAccessedDocument[]>({
-    queryKey: ['http://localhost:3000/api/intelligence/documents/top-accessed', timeRange],
+    queryKey: ['/api/intelligence/documents/top-accessed', timeRange],
     queryFn: async () => {
       const response = await fetch(
-        `http://localhost:3000/api/intelligence/documents/top-accessed?timeWindow=${timeRange}&limit=10`
+        `/api/intelligence/documents/top-accessed?timeWindow=${timeRange}&limit=10`
       );
       if (!response.ok) throw new Error('Failed to fetch top documents');
       return response.json();

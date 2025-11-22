@@ -10,8 +10,8 @@ describe('PlatformHealthMockData', () => {
   it('generates health data with degraded service when random threshold hit', () => {
     vi.spyOn(MockDataGenerator, 'randomFloat').mockImplementation(() => 99.9);
     vi.spyOn(MockDataGenerator, 'randomInt').mockImplementation((min, max) => {
-      if (min === 0 && max === 5) {
-        return 0; // degrade first service
+      if (min === 0 && max === 3) {
+        return 0; // degrade first service (services array has 4 items, index 0-3)
       }
       if (min === 200 && max === 500) {
         return 250;
@@ -19,17 +19,25 @@ describe('PlatformHealthMockData', () => {
       return 10;
     });
     vi.spyOn(Math, 'random')
-      .mockReturnValueOnce(0.2) // database healthy
-      .mockReturnValueOnce(0.3) // kafka healthy
+      .mockReturnValueOnce(0.2) // PostgreSQL healthy
+      .mockReturnValueOnce(0.3) // Kafka healthy
+      .mockReturnValueOnce(0.3) // Omniarchon healthy
+      .mockReturnValueOnce(0.2) // Event Consumer healthy
       .mockReturnValueOnce(0.05); // trigger degraded service branch
 
     const health = PlatformHealthMockData.generateHealth();
 
-    expect(health).toHaveProperty('status', 'degraded');
-    expect(health.database?.name).toBe('PostgreSQL');
-    expect(health.kafka?.name).toBe('Kafka/Redpanda');
-    expect(health.services.some((service) => service.status === 'degraded')).toBe(true);
-    expect(health.services.every((service) => typeof service.latency_ms === 'number')).toBe(true);
+    expect(health).toHaveProperty('overallStatus', 'unhealthy');
+    expect(health).toHaveProperty('timestamp');
+    expect(health).toHaveProperty('summary');
+    expect(health.services.find((s) => s.service === 'PostgreSQL')).toBeDefined();
+    expect(health.services.find((s) => s.service === 'Kafka/Redpanda')).toBeDefined();
+    expect(health.services.some((service) => service.status === 'warning')).toBe(true);
+    expect(
+      health.services.every(
+        (service) => service.latencyMs === undefined || typeof service.latencyMs === 'number'
+      )
+    ).toBe(true);
   });
 
   it('maps service health statuses correctly', () => {

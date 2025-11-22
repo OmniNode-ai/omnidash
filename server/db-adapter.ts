@@ -21,7 +21,7 @@
  */
 
 import { eq, and, gte, lte, desc, asc, sql, SQL, inArray } from 'drizzle-orm';
-import { intelligenceDb } from './storage';
+import { getIntelligenceDb } from './storage';
 import * as schema from '@shared/intelligence-schema';
 import { ensureNumeric } from '@shared/utils/number-utils';
 
@@ -51,7 +51,9 @@ export interface DeleteOptions {
  * Provides direct database access with Drizzle ORM and optional event bus integration.
  */
 export class PostgresAdapter {
-  private db = intelligenceDb;
+  private get db() {
+    return getIntelligenceDb();
+  }
   private eventBusEnabled: boolean;
 
   constructor() {

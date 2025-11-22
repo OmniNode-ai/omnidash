@@ -33,11 +33,17 @@ export class IntelligenceEventAdapter {
     'dev.archon-intelligence.intelligence.code-analysis-failed.v1';
 
   constructor(
-    private readonly brokers: string[] = (
-      process.env.KAFKA_BOOTSTRAP_SERVERS ||
-      process.env.KAFKA_BROKERS ||
-      '192.168.86.200:9092'
-    ).split(',')
+    private readonly brokers: string[] = (() => {
+      const brokerString = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS;
+      if (!brokerString) {
+        throw new Error(
+          'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
+            'Set it in .env file or export it before starting the server. ' +
+            'Example: KAFKA_BROKERS=192.168.86.200:29092'
+        );
+      }
+      return brokerString.split(',');
+    })()
   ) {
     this.kafka = new Kafka({ brokers: this.brokers, clientId: 'omnidash-intelligence-adapter' });
   }
@@ -182,5 +188,97 @@ export class IntelligenceEventAdapter {
   }
 }
 
-// Singleton instance (opt-in start in server bootstrap)
-export const intelligenceEvents = new IntelligenceEventAdapter();
+// ============================================================================
+// Lazy Initialization Pattern (prevents startup crashes)
+// ============================================================================
+
+let intelligenceEventsInstance: IntelligenceEventAdapter | null = null;
+let intelligenceInitError: Error | null = null;
+
+/**
+ * Get IntelligenceEventAdapter singleton with lazy initialization
+ *
+ * This pattern prevents the application from crashing at module load time
+ * if KAFKA_BROKERS environment variable is not configured.
+ *
+ * @returns IntelligenceEventAdapter instance or null if initialization failed
+ */
+export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
+  // Return cached instance if already initialized
+  if (intelligenceEventsInstance) {
+    return intelligenceEventsInstance;
+  }
+
+  // Return null if we previously failed to initialize
+  if (intelligenceInitError) {
+    return null;
+  }
+
+  // Attempt lazy initialization
+  try {
+    intelligenceEventsInstance = new IntelligenceEventAdapter();
+    return intelligenceEventsInstance;
+  } catch (error) {
+    intelligenceInitError = error instanceof Error ? error : new Error(String(error));
+    console.warn(
+      '⚠️  IntelligenceEventAdapter initialization failed:',
+      intelligenceInitError.message
+    );
+    console.warn('   Intelligence event operations will be disabled');
+    console.warn('   Set KAFKA_BROKERS in .env file to enable intelligence events');
+    return null;
+  }
+}
+
+/**
+ * Check if IntelligenceEventAdapter is available
+ */
+export function isIntelligenceEventsAvailable(): boolean {
+  return intelligenceEventsInstance !== null || intelligenceInitError === null;
+}
+
+/**
+ * Get initialization error if IntelligenceEventAdapter failed to initialize
+ */
+export function getIntelligenceEventsError(): Error | null {
+  return intelligenceInitError;
+}
+
+/**
+ * Backward compatibility: Proxy that delegates to lazy getter
+ *
+ * @deprecated Use getIntelligenceEvents() for better error handling
+ */
+export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
+  get(target, prop) {
+    const instance = getIntelligenceEvents();
+    if (!instance) {
+      // Return dummy implementations
+      if (prop === 'start' || prop === 'stop') {
+        return async () => {
+          console.warn('⚠️  IntelligenceEventAdapter not available (Kafka not configured)');
+        };
+      }
+      if (prop === 'request' || prop === 'requestPatternDiscovery') {
+        return async () => {
+          throw new Error('IntelligenceEventAdapter not available (Kafka not configured)');
+        };
+      }
+      if (prop === 'started') {
+        return false;
+      }
+      // Return readonly topic properties
+      if (prop === 'TOPIC_REQUEST' || prop === 'TOPIC_COMPLETED' || prop === 'TOPIC_FAILED') {
+        return '';
+      }
+      return undefined;
+    }
+    // Delegate to actual instance
+    const value = (instance as any)[prop];
+    // Bind methods to preserve 'this' context
+    if (typeof value === 'function') {
+      return value.bind(instance);
+    }
+    return value;
+  },
+});

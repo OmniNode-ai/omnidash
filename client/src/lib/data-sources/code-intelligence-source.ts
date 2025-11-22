@@ -76,11 +76,8 @@ class CodeIntelligenceDataSource {
     }
 
     try {
-      const omniarchonUrl = ensureEnvVar(
-        'VITE_INTELLIGENCE_SERVICE_URL',
-        'http://localhost:8053',
-        'debug'
-      );
+      const omniarchonUrl =
+        import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
       const response = await fetch(
         `${omniarchonUrl}/api/intelligence/code/analysis?timeWindow=${timeRange}`
       );

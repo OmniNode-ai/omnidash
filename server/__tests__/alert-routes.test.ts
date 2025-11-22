@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express, { type Express } from 'express';
 import { alertRouter } from '../alert-routes';
-import { intelligenceDb } from '../storage';
+import { getIntelligenceDb } from '../storage';
 import { getAllAlertMetrics } from '../alert-helpers';
 
 // Clear the health check cache before each test
@@ -10,12 +10,14 @@ import { getAllAlertMetrics } from '../alert-helpers';
 // Since it's not exported, we'll need to wait for cache to expire or use a different approach
 
 // Mock dependencies
+const mockDb = {
+  select: vi.fn().mockReturnThis(),
+  from: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockResolvedValue([]),
+};
+
 vi.mock('../storage', () => ({
-  intelligenceDb: {
-    select: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue([]),
-  },
+  getIntelligenceDb: vi.fn(() => mockDb),
 }));
 
 vi.mock('../alert-helpers', () => ({
@@ -47,7 +49,7 @@ describe('Alert Routes', () => {
         status: 200,
       } as any);
 
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue([{ check: 1 }]),
         }),
@@ -82,7 +84,7 @@ describe('Alert Routes', () => {
         status: 200,
       } as any);
 
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue([{ check: 1 }]),
         }),
@@ -110,7 +112,7 @@ describe('Alert Routes', () => {
         status: 200,
       } as any);
 
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue([{ check: 1 }]),
         }),
@@ -137,7 +139,7 @@ describe('Alert Routes', () => {
         status: 200,
       } as any);
 
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue([{ check: 1 }]),
         }),
@@ -166,7 +168,7 @@ describe('Alert Routes', () => {
         status: 200,
       } as any);
 
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue([{ check: 1 }]),
         }),
@@ -195,7 +197,7 @@ describe('Alert Routes', () => {
         status: 200,
       } as any);
 
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue([{ check: 1 }]),
         }),
@@ -225,7 +227,7 @@ describe('Alert Routes', () => {
         status: 200,
       } as any);
 
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue([{ check: 1 }]),
         }),
@@ -252,7 +254,7 @@ describe('Alert Routes', () => {
     it('should return multiple alerts when multiple conditions are met', async () => {
       vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'));
 
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           limit: vi.fn().mockRejectedValue(new Error('Connection failed')),
         }),
@@ -292,7 +294,7 @@ describe('Alert Routes', () => {
         status: 200,
       } as any);
 
-      vi.mocked(intelligenceDb.select).mockReturnValue({
+      vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue([{ check: 1 }]),
         }),

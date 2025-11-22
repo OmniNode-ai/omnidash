@@ -3,10 +3,11 @@
  * Tests all external service connections and provides diagnostic information
  */
 
-import { intelligenceDb } from './storage';
+import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 import { eventConsumer } from './event-consumer';
 import { Kafka } from 'kafkajs';
+import { getOmniarchonUrl } from './utils/service-urls';
 
 export interface ServiceHealthCheck {
   service: string;
@@ -37,7 +38,7 @@ export async function checkAllServices(): Promise<ServiceHealthCheck[]> {
 async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
   try {
-    const result = await intelligenceDb.execute(
+    const result = await getIntelligenceDb().execute(
       sql`SELECT 1 as check, NOW() as current_time, version() as pg_version`
     );
     const latency = Date.now() - startTime;
@@ -67,7 +68,22 @@ async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
 
 async function checkKafka(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
-  const brokers = (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(',');
+  const brokersEnv = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+
+  // If no brokers configured, return down status with helpful message
+  if (!brokersEnv) {
+    return {
+      service: 'Kafka/Redpanda',
+      status: 'down',
+      latencyMs: Date.now() - startTime,
+      error: 'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable not configured',
+      details: {
+        message: 'Set KAFKA_BROKERS in .env file (e.g., KAFKA_BROKERS=192.168.86.200:29092)',
+      },
+    };
+  }
+
+  const brokers = brokersEnv.split(',');
 
   try {
     // Create a test Kafka client
@@ -126,7 +142,7 @@ async function checkKafka(): Promise<ServiceHealthCheck> {
 
 async function checkOmniarchon(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
-  const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+  const omniarchonUrl = getOmniarchonUrl();
 
   try {
     const response = await fetch(`${omniarchonUrl}/health`, {
