@@ -22,6 +22,7 @@ import {
   readFromSystemClipboard,
 } from './utils/clipboard';
 import type { Port, Position } from './models/types';
+import type { WorkflowExport } from './utils/workflow-io';
 
 interface WorkflowCanvasProps {
   selectedNodeType?: string;
@@ -30,6 +31,7 @@ interface WorkflowCanvasProps {
 export interface WorkflowCanvasHandle {
   addNodeAtCenter: (type: string) => void;
   downloadWorkflow: (filename?: string) => void;
+  loadWorkflow: (data: WorkflowExport) => boolean;
   loadWorkflowFromFile: (file: File) => Promise<boolean>;
   clearWorkflow: () => void;
   getNodeCount: () => number;
@@ -88,6 +90,9 @@ export const WorkflowCanvas = forwardRef<WorkflowCanvasHandle, WorkflowCanvasPro
         },
         downloadWorkflow: (filename?: string) => {
           actions.downloadWorkflow(filename);
+        },
+        loadWorkflow: (data: WorkflowExport) => {
+          return actions.loadWorkflow(data);
         },
         loadWorkflowFromFile: async (file: File) => {
           return await actions.loadWorkflowFromFile(file);

@@ -7,4 +7,5 @@ export { useWorkflowState } from './hooks/useWorkflowState';
 export * from './models/types';
 export * from './models/constants';
 export * from './models/nodeRegistry';
+export * from './models/templateRegistry';
 export * from './utils/workflow-io';
