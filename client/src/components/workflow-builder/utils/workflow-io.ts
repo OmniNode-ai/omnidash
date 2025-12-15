@@ -1,4 +1,5 @@
 import type { WorkflowNode, Connection, Port } from '../models/types';
+import { getDefaultNodeData } from '../models/nodeRegistry';
 
 /**
  * Export schema matching the spec:
@@ -88,11 +89,14 @@ export function importWorkflow(
     const nodes: WorkflowNode[] = data.nodes.map((exportedNode) => {
       const { inputPorts, outputPorts } = createPorts(exportedNode.id, exportedNode.type);
 
+      // Merge imported config with defaults (imported config takes precedence)
+      const defaultData = getDefaultNodeData(exportedNode.type);
+
       return {
         id: exportedNode.id,
         type: exportedNode.type,
         position: { x: exportedNode.position.x, y: exportedNode.position.y },
-        data: exportedNode.config || {},
+        data: { ...defaultData, ...(exportedNode.config || {}) },
         inputPorts,
         outputPorts,
       };

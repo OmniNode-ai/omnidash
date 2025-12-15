@@ -14,7 +14,11 @@ import type {
 import type { ClipboardData } from '../models/types';
 import { CANVAS } from '../models/constants';
 import { generateId, clamp } from '../utils/svg';
-import { getNodeTypeDefinition, DEFAULT_NODE_TYPE } from '../models/nodeRegistry';
+import {
+  getNodeTypeDefinition,
+  getDefaultNodeData,
+  DEFAULT_NODE_TYPE,
+} from '../models/nodeRegistry';
 import {
   exportWorkflow,
   importWorkflow,
@@ -198,11 +202,14 @@ function createNode(position: Position, nodeType: string): WorkflowNode {
     maxConnections: portDef.maxConnections,
   }));
 
+  // Initialize data with default values from configFields
+  const defaultData = getDefaultNodeData(nodeType);
+
   return {
     id,
     type: nodeType,
     position,
-    data: {},
+    data: defaultData,
     inputPorts,
     outputPorts,
   };
@@ -727,6 +734,9 @@ function workflowReducer(state: WorkflowState, action: Action): WorkflowState {
             maxConnections: portDef.maxConnections,
           }));
 
+        // Merge clipboard data with defaults (clipboard data takes precedence)
+        const defaultData = getDefaultNodeData(clipNode.type);
+
         return {
           id: newId,
           type: clipNode.type,
@@ -734,7 +744,7 @@ function workflowReducer(state: WorkflowState, action: Action): WorkflowState {
             x: offset.x + clipNode.relativePosition.x,
             y: offset.y + clipNode.relativePosition.y,
           },
-          data: { ...clipNode.data },
+          data: { ...defaultData, ...clipNode.data },
           inputPorts,
           outputPorts,
         };

@@ -1,6 +1,16 @@
-import { memo, useCallback, useState, useRef } from 'react';
-import { ChevronRight, ChevronLeft, X, Maximize2, Copy, Check } from 'lucide-react';
+import { memo, useCallback, useState, useRef, useMemo, useEffect } from 'react';
+import { ChevronRight, ChevronLeft, X, Maximize2, Copy, Check, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getNodeTypeDefinition } from './models/nodeRegistry';
+import { getNodeTypeDefinition, validateNodeData } from './models/nodeRegistry';
+import type { FieldValidationError } from './models/nodeRegistry';
 import type { WorkflowNode, Connection, ConfigField } from './models/types';
 
 interface InspectorPanelProps {
@@ -32,63 +43,96 @@ interface FieldRendererProps {
   field: ConfigField;
   value: unknown;
   onChange: (value: unknown) => void;
+  error?: string;
 }
 
+// Helper for error styling
+const errorInputClass = 'border-destructive focus-visible:ring-destructive';
+
 // Generic field renderer that handles all field types
-const FieldRenderer = memo(function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
+const FieldRenderer = memo(function FieldRenderer({
+  field,
+  value,
+  onChange,
+  error,
+}: FieldRendererProps) {
   const [jsonError, setJsonError] = useState<string | null>(null);
+
+  // Combined error message (validation error or JSON parse error)
+  const displayError = error || jsonError;
 
   switch (field.type) {
     case 'string':
       return (
-        <Input
-          value={(value as string) ?? field.default ?? ''}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
-        />
+        <div className="space-y-1">
+          <Input
+            value={(value as string) ?? field.default ?? ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder}
+            className={error ? errorInputClass : ''}
+          />
+          {displayError && <p className="text-xs text-destructive">{displayError}</p>}
+        </div>
       );
 
     case 'number':
       return (
-        <Input
-          type="number"
-          value={(value as number) ?? field.default ?? ''}
-          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : undefined)}
-          min={field.min}
-          max={field.max}
-          step={field.step}
-        />
+        <div className="space-y-1">
+          <Input
+            type="number"
+            value={(value as number) ?? field.default ?? ''}
+            onChange={(e) => onChange(e.target.value ? Number(e.target.value) : undefined)}
+            min={field.min}
+            max={field.max}
+            step={field.step}
+            className={error ? errorInputClass : ''}
+          />
+          {displayError && <p className="text-xs text-destructive">{displayError}</p>}
+        </div>
       );
 
     case 'boolean':
       return (
-        <Switch checked={(value as boolean) ?? field.default ?? false} onCheckedChange={onChange} />
+        <div className="space-y-1">
+          <Switch
+            checked={(value as boolean) ?? field.default ?? false}
+            onCheckedChange={onChange}
+          />
+          {displayError && <p className="text-xs text-destructive">{displayError}</p>}
+        </div>
       );
 
     case 'select':
       return (
-        <Select value={(value as string) ?? field.default ?? ''} onValueChange={onChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select..." />
-          </SelectTrigger>
-          <SelectContent>
-            {field.options.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-1">
+          <Select value={(value as string) ?? field.default ?? ''} onValueChange={onChange}>
+            <SelectTrigger className={error ? errorInputClass : ''}>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              {field.options.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {displayError && <p className="text-xs text-destructive">{displayError}</p>}
+        </div>
       );
 
     case 'multiline':
       return (
-        <Textarea
-          value={(value as string) ?? field.default ?? ''}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
-          rows={field.rows ?? 3}
-        />
+        <div className="space-y-1">
+          <Textarea
+            value={(value as string) ?? field.default ?? ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder}
+            rows={field.rows ?? 3}
+            className={error ? errorInputClass : ''}
+          />
+          {displayError && <p className="text-xs text-destructive">{displayError}</p>}
+        </div>
       );
 
     case 'json': {
@@ -110,10 +154,10 @@ const FieldRenderer = memo(function FieldRenderer({ field, value, onChange }: Fi
                 setJsonError('Invalid JSON');
               }
             }}
-            className="font-mono text-xs"
+            className={`font-mono text-xs ${error || jsonError ? errorInputClass : ''}`}
             rows={field.rows ?? 4}
           />
-          {jsonError && <p className="text-xs text-destructive">{jsonError}</p>}
+          {displayError && <p className="text-xs text-destructive">{displayError}</p>}
         </div>
       );
     }
@@ -135,6 +179,42 @@ const NodeInspector = memo(function NodeInspector({
   const [schemaCopied, setSchemaCopied] = useState(false);
   const schemaContainerRef = useRef<HTMLDivElement>(null);
   const typeDef = getNodeTypeDefinition(node.type);
+
+  // Local form state - buffers changes until Update is clicked
+  const [formData, setFormData] = useState<Record<string, unknown>>(() => ({ ...node.data }));
+
+  // Save animation state: 'idle' | 'saving' | 'saved'
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  // Reset form data and save state when node changes (user selects different node)
+  useEffect(() => {
+    setFormData({ ...node.data });
+    setSaveState('idle');
+  }, [node.id]); // Only reset when node ID changes, not on every data update
+
+  // Check if form has unsaved changes
+  const isDirty = useMemo(() => {
+    const nodeDataKeys = Object.keys(node.data);
+    const formDataKeys = Object.keys(formData);
+
+    // Check if keys are different
+    if (nodeDataKeys.length !== formDataKeys.length) return true;
+
+    // Check if any value is different
+    for (const key of formDataKeys) {
+      const nodeValue = node.data[key];
+      const formValue = formData[key];
+
+      // Deep comparison for objects (like JSON fields)
+      if (typeof formValue === 'object' && typeof nodeValue === 'object') {
+        if (JSON.stringify(formValue) !== JSON.stringify(nodeValue)) return true;
+      } else if (formValue !== nodeValue) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [node.data, formData]);
 
   const handleCopySchema = useCallback(async () => {
     try {
@@ -161,20 +241,53 @@ const NodeInspector = memo(function NodeInspector({
   }, []);
   const configFields = typeDef?.configFields ?? [];
 
-  const handleFieldChange = useCallback(
-    (fieldName: string, value: unknown) => {
-      onUpdateData({
-        ...node.data,
-        [fieldName]: value,
-      });
-    },
-    [node.data, onUpdateData]
-  );
+  // Compute validation errors against the local form data
+  const validationErrors = useMemo(() => {
+    return validateNodeData(node.type, formData);
+  }, [node.type, formData]);
+
+  // Create a map for easy field -> error lookup
+  const errorsByField = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const error of validationErrors) {
+      map.set(error.field, error.message);
+    }
+    return map;
+  }, [validationErrors]);
+
+  // Update local form state (doesn't save yet)
+  const handleFieldChange = useCallback((fieldName: string, value: unknown) => {
+    setFormData((prev) => ({
+      ...prev,
+      [fieldName]: value,
+    }));
+  }, []);
+
+  // Save changes to node with animation
+  const handleUpdate = useCallback(() => {
+    setSaveState('saving');
+
+    // Brief delay to show spinner, then save
+    setTimeout(() => {
+      onUpdateData(formData);
+      setSaveState('saved');
+
+      // Show checkmark briefly, then return to idle
+      setTimeout(() => {
+        setSaveState('idle');
+      }, 1000);
+    }, 300);
+  }, [formData, onUpdateData]);
+
+  // Discard changes and reset to node data
+  const handleDiscard = useCallback(() => {
+    setFormData({ ...node.data });
+  }, [node.data]);
 
   return (
-    <div className="h-full flex flex-col gap-4">
+    <div id="inspector-node-root" className="h-full flex flex-col gap-4">
       {/* Node header */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div id="inspector-node-header" className="flex items-center gap-2 flex-shrink-0">
         <div
           className="w-3 h-3 rounded-full flex-shrink-0"
           style={{ backgroundColor: typeDef?.color ?? '#6b7280' }}
@@ -198,9 +311,12 @@ const NodeInspector = memo(function NodeInspector({
         </TabsList>
 
         {/* Config Tab */}
-        <TabsContent value="config" className="mt-3 flex-1 overflow-auto">
+        <TabsContent
+          value="config"
+          className="mt-3 data-[state=active]:flex-1 data-[state=active]:flex data-[state=active]:flex-col min-h-0"
+        >
           {configFields.length > 0 ? (
-            <div className="space-y-3">
+            <div id="inspector-config-fields" className="flex-1 overflow-auto space-y-3 px-1">
               {configFields.map((field) => (
                 <div key={field.name} className="space-y-1.5">
                   <Label className="text-xs flex items-center gap-1">
@@ -212,27 +328,64 @@ const NodeInspector = memo(function NodeInspector({
                   )}
                   <FieldRenderer
                     field={field}
-                    value={node.data[field.name]}
+                    value={formData[field.name]}
                     onChange={(value) => handleFieldChange(field.name, value)}
+                    error={errorsByField.get(field.name)}
                   />
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">No configurable fields</p>
+            <p className="text-xs text-muted-foreground flex-1">No configurable fields</p>
+          )}
+
+          {/* Update button - only show when there are config fields */}
+          {configFields.length > 0 && (
+            <div
+              id="inspector-config-footer"
+              className="pt-3 border-t mt-3 flex-shrink-0 flex items-center gap-2"
+            >
+              <Button
+                size="sm"
+                onClick={handleUpdate}
+                disabled={!isDirty || validationErrors.length > 0 || saveState !== 'idle'}
+                className="flex-1"
+              >
+                {saveState === 'saving' && (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Saving...
+                  </>
+                )}
+                {saveState === 'saved' && (
+                  <>
+                    <Check className="w-3.5 h-3.5 mr-1.5" />
+                    Saved
+                  </>
+                )}
+                {saveState === 'idle' && 'Update'}
+              </Button>
+              {isDirty && saveState === 'idle' && (
+                <Button size="sm" variant="ghost" onClick={handleDiscard} className="text-xs">
+                  Discard
+                </Button>
+              )}
+            </div>
           )}
         </TabsContent>
 
         {/* Schema Tab */}
-        <TabsContent value="schema" className="mt-3 flex-1 flex flex-col min-h-0">
-          <div
-            ref={schemaContainerRef}
-            tabIndex={0}
-            onKeyDown={handleSchemaKeyDown}
-            className="relative rounded overflow-auto flex-1 min-h-32 group focus:outline-none focus:ring-1 focus:ring-primary/50"
-          >
-            {/* Floating action buttons - top-left, show on hover */}
-            <div className="absolute top-1 left-1 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <TabsContent
+          value="schema"
+          className="mt-3 data-[state=active]:flex-1 data-[state=active]:flex data-[state=active]:flex-col min-h-0"
+        >
+          {/* Wrapper for buttons + scrollable content */}
+          <div id="inspector-schema-wrapper" className="relative flex-1 min-h-32 group">
+            {/* Floating action buttons - positioned outside scroll context */}
+            <div
+              id="inspector-schema-buttons"
+              className="absolute top-1 left-1 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
               <button
                 onClick={handleCopySchema}
                 className="p-1 rounded bg-black/50 hover:bg-black/70 text-white/70 hover:text-white transition-colors"
@@ -250,18 +403,27 @@ const NodeInspector = memo(function NodeInspector({
                 <Maximize2 className="w-3 h-3" />
               </button>
             </div>
-            <SyntaxHighlighter
-              language="json"
-              style={oneDark}
-              customStyle={{
-                margin: 0,
-                padding: '0.5rem',
-                fontSize: '0.75rem',
-                borderRadius: '0.375rem',
-              }}
+            {/* Scrollable content */}
+            <div
+              id="inspector-schema-content"
+              ref={schemaContainerRef}
+              tabIndex={0}
+              onKeyDown={handleSchemaKeyDown}
+              className="h-full rounded overflow-auto focus:outline-none focus:ring-1 focus:ring-primary/50"
             >
-              {JSON.stringify(typeDef, null, 2)}
-            </SyntaxHighlighter>
+              <SyntaxHighlighter
+                language="json"
+                style={oneDark}
+                customStyle={{
+                  margin: 0,
+                  padding: '0.5rem',
+                  fontSize: '0.75rem',
+                  borderRadius: '0.375rem',
+                }}
+              >
+                {JSON.stringify(typeDef, null, 2)}
+              </SyntaxHighlighter>
+            </div>
           </div>
 
           {/* Schema Modal */}
@@ -422,6 +584,7 @@ export const InspectorPanel = memo(function InspectorPanel({
   onDeleteConnection,
 }: InspectorPanelProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const handleUpdateData = useCallback(
     (data: Record<string, unknown>) => {
@@ -493,9 +656,12 @@ export const InspectorPanel = memo(function InspectorPanel({
 
   // Open state: full panel with toggle in header
   return (
-    <div className="w-64 h-full flex flex-col bg-card border-l">
+    <div id="inspector-panel" className="w-64 h-full flex flex-col bg-card border-l">
       {/* Header with toggle */}
-      <div className="p-3 border-b flex-shrink-0 flex items-center justify-between">
+      <div
+        id="inspector-panel-header"
+        className="p-3 border-b flex-shrink-0 flex items-center justify-between"
+      >
         <h3 className="font-semibold text-sm">Inspector</h3>
         <button
           onClick={() => setIsOpen(false)}
@@ -507,16 +673,53 @@ export const InspectorPanel = memo(function InspectorPanel({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3">{renderContent()}</div>
+      <div id="inspector-panel-content" className="flex-1 overflow-y-auto p-3">
+        {renderContent()}
+      </div>
 
       {/* Delete button - always at bottom */}
       {deleteInfo && (
-        <div className="p-3 border-t flex-shrink-0">
-          <Button variant="destructive" size="sm" className="w-full" onClick={deleteInfo.action}>
-            <X className="w-4 h-4 mr-1" />
-            {deleteInfo.label}
-          </Button>
-        </div>
+        <>
+          <div id="inspector-panel-footer" className="p-3 border-t flex-shrink-0">
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-full"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <X className="w-4 h-4 mr-1" />
+              {deleteInfo.label}
+            </Button>
+          </div>
+
+          {/* Delete confirmation dialog */}
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {selectedNodes.length === 1
+                    ? 'This will permanently delete the selected node and all its connections.'
+                    : selectedNodes.length > 1
+                      ? `This will permanently delete ${selectedNodes.length} nodes and all their connections.`
+                      : 'This will permanently delete the selected connection.'}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    deleteInfo.action();
+                    setDeleteDialogOpen(false);
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
       )}
     </div>
   );
