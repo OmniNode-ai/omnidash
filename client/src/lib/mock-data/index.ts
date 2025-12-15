@@ -16,3 +16,4 @@ export { CodeIntelligenceMockData } from './code-intelligence-mock';
 export { KnowledgeGraphMockData } from './knowledge-graph-mock';
 export { PlatformHealthMockData } from './platform-health-mock';
 export { DeveloperExperienceMockData } from './developer-experience-mock';
+export { NodeRegistryMockData } from './node-registry-mock';
