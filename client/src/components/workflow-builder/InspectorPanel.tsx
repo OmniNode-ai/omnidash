@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -161,27 +162,50 @@ const NodeInspector = memo(function NodeInspector({
         <p className="text-xs text-muted-foreground">{typeDef.description}</p>
       )}
 
-      {/* Config fields */}
-      {configFields.length > 0 && (
-        <div className="space-y-3 pt-2 border-t">
-          {configFields.map((field) => (
-            <div key={field.name} className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1">
-                {field.label}
-                {field.required && <span className="text-destructive">*</span>}
-              </Label>
-              {field.description && (
-                <p className="text-xs text-muted-foreground">{field.description}</p>
-              )}
-              <FieldRenderer
-                field={field}
-                value={node.data[field.name]}
-                onChange={(value) => handleFieldChange(field.name, value)}
-              />
+      {/* Tabs for Config and Schema */}
+      <Tabs defaultValue="config" className="w-full">
+        <TabsList className="w-full h-8">
+          <TabsTrigger value="config" className="flex-1 text-xs">
+            Config
+          </TabsTrigger>
+          <TabsTrigger value="schema" className="flex-1 text-xs">
+            Schema
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Config Tab */}
+        <TabsContent value="config" className="mt-3">
+          {configFields.length > 0 ? (
+            <div className="space-y-3">
+              {configFields.map((field) => (
+                <div key={field.name} className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1">
+                    {field.label}
+                    {field.required && <span className="text-destructive">*</span>}
+                  </Label>
+                  {field.description && (
+                    <p className="text-xs text-muted-foreground">{field.description}</p>
+                  )}
+                  <FieldRenderer
+                    field={field}
+                    value={node.data[field.name]}
+                    onChange={(value) => handleFieldChange(field.name, value)}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          ) : (
+            <p className="text-xs text-muted-foreground">No configurable fields</p>
+          )}
+        </TabsContent>
+
+        {/* Schema Tab */}
+        <TabsContent value="schema" className="mt-3">
+          <pre className="text-xs font-mono bg-muted p-2 rounded overflow-auto max-h-64">
+            {JSON.stringify(typeDef, null, 2)}
+          </pre>
+        </TabsContent>
+      </Tabs>
 
       {/* Delete button */}
       <div className="pt-3 border-t">
