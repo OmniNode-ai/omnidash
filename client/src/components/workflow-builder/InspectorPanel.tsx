@@ -533,9 +533,19 @@ const ConnectionInspector = memo(function ConnectionInspector({
   const fromTypeDef = fromNode ? getNodeTypeDefinition(fromNode.type) : null;
   const toTypeDef = toNode ? getNodeTypeDefinition(toNode.type) : null;
 
+  const hasMetadata = connection._extra && Object.keys(connection._extra).length > 0;
+
   return (
     <div className="space-y-4">
       <div className="font-semibold text-sm">Connection</div>
+
+      {/* Connection ID */}
+      <div className="space-y-1">
+        <Label className="text-xs">ID</Label>
+        <code className="block text-xs text-muted-foreground font-mono bg-muted/50 p-2 rounded truncate">
+          {connection.id}
+        </code>
+      </div>
 
       {/* From */}
       <div className="space-y-1">
@@ -548,6 +558,9 @@ const ConnectionInspector = memo(function ConnectionInspector({
           <span className="text-sm">{fromTypeDef?.label ?? 'Unknown'}</span>
           <span className="text-xs text-muted-foreground">: {fromPort?.name ?? '?'}</span>
         </div>
+        <code className="block text-xs text-muted-foreground/70 font-mono truncate pl-1">
+          {connection.fromNodeId}
+        </code>
       </div>
 
       {/* To */}
@@ -561,7 +574,20 @@ const ConnectionInspector = memo(function ConnectionInspector({
           <span className="text-sm">{toTypeDef?.label ?? 'Unknown'}</span>
           <span className="text-xs text-muted-foreground">: {toPort?.name ?? '?'}</span>
         </div>
+        <code className="block text-xs text-muted-foreground/70 font-mono truncate pl-1">
+          {connection.toNodeId}
+        </code>
       </div>
+
+      {/* Metadata (from imported _extra fields) */}
+      {hasMetadata && (
+        <div className="space-y-1">
+          <Label className="text-xs">Metadata</Label>
+          <pre className="text-xs text-muted-foreground font-mono bg-muted/50 p-2 rounded overflow-auto max-h-32">
+            {JSON.stringify(connection._extra, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   );
 });
