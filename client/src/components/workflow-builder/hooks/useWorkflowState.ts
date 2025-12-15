@@ -48,6 +48,8 @@ interface WorkflowState {
   // Undo/redo history (past states for undo, future states for redo)
   past: HistorySnapshot[];
   future: HistorySnapshot[];
+  // Workflow-level metadata from import (for round-trip preservation)
+  workflowMeta?: Record<string, unknown>;
 }
 
 // Max history entries to prevent unbounded memory growth
@@ -138,7 +140,14 @@ type Action =
   | { type: 'END_MARQUEE'; payload: { selectedNodeIds: string[] } }
   | { type: 'CANCEL_MARQUEE' }
   | { type: 'PASTE_NODES'; payload: { clipboardData: ClipboardData; offset: Position } }
-  | { type: 'IMPORT_WORKFLOW'; payload: { nodes: WorkflowNode[]; connections: Connection[] } }
+  | {
+      type: 'IMPORT_WORKFLOW';
+      payload: {
+        nodes: WorkflowNode[];
+        connections: Connection[];
+        workflowMeta?: Record<string, unknown>;
+      };
+    }
   | { type: 'CLEAR_WORKFLOW' }
   | { type: 'UNDO' }
   | { type: 'REDO' };
@@ -777,11 +786,12 @@ function workflowReducer(state: WorkflowState, action: Action): WorkflowState {
     }
 
     case 'IMPORT_WORKFLOW': {
-      const { nodes, connections } = action.payload;
+      const { nodes, connections, workflowMeta } = action.payload;
       return {
         ...initialState,
         nodes,
         connections,
+        workflowMeta,
       };
     }
 
@@ -994,20 +1004,20 @@ export function useWorkflowState() {
       dispatch({ type: 'PASTE_NODES', payload: { clipboardData, offset } });
     }, []),
 
-    // Export workflow to JSON
+    // Export workflow to JSON (preserves any imported metadata)
     getWorkflowExport: useCallback((): WorkflowExport => {
-      return exportWorkflow(state.nodes, state.connections);
-    }, [state.nodes, state.connections]),
+      return exportWorkflow(state.nodes, state.connections, state.workflowMeta);
+    }, [state.nodes, state.connections, state.workflowMeta]),
 
-    // Download workflow as JSON file
+    // Download workflow as JSON file (preserves any imported metadata)
     downloadWorkflow: useCallback(
       (filename?: string) => {
-        downloadWorkflowAsFile(state.nodes, state.connections, filename);
+        downloadWorkflowAsFile(state.nodes, state.connections, filename, state.workflowMeta);
       },
-      [state.nodes, state.connections]
+      [state.nodes, state.connections, state.workflowMeta]
     ),
 
-    // Import workflow from JSON data
+    // Import workflow from JSON data (preserves unknown fields for round-trip)
     loadWorkflow: useCallback((data: WorkflowExport) => {
       const createPorts = (nodeId: string, nodeType: string) => {
         const typeDef = getNodeTypeDefinition(nodeType) || DEFAULT_NODE_TYPE;
@@ -1032,13 +1042,20 @@ export function useWorkflowState() {
 
       const result = importWorkflow(data, createPorts);
       if (result) {
-        dispatch({ type: 'IMPORT_WORKFLOW', payload: result });
+        dispatch({
+          type: 'IMPORT_WORKFLOW',
+          payload: {
+            nodes: result.nodes,
+            connections: result.connections,
+            workflowMeta: result.workflowMeta,
+          },
+        });
         return true;
       }
       return false;
     }, []),
 
-    // Load workflow from a File object
+    // Load workflow from a File object (preserves unknown fields for round-trip)
     loadWorkflowFromFile: useCallback(async (file: File): Promise<boolean> => {
       const data = await readWorkflowFromFile(file);
       if (!data) return false;
@@ -1066,7 +1083,14 @@ export function useWorkflowState() {
 
       const result = importWorkflow(data, createPorts);
       if (result) {
-        dispatch({ type: 'IMPORT_WORKFLOW', payload: result });
+        dispatch({
+          type: 'IMPORT_WORKFLOW',
+          payload: {
+            nodes: result.nodes,
+            connections: result.connections,
+            workflowMeta: result.workflowMeta,
+          },
+        });
         return true;
       }
       return false;

@@ -27,6 +27,8 @@ export interface Connection {
   toPortId: string;
   fromNodeId: string;
   toNodeId: string;
+  /** Stores unknown fields from imported edge data for round-trip preservation */
+  _extra?: Record<string, unknown>;
 }
 
 // Port definition for node types
@@ -113,6 +115,8 @@ export interface WorkflowNode {
   data: Record<string, unknown>;
   inputPorts: Port[];
   outputPorts: Port[];
+  /** Stores unknown fields from imported data for round-trip preservation */
+  _extra?: Record<string, unknown>;
 }
 
 export interface Workflow {
