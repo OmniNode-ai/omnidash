@@ -45,41 +45,52 @@ export function exportWorkflow(
   workflowMeta?: Record<string, unknown>
 ): WorkflowExport {
   // Convert nodes to export format, preserving any extra fields
-  const exportedNodes: ExportedNode[] = nodes.map((node) => ({
-    // Spread any preserved extra fields first
-    ...(node._extra || {}),
-    // Then our known fields (these take precedence)
-    id: node.id,
-    type: node.type,
-    position: { x: node.position.x, y: node.position.y },
-    config: { ...node.data },
-    ports: {
-      inputs: node.inputPorts.map((p) => p.name),
-      outputs: node.outputPorts.map((p) => p.name),
-    },
-  }));
+  // Sort by ID for deterministic output (stable ordering for clean diffs)
+  const exportedNodes: ExportedNode[] = nodes
+    .map((node) => ({
+      // Spread any preserved extra fields first
+      ...(node._extra || {}),
+      // Then our known fields (these take precedence)
+      id: node.id,
+      type: node.type,
+      position: { x: node.position.x, y: node.position.y },
+      config: { ...node.data },
+      ports: {
+        inputs: node.inputPorts.map((p) => p.name),
+        outputs: node.outputPorts.map((p) => p.name),
+      },
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
 
   // Convert connections to edges format, preserving any extra fields
-  const exportedEdges: ExportedEdge[] = connections.map((conn) => {
-    const fromNode = nodes.find((n) => n.id === conn.fromNodeId);
-    const toNode = nodes.find((n) => n.id === conn.toNodeId);
-    const fromPort = fromNode?.outputPorts.find((p) => p.id === conn.fromPortId);
-    const toPort = toNode?.inputPorts.find((p) => p.id === conn.toPortId);
+  // Sort by composite key for deterministic output (stable ordering for clean diffs)
+  const exportedEdges: ExportedEdge[] = connections
+    .map((conn) => {
+      const fromNode = nodes.find((n) => n.id === conn.fromNodeId);
+      const toNode = nodes.find((n) => n.id === conn.toNodeId);
+      const fromPort = fromNode?.outputPorts.find((p) => p.id === conn.fromPortId);
+      const toPort = toNode?.inputPorts.find((p) => p.id === conn.toPortId);
 
-    return {
-      // Spread any preserved extra fields first
-      ...(conn._extra || {}),
-      // Then our known fields (these take precedence)
-      from: {
-        nodeId: conn.fromNodeId,
-        port: fromPort?.name ?? 'Out',
-      },
-      to: {
-        nodeId: conn.toNodeId,
-        port: toPort?.name ?? 'In',
-      },
-    };
-  });
+      return {
+        // Spread any preserved extra fields first
+        ...(conn._extra || {}),
+        // Then our known fields (these take precedence)
+        from: {
+          nodeId: conn.fromNodeId,
+          port: fromPort?.name ?? 'Out',
+        },
+        to: {
+          nodeId: conn.toNodeId,
+          port: toPort?.name ?? 'In',
+        },
+      };
+    })
+    .sort((a, b) => {
+      // Sort by from.nodeId, then from.port, then to.nodeId, then to.port
+      const keyA = `${a.from.nodeId}:${a.from.port}:${a.to.nodeId}:${a.to.port}`;
+      const keyB = `${b.from.nodeId}:${b.from.port}:${b.to.nodeId}:${b.to.port}`;
+      return keyA.localeCompare(keyB);
+    });
 
   return {
     // Spread any preserved workflow-level metadata first
