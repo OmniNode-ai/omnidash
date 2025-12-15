@@ -1,11 +1,14 @@
-import { memo, useCallback, useState } from 'react';
-import { ChevronRight, ChevronLeft, X } from 'lucide-react';
+import { memo, useCallback, useState, useRef } from 'react';
+import { ChevronRight, ChevronLeft, X, Maximize2, Copy, Check } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   Select,
   SelectContent,
@@ -124,13 +127,38 @@ const FieldRenderer = memo(function FieldRenderer({ field, value, onChange }: Fi
 const NodeInspector = memo(function NodeInspector({
   node,
   onUpdateData,
-  onDelete,
 }: {
   node: WorkflowNode;
   onUpdateData: (data: Record<string, unknown>) => void;
-  onDelete: () => void;
 }) {
+  const [schemaModalOpen, setSchemaModalOpen] = useState(false);
+  const [schemaCopied, setSchemaCopied] = useState(false);
+  const schemaContainerRef = useRef<HTMLDivElement>(null);
   const typeDef = getNodeTypeDefinition(node.type);
+
+  const handleCopySchema = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(typeDef, null, 2));
+      setSchemaCopied(true);
+      setTimeout(() => setSchemaCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy schema:', err);
+    }
+  }, [typeDef]);
+
+  const handleSchemaKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Ctrl+A or Cmd+A to select all schema content
+    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+      e.preventDefault();
+      if (schemaContainerRef.current) {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(schemaContainerRef.current);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+    }
+  }, []);
   const configFields = typeDef?.configFields ?? [];
 
   const handleFieldChange = useCallback(
@@ -144,9 +172,9 @@ const NodeInspector = memo(function NodeInspector({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col gap-4">
       {/* Node header */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-shrink-0">
         <div
           className="w-3 h-3 rounded-full flex-shrink-0"
           style={{ backgroundColor: typeDef?.color ?? '#6b7280' }}
@@ -159,22 +187,18 @@ const NodeInspector = memo(function NodeInspector({
 
       {/* Description */}
       {typeDef?.description && (
-        <p className="text-xs text-muted-foreground">{typeDef.description}</p>
+        <p className="text-xs text-muted-foreground flex-shrink-0">{typeDef.description}</p>
       )}
 
       {/* Tabs for Config and Schema */}
-      <Tabs defaultValue="config" className="w-full">
-        <TabsList className="w-full h-8">
-          <TabsTrigger value="config" className="flex-1 text-xs">
-            Config
-          </TabsTrigger>
-          <TabsTrigger value="schema" className="flex-1 text-xs">
-            Schema
-          </TabsTrigger>
+      <Tabs defaultValue="config" className="flex-1 flex flex-col min-h-0">
+        <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+          <TabsTrigger value="config">Config</TabsTrigger>
+          <TabsTrigger value="schema">Schema</TabsTrigger>
         </TabsList>
 
         {/* Config Tab */}
-        <TabsContent value="config" className="mt-3">
+        <TabsContent value="config" className="mt-3 flex-1 overflow-auto">
           {configFields.length > 0 ? (
             <div className="space-y-3">
               {configFields.map((field) => (
@@ -200,32 +224,102 @@ const NodeInspector = memo(function NodeInspector({
         </TabsContent>
 
         {/* Schema Tab */}
-        <TabsContent value="schema" className="mt-3">
-          <pre className="text-xs font-mono bg-muted p-2 rounded overflow-auto max-h-64">
-            {JSON.stringify(typeDef, null, 2)}
-          </pre>
+        <TabsContent value="schema" className="mt-3 flex-1 flex flex-col min-h-0">
+          <div
+            ref={schemaContainerRef}
+            tabIndex={0}
+            onKeyDown={handleSchemaKeyDown}
+            className="relative rounded overflow-auto flex-1 min-h-32 group focus:outline-none focus:ring-1 focus:ring-primary/50"
+          >
+            {/* Floating action buttons - top-left, show on hover */}
+            <div className="absolute top-1 left-1 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={handleCopySchema}
+                className="p-1 rounded bg-black/50 hover:bg-black/70 text-white/70 hover:text-white transition-colors"
+                aria-label={schemaCopied ? 'Copied' : 'Copy schema'}
+                title={schemaCopied ? 'Copied!' : 'Copy to clipboard'}
+              >
+                {schemaCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              </button>
+              <button
+                onClick={() => setSchemaModalOpen(true)}
+                className="p-1 rounded bg-black/50 hover:bg-black/70 text-white/70 hover:text-white transition-colors"
+                aria-label="Expand schema"
+                title="View full schema"
+              >
+                <Maximize2 className="w-3 h-3" />
+              </button>
+            </div>
+            <SyntaxHighlighter
+              language="json"
+              style={oneDark}
+              customStyle={{
+                margin: 0,
+                padding: '0.5rem',
+                fontSize: '0.75rem',
+                borderRadius: '0.375rem',
+              }}
+            >
+              {JSON.stringify(typeDef, null, 2)}
+            </SyntaxHighlighter>
+          </div>
+
+          {/* Schema Modal */}
+          <Dialog open={schemaModalOpen} onOpenChange={setSchemaModalOpen}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+              <DialogHeader>
+                <div className="flex items-center justify-between pr-8">
+                  <DialogTitle className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: typeDef?.color ?? '#6b7280' }}
+                    />
+                    {typeDef?.label ?? 'Unknown'} Schema
+                  </DialogTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopySchema}
+                    className="h-7 text-xs"
+                  >
+                    {schemaCopied ? (
+                      <>
+                        <Check className="w-3 h-3 mr-1" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3 mr-1" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogHeader>
+              <div className="flex-1 overflow-auto">
+                <SyntaxHighlighter
+                  language="json"
+                  style={oneDark}
+                  customStyle={{
+                    margin: 0,
+                    padding: '1rem',
+                    fontSize: '0.8125rem',
+                    borderRadius: '0.375rem',
+                  }}
+                >
+                  {JSON.stringify(typeDef, null, 2)}
+                </SyntaxHighlighter>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
-
-      {/* Delete button */}
-      <div className="pt-3 border-t">
-        <Button variant="destructive" size="sm" className="w-full" onClick={onDelete}>
-          <X className="w-4 h-4 mr-1" />
-          Delete Node
-        </Button>
-      </div>
     </div>
   );
 });
 
 // Multi-node inspector for multiple selected nodes
-const MultiNodeInspector = memo(function MultiNodeInspector({
-  nodes,
-  onDelete,
-}: {
-  nodes: WorkflowNode[];
-  onDelete: () => void;
-}) {
+const MultiNodeInspector = memo(function MultiNodeInspector({ nodes }: { nodes: WorkflowNode[] }) {
   // Group nodes by type for display
   const typeCounts = nodes.reduce(
     (acc, node) => {
@@ -257,14 +351,6 @@ const MultiNodeInspector = memo(function MultiNodeInspector({
 
       {/* Hint */}
       <p className="text-xs text-muted-foreground">Ctrl+click to toggle individual nodes</p>
-
-      {/* Delete button */}
-      <div className="pt-3 border-t">
-        <Button variant="destructive" size="sm" className="w-full" onClick={onDelete}>
-          <X className="w-4 h-4 mr-1" />
-          Delete {nodes.length} Nodes
-        </Button>
-      </div>
     </div>
   );
 });
@@ -273,11 +359,9 @@ const MultiNodeInspector = memo(function MultiNodeInspector({
 const ConnectionInspector = memo(function ConnectionInspector({
   connection,
   nodes,
-  onDelete,
 }: {
   connection: Connection;
   nodes: WorkflowNode[];
-  onDelete: () => void;
 }) {
   const fromNode = nodes.find((n) => n.id === connection.fromNodeId);
   const toNode = nodes.find((n) => n.id === connection.toNodeId);
@@ -315,14 +399,6 @@ const ConnectionInspector = memo(function ConnectionInspector({
           <span className="text-sm">{toTypeDef?.label ?? 'Unknown'}</span>
           <span className="text-xs text-muted-foreground">: {toPort?.name ?? '?'}</span>
         </div>
-      </div>
-
-      {/* Delete button */}
-      <div className="pt-3 border-t">
-        <Button variant="destructive" size="sm" className="w-full" onClick={onDelete}>
-          <X className="w-4 h-4 mr-1" />
-          Delete Connection
-        </Button>
       </div>
     </div>
   );
@@ -371,53 +447,75 @@ export const InspectorPanel = memo(function InspectorPanel({
   // Determine what to show
   const renderContent = () => {
     if (selectedNodes.length === 1) {
-      return (
-        <NodeInspector
-          node={selectedNodes[0]}
-          onUpdateData={handleUpdateData}
-          onDelete={handleDeleteNodes}
-        />
-      );
+      return <NodeInspector node={selectedNodes[0]} onUpdateData={handleUpdateData} />;
     }
 
     if (selectedNodes.length > 1) {
-      return <MultiNodeInspector nodes={selectedNodes} onDelete={handleDeleteNodes} />;
+      return <MultiNodeInspector nodes={selectedNodes} />;
     }
 
     if (selectedConnection) {
-      return (
-        <ConnectionInspector
-          connection={selectedConnection}
-          nodes={nodes}
-          onDelete={handleDeleteConnection}
-        />
-      );
+      return <ConnectionInspector connection={selectedConnection} nodes={nodes} />;
     }
 
     return <EmptyState />;
   };
 
-  return (
-    <div className={`h-full flex transition-all duration-200 ${isOpen ? 'w-64' : 'w-6'}`}>
-      {/* Collapse toggle */}
+  // Determine delete action and label
+  const getDeleteAction = () => {
+    if (selectedNodes.length === 1) {
+      return { action: handleDeleteNodes, label: 'Delete Node' };
+    }
+    if (selectedNodes.length > 1) {
+      return { action: handleDeleteNodes, label: `Delete ${selectedNodes.length} Nodes` };
+    }
+    if (selectedConnection) {
+      return { action: handleDeleteConnection, label: 'Delete Connection' };
+    }
+    return null;
+  };
+
+  const deleteInfo = getDeleteAction();
+
+  if (!isOpen) {
+    // Collapsed state: compact icon button
+    return (
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-6 flex-shrink-0 flex items-center justify-center hover:bg-muted/50 border-l transition-colors"
-        aria-label={isOpen ? 'Collapse inspector' : 'Expand inspector'}
+        onClick={() => setIsOpen(true)}
+        className="w-8 h-8 flex items-center justify-center bg-card border rounded hover:bg-muted/50 transition-colors"
+        aria-label="Open inspector"
+        title="Inspector"
       >
-        {isOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        <ChevronLeft className="w-4 h-4" />
       </button>
+    );
+  }
 
-      {/* Panel content */}
-      {isOpen && (
-        <div className="flex-1 h-full flex flex-col bg-card border-l overflow-hidden">
-          {/* Header */}
-          <div className="p-3 border-b flex-shrink-0">
-            <h3 className="font-semibold text-sm">Inspector</h3>
-          </div>
+  // Open state: full panel with toggle in header
+  return (
+    <div className="w-64 h-full flex flex-col bg-card border-l">
+      {/* Header with toggle */}
+      <div className="p-3 border-b flex-shrink-0 flex items-center justify-between">
+        <h3 className="font-semibold text-sm">Inspector</h3>
+        <button
+          onClick={() => setIsOpen(false)}
+          className="p-1 rounded hover:bg-muted/50 transition-colors"
+          aria-label="Collapse inspector"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-3">{renderContent()}</div>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-3">{renderContent()}</div>
+
+      {/* Delete button - always at bottom */}
+      {deleteInfo && (
+        <div className="p-3 border-t flex-shrink-0">
+          <Button variant="destructive" size="sm" className="w-full" onClick={deleteInfo.action}>
+            <X className="w-4 h-4 mr-1" />
+            {deleteInfo.label}
+          </Button>
         </div>
       )}
     </div>

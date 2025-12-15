@@ -62,9 +62,9 @@ export default function WorkflowBuilder() {
   const canRedo = canvasRef.current?.canRedo() ?? false;
 
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/10">
             <Workflow className="w-6 h-6 text-primary" />
@@ -131,11 +131,11 @@ export default function WorkflowBuilder() {
       </div>
 
       {/* Main content - Library + Canvas */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          <div className="flex h-[650px]">
+      <Card className="overflow-hidden flex-1 min-h-[500px]">
+        <CardContent className="p-0 h-full">
+          <div className="flex h-full">
             {/* Node Library Sidebar */}
-            <div className="w-56 flex-shrink-0">
+            <div className="w-56 flex-shrink-0 h-full">
               <NodeLibrary
                 selectedType={selectedNodeType}
                 onSelectType={setSelectedNodeType}
@@ -144,7 +144,7 @@ export default function WorkflowBuilder() {
             </div>
 
             {/* Canvas */}
-            <div className="flex-1 border-l">
+            <div className="flex-1 border-l h-full">
               <WorkflowCanvas ref={canvasRef} selectedNodeType={selectedNodeType} />
             </div>
           </div>
