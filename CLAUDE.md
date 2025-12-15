@@ -467,3 +467,24 @@ Both schemas use:
 - PostgreSQL with connection pooling via `@neondatabase/serverless`
 
 The intelligence database (`omninode_bridge`) is on a separate PostgreSQL instance at `192.168.86.200:5436`.
+
+## Contributor Context (clone45)
+
+**Volunteer Status**: This is volunteer work for resume-building. Jonah (project lead) is an old schoolmate. The goal is to be as independent as possible and stay out of Jonah's way while contributing useful work.
+
+**Architecture Revamp (Dec 2025)**: Jonah noted the backend architecture is getting a "pretty huge revamp" - only the dashboard won't be touched. Epic OMN-119 was marked as Duplicate. This means:
+- Backend schemas/APIs may change
+- Dashboard UI work is safe to proceed
+- Mock data development is low-risk
+
+**Current Approach**: Build visually impressive UI components with mock data. These can be wired to real data later once the architecture stabilizes. Focus on:
+- Creating new views that showcase observability capabilities
+- Making things look polished and professional
+- Learning the codebase deeply (expect ~1 month to fully understand)
+
+**Tickets Context**: Some tickets (like OMN-125) have hidden dependencies on API/schema work that's in flux. When blocked:
+- Do the safe subset that doesn't require undefined schemas
+- Create compelling mock data visualizations
+- Document what the UI expects so backend can align later
+
+**Communication Style**: Async Slack with Jonah. Ask specific questions only when truly stuck. Prefer proposing solutions over asking for direction.

@@ -22,6 +22,8 @@ import PlatformHealth from '@/pages/PlatformHealth';
 import DeveloperExperience from '@/pages/DeveloperExperience';
 import Chat from '@/pages/Chat';
 import CorrelationTrace from '@/pages/CorrelationTrace';
+import RoutingDecisions from '@/pages/RoutingDecisions';
+import WorkflowBuilder from '@/pages/WorkflowBuilder';
 
 // Preview pages
 import EnhancedAnalytics from '@/pages/preview/EnhancedAnalytics';
@@ -56,6 +58,8 @@ function Router() {
       <Route path="/developer" component={DeveloperExperience} />
       <Route path="/chat" component={Chat} />
       <Route path="/trace" component={CorrelationTrace} />
+      <Route path="/routing" component={RoutingDecisions} />
+      <Route path="/workflow-builder" component={WorkflowBuilder} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

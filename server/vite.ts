@@ -24,6 +24,16 @@ export async function setupVite(app: Express, server: Server) {
     middlewareMode: true,
     hmr: { server },
     allowedHosts: true as const,
+    // WSL2 file watching requires aggressive polling for /mnt/c/ filesystem
+    watch: {
+      usePolling: true,
+      interval: 100, // Check every 100ms
+      binaryInterval: 300, // Check binary files every 300ms
+      awaitWriteFinish: {
+        stabilityThreshold: 100,
+        pollInterval: 100,
+      },
+    },
   };
 
   const vite = await createViteServer({

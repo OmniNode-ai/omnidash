@@ -11,6 +11,8 @@ import {
   Shield,
   FileText,
   Radio,
+  Route,
+  Workflow,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -65,6 +67,16 @@ const dashboards = [
 ];
 
 const tools = [
+  {
+    title: 'Workflow Builder',
+    url: '/workflow-builder',
+    icon: Workflow,
+  },
+  {
+    title: 'Routing Decisions',
+    url: '/routing',
+    icon: Route,
+  },
   {
     title: 'AI Query Assistant',
     url: '/chat',

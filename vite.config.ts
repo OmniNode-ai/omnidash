@@ -55,5 +55,10 @@ export default defineConfig({
       strict: true,
       deny: ['**/.*'],
     },
+    watch: {
+      // Enable polling for WSL2 with Windows filesystem
+      usePolling: true,
+      interval: 1000,
+    },
   },
 });
