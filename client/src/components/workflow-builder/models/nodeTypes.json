@@ -4,6 +4,7 @@
     "label": "Start",
     "color": "#22c55e",
     "description": "Entry point of the workflow",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/start",
     "inputs": [],
     "outputs": [{ "name": "Out" }],
     "configFields": [
@@ -28,6 +29,7 @@
     "label": "End",
     "color": "#ef4444",
     "description": "Exit point of the workflow",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/end",
     "inputs": [{ "name": "In", "maxConnections": 1 }],
     "outputs": [],
     "configFields": [
@@ -45,6 +47,7 @@
     "label": "Action",
     "color": "#3b82f6",
     "description": "Performs an action or operation",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/action",
     "inputs": [{ "name": "In", "maxConnections": 1 }],
     "outputs": [{ "name": "Out" }],
     "configFields": [
@@ -88,6 +91,7 @@
     "label": "Transform",
     "color": "#8b5cf6",
     "description": "Transforms or maps data",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/transform",
     "inputs": [
       { "name": "In", "maxConnections": 1 },
       { "name": "Config", "maxConnections": 1 }
@@ -121,6 +125,7 @@
     "label": "Condition",
     "color": "#f59e0b",
     "description": "Branches based on a condition",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/condition",
     "inputs": [{ "name": "In", "maxConnections": 1 }],
     "outputs": [
       { "name": "True" },
@@ -165,6 +170,7 @@
     "label": "Loop",
     "color": "#06b6d4",
     "description": "Iterates over a collection",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/loop",
     "inputs": [
       { "name": "In", "maxConnections": 1 },
       { "name": "Items", "maxConnections": 1 }
@@ -203,6 +209,7 @@
     "label": "Delay",
     "color": "#64748b",
     "description": "Pauses execution for a duration",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/delay",
     "inputs": [{ "name": "In", "maxConnections": 1 }],
     "outputs": [{ "name": "Out" }],
     "configFields": [
@@ -230,6 +237,7 @@
     "label": "Merge",
     "color": "#ec4899",
     "description": "Combines multiple inputs into one output (supports fan-in)",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/merge",
     "inputs": [
       { "name": "A" },
       { "name": "B" },

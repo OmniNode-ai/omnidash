@@ -1,4 +1,5 @@
 import { memo, useCallback } from 'react';
+import { HelpCircle } from 'lucide-react';
 import { NODE_TYPE_DEFINITIONS } from './models/nodeRegistry';
 import type { NodeTypeDefinition } from './models/types';
 
@@ -21,9 +22,6 @@ const NodeTypeItem = memo(function NodeTypeItem({
   onSelect,
   onAddNode,
 }: NodeTypeItemProps) {
-  const inputCount = definition.inputs.length;
-  const outputCount = definition.outputs.length;
-
   const handleDragStart = useCallback(
     (e: React.DragEvent) => {
       e.dataTransfer.setData('application/workflow-node-type', definition.type);
@@ -51,12 +49,22 @@ const NodeTypeItem = memo(function NodeTypeItem({
         />
 
         <div className="flex-1 min-w-0">
-          {/* Node name */}
-          <div className="font-medium text-sm">{definition.label}</div>
-
-          {/* Port info */}
-          <div className="text-xs text-muted-foreground mt-0.5">
-            {inputCount} in · {outputCount} out
+          {/* Node name with optional docs link */}
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-sm">{definition.label}</span>
+            {definition.docsUrl && (
+              <a
+                href={definition.docsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+                className="text-muted-foreground/50 hover:text-primary transition-colors"
+                title={`View ${definition.label} documentation`}
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+              </a>
+            )}
           </div>
 
           {/* Description */}

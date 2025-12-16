@@ -105,6 +105,7 @@ export interface NodeTypeDefinition {
   outputs: PortDefinition[];
   description?: string;
   configFields?: ConfigField[];
+  docsUrl?: string; // External documentation URL
 }
 
 // Runtime instance of a node
