@@ -492,3 +492,75 @@
     inset: -1px;
   }
 }
+
+/* RJSF Form Styles - Clean styling for react-jsonschema-form */
+.rjsf-form {
+  /* Form container */
+}
+
+.rjsf-form .form-group {
+  @apply mb-4;
+}
+
+.rjsf-form .control-label {
+  @apply block text-sm font-medium mb-1.5;
+}
+
+.rjsf-form .form-control {
+  @apply w-full px-3 py-2 text-sm border border-input rounded-md bg-background;
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.rjsf-form .form-control::placeholder {
+  @apply text-muted-foreground;
+}
+
+.rjsf-form .field-description {
+  @apply text-xs text-muted-foreground mt-1;
+}
+
+.rjsf-form .text-danger {
+  @apply text-destructive text-xs mt-1;
+}
+
+.rjsf-form .error-detail {
+  @apply text-destructive text-xs mt-1 list-disc list-inside;
+}
+
+.rjsf-form .checkbox {
+  @apply flex items-center gap-2;
+}
+
+.rjsf-form .checkbox input[type="checkbox"] {
+  @apply h-4 w-4 rounded border-input;
+}
+
+.rjsf-form .checkbox label {
+  @apply text-sm font-normal;
+}
+
+.rjsf-form select.form-control {
+  @apply appearance-none bg-no-repeat bg-right pr-8;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-size: 1.5em 1.5em;
+}
+
+/* Array field styles */
+.rjsf-form .array-item {
+  @apply relative;
+}
+
+.rjsf-form .array-item-toolbox {
+  @apply flex gap-1;
+}
+
+/* Nested object styling */
+.rjsf-form fieldset {
+  @apply border-0 p-0 m-0;
+}
+
+.rjsf-form legend {
+  @apply text-sm font-semibold mb-2;
+}
