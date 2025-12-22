@@ -29,6 +29,7 @@ import SystemHealth from '@/pages/preview/SystemHealth';
 import AdvancedSettings from '@/pages/preview/AdvancedSettings';
 import FeatureShowcase from '@/pages/preview/FeatureShowcase';
 import ContractBuilder from '@/pages/preview/ContractBuilder';
+import ContractBuilderV2 from '@/pages/preview/ContractBuilderV2';
 import TechDebtAnalysis from '@/pages/preview/TechDebtAnalysis';
 import PatternLineage from '@/pages/preview/PatternLineage';
 import NodeNetworkComposer from '@/pages/preview/NodeNetworkComposer';
@@ -63,6 +64,7 @@ function Router() {
       <Route path="/preview/settings" component={AdvancedSettings} />
       <Route path="/preview/showcase" component={FeatureShowcase} />
       <Route path="/preview/contracts" component={ContractBuilder} />
+      <Route path="/preview/contracts-v2" component={ContractBuilderV2} />
       <Route path="/preview/tech-debt" component={TechDebtAnalysis} />
       <Route path="/preview/pattern-lineage" component={PatternLineage} />
       <Route path="/preview/composer" component={NodeNetworkComposer} />

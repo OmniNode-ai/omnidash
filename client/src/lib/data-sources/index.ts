@@ -69,3 +69,10 @@ export {
   type EventStatistics,
   type EventBusStatus,
 } from './event-bus-source';
+export {
+  contractRegistrySource,
+  type Contract,
+  type ContractType,
+  type ContractStatus,
+} from './contract-registry-source';
+export { contractSchemaSource, type ContractSchemas } from './contract-schema-source';
