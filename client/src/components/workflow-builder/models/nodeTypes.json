@@ -1,0 +1,270 @@
+[
+  {
+    "type": "start",
+    "label": "Start",
+    "color": "#22c55e",
+    "description": "Entry point of the workflow",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/start",
+    "inputs": [],
+    "outputs": [{ "name": "Out" }],
+    "configFields": [
+      {
+        "name": "name",
+        "label": "Workflow Name",
+        "type": "string",
+        "placeholder": "My Workflow",
+        "description": "Name of this workflow"
+      },
+      {
+        "name": "description",
+        "label": "Description",
+        "type": "multiline",
+        "placeholder": "Describe what this workflow does...",
+        "rows": 3
+      }
+    ]
+  },
+  {
+    "type": "end",
+    "label": "End",
+    "color": "#ef4444",
+    "description": "Exit point of the workflow",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/end",
+    "inputs": [{ "name": "In", "maxConnections": 1 }],
+    "outputs": [],
+    "configFields": [
+      {
+        "name": "outputKey",
+        "label": "Output Key",
+        "type": "string",
+        "default": "result",
+        "description": "Key name for the workflow output"
+      }
+    ]
+  },
+  {
+    "type": "action",
+    "label": "Action",
+    "color": "#3b82f6",
+    "description": "Performs an action or operation",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/action",
+    "inputs": [{ "name": "In", "maxConnections": 1 }],
+    "outputs": [{ "name": "Out" }],
+    "configFields": [
+      {
+        "name": "actionType",
+        "label": "Action Type",
+        "type": "select",
+        "options": [
+          { "value": "http", "label": "HTTP Request" },
+          { "value": "script", "label": "Run Script" },
+          { "value": "log", "label": "Log Message" },
+          { "value": "delay", "label": "Delay" }
+        ],
+        "default": "log",
+        "required": true
+      },
+      {
+        "name": "name",
+        "label": "Action Name",
+        "type": "string",
+        "placeholder": "My Action"
+      },
+      {
+        "name": "config",
+        "label": "Configuration",
+        "type": "json",
+        "default": {},
+        "description": "Action-specific configuration"
+      },
+      {
+        "name": "continueOnError",
+        "label": "Continue on Error",
+        "type": "boolean",
+        "default": false,
+        "description": "Continue workflow even if this action fails"
+      }
+    ]
+  },
+  {
+    "type": "transform",
+    "label": "Transform",
+    "color": "#8b5cf6",
+    "description": "Transforms or maps data",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/transform",
+    "inputs": [
+      { "name": "In", "maxConnections": 1 },
+      { "name": "Config", "maxConnections": 1 }
+    ],
+    "outputs": [{ "name": "Out" }],
+    "configFields": [
+      {
+        "name": "expression",
+        "label": "Transform Expression",
+        "type": "multiline",
+        "placeholder": "data.map(item => item.value)",
+        "rows": 4,
+        "description": "JavaScript expression to transform the input"
+      },
+      {
+        "name": "outputFormat",
+        "label": "Output Format",
+        "type": "select",
+        "options": [
+          { "value": "auto", "label": "Auto-detect" },
+          { "value": "json", "label": "JSON" },
+          { "value": "text", "label": "Plain Text" },
+          { "value": "array", "label": "Array" }
+        ],
+        "default": "auto"
+      }
+    ]
+  },
+  {
+    "type": "condition",
+    "label": "Condition",
+    "color": "#f59e0b",
+    "description": "Branches based on a condition",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/condition",
+    "inputs": [{ "name": "In", "maxConnections": 1 }],
+    "outputs": [
+      { "name": "True" },
+      { "name": "False" }
+    ],
+    "configFields": [
+      {
+        "name": "condition",
+        "label": "Condition Expression",
+        "type": "string",
+        "placeholder": "data.value > 10",
+        "required": true,
+        "description": "JavaScript expression that evaluates to true or false"
+      },
+      {
+        "name": "operator",
+        "label": "Comparison Operator",
+        "type": "select",
+        "options": [
+          { "value": "expression", "label": "Custom Expression" },
+          { "value": "equals", "label": "Equals (==)" },
+          { "value": "notEquals", "label": "Not Equals (!=)" },
+          { "value": "gt", "label": "Greater Than (>)" },
+          { "value": "gte", "label": "Greater or Equal (>=)" },
+          { "value": "lt", "label": "Less Than (<)" },
+          { "value": "lte", "label": "Less or Equal (<=)" },
+          { "value": "contains", "label": "Contains" }
+        ],
+        "default": "expression"
+      },
+      {
+        "name": "compareValue",
+        "label": "Compare Value",
+        "type": "string",
+        "placeholder": "Value to compare against",
+        "description": "Used when operator is not Custom Expression"
+      }
+    ]
+  },
+  {
+    "type": "loop",
+    "label": "Loop",
+    "color": "#06b6d4",
+    "description": "Iterates over a collection",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/loop",
+    "inputs": [
+      { "name": "In", "maxConnections": 1 },
+      { "name": "Items", "maxConnections": 1 }
+    ],
+    "outputs": [
+      { "name": "Each" },
+      { "name": "Done" }
+    ],
+    "configFields": [
+      {
+        "name": "itemVariable",
+        "label": "Item Variable Name",
+        "type": "string",
+        "default": "item",
+        "description": "Variable name for each item in the loop"
+      },
+      {
+        "name": "indexVariable",
+        "label": "Index Variable Name",
+        "type": "string",
+        "default": "index",
+        "description": "Variable name for the current index"
+      },
+      {
+        "name": "maxIterations",
+        "label": "Max Iterations",
+        "type": "number",
+        "default": 1000,
+        "min": 1,
+        "description": "Safety limit to prevent infinite loops"
+      }
+    ]
+  },
+  {
+    "type": "delay",
+    "label": "Delay",
+    "color": "#64748b",
+    "description": "Pauses execution for a duration",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/delay",
+    "inputs": [{ "name": "In", "maxConnections": 1 }],
+    "outputs": [{ "name": "Out" }],
+    "configFields": [
+      {
+        "name": "duration",
+        "label": "Duration (ms)",
+        "type": "number",
+        "default": 1000,
+        "min": 0,
+        "step": 100,
+        "description": "Time to wait in milliseconds"
+      },
+      {
+        "name": "jitter",
+        "label": "Random Jitter (ms)",
+        "type": "number",
+        "default": 0,
+        "min": 0,
+        "description": "Add random variation to the delay"
+      }
+    ]
+  },
+  {
+    "type": "merge",
+    "label": "Merge",
+    "color": "#ec4899",
+    "description": "Combines multiple inputs into one output (supports fan-in)",
+    "docsUrl": "https://docs.omninode.ai/workflow/nodes/merge",
+    "inputs": [
+      { "name": "A" },
+      { "name": "B" },
+      { "name": "C" }
+    ],
+    "outputs": [{ "name": "Out" }],
+    "configFields": [
+      {
+        "name": "strategy",
+        "label": "Merge Strategy",
+        "type": "select",
+        "options": [
+          { "value": "waitAll", "label": "Wait for All" },
+          { "value": "waitAny", "label": "Wait for Any" },
+          { "value": "race", "label": "Race (First Wins)" }
+        ],
+        "default": "waitAll",
+        "description": "How to handle multiple inputs"
+      },
+      {
+        "name": "timeout",
+        "label": "Timeout (ms)",
+        "type": "number",
+        "default": 30000,
+        "min": 0,
+        "description": "Maximum time to wait for inputs"
+      }
+    ]
+  }
+]

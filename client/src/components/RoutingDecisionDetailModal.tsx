@@ -167,7 +167,7 @@ export function RoutingDecisionDetailModal({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{decision.routingTimeMs}ms</div>
+                <div className="text-3xl font-bold">{Math.round(decision.routingTimeMs)}ms</div>
                 <p className="text-sm text-muted-foreground mt-2">
                   {decision.routingTimeMs < 50
                     ? 'Excellent'
@@ -284,7 +284,7 @@ export function RoutingDecisionDetailModal({
                   </div>
                   <div>
                     <span className="text-muted-foreground">Processing Time:</span>
-                    <span className="ml-2 font-medium">{decision.routingTimeMs}ms</span>
+                    <span className="ml-2 font-medium">{Math.round(decision.routingTimeMs)}ms</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Confidence:</span>

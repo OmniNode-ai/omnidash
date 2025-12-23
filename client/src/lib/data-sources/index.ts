@@ -69,3 +69,4 @@ export {
   type EventStatistics,
   type EventBusStatus,
 } from './event-bus-source';
+export { nodeRegistrySource, type NodeTypeDefinition } from './node-registry-source';

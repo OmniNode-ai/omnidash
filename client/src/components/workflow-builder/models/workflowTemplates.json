@@ -1,0 +1,156 @@
+[
+  {
+    "id": "simple-sequence",
+    "name": "Simple Sequence",
+    "description": "A basic linear workflow with start, action, and end nodes",
+    "workflow": {
+      "version": "1.0",
+      "nodes": [
+        {
+          "id": "start-1",
+          "type": "start",
+          "position": { "x": 100, "y": 200 },
+          "config": {},
+          "ports": {
+            "inputs": [],
+            "outputs": ["Out"]
+          }
+        },
+        {
+          "id": "action-1",
+          "type": "action",
+          "position": { "x": 350, "y": 200 },
+          "config": {
+            "name": "Process Data",
+            "description": "Add your processing logic here"
+          },
+          "ports": {
+            "inputs": ["In"],
+            "outputs": ["Out"]
+          }
+        },
+        {
+          "id": "end-1",
+          "type": "end",
+          "position": { "x": 600, "y": 200 },
+          "config": {},
+          "ports": {
+            "inputs": ["In"],
+            "outputs": []
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": { "nodeId": "start-1", "port": "Out" },
+          "to": { "nodeId": "action-1", "port": "In" }
+        },
+        {
+          "from": { "nodeId": "action-1", "port": "Out" },
+          "to": { "nodeId": "end-1", "port": "In" }
+        }
+      ]
+    }
+  },
+  {
+    "id": "conditional-branch",
+    "name": "Conditional Branch",
+    "description": "A workflow with a condition node that branches into two paths",
+    "workflow": {
+      "version": "1.0",
+      "nodes": [
+        {
+          "id": "start-1",
+          "type": "start",
+          "position": { "x": 100, "y": 250 },
+          "config": {},
+          "ports": {
+            "inputs": [],
+            "outputs": ["Out"]
+          }
+        },
+        {
+          "id": "condition-1",
+          "type": "condition",
+          "position": { "x": 300, "y": 250 },
+          "config": {
+            "expression": "value > 0",
+            "description": "Check if value is positive"
+          },
+          "ports": {
+            "inputs": ["In"],
+            "outputs": ["True", "False"]
+          }
+        },
+        {
+          "id": "action-true",
+          "type": "action",
+          "position": { "x": 550, "y": 150 },
+          "config": {
+            "name": "Handle True",
+            "description": "Process when condition is true"
+          },
+          "ports": {
+            "inputs": ["In"],
+            "outputs": ["Out"]
+          }
+        },
+        {
+          "id": "action-false",
+          "type": "action",
+          "position": { "x": 550, "y": 350 },
+          "config": {
+            "name": "Handle False",
+            "description": "Process when condition is false"
+          },
+          "ports": {
+            "inputs": ["In"],
+            "outputs": ["Out"]
+          }
+        },
+        {
+          "id": "end-1",
+          "type": "end",
+          "position": { "x": 800, "y": 150 },
+          "config": {},
+          "ports": {
+            "inputs": ["In"],
+            "outputs": []
+          }
+        },
+        {
+          "id": "end-2",
+          "type": "end",
+          "position": { "x": 800, "y": 350 },
+          "config": {},
+          "ports": {
+            "inputs": ["In"],
+            "outputs": []
+          }
+        }
+      ],
+      "edges": [
+        {
+          "from": { "nodeId": "start-1", "port": "Out" },
+          "to": { "nodeId": "condition-1", "port": "In" }
+        },
+        {
+          "from": { "nodeId": "condition-1", "port": "True" },
+          "to": { "nodeId": "action-true", "port": "In" }
+        },
+        {
+          "from": { "nodeId": "condition-1", "port": "False" },
+          "to": { "nodeId": "action-false", "port": "In" }
+        },
+        {
+          "from": { "nodeId": "action-true", "port": "Out" },
+          "to": { "nodeId": "end-1", "port": "In" }
+        },
+        {
+          "from": { "nodeId": "action-false", "port": "Out" },
+          "to": { "nodeId": "end-2", "port": "In" }
+        }
+      ]
+    }
+  }
+]
