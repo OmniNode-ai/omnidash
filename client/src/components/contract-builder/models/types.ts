@@ -37,35 +37,3 @@ export interface Contract {
   createdBy?: string;
   updatedBy?: string;
 }
-
-/**
- * Contract type metadata for UI display
- */
-export interface ContractTypeInfo {
-  type: ContractType;
-  label: string;
-  description: string;
-  icon: string; // lucide icon name
-  color: string; // tailwind text color class
-  bgColor: string; // tailwind bg color class
-}
-
-/**
- * Contract list filters
- */
-export interface ContractFilters {
-  search?: string;
-  type?: ContractType | 'all';
-  status?: ContractStatus | 'all';
-}
-
-/**
- * Contract list sort options
- */
-export type ContractSortField = 'name' | 'type' | 'status' | 'version' | 'updatedAt';
-export type ContractSortDirection = 'asc' | 'desc';
-
-export interface ContractSort {
-  field: ContractSortField;
-  direction: ContractSortDirection;
-}

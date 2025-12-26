@@ -3,6 +3,7 @@ import { createServer, type Server } from 'http';
 import { intelligenceRouter } from './intelligence-routes';
 import savingsRoutes from './savings-routes';
 import agentRegistryRoutes from './agent-registry-routes';
+import contractRegistryRoutes from './contract-registry-routes';
 import { chatRouter } from './chat-routes';
 import eventBusRoutes from './event-bus-routes';
 
@@ -27,6 +28,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount event bus routes for event querying and statistics
   app.use('/api/event-bus', eventBusRoutes);
+
+  // Mount contract registry routes for contract management
+  app.use('/api/contracts', contractRegistryRoutes);
 
   const httpServer = createServer(app);
 
