@@ -17,16 +17,7 @@ export { ContractStatusBadge } from './ContractStatusBadge';
 export { ContractTypeBadge } from './ContractTypeBadge';
 
 // Types
-export type {
-  Contract,
-  ContractType,
-  ContractStatus,
-  ContractTypeInfo,
-  ContractFilters,
-  ContractSort,
-  ContractSortField,
-  ContractSortDirection,
-} from './models/types';
+export type { Contract, ContractType, ContractStatus } from './models/types';
 
 // Schemas
 export { getContractSchemas } from './schemas';

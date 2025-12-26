@@ -26,13 +26,3 @@ export function getContractSchemas(type: ContractType): ContractSchemas {
 
   return schemas;
 }
-
-/**
- * Get available contract types (synchronous)
- */
-export function getContractTypes(): ContractType[] {
-  return contractSchemaSource.getContractTypesSync();
-}
-
-// Re-export the source for direct access
-export { contractSchemaSource };
