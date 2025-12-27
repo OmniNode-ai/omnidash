@@ -28,7 +28,7 @@ import {
   FieldErrorTemplate,
   ObjectFieldTemplate,
 } from './templates';
-import { TextareaWidget } from './widgets';
+import { TextareaWidget, CheckboxWidget } from './widgets';
 import { YamlEditorModal } from './YamlEditorModal';
 import { useAutosaveDraft } from './useAutosaveDraft';
 
@@ -74,25 +74,25 @@ export function ContractEditor({
   // Ref to the form for programmatic submission with validation
   const formRef = useRef<Form>(null);
 
-  // Store the initial form data for comparison (to detect unsaved changes)
-  const initialFormDataRef = useRef<string>(
-    initialData
-      ? JSON.stringify(initialData)
-      : JSON.stringify({ node_identity: { version: '1.0.0' } })
-  );
+  // Default form data for new contracts
+  const defaultFormData = useMemo(() => ({ node_identity: { version: '1.0.0' } }), []);
 
   // Initialize with existing data (if editing) or defaults (if creating new)
-  const [formData, setFormData] = useState<Record<string, unknown>>(() => {
-    if (initialData) {
-      return initialData;
-    }
-    // Default for new contracts
-    return {
-      node_identity: {
-        version: '1.0.0',
-      },
-    };
-  });
+  const [formData, setFormData] = useState<Record<string, unknown>>(
+    () => initialData || defaultFormData
+  );
+
+  // Track whether RJSF has initialized (it normalizes data on first render)
+  const isInitializedRef = useRef(false);
+
+  // Store the initial form data AFTER RJSF processes it (to detect unsaved changes)
+  // This is set on the first onChange from RJSF, not immediately
+  const initialFormDataRef = useRef<string>('');
+
+  // The initial data object for the autosave hook (will be updated after RJSF init)
+  const [initialFormDataForAutosave, setInitialFormDataForAutosave] = useState<
+    Record<string, unknown> | undefined
+  >(undefined);
 
   // State for the "leave without saving" dialog
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
@@ -106,11 +106,13 @@ export function ContractEditor({
   // Determine if we're editing an existing contract or creating new
   const isEditing = !!contract;
 
-  // Autosave draft to localStorage
+  // Autosave draft to localStorage (only saves if form data has changed)
+  // Note: initialFormDataForAutosave is undefined until RJSF initializes, which disables autosave until then
   const { existingDraft, dismissDraft, clearDraft } = useAutosaveDraft({
     contractType,
     contractId: contract?.contractId,
     formData,
+    initialFormData: initialFormDataForAutosave,
   });
 
   // Restore draft data
@@ -122,7 +124,11 @@ export function ContractEditor({
   }, [existingDraft, dismissDraft]);
 
   // Check if there are unsaved changes by comparing current form data to initial
+  // Returns false until RJSF has initialized (to avoid false positives from RJSF's initial normalization)
   const hasUnsavedChanges = useMemo(() => {
+    if (!isInitializedRef.current || !initialFormDataRef.current) {
+      return false;
+    }
     const currentJson = JSON.stringify(formData);
     return currentJson !== initialFormDataRef.current;
   }, [formData]);
@@ -160,6 +166,7 @@ export function ContractEditor({
   const widgets: RegistryWidgetsType = useMemo(
     () => ({
       TextareaWidget,
+      CheckboxWidget,
     }),
     []
   );
@@ -220,6 +227,13 @@ export function ContractEditor({
 
   // Handle form changes
   const handleChange = useCallback((e: IChangeEvent) => {
+    // On first onChange from RJSF, capture the processed/normalized data as our "initial" state
+    // This avoids false "unsaved changes" from RJSF's automatic normalization
+    if (!isInitializedRef.current) {
+      isInitializedRef.current = true;
+      initialFormDataRef.current = JSON.stringify(e.formData);
+      setInitialFormDataForAutosave(e.formData);
+    }
     setFormData(e.formData);
   }, []);
 

@@ -301,6 +301,58 @@ export type NodeServiceRegistry = typeof nodeServiceRegistry.$inferSelect;
 export type InsertNodeServiceRegistry = typeof nodeServiceRegistry.$inferInsert;
 
 /**
+ * Contracts Table
+ * Tracks ONEX contract definitions with lifecycle management
+ * Supports the Contract Builder UI for creating, validating, and publishing contracts
+ */
+export const contracts = pgTable('contracts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  contractId: text('contract_id').notNull(), // Logical ID (e.g., 'user-auth-orchestrator')
+  name: text('name').notNull(), // Machine-readable name
+  displayName: text('display_name').notNull(), // Human-readable name
+  type: text('type').notNull(), // 'orchestrator' | 'effect' | 'reducer' | 'compute'
+  status: text('status').notNull().default('draft'), // 'draft' | 'validated' | 'published' | 'deprecated' | 'archived'
+  version: text('version').notNull().default('0.1.0'), // Semantic version
+  description: text('description'),
+  schema: jsonb('schema').default({}), // JSON Schema definition for the contract
+  metadata: jsonb('metadata').default({}), // Additional metadata (tags, dependencies, etc.)
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+/**
+ * Contract Audit Log Table
+ * Tracks all lifecycle transitions for provenance and compliance
+ */
+export const contractAuditLog = pgTable('contract_audit_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  contractId: uuid('contract_id').notNull(), // FK to contracts.id
+  action: text('action').notNull(), // 'created' | 'validated' | 'published' | 'deprecated' | 'archived' | 'updated'
+  fromStatus: text('from_status'), // Previous status (null for 'created')
+  toStatus: text('to_status').notNull(), // New status
+  fromVersion: text('from_version'), // Previous version (for version bumps)
+  toVersion: text('to_version'), // New version
+  actor: text('actor'), // User/system that performed the action
+  reason: text('reason'), // Optional reason for the transition
+  evidence: jsonb('evidence').default([]), // Links to evidence (PRs, tickets, etc.)
+  contentHash: text('content_hash'), // Hash of contract content at time of action
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Export Zod schemas for validation
+export const insertContractSchema = createInsertSchema(contracts);
+export const insertContractAuditLogSchema = createInsertSchema(contractAuditLog);
+
+// Export TypeScript types
+export type Contract = typeof contracts.$inferSelect;
+export type InsertContract = typeof contracts.$inferInsert;
+export type ContractAuditLog = typeof contractAuditLog.$inferSelect;
+export type InsertContractAuditLog = typeof contractAuditLog.$inferInsert;
+
+/**
  * API Response Interfaces for Pattern Lineage
  */
 
