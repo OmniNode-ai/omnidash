@@ -528,16 +528,47 @@
   @apply text-destructive text-xs mt-1 list-disc list-inside;
 }
 
-.rjsf-form .checkbox {
-  @apply flex items-center gap-2;
+/* Single checkbox field styling - using specific classes for reliable styling */
+.rjsf-checkbox-container {
+  @apply mt-3 py-1;
 }
 
-.rjsf-form .checkbox input[type="checkbox"] {
-  @apply h-4 w-4 rounded border-input;
+.rjsf-checkbox-wrapper {
+  @apply flex items-center gap-2.5 cursor-pointer;
 }
 
-.rjsf-form .checkbox label {
-  @apply text-sm font-normal;
+.rjsf-checkbox-input {
+  @apply h-4 w-4 rounded border-input shrink-0 cursor-pointer;
+}
+
+.rjsf-checkbox-label {
+  @apply text-xs font-normal text-muted-foreground;
+}
+
+/* Multi-select checkboxes (CheckboxesWidget) - for array fields with enum values */
+/* Structure: .checkbox > label > span > input + span */
+.rjsf-form .checkboxes {
+  @apply flex flex-col gap-1.5 mt-1;
+}
+
+.rjsf-form .checkboxes .checkbox {
+  @apply flex items-center;
+}
+
+.rjsf-form .checkboxes .checkbox label {
+  @apply cursor-pointer;
+}
+
+.rjsf-form .checkboxes .checkbox label > span {
+  @apply flex items-center;
+}
+
+.rjsf-form .checkboxes .checkbox input[type="checkbox"] {
+  @apply h-4 w-4 rounded border-input shrink-0 cursor-pointer;
+}
+
+.rjsf-form .checkboxes .checkbox input[type="checkbox"] + span {
+  @apply text-xs font-normal text-muted-foreground ml-2.5;
 }
 
 .rjsf-form select.form-control {

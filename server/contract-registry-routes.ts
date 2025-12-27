@@ -13,15 +13,21 @@
  * - PUT /contracts/:id - Update a draft contract
  * - POST /contracts/:id/validate - Validate a contract
  * - POST /contracts/:id/publish - Publish a validated contract
+ * - POST /contracts/:id/deprecate - Deprecate a published contract
+ * - POST /contracts/:id/archive - Archive a deprecated contract
  *
- * Phase 1: File-based storage (JSON/YAML)
- * Phase 2: PostgreSQL via Drizzle ORM
+ * Storage: PostgreSQL via Drizzle ORM
  */
 
 import { Router } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { eq, and, ilike, desc } from 'drizzle-orm';
+import { getIntelligenceDb } from './storage';
+import { contracts, contractAuditLog } from '@shared/intelligence-schema';
+import type { Contract, InsertContract, InsertContractAuditLog } from '@shared/intelligence-schema';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -36,21 +42,6 @@ const __dirname = path.dirname(__filename);
 type ContractType = 'orchestrator' | 'effect' | 'reducer' | 'compute';
 type ContractStatus = 'draft' | 'validated' | 'published' | 'deprecated' | 'archived';
 
-interface Contract {
-  id: string;
-  contractId: string;
-  name: string;
-  displayName: string;
-  type: ContractType;
-  status: ContractStatus;
-  version: string;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
-  createdBy?: string;
-  updatedBy?: string;
-}
-
 interface ContractSchemaDefinition {
   type: ContractType;
   jsonSchema: Record<string, unknown>;
@@ -58,16 +49,53 @@ interface ContractSchemaDefinition {
 }
 
 // ============================================================================
-// Data Loading
+// Helper Functions
 // ============================================================================
 
-// In-memory store for dynamic contracts (drafts, updates)
-// Phase 2 will replace this with database persistence
-let dynamicContracts: Contract[] = [];
+/**
+ * Get database instance with error handling
+ */
+function getDb() {
+  try {
+    return getIntelligenceDb();
+  } catch (error) {
+    console.error('Database connection error:', error);
+    return null;
+  }
+}
 
 /**
- * Load static contracts from JSON file
- * In Phase 2, this will query the database
+ * Generate content hash for audit purposes
+ */
+function generateContentHash(contract: Partial<Contract>): string {
+  const content = JSON.stringify({
+    name: contract.name,
+    displayName: contract.displayName,
+    type: contract.type,
+    version: contract.version,
+    description: contract.description,
+    schema: contract.schema,
+  });
+  return crypto.createHash('sha256').update(content).digest('hex').substring(0, 16);
+}
+
+/**
+ * Log audit entry for contract lifecycle changes
+ */
+async function logAuditEntry(
+  db: ReturnType<typeof getIntelligenceDb>,
+  entry: InsertContractAuditLog
+): Promise<void> {
+  try {
+    await db.insert(contractAuditLog).values(entry);
+  } catch (error) {
+    console.error('Failed to log audit entry:', error);
+    // Don't throw - audit logging shouldn't break the main operation
+  }
+}
+
+/**
+ * Load static contracts from JSON file (fallback when DB unavailable)
  */
 function loadStaticContracts(): Contract[] {
   try {
@@ -76,28 +104,32 @@ function loadStaticContracts(): Contract[] {
       '../client/src/components/contract-builder/models/contracts.json'
     );
     const data = fs.readFileSync(contractsPath, 'utf8');
-    return JSON.parse(data) as Contract[];
+    const jsonContracts = JSON.parse(data);
+    // Map JSON fields to database schema fields
+    return jsonContracts.map((c: Record<string, unknown>) => ({
+      id: c.id as string,
+      contractId: c.contractId as string,
+      name: c.name as string,
+      displayName: c.displayName as string,
+      type: c.type as string,
+      status: c.status as string,
+      version: c.version as string,
+      description: c.description as string | null,
+      schema: {},
+      metadata: {},
+      createdBy: c.createdBy as string | null,
+      updatedBy: c.updatedBy as string | null,
+      createdAt: c.createdAt ? new Date(c.createdAt as string) : new Date(),
+      updatedAt: c.updatedAt ? new Date(c.updatedAt as string) : new Date(),
+    }));
   } catch (error) {
-    console.error('Error loading contracts:', error);
+    console.error('Error loading static contracts:', error);
     return [];
   }
 }
 
 /**
- * Get all contracts (static + dynamic)
- * Dynamic contracts override static ones with the same ID
- */
-function getAllContracts(): Contract[] {
-  const staticContracts = loadStaticContracts();
-  // Filter out static contracts that have dynamic versions (state changes move to dynamic)
-  const dynamicIds = new Set(dynamicContracts.map((c) => c.id));
-  const filteredStatic = staticContracts.filter((c) => !dynamicIds.has(c.id));
-  return [...filteredStatic, ...dynamicContracts];
-}
-
-/**
  * Load schema for a contract type
- * In Phase 2, this could come from omnibase_core or database
  */
 function loadSchema(type: ContractType): ContractSchemaDefinition | null {
   try {
@@ -204,53 +236,83 @@ router.get('/schema/:type', (req, res) => {
  * GET / - List all contracts with optional filters
  * Query params: type, status, search
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
+    const db = getDb();
+    if (!db) {
+      // Fallback to static contracts if DB unavailable
+      console.warn('Database unavailable, using static contracts');
+      const staticContracts = loadStaticContracts();
+      return res.json(staticContracts);
+    }
+
     const { type, status, search } = req.query;
-    let contracts = getAllContracts();
 
-    // Filter by type
+    // Build query conditions
+    const conditions = [];
     if (type && typeof type === 'string') {
-      contracts = contracts.filter((c) => c.type === type);
+      conditions.push(eq(contracts.type, type));
     }
-
-    // Filter by status
     if (status && typeof status === 'string') {
-      contracts = contracts.filter((c) => c.status === status);
+      conditions.push(eq(contracts.status, status));
     }
-
-    // Search by name, displayName, or description
     if (search && typeof search === 'string') {
-      const lowerSearch = search.toLowerCase();
-      contracts = contracts.filter(
-        (c) =>
-          c.name.toLowerCase().includes(lowerSearch) ||
-          c.displayName.toLowerCase().includes(lowerSearch) ||
-          c.description?.toLowerCase().includes(lowerSearch)
-      );
+      conditions.push(ilike(contracts.name, `%${search}%`));
     }
 
-    res.json(contracts);
+    let query = db.select().from(contracts);
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as typeof query;
+    }
+    const result = await query.orderBy(desc(contracts.updatedAt));
+
+    // If no contracts in DB, seed from static file
+    if (result.length === 0) {
+      console.log('No contracts in database, returning static contracts');
+      const staticContracts = loadStaticContracts();
+      return res.json(staticContracts);
+    }
+
+    res.json(result);
   } catch (error) {
     console.error('Error fetching contracts:', error);
-    res.status(500).json({ error: 'Failed to fetch contracts' });
+    // Fallback to static on error
+    const staticContracts = loadStaticContracts();
+    res.json(staticContracts);
   }
 });
 
 /**
  * GET /:id - Get a specific contract by ID
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
+    const db = getDb();
     const { id } = req.params;
-    const contracts = getAllContracts();
-    const contract = contracts.find((c) => c.id === id);
 
-    if (!contract) {
-      return res.status(404).json({ error: 'Contract not found' });
+    if (!db) {
+      // Fallback to static contracts
+      const staticContracts = loadStaticContracts();
+      const contract = staticContracts.find((c) => c.id === id);
+      if (!contract) {
+        return res.status(404).json({ error: 'Contract not found' });
+      }
+      return res.json(contract);
     }
 
-    res.json(contract);
+    const result = await db.select().from(contracts).where(eq(contracts.id, id));
+
+    if (result.length === 0) {
+      // Try static contracts as fallback
+      const staticContracts = loadStaticContracts();
+      const contract = staticContracts.find((c) => c.id === id);
+      if (!contract) {
+        return res.status(404).json({ error: 'Contract not found' });
+      }
+      return res.json(contract);
+    }
+
+    res.json(result[0]);
   } catch (error) {
     console.error('Error fetching contract:', error);
     res.status(500).json({ error: 'Failed to fetch contract' });
@@ -261,8 +323,13 @@ router.get('/:id', (req, res) => {
  * POST / - Create a new draft contract
  * Body: { name, displayName, type, description?, sourceContractId?, versionBump? }
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
     const {
       name,
       displayName,
@@ -284,36 +351,38 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: `Invalid contract type: ${type}` });
     }
 
-    const now = new Date().toISOString();
-    let newContract: Contract;
+    let newContract: InsertContract;
 
     if (sourceContractId) {
       // Creating a new version based on existing contract
-      const contracts = getAllContracts();
-      const sourceContract = contracts.find((c) => c.id === sourceContractId);
+      const sourceResult = await db
+        .select()
+        .from(contracts)
+        .where(eq(contracts.id, sourceContractId));
 
-      if (!sourceContract) {
+      if (sourceResult.length === 0) {
         return res.status(404).json({ error: 'Source contract not found' });
       }
 
+      const sourceContract = sourceResult[0];
       const newVersion = bumpVersion(sourceContract.version, versionBump);
 
       newContract = {
-        ...sourceContract,
-        id: generateVersionId(sourceContract.contractId, newVersion),
-        version: newVersion,
+        contractId: sourceContract.contractId,
+        name: sourceContract.name,
+        displayName: sourceContract.displayName,
+        type: sourceContract.type,
         status: 'draft',
+        version: newVersion,
         description: description || sourceContract.description,
-        createdAt: now,
-        updatedAt: now,
-        createdBy: undefined, // Would come from auth in production
+        schema: sourceContract.schema,
+        metadata: sourceContract.metadata,
       };
     } else {
       // Creating a brand new contract
       const contractId = name.toLowerCase().replace(/\s+/g, '-');
 
       newContract = {
-        id: generateVersionId(contractId, '0.1.0'),
         contractId,
         name,
         displayName,
@@ -321,13 +390,25 @@ router.post('/', (req, res) => {
         status: 'draft',
         version: '0.1.0',
         description: description || '',
-        createdAt: now,
-        updatedAt: now,
+        schema: {},
+        metadata: {},
       };
     }
 
-    dynamicContracts.push(newContract);
-    res.status(201).json(newContract);
+    const result = await db.insert(contracts).values(newContract).returning();
+    const created = result[0];
+
+    // Log audit entry
+    await logAuditEntry(db, {
+      contractId: created.id,
+      action: 'created',
+      fromStatus: null,
+      toStatus: 'draft',
+      toVersion: created.version,
+      contentHash: generateContentHash(created),
+    });
+
+    res.status(201).json(created);
   } catch (error) {
     console.error('Error creating contract:', error);
     res.status(500).json({ error: 'Failed to create contract' });
@@ -338,27 +419,24 @@ router.post('/', (req, res) => {
  * PUT /:id - Update a draft contract
  * Only drafts can be updated; other statuses are immutable
  */
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
     const { id } = req.params;
     const updates = req.body;
 
     // Find the contract
-    const dynamicIndex = dynamicContracts.findIndex((c) => c.id === id);
-    const staticContracts = loadStaticContracts();
-    const staticContract = staticContracts.find((c) => c.id === id);
+    const existing = await db.select().from(contracts).where(eq(contracts.id, id));
 
-    let contract: Contract | undefined;
-
-    if (dynamicIndex >= 0) {
-      contract = dynamicContracts[dynamicIndex];
-    } else if (staticContract) {
-      contract = staticContract;
-    }
-
-    if (!contract) {
+    if (existing.length === 0) {
       return res.status(404).json({ error: 'Contract not found' });
     }
+
+    const contract = existing[0];
 
     // Only drafts can be updated
     if (contract.status !== 'draft') {
@@ -370,20 +448,29 @@ router.put('/:id', (req, res) => {
     // Prevent changing immutable fields
     const { id: _id, contractId: _contractId, createdAt: _createdAt, ...allowedUpdates } = updates;
 
-    const updatedContract: Contract = {
-      ...contract,
-      ...allowedUpdates,
-      updatedAt: new Date().toISOString(),
-    };
+    const result = await db
+      .update(contracts)
+      .set({
+        ...allowedUpdates,
+        updatedAt: new Date(),
+      })
+      .where(eq(contracts.id, id))
+      .returning();
 
-    if (dynamicIndex >= 0) {
-      dynamicContracts[dynamicIndex] = updatedContract;
-    } else {
-      // Move static contract to dynamic for updates
-      dynamicContracts.push(updatedContract);
-    }
+    const updated = result[0];
 
-    res.json(updatedContract);
+    // Log audit entry
+    await logAuditEntry(db, {
+      contractId: id,
+      action: 'updated',
+      fromStatus: contract.status,
+      toStatus: updated.status,
+      fromVersion: contract.version,
+      toVersion: updated.version,
+      contentHash: generateContentHash(updated),
+    });
+
+    res.json(updated);
   } catch (error) {
     console.error('Error updating contract:', error);
     res.status(500).json({ error: 'Failed to update contract' });
@@ -398,15 +485,22 @@ router.put('/:id', (req, res) => {
  * POST /:id/validate - Validate a contract
  * Returns validation result with errors/warnings
  */
-router.post('/:id/validate', (req, res) => {
+router.post('/:id/validate', async (req, res) => {
   try {
-    const { id } = req.params;
-    const contracts = getAllContracts();
-    const contract = contracts.find((c) => c.id === id);
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
 
-    if (!contract) {
+    const { id } = req.params;
+
+    const existing = await db.select().from(contracts).where(eq(contracts.id, id));
+
+    if (existing.length === 0) {
       return res.status(404).json({ error: 'Contract not found' });
     }
+
+    const contract = existing[0];
 
     // Basic validation rules
     const errors: string[] = [];
@@ -438,19 +532,26 @@ router.post('/:id/validate', (req, res) => {
     // Update status if valid and currently draft
     let updatedContract = contract;
     if (isValid && contract.status === 'draft') {
-      updatedContract = {
-        ...contract,
-        status: 'validated' as ContractStatus,
-        updatedAt: new Date().toISOString(),
-      };
+      const result = await db
+        .update(contracts)
+        .set({
+          status: 'validated',
+          updatedAt: new Date(),
+        })
+        .where(eq(contracts.id, id))
+        .returning();
 
-      const dynamicIndex = dynamicContracts.findIndex((c) => c.id === id);
-      if (dynamicIndex >= 0) {
-        dynamicContracts[dynamicIndex] = updatedContract;
-      } else {
-        // Move static contract to dynamic storage for state changes
-        dynamicContracts.push(updatedContract);
-      }
+      updatedContract = result[0];
+
+      // Log audit entry
+      await logAuditEntry(db, {
+        contractId: id,
+        action: 'validated',
+        fromStatus: 'draft',
+        toStatus: 'validated',
+        toVersion: contract.version,
+        contentHash: generateContentHash(updatedContract),
+      });
     }
 
     res.json({
@@ -469,17 +570,23 @@ router.post('/:id/validate', (req, res) => {
  * POST /:id/publish - Publish a validated contract
  * Only validated contracts can be published
  */
-router.post('/:id/publish', (req, res) => {
+router.post('/:id/publish', async (req, res) => {
   try {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
     const { id } = req.params;
-    const { evidence: _evidence } = req.body; // Optional evidence links (TODO: implement)
+    const { evidence } = req.body;
 
-    const contracts = getAllContracts();
-    const contract = contracts.find((c) => c.id === id);
+    const existing = await db.select().from(contracts).where(eq(contracts.id, id));
 
-    if (!contract) {
+    if (existing.length === 0) {
       return res.status(404).json({ error: 'Contract not found' });
     }
+
+    const contract = existing[0];
 
     if (contract.status !== 'validated') {
       return res.status(400).json({
@@ -487,35 +594,31 @@ router.post('/:id/publish', (req, res) => {
       });
     }
 
-    const now = new Date().toISOString();
-    const publishedContract: Contract = {
-      ...contract,
-      status: 'published',
-      updatedAt: now,
-    };
+    const result = await db
+      .update(contracts)
+      .set({
+        status: 'published',
+        updatedAt: new Date(),
+      })
+      .where(eq(contracts.id, id))
+      .returning();
 
-    // Update in dynamic contracts
-    const dynamicIndex = dynamicContracts.findIndex((c) => c.id === id);
-    if (dynamicIndex >= 0) {
-      dynamicContracts[dynamicIndex] = publishedContract;
-    } else {
-      dynamicContracts.push(publishedContract);
-    }
+    const published = result[0];
 
-    // TODO: In Phase 2, store audit entry with evidence links
-    // auditLog.append({
-    //   action: 'publish',
-    //   actor: req.user?.id,
-    //   timestamp: now,
-    //   fromVersion: null,
-    //   toVersion: contract.version,
-    //   contentHash: hash(contract),
-    //   evidence: evidence || [],
-    // });
+    // Log audit entry with evidence
+    await logAuditEntry(db, {
+      contractId: id,
+      action: 'published',
+      fromStatus: 'validated',
+      toStatus: 'published',
+      toVersion: contract.version,
+      contentHash: generateContentHash(published),
+      evidence: evidence || [],
+    });
 
     res.json({
       success: true,
-      contract: publishedContract,
+      contract: published,
       message: `Contract ${contract.name} v${contract.version} published successfully`,
     });
   } catch (error) {
@@ -527,15 +630,23 @@ router.post('/:id/publish', (req, res) => {
 /**
  * POST /:id/deprecate - Deprecate a published contract
  */
-router.post('/:id/deprecate', (req, res) => {
+router.post('/:id/deprecate', async (req, res) => {
   try {
-    const { id } = req.params;
-    const contracts = getAllContracts();
-    const contract = contracts.find((c) => c.id === id);
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
 
-    if (!contract) {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const existing = await db.select().from(contracts).where(eq(contracts.id, id));
+
+    if (existing.length === 0) {
       return res.status(404).json({ error: 'Contract not found' });
     }
+
+    const contract = existing[0];
 
     if (contract.status !== 'published') {
       return res.status(400).json({
@@ -543,22 +654,31 @@ router.post('/:id/deprecate', (req, res) => {
       });
     }
 
-    const deprecatedContract: Contract = {
-      ...contract,
-      status: 'deprecated',
-      updatedAt: new Date().toISOString(),
-    };
+    const result = await db
+      .update(contracts)
+      .set({
+        status: 'deprecated',
+        updatedAt: new Date(),
+      })
+      .where(eq(contracts.id, id))
+      .returning();
 
-    const dynamicIndex = dynamicContracts.findIndex((c) => c.id === id);
-    if (dynamicIndex >= 0) {
-      dynamicContracts[dynamicIndex] = deprecatedContract;
-    } else {
-      dynamicContracts.push(deprecatedContract);
-    }
+    const deprecated = result[0];
+
+    // Log audit entry
+    await logAuditEntry(db, {
+      contractId: id,
+      action: 'deprecated',
+      fromStatus: 'published',
+      toStatus: 'deprecated',
+      toVersion: contract.version,
+      reason: reason || null,
+      contentHash: generateContentHash(deprecated),
+    });
 
     res.json({
       success: true,
-      contract: deprecatedContract,
+      contract: deprecated,
     });
   } catch (error) {
     console.error('Error deprecating contract:', error);
@@ -569,15 +689,23 @@ router.post('/:id/deprecate', (req, res) => {
 /**
  * POST /:id/archive - Archive a deprecated contract
  */
-router.post('/:id/archive', (req, res) => {
+router.post('/:id/archive', async (req, res) => {
   try {
-    const { id } = req.params;
-    const contracts = getAllContracts();
-    const contract = contracts.find((c) => c.id === id);
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
 
-    if (!contract) {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const existing = await db.select().from(contracts).where(eq(contracts.id, id));
+
+    if (existing.length === 0) {
       return res.status(404).json({ error: 'Contract not found' });
     }
+
+    const contract = existing[0];
 
     if (contract.status !== 'deprecated') {
       return res.status(400).json({
@@ -585,26 +713,60 @@ router.post('/:id/archive', (req, res) => {
       });
     }
 
-    const archivedContract: Contract = {
-      ...contract,
-      status: 'archived',
-      updatedAt: new Date().toISOString(),
-    };
+    const result = await db
+      .update(contracts)
+      .set({
+        status: 'archived',
+        updatedAt: new Date(),
+      })
+      .where(eq(contracts.id, id))
+      .returning();
 
-    const dynamicIndex = dynamicContracts.findIndex((c) => c.id === id);
-    if (dynamicIndex >= 0) {
-      dynamicContracts[dynamicIndex] = archivedContract;
-    } else {
-      dynamicContracts.push(archivedContract);
-    }
+    const archived = result[0];
+
+    // Log audit entry
+    await logAuditEntry(db, {
+      contractId: id,
+      action: 'archived',
+      fromStatus: 'deprecated',
+      toStatus: 'archived',
+      toVersion: contract.version,
+      reason: reason || null,
+      contentHash: generateContentHash(archived),
+    });
 
     res.json({
       success: true,
-      contract: archivedContract,
+      contract: archived,
     });
   } catch (error) {
     console.error('Error archiving contract:', error);
     res.status(500).json({ error: 'Failed to archive contract' });
+  }
+});
+
+/**
+ * GET /:id/audit - Get audit history for a contract
+ */
+router.get('/:id/audit', async (req, res) => {
+  try {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    const { id } = req.params;
+
+    const result = await db
+      .select()
+      .from(contractAuditLog)
+      .where(eq(contractAuditLog.contractId, id))
+      .orderBy(desc(contractAuditLog.createdAt));
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching audit log:', error);
+    res.status(500).json({ error: 'Failed to fetch audit log' });
   }
 });
 

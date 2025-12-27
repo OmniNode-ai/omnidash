@@ -25,6 +25,8 @@ interface UseAutosaveDraftOptions {
   contractType: ContractType;
   contractId?: string;
   formData: Record<string, unknown>;
+  /** Initial form data to compare against - only save draft if data has changed */
+  initialFormData?: Record<string, unknown>;
   enabled?: boolean;
 }
 
@@ -73,6 +75,7 @@ export function useAutosaveDraft({
   contractType,
   contractId,
   formData,
+  initialFormData,
   enabled = true,
 }: UseAutosaveDraftOptions): UseAutosaveDraftReturn {
   const draftKey = getDraftKey(contractType, contractId);
@@ -80,9 +83,18 @@ export function useAutosaveDraft({
   const [isAutosaving, setIsAutosaving] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const formDataRef = useRef(formData);
+  const initialFormDataRef = useRef(initialFormData);
 
-  // Keep formData ref updated for beforeunload handler
+  // Keep refs updated for beforeunload handler
   formDataRef.current = formData;
+  initialFormDataRef.current = initialFormData;
+
+  // Check if form data has changed from initial state
+  const hasChanges = useCallback((currentData: Record<string, unknown>) => {
+    // If no initial data yet (e.g., waiting for RJSF to initialize), assume no changes
+    if (!initialFormDataRef.current) return false;
+    return JSON.stringify(currentData) !== JSON.stringify(initialFormDataRef.current);
+  }, []);
 
   // Check for existing draft on mount
   useEffect(() => {
@@ -103,6 +115,13 @@ export function useAutosaveDraft({
       clearTimeout(debounceTimerRef.current);
     }
 
+    // Only save if there are actual changes from initial state
+    if (!hasChanges(formData)) {
+      // No changes - clear any existing draft for this key
+      removeDraft(draftKey);
+      return;
+    }
+
     // Set new timer
     debounceTimerRef.current = setTimeout(() => {
       setIsAutosaving(true);
@@ -120,13 +139,16 @@ export function useAutosaveDraft({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [formData, draftKey, contractType, contractId, enabled, existingDraft]);
+  }, [formData, draftKey, contractType, contractId, enabled, existingDraft, hasChanges]);
 
-  // Save before page unload
+  // Save before page unload (only if there are changes)
   useEffect(() => {
     if (!enabled) return;
 
     const handleBeforeUnload = () => {
+      // Only save if there are actual changes from initial state
+      if (!hasChanges(formDataRef.current)) return;
+
       // Use ref to get latest formData
       saveDraft(draftKey, {
         contractType,
@@ -140,13 +162,14 @@ export function useAutosaveDraft({
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [draftKey, contractType, contractId, enabled]);
+  }, [draftKey, contractType, contractId, enabled, hasChanges]);
 
   const dismissDraft = useCallback(() => {
+    // Remove draft from localStorage immediately when user dismisses
+    // This prevents the notification from reappearing on subsequent visits
+    removeDraft(draftKey);
     setExistingDraft(null);
-    // Don't remove from storage - user chose not to restore, but draft stays
-    // until they make changes (which will overwrite it)
-  }, []);
+  }, [draftKey]);
 
   const clearDraft = useCallback(() => {
     removeDraft(draftKey);
