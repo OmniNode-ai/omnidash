@@ -2,7 +2,7 @@
  * Contract Registry Routes
  *
  * REST API endpoints for the Contract Builder.
- * Provides contract CRUD operations, schema retrieval, and validation.
+ * Provides contract CRUD operations, schema retrieval, validation, and export.
  *
  * API Endpoints:
  * - GET /contracts - List all contracts (with optional filters)
@@ -15,6 +15,10 @@
  * - POST /contracts/:id/publish - Publish a validated contract
  * - POST /contracts/:id/deprecate - Deprecate a published contract
  * - POST /contracts/:id/archive - Archive a deprecated contract
+ * - GET /contracts/:id/audit - Get audit history for a contract
+ * - GET /contracts/:id/audit/:auditId/snapshot - Get snapshot for an audit entry
+ * - GET /contracts/:id/diff - Compute diff between two audit entries
+ * - GET /contracts/:id/export - Export contract as ZIP bundle (with YAML files)
  *
  * Storage: PostgreSQL via Drizzle ORM
  */
@@ -26,8 +30,16 @@ import { fileURLToPath } from 'url';
 import { eq, and, ilike, desc } from 'drizzle-orm';
 import { getIntelligenceDb } from './storage';
 import { contracts, contractAuditLog } from '@shared/intelligence-schema';
-import type { Contract, InsertContract, InsertContractAuditLog } from '@shared/intelligence-schema';
+import type {
+  Contract,
+  InsertContract,
+  InsertContractAuditLog,
+  ContractAuditLog,
+} from '@shared/intelligence-schema';
 import crypto from 'crypto';
+import { diffLines, type Change } from 'diff';
+import archiver from 'archiver';
+import yaml from 'js-yaml';
 
 const router = Router();
 
@@ -40,7 +52,7 @@ const __dirname = path.dirname(__filename);
 // ============================================================================
 
 type ContractType = 'orchestrator' | 'effect' | 'reducer' | 'compute';
-type ContractStatus = 'draft' | 'validated' | 'published' | 'deprecated' | 'archived';
+type _ContractStatus = 'draft' | 'validated' | 'published' | 'deprecated' | 'archived';
 
 interface ContractSchemaDefinition {
   type: ContractType;
@@ -80,14 +92,41 @@ function generateContentHash(contract: Partial<Contract>): string {
 }
 
 /**
+ * Convert contract to snapshot format (excludes internal database IDs)
+ * Pattern: Same approach as contractToDisplayObject() in ContractDiff.tsx
+ */
+function contractToSnapshot(contract: Contract): Record<string, unknown> {
+  return {
+    contractId: contract.contractId,
+    name: contract.name,
+    displayName: contract.displayName,
+    type: contract.type,
+    status: contract.status,
+    version: contract.version,
+    description: contract.description,
+    schema: contract.schema,
+    metadata: contract.metadata,
+    createdBy: contract.createdBy,
+    updatedBy: contract.updatedBy,
+    createdAt: contract.createdAt,
+    updatedAt: contract.updatedAt,
+  };
+}
+
+/**
  * Log audit entry for contract lifecycle changes
+ * Pattern: Non-blocking - audit failures don't break main operations
  */
 async function logAuditEntry(
   db: ReturnType<typeof getIntelligenceDb>,
-  entry: InsertContractAuditLog
+  entry: InsertContractAuditLog,
+  contractSnapshot?: Contract // Optional snapshot of contract state at time of action
 ): Promise<void> {
   try {
-    await db.insert(contractAuditLog).values(entry);
+    await db.insert(contractAuditLog).values({
+      ...entry,
+      snapshot: contractSnapshot ? contractToSnapshot(contractSnapshot) : null,
+    });
   } catch (error) {
     console.error('Failed to log audit entry:', error);
     // Don't throw - audit logging shouldn't break the main operation
@@ -180,8 +219,130 @@ function bumpVersion(version: string, type: 'major' | 'minor' | 'patch' = 'patch
 /**
  * Generate unique version ID
  */
-function generateVersionId(contractId: string, version: string): string {
+function _generateVersionId(contractId: string, version: string): string {
   return `${contractId}-v${version}`.replace(/\./g, '-');
+}
+
+// ============================================================================
+// Bundle Export Helpers
+// ============================================================================
+
+/**
+ * Bundle file structure for contract export
+ */
+interface ContractBundle {
+  contract: Record<string, unknown>;
+  schema: Record<string, unknown>;
+  provenance: Record<string, unknown>;
+  auditLog: Record<string, unknown>[];
+  tests: {
+    testCases: Record<string, unknown>;
+    testResults: Record<string, unknown>;
+  };
+}
+
+/**
+ * Convert contract to YAML-friendly format for export
+ */
+function contractToExportFormat(contract: Contract): Record<string, unknown> {
+  return {
+    contractId: contract.contractId,
+    name: contract.name,
+    displayName: contract.displayName,
+    type: contract.type,
+    version: contract.version,
+    status: contract.status,
+    description: contract.description || '',
+    metadata: contract.metadata || {},
+    createdBy: contract.createdBy || 'unknown',
+    updatedBy: contract.updatedBy || 'unknown',
+    createdAt: contract.createdAt?.toISOString() || new Date().toISOString(),
+    updatedAt: contract.updatedAt?.toISOString() || new Date().toISOString(),
+  };
+}
+
+/**
+ * Generate provenance information for export
+ */
+function generateProvenance(
+  contract: Contract,
+  auditEntries: ContractAuditLog[]
+): Record<string, unknown> {
+  const publishEntry = auditEntries.find((e) => e.action === 'published');
+  const _createEntry = auditEntries.find((e) => e.action === 'created');
+
+  // Build version lineage from audit entries
+  const versionLineage = auditEntries
+    .filter((e) => e.toVersion)
+    .map((e) => ({
+      version: e.toVersion,
+      action: e.action,
+      timestamp: e.createdAt?.toISOString() || new Date().toISOString(),
+      actor: e.actor || 'unknown',
+      contentHash: e.contentHash || null,
+    }))
+    .reverse(); // Oldest first
+
+  return {
+    contractId: contract.contractId,
+    currentVersion: contract.version,
+    contentHash: generateContentHash(contract),
+    createdAt: contract.createdAt?.toISOString() || new Date().toISOString(),
+    createdBy: contract.createdBy || 'unknown',
+    publishedAt: publishEntry?.createdAt?.toISOString() || null,
+    publishedBy: publishEntry?.actor || null,
+    versionLineage,
+    evidence: publishEntry?.evidence || [],
+    exportedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Convert audit entries to export format
+ */
+function auditEntriesToExportFormat(entries: ContractAuditLog[]): Record<string, unknown>[] {
+  return entries.map((entry) => ({
+    id: entry.id,
+    action: entry.action,
+    fromStatus: entry.fromStatus,
+    toStatus: entry.toStatus,
+    fromVersion: entry.fromVersion,
+    toVersion: entry.toVersion,
+    actor: entry.actor || 'unknown',
+    reason: entry.reason || null,
+    evidence: entry.evidence || [],
+    contentHash: entry.contentHash || null,
+    createdAt: entry.createdAt?.toISOString() || new Date().toISOString(),
+    // Note: snapshots are included if available
+    hasSnapshot: !!entry.snapshot,
+  }));
+}
+
+/**
+ * Generate placeholder test structure
+ */
+function generateTestPlaceholders(): {
+  testCases: Record<string, unknown>;
+  testResults: Record<string, unknown>;
+} {
+  return {
+    testCases: {
+      version: '1.0.0',
+      cases: [],
+      note: 'Test cases can be added here. Each case should include inputs, expected outputs, and assertions.',
+    },
+    testResults: {
+      version: '1.0.0',
+      results: [],
+      summary: {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        skipped: 0,
+      },
+      note: 'Test results will be populated when tests are executed.',
+    },
+  };
 }
 
 // ============================================================================
@@ -398,15 +559,19 @@ router.post('/', async (req, res) => {
     const result = await db.insert(contracts).values(newContract).returning();
     const created = result[0];
 
-    // Log audit entry
-    await logAuditEntry(db, {
-      contractId: created.id,
-      action: 'created',
-      fromStatus: null,
-      toStatus: 'draft',
-      toVersion: created.version,
-      contentHash: generateContentHash(created),
-    });
+    // Log audit entry with snapshot
+    await logAuditEntry(
+      db,
+      {
+        contractId: created.id,
+        action: 'created',
+        fromStatus: null,
+        toStatus: 'draft',
+        toVersion: created.version,
+        contentHash: generateContentHash(created),
+      },
+      created
+    );
 
     res.status(201).json(created);
   } catch (error) {
@@ -459,16 +624,20 @@ router.put('/:id', async (req, res) => {
 
     const updated = result[0];
 
-    // Log audit entry
-    await logAuditEntry(db, {
-      contractId: id,
-      action: 'updated',
-      fromStatus: contract.status,
-      toStatus: updated.status,
-      fromVersion: contract.version,
-      toVersion: updated.version,
-      contentHash: generateContentHash(updated),
-    });
+    // Log audit entry with snapshot
+    await logAuditEntry(
+      db,
+      {
+        contractId: id,
+        action: 'updated',
+        fromStatus: contract.status,
+        toStatus: updated.status,
+        fromVersion: contract.version,
+        toVersion: updated.version,
+        contentHash: generateContentHash(updated),
+      },
+      updated
+    );
 
     res.json(updated);
   } catch (error) {
@@ -543,15 +712,19 @@ router.post('/:id/validate', async (req, res) => {
 
       updatedContract = result[0];
 
-      // Log audit entry
-      await logAuditEntry(db, {
-        contractId: id,
-        action: 'validated',
-        fromStatus: 'draft',
-        toStatus: 'validated',
-        toVersion: contract.version,
-        contentHash: generateContentHash(updatedContract),
-      });
+      // Log audit entry with snapshot
+      await logAuditEntry(
+        db,
+        {
+          contractId: id,
+          action: 'validated',
+          fromStatus: 'draft',
+          toStatus: 'validated',
+          toVersion: contract.version,
+          contentHash: generateContentHash(updatedContract),
+        },
+        updatedContract
+      );
     }
 
     res.json({
@@ -605,16 +778,20 @@ router.post('/:id/publish', async (req, res) => {
 
     const published = result[0];
 
-    // Log audit entry with evidence
-    await logAuditEntry(db, {
-      contractId: id,
-      action: 'published',
-      fromStatus: 'validated',
-      toStatus: 'published',
-      toVersion: contract.version,
-      contentHash: generateContentHash(published),
-      evidence: evidence || [],
-    });
+    // Log audit entry with evidence and snapshot
+    await logAuditEntry(
+      db,
+      {
+        contractId: id,
+        action: 'published',
+        fromStatus: 'validated',
+        toStatus: 'published',
+        toVersion: contract.version,
+        contentHash: generateContentHash(published),
+        evidence: evidence || [],
+      },
+      published
+    );
 
     res.json({
       success: true,
@@ -665,16 +842,20 @@ router.post('/:id/deprecate', async (req, res) => {
 
     const deprecated = result[0];
 
-    // Log audit entry
-    await logAuditEntry(db, {
-      contractId: id,
-      action: 'deprecated',
-      fromStatus: 'published',
-      toStatus: 'deprecated',
-      toVersion: contract.version,
-      reason: reason || null,
-      contentHash: generateContentHash(deprecated),
-    });
+    // Log audit entry with snapshot
+    await logAuditEntry(
+      db,
+      {
+        contractId: id,
+        action: 'deprecated',
+        fromStatus: 'published',
+        toStatus: 'deprecated',
+        toVersion: contract.version,
+        reason: reason || null,
+        contentHash: generateContentHash(deprecated),
+      },
+      deprecated
+    );
 
     res.json({
       success: true,
@@ -724,16 +905,20 @@ router.post('/:id/archive', async (req, res) => {
 
     const archived = result[0];
 
-    // Log audit entry
-    await logAuditEntry(db, {
-      contractId: id,
-      action: 'archived',
-      fromStatus: 'deprecated',
-      toStatus: 'archived',
-      toVersion: contract.version,
-      reason: reason || null,
-      contentHash: generateContentHash(archived),
-    });
+    // Log audit entry with snapshot
+    await logAuditEntry(
+      db,
+      {
+        contractId: id,
+        action: 'archived',
+        fromStatus: 'deprecated',
+        toStatus: 'archived',
+        toVersion: contract.version,
+        reason: reason || null,
+        contentHash: generateContentHash(archived),
+      },
+      archived
+    );
 
     res.json({
       success: true,
@@ -767,6 +952,403 @@ router.get('/:id/audit', async (req, res) => {
   } catch (error) {
     console.error('Error fetching audit log:', error);
     res.status(500).json({ error: 'Failed to fetch audit log' });
+  }
+});
+
+/**
+ * Diff line representation for audit snapshot comparison
+ */
+interface DiffLine {
+  text: string;
+  type: 'added' | 'removed' | 'unchanged';
+  lineNumber: number | null;
+}
+
+/**
+ * Compute diff between two snapshots
+ * Pattern: Same approach as ContractDiff.tsx (Myers algorithm via 'diff' library)
+ */
+function computeDiff(
+  oldObj: Record<string, unknown>,
+  newObj: Record<string, unknown>
+): { lines: DiffLine[]; additions: number; deletions: number } {
+  const oldJson = JSON.stringify(oldObj, null, 2);
+  const newJson = JSON.stringify(newObj, null, 2);
+
+  const changes: Change[] = diffLines(oldJson, newJson);
+
+  const lines: DiffLine[] = [];
+  let additions = 0;
+  let deletions = 0;
+  let lineNumber = 1;
+
+  for (const change of changes) {
+    const changeLines = change.value.split('\n');
+    if (changeLines[changeLines.length - 1] === '') {
+      changeLines.pop();
+    }
+
+    for (const text of changeLines) {
+      if (change.added) {
+        lines.push({ text, type: 'added', lineNumber });
+        additions++;
+        lineNumber++;
+      } else if (change.removed) {
+        lines.push({ text, type: 'removed', lineNumber: null });
+        deletions++;
+      } else {
+        lines.push({ text, type: 'unchanged', lineNumber });
+        lineNumber++;
+      }
+    }
+  }
+
+  return { lines, additions, deletions };
+}
+
+/**
+ * GET /:id/diff - Compute diff between two audit entries
+ * Query params: from (auditId), to (auditId)
+ */
+router.get('/:id/diff', async (req, res) => {
+  try {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    const { id } = req.params;
+    const { from, to } = req.query;
+
+    // Validate required parameters
+    if (!from || !to) {
+      return res.status(400).json({
+        error: 'Missing required query parameters: from and to (audit entry IDs)',
+      });
+    }
+
+    // Fetch both audit entries
+    const [fromEntries, toEntries] = await Promise.all([
+      db
+        .select()
+        .from(contractAuditLog)
+        .where(and(eq(contractAuditLog.id, from as string), eq(contractAuditLog.contractId, id))),
+      db
+        .select()
+        .from(contractAuditLog)
+        .where(and(eq(contractAuditLog.id, to as string), eq(contractAuditLog.contractId, id))),
+    ]);
+
+    if (fromEntries.length === 0 || toEntries.length === 0) {
+      return res.status(404).json({ error: 'One or both audit entries not found' });
+    }
+
+    const fromEntry = fromEntries[0];
+    const toEntry = toEntries[0];
+
+    // Check snapshots exist
+    if (!fromEntry.snapshot || !toEntry.snapshot) {
+      return res.status(400).json({
+        error: 'Snapshots not available for one or both audit entries',
+        details: {
+          fromHasSnapshot: !!fromEntry.snapshot,
+          toHasSnapshot: !!toEntry.snapshot,
+        },
+      });
+    }
+
+    // Compute diff using same approach as ContractDiff.tsx
+    const diff = computeDiff(
+      fromEntry.snapshot as Record<string, unknown>,
+      toEntry.snapshot as Record<string, unknown>
+    );
+
+    res.json({
+      from: {
+        auditId: fromEntry.id,
+        version: fromEntry.toVersion,
+        timestamp: fromEntry.createdAt,
+        action: fromEntry.action,
+      },
+      to: {
+        auditId: toEntry.id,
+        version: toEntry.toVersion,
+        timestamp: toEntry.createdAt,
+        action: toEntry.action,
+      },
+      diff,
+    });
+  } catch (error) {
+    console.error('Error computing diff:', error);
+    res.status(500).json({ error: 'Failed to compute diff' });
+  }
+});
+
+/**
+ * GET /:id/audit/:auditId/snapshot - Get snapshot for a specific audit entry
+ */
+router.get('/:id/audit/:auditId/snapshot', async (req, res) => {
+  try {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    const { id, auditId } = req.params;
+
+    const result = await db
+      .select()
+      .from(contractAuditLog)
+      .where(and(eq(contractAuditLog.id, auditId), eq(contractAuditLog.contractId, id)));
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Audit entry not found' });
+    }
+
+    const entry = result[0];
+
+    if (!entry.snapshot) {
+      return res.status(404).json({
+        error: 'Snapshot not available for this audit entry',
+        auditId: entry.id,
+        action: entry.action,
+        createdAt: entry.createdAt,
+      });
+    }
+
+    res.json({
+      auditId: entry.id,
+      action: entry.action,
+      version: entry.toVersion,
+      timestamp: entry.createdAt,
+      snapshot: entry.snapshot,
+    });
+  } catch (error) {
+    console.error('Error fetching snapshot:', error);
+    res.status(500).json({ error: 'Failed to fetch snapshot' });
+  }
+});
+
+// ============================================================================
+// Routes: Contract Export Bundle
+// ============================================================================
+
+/**
+ * GET /:id/export - Export contract as a ZIP bundle
+ *
+ * Creates a ZIP archive containing:
+ * - contract.yaml: Main contract definition
+ * - schema.yaml: JSON Schema for the contract type
+ * - provenance.yaml: Content hash, creation info, version lineage
+ * - audit_log.yaml: Full audit trail
+ * - tests/test_cases.yaml: Test case definitions (placeholder)
+ * - tests/test_results.yaml: Test execution results (placeholder)
+ *
+ * Query params:
+ * - format: 'zip' (default) or 'json' (returns bundle structure as JSON)
+ * - include_snapshots: 'true' to include full snapshots in audit log (larger file)
+ */
+router.get('/:id/export', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { format = 'zip', include_snapshots = 'false' } = req.query;
+    const includeSnapshots = include_snapshots === 'true';
+
+    let contract: Contract | undefined;
+    let auditResult: ContractAuditLog[] = [];
+
+    // Try database first, with error handling for connection failures
+    try {
+      const db = getDb();
+      if (db) {
+        const contractResult = await db.select().from(contracts).where(eq(contracts.id, id));
+        if (contractResult.length > 0) {
+          contract = contractResult[0];
+          // Fetch audit log
+          auditResult = await db
+            .select()
+            .from(contractAuditLog)
+            .where(eq(contractAuditLog.contractId, id))
+            .orderBy(desc(contractAuditLog.createdAt));
+        }
+      }
+    } catch (_dbError) {
+      console.warn('Database unavailable for export, falling back to static contracts');
+    }
+
+    // Fallback to static contracts if not found in DB or DB unavailable
+    if (!contract) {
+      const staticContracts = loadStaticContracts();
+      contract = staticContracts.find((c) => c.id === id);
+      // Static contracts don't have audit logs
+      auditResult = [];
+    }
+
+    if (!contract) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+
+    // Load schema for this contract type
+    const schema = loadSchema(contract.type as ContractType);
+
+    // Build bundle
+    const bundle: ContractBundle = {
+      contract: contractToExportFormat(contract),
+      schema: schema
+        ? {
+            type: contract.type,
+            jsonSchema: schema.jsonSchema,
+            uiSchema: schema.uiSchema,
+          }
+        : {
+            type: contract.type,
+            jsonSchema: {},
+            uiSchema: {},
+            note: `Schema not available for type: ${contract.type}`,
+          },
+      provenance: generateProvenance(contract, auditResult),
+      auditLog: includeSnapshots
+        ? auditResult.map((entry) => ({
+            ...auditEntriesToExportFormat([entry])[0],
+            snapshot: entry.snapshot || null,
+          }))
+        : auditEntriesToExportFormat(auditResult),
+      tests: generateTestPlaceholders(),
+    };
+
+    // If JSON format requested, return the bundle as JSON
+    if (format === 'json') {
+      return res.json(bundle);
+    }
+
+    // Create ZIP archive
+    const archive = archiver('zip', {
+      zlib: { level: 9 }, // Maximum compression
+    });
+
+    // Generate filename
+    const safeContractId = contract.contractId.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const safeVersion = contract.version.replace(/\./g, '-');
+    const filename = `contract_bundle_${safeContractId}_v${safeVersion}.zip`;
+
+    // Set response headers for file download
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Pipe archive to response
+    archive.pipe(res);
+
+    // Handle archive errors
+    archive.on('error', (err) => {
+      console.error('Archive error:', err);
+      // Response may already be partially sent, so we can't send error JSON
+      res.end();
+    });
+
+    // Add files to archive
+    // 1. Contract definition
+    archive.append(
+      yaml.dump(bundle.contract, {
+        indent: 2,
+        lineWidth: 120,
+        noRefs: true,
+      }),
+      { name: 'contract.yaml' }
+    );
+
+    // 2. Schema
+    archive.append(
+      yaml.dump(bundle.schema, {
+        indent: 2,
+        lineWidth: 120,
+        noRefs: true,
+      }),
+      { name: 'schema.yaml' }
+    );
+
+    // 3. Provenance
+    archive.append(
+      yaml.dump(bundle.provenance, {
+        indent: 2,
+        lineWidth: 120,
+        noRefs: true,
+      }),
+      { name: 'provenance.yaml' }
+    );
+
+    // 4. Audit log
+    archive.append(
+      yaml.dump(
+        { entries: bundle.auditLog },
+        {
+          indent: 2,
+          lineWidth: 120,
+          noRefs: true,
+        }
+      ),
+      { name: 'audit_log.yaml' }
+    );
+
+    // 5. Tests directory
+    archive.append(
+      yaml.dump(bundle.tests.testCases, {
+        indent: 2,
+        lineWidth: 120,
+        noRefs: true,
+      }),
+      { name: 'tests/test_cases.yaml' }
+    );
+
+    archive.append(
+      yaml.dump(bundle.tests.testResults, {
+        indent: 2,
+        lineWidth: 120,
+        noRefs: true,
+      }),
+      { name: 'tests/test_results.yaml' }
+    );
+
+    // 6. Add a README
+    const readme = `# Contract Bundle: ${contract.displayName}
+
+## Contract ID: ${contract.contractId}
+## Version: ${contract.version}
+## Type: ${contract.type}
+## Status: ${contract.status}
+
+## Bundle Contents
+
+- \`contract.yaml\` - Main contract definition
+- \`schema.yaml\` - JSON Schema for validation
+- \`provenance.yaml\` - Content hash and version lineage
+- \`audit_log.yaml\` - Complete audit trail
+- \`tests/\` - Test cases and results
+
+## Exported
+
+- Date: ${new Date().toISOString()}
+- Exporter: ONEX Contract Registry
+
+## Verification
+
+Content hash: ${generateContentHash(contract)}
+
+To verify the contract integrity, recompute the hash using:
+1. Extract contract.yaml
+2. Compute SHA-256 hash of the canonical JSON representation
+3. Compare with the hash in provenance.yaml
+`;
+
+    archive.append(readme, { name: 'README.md' });
+
+    // Finalize the archive
+    await archive.finalize();
+  } catch (error) {
+    console.error('Error exporting contract:', error);
+    // Only send error if headers haven't been sent yet
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to export contract' });
+    }
   }
 });
 

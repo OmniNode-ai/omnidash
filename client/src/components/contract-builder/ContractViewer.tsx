@@ -11,7 +11,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from '@/components/ThemeProvider';
-import { ArrowLeft, Pencil, Copy, History, ChevronDown, Upload } from 'lucide-react';
+import { ArrowLeft, Pencil, Copy, History, ChevronDown, Upload, Download } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -143,6 +143,23 @@ export function ContractViewer({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Export button - triggers ZIP download */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Trigger download via anchor link
+              const link = document.createElement('a');
+              link.href = `/api/contracts/${contract.id}/export`;
+              link.download = `contract_${contract.contractId}_v${contract.version.replace(/\./g, '-')}.zip`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
           {onViewHistory && (
             <Button variant="outline" size="sm" onClick={() => onViewHistory(contract)}>
               <History className="w-4 h-4 mr-2" />
