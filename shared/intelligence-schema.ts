@@ -338,6 +338,7 @@ export const contractAuditLog = pgTable('contract_audit_log', {
   reason: text('reason'), // Optional reason for the transition
   evidence: jsonb('evidence').default([]), // Links to evidence (PRs, tickets, etc.)
   contentHash: text('content_hash'), // Hash of contract content at time of action
+  snapshot: jsonb('snapshot'), // Full contract state at time of action for replay/diff
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at').defaultNow(),
 });
