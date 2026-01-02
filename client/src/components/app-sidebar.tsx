@@ -59,7 +59,7 @@ const dashboards = [
   },
   {
     title: 'Contract Builder',
-    url: '/preview/contracts',
+    url: '/preview/contracts-v2',
     icon: FileText,
   },
 ];

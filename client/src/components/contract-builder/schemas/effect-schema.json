@@ -1,0 +1,143 @@
+{
+  "type": "object",
+  "required": ["node_identity"],
+  "properties": {
+    "node_identity": {
+      "type": "object",
+      "title": "Node Identity",
+      "required": ["name", "display_name", "version", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "Unique contract identifier (snake_case)",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "minLength": 3,
+          "maxLength": 64
+        },
+        "display_name": {
+          "type": "string",
+          "title": "Display Name",
+          "description": "Human-readable name",
+          "minLength": 3,
+          "maxLength": 128
+        },
+        "version": {
+          "type": "string",
+          "title": "Version",
+          "description": "Semantic version (e.g., 1.0.0)",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "default": "1.0.0"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "What this effect does",
+          "minLength": 10,
+          "maxLength": 500
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "title": "Metadata",
+      "properties": {
+        "author": {
+          "type": "string",
+          "title": "Author",
+          "description": "Contract author"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Classification tags",
+          "items": {
+            "type": "string",
+            "title": "Tag",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "io_operations": {
+      "type": "array",
+      "title": "I/O Operations",
+      "description": "Define the I/O operations this effect performs",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "target_ms"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Operation Name",
+            "description": "Unique operation identifier",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "What this operation does"
+          },
+          "target_ms": {
+            "type": "integer",
+            "title": "Target Duration (ms)",
+            "description": "Expected execution time in milliseconds",
+            "minimum": 1,
+            "maximum": 300000,
+            "default": 5000
+          },
+          "input_model": {
+            "type": "string",
+            "title": "Input Model",
+            "description": "Pydantic model class for input"
+          },
+          "output_model": {
+            "type": "string",
+            "title": "Output Model",
+            "description": "Pydantic model class for output"
+          },
+          "side_effects": {
+            "type": "array",
+            "title": "Side Effects",
+            "description": "List of side effects this operation produces",
+            "items": {
+              "type": "string",
+              "enum": [
+                "filesystem_read",
+                "filesystem_write",
+                "network_io",
+                "http_request",
+                "database_read",
+                "database_write",
+                "message_queue",
+                "external_api"
+              ]
+            },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "transaction_management": {
+      "type": "object",
+      "title": "Transaction Management",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable Transactions",
+          "description": "Whether to wrap operations in transactions",
+          "default": false
+        },
+        "isolation_level": {
+          "type": "string",
+          "title": "Isolation Level",
+          "description": "Transaction isolation level",
+          "enum": ["read_committed", "repeatable_read", "serializable"],
+          "default": "read_committed"
+        }
+      }
+    }
+  }
+}
