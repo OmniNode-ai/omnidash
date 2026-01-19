@@ -104,12 +104,14 @@ describe('PlatformHealth page', () => {
 
     expect(screen.getByText('Loading platform health data...')).toBeInTheDocument();
 
+    // Wait for data-dependent content to appear (not the always-visible page title)
     await waitFor(() => {
-      expect(screen.getByText('Platform Health')).toBeInTheDocument();
+      expect(screen.getByText('Services Online')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Services Online')).toBeInTheDocument();
+    // Now verify other data-dependent content
     expect(screen.getByText('Avg Latency')).toBeInTheDocument();
+    expect(screen.getByText('Platform Health')).toBeInTheDocument();
     expect(screen.getAllByText('API Gateway')[0]).toBeInTheDocument();
     expect(localStorageMocks.setItem).not.toHaveBeenCalled();
 

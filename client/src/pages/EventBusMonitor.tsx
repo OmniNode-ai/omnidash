@@ -96,6 +96,40 @@ export default function EventBusMonitor() {
     };
   }, []);
 
+  // Update dashboard with a new event
+  const updateDashboardWithEvent = useCallback((event: any) => {
+    setDashboardData((prev) => {
+      const recentEvents = Array.isArray(prev.recentEvents) ? prev.recentEvents : [];
+      const liveEvents = Array.isArray(prev.liveEvents) ? prev.liveEvents : [];
+
+      const newLiveEvent = {
+        id: event.id,
+        timestamp: event.timestamp,
+        type: mapPriorityToType(event.priority),
+        severity: mapPriorityToType(event.priority),
+        message: `${event.eventType} from ${event.source}`,
+        source: event.topicRaw,
+      };
+
+      // Update totals
+      const totalEvents = (typeof prev.totalEvents === 'number' ? prev.totalEvents : 0) + 1;
+      const isError = event.priority === 'critical';
+      const errorCount = isError
+        ? ((prev.dlqCount as number) || 0) + 1
+        : (prev.dlqCount as number) || 0;
+      const errorRate = totalEvents > 0 ? (errorCount / totalEvents) * 100 : 0;
+
+      return {
+        ...prev,
+        totalEvents,
+        dlqCount: errorCount,
+        errorRate: Math.round(errorRate * 100) / 100,
+        recentEvents: [event, ...recentEvents].slice(0, 50),
+        liveEvents: [newLiveEvent, ...liveEvents].slice(0, 50),
+      };
+    });
+  }, []);
+
   // Process incoming WebSocket messages
   const handleMessage = useCallback(
     (message: WebSocketEventMessage) => {
@@ -263,40 +297,6 @@ export default function EventBusMonitor() {
     },
     [isPaused, createEventEntry, updateDashboardWithEvent]
   );
-
-  // Update dashboard with a new event
-  const updateDashboardWithEvent = useCallback((event: any) => {
-    setDashboardData((prev) => {
-      const recentEvents = Array.isArray(prev.recentEvents) ? prev.recentEvents : [];
-      const liveEvents = Array.isArray(prev.liveEvents) ? prev.liveEvents : [];
-
-      const newLiveEvent = {
-        id: event.id,
-        timestamp: event.timestamp,
-        type: mapPriorityToType(event.priority),
-        severity: mapPriorityToType(event.priority),
-        message: `${event.eventType} from ${event.source}`,
-        source: event.topicRaw,
-      };
-
-      // Update totals
-      const totalEvents = (typeof prev.totalEvents === 'number' ? prev.totalEvents : 0) + 1;
-      const isError = event.priority === 'critical';
-      const errorCount = isError
-        ? ((prev.dlqCount as number) || 0) + 1
-        : (prev.dlqCount as number) || 0;
-      const errorRate = totalEvents > 0 ? (errorCount / totalEvents) * 100 : 0;
-
-      return {
-        ...prev,
-        totalEvents,
-        dlqCount: errorCount,
-        errorRate: Math.round(errorRate * 100) / 100,
-        recentEvents: [event, ...recentEvents].slice(0, 50),
-        liveEvents: [newLiveEvent, ...liveEvents].slice(0, 50),
-      };
-    });
-  }, []);
 
   // WebSocket connection
   const { isConnected, connectionStatus, reconnect, subscribe } = useWebSocket({

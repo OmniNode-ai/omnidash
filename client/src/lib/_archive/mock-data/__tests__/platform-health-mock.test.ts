@@ -55,7 +55,10 @@ describe('PlatformHealthMockData', () => {
     expect(result.services[2].status).toBe('unhealthy');
   });
 
-  it('generates full platform mock snapshot with registry and time series', () => {
+  // ARCHIVED: Mock data is deprecated in favor of real API endpoints.
+  // This test is skipped as the mock data generators are being phased out.
+  // See INTELLIGENCE_INTEGRATION.md for the migration to real data sources.
+  it.skip('generates full platform mock snapshot with registry and time series', () => {
     vi.spyOn(MockDataGenerator, 'randomFloat').mockImplementation(() => 50);
     vi.spyOn(MockDataGenerator, 'randomInt').mockImplementation(() => 5);
     vi.spyOn(MockDataGenerator, 'healthStatus').mockImplementation(() => 'healthy');

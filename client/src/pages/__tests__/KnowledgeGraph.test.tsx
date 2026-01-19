@@ -117,10 +117,12 @@ describe('KnowledgeGraph page', () => {
     const result = renderWithClient(<KnowledgeGraph />);
     queryClient = result.queryClient;
 
+    // Wait for loading to complete - when empty, it shows "0 nodes"
     await waitFor(() => {
-      expect(screen.getByText('Knowledge Graph')).toBeInTheDocument();
+      expect(screen.getByText(/Interactive exploration of 0 nodes/)).toBeInTheDocument();
     });
 
+    // Now the mock badges should be visible
     expect(screen.getByText('MOCK DATA: Knowledge Graph')).toBeInTheDocument();
     expect(screen.getByText('MOCK DATA: Relationship Types')).toBeInTheDocument();
 

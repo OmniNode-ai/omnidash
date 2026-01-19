@@ -27,6 +27,9 @@ vi.mock('@/components/ui/toaster', () => ({
 
 vi.mock('@/components/ui/tooltip', () => ({
   TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipContent: () => null,
 }));
 
 vi.mock('@/components/ui/sidebar', () => ({
@@ -42,8 +45,20 @@ vi.mock('@/contexts/DemoModeContext', () => ({
   DemoModeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('@/pages/AgentOperations', () => ({
-  default: () => <div data-testid="page-agent-operations">page-agent-operations</div>,
+vi.mock('@/pages/NodeRegistry', () => ({
+  default: () => <div data-testid="page-node-registry">page-node-registry</div>,
+}));
+vi.mock('@/pages/EventBusExplorer', () => ({
+  default: () => <div data-testid="page-event-bus-explorer">page-event-bus-explorer</div>,
+}));
+vi.mock('@/pages/EventBusMonitor', () => ({
+  default: () => <div data-testid="page-event-bus-monitor">page-event-bus-monitor</div>,
+}));
+vi.mock('@/pages/DashboardDemo', () => ({
+  default: () => <div data-testid="page-dashboard-demo">page-dashboard-demo</div>,
+}));
+vi.mock('@/pages/WidgetShowcase', () => ({
+  default: () => <div data-testid="page-widget-showcase">page-widget-showcase</div>,
 }));
 vi.mock('@/pages/PatternLearning', () => ({
   default: () => <div data-testid="page-pattern-learning">page-pattern-learning</div>,

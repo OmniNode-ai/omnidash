@@ -148,10 +148,16 @@ describe('EventConsumer', () => {
       expect(mockConsumerConnect).toHaveBeenCalled();
       expect(mockConsumerSubscribe).toHaveBeenCalledWith({
         topics: [
+          // Agent topics
           'agent-routing-decisions',
           'agent-transformation-events',
           'router-performance-metrics',
           'agent-actions',
+          // Node registry topics
+          'dev.omninode_bridge.onex.evt.node-introspection.v1',
+          'dev.onex.evt.registration-completed.v1',
+          'node.heartbeat',
+          'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
         ],
         fromBeginning: true,
       });
