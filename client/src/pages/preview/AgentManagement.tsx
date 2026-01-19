@@ -14,11 +14,10 @@ import AgentRegistry from './AgentRegistry';
 import AgentOperations from '../AgentOperations';
 import { RoutingDecisionDetailModal } from '@/components/RoutingDecisionDetailModal';
 import { AgentDetailModal } from '@/components/AgentDetailModal';
-import { intelligenceAnalyticsSource } from '@/lib/data-sources/intelligence-analytics-source';
-import type { AgentPerformance } from '@/lib/data-sources/intelligence-analytics-source';
+import { intelligenceAnalyticsSource, type AgentPerformance } from '@/lib/data-sources';
 
 // Types imported from data source
-type RoutingDecision = import('@/lib/data-sources/agent-management-source').RoutingDecision;
+type RoutingDecision = import('@/lib/data-sources').AgentManagementRoutingDecision;
 
 export default function AgentManagement() {
   const [activeTab, setActiveTab] = useState('overview');

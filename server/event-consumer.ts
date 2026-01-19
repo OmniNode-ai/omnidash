@@ -52,6 +52,62 @@ export interface TransformationEvent {
   createdAt: Date;
 }
 
+// Node Registry Types
+export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
+
+export type RegistrationState =
+  | 'pending_registration'
+  | 'accepted'
+  | 'awaiting_ack'
+  | 'ack_received'
+  | 'active'
+  | 'rejected'
+  | 'ack_timed_out'
+  | 'liveness_expired';
+
+export interface RegisteredNode {
+  nodeId: string;
+  nodeType: NodeType;
+  state: RegistrationState;
+  version: string;
+  uptimeSeconds: number;
+  lastSeen: Date;
+  memoryUsageMb?: number;
+  cpuUsagePercent?: number;
+  endpoints?: Record<string, string>;
+}
+
+export interface NodeIntrospectionEvent {
+  id: string;
+  nodeId: string;
+  nodeType: NodeType;
+  nodeVersion: string;
+  endpoints: Record<string, string>;
+  currentState: RegistrationState;
+  reason: 'STARTUP' | 'HEARTBEAT' | 'REQUESTED';
+  correlationId: string;
+  createdAt: Date;
+}
+
+export interface NodeHeartbeatEvent {
+  id: string;
+  nodeId: string;
+  uptimeSeconds: number;
+  activeOperationsCount: number;
+  memoryUsageMb: number;
+  cpuUsagePercent: number;
+  createdAt: Date;
+}
+
+export interface NodeStateChangeEvent {
+  id: string;
+  nodeId: string;
+  previousState: RegistrationState;
+  newState: RegistrationState;
+  reason?: string;
+  createdAt: Date;
+}
+
 /**
  * EventConsumer class for aggregating Kafka events and emitting updates
  *
@@ -61,6 +117,10 @@ export interface TransformationEvent {
  * - 'routingUpdate': When new routing decision arrives (RoutingDecision)
  * - 'transformationUpdate': When new transformation event arrives (TransformationEvent)
  * - 'performanceUpdate': When new performance metric arrives (metric, stats)
+ * - 'nodeIntrospectionUpdate': When node introspection event arrives (NodeIntrospectionEvent)
+ * - 'nodeHeartbeatUpdate': When node heartbeat event arrives (NodeHeartbeatEvent)
+ * - 'nodeStateChangeUpdate': When node state change occurs (NodeStateChangeEvent)
+ * - 'nodeRegistryUpdate': When registered nodes map is updated (RegisteredNode[])
  * - 'error': When error occurs during processing (Error)
  * - 'connected': When consumer successfully connects
  * - 'disconnected': When consumer disconnects
@@ -96,6 +156,13 @@ export class EventConsumer extends EventEmitter {
 
   private recentTransformations: TransformationEvent[] = [];
   private maxTransformations = 100;
+
+  // Node registry storage
+  private registeredNodes = new Map<string, RegisteredNode>();
+  private nodeIntrospectionEvents: NodeIntrospectionEvent[] = [];
+  private nodeHeartbeatEvents: NodeHeartbeatEvent[] = [];
+  private nodeStateChangeEvents: NodeStateChangeEvent[] = [];
+  private maxNodeEvents = 100;
 
   // Performance metrics storage
   private performanceMetrics: Array<{
@@ -232,10 +299,16 @@ export class EventConsumer extends EventEmitter {
 
       await this.consumer.subscribe({
         topics: [
+          // Agent topics
           'agent-routing-decisions',
           'agent-transformation-events',
           'router-performance-metrics',
           'agent-actions',
+          // Node registry topics (actual Kafka topic names from omnibase_infra)
+          'dev.omninode_bridge.onex.evt.node-introspection.v1',
+          'dev.onex.evt.registration-completed.v1',
+          'node.heartbeat',
+          'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
         ],
         fromBeginning: true, // Reprocess historical events to populate metrics
       });
@@ -270,6 +343,25 @@ export class EventConsumer extends EventEmitter {
                   `[EventConsumer] Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
                 );
                 this.handlePerformanceMetric(event);
+                break;
+              case 'dev.omninode_bridge.onex.evt.node-introspection.v1':
+              case 'dev.omninode_bridge.onex.evt.registry-request-introspection.v1':
+                console.log(
+                  `[EventConsumer] Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
+                );
+                this.handleNodeIntrospection(event);
+                break;
+              case 'node.heartbeat':
+                console.log(
+                  `[EventConsumer] Processing node heartbeat: ${event.node_id || event.nodeId}`
+                );
+                this.handleNodeHeartbeat(event);
+                break;
+              case 'dev.onex.evt.registration-completed.v1':
+                console.log(
+                  `[EventConsumer] Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
+                );
+                this.handleNodeStateChange(event);
                 break;
             }
           } catch (error) {
@@ -578,6 +670,153 @@ export class EventConsumer extends EventEmitter {
     }
   }
 
+  private handleNodeIntrospection(event: any): void {
+    try {
+      const nodeId = event.node_id || event.nodeId;
+      if (!nodeId) {
+        console.warn('[EventConsumer] Node introspection missing node_id, skipping');
+        return;
+      }
+
+      const introspectionEvent: NodeIntrospectionEvent = {
+        id: event.id || crypto.randomUUID(),
+        nodeId,
+        nodeType: event.node_type || event.nodeType || 'COMPUTE',
+        nodeVersion: event.node_version || event.nodeVersion || '1.0.0',
+        endpoints: event.endpoints || {},
+        currentState: event.current_state || event.currentState || 'pending_registration',
+        reason: event.reason || 'STARTUP',
+        correlationId: event.correlation_id || event.correlationId || '',
+        createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
+      };
+
+      // Store introspection event
+      this.nodeIntrospectionEvents.unshift(introspectionEvent);
+      if (this.nodeIntrospectionEvents.length > this.maxNodeEvents) {
+        this.nodeIntrospectionEvents = this.nodeIntrospectionEvents.slice(0, this.maxNodeEvents);
+      }
+
+      // Update or create registered node
+      const existingNode = this.registeredNodes.get(nodeId);
+      const node: RegisteredNode = {
+        nodeId,
+        nodeType: introspectionEvent.nodeType,
+        state: introspectionEvent.currentState,
+        version: introspectionEvent.nodeVersion,
+        uptimeSeconds: existingNode?.uptimeSeconds || 0,
+        lastSeen: introspectionEvent.createdAt,
+        memoryUsageMb: existingNode?.memoryUsageMb,
+        cpuUsagePercent: existingNode?.cpuUsagePercent,
+        endpoints: introspectionEvent.endpoints,
+      };
+
+      this.registeredNodes.set(nodeId, node);
+
+      // Emit events
+      this.emit('nodeIntrospectionUpdate', introspectionEvent);
+      this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
+
+      console.log(
+        `[EventConsumer] Processed node introspection: ${nodeId} (${introspectionEvent.nodeType}, ${introspectionEvent.reason})`
+      );
+    } catch (error) {
+      console.error('[EventConsumer] Error processing node introspection:', error);
+    }
+  }
+
+  private handleNodeHeartbeat(event: any): void {
+    try {
+      const nodeId = event.node_id || event.nodeId;
+      if (!nodeId) {
+        console.warn('[EventConsumer] Node heartbeat missing node_id, skipping');
+        return;
+      }
+
+      const heartbeatEvent: NodeHeartbeatEvent = {
+        id: event.id || crypto.randomUUID(),
+        nodeId,
+        uptimeSeconds: event.uptime_seconds || event.uptimeSeconds || 0,
+        activeOperationsCount: event.active_operations_count || event.activeOperationsCount || 0,
+        memoryUsageMb: event.memory_usage_mb || event.memoryUsageMb || 0,
+        cpuUsagePercent: event.cpu_usage_percent || event.cpuUsagePercent || 0,
+        createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
+      };
+
+      // Store heartbeat event
+      this.nodeHeartbeatEvents.unshift(heartbeatEvent);
+      if (this.nodeHeartbeatEvents.length > this.maxNodeEvents) {
+        this.nodeHeartbeatEvents = this.nodeHeartbeatEvents.slice(0, this.maxNodeEvents);
+      }
+
+      // Update registered node if exists
+      const existingNode = this.registeredNodes.get(nodeId);
+      if (existingNode) {
+        this.registeredNodes.set(nodeId, {
+          ...existingNode,
+          uptimeSeconds: heartbeatEvent.uptimeSeconds,
+          lastSeen: heartbeatEvent.createdAt,
+          memoryUsageMb: heartbeatEvent.memoryUsageMb,
+          cpuUsagePercent: heartbeatEvent.cpuUsagePercent,
+        });
+      }
+
+      // Emit events
+      this.emit('nodeHeartbeatUpdate', heartbeatEvent);
+      this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
+
+      console.log(
+        `[EventConsumer] Processed node heartbeat: ${nodeId} (CPU: ${heartbeatEvent.cpuUsagePercent}%, Mem: ${heartbeatEvent.memoryUsageMb}MB)`
+      );
+    } catch (error) {
+      console.error('[EventConsumer] Error processing node heartbeat:', error);
+    }
+  }
+
+  private handleNodeStateChange(event: any): void {
+    try {
+      const nodeId = event.node_id || event.nodeId;
+      if (!nodeId) {
+        console.warn('[EventConsumer] Node state change missing node_id, skipping');
+        return;
+      }
+
+      const stateChangeEvent: NodeStateChangeEvent = {
+        id: event.id || crypto.randomUUID(),
+        nodeId,
+        previousState: event.previous_state || event.previousState || 'pending_registration',
+        newState: event.new_state || event.newState || 'active',
+        reason: event.reason,
+        createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
+      };
+
+      // Store state change event
+      this.nodeStateChangeEvents.unshift(stateChangeEvent);
+      if (this.nodeStateChangeEvents.length > this.maxNodeEvents) {
+        this.nodeStateChangeEvents = this.nodeStateChangeEvents.slice(0, this.maxNodeEvents);
+      }
+
+      // Update registered node if exists
+      const existingNode = this.registeredNodes.get(nodeId);
+      if (existingNode) {
+        this.registeredNodes.set(nodeId, {
+          ...existingNode,
+          state: stateChangeEvent.newState,
+          lastSeen: stateChangeEvent.createdAt,
+        });
+      }
+
+      // Emit events
+      this.emit('nodeStateChangeUpdate', stateChangeEvent);
+      this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
+
+      console.log(
+        `[EventConsumer] Processed node state change: ${nodeId} (${stateChangeEvent.previousState} -> ${stateChangeEvent.newState})`
+      );
+    } catch (error) {
+      console.error('[EventConsumer] Error processing node state change:', error);
+    }
+  }
+
   private cleanupOldMetrics() {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const entries = Array.from(this.agentMetrics.entries());
@@ -627,12 +866,54 @@ export class EventConsumer extends EventEmitter {
     });
     const metricsRemoved = metricsBefore - this.performanceMetrics.length;
 
+    // Prune node introspection events
+    const introspectionBefore = this.nodeIntrospectionEvents.length;
+    this.nodeIntrospectionEvents = this.nodeIntrospectionEvents.filter((event) => {
+      const timestamp = new Date(event.createdAt).getTime();
+      return timestamp > cutoff;
+    });
+    const introspectionRemoved = introspectionBefore - this.nodeIntrospectionEvents.length;
+
+    // Prune node heartbeat events
+    const heartbeatBefore = this.nodeHeartbeatEvents.length;
+    this.nodeHeartbeatEvents = this.nodeHeartbeatEvents.filter((event) => {
+      const timestamp = new Date(event.createdAt).getTime();
+      return timestamp > cutoff;
+    });
+    const heartbeatRemoved = heartbeatBefore - this.nodeHeartbeatEvents.length;
+
+    // Prune node state change events
+    const stateChangeBefore = this.nodeStateChangeEvents.length;
+    this.nodeStateChangeEvents = this.nodeStateChangeEvents.filter((event) => {
+      const timestamp = new Date(event.createdAt).getTime();
+      return timestamp > cutoff;
+    });
+    const stateChangeRemoved = stateChangeBefore - this.nodeStateChangeEvents.length;
+
+    // Prune stale registered nodes (not seen in 24 hours)
+    const nodesBefore = this.registeredNodes.size;
+    const nodeEntries = Array.from(this.registeredNodes.entries());
+    for (const [nodeId, node] of nodeEntries) {
+      const lastSeenTime = new Date(node.lastSeen).getTime();
+      if (lastSeenTime < cutoff) {
+        this.registeredNodes.delete(nodeId);
+      }
+    }
+    const nodesRemoved = nodesBefore - this.registeredNodes.size;
+
     // Log pruning statistics if anything was removed
     const totalRemoved =
-      actionsRemoved + decisionsRemoved + transformationsRemoved + metricsRemoved;
+      actionsRemoved +
+      decisionsRemoved +
+      transformationsRemoved +
+      metricsRemoved +
+      introspectionRemoved +
+      heartbeatRemoved +
+      stateChangeRemoved +
+      nodesRemoved;
     if (totalRemoved > 0) {
       console.log(
-        `🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics (total: ${totalRemoved})`
+        `🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes (total: ${totalRemoved})`
       );
     }
   }
@@ -742,7 +1023,66 @@ export class EventConsumer extends EventEmitter {
       status: this.isRunning ? 'healthy' : 'unhealthy',
       eventsProcessed: this.agentMetrics.size,
       recentActionsCount: this.recentActions.length,
+      registeredNodesCount: this.registeredNodes.size,
       timestamp: new Date().toISOString(),
+    };
+  }
+
+  // Node Registry getters
+  getRegisteredNodes(): RegisteredNode[] {
+    return Array.from(this.registeredNodes.values());
+  }
+
+  getRegisteredNode(nodeId: string): RegisteredNode | undefined {
+    return this.registeredNodes.get(nodeId);
+  }
+
+  getNodeIntrospectionEvents(limit?: number): NodeIntrospectionEvent[] {
+    if (limit && limit > 0) {
+      return this.nodeIntrospectionEvents.slice(0, limit);
+    }
+    return this.nodeIntrospectionEvents;
+  }
+
+  getNodeHeartbeatEvents(limit?: number): NodeHeartbeatEvent[] {
+    if (limit && limit > 0) {
+      return this.nodeHeartbeatEvents.slice(0, limit);
+    }
+    return this.nodeHeartbeatEvents;
+  }
+
+  getNodeStateChangeEvents(limit?: number): NodeStateChangeEvent[] {
+    if (limit && limit > 0) {
+      return this.nodeStateChangeEvents.slice(0, limit);
+    }
+    return this.nodeStateChangeEvents;
+  }
+
+  getNodeRegistryStats() {
+    const nodes = this.getRegisteredNodes();
+    const activeNodes = nodes.filter((n) => n.state === 'active').length;
+    const pendingNodes = nodes.filter((n) =>
+      ['pending_registration', 'awaiting_ack', 'ack_received', 'accepted'].includes(n.state)
+    ).length;
+    const failedNodes = nodes.filter((n) =>
+      ['rejected', 'liveness_expired', 'ack_timed_out'].includes(n.state)
+    ).length;
+
+    // Count by node type
+    const typeDistribution = nodes.reduce(
+      (acc, node) => {
+        acc[node.nodeType] = (acc[node.nodeType] || 0) + 1;
+        return acc;
+      },
+      {} as Record<NodeType, number>
+    );
+
+    return {
+      totalNodes: nodes.length,
+      activeNodes,
+      pendingNodes,
+      failedNodes,
+      typeDistribution,
     };
   }
 
@@ -871,9 +1211,25 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
         prop === 'getRecentActions' ||
         prop === 'getRoutingDecisions' ||
         prop === 'getRecentTransformations' ||
-        prop === 'getPerformanceMetrics'
+        prop === 'getPerformanceMetrics' ||
+        prop === 'getRegisteredNodes' ||
+        prop === 'getNodeIntrospectionEvents' ||
+        prop === 'getNodeHeartbeatEvents' ||
+        prop === 'getNodeStateChangeEvents'
       ) {
         return () => [];
+      }
+      if (prop === 'getNodeRegistryStats') {
+        return () => ({
+          totalNodes: 0,
+          activeNodes: 0,
+          pendingNodes: 0,
+          failedNodes: 0,
+          typeDistribution: {},
+        });
+      }
+      if (prop === 'getRegisteredNode') {
+        return () => undefined;
       }
       if (prop === 'getPerformanceStats') {
         return () => ({

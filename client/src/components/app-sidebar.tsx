@@ -1,17 +1,4 @@
-import {
-  Bot,
-  Network,
-  Code,
-  ChevronRight,
-  MessageSquare,
-  Search,
-  Eye,
-  BarChart3,
-  Settings,
-  Shield,
-  FileText,
-  Radio,
-} from 'lucide-react';
+import { Server, Radio, ChevronRight, Search, Layers } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
   Sidebar,
@@ -25,69 +12,37 @@ import {
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 
+// Real dashboards - showing actual functionality from omnibase_infra
 const dashboards = [
   {
-    title: 'Agent Management',
-    url: '/',
-    icon: Bot,
+    title: 'Node Registry',
+    url: '/registry',
+    icon: Server,
+    description: '2-way node registration monitoring',
   },
   {
-    title: 'Code Intelligence Suite',
-    url: '/preview/code-intelligence-suite',
-    icon: Code,
-  },
-  // Moved from Preview Features (ordered by importance)
-  {
-    title: 'Intelligence Analytics',
-    url: '/preview/intelligence-analytics',
-    icon: BarChart3,
-  },
-  {
-    title: 'Platform Monitoring',
-    url: '/preview/platform-monitoring',
-    icon: Shield,
-  },
-  {
-    title: 'Architecture & Networks',
-    url: '/preview/architecture-networks',
-    icon: Network,
-  },
-  {
-    title: 'Developer Tools',
-    url: '/preview/developer-tools',
-    icon: Settings,
-  },
-  {
-    title: 'Contract Builder',
-    url: '/preview/contracts',
-    icon: FileText,
+    title: 'Event Bus',
+    url: '/events',
+    icon: Radio,
+    description: 'Kafka event stream visualization',
   },
 ];
 
 const tools = [
   {
-    title: 'AI Query Assistant',
-    url: '/chat',
-    icon: MessageSquare,
-  },
-  {
     title: 'Correlation Trace',
     url: '/trace',
     icon: Search,
-  },
-  {
-    title: 'Event Bus Explorer',
-    url: '/event-bus',
-    icon: Radio,
+    description: 'Trace events by correlation ID',
   },
 ];
 
 const previews = [
   {
-    title: 'Feature Showcase',
-    url: '/preview/showcase',
-    icon: Eye,
-    description: 'Feature demos and interactive previews',
+    title: 'Widget Showcase',
+    url: '/showcase',
+    icon: Layers,
+    description: 'All 5 contract-driven widget types',
   },
 ];
 

@@ -16,12 +16,12 @@ import {
   getPollingInterval,
 } from '@/lib/constants/query-config';
 import type {
-  PatternSummary,
+  PatternLearningSummary as PatternSummary,
   PatternTrend,
   QualityTrend,
   Pattern,
   LanguageBreakdown,
-} from '@/lib/data-sources/pattern-learning-source';
+} from '@/lib/data-sources';
 
 export default function PatternLearning() {
   const [selectedPattern, setSelectedPattern] = useState<any>(null);

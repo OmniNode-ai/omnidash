@@ -112,6 +112,14 @@ export function setupWebSocket(httpServer: HTTPServer) {
     broadcast('ROUTING_DECISION', decision, 'routing');
   });
 
+  registerEventListener('transformationUpdate', (transformation) => {
+    broadcast('AGENT_TRANSFORMATION', transformation, 'transformations');
+  });
+
+  registerEventListener('performanceUpdate', ({ metric, stats }) => {
+    broadcast('PERFORMANCE_METRIC', { metric, stats }, 'performance');
+  });
+
   registerEventListener('error', (error) => {
     console.error('EventConsumer error:', error);
     broadcast(
@@ -132,6 +140,59 @@ export function setupWebSocket(httpServer: HTTPServer) {
   registerEventListener('disconnected', () => {
     console.log('EventConsumer disconnected');
     broadcast('CONSUMER_STATUS', { status: 'disconnected' }, 'system');
+  });
+
+  // Node Registry event listeners
+  registerEventListener('nodeIntrospectionUpdate', (event) => {
+    // Transform to client-expected format (snake_case for consistency with Kafka events)
+    const data = {
+      node_id: event.nodeId,
+      node_type: event.nodeType,
+      node_version: event.nodeVersion,
+      endpoints: event.endpoints,
+      current_state: event.currentState,
+      reason: event.reason,
+      correlation_id: event.correlationId,
+    };
+    broadcast('NODE_INTROSPECTION', data, 'node-introspection');
+  });
+
+  registerEventListener('nodeHeartbeatUpdate', (event) => {
+    // Transform to client-expected format
+    const data = {
+      node_id: event.nodeId,
+      uptime_seconds: event.uptimeSeconds,
+      active_operations_count: event.activeOperationsCount,
+      memory_usage_mb: event.memoryUsageMb,
+      cpu_usage_percent: event.cpuUsagePercent,
+    };
+    broadcast('NODE_HEARTBEAT', data, 'node-heartbeat');
+  });
+
+  registerEventListener('nodeStateChangeUpdate', (event) => {
+    // Transform to client-expected format
+    const data = {
+      node_id: event.nodeId,
+      previous_state: event.previousState,
+      new_state: event.newState,
+      reason: event.reason,
+    };
+    broadcast('NODE_STATE_CHANGE', data, 'node-state-change');
+  });
+
+  registerEventListener('nodeRegistryUpdate', (nodes) => {
+    // Transform to client-expected format (snake_case for registered nodes)
+    const data = nodes.map((node: any) => ({
+      node_id: node.nodeId,
+      node_type: node.nodeType,
+      state: node.state,
+      version: node.version,
+      uptime_seconds: node.uptimeSeconds,
+      last_seen: node.lastSeen,
+      memory_usage_mb: node.memoryUsageMb,
+      cpu_usage_percent: node.cpuUsagePercent,
+    }));
+    broadcast('NODE_REGISTRY_UPDATE', data, 'node-registry');
   });
 
   // Handle WebSocket connections
@@ -166,7 +227,21 @@ export function setupWebSocket(httpServer: HTTPServer) {
           metrics: eventConsumer.getAgentMetrics(),
           recentActions: eventConsumer.getRecentActions(),
           routingDecisions: eventConsumer.getRoutingDecisions(),
+          recentTransformations: eventConsumer.getRecentTransformations(),
+          performanceStats: eventConsumer.getPerformanceStats(),
           health: eventConsumer.getHealthStatus(),
+          // Node registry data (transform to snake_case for consistency)
+          registeredNodes: eventConsumer.getRegisteredNodes().map((node: any) => ({
+            node_id: node.nodeId,
+            node_type: node.nodeType,
+            state: node.state,
+            version: node.version,
+            uptime_seconds: node.uptimeSeconds,
+            last_seen: node.lastSeen,
+            memory_usage_mb: node.memoryUsageMb,
+            cpu_usage_percent: node.cpuUsagePercent,
+          })),
+          nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
         },
         timestamp: new Date().toISOString(),
       })
@@ -205,7 +280,21 @@ export function setupWebSocket(httpServer: HTTPServer) {
                   metrics: eventConsumer.getAgentMetrics(),
                   recentActions: eventConsumer.getRecentActions(),
                   routingDecisions: eventConsumer.getRoutingDecisions(),
+                  recentTransformations: eventConsumer.getRecentTransformations(),
+                  performanceStats: eventConsumer.getPerformanceStats(),
                   health: eventConsumer.getHealthStatus(),
+                  // Node registry data (transform to snake_case for consistency)
+                  registeredNodes: eventConsumer.getRegisteredNodes().map((node: any) => ({
+                    node_id: node.nodeId,
+                    node_type: node.nodeType,
+                    state: node.state,
+                    version: node.version,
+                    uptime_seconds: node.uptimeSeconds,
+                    last_seen: node.lastSeen,
+                    memory_usage_mb: node.memoryUsageMb,
+                    cpu_usage_percent: node.cpuUsagePercent,
+                  })),
+                  nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
                 },
                 timestamp: new Date().toISOString(),
               })

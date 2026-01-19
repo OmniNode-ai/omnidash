@@ -17,11 +17,15 @@ import IntelligenceOperations from '@/pages/IntelligenceOperations';
 import CodeIntelligence from '@/pages/CodeIntelligence';
 import EventFlow from '@/pages/EventFlow';
 import EventBusExplorer from '@/pages/EventBusExplorer';
+import EventBusMonitor from '@/pages/EventBusMonitor';
 import KnowledgeGraph from '@/pages/KnowledgeGraph';
 import PlatformHealth from '@/pages/PlatformHealth';
 import DeveloperExperience from '@/pages/DeveloperExperience';
 import Chat from '@/pages/Chat';
 import CorrelationTrace from '@/pages/CorrelationTrace';
+import DashboardDemo from '@/pages/DashboardDemo';
+import WidgetShowcase from '@/pages/WidgetShowcase';
+import NodeRegistry from '@/pages/NodeRegistry';
 
 // Preview pages
 import EnhancedAnalytics from '@/pages/preview/EnhancedAnalytics';
@@ -45,17 +49,21 @@ import DeveloperTools from '@/pages/preview/DeveloperTools';
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={AgentManagement} />
+      <Route path="/" component={NodeRegistry} />
       <Route path="/patterns" component={PatternLearning} />
       <Route path="/intelligence" component={IntelligenceOperations} />
       <Route path="/code" component={CodeIntelligence} />
-      <Route path="/events">{() => <EventFlow />}</Route>
+      <Route path="/events" component={EventBusMonitor} />
+      <Route path="/events-legacy">{() => <EventFlow />}</Route>
       <Route path="/event-bus" component={EventBusExplorer} />
       <Route path="/knowledge" component={KnowledgeGraph} />
       <Route path="/health" component={PlatformHealth} />
       <Route path="/developer" component={DeveloperExperience} />
       <Route path="/chat" component={Chat} />
       <Route path="/trace" component={CorrelationTrace} />
+      <Route path="/demo" component={DashboardDemo} />
+      <Route path="/showcase" component={WidgetShowcase} />
+      <Route path="/registry" component={NodeRegistry} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />
