@@ -52,16 +52,123 @@ export interface WidgetConfigTable {
   hover_highlight?: boolean;
 }
 
+/**
+ * Configuration for a metric card widget that displays a single KPI value.
+ *
+ * Metric cards are the primary widget for displaying key performance indicators
+ * on dashboards. They support numeric formatting, threshold-based status coloring,
+ * and optional trend indicators for showing changes over time.
+ *
+ * Part of the discriminated union `WidgetConfig`, identified by `config_kind: 'metric_card'`.
+ *
+ * @example Basic metric card
+ * ```typescript
+ * const activeAgents: WidgetConfigMetricCard = {
+ *   config_kind: 'metric_card',
+ *   metric_key: 'agents.active_count',
+ *   label: 'Active Agents',
+ * };
+ * // With data: { 'agents.active_count': 52 }
+ * // Renders: "Active Agents: 52"
+ * ```
+ *
+ * @example Metric card with percentage format and thresholds
+ * ```typescript
+ * const cpuUsage: WidgetConfigMetricCard = {
+ *   config_kind: 'metric_card',
+ *   metric_key: 'system.cpu_percent',
+ *   label: 'CPU Usage',
+ *   value_format: 'percent',
+ *   precision: 1,
+ *   thresholds: [
+ *     { value: 90, severity: 'critical' },
+ *     { value: 70, severity: 'warning' },
+ *   ],
+ * };
+ * // With data: { 'system.cpu_percent': 75.5 }
+ * // Renders: "CPU Usage: 75.5%" with warning status (orange)
+ * ```
+ *
+ * @example Metric card with trend indicator
+ * ```typescript
+ * const requestCount: WidgetConfigMetricCard = {
+ *   config_kind: 'metric_card',
+ *   metric_key: 'api.request_count',
+ *   label: 'Requests/min',
+ *   value_format: 'number',
+ *   show_trend: true,
+ *   trend_key: 'api.request_change_percent',
+ * };
+ * // With data: { 'api.request_count': 1234, 'api.request_change_percent': 12.5 }
+ * // Renders: "Requests/min: 1,234" with "+12.5%" trend indicator
+ * ```
+ *
+ * @see WidgetConfig - The discriminated union this type belongs to
+ * @see MetricThreshold - Threshold configuration for status coloring
+ * @see MetricCardWidget - The React component that renders this config
+ */
 export interface WidgetConfigMetricCard {
+  /**
+   * Discriminator for the widget config union. Must be `'metric_card'`.
+   * Used by TypeScript to narrow the `WidgetConfig` union type.
+   */
   config_kind: 'metric_card';
-  metric_key: string; // Key into DashboardData
+
+  /**
+   * Key path to look up the metric value in DashboardData.
+   * Supports dot-notation for nested objects (e.g., `'agents.active_count'`).
+   */
+  metric_key: string;
+
+  /** Display label shown above or beside the metric value. */
   label: string;
+
+  /**
+   * Optional unit suffix displayed after the value (e.g., `'ms'`, `'GB'`).
+   * For common units like percent or currency, prefer using `value_format` instead.
+   */
   unit?: string;
+
+  /**
+   * Format type for the metric value.
+   * - `'number'`: Locale-formatted with thousand separators (default)
+   * - `'currency'`: USD format with $ symbol
+   * - `'percent'`: Value followed by % symbol
+   * - `'duration'`: Value followed by 'ms' suffix
+   */
   value_format?: 'number' | 'currency' | 'percent' | 'duration';
+
+  /**
+   * Number of decimal places to display.
+   * @default 2
+   */
   precision?: number;
+
+  /**
+   * Whether to display a trend indicator showing change direction.
+   * Requires `trend_key` to be set.
+   */
   show_trend?: boolean;
-  trend_key?: string; // Key into DashboardData for comparison
+
+  /**
+   * Key path in DashboardData for the trend/change value.
+   * The value should be a number representing the percentage change.
+   * Positive values show green up arrow, negative show red down arrow.
+   */
+  trend_key?: string;
+
+  /**
+   * Array of thresholds for status-based coloring.
+   * Thresholds are evaluated in descending order; the first one where
+   * `value >= threshold.value` determines the status.
+   * If no threshold is exceeded, status is 'healthy' (green).
+   */
   thresholds?: MetricThreshold[];
+
+  /**
+   * Optional icon identifier to display with the metric.
+   * Uses the icon system defined in the component library.
+   */
   icon?: string;
 }
 

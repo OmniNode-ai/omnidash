@@ -31,6 +31,22 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
+ * Chart dimension and style constants.
+ * Extracted from Recharts component props for maintainability.
+ */
+const AXIS_FONT_SIZE = 12;
+const GRID_OPACITY = 0.3;
+const TOOLTIP_BORDER_RADIUS = '6px';
+const TOOLTIP_FONT_SIZE = '12px';
+const LINE_STROKE_WIDTH = 2;
+const ACTIVE_DOT_RADIUS = 4;
+const BAR_CORNER_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
+const AREA_FILL_OPACITY = 0.2;
+const PIE_INNER_RADIUS = 40;
+const PIE_OUTER_RADIUS = 80;
+const PIE_PADDING_ANGLE = 2;
+
+/**
  * Semantic chart colors from CSS variables.
  * These colors are designed to work in both light and dark themes.
  */
@@ -136,8 +152,8 @@ function ChartSkeleton({ title }: { title: string }) {
 const tooltipStyle: React.CSSProperties = {
   backgroundColor: 'hsl(var(--card))',
   border: '1px solid hsl(var(--border))',
-  borderRadius: '6px',
-  fontSize: '12px',
+  borderRadius: TOOLTIP_BORDER_RADIUS,
+  fontSize: TOOLTIP_FONT_SIZE,
 };
 
 /**
@@ -154,12 +170,17 @@ function renderLineChart(chartData: unknown[], config: WidgetConfigChart) {
   return (
     <LineChart data={chartData}>
       {config.x_axis?.show_grid !== false && (
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={GRID_OPACITY} />
       )}
-      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} />
+      <XAxis
+        dataKey="name"
+        stroke="hsl(var(--muted-foreground))"
+        fontSize={AXIS_FONT_SIZE}
+        tickLine={false}
+      />
       <YAxis
         stroke="hsl(var(--muted-foreground))"
-        fontSize={12}
+        fontSize={AXIS_FONT_SIZE}
         tickLine={false}
         label={
           config.y_axis?.label
@@ -177,9 +198,9 @@ function renderLineChart(chartData: unknown[], config: WidgetConfigChart) {
           dataKey={series.data_key}
           name={series.name}
           stroke={getSeriesColor(index)}
-          strokeWidth={2}
+          strokeWidth={LINE_STROKE_WIDTH}
           dot={false}
-          activeDot={{ r: 4 }}
+          activeDot={{ r: ACTIVE_DOT_RADIUS }}
         />
       ))}
     </LineChart>
@@ -200,12 +221,17 @@ function renderBarChart(chartData: unknown[], config: WidgetConfigChart) {
   return (
     <BarChart data={chartData}>
       {config.x_axis?.show_grid !== false && (
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={GRID_OPACITY} />
       )}
-      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} />
+      <XAxis
+        dataKey="name"
+        stroke="hsl(var(--muted-foreground))"
+        fontSize={AXIS_FONT_SIZE}
+        tickLine={false}
+      />
       <YAxis
         stroke="hsl(var(--muted-foreground))"
-        fontSize={12}
+        fontSize={AXIS_FONT_SIZE}
         tickLine={false}
         label={
           config.y_axis?.label
@@ -214,7 +240,10 @@ function renderBarChart(chartData: unknown[], config: WidgetConfigChart) {
         }
         domain={[config.y_axis?.min_value ?? 'auto', config.y_axis?.max_value ?? 'auto']}
       />
-      <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }} />
+      <Tooltip
+        contentStyle={tooltipStyle}
+        cursor={{ fill: 'hsl(var(--muted))', opacity: GRID_OPACITY }}
+      />
       {config.show_legend && <Legend />}
       {config.series.map((series, index) => (
         <Bar
@@ -222,7 +251,7 @@ function renderBarChart(chartData: unknown[], config: WidgetConfigChart) {
           dataKey={series.data_key}
           name={series.name}
           fill={getSeriesColor(index)}
-          radius={[4, 4, 0, 0]}
+          radius={BAR_CORNER_RADIUS}
           stackId={config.stacked ? 'stack' : undefined}
         />
       ))}
@@ -245,12 +274,17 @@ function renderAreaChart(chartData: unknown[], config: WidgetConfigChart) {
   return (
     <AreaChart data={chartData}>
       {config.x_axis?.show_grid !== false && (
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={GRID_OPACITY} />
       )}
-      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} />
+      <XAxis
+        dataKey="name"
+        stroke="hsl(var(--muted-foreground))"
+        fontSize={AXIS_FONT_SIZE}
+        tickLine={false}
+      />
       <YAxis
         stroke="hsl(var(--muted-foreground))"
-        fontSize={12}
+        fontSize={AXIS_FONT_SIZE}
         tickLine={false}
         label={
           config.y_axis?.label
@@ -269,7 +303,7 @@ function renderAreaChart(chartData: unknown[], config: WidgetConfigChart) {
           name={series.name}
           stroke={getSeriesColor(index)}
           fill={getSeriesColor(index)}
-          fillOpacity={0.2}
+          fillOpacity={AREA_FILL_OPACITY}
           stackId={config.stacked ? 'stack' : undefined}
         />
       ))}
@@ -309,9 +343,9 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
         nameKey={nameKey}
         cx="50%"
         cy="50%"
-        innerRadius={40}
-        outerRadius={80}
-        paddingAngle={2}
+        innerRadius={PIE_INNER_RADIUS}
+        outerRadius={PIE_OUTER_RADIUS}
+        paddingAngle={PIE_PADDING_ANGLE}
         label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
         labelLine={false}
       >
@@ -344,13 +378,13 @@ function renderScatterChart(chartData: unknown[], config: WidgetConfigChart) {
   return (
     <ScatterChart>
       {config.x_axis?.show_grid !== false && (
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={GRID_OPACITY} />
       )}
       <XAxis
         type="number"
         dataKey={xKey}
         stroke="hsl(var(--muted-foreground))"
-        fontSize={12}
+        fontSize={AXIS_FONT_SIZE}
         tickLine={false}
         label={
           config.x_axis?.label ? { value: config.x_axis.label, position: 'bottom' } : undefined
@@ -361,7 +395,7 @@ function renderScatterChart(chartData: unknown[], config: WidgetConfigChart) {
         type="number"
         dataKey={yKey}
         stroke="hsl(var(--muted-foreground))"
-        fontSize={12}
+        fontSize={AXIS_FONT_SIZE}
         tickLine={false}
         label={
           config.y_axis?.label

@@ -7,6 +7,15 @@ const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'tes
 const RETRY_BASE_DELAY_MS = isTestEnv ? 20 : 1000;
 const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
 
+/**
+ * Kafka consumer configuration constants.
+ * Extracted for maintainability and easy tuning.
+ */
+const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
+const SQL_PRELOAD_ACTIONS_LIMIT = 200;
+const SQL_PRELOAD_METRICS_LIMIT = 100;
+const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
+
 export interface AgentMetrics {
   agent: string;
   totalRequests: number;
@@ -65,6 +74,86 @@ export type RegistrationState =
   | 'ack_timed_out'
   | 'liveness_expired';
 
+export type IntrospectionReason = 'STARTUP' | 'HEARTBEAT' | 'REQUESTED';
+
+// Valid enum values for runtime validation
+const VALID_NODE_TYPES: readonly NodeType[] = ['EFFECT', 'COMPUTE', 'REDUCER', 'ORCHESTRATOR'];
+const VALID_REGISTRATION_STATES: readonly RegistrationState[] = [
+  'pending_registration',
+  'accepted',
+  'awaiting_ack',
+  'ack_received',
+  'active',
+  'rejected',
+  'ack_timed_out',
+  'liveness_expired',
+];
+const VALID_INTROSPECTION_REASONS: readonly IntrospectionReason[] = [
+  'STARTUP',
+  'HEARTBEAT',
+  'REQUESTED',
+];
+
+// Runtime validation guards for enum values from external sources (e.g., Kafka)
+function isValidNodeType(value: unknown): value is NodeType {
+  return typeof value === 'string' && VALID_NODE_TYPES.includes(value as NodeType);
+}
+
+function isValidRegistrationState(value: unknown): value is RegistrationState {
+  return (
+    typeof value === 'string' && VALID_REGISTRATION_STATES.includes(value as RegistrationState)
+  );
+}
+
+function isValidIntrospectionReason(value: unknown): value is IntrospectionReason {
+  return (
+    typeof value === 'string' && VALID_INTROSPECTION_REASONS.includes(value as IntrospectionReason)
+  );
+}
+
+// Safe enum parsers with fallback defaults and logging
+function parseNodeType(value: unknown, defaultValue: NodeType = 'COMPUTE'): NodeType {
+  if (isValidNodeType(value)) {
+    return value;
+  }
+  if (value !== undefined && value !== null) {
+    console.warn(
+      `[EventConsumer] Invalid NodeType value: "${value}", using default: "${defaultValue}"`
+    );
+  }
+  return defaultValue;
+}
+
+function parseRegistrationState(
+  value: unknown,
+  defaultValue: RegistrationState = 'pending_registration'
+): RegistrationState {
+  if (isValidRegistrationState(value)) {
+    return value;
+  }
+  if (value !== undefined && value !== null) {
+    console.warn(
+      `[EventConsumer] Invalid RegistrationState value: "${value}", using default: "${defaultValue}"`
+    );
+  }
+  return defaultValue;
+}
+
+function parseIntrospectionReason(
+  value: unknown,
+  defaultValue: IntrospectionReason = 'STARTUP'
+): IntrospectionReason {
+  if (isValidIntrospectionReason(value)) {
+    return value;
+  }
+  if (value !== undefined && value !== null) {
+    console.warn(
+      `[EventConsumer] Invalid IntrospectionReason value: "${value}", using default: "${defaultValue}"`
+    );
+  }
+  return defaultValue;
+}
+
 export interface RegisteredNode {
   nodeId: string;
   nodeType: NodeType;
@@ -84,7 +173,7 @@ export interface NodeIntrospectionEvent {
   nodeVersion: string;
   endpoints: Record<string, string>;
   currentState: RegistrationState;
-  reason: 'STARTUP' | 'HEARTBEAT' | 'REQUESTED';
+  reason: IntrospectionReason;
   correlationId: string;
   createdAt: Date;
 }
@@ -454,9 +543,9 @@ export class EventConsumer extends EventEmitter {
 
   /**
    * Connect to Kafka with exponential backoff retry logic
-   * @param maxRetries - Maximum number of retry attempts (default: 5)
+   * @param maxRetries - Maximum number of retry attempts (default: DEFAULT_MAX_RETRY_ATTEMPTS)
    */
-  async connectWithRetry(maxRetries = 5): Promise<void> {
+  async connectWithRetry(maxRetries = DEFAULT_MAX_RETRY_ATTEMPTS): Promise<void> {
     if (!this.consumer) {
       throw new Error('Consumer not initialized');
     }
@@ -649,7 +738,7 @@ export class EventConsumer extends EventEmitter {
         SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
         FROM agent_actions
         ORDER BY created_at DESC
-        LIMIT 200;
+        LIMIT ${SQL_PRELOAD_ACTIONS_LIMIT};
       `)
       );
 
@@ -689,7 +778,7 @@ export class EventConsumer extends EventEmitter {
            OR (ard.created_at IS NULL OR ard.created_at >= NOW() - INTERVAL '24 hours')
         GROUP BY COALESCE(ard.selected_agent, aa.agent_name)
         ORDER BY total_requests DESC
-        LIMIT 100;
+        LIMIT ${SQL_PRELOAD_METRICS_LIMIT};
       `)
       );
 
@@ -876,10 +965,10 @@ export class EventConsumer extends EventEmitter {
         createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
       };
 
-      // Store in memory (limit to 200 recent)
+      // Store in memory (limit to PERFORMANCE_METRICS_BUFFER_SIZE recent)
       this.performanceMetrics.unshift(metric);
-      if (this.performanceMetrics.length > 200) {
-        this.performanceMetrics = this.performanceMetrics.slice(0, 200);
+      if (this.performanceMetrics.length > PERFORMANCE_METRICS_BUFFER_SIZE) {
+        this.performanceMetrics = this.performanceMetrics.slice(0, PERFORMANCE_METRICS_BUFFER_SIZE);
       }
 
       // Update aggregated stats
@@ -916,13 +1005,14 @@ export class EventConsumer extends EventEmitter {
       const introspectionEvent: NodeIntrospectionEvent = {
         id: event.id || crypto.randomUUID(),
         nodeId,
-        nodeType: (event.node_type || event.nodeType || 'COMPUTE') as NodeType,
+        nodeType: parseNodeType(event.node_type || event.nodeType, 'COMPUTE'),
         nodeVersion: event.node_version || event.nodeVersion || '1.0.0',
         endpoints: event.endpoints || {},
-        currentState: (event.current_state ||
-          event.currentState ||
-          'pending_registration') as RegistrationState,
-        reason: (event.reason || 'STARTUP') as 'STARTUP' | 'HEARTBEAT' | 'REQUESTED',
+        currentState: parseRegistrationState(
+          event.current_state || event.currentState,
+          'pending_registration'
+        ),
+        reason: parseIntrospectionReason(event.reason, 'STARTUP'),
         correlationId: event.correlation_id || event.correlationId || '',
         createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
       };
@@ -1043,10 +1133,11 @@ export class EventConsumer extends EventEmitter {
       const stateChangeEvent: NodeStateChangeEvent = {
         id: event.id || crypto.randomUUID(),
         nodeId,
-        previousState: (event.previous_state ||
-          event.previousState ||
-          'pending_registration') as RegistrationState,
-        newState: (event.new_state || event.newState || 'active') as RegistrationState,
+        previousState: parseRegistrationState(
+          event.previous_state || event.previousState,
+          'pending_registration'
+        ),
+        newState: parseRegistrationState(event.new_state || event.newState, 'active'),
         reason: event.reason,
         createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
       };
