@@ -30,6 +30,7 @@ import DashboardDemo from '@/pages/DashboardDemo';
 import WidgetShowcase from '@/pages/WidgetShowcase';
 import NodeRegistry from '@/pages/NodeRegistry';
 import LiveEventStream from '@/pages/LiveEventStream';
+import ExecutionGraph from '@/pages/ExecutionGraph';
 
 // Preview pages
 import EnhancedAnalytics from '@/pages/preview/EnhancedAnalytics';
@@ -67,6 +68,7 @@ function Router() {
       <Route path="/developer" component={DeveloperExperience} />
       <Route path="/chat" component={Chat} />
       <Route path="/trace" component={CorrelationTrace} />
+      <Route path="/graph" component={ExecutionGraph} />
       <Route path="/demo" component={DashboardDemo} />
       <Route path="/showcase" component={WidgetShowcase} />
       <Route path="/registry" component={NodeRegistry} />
