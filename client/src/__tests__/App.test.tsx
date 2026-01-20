@@ -27,6 +27,9 @@ vi.mock('@/components/ui/toaster', () => ({
 
 vi.mock('@/components/ui/tooltip', () => ({
   TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipContent: () => null,
 }));
 
 vi.mock('@/components/ui/sidebar', () => ({
@@ -42,28 +45,40 @@ vi.mock('@/contexts/DemoModeContext', () => ({
   DemoModeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('@/pages/AgentOperations', () => ({
-  default: () => <div data-testid="page-agent-operations">page-agent-operations</div>,
+vi.mock('@/pages/NodeRegistry', () => ({
+  default: () => <div data-testid="page-node-registry">page-node-registry</div>,
 }));
-vi.mock('@/pages/PatternLearning', () => ({
+vi.mock('@/pages/EventBusMonitor', () => ({
+  default: () => <div data-testid="page-event-bus-monitor">page-event-bus-monitor</div>,
+}));
+vi.mock('@/pages/DashboardDemo', () => ({
+  default: () => <div data-testid="page-dashboard-demo">page-dashboard-demo</div>,
+}));
+vi.mock('@/pages/WidgetShowcase', () => ({
+  default: () => <div data-testid="page-widget-showcase">page-widget-showcase</div>,
+}));
+vi.mock('@/_archive/pages/PatternLearning', () => ({
   default: () => <div data-testid="page-pattern-learning">page-pattern-learning</div>,
 }));
-vi.mock('@/pages/IntelligenceOperations', () => ({
+vi.mock('@/_archive/pages/IntelligenceOperations', () => ({
   default: () => <div data-testid="page-intelligence-operations">page-intelligence-operations</div>,
 }));
-vi.mock('@/pages/CodeIntelligence', () => ({
+vi.mock('@/_archive/pages/CodeIntelligence', () => ({
   default: () => <div data-testid="page-code-intelligence">page-code-intelligence</div>,
 }));
-vi.mock('@/pages/EventFlow', () => ({
+vi.mock('@/_archive/pages/EventFlow', () => ({
   default: () => <div data-testid="page-event-flow">page-event-flow</div>,
 }));
-vi.mock('@/pages/KnowledgeGraph', () => ({
+vi.mock('@/_archive/pages/EventBusExplorer', () => ({
+  default: () => <div data-testid="page-event-bus-explorer">page-event-bus-explorer</div>,
+}));
+vi.mock('@/_archive/pages/KnowledgeGraph', () => ({
   default: () => <div data-testid="page-knowledge-graph">page-knowledge-graph</div>,
 }));
-vi.mock('@/pages/PlatformHealth', () => ({
+vi.mock('@/_archive/pages/PlatformHealth', () => ({
   default: () => <div data-testid="page-platform-health">page-platform-health</div>,
 }));
-vi.mock('@/pages/DeveloperExperience', () => ({
+vi.mock('@/_archive/pages/DeveloperExperience', () => ({
   default: () => <div data-testid="page-developer-experience">page-developer-experience</div>,
 }));
 vi.mock('@/pages/Chat', () => ({ default: () => <div data-testid="page-chat">page-chat</div> }));

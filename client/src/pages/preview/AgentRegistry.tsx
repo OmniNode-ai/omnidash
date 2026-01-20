@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { agentRegistrySource } from '@/lib/data-sources';
-import { type RecentActivity } from '@/lib/data-sources/agent-registry-source';
+import {
+  agentRegistrySource,
+  type AgentRegistryRecentActivity as RecentActivity,
+} from '@/lib/data-sources';
 import { getPollingInterval } from '@/lib/constants/query-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

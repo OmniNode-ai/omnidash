@@ -594,39 +594,9 @@ describe('Intelligence Routes', () => {
   });
 
   describe('GET /api/intelligence/patterns/quality-trends', () => {
-    it('should return quality trends from Omniarchon', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          success: true,
-          snapshots_count: 5,
-          snapshots: [
-            { timestamp: '2025-01-01T00:00:00Z', overall_quality: 0.85, file_count: 10 },
-            { timestamp: '2025-01-02T00:00:00Z', overall_quality: 0.87, file_count: 12 },
-          ],
-        }),
-      };
-      (global.fetch as any) = vi.fn().mockResolvedValue(mockResponse);
-
+    it('should return empty array (service no longer exists)', async () => {
       const response = await request(app)
         .get('/api/intelligence/patterns/quality-trends?timeWindow=7d')
-        .expect(200);
-
-      expect(Array.isArray(response.body)).toBe(true);
-    });
-
-    it('should return empty array when Omniarchon has no data', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          success: false,
-          snapshots_count: 0,
-        }),
-      };
-      (global.fetch as any) = vi.fn().mockResolvedValue(mockResponse);
-
-      const response = await request(app)
-        .get('/api/intelligence/patterns/quality-trends')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);

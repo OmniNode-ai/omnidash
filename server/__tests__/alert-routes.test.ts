@@ -14,6 +14,7 @@ const mockDb = {
   select: vi.fn().mockReturnThis(),
   from: vi.fn().mockReturnThis(),
   limit: vi.fn().mockResolvedValue([]),
+  execute: vi.fn().mockResolvedValue([{ 1: 1 }]), // For health check: SELECT 1
 };
 
 vi.mock('../storage', () => ({
@@ -35,6 +36,8 @@ describe('Alert Routes', () => {
     app.use(express.json());
     app.use('/api/intelligence/alerts', alertRouter);
     vi.clearAllMocks();
+    // Reset execute mock to successful state for each test
+    vi.mocked(mockDb.execute).mockResolvedValue([{ 1: 1 }]);
   });
 
   afterEach(() => {
@@ -254,11 +257,8 @@ describe('Alert Routes', () => {
     it('should return multiple alerts when multiple conditions are met', async () => {
       vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'));
 
-      vi.mocked(mockDb.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          limit: vi.fn().mockRejectedValue(new Error('Connection failed')),
-        }),
-      } as any);
+      // Mock database health check to fail
+      vi.mocked(mockDb.execute).mockRejectedValue(new Error('Connection failed'));
 
       vi.mocked(getAllAlertMetrics).mockResolvedValue({
         errorRate: 0.15,

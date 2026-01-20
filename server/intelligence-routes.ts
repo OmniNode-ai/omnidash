@@ -17,7 +17,6 @@ import {
 } from '../shared/intelligence-schema';
 import { sql, desc, gte, eq, or, and, inArray } from 'drizzle-orm';
 import { checkAllServices } from './service-health';
-import { getOmniarchonUrl } from './utils/service-urls';
 
 export const intelligenceRouter = Router();
 
@@ -167,7 +166,6 @@ interface ManifestInjectionHealth {
   }>;
   serviceHealth: {
     postgresql: { status: 'up' | 'down'; latencyMs?: number };
-    omniarchon: { status: 'up' | 'down'; latencyMs?: number };
     qdrant: { status: 'up' | 'down'; latencyMs?: number };
   };
 }
@@ -1049,67 +1047,9 @@ intelligenceRouter.get('/patterns/list', async (req, res) => {
  */
 intelligenceRouter.get('/patterns/quality-trends', async (req, res) => {
   try {
-    const timeWindow = (req.query.timeWindow as string) || '7d';
-
-    // Parse time window to hours for Omniarchon API
-    const hoursMap: Record<string, number> = {
-      '24h': 24,
-      '7d': 168,
-      '30d': 720,
-    };
-    const hours = hoursMap[timeWindow] || 168;
-
-    // Try to fetch from Omniarchon intelligence service first
-    const omniarchonUrl = getOmniarchonUrl();
-    const projectId = 'default'; // Use default project for now
-
-    try {
-      const omniarchonResponse = await fetch(
-        `${omniarchonUrl}/api/quality-trends/project/${projectId}/trend?hours=${hours}`,
-        {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(5000), // 5 second timeout
-        }
-      );
-
-      if (omniarchonResponse.ok) {
-        const omniarchonData = await omniarchonResponse.json();
-
-        // Check if Omniarchon has actual data (not just insufficient_data response)
-        if (
-          omniarchonData.success &&
-          omniarchonData.snapshots_count > 0 &&
-          omniarchonData.snapshots
-        ) {
-          console.log(
-            `✓ Using real data from Omniarchon (${omniarchonData.snapshots_count} snapshots)`
-          );
-
-          // Transform Omniarchon response to match frontend expectations
-          const formattedTrends = omniarchonData.snapshots.map((snapshot: any) => ({
-            period: snapshot.timestamp,
-            avgQuality: snapshot.overall_quality || 0.85,
-            manifestCount: snapshot.file_count || 0,
-          }));
-
-          return res.json(formattedTrends);
-        } else {
-          console.log('⚠ Omniarchon has no data yet - returning empty array');
-          return res.json([]);
-        }
-      } else {
-        console.log(`⚠ Omniarchon returned ${omniarchonResponse.status} - returning empty array`);
-        return res.json([]);
-      }
-    } catch (omniarchonError) {
-      // Return empty array instead of falling back to mock data
-      console.warn(
-        '⚠ Failed to fetch from Omniarchon - returning empty array:',
-        omniarchonError instanceof Error ? omniarchonError.message : 'Unknown error'
-      );
-      return res.json([]);
-    }
+    // Quality trends endpoint - returns empty array as the source service no longer exists
+    // TODO: Implement database-backed quality trends if needed
+    return res.json([]);
   } catch (error) {
     console.error('Error fetching quality trends:', error);
     res.status(500).json({
@@ -1737,7 +1677,6 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
  *   ],
  *   serviceHealth: {
  *     postgresql: { status: "up", latencyMs: 5 },
- *     omniarchon: { status: "up", latencyMs: 120 },
  *     qdrant: { status: "down" }
  *   }
  * }
@@ -1851,7 +1790,6 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     // Service health checks
     const serviceHealth: ManifestInjectionHealth['serviceHealth'] = {
       postgresql: { status: 'up', latencyMs: 0 },
-      omniarchon: { status: 'down' },
       qdrant: { status: 'down' },
     };
 
@@ -1866,30 +1804,6 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     } catch (pgError) {
       serviceHealth.postgresql = { status: 'down' };
       console.error('PostgreSQL health check failed:', pgError);
-    }
-
-    // Omniarchon health check
-    const omniarchonUrl = getOmniarchonUrl();
-    const omniarchonStartTime = Date.now();
-    try {
-      const omniarchonResponse = await fetch(`${omniarchonUrl}/health`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(2000), // 2 second timeout
-      });
-      if (omniarchonResponse.ok) {
-        serviceHealth.omniarchon = {
-          status: 'up',
-          latencyMs: Date.now() - omniarchonStartTime,
-        };
-      } else {
-        serviceHealth.omniarchon = { status: 'down' };
-      }
-    } catch (omniarchonError) {
-      serviceHealth.omniarchon = { status: 'down' };
-      console.warn(
-        'Omniarchon health check failed:',
-        omniarchonError instanceof Error ? omniarchonError.message : 'Unknown error'
-      );
     }
 
     // Qdrant health check
@@ -1987,7 +1901,7 @@ intelligenceRouter.get('/metrics/operations-per-minute', async (req, res) => {
 
 /**
  * GET /api/intelligence/metrics/quality-impact?timeWindow=24h|7d|30d
- * Returns quality impact time-series from Omniarchon service or database fallback
+ * Returns quality impact time-series from database
  *
  * Query parameters:
  * - timeWindow: "24h" (hourly), "7d" (daily), "30d" (daily) (default: "24h")
@@ -2005,62 +1919,12 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
   try {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
-    // Parse time window to hours for Omniarchon API
-    const hoursMap: Record<string, number> = {
-      '24h': 24,
-      '7d': 168,
-      '30d': 720,
-    };
-    const hours = hoursMap[timeWindow] || 24;
-
-    // Determine time interval and truncation for database fallback
+    // Determine time interval and truncation for database query
     const interval = getIntervalFromTimeWindow(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
-    // Try to fetch from Omniarchon intelligence service first
-    const omniarchonUrl = getOmniarchonUrl();
-
-    try {
-      const omniarchonResponse = await fetch(`${omniarchonUrl}/api/quality-impact?hours=${hours}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(5000), // 5 second timeout
-      });
-
-      if (omniarchonResponse.ok) {
-        const omniarchonData = await omniarchonResponse.json();
-
-        // Check if Omniarchon has actual data
-        if (omniarchonData.success && omniarchonData.impacts && omniarchonData.impacts.length > 0) {
-          console.log(
-            `✓ Using real quality impact data from Omniarchon (${omniarchonData.impacts.length} data points)`
-          );
-
-          // Transform Omniarchon response to match frontend expectations
-          const formattedImpacts = omniarchonData.impacts.map((impact: any) => ({
-            period: impact.timestamp,
-            avgQualityImprovement: impact.quality_delta || 0,
-            manifestsImproved: impact.manifests_count || 0,
-          }));
-
-          return res.json(formattedImpacts);
-        } else {
-          console.log('⚠ Omniarchon has no quality impact data yet - falling back to database');
-        }
-      } else {
-        console.log(
-          `⚠ Omniarchon returned ${omniarchonResponse.status} - falling back to database`
-        );
-      }
-    } catch (omniarchonError) {
-      console.warn(
-        '⚠ Failed to fetch from Omniarchon - falling back to database:',
-        omniarchonError instanceof Error ? omniarchonError.message : 'Unknown error'
-      );
-    }
-
-    // Fallback: Calculate quality impact from database
+    // Calculate quality impact from database
     // Strategy: Compare quality scores before and after manifest injections
     const qualityImpactData = await getIntelligenceDb()
       .select({

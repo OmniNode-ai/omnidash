@@ -8,8 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Network, Target, Search, Settings, FileText, CheckCircle } from 'lucide-react';
 
 // Import existing components
-import CodeIntelligence from '../CodeIntelligence';
-import PatternLearning from '../PatternLearning';
+import CodeIntelligence from '@/_archive/pages/CodeIntelligence';
+import PatternLearning from '@/_archive/pages/PatternLearning';
 import PatternLineage from './PatternLineage';
 import PatternDependencies from './PatternDependencies';
 import TechDebtAnalysis from './TechDebtAnalysis';

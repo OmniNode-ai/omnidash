@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import PlatformHealth from '../PlatformHealth';
+import PlatformHealth from '@/_archive/pages/PlatformHealth';
 import { platformHealthSource } from '@/lib/data-sources';
 
 type LocalStorageMock = {
@@ -104,12 +104,14 @@ describe('PlatformHealth page', () => {
 
     expect(screen.getByText('Loading platform health data...')).toBeInTheDocument();
 
+    // Wait for data-dependent content to appear (not the always-visible page title)
     await waitFor(() => {
-      expect(screen.getByText('Platform Health')).toBeInTheDocument();
+      expect(screen.getByText('Services Online')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Services Online')).toBeInTheDocument();
+    // Now verify other data-dependent content
     expect(screen.getByText('Avg Latency')).toBeInTheDocument();
+    expect(screen.getByText('Platform Health')).toBeInTheDocument();
     expect(screen.getAllByText('API Gateway')[0]).toBeInTheDocument();
     expect(localStorageMocks.setItem).not.toHaveBeenCalled();
 

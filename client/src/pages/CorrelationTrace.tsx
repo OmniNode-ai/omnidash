@@ -7,7 +7,7 @@ import { ExportButton } from '@/components/ExportButton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { USE_MOCK_DATA } from '@/lib/mock-data/config';
+import { USE_MOCK_DATA } from '@/lib/mock-data';
 
 // TypeScript interfaces for trace events
 interface TraceEvent {

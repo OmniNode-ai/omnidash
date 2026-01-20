@@ -2,10 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { platformMonitoringSource } from '@/lib/data-sources';
 import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
-import type {
-  SystemStatus as _SystemStatus,
-  Incident as _Incident,
-} from '@/lib/data-sources/platform-monitoring-source';
+import type { SystemStatus as _SystemStatus, Incident as _Incident } from '@/lib/data-sources';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,11 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, Server, Users, AlertTriangle, Settings, RefreshCw, Bell } from 'lucide-react';
 
 // Import existing components
-import PlatformHealth from '../PlatformHealth';
-import DeveloperExperience from '../DeveloperExperience';
+import PlatformHealth from '@/_archive/pages/PlatformHealth';
+import DeveloperExperience from '@/_archive/pages/DeveloperExperience';
 
 // Types imported from data source
-import type { ServiceStatus as _ServiceStatus } from '@/lib/data-sources/platform-monitoring-source';
+import type { ServiceStatus as _ServiceStatus } from '@/lib/data-sources';
 
 export default function PlatformMonitoring() {
   const [activeTab, setActiveTab] = useState('overview');

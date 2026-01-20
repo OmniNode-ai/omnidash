@@ -240,114 +240,6 @@ describe('Service Health Checks', () => {
     });
   });
 
-  describe('checkOmniarchon (via checkAllServices)', () => {
-    it('should return up status when Omniarchon is healthy', async () => {
-      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
-
-      const mockAdmin = {
-        connect: vi.fn().mockResolvedValue(undefined),
-        listTopics: vi.fn().mockResolvedValue([]),
-        disconnect: vi.fn().mockResolvedValue(undefined),
-      };
-
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
-
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        json: vi.fn().mockResolvedValue({ status: 'healthy' }),
-      };
-
-      vi.mocked(global.fetch).mockResolvedValue(mockResponse as any);
-
-      vi.mocked(eventConsumer.getHealthStatus).mockReturnValue({
-        status: 'healthy',
-      } as any);
-
-      const results = await checkAllServices();
-      const omniarchonResult = results.find((r) => r.service === 'Omniarchon');
-
-      expect(omniarchonResult).toBeDefined();
-      expect(omniarchonResult?.status).toBe('up');
-      expect(omniarchonResult?.latencyMs).toBeGreaterThanOrEqual(0);
-      expect(omniarchonResult?.details?.url).toBeDefined();
-      expect(omniarchonResult?.details?.statusCode).toBe(200);
-    });
-
-    it('should handle non-OK HTTP responses', async () => {
-      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
-
-      const mockAdmin = {
-        connect: vi.fn().mockResolvedValue(undefined),
-        listTopics: vi.fn().mockResolvedValue([]),
-        disconnect: vi.fn().mockResolvedValue(undefined),
-      };
-
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
-
-      const mockResponse = {
-        ok: false,
-        status: 503,
-        statusText: 'Service Unavailable',
-      };
-
-      vi.mocked(global.fetch).mockResolvedValue(mockResponse as any);
-
-      vi.mocked(eventConsumer.getHealthStatus).mockReturnValue({
-        status: 'healthy',
-      } as any);
-
-      const results = await checkAllServices();
-      const omniarchonResult = results.find((r) => r.service === 'Omniarchon');
-
-      expect(omniarchonResult).toBeDefined();
-      expect(omniarchonResult?.status).toBe('down');
-      expect(omniarchonResult?.error).toContain('HTTP 503');
-    });
-
-    it('should handle fetch errors', async () => {
-      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
-
-      const mockAdmin = {
-        connect: vi.fn().mockResolvedValue(undefined),
-        listTopics: vi.fn().mockResolvedValue([]),
-        disconnect: vi.fn().mockResolvedValue(undefined),
-      };
-
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
-
-      vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'));
-
-      vi.mocked(eventConsumer.getHealthStatus).mockReturnValue({
-        status: 'healthy',
-      } as any);
-
-      const results = await checkAllServices();
-      const omniarchonResult = results.find((r) => r.service === 'Omniarchon');
-
-      expect(omniarchonResult).toBeDefined();
-      expect(omniarchonResult?.status).toBe('down');
-      expect(omniarchonResult?.error).toBeDefined();
-      expect(omniarchonResult?.error).toContain('Network error');
-    });
-  });
-
   describe('checkEventConsumer (via checkAllServices)', () => {
     it('should return up status when event consumer is healthy', async () => {
       vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
@@ -487,11 +379,10 @@ describe('Service Health Checks', () => {
       const results = await checkAllServices();
 
       expect(Array.isArray(results)).toBe(true);
-      expect(results.length).toBe(4);
+      expect(results.length).toBe(3);
       expect(results[0].service).toBe('PostgreSQL');
       expect(results[1].service).toBe('Kafka/Redpanda');
-      expect(results[2].service).toBe('Omniarchon');
-      expect(results[3].service).toBe('Event Consumer');
+      expect(results[2].service).toBe('Event Consumer');
     });
   });
 });
