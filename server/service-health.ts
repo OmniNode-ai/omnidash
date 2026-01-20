@@ -7,7 +7,6 @@ import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 import { eventConsumer } from './event-consumer';
 import { Kafka } from 'kafkajs';
-import { getOmniarchonUrl } from './utils/service-urls';
 
 export interface ServiceHealthCheck {
   service: string;
@@ -26,10 +25,7 @@ export async function checkAllServices(): Promise<ServiceHealthCheck[]> {
   // 2. Kafka/Redpanda Check
   checks.push(await checkKafka());
 
-  // 3. Omniarchon Intelligence Service Check
-  checks.push(await checkOmniarchon());
-
-  // 4. Event Consumer Check
+  // 3. Event Consumer Check
   checks.push(await checkEventConsumer());
 
   return checks;
@@ -135,61 +131,6 @@ async function checkKafka(): Promise<ServiceHealthCheck> {
       error: error instanceof Error ? error.message : 'Unknown error',
       details: {
         brokers: brokers,
-      },
-    };
-  }
-}
-
-async function checkOmniarchon(): Promise<ServiceHealthCheck> {
-  const startTime = Date.now();
-  const omniarchonUrl = getOmniarchonUrl();
-
-  try {
-    const response = await fetch(`${omniarchonUrl}/health`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(3000), // 3 second timeout
-    });
-
-    const latency = Date.now() - startTime;
-
-    if (response.ok) {
-      let healthData: any = {};
-      try {
-        healthData = await response.json();
-      } catch {
-        // If JSON parse fails, just check status
-      }
-
-      return {
-        service: 'Omniarchon',
-        status: 'up',
-        latencyMs: latency,
-        details: {
-          url: omniarchonUrl,
-          statusCode: response.status,
-          health: healthData,
-        },
-      };
-    } else {
-      return {
-        service: 'Omniarchon',
-        status: 'down',
-        latencyMs: latency,
-        error: `HTTP ${response.status}: ${response.statusText}`,
-        details: {
-          url: omniarchonUrl,
-        },
-      };
-    }
-  } catch (error) {
-    const latency = Date.now() - startTime;
-    return {
-      service: 'Omniarchon',
-      status: 'down',
-      latencyMs: latency,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      details: {
-        url: omniarchonUrl,
       },
     };
   }

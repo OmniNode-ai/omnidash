@@ -2,9 +2,7 @@ import { Router } from 'express';
 import { sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { getIntelligenceDb } from './storage';
-import { patternLineageNodes } from '../shared/intelligence-schema';
 import { getAllAlertMetrics } from './alert-helpers';
-import { getOmniarchonUrl } from './utils/service-urls';
 
 export const alertRouter = Router();
 
@@ -13,7 +11,6 @@ export const alertRouter = Router();
  * Caches health check results for 30 seconds to reduce latency
  */
 interface HealthCheckCache {
-  omniarchonStatus: 'ok' | 'error' | number; // 'ok', 'error', or HTTP status code
   databaseStatus: 'ok' | 'error';
   timestamp: number;
 }
@@ -38,39 +35,18 @@ async function getHealthCheckStatus(): Promise<HealthCheckCache> {
     return healthCheckCache;
   }
 
-  // Execute health checks in parallel
-  const [omniarchonResult, dbResult] = await Promise.allSettled([
-    // Check Omniarchon health with short timeout
-    (async () => {
-      const omniarchonUrl = getOmniarchonUrl();
-      try {
-        const healthResponse = await fetch(`${omniarchonUrl}/health`, {
-          signal: AbortSignal.timeout(500),
-        });
-        return healthResponse.ok ? ('ok' as const) : healthResponse.status;
-      } catch {
-        return 'error' as const;
-      }
-    })(),
-
-    // Check database connection
-    (async () => {
-      try {
-        await getIntelligenceDb()
-          .select({ check: sql<number>`1::int` })
-          .from(patternLineageNodes)
-          .limit(1);
-        return 'ok' as const;
-      } catch {
-        return 'error' as const;
-      }
-    })(),
-  ]);
+  // Check database connection with simple query (no table dependency)
+  let databaseStatus: 'ok' | 'error' = 'error';
+  try {
+    await getIntelligenceDb().execute(sql`SELECT 1`);
+    databaseStatus = 'ok';
+  } catch {
+    databaseStatus = 'error';
+  }
 
   // Cache the results
   healthCheckCache = {
-    omniarchonStatus: omniarchonResult.status === 'fulfilled' ? omniarchonResult.value : 'error',
-    databaseStatus: dbResult.status === 'fulfilled' ? dbResult.value : 'error',
+    databaseStatus,
     timestamp: Date.now(),
   };
 
@@ -84,7 +60,6 @@ async function getHealthCheckStatus(): Promise<HealthCheckCache> {
  * Alert Conditions:
  *
  * CRITICAL (Red):
- * - Intelligence service unreachable (Omniarchon down)
  * - Database connection failed
  * - Error rate > 10% (last 10 minutes)
  * - Manifest injection success rate < 90% (last hour)
@@ -123,23 +98,6 @@ alertRouter.get('/active', async (req, res) => {
       getHealthCheckStatus(),
       getAllAlertMetrics(),
     ]);
-
-    // Process Omniarchon health check result
-    if (healthCheck.omniarchonStatus === 'error') {
-      alerts.push({
-        id: randomUUID(),
-        level: 'critical',
-        message: 'Omniarchon intelligence service unreachable',
-        timestamp,
-      });
-    } else if (typeof healthCheck.omniarchonStatus === 'number') {
-      alerts.push({
-        id: randomUUID(),
-        level: 'critical',
-        message: `Omniarchon intelligence service returned ${healthCheck.omniarchonStatus}`,
-        timestamp,
-      });
-    }
 
     // Process database health check result
     if (healthCheck.databaseStatus === 'error') {

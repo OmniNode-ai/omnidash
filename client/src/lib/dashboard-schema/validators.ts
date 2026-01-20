@@ -1,0 +1,178 @@
+/**
+ * Dashboard Schema Validators
+ *
+ * Zod runtime validators for dashboard configuration.
+ * Validates configs at load time to crash fast with helpful errors.
+ */
+
+import { z } from 'zod';
+import type { DashboardConfig } from './types';
+
+// Enums
+export const widgetTypeSchema = z.enum([
+  'chart',
+  'table',
+  'metric_card',
+  'status_grid',
+  'event_feed',
+]);
+export const dashboardThemeSchema = z.enum(['light', 'dark', 'system']);
+export const dashboardStatusSchema = z.enum(['initializing', 'connected', 'disconnected', 'error']);
+export const chartTypeSchema = z.enum(['line', 'bar', 'area', 'pie', 'scatter']);
+
+// Supporting schemas
+export const chartSeriesConfigSchema = z.object({
+  name: z.string().min(1),
+  data_key: z.string().min(1),
+  series_type: z.enum(['line', 'bar', 'area', 'scatter']).optional(),
+});
+
+export const chartAxisConfigSchema = z.object({
+  label: z.string().optional(),
+  min_value: z.number().optional(),
+  max_value: z.number().optional(),
+  show_grid: z.boolean().optional(),
+});
+
+export const tableColumnConfigSchema = z.object({
+  key: z.string().min(1),
+  header: z.string().min(1),
+  width: z.number().int().positive().optional(),
+  sortable: z.boolean().optional(),
+  align: z.enum(['left', 'center', 'right']).optional(),
+  format: z.string().optional(),
+});
+
+export const metricThresholdSchema = z.object({
+  value: z.number(),
+  severity: z.enum(['warning', 'error', 'critical']),
+  label: z.string().optional(),
+});
+
+// Widget Config Schemas (discriminated union)
+export const widgetConfigChartSchema = z.object({
+  config_kind: z.literal('chart'),
+  chart_type: chartTypeSchema,
+  series: z.array(chartSeriesConfigSchema).min(1),
+  x_axis: chartAxisConfigSchema.optional(),
+  y_axis: chartAxisConfigSchema.optional(),
+  show_legend: z.boolean().optional(),
+  stacked: z.boolean().optional(),
+});
+
+export const widgetConfigTableSchema = z.object({
+  config_kind: z.literal('table'),
+  columns: z.array(tableColumnConfigSchema).min(1),
+  rows_key: z.string().min(1),
+  page_size: z.number().int().positive().optional(),
+  show_pagination: z.boolean().optional(),
+  default_sort_key: z.string().optional(),
+  default_sort_direction: z.enum(['asc', 'desc']).optional(),
+  striped: z.boolean().optional(),
+  hover_highlight: z.boolean().optional(),
+});
+
+export const widgetConfigMetricCardSchema = z.object({
+  config_kind: z.literal('metric_card'),
+  metric_key: z.string().min(1),
+  label: z.string().min(1),
+  unit: z.string().optional(),
+  value_format: z.enum(['number', 'currency', 'percent', 'duration']).optional(),
+  precision: z.number().int().min(0).max(10).optional(),
+  show_trend: z.boolean().optional(),
+  trend_key: z.string().optional(),
+  thresholds: z.array(metricThresholdSchema).optional(),
+  icon: z.string().optional(),
+});
+
+export const widgetConfigStatusGridSchema = z.object({
+  config_kind: z.literal('status_grid'),
+  items_key: z.string().min(1),
+  id_field: z.string().min(1),
+  label_field: z.string().min(1),
+  status_field: z.string().min(1),
+  columns: z.number().int().positive().optional(),
+  show_labels: z.boolean().optional(),
+  compact: z.boolean().optional(),
+});
+
+export const widgetConfigEventFeedSchema = z.object({
+  config_kind: z.literal('event_feed'),
+  events_key: z.string().min(1),
+  max_items: z.number().int().positive().optional(),
+  show_timestamp: z.boolean().optional(),
+  show_source: z.boolean().optional(),
+  show_severity: z.boolean().optional(),
+  group_by_type: z.boolean().optional(),
+  auto_scroll: z.boolean().optional(),
+});
+
+export const widgetConfigSchema = z.discriminatedUnion('config_kind', [
+  widgetConfigMetricCardSchema,
+  widgetConfigTableSchema,
+  widgetConfigChartSchema,
+  widgetConfigStatusGridSchema,
+  widgetConfigEventFeedSchema,
+]);
+
+/**
+ * Widget Definition Schema
+ *
+ * Aligned with omnibase_core/models/dashboard/ModelWidgetDefinition.
+ * Validates widget configuration at runtime for crash-fast behavior.
+ *
+ * @see omnibase_core/models/dashboard/model_widget_definition.py
+ */
+export const widgetDefinitionSchema = z
+  .object({
+    widget_id: z.string().min(1),
+    title: z.string().min(1),
+    config: widgetConfigSchema,
+    row: z.number().int().min(0),
+    col: z.number().int().min(0),
+    width: z.number().int().min(1).max(12), // Matches omnibase_core: ge=1, le=12
+    height: z.number().int().min(1), // Matches omnibase_core: ge=1
+    description: z.string().optional(),
+    // Aligned with omnibase_core ModelWidgetDefinition.data_source
+    data_source: z.string().optional(),
+    // Aligned with omnibase_core ModelWidgetDefinition.extra_config (Mapping[str, str])
+    extra_config: z.record(z.string(), z.string()).optional(),
+  })
+  .strict();
+
+export const dashboardLayoutSchema = z.object({
+  columns: z.number().int().min(1).max(24).default(12),
+  row_height: z.number().int().min(50).default(100),
+  gap: z.number().int().min(0).default(16),
+  responsive: z.boolean().optional(),
+});
+
+export const dashboardConfigSchema = z
+  .object({
+    dashboard_id: z.string().min(1),
+    name: z.string().min(1),
+    description: z.string().optional(),
+    layout: dashboardLayoutSchema,
+    widgets: z.array(widgetDefinitionSchema),
+    data_source: z.string().min(1),
+    refresh_interval_seconds: z.number().int().min(1).optional(),
+    theme: dashboardThemeSchema.optional(),
+    initial_status: dashboardStatusSchema.optional(),
+  })
+  .strict();
+
+/**
+ * Validate a dashboard config at runtime.
+ * Throws ZodError if invalid - crash fast with helpful errors.
+ */
+export function validateDashboardConfig(config: unknown): DashboardConfig {
+  return dashboardConfigSchema.parse(config) as DashboardConfig;
+}
+
+/**
+ * Safely validate a dashboard config without throwing.
+ * Returns { success: true, data } or { success: false, error }.
+ */
+export function safeParseDashboardConfig(config: unknown) {
+  return dashboardConfigSchema.safeParse(config);
+}

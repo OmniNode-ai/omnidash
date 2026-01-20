@@ -2,7 +2,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
-import AgentOperations from '../AgentOperations';
+import AgentOperations from '@/_archive/pages/AgentOperations';
 import { agentOperationsSource } from '@/lib/data-sources';
 import { useWebSocket } from '@/hooks/useWebSocket';
 

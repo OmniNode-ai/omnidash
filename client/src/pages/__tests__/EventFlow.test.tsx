@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, type QueryObserverOptions } from '@tanstack/react-query';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
-import EventFlow from '../EventFlow';
+import EventFlow from '@/_archive/pages/EventFlow';
 import React from 'react';
 
 vi.mock('@/components/TimeRangeSelector', () => ({

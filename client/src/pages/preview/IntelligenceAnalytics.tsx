@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { intelligenceAnalyticsSource } from '@/lib/data-sources';
-import { intelligenceSavingsSource } from '@/lib/data-sources/intelligence-savings-source';
+import { intelligenceAnalyticsSource, intelligenceSavingsSource } from '@/lib/data-sources';
 import {
   POLLING_INTERVAL_SLOW,
   POLLING_INTERVAL_MEDIUM,
@@ -74,7 +73,7 @@ interface _IntelligenceMetrics {
 }
 
 // Types imported from data source
-import type { SavingsMetrics as _SavingsMetrics } from '@/lib/data-sources/intelligence-analytics-source';
+import type { SavingsMetrics as _SavingsMetrics } from '@/lib/data-sources';
 import { Info } from 'lucide-react';
 
 export default function IntelligenceAnalytics() {
