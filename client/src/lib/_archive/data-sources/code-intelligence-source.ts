@@ -1,5 +1,5 @@
 import { USE_MOCK_DATA } from '../mock-data/config';
-import { ensureNumeric, ensureEnvVar as _ensureEnvVar } from '../../defensive-transform-logger';
+import { ensureNumeric } from '../../defensive-transform-logger';
 import {
   codeAnalysisDataSchema,
   complianceDataSchema,

@@ -57,6 +57,7 @@ function Router() {
       <Route path="/intelligence" component={IntelligenceOperations} />
       <Route path="/code" component={CodeIntelligence} />
       <Route path="/events" component={EventBusMonitor} />
+      {/* Render function pattern required: EventFlow has optional props incompatible with RouteComponentProps */}
       <Route path="/events-legacy">{() => <EventFlow />}</Route>
       <Route path="/event-bus" component={EventBusExplorer} />
       <Route path="/knowledge" component={KnowledgeGraph} />

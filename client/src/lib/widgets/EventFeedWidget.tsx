@@ -322,7 +322,7 @@ function formatTimestamp(ts: EventItem['timestamp']): string | null {
   }
 
   if (typeof ts === 'number') {
-    // Assume milliseconds timestamp
+    // Note: Numeric timestamps assumed to be milliseconds. For Unix seconds, multiply by 1000.
     const date = new Date(ts);
     return formatDate(date);
   }

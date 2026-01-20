@@ -315,7 +315,7 @@ export default function EventBusMonitor() {
   );
 
   // WebSocket connection
-  const { isConnected, connectionStatus, reconnect, subscribe } = useWebSocket({
+  const { isConnected, connectionStatus, reconnect, subscribe, unsubscribe } = useWebSocket({
     onMessage: handleMessage,
     debug: false,
   });
@@ -325,8 +325,9 @@ export default function EventBusMonitor() {
     if (isConnected) {
       // Subscribe to 'all' to receive all event types
       subscribe(['all']);
+      return () => unsubscribe(['all']);
     }
-  }, [isConnected, subscribe]);
+  }, [isConnected, subscribe, unsubscribe]);
 
   // Refresh mock data periodically when not connected
   useEffect(() => {

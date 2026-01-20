@@ -200,6 +200,10 @@ export const widgetShowcaseDashboardConfig: DashboardConfig = {
   ],
 };
 
+// Fixed base time for deterministic mock data in demos and tests
+const BASE_TIME = new Date('2026-01-20T00:00:00.000Z').getTime();
+const isoAt = (offsetMs = 0) => new Date(BASE_TIME - offsetMs).toISOString();
+
 /**
  * Mock data for the widget showcase
  */
@@ -258,49 +262,49 @@ export const widgetShowcaseMockData: DashboardData = {
       action: 'analyze_pr',
       status: 'success',
       duration: 234,
-      timestamp: new Date().toISOString(),
+      timestamp: isoAt(),
     },
     {
       agent: 'TestRunner',
       action: 'run_tests',
       status: 'success',
       duration: 1250,
-      timestamp: new Date(Date.now() - 60000).toISOString(),
+      timestamp: isoAt(60000),
     },
     {
       agent: 'Deployer',
       action: 'deploy_staging',
       status: 'warning',
       duration: 3400,
-      timestamp: new Date(Date.now() - 120000).toISOString(),
+      timestamp: isoAt(120000),
     },
     {
       agent: 'Monitor',
       action: 'health_check',
       status: 'success',
       duration: 45,
-      timestamp: new Date(Date.now() - 180000).toISOString(),
+      timestamp: isoAt(180000),
     },
     {
       agent: 'Analyzer',
       action: 'parse_logs',
       status: 'error',
       duration: 890,
-      timestamp: new Date(Date.now() - 240000).toISOString(),
+      timestamp: isoAt(240000),
     },
     {
       agent: 'Builder',
       action: 'compile_code',
       status: 'success',
       duration: 2100,
-      timestamp: new Date(Date.now() - 300000).toISOString(),
+      timestamp: isoAt(300000),
     },
     {
       agent: 'Validator',
       action: 'check_types',
       status: 'success',
       duration: 156,
-      timestamp: new Date(Date.now() - 360000).toISOString(),
+      timestamp: isoAt(360000),
     },
   ],
 
@@ -309,42 +313,42 @@ export const widgetShowcaseMockData: DashboardData = {
     {
       type: 'info',
       message: 'Agent CodeReviewer started analysis',
-      timestamp: new Date().toISOString(),
+      timestamp: isoAt(),
     },
     {
       type: 'success',
       message: 'Test suite completed: 156 passed, 0 failed',
-      timestamp: new Date(Date.now() - 30000).toISOString(),
+      timestamp: isoAt(30000),
     },
     {
       type: 'warning',
       message: 'High latency detected on staging deployment',
-      timestamp: new Date(Date.now() - 60000).toISOString(),
+      timestamp: isoAt(60000),
     },
     {
       type: 'info',
       message: 'New routing decision: Agent-007 selected',
-      timestamp: new Date(Date.now() - 90000).toISOString(),
+      timestamp: isoAt(90000),
     },
     {
       type: 'error',
       message: 'Log parsing failed: invalid format',
-      timestamp: new Date(Date.now() - 120000).toISOString(),
+      timestamp: isoAt(120000),
     },
     {
       type: 'success',
       message: 'Build completed successfully',
-      timestamp: new Date(Date.now() - 150000).toISOString(),
+      timestamp: isoAt(150000),
     },
     {
       type: 'info',
       message: 'Type checking passed with 0 errors',
-      timestamp: new Date(Date.now() - 180000).toISOString(),
+      timestamp: isoAt(180000),
     },
     {
       type: 'info',
       message: 'WebSocket connection established',
-      timestamp: new Date(Date.now() - 210000).toISOString(),
+      timestamp: isoAt(210000),
     },
   ],
 };

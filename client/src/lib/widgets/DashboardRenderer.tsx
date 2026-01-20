@@ -8,7 +8,7 @@
  * @module lib/widgets/DashboardRenderer
  */
 
-import { useEffect, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import type { DashboardConfig, DashboardData } from '@/lib/dashboard-schema';
 import { validateDashboardConfig } from '@/lib/dashboard-schema';
 import { WidgetRenderer } from './WidgetRenderer';
@@ -106,15 +106,18 @@ export function DashboardRenderer({
   className,
   onWidgetError,
 }: DashboardRendererProps) {
-  // Validate config at runtime (crash fast if invalid)
-  useEffect(() => {
+  // Validate config synchronously before first render (crash fast if invalid)
+  const validationError = useMemo(() => {
     try {
       validateDashboardConfig(config);
+      return null;
     } catch (error) {
       console.error('Invalid dashboard config:', error);
-      throw error;
+      return error;
     }
   }, [config]);
+
+  if (validationError) throw validationError;
 
   const { layout, widgets } = config;
 

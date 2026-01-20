@@ -1654,6 +1654,7 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
           status: 'unhealthy',
           eventsProcessed: 0,
           recentActionsCount: 0,
+          registeredNodesCount: 0,
           timestamp: new Date().toISOString(),
         });
       }

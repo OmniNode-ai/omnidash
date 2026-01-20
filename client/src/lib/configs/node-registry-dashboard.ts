@@ -361,8 +361,11 @@ export function generateNodeRegistryMockData(): DashboardData {
       case 'ack_timed_out':
       case 'liveness_expired':
         return 'error';
-      default:
-        return 'warning';
+      default: {
+        // Exhaustiveness check - will error if new states are added
+        const _exhaustiveCheck: never = state;
+        return _exhaustiveCheck;
+      }
     }
   };
 

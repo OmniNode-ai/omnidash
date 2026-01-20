@@ -282,9 +282,9 @@ export function StatusGridWidget({
           gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
         }}
       >
-        {items.map((item) => (
+        {items.map((item, index) => (
           <Card
-            key={item.id}
+            key={item.id || `status-item-${index}`}
             className={cn(
               'transition-colors',
               compact ? 'p-2' : 'p-3',

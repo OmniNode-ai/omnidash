@@ -279,7 +279,7 @@ export function TableWidget({ widget: _widget, config, data, isLoading }: TableW
           <TableBody>
             {paginatedRows.map((row, rowIndex) => (
               <TableRow
-                key={rowIndex}
+                key={String(row.id ?? row.node_id ?? row.widget_id ?? rowIndex)}
                 className={cn(
                   config.striped && rowIndex % 2 === 1 && 'bg-muted/30',
                   config.hover_highlight && 'hover:bg-muted/50'
@@ -392,9 +392,7 @@ function CellValue({ value, format }: { value: unknown; format?: string }) {
       return <span>{String(value)}</span>;
 
     case 'date':
-      if (value instanceof Date) {
-        return <span>{value.toLocaleDateString()}</span>;
-      }
+      // JSON data has dates as strings or numbers, not Date objects
       if (typeof value === 'string' || typeof value === 'number') {
         const date = new Date(value);
         if (!isNaN(date.getTime())) {
@@ -404,9 +402,7 @@ function CellValue({ value, format }: { value: unknown; format?: string }) {
       return <span>{String(value)}</span>;
 
     case 'datetime':
-      if (value instanceof Date) {
-        return <span>{value.toLocaleString()}</span>;
-      }
+      // JSON data has dates as strings or numbers, not Date objects
       if (typeof value === 'string' || typeof value === 'number') {
         const date = new Date(value);
         if (!isNaN(date.getTime())) {

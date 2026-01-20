@@ -166,6 +166,7 @@ function formatValue(
     case 'percent':
       return `${value.toFixed(precision)}%`;
     case 'currency':
+      // Note: Currency hardcoded to USD. For i18n, consider making currency configurable.
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',

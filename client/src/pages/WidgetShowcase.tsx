@@ -5,7 +5,7 @@
  * Route: /showcase
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { DashboardRenderer } from '@/lib/widgets';
 import {
   widgetShowcaseDashboardConfig,
@@ -18,11 +18,19 @@ import { RefreshCw } from 'lucide-react';
 export default function WidgetShowcase() {
   const [isLoading, setIsLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   const handleRefresh = () => {
     setIsLoading(true);
     // Simulate refresh
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setIsLoading(false);
       setLastRefresh(new Date());
     }, 1000);

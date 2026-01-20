@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { getIntelligenceDb } from './storage';
-import { patternLineageNodes } from '../shared/intelligence-schema';
 import { getAllAlertMetrics } from './alert-helpers';
 
 export const alertRouter = Router();
@@ -36,13 +35,10 @@ async function getHealthCheckStatus(): Promise<HealthCheckCache> {
     return healthCheckCache;
   }
 
-  // Check database connection
+  // Check database connection with simple query (no table dependency)
   let databaseStatus: 'ok' | 'error' = 'error';
   try {
-    await getIntelligenceDb()
-      .select({ check: sql<number>`1::int` })
-      .from(patternLineageNodes)
-      .limit(1);
+    await getIntelligenceDb().execute(sql`SELECT 1`);
     databaseStatus = 'ok';
   } catch {
     databaseStatus = 'error';

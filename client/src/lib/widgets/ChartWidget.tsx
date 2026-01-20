@@ -284,6 +284,13 @@ function renderAreaChart(chartData: unknown[], config: WidgetConfigChart) {
  * Best used for showing parts of a whole with limited categories (5-7 max).
  * Displays as a donut chart with inner radius for better label readability.
  *
+ * **Note on data_key semantics:**
+ * The `data_key` field in series config has dual semantics depending on chart type:
+ * - **Pie charts**: `data_key` identifies the array in DashboardData (e.g., "distribution").
+ *   The array items must have `name` and `value` fields per Recharts convention.
+ * - **Line/Bar/Area charts**: `data_key` identifies fields within array objects
+ *   (e.g., "requests", "errors") that map to Y-axis values.
+ *
  * @param chartData - Array of data points with name and value properties
  * @param config - Chart configuration with legend settings
  * @returns A PieChart component with labeled segments

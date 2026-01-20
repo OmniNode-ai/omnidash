@@ -123,20 +123,22 @@ export const widgetConfigSchema = z.discriminatedUnion('config_kind', [
  *
  * @see omnibase_core/models/dashboard/model_widget_definition.py
  */
-export const widgetDefinitionSchema = z.object({
-  widget_id: z.string().min(1),
-  title: z.string().min(1),
-  config: widgetConfigSchema,
-  row: z.number().int().min(0),
-  col: z.number().int().min(0),
-  width: z.number().int().min(1).max(12), // Matches omnibase_core: ge=1, le=12
-  height: z.number().int().min(1), // Matches omnibase_core: ge=1
-  description: z.string().optional(),
-  // Aligned with omnibase_core ModelWidgetDefinition.data_source
-  data_source: z.string().optional(),
-  // Aligned with omnibase_core ModelWidgetDefinition.extra_config (Mapping[str, str])
-  extra_config: z.record(z.string(), z.string()).optional(),
-});
+export const widgetDefinitionSchema = z
+  .object({
+    widget_id: z.string().min(1),
+    title: z.string().min(1),
+    config: widgetConfigSchema,
+    row: z.number().int().min(0),
+    col: z.number().int().min(0),
+    width: z.number().int().min(1).max(12), // Matches omnibase_core: ge=1, le=12
+    height: z.number().int().min(1), // Matches omnibase_core: ge=1
+    description: z.string().optional(),
+    // Aligned with omnibase_core ModelWidgetDefinition.data_source
+    data_source: z.string().optional(),
+    // Aligned with omnibase_core ModelWidgetDefinition.extra_config (Mapping[str, str])
+    extra_config: z.record(z.string(), z.string()).optional(),
+  })
+  .strict();
 
 export const dashboardLayoutSchema = z.object({
   columns: z.number().int().min(1).max(24).default(12),
@@ -145,17 +147,19 @@ export const dashboardLayoutSchema = z.object({
   responsive: z.boolean().optional(),
 });
 
-export const dashboardConfigSchema = z.object({
-  dashboard_id: z.string().min(1),
-  name: z.string().min(1),
-  description: z.string().optional(),
-  layout: dashboardLayoutSchema,
-  widgets: z.array(widgetDefinitionSchema),
-  data_source: z.string().min(1),
-  refresh_interval_seconds: z.number().int().min(1).optional(),
-  theme: dashboardThemeSchema.optional(),
-  initial_status: dashboardStatusSchema.optional(),
-});
+export const dashboardConfigSchema = z
+  .object({
+    dashboard_id: z.string().min(1),
+    name: z.string().min(1),
+    description: z.string().optional(),
+    layout: dashboardLayoutSchema,
+    widgets: z.array(widgetDefinitionSchema),
+    data_source: z.string().min(1),
+    refresh_interval_seconds: z.number().int().min(1).optional(),
+    theme: dashboardThemeSchema.optional(),
+    initial_status: dashboardStatusSchema.optional(),
+  })
+  .strict();
 
 /**
  * Validate a dashboard config at runtime.

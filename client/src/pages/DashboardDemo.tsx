@@ -38,32 +38,7 @@ export default function DashboardDemo() {
 
   const [eventCount, setEventCount] = useState(0);
 
-  // Derive dashboard data from event stream
-  const handleMessage = useCallback((message: { type: string; data?: unknown }) => {
-    switch (message.type) {
-      case 'INITIAL_STATE': {
-        const state = message.data as InitialState;
-        const metrics = state.metrics || [];
-        updateDashboardFromMetrics(metrics);
-        break;
-      }
-
-      case 'AGENT_METRIC_UPDATE': {
-        const metrics = message.data as AgentMetric[];
-        updateDashboardFromMetrics(metrics);
-        setEventCount((c) => c + 1);
-        break;
-      }
-
-      case 'ROUTING_DECISION':
-      case 'AGENT_ACTION': {
-        setEventCount((c) => c + 1);
-        break;
-      }
-    }
-  }, []);
-
-  const updateDashboardFromMetrics = (metrics: AgentMetric[]) => {
+  const updateDashboardFromMetrics = useCallback((metrics: AgentMetric[]) => {
     if (!Array.isArray(metrics)) return;
 
     const activeAgents = metrics.length;
@@ -83,7 +58,35 @@ export default function DashboardDemo() {
       avgConfidence,
       avgLatencyMs,
     });
-  };
+  }, []);
+
+  // Derive dashboard data from event stream
+  const handleMessage = useCallback(
+    (message: { type: string; data?: unknown }) => {
+      switch (message.type) {
+        case 'INITIAL_STATE': {
+          const state = message.data as InitialState;
+          const metrics = state.metrics || [];
+          updateDashboardFromMetrics(metrics);
+          break;
+        }
+
+        case 'AGENT_METRIC_UPDATE': {
+          const metrics = message.data as AgentMetric[];
+          updateDashboardFromMetrics(metrics);
+          setEventCount((c) => c + 1);
+          break;
+        }
+
+        case 'ROUTING_DECISION':
+        case 'AGENT_ACTION': {
+          setEventCount((c) => c + 1);
+          break;
+        }
+      }
+    },
+    [updateDashboardFromMetrics]
+  );
 
   const { isConnected, connectionStatus } = useWebSocket({
     onMessage: handleMessage,
