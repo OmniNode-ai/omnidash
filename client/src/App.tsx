@@ -29,6 +29,7 @@ import CorrelationTrace from '@/pages/CorrelationTrace';
 import DashboardDemo from '@/pages/DashboardDemo';
 import WidgetShowcase from '@/pages/WidgetShowcase';
 import NodeRegistry from '@/pages/NodeRegistry';
+import LiveEventStream from '@/pages/LiveEventStream';
 
 // Preview pages
 import EnhancedAnalytics from '@/pages/preview/EnhancedAnalytics';
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/intelligence" component={IntelligenceOperations} />
       <Route path="/code" component={CodeIntelligence} />
       <Route path="/events" component={EventBusMonitor} />
+      <Route path="/live-events" component={LiveEventStream} />
       {/* Render function pattern required: EventFlow has optional props incompatible with RouteComponentProps */}
       <Route path="/events-legacy">{() => <EventFlow />}</Route>
       <Route path="/event-bus" component={EventBusExplorer} />
