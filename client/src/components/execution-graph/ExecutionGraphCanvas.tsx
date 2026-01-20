@@ -158,9 +158,9 @@ function toReactFlowEdge(
       width: 20,
       height: 20,
     },
-    // Use side handles so edges route around nodes instead of through center
-    sourceHandle: 'source-right',
-    targetHandle: 'target-right',
+    // Use bottom-to-top handles for clear vertical flow between nodes
+    sourceHandle: 'source-bottom',
+    targetHandle: 'target-top',
   };
 }
 
