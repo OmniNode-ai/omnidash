@@ -11,15 +11,29 @@ export class PlatformHealthMockData {
    * See server/intelligence-routes.ts line 3251 and server/service-health.ts
    */
   static generateHealth(): PlatformHealth {
-    const databaseLatency = Gen.randomInt(5, 30);
-    const kafkaLatency = Gen.randomInt(15, 60);
+    // Helper to generate status and ensure latency correlates with status
+    const generateStatusAndLatency = (
+      normalMin: number,
+      normalMax: number
+    ): { status: 'up' | 'warning' | 'down'; latencyMs: number } => {
+      const status: 'up' | 'warning' | 'down' =
+        Math.random() > 0.05 ? 'up' : Math.random() > 0.5 ? 'warning' : 'down';
+      // If warning status, use degraded latency range (200-500ms)
+      const latencyMs =
+        status === 'warning' ? Gen.randomInt(200, 500) : Gen.randomInt(normalMin, normalMax);
+      return { status, latencyMs };
+    };
+
+    const postgresHealth = generateStatusAndLatency(5, 30);
+    const kafkaHealth = generateStatusAndLatency(15, 60);
+    const omniarchonHealth = generateStatusAndLatency(20, 80);
 
     // Generate service health checks matching ServiceHealthCheck interface
     const services: PlatformHealth['services'] = [
       {
         service: 'PostgreSQL',
-        status: Math.random() > 0.05 ? 'up' : Math.random() > 0.5 ? 'warning' : 'down',
-        latencyMs: databaseLatency,
+        status: postgresHealth.status,
+        latencyMs: postgresHealth.latencyMs,
         details: {
           version: 'PostgreSQL 14.0',
           currentTime: new Date().toISOString(),
@@ -27,8 +41,8 @@ export class PlatformHealthMockData {
       },
       {
         service: 'Kafka/Redpanda',
-        status: Math.random() > 0.05 ? 'up' : Math.random() > 0.5 ? 'warning' : 'down',
-        latencyMs: kafkaLatency,
+        status: kafkaHealth.status,
+        latencyMs: kafkaHealth.latencyMs,
         details: {
           brokers: ['192.168.86.200:29092'],
           topicCount: Gen.randomInt(15, 25),
@@ -36,8 +50,8 @@ export class PlatformHealthMockData {
       },
       {
         service: 'Omniarchon',
-        status: Math.random() > 0.05 ? 'up' : Math.random() > 0.5 ? 'warning' : 'down',
-        latencyMs: Gen.randomInt(20, 80),
+        status: omniarchonHealth.status,
+        latencyMs: omniarchonHealth.latencyMs,
         details: {
           url: 'http://localhost:8053',
           statusCode: 200,
