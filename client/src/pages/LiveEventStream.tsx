@@ -202,6 +202,13 @@ function getEventSummary(event: LiveEvent): string {
 function useAudioNotification() {
   const audioContextRef = useRef<AudioContext | null>(null);
 
+  useEffect(() => {
+    return () => {
+      audioContextRef.current?.close().catch(() => undefined);
+      audioContextRef.current = null;
+    };
+  }, []);
+
   const playNotification = useCallback(() => {
     try {
       if (!audioContextRef.current) {
@@ -455,7 +462,7 @@ export default function LiveEventStream() {
   );
 
   // WebSocket connection
-  const { isConnected, connectionStatus, subscribe, reconnect } = useWebSocket({
+  const { isConnected, connectionStatus, subscribe, unsubscribe, reconnect } = useWebSocket({
     onMessage: handleMessage,
     debug: false,
   });
@@ -465,8 +472,9 @@ export default function LiveEventStream() {
     if (isConnected) {
       const topics = [...FILTER_PRESETS[filterPreset].topics];
       subscribe(topics);
+      return () => unsubscribe(topics);
     }
-  }, [isConnected, filterPreset, subscribe]);
+  }, [isConnected, filterPreset, subscribe, unsubscribe]);
 
   // Handle event click
   const handleEventClick = (event: LiveEvent) => {
