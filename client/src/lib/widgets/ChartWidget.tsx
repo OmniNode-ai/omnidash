@@ -94,12 +94,7 @@ function renderLineChart(chartData: unknown[], config: WidgetConfigChart) {
       {config.x_axis?.show_grid !== false && (
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
       )}
-      <XAxis
-        dataKey={config.x_axis?.label ? undefined : 'name'}
-        stroke="hsl(var(--muted-foreground))"
-        fontSize={12}
-        tickLine={false}
-      />
+      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} />
       <YAxis
         stroke="hsl(var(--muted-foreground))"
         fontSize={12}

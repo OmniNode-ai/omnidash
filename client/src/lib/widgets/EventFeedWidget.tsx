@@ -48,10 +48,16 @@ export function EventFeedWidget({ widget, config, data, isLoading }: EventFeedWi
   // Limit to max_items (newest first - assume array is already sorted)
   const displayEvents = events.slice(0, maxItems);
 
-  // Auto-scroll effect
+  // Auto-scroll effect - need to access the Radix ScrollArea Viewport element
   useEffect(() => {
     if (config.auto_scroll && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // Radix ScrollArea has a nested structure: Root > Viewport (scrollable)
+      // The ref on ScrollArea points to Root which has overflow:hidden
+      // We need to find the actual viewport element to scroll
+      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     }
   }, [displayEvents.length, config.auto_scroll]);
 

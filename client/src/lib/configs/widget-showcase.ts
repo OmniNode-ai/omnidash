@@ -19,12 +19,12 @@ export const widgetShowcaseDashboardConfig: DashboardConfig = {
   },
   data_source: 'static:showcase',
   widgets: [
-    // Row 1: Metric Cards (4 across)
+    // Row 0: Metric Cards (4 across) - using 0-based indexing
     {
       widget_id: 'metric-1',
       title: 'Active Agents',
-      row: 1,
-      col: 1,
+      row: 0,
+      col: 0,
       width: 3,
       height: 1,
       config: {
@@ -37,8 +37,8 @@ export const widgetShowcaseDashboardConfig: DashboardConfig = {
     {
       widget_id: 'metric-2',
       title: 'Success Rate',
-      row: 1,
-      col: 4,
+      row: 0,
+      col: 3,
       width: 3,
       height: 1,
       config: {
@@ -55,8 +55,8 @@ export const widgetShowcaseDashboardConfig: DashboardConfig = {
     {
       widget_id: 'metric-3',
       title: 'Avg Latency',
-      row: 1,
-      col: 7,
+      row: 0,
+      col: 6,
       width: 3,
       height: 1,
       config: {
@@ -74,8 +74,8 @@ export const widgetShowcaseDashboardConfig: DashboardConfig = {
     {
       widget_id: 'metric-4',
       title: 'Total Events',
-      row: 1,
-      col: 10,
+      row: 0,
+      col: 9,
       width: 3,
       height: 1,
       config: {
@@ -86,20 +86,20 @@ export const widgetShowcaseDashboardConfig: DashboardConfig = {
       },
     },
 
-    // Row 2: Line Chart (left)
+    // Row 1: Line Chart (left)
     {
       widget_id: 'chart-line',
       title: 'Request Volume Over Time',
-      row: 2,
-      col: 1,
+      row: 1,
+      col: 0,
       width: 8,
       height: 3,
       config: {
         config_kind: 'chart',
         chart_type: 'line',
         series: [
-          { name: 'Requests', data_key: 'requestTimeSeries.requests' },
-          { name: 'Errors', data_key: 'requestTimeSeries.errors' },
+          { name: 'Requests', data_key: 'requests' },
+          { name: 'Errors', data_key: 'errors' },
         ],
         x_axis: { label: 'Time', show_grid: true },
         y_axis: { label: 'Count', show_grid: true },
@@ -107,12 +107,12 @@ export const widgetShowcaseDashboardConfig: DashboardConfig = {
       },
     },
 
-    // Row 2: Status Grid (right side)
+    // Row 1: Status Grid (right side)
     {
       widget_id: 'status-grid',
       title: 'Agent Status',
-      row: 2,
-      col: 9,
+      row: 1,
+      col: 8,
       width: 4,
       height: 3,
       config: {
@@ -126,18 +126,18 @@ export const widgetShowcaseDashboardConfig: DashboardConfig = {
       },
     },
 
-    // Row 5: Bar Chart and Pie Chart
+    // Row 4: Bar Chart and Pie Chart
     {
       widget_id: 'chart-bar',
       title: 'Events by Type',
-      row: 5,
-      col: 1,
+      row: 4,
+      col: 0,
       width: 6,
       height: 3,
       config: {
         config_kind: 'chart',
         chart_type: 'bar',
-        series: [{ name: 'Count', data_key: 'eventsByType.count' }],
+        series: [{ name: 'Count', data_key: 'count' }],
         x_axis: { label: 'Type' },
         y_axis: { label: 'Count', show_grid: true },
       },
@@ -145,8 +145,8 @@ export const widgetShowcaseDashboardConfig: DashboardConfig = {
     {
       widget_id: 'chart-pie',
       title: 'Status Distribution',
-      row: 5,
-      col: 7,
+      row: 4,
+      col: 6,
       width: 6,
       height: 3,
       config: {
@@ -157,12 +157,12 @@ export const widgetShowcaseDashboardConfig: DashboardConfig = {
       },
     },
 
-    // Row 8: Table (left) and Event Feed (right)
+    // Row 7: Table (left) and Event Feed (right)
     {
       widget_id: 'table-agents',
       title: 'Recent Agent Actions',
-      row: 8,
-      col: 1,
+      row: 7,
+      col: 0,
       width: 7,
       height: 4,
       config: {
@@ -184,8 +184,8 @@ export const widgetShowcaseDashboardConfig: DashboardConfig = {
     {
       widget_id: 'event-feed',
       title: 'Live Events',
-      row: 8,
-      col: 8,
+      row: 7,
+      col: 7,
       width: 5,
       height: 4,
       config: {

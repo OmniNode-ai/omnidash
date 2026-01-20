@@ -109,6 +109,11 @@ export default function EventBusMonitor() {
         severity: mapPriorityToType(event.priority),
         message: `${event.eventType} from ${event.source}`,
         source: event.topicRaw,
+        // Include fields needed for filtering
+        topicRaw: event.topicRaw,
+        topic: event.topic,
+        priority: event.priority,
+        eventType: event.eventType,
       };
 
       // Update totals
@@ -252,10 +257,11 @@ export default function EventBusMonitor() {
           const nodeData = message.data as any;
           if (nodeData) {
             const topicMap: Record<string, string> = {
-              NODE_INTROSPECTION: 'dev.onex.evt.node-introspection.v1',
+              NODE_INTROSPECTION: 'dev.omninode_bridge.onex.evt.node-introspection.v1',
               NODE_HEARTBEAT: 'node.heartbeat',
               NODE_STATE_CHANGE: 'dev.onex.evt.registration-completed.v1',
-              NODE_REGISTRY_UPDATE: 'node.registry',
+              NODE_REGISTRY_UPDATE:
+                'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
             };
             const topic = topicMap[message.type] || 'node.events';
             const event = createEventEntry(
