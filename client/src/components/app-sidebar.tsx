@@ -1,4 +1,4 @@
-import { Server, Radio, ChevronRight, Search, Layers } from 'lucide-react';
+import { Server, Radio, ChevronRight, Search, Layers, Activity } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
   Sidebar,
@@ -14,6 +14,12 @@ import { cn } from '@/lib/utils';
 
 // Real dashboards - showing actual functionality from omnibase_infra
 const dashboards = [
+  {
+    title: 'Live Events',
+    url: '/live-events',
+    icon: Activity,
+    description: 'Real-time event stream (investor demo)',
+  },
   {
     title: 'Node Registry',
     url: '/registry',
