@@ -3,6 +3,8 @@
  *
  * A contract-driven widget that renders a grid of status items (e.g., agent status,
  * service health). Each item displays a label and a status indicator with semantic colors.
+ *
+ * @module lib/widgets/StatusGridWidget
  */
 
 import type {
@@ -14,10 +16,41 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
+/**
+ * Props for the StatusGridWidget component.
+ *
+ * @interface StatusGridWidgetProps
+ */
 interface StatusGridWidgetProps {
+  /**
+   * The widget definition containing common properties like
+   * widget_id, title, and description.
+   */
   widget: WidgetDefinition;
+
+  /**
+   * The status grid-specific configuration including:
+   * - items_key: Key to look up the status items array in DashboardData
+   * - id_field: Field name for item unique identifier
+   * - label_field: Field name for item display label
+   * - status_field: Field name for item status value
+   * - columns: Number of columns in the grid (default: 4)
+   * - show_labels: Whether to display labels (default: true)
+   * - compact: Whether to use compact styling (default: false)
+   */
   config: WidgetConfigStatusGrid;
+
+  /**
+   * The dashboard data object containing status items.
+   * The widget looks for an array at config.items_key.
+   */
   data: DashboardData;
+
+  /**
+   * When true, displays loading skeletons instead of actual items.
+   *
+   * @default false
+   */
   isLoading?: boolean;
 }
 
@@ -30,7 +63,16 @@ const STATUS_ERROR = ['error', 'failed', 'down', 'critical', 'offline'];
 type StatusSeverity = 'healthy' | 'warning' | 'error' | 'inactive';
 
 /**
- * Determine the semantic severity from a status string.
+ * Determines the semantic severity level from a status string.
+ *
+ * Maps various status string values to standardized severity levels:
+ * - `healthy`: healthy, active, success, online, running, up, passed
+ * - `warning`: warning, degraded, pending, slow
+ * - `error`: error, failed, down, critical, offline
+ * - `inactive`: any unrecognized status value
+ *
+ * @param status - The raw status string from data
+ * @returns The normalized severity level for styling
  */
 function getStatusSeverity(status: string): StatusSeverity {
   const normalized = status.toLowerCase().trim();
@@ -48,7 +90,10 @@ function getStatusSeverity(status: string): StatusSeverity {
 }
 
 /**
- * Get the Tailwind background class for a status indicator dot.
+ * Gets the Tailwind background class for a status indicator dot.
+ *
+ * @param severity - The semantic severity level
+ * @returns Tailwind class for the background color (e.g., 'bg-status-healthy')
  */
 function getStatusDotClass(severity: StatusSeverity): string {
   switch (severity) {
@@ -65,7 +110,13 @@ function getStatusDotClass(severity: StatusSeverity): string {
 }
 
 /**
- * Get the Tailwind classes for the status text badge.
+ * Gets the Tailwind classes for the status text badge.
+ *
+ * Returns combined background and text color classes for badge styling.
+ * Uses 10% opacity backgrounds with full-opacity text for readability.
+ *
+ * @param severity - The semantic severity level
+ * @returns Tailwind classes for background and text color
  */
 function getStatusBadgeClasses(severity: StatusSeverity): string {
   switch (severity) {
@@ -82,7 +133,13 @@ function getStatusBadgeClasses(severity: StatusSeverity): string {
 }
 
 /**
- * Get the card border classes for emphasis on non-healthy statuses.
+ * Gets the card border classes to emphasize non-healthy statuses.
+ *
+ * Warning and error items receive tinted borders for visual prominence.
+ * Healthy and inactive items use the default card border.
+ *
+ * @param severity - The semantic severity level
+ * @returns Tailwind class for the border color
  */
 function getStatusBorderClass(severity: StatusSeverity): string {
   switch (severity) {
@@ -95,13 +152,66 @@ function getStatusBorderClass(severity: StatusSeverity): string {
   }
 }
 
+/**
+ * Internal representation of a status item after data extraction.
+ *
+ * @interface StatusItem
+ */
 interface StatusItem {
+  /** Unique identifier for the item */
   id: string;
+  /** Display label shown next to the status indicator */
   label: string;
+  /** Raw status string from the data source */
   status: string;
+  /** Computed severity level for styling */
   severity: StatusSeverity;
 }
 
+/**
+ * Renders a grid of status indicators for monitoring multiple items.
+ *
+ * The StatusGridWidget displays a collection of status items in a responsive grid,
+ * with each item showing a colored indicator dot and optional label. Ideal for:
+ * - Service health monitoring
+ * - Agent status displays
+ * - Resource availability tracking
+ *
+ * Features:
+ * - Semantic color mapping (healthy=green, warning=yellow, error=red, inactive=gray)
+ * - Configurable grid columns
+ * - Compact mode for dense displays
+ * - Status count summary footer
+ * - Animated pulse effect for healthy items
+ *
+ * @example
+ * ```tsx
+ * const config: WidgetConfigStatusGrid = {
+ *   type: 'status_grid',
+ *   items_key: 'services',
+ *   id_field: 'id',
+ *   label_field: 'name',
+ *   status_field: 'status',
+ *   columns: 4,
+ *   show_labels: true
+ * };
+ *
+ * <StatusGridWidget
+ *   widget={widgetDef}
+ *   config={config}
+ *   data={{
+ *     services: [
+ *       { id: 'api', name: 'API Server', status: 'healthy' },
+ *       { id: 'db', name: 'Database', status: 'warning' },
+ *       { id: 'cache', name: 'Cache', status: 'error' }
+ *     ]
+ *   }}
+ * />
+ * ```
+ *
+ * @param props - Component props
+ * @returns A grid of status cards with summary footer
+ */
 export function StatusGridWidget({
   widget: _widget,
   config,

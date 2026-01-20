@@ -1,7 +1,46 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import { Server as HTTPServer } from 'http';
 import type { IncomingMessage } from 'http';
-import { eventConsumer } from './event-consumer';
+import { z } from 'zod';
+import {
+  eventConsumer,
+  type NodeIntrospectionEvent,
+  type NodeHeartbeatEvent,
+  type NodeStateChangeEvent,
+  type RegisteredNode,
+} from './event-consumer';
+import {
+  transformNodeIntrospectionToSnakeCase,
+  transformNodeHeartbeatToSnakeCase,
+  transformNodeStateChangeToSnakeCase,
+  transformNodesToSnakeCase,
+} from './utils/case-transform';
+
+// Valid subscription topics that clients can subscribe to
+const VALID_TOPICS = [
+  'all',
+  'metrics',
+  'actions',
+  'routing',
+  'transformations',
+  'performance',
+  'errors',
+  'system',
+  'node-introspection',
+  'node-heartbeat',
+  'node-state-change',
+  'node-registry',
+] as const;
+
+type ValidTopic = (typeof VALID_TOPICS)[number];
+
+// Zod schema for validating WebSocket client messages
+const WebSocketMessageSchema = z.object({
+  action: z.enum(['subscribe', 'unsubscribe', 'ping', 'getState']),
+  topics: z.union([z.enum(VALID_TOPICS), z.array(z.enum(VALID_TOPICS))]).optional(),
+});
+
+type _WebSocketMessage = z.infer<typeof WebSocketMessageSchema>;
 
 interface ClientData {
   ws: WebSocket;
@@ -143,55 +182,27 @@ export function setupWebSocket(httpServer: HTTPServer) {
   });
 
   // Node Registry event listeners
-  registerEventListener('nodeIntrospectionUpdate', (event) => {
+  registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {
     // Transform to client-expected format (snake_case for consistency with Kafka events)
-    const data = {
-      node_id: event.nodeId,
-      node_type: event.nodeType,
-      node_version: event.nodeVersion,
-      endpoints: event.endpoints,
-      current_state: event.currentState,
-      reason: event.reason,
-      correlation_id: event.correlationId,
-    };
+    const data = transformNodeIntrospectionToSnakeCase(event);
     broadcast('NODE_INTROSPECTION', data, 'node-introspection');
   });
 
-  registerEventListener('nodeHeartbeatUpdate', (event) => {
+  registerEventListener('nodeHeartbeatUpdate', (event: NodeHeartbeatEvent) => {
     // Transform to client-expected format
-    const data = {
-      node_id: event.nodeId,
-      uptime_seconds: event.uptimeSeconds,
-      active_operations_count: event.activeOperationsCount,
-      memory_usage_mb: event.memoryUsageMb,
-      cpu_usage_percent: event.cpuUsagePercent,
-    };
+    const data = transformNodeHeartbeatToSnakeCase(event);
     broadcast('NODE_HEARTBEAT', data, 'node-heartbeat');
   });
 
-  registerEventListener('nodeStateChangeUpdate', (event) => {
+  registerEventListener('nodeStateChangeUpdate', (event: NodeStateChangeEvent) => {
     // Transform to client-expected format
-    const data = {
-      node_id: event.nodeId,
-      previous_state: event.previousState,
-      new_state: event.newState,
-      reason: event.reason,
-    };
+    const data = transformNodeStateChangeToSnakeCase(event);
     broadcast('NODE_STATE_CHANGE', data, 'node-state-change');
   });
 
-  registerEventListener('nodeRegistryUpdate', (nodes) => {
+  registerEventListener('nodeRegistryUpdate', (nodes: RegisteredNode[]) => {
     // Transform to client-expected format (snake_case for registered nodes)
-    const data = nodes.map((node: any) => ({
-      node_id: node.nodeId,
-      node_type: node.nodeType,
-      state: node.state,
-      version: node.version,
-      uptime_seconds: node.uptimeSeconds,
-      last_seen: node.lastSeen,
-      memory_usage_mb: node.memoryUsageMb,
-      cpu_usage_percent: node.cpuUsagePercent,
-    }));
+    const data = transformNodesToSnakeCase(nodes);
     broadcast('NODE_REGISTRY_UPDATE', data, 'node-registry');
   });
 
@@ -231,16 +242,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
           performanceStats: eventConsumer.getPerformanceStats(),
           health: eventConsumer.getHealthStatus(),
           // Node registry data (transform to snake_case for consistency)
-          registeredNodes: eventConsumer.getRegisteredNodes().map((node: any) => ({
-            node_id: node.nodeId,
-            node_type: node.nodeType,
-            state: node.state,
-            version: node.version,
-            uptime_seconds: node.uptimeSeconds,
-            last_seen: node.lastSeen,
-            memory_usage_mb: node.memoryUsageMb,
-            cpu_usage_percent: node.cpuUsagePercent,
-          })),
+          registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
           nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
         },
         timestamp: new Date().toISOString(),
@@ -259,7 +261,29 @@ export function setupWebSocket(httpServer: HTTPServer) {
     // Handle client messages (for subscriptions/filtering)
     ws.on('message', (data: WebSocket.Data) => {
       try {
-        const message = JSON.parse(data.toString());
+        const rawMessage = JSON.parse(data.toString());
+
+        // Validate message against schema
+        const parseResult = WebSocketMessageSchema.safeParse(rawMessage);
+
+        if (!parseResult.success) {
+          const errorMessage = parseResult.error.errors
+            .map((e) => `${e.path.join('.')}: ${e.message}`)
+            .join('; ');
+          console.warn('Invalid WebSocket message received:', errorMessage);
+          ws.send(
+            JSON.stringify({
+              type: 'ERROR',
+              message: `Invalid message: ${errorMessage}`,
+              validActions: ['subscribe', 'unsubscribe', 'ping', 'getState'],
+              validTopics: VALID_TOPICS,
+              timestamp: new Date().toISOString(),
+            })
+          );
+          return;
+        }
+
+        const message = parseResult.data;
 
         switch (message.action) {
           case 'subscribe':
@@ -284,31 +308,20 @@ export function setupWebSocket(httpServer: HTTPServer) {
                   performanceStats: eventConsumer.getPerformanceStats(),
                   health: eventConsumer.getHealthStatus(),
                   // Node registry data (transform to snake_case for consistency)
-                  registeredNodes: eventConsumer.getRegisteredNodes().map((node: any) => ({
-                    node_id: node.nodeId,
-                    node_type: node.nodeType,
-                    state: node.state,
-                    version: node.version,
-                    uptime_seconds: node.uptimeSeconds,
-                    last_seen: node.lastSeen,
-                    memory_usage_mb: node.memoryUsageMb,
-                    cpu_usage_percent: node.cpuUsagePercent,
-                  })),
+                  registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
                   nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
                 },
                 timestamp: new Date().toISOString(),
               })
             );
             break;
-          default:
-            console.log('Unknown action:', message.action);
         }
       } catch (error) {
         console.error('Error parsing client message:', error);
         ws.send(
           JSON.stringify({
             type: 'ERROR',
-            message: 'Invalid message format',
+            message: 'Invalid JSON format',
             timestamp: new Date().toISOString(),
           })
         );
@@ -329,15 +342,19 @@ export function setupWebSocket(httpServer: HTTPServer) {
   });
 
   // Handle subscription updates
-  function handleSubscription(ws: WebSocket, topics: string | string[]) {
+  function handleSubscription(ws: WebSocket, topics: ValidTopic | ValidTopic[] | undefined) {
     const client = clients.get(ws);
     if (!client) return;
 
-    const topicArray = Array.isArray(topics) ? topics : [topics];
-
-    topicArray.forEach((topic) => {
-      client.subscriptions.add(topic);
-    });
+    // If no topics provided, default to subscribing to 'all'
+    if (!topics) {
+      client.subscriptions.add('all');
+    } else {
+      const topicArray = Array.isArray(topics) ? topics : [topics];
+      topicArray.forEach((topic) => {
+        client.subscriptions.add(topic);
+      });
+    }
 
     ws.send(
       JSON.stringify({
@@ -351,19 +368,24 @@ export function setupWebSocket(httpServer: HTTPServer) {
   }
 
   // Handle unsubscription
-  function handleUnsubscription(ws: WebSocket, topics: string | string[]) {
+  function handleUnsubscription(ws: WebSocket, topics: ValidTopic | ValidTopic[] | undefined) {
     const client = clients.get(ws);
     if (!client) return;
 
-    const topicArray = Array.isArray(topics) ? topics : [topics];
-
-    topicArray.forEach((topic) => {
-      client.subscriptions.delete(topic);
-    });
-
-    // If no subscriptions, default to 'all'
-    if (client.subscriptions.size === 0) {
+    // If no topics provided, unsubscribe from all (reset to default)
+    if (!topics) {
+      client.subscriptions.clear();
       client.subscriptions.add('all');
+    } else {
+      const topicArray = Array.isArray(topics) ? topics : [topics];
+      topicArray.forEach((topic) => {
+        client.subscriptions.delete(topic);
+      });
+
+      // If no subscriptions remain, default to 'all'
+      if (client.subscriptions.size === 0) {
+        client.subscriptions.add('all');
+      }
     }
 
     ws.send(

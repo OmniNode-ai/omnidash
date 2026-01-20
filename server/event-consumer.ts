@@ -108,22 +108,215 @@ export interface NodeStateChangeEvent {
   createdAt: Date;
 }
 
+// ============================================================================
+// Raw Kafka Event Interfaces (snake_case from Kafka)
+// These represent the exact structure of events as received from Kafka topics
+// ============================================================================
+
 /**
- * EventConsumer class for aggregating Kafka events and emitting updates
+ * Raw routing decision event from Kafka (snake_case)
+ * Topic: agent-routing-decisions
+ */
+export interface RawRoutingDecisionEvent {
+  id?: string;
+  correlation_id?: string;
+  correlationId?: string; // Alternative camelCase format
+  user_request?: string;
+  userRequest?: string;
+  selected_agent?: string;
+  selectedAgent?: string;
+  confidence_score?: number;
+  confidenceScore?: number;
+  routing_strategy?: string;
+  routingStrategy?: string;
+  alternatives?: Record<string, unknown>;
+  reasoning?: string;
+  routing_time_ms?: number;
+  routingTimeMs?: number;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
+/**
+ * Raw agent action event from Kafka (snake_case)
+ * Topic: agent-actions
+ */
+export interface RawAgentActionEvent {
+  id?: string;
+  correlation_id?: string;
+  correlationId?: string;
+  agent_name?: string;
+  agentName?: string;
+  action_type?: string;
+  actionType?: string;
+  action_name?: string;
+  actionName?: string;
+  action_details?: Record<string, unknown>;
+  actionDetails?: Record<string, unknown>;
+  debug_mode?: boolean;
+  debugMode?: boolean;
+  duration_ms?: number;
+  durationMs?: number;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
+/**
+ * Raw transformation event from Kafka (snake_case)
+ * Topic: agent-transformation-events
+ */
+export interface RawTransformationEvent {
+  id?: string;
+  correlation_id?: string;
+  correlationId?: string;
+  source_agent?: string;
+  sourceAgent?: string;
+  target_agent?: string;
+  targetAgent?: string;
+  transformation_duration_ms?: number;
+  transformationDurationMs?: number;
+  success?: boolean;
+  confidence_score?: number;
+  confidenceScore?: number;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
+/**
+ * Raw performance metric event from Kafka (snake_case)
+ * Topic: router-performance-metrics
+ */
+export interface RawPerformanceMetricEvent {
+  id?: string;
+  correlation_id?: string;
+  correlationId?: string;
+  query_text?: string;
+  queryText?: string;
+  routing_duration_ms?: number;
+  routingDurationMs?: number;
+  cache_hit?: boolean;
+  cacheHit?: boolean;
+  candidates_evaluated?: number;
+  candidatesEvaluated?: number;
+  trigger_match_strategy?: string;
+  triggerMatchStrategy?: string;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
+/**
+ * Raw node introspection event from Kafka (snake_case)
+ * Topics: dev.omninode_bridge.onex.evt.node-introspection.v1,
+ *         dev.omninode_bridge.onex.evt.registry-request-introspection.v1
+ */
+export interface RawNodeIntrospectionEvent {
+  id?: string;
+  node_id?: string;
+  nodeId?: string;
+  node_type?: NodeType | string;
+  nodeType?: NodeType | string;
+  node_version?: string;
+  nodeVersion?: string;
+  endpoints?: Record<string, string>;
+  current_state?: RegistrationState | string;
+  currentState?: RegistrationState | string;
+  reason?: 'STARTUP' | 'HEARTBEAT' | 'REQUESTED' | string;
+  correlation_id?: string;
+  correlationId?: string;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
+/**
+ * Raw node heartbeat event from Kafka (snake_case)
+ * Topic: node.heartbeat
+ */
+export interface RawNodeHeartbeatEvent {
+  id?: string;
+  node_id?: string;
+  nodeId?: string;
+  uptime_seconds?: number;
+  uptimeSeconds?: number;
+  active_operations_count?: number;
+  activeOperationsCount?: number;
+  memory_usage_mb?: number;
+  memoryUsageMb?: number;
+  cpu_usage_percent?: number;
+  cpuUsagePercent?: number;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
+/**
+ * Raw node state change event from Kafka (snake_case)
+ * Topic: dev.onex.evt.registration-completed.v1
+ */
+export interface RawNodeStateChangeEvent {
+  id?: string;
+  node_id?: string;
+  nodeId?: string;
+  previous_state?: RegistrationState | string;
+  previousState?: RegistrationState | string;
+  new_state?: RegistrationState | string;
+  newState?: RegistrationState | string;
+  reason?: string;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
+/**
+ * EventConsumer class for aggregating Kafka events and emitting real-time updates.
  *
- * Events emitted:
- * - 'metricUpdate': When agent metrics are updated (AgentMetrics[])
- * - 'actionUpdate': When new agent action arrives (AgentAction)
- * - 'routingUpdate': When new routing decision arrives (RoutingDecision)
- * - 'transformationUpdate': When new transformation event arrives (TransformationEvent)
- * - 'performanceUpdate': When new performance metric arrives (metric, stats)
- * - 'nodeIntrospectionUpdate': When node introspection event arrives (NodeIntrospectionEvent)
- * - 'nodeHeartbeatUpdate': When node heartbeat event arrives (NodeHeartbeatEvent)
- * - 'nodeStateChangeUpdate': When node state change occurs (NodeStateChangeEvent)
- * - 'nodeRegistryUpdate': When registered nodes map is updated (RegisteredNode[])
- * - 'error': When error occurs during processing (Error)
- * - 'connected': When consumer successfully connects
- * - 'disconnected': When consumer disconnects
+ * This class provides a centralized event consumption and aggregation layer for the
+ * Omnidash dashboard. It connects to Kafka topics, processes incoming events, maintains
+ * in-memory aggregations for quick access, and emits events for WebSocket broadcasting.
+ *
+ * @description
+ * The EventConsumer follows a singleton pattern (via {@link getEventConsumer}) and handles:
+ * - Agent routing decisions and performance metrics
+ * - Agent actions (tool calls, decisions, errors)
+ * - Agent transformations between polymorphic agents
+ * - Node registry events (introspection, heartbeat, state changes)
+ * - Automatic data pruning to prevent unbounded memory growth
+ *
+ * @extends EventEmitter
+ *
+ * @fires EventConsumer#metricUpdate - When agent metrics are updated
+ * @fires EventConsumer#actionUpdate - When new agent action arrives
+ * @fires EventConsumer#routingUpdate - When new routing decision arrives
+ * @fires EventConsumer#transformationUpdate - When new transformation event arrives
+ * @fires EventConsumer#performanceUpdate - When new performance metric arrives
+ * @fires EventConsumer#nodeIntrospectionUpdate - When node introspection event arrives
+ * @fires EventConsumer#nodeHeartbeatUpdate - When node heartbeat event arrives
+ * @fires EventConsumer#nodeStateChangeUpdate - When node state change occurs
+ * @fires EventConsumer#nodeRegistryUpdate - When registered nodes map is updated
+ * @fires EventConsumer#error - When error occurs during processing
+ * @fires EventConsumer#connected - When consumer successfully connects
+ * @fires EventConsumer#disconnected - When consumer disconnects
+ *
+ * @example
+ * ```typescript
+ * const consumer = getEventConsumer();
+ * if (consumer) {
+ *   // Listen for metric updates
+ *   consumer.on('metricUpdate', (metrics) => {
+ *     console.log('Agent metrics updated:', metrics);
+ *   });
+ *
+ *   // Start consuming events
+ *   await consumer.start();
+ *
+ *   // Get current metrics
+ *   const metrics = consumer.getAgentMetrics();
+ * }
+ * ```
  */
 export class EventConsumer extends EventEmitter {
   private kafka: Kafka;
@@ -159,6 +352,7 @@ export class EventConsumer extends EventEmitter {
 
   // Node registry storage
   private registeredNodes = new Map<string, RegisteredNode>();
+  private readonly MAX_REGISTERED_NODES = 10000;
   private nodeIntrospectionEvents: NodeIntrospectionEvent[] = [];
   private nodeHeartbeatEvents: NodeHeartbeatEvent[] = [];
   private nodeStateChangeEvents: NodeStateChangeEvent[] = [];
@@ -208,8 +402,26 @@ export class EventConsumer extends EventEmitter {
   }
 
   /**
-   * Validate Kafka broker reachability before starting consumer
-   * @returns Promise<boolean> - true if broker is reachable, false otherwise
+   * Validate Kafka broker reachability before starting the consumer.
+   *
+   * This method performs a lightweight connectivity check by creating a temporary
+   * admin connection and listing topics. It's useful for health checks and
+   * determining if real-time event streaming should be enabled.
+   *
+   * @returns Promise resolving to true if broker is reachable, false otherwise
+   *
+   * @example
+   * ```typescript
+   * const consumer = getEventConsumer();
+   * if (consumer) {
+   *   const isReachable = await consumer.validateConnection();
+   *   if (isReachable) {
+   *     await consumer.start();
+   *   } else {
+   *     console.log('Kafka not available, using fallback data');
+   *   }
+   * }
+   * ```
    */
   async validateConnection(): Promise<boolean> {
     const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
@@ -276,6 +488,32 @@ export class EventConsumer extends EventEmitter {
     }
   }
 
+  /**
+   * Start the Kafka event consumer and begin processing events.
+   *
+   * This method performs the following operations:
+   * 1. Connects to Kafka with retry logic
+   * 2. Preloads historical data from PostgreSQL (if enabled)
+   * 3. Subscribes to all configured Kafka topics
+   * 4. Starts the message processing loop
+   * 5. Initializes periodic data pruning
+   *
+   * @returns Promise that resolves when the consumer is started
+   * @throws {Error} If connection fails after max retries
+   *
+   * @fires EventConsumer#connected - When successfully connected to Kafka
+   * @fires EventConsumer#metricUpdate - Initial metrics after preload
+   * @fires EventConsumer#actionUpdate - Initial actions after preload
+   *
+   * @example
+   * ```typescript
+   * const consumer = getEventConsumer();
+   * if (consumer) {
+   *   await consumer.start();
+   *   console.log('Consumer is now processing events');
+   * }
+   * ```
+   */
   async start() {
     if (this.isRunning || !this.consumer) {
       console.log('Event consumer already running or not initialized');
@@ -421,23 +659,20 @@ export class EventConsumer extends EventEmitter {
         : actionsResult?.rows || actionsResult || [];
 
       if (Array.isArray(actionsRows)) {
-        actionsRows.forEach((r: any) => {
-          const action = {
-            id: r.id,
-            correlationId: r.correlation_id,
-            agentName: r.agent_name,
-            actionType: r.action_type,
-            actionName: r.action_name,
-            actionDetails: r.action_details,
-            debugMode: !!r.debug_mode,
-            durationMs: Number(r.duration_ms || 0),
-            createdAt: new Date(r.created_at),
-          } as AgentAction;
-          this.recentActions.push(action);
-          if (this.recentActions.length > this.maxActions) {
-            this.recentActions = this.recentActions.slice(-this.maxActions);
-          }
-        });
+        // Collect all actions first, then slice once at the end (O(n) instead of O(n²))
+        const actions: AgentAction[] = actionsRows.map((r: any) => ({
+          id: r.id,
+          correlationId: r.correlation_id,
+          agentName: r.agent_name,
+          actionType: r.action_type,
+          actionName: r.action_name,
+          actionDetails: r.action_details,
+          debugMode: !!r.debug_mode,
+          durationMs: Number(r.duration_ms || 0),
+          createdAt: new Date(r.created_at),
+        }));
+        // Single slice operation at the end
+        this.recentActions = actions.slice(-this.maxActions);
       }
 
       // Seed agent metrics using routing decisions + actions
@@ -488,7 +723,7 @@ export class EventConsumer extends EventEmitter {
     }
   }
 
-  private handleRoutingDecision(event: any) {
+  private handleRoutingDecision(event: RawRoutingDecisionEvent): void {
     const agent = event.selected_agent || event.selectedAgent;
     if (!agent) {
       console.warn('[EventConsumer] Routing decision missing agent name, skipping');
@@ -523,7 +758,7 @@ export class EventConsumer extends EventEmitter {
     // Store routing decision
     const decision: RoutingDecision = {
       id: event.id || crypto.randomUUID(),
-      correlationId: event.correlation_id || event.correlationId,
+      correlationId: event.correlation_id || event.correlationId || '',
       userRequest: event.user_request || event.userRequest || '',
       selectedAgent: agent,
       confidenceScore: event.confidence_score || event.confidenceScore || 0,
@@ -545,13 +780,13 @@ export class EventConsumer extends EventEmitter {
     this.emit('routingUpdate', decision);
   }
 
-  private handleAgentAction(event: any) {
+  private handleAgentAction(event: RawAgentActionEvent): void {
     const action: AgentAction = {
       id: event.id || crypto.randomUUID(),
-      correlationId: event.correlation_id || event.correlationId,
-      agentName: event.agent_name || event.agentName,
-      actionType: event.action_type || event.actionType,
-      actionName: event.action_name || event.actionName,
+      correlationId: event.correlation_id || event.correlationId || '',
+      agentName: event.agent_name || event.agentName || '',
+      actionType: event.action_type || event.actionType || '',
+      actionName: event.action_name || event.actionName || '',
       actionDetails: event.action_details || event.actionDetails,
       debugMode: event.debug_mode || event.debugMode,
       durationMs: event.duration_ms || event.durationMs || 0,
@@ -600,12 +835,12 @@ export class EventConsumer extends EventEmitter {
     this.emit('actionUpdate', action);
   }
 
-  private handleTransformationEvent(event: any) {
+  private handleTransformationEvent(event: RawTransformationEvent): void {
     const transformation: TransformationEvent = {
       id: event.id || crypto.randomUUID(),
-      correlationId: event.correlation_id || event.correlationId,
-      sourceAgent: event.source_agent || event.sourceAgent,
-      targetAgent: event.target_agent || event.targetAgent,
+      correlationId: event.correlation_id || event.correlationId || '',
+      sourceAgent: event.source_agent || event.sourceAgent || '',
+      targetAgent: event.target_agent || event.targetAgent || '',
       transformationDurationMs:
         event.transformation_duration_ms || event.transformationDurationMs || 0,
       success: event.success ?? true,
@@ -627,11 +862,11 @@ export class EventConsumer extends EventEmitter {
     this.emit('transformationUpdate', transformation);
   }
 
-  private handlePerformanceMetric(event: any): void {
+  private handlePerformanceMetric(event: RawPerformanceMetricEvent): void {
     try {
       const metric = {
         id: event.id || crypto.randomUUID(),
-        correlationId: event.correlation_id || event.correlationId,
+        correlationId: event.correlation_id || event.correlationId || '',
         queryText: event.query_text || event.queryText || '',
         routingDurationMs: event.routing_duration_ms || event.routingDurationMs || 0,
         cacheHit: event.cache_hit ?? event.cacheHit ?? false,
@@ -670,7 +905,7 @@ export class EventConsumer extends EventEmitter {
     }
   }
 
-  private handleNodeIntrospection(event: any): void {
+  private handleNodeIntrospection(event: RawNodeIntrospectionEvent): void {
     try {
       const nodeId = event.node_id || event.nodeId;
       if (!nodeId) {
@@ -681,11 +916,13 @@ export class EventConsumer extends EventEmitter {
       const introspectionEvent: NodeIntrospectionEvent = {
         id: event.id || crypto.randomUUID(),
         nodeId,
-        nodeType: event.node_type || event.nodeType || 'COMPUTE',
+        nodeType: (event.node_type || event.nodeType || 'COMPUTE') as NodeType,
         nodeVersion: event.node_version || event.nodeVersion || '1.0.0',
         endpoints: event.endpoints || {},
-        currentState: event.current_state || event.currentState || 'pending_registration',
-        reason: event.reason || 'STARTUP',
+        currentState: (event.current_state ||
+          event.currentState ||
+          'pending_registration') as RegistrationState,
+        reason: (event.reason || 'STARTUP') as 'STARTUP' | 'HEARTBEAT' | 'REQUESTED',
         correlationId: event.correlation_id || event.correlationId || '',
         createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
       };
@@ -710,6 +947,29 @@ export class EventConsumer extends EventEmitter {
         endpoints: introspectionEvent.endpoints,
       };
 
+      // Evict oldest node if at capacity and this is a new node
+      if (
+        this.registeredNodes.size >= this.MAX_REGISTERED_NODES &&
+        !this.registeredNodes.has(nodeId)
+      ) {
+        let oldestNodeId: string | null = null;
+        let oldestTime = Infinity;
+        const nodeEntries = Array.from(this.registeredNodes.entries());
+        for (const [id, n] of nodeEntries) {
+          const lastSeenTime = new Date(n.lastSeen).getTime();
+          if (lastSeenTime < oldestTime) {
+            oldestTime = lastSeenTime;
+            oldestNodeId = id;
+          }
+        }
+        if (oldestNodeId) {
+          this.registeredNodes.delete(oldestNodeId);
+          console.log(
+            `[EventConsumer] Evicted oldest node ${oldestNodeId} to make room for ${nodeId}`
+          );
+        }
+      }
+
       this.registeredNodes.set(nodeId, node);
 
       // Emit events
@@ -724,7 +984,7 @@ export class EventConsumer extends EventEmitter {
     }
   }
 
-  private handleNodeHeartbeat(event: any): void {
+  private handleNodeHeartbeat(event: RawNodeHeartbeatEvent): void {
     try {
       const nodeId = event.node_id || event.nodeId;
       if (!nodeId) {
@@ -772,7 +1032,7 @@ export class EventConsumer extends EventEmitter {
     }
   }
 
-  private handleNodeStateChange(event: any): void {
+  private handleNodeStateChange(event: RawNodeStateChangeEvent): void {
     try {
       const nodeId = event.node_id || event.nodeId;
       if (!nodeId) {
@@ -783,8 +1043,10 @@ export class EventConsumer extends EventEmitter {
       const stateChangeEvent: NodeStateChangeEvent = {
         id: event.id || crypto.randomUUID(),
         nodeId,
-        previousState: event.previous_state || event.previousState || 'pending_registration',
-        newState: event.new_state || event.newState || 'active',
+        previousState: (event.previous_state ||
+          event.previousState ||
+          'pending_registration') as RegistrationState,
+        newState: (event.new_state || event.newState || 'active') as RegistrationState,
         reason: event.reason,
         createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
       };
@@ -919,6 +1181,25 @@ export class EventConsumer extends EventEmitter {
   }
 
   // Public getters for API endpoints
+
+  /**
+   * Get aggregated metrics for all active agents.
+   *
+   * Returns metrics for agents that have been active within the last 24 hours,
+   * including request counts, success rates, routing times, and confidence scores.
+   *
+   * @returns Array of agent metrics, sorted by agent name
+   *
+   * @example
+   * ```typescript
+   * const consumer = getEventConsumer();
+   * const metrics = consumer?.getAgentMetrics() ?? [];
+   *
+   * metrics.forEach(metric => {
+   *   console.log(`${metric.agent}: ${metric.totalRequests} requests, ${metric.successRate}% success`);
+   * });
+   * ```
+   */
   getAgentMetrics(): AgentMetrics[] {
     const now = new Date();
     // Extended window to show historical data (was 5 minutes, now 24 hours)
@@ -955,6 +1236,24 @@ export class EventConsumer extends EventEmitter {
     );
   }
 
+  /**
+   * Get recent agent actions from the in-memory buffer.
+   *
+   * Actions are stored in reverse chronological order (newest first).
+   * The buffer maintains up to 100 actions by default.
+   *
+   * @param limit - Optional maximum number of actions to return. If not specified, returns all buffered actions.
+   * @returns Array of agent actions, newest first
+   *
+   * @example
+   * ```typescript
+   * // Get last 10 actions
+   * const recentActions = consumer.getRecentActions(10);
+   *
+   * // Get all buffered actions
+   * const allActions = consumer.getRecentActions();
+   * ```
+   */
   getRecentActions(limit?: number): AgentAction[] {
     if (limit && limit > 0) {
       return this.recentActions.slice(0, limit);
@@ -962,6 +1261,25 @@ export class EventConsumer extends EventEmitter {
     return this.recentActions;
   }
 
+  /**
+   * Get actions for a specific agent within a time window.
+   *
+   * Filters the in-memory action buffer by agent name and time range.
+   * Useful for generating agent-specific activity reports.
+   *
+   * @param agentName - The name of the agent to filter by
+   * @param timeWindow - Time window string: '1h' (default), '24h', or '7d'
+   * @returns Array of actions matching the agent and time criteria
+   *
+   * @example
+   * ```typescript
+   * // Get actions for 'polymorphic-agent' in the last hour
+   * const hourlyActions = consumer.getActionsByAgent('polymorphic-agent', '1h');
+   *
+   * // Get actions for 'code-quality-analyzer' in the last 24 hours
+   * const dailyActions = consumer.getActionsByAgent('code-quality-analyzer', '24h');
+   * ```
+   */
   getActionsByAgent(agentName: string, timeWindow: string = '1h'): AgentAction[] {
     // Parse time window
     let windowMs: number;
@@ -986,6 +1304,35 @@ export class EventConsumer extends EventEmitter {
     );
   }
 
+  /**
+   * Get routing decisions with optional filtering.
+   *
+   * Routing decisions track which agent was selected to handle each user request,
+   * including confidence scores, alternatives considered, and routing time.
+   *
+   * @param filters - Optional filters to apply
+   * @param filters.agent - Filter by selected agent name
+   * @param filters.minConfidence - Filter by minimum confidence score (0-1)
+   * @returns Array of routing decisions matching the filters, newest first
+   *
+   * @example
+   * ```typescript
+   * // Get all routing decisions
+   * const allDecisions = consumer.getRoutingDecisions();
+   *
+   * // Get decisions for a specific agent
+   * const agentDecisions = consumer.getRoutingDecisions({ agent: 'api-architect' });
+   *
+   * // Get high-confidence decisions
+   * const confidentDecisions = consumer.getRoutingDecisions({ minConfidence: 0.9 });
+   *
+   * // Combine filters
+   * const filtered = consumer.getRoutingDecisions({
+   *   agent: 'code-quality-analyzer',
+   *   minConfidence: 0.85
+   * });
+   * ```
+   */
   getRoutingDecisions(filters?: { agent?: string; minConfidence?: number }): RoutingDecision[] {
     let decisions = this.routingDecisions;
 
@@ -1000,14 +1347,72 @@ export class EventConsumer extends EventEmitter {
     return decisions;
   }
 
+  /**
+   * Get recent agent transformation events.
+   *
+   * Transformation events track when the polymorphic agent transforms into
+   * specialized agents during task execution. Includes timing and success status.
+   *
+   * @param limit - Maximum number of transformations to return (default: 50)
+   * @returns Array of transformation events, newest first
+   *
+   * @example
+   * ```typescript
+   * // Get last 10 transformations
+   * const transformations = consumer.getRecentTransformations(10);
+   *
+   * transformations.forEach(t => {
+   *   console.log(`${t.sourceAgent} -> ${t.targetAgent}: ${t.success ? 'OK' : 'Failed'}`);
+   * });
+   * ```
+   */
   getRecentTransformations(limit: number = 50): TransformationEvent[] {
     return this.recentTransformations.slice(0, limit);
   }
 
+  /**
+   * Get recent router performance metrics.
+   *
+   * Performance metrics track routing latency, cache hit rates,
+   * candidates evaluated, and trigger match strategies used.
+   *
+   * @param limit - Maximum number of metrics to return (default: 100)
+   * @returns Array of performance metric objects, newest first
+   *
+   * @example
+   * ```typescript
+   * const metrics = consumer.getPerformanceMetrics(50);
+   *
+   * const avgLatency = metrics.reduce((sum, m) => sum + m.routingDurationMs, 0) / metrics.length;
+   * console.log(`Average routing latency: ${avgLatency.toFixed(2)}ms`);
+   * ```
+   */
   getPerformanceMetrics(limit: number = 100): Array<any> {
     return this.performanceMetrics.slice(0, limit);
   }
 
+  /**
+   * Get aggregated performance statistics.
+   *
+   * Returns summary statistics computed from all processed performance metrics,
+   * including total queries, cache hit rate, and average routing duration.
+   *
+   * @returns Performance statistics object
+   * @property {number} totalQueries - Total number of routing queries processed
+   * @property {number} cacheHitCount - Number of queries served from cache
+   * @property {number} avgRoutingDuration - Average routing time in milliseconds
+   * @property {number} totalRoutingDuration - Sum of all routing times
+   * @property {number} cacheHitRate - Cache hit rate as percentage (0-100)
+   *
+   * @example
+   * ```typescript
+   * const stats = consumer.getPerformanceStats();
+   *
+   * console.log(`Total queries: ${stats.totalQueries}`);
+   * console.log(`Cache hit rate: ${stats.cacheHitRate.toFixed(1)}%`);
+   * console.log(`Avg routing time: ${stats.avgRoutingDuration.toFixed(2)}ms`);
+   * ```
+   */
   getPerformanceStats() {
     return {
       ...this.performanceStats,
@@ -1018,6 +1423,30 @@ export class EventConsumer extends EventEmitter {
     };
   }
 
+  /**
+   * Get the health status of the event consumer.
+   *
+   * Returns current operational status including whether the consumer is running,
+   * counts of processed events, and current timestamp.
+   *
+   * @returns Health status object
+   * @property {string} status - 'healthy' if running, 'unhealthy' otherwise
+   * @property {number} eventsProcessed - Number of unique agents tracked
+   * @property {number} recentActionsCount - Number of actions in buffer
+   * @property {number} registeredNodesCount - Number of registered ONEX nodes
+   * @property {string} timestamp - ISO 8601 timestamp of the check
+   *
+   * @example
+   * ```typescript
+   * const health = consumer.getHealthStatus();
+   *
+   * if (health.status === 'healthy') {
+   *   console.log(`Processing events for ${health.eventsProcessed} agents`);
+   * } else {
+   *   console.warn('Event consumer is not running');
+   * }
+   * ```
+   */
   getHealthStatus() {
     return {
       status: this.isRunning ? 'healthy' : 'unhealthy',
@@ -1086,6 +1515,28 @@ export class EventConsumer extends EventEmitter {
     };
   }
 
+  /**
+   * Stop the Kafka event consumer and clean up resources.
+   *
+   * This method gracefully shuts down the consumer by:
+   * 1. Clearing the periodic pruning timer
+   * 2. Disconnecting from Kafka
+   * 3. Emitting a 'disconnected' event
+   *
+   * @returns Promise that resolves when the consumer is stopped
+   *
+   * @fires EventConsumer#disconnected - When successfully disconnected
+   * @fires EventConsumer#error - If an error occurs during disconnection
+   *
+   * @example
+   * ```typescript
+   * const consumer = getEventConsumer();
+   * if (consumer) {
+   *   await consumer.stop();
+   *   console.log('Consumer stopped successfully');
+   * }
+   * ```
+   */
   async stop() {
     if (!this.consumer || !this.isRunning) {
       return;

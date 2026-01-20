@@ -3,6 +3,8 @@
  *
  * A contract-driven wrapper for event feed display that pulls data from DashboardData
  * based on the widget configuration.
+ *
+ * @module lib/widgets/EventFeedWidget
  */
 
 import { useRef, useEffect } from 'react';
@@ -16,27 +18,122 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
+/**
+ * Props for the EventFeedWidget component.
+ *
+ * @interface EventFeedWidgetProps
+ */
 interface EventFeedWidgetProps {
+  /**
+   * The widget definition containing common properties like
+   * widget_id, title, and description.
+   */
   widget: WidgetDefinition;
+
+  /**
+   * The event feed-specific configuration including:
+   * - events_key: Key to look up the events array in DashboardData
+   * - max_items: Maximum number of events to display (default: 50)
+   * - show_timestamp: Whether to display timestamps (default: true)
+   * - show_source: Whether to display event sources (default: true)
+   * - show_severity: Whether to display severity badges (default: true)
+   * - auto_scroll: Whether to auto-scroll to newest events (default: false)
+   */
   config: WidgetConfigEventFeed;
+
+  /**
+   * The dashboard data object containing event items.
+   * The widget looks for an array at config.events_key.
+   */
   data: DashboardData;
+
+  /**
+   * When true, displays loading skeletons instead of actual events.
+   *
+   * @default false
+   */
   isLoading?: boolean;
 }
 
-/** Expected shape of event items in the data array */
+/**
+ * Shape of individual event items in the event feed.
+ *
+ * Event data can come from various sources with different field names.
+ * The component handles multiple field name variations for flexibility.
+ *
+ * @interface EventItem
+ */
 interface EventItem {
+  /** Unique identifier for the event */
   id?: string | number;
+
+  /** When the event occurred (ISO string, Unix timestamp, or Date) */
   timestamp?: string | number | Date;
+
+  /** Event type/severity using 'type' field name */
   type?: 'info' | 'success' | 'warning' | 'error';
+
+  /** Event type/severity using 'severity' field name (alternative to type) */
   severity?: 'info' | 'success' | 'warning' | 'error';
+
+  /** Event message using 'message' field name */
   message?: string;
+
+  /** Event message using 'text' field name (alternative) */
   text?: string;
+
+  /** Event message using 'description' field name (alternative) */
   description?: string;
+
+  /** Origin system or component that generated the event */
   source?: string;
 }
 
 const DEFAULT_MAX_ITEMS = 50;
 
+/**
+ * Renders a scrollable event feed showing system events, logs, or notifications.
+ *
+ * The EventFeedWidget displays a chronological list of events with:
+ * - Severity indicators (color-coded bars and badges)
+ * - Timestamps with relative formatting
+ * - Source labels for event origin tracking
+ * - Smooth entry animations for new events
+ * - Auto-scroll to keep newest events visible
+ *
+ * Ideal for:
+ * - Real-time system activity monitoring
+ * - Error and warning log displays
+ * - Notification feeds
+ * - Audit trail views
+ *
+ * @example
+ * ```tsx
+ * const config: WidgetConfigEventFeed = {
+ *   type: 'event_feed',
+ *   events_key: 'system_events',
+ *   max_items: 50,
+ *   show_timestamp: true,
+ *   show_source: true,
+ *   show_severity: true,
+ *   auto_scroll: true
+ * };
+ *
+ * <EventFeedWidget
+ *   widget={widgetDef}
+ *   config={config}
+ *   data={{
+ *     system_events: [
+ *       { id: 1, timestamp: '2024-01-20T10:30:00Z', type: 'info', message: 'Agent started', source: 'agent-1' },
+ *       { id: 2, timestamp: '2024-01-20T10:31:00Z', type: 'warning', message: 'High memory usage', source: 'monitor' }
+ *     ]
+ *   }}
+ * />
+ * ```
+ *
+ * @param props - Component props
+ * @returns A scrollable card containing event rows
+ */
 export function EventFeedWidget({ widget, config, data, isLoading }: EventFeedWidgetProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const maxItems = config.max_items ?? DEFAULT_MAX_ITEMS;

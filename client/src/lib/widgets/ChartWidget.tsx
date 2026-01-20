@@ -3,6 +3,8 @@
  *
  * A contract-driven chart component that renders various chart types
  * based on the widget configuration. Supports line, bar, area, pie, and scatter charts.
+ *
+ * @module lib/widgets/ChartWidget
  */
 
 import {
@@ -28,7 +30,10 @@ import type { WidgetDefinition, WidgetConfigChart, DashboardData } from '@/lib/d
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Semantic chart colors from CSS variables
+/**
+ * Semantic chart colors from CSS variables.
+ * These colors are designed to work in both light and dark themes.
+ */
 const CHART_COLORS = [
   'hsl(var(--chart-1))',
   'hsl(var(--chart-2))',
@@ -37,23 +42,70 @@ const CHART_COLORS = [
   'hsl(var(--chart-5))',
 ];
 
+/**
+ * Props for the ChartWidget component.
+ *
+ * @interface ChartWidgetProps
+ */
 interface ChartWidgetProps {
+  /**
+   * The widget definition containing common properties like
+   * widget_id, title, and description.
+   */
   widget: WidgetDefinition;
+
+  /**
+   * The chart-specific configuration including:
+   * - chart_type: The type of chart (line, bar, area, pie, scatter)
+   * - series: Array of data series to display
+   * - x_axis/y_axis: Axis configuration (labels, grid, domain)
+   * - show_legend: Whether to display the legend
+   * - stacked: Whether to stack series (bar/area charts)
+   */
   config: WidgetConfigChart;
+
+  /**
+   * The dashboard data object containing chart data arrays.
+   * The widget looks for arrays at the configured data keys.
+   */
   data: DashboardData;
+
+  /**
+   * When true, displays a loading skeleton instead of the chart.
+   *
+   * @default false
+   */
   isLoading?: boolean;
 }
 
 /**
- * Get color for a series at a given index.
- * Falls back to semantic chart colors if not specified.
+ * Gets the color for a chart series at a given index.
+ *
+ * Uses modulo arithmetic to cycle through CHART_COLORS array,
+ * ensuring consistent color assignment regardless of series count.
+ *
+ * @param index - The zero-based series index
+ * @returns An HSL color string from the semantic chart palette
+ *
+ * @example
+ * ```ts
+ * getSeriesColor(0)  // "hsl(var(--chart-1))"
+ * getSeriesColor(5)  // "hsl(var(--chart-1))" (wraps around)
+ * ```
  */
 function getSeriesColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length];
 }
 
 /**
- * Loading skeleton for chart widgets
+ * Renders a loading skeleton placeholder for chart widgets.
+ *
+ * Displays an animated skeleton UI while chart data is loading,
+ * maintaining the same card structure as the loaded chart.
+ *
+ * @param props - Component props
+ * @param props.title - The chart title to display in the header
+ * @returns A Card with animated skeleton placeholders
  */
 function ChartSkeleton({ title }: { title: string }) {
   return (
@@ -76,9 +128,12 @@ function ChartSkeleton({ title }: { title: string }) {
 }
 
 /**
- * Common tooltip styles matching the codebase pattern
+ * Common tooltip styles for Recharts tooltips.
+ *
+ * Uses CSS custom properties to match the application's theme,
+ * ensuring tooltips look consistent in both light and dark modes.
  */
-const tooltipStyle = {
+const tooltipStyle: React.CSSProperties = {
   backgroundColor: 'hsl(var(--card))',
   border: '1px solid hsl(var(--border))',
   borderRadius: '6px',
@@ -86,7 +141,14 @@ const tooltipStyle = {
 };
 
 /**
- * Render a line chart
+ * Renders a line chart using Recharts LineChart component.
+ *
+ * Line charts are ideal for showing trends over time or continuous data.
+ * Supports multiple series with automatic color assignment.
+ *
+ * @param chartData - Array of data points with name and value properties
+ * @param config - Chart configuration with series and axis settings
+ * @returns A LineChart component configured according to the spec
  */
 function renderLineChart(chartData: unknown[], config: WidgetConfigChart) {
   return (
@@ -125,7 +187,14 @@ function renderLineChart(chartData: unknown[], config: WidgetConfigChart) {
 }
 
 /**
- * Render a bar chart
+ * Renders a bar chart using Recharts BarChart component.
+ *
+ * Bar charts are ideal for comparing categorical data.
+ * Supports stacked bars when config.stacked is true.
+ *
+ * @param chartData - Array of data points with category names and values
+ * @param config - Chart configuration with series and stacking settings
+ * @returns A BarChart component configured according to the spec
  */
 function renderBarChart(chartData: unknown[], config: WidgetConfigChart) {
   return (
@@ -162,7 +231,15 @@ function renderBarChart(chartData: unknown[], config: WidgetConfigChart) {
 }
 
 /**
- * Render an area chart
+ * Renders an area chart using Recharts AreaChart component.
+ *
+ * Area charts are similar to line charts but with filled areas below the lines.
+ * Ideal for showing volume or cumulative values over time.
+ * Supports stacked areas when config.stacked is true.
+ *
+ * @param chartData - Array of data points with name and value properties
+ * @param config - Chart configuration with series and stacking settings
+ * @returns An AreaChart component configured according to the spec
  */
 function renderAreaChart(chartData: unknown[], config: WidgetConfigChart) {
   return (
@@ -201,7 +278,15 @@ function renderAreaChart(chartData: unknown[], config: WidgetConfigChart) {
 }
 
 /**
- * Render a pie chart
+ * Renders a pie chart using Recharts PieChart component.
+ *
+ * Pie charts display data as proportional slices of a circle.
+ * Best used for showing parts of a whole with limited categories (5-7 max).
+ * Displays as a donut chart with inner radius for better label readability.
+ *
+ * @param chartData - Array of data points with name and value properties
+ * @param config - Chart configuration with legend settings
+ * @returns A PieChart component with labeled segments
  */
 function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
   // For pie charts, always use 'value' as the value key (standard Recharts convention)
@@ -234,7 +319,15 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
 }
 
 /**
- * Render a scatter chart
+ * Renders a scatter chart using Recharts ScatterChart component.
+ *
+ * Scatter charts display individual data points to show correlation
+ * between two numeric variables. Uses the first two series data_keys
+ * as x and y coordinates.
+ *
+ * @param chartData - Array of data points with x and y coordinates
+ * @param config - Chart configuration with axis labels and domain settings
+ * @returns A ScatterChart component showing data point distribution
  */
 function renderScatterChart(chartData: unknown[], config: WidgetConfigChart) {
   // Scatter charts typically use x and y data keys
@@ -277,6 +370,45 @@ function renderScatterChart(chartData: unknown[], config: WidgetConfigChart) {
   );
 }
 
+/**
+ * Renders a chart widget based on contract-driven configuration.
+ *
+ * The ChartWidget component connects the dashboard schema to Recharts,
+ * providing a unified API for rendering different chart types. It handles:
+ * - Chart type selection (line, bar, area, pie, scatter)
+ * - Data extraction from DashboardData
+ * - Loading states with skeleton UI
+ * - Empty state handling
+ * - Responsive sizing
+ *
+ * @example
+ * ```tsx
+ * const config: WidgetConfigChart = {
+ *   type: 'chart',
+ *   chart_type: 'line',
+ *   series: [
+ *     { data_key: 'requests', name: 'Requests' },
+ *     { data_key: 'errors', name: 'Errors' }
+ *   ],
+ *   show_legend: true,
+ *   y_axis: { label: 'Count' }
+ * };
+ *
+ * <ChartWidget
+ *   widget={widgetDef}
+ *   config={config}
+ *   data={{
+ *     requests: [
+ *       { name: 'Mon', requests: 100, errors: 5 },
+ *       { name: 'Tue', requests: 120, errors: 3 }
+ *     ]
+ *   }}
+ * />
+ * ```
+ *
+ * @param props - Component props
+ * @returns A card containing the configured chart type
+ */
 export function ChartWidget({ widget, config, data, isLoading }: ChartWidgetProps) {
   if (isLoading) {
     return <ChartSkeleton title={widget.title} />;

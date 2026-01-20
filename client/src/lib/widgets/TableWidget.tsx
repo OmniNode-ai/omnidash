@@ -4,6 +4,8 @@
  * A contract-driven wrapper for data tables that pulls data from DashboardData
  * based on the widget configuration. Supports pagination, sorting, and
  * configurable column formatting.
+ *
+ * @module lib/widgets/TableWidget
  */
 
 import { useState, useMemo } from 'react';
@@ -22,23 +24,112 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
+/**
+ * Props for the TableWidget component.
+ *
+ * @interface TableWidgetProps
+ */
 interface TableWidgetProps {
+  /**
+   * The widget definition containing common properties like
+   * widget_id, title, and description.
+   */
   widget: WidgetDefinition;
+
+  /**
+   * The table-specific configuration including:
+   * - rows_key: Key to look up the data array in DashboardData
+   * - columns: Array of column definitions with headers, keys, and formatters
+   * - page_size: Number of rows per page
+   * - default_sort_key/direction: Initial sorting
+   * - striped: Whether to use alternating row colors
+   * - hover_highlight: Whether to highlight rows on hover
+   * - show_pagination: Whether to show pagination controls
+   */
   config: WidgetConfigTable;
+
+  /**
+   * The dashboard data object containing the table rows.
+   * The widget looks for an array at config.rows_key.
+   */
   data: DashboardData;
+
+  /**
+   * When true, displays a loading skeleton instead of actual data.
+   *
+   * @default false
+   */
   isLoading?: boolean;
 }
 
+/**
+ * Sort direction for table columns.
+ * - 'asc': Ascending order (A-Z, 0-9)
+ * - 'desc': Descending order (Z-A, 9-0)
+ * - null: No sorting applied
+ */
 type SortDirection = 'asc' | 'desc' | null;
 
+/**
+ * Current sort state for the table.
+ *
+ * @interface SortState
+ */
 interface SortState {
+  /** The column key being sorted, or null if no sort */
   key: string | null;
+  /** The sort direction */
   direction: SortDirection;
 }
 
-// Type for a single row of data
+/**
+ * Type for a single row of data in the table.
+ *
+ * Represents a generic record where keys are column identifiers
+ * and values can be any type (formatted by CellValue based on column config).
+ */
 type RowData = Record<string, unknown>;
 
+/**
+ * Renders a data table widget with sorting and pagination support.
+ *
+ * The TableWidget displays tabular data with features like:
+ * - Column sorting (click headers to toggle asc/desc/none)
+ * - Pagination with configurable page size
+ * - Multiple cell formats (text, number, date, badge, link, percent, currency)
+ * - Striped rows and hover highlighting options
+ * - Responsive with horizontal scrolling for overflow
+ *
+ * @example
+ * ```tsx
+ * const config: WidgetConfigTable = {
+ *   type: 'table',
+ *   rows_key: 'agents',
+ *   page_size: 10,
+ *   columns: [
+ *     { key: 'name', header: 'Name', sortable: true },
+ *     { key: 'status', header: 'Status', format: 'badge' },
+ *     { key: 'cpu', header: 'CPU %', format: 'percent', align: 'right' }
+ *   ],
+ *   striped: true,
+ *   hover_highlight: true
+ * };
+ *
+ * <TableWidget
+ *   widget={widgetDef}
+ *   config={config}
+ *   data={{
+ *     agents: [
+ *       { name: 'Agent-1', status: 'active', cpu: 45.2 },
+ *       { name: 'Agent-2', status: 'warning', cpu: 78.9 }
+ *     ]
+ *   }}
+ * />
+ * ```
+ *
+ * @param props - Component props
+ * @returns A table component with sorting and pagination
+ */
 export function TableWidget({ widget: _widget, config, data, isLoading }: TableWidgetProps) {
   // Initialize sort state from config defaults
   const [sortState, setSortState] = useState<SortState>({
@@ -244,7 +335,17 @@ export function TableWidget({ widget: _widget, config, data, isLoading }: TableW
 }
 
 /**
- * Sort indicator icon for column headers
+ * Renders the sort direction indicator icon for sortable column headers.
+ *
+ * Displays:
+ * - Bidirectional arrows (muted) when column is not actively sorted
+ * - Up arrow when sorted ascending
+ * - Down arrow when sorted descending
+ *
+ * @param props - Component props
+ * @param props.columnKey - The key of the column this indicator represents
+ * @param props.sortState - Current sort state with active key and direction
+ * @returns An icon indicating the current sort state for this column
  */
 function SortIndicator({ columnKey, sortState }: { columnKey: string; sortState: SortState }) {
   if (sortState.key !== columnKey) {
@@ -257,7 +358,24 @@ function SortIndicator({ columnKey, sortState }: { columnKey: string; sortState:
 }
 
 /**
- * Format and render a cell value based on the column format configuration.
+ * Formats and renders a table cell value based on column format configuration.
+ *
+ * Supports multiple format types:
+ * - `text`: Default string rendering
+ * - `number`: Locale-formatted number
+ * - `date`: Date only (localized)
+ * - `datetime`: Date and time (localized)
+ * - `badge`: Semantic colored badge based on value
+ * - `link`: Clickable hyperlink (string URL or {href, text} object)
+ * - `percent`: Number with % suffix
+ * - `currency`: USD currency format
+ *
+ * Handles null/undefined values by displaying a muted dash.
+ *
+ * @param props - Component props
+ * @param props.value - The raw cell value to format
+ * @param props.format - The format type from column configuration
+ * @returns A formatted React element for the cell content
  */
 function CellValue({ value, format }: { value: unknown; format?: string }) {
   // Handle null/undefined
@@ -354,7 +472,17 @@ function CellValue({ value, format }: { value: unknown; format?: string }) {
 }
 
 /**
- * Render a value as a badge with semantic coloring based on value.
+ * Renders a value as a Badge component with semantic coloring.
+ *
+ * Maps common status values to appropriate badge variants:
+ * - **default** (green): success, active, healthy, online, completed
+ * - **secondary** (yellow): warning, pending, processing
+ * - **destructive** (red): error, failed, offline, critical
+ * - **outline** (gray): inactive, unknown, or unrecognized values
+ *
+ * @param props - Component props
+ * @param props.value - The value to display (converted to string)
+ * @returns A Badge component with semantic variant styling
  */
 function BadgeCell({ value }: { value: unknown }) {
   const text = String(value);
