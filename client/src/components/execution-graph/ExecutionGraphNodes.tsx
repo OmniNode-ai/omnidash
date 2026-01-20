@@ -107,15 +107,11 @@ export function ExecutionGraphNode({ data, selected }: NodeProps<ExecutionNode>)
         status === 'running' && 'animate-pulse'
       )}
     >
-      {/* Input handle (top) */}
+      {/* Input handle (top) - invisible but functional */}
       <Handle
         type="target"
         position={Position.Top}
-        className={cn(
-          '!w-3 !h-3 !rounded-full !border-2 transition-colors',
-          statusStyle.border,
-          statusStyle.bg
-        )}
+        className="!w-2 !h-2 !bg-transparent !border-0 !min-w-0 !min-h-0"
       />
 
       {/* Node content */}
@@ -168,15 +164,11 @@ export function ExecutionGraphNode({ data, selected }: NodeProps<ExecutionNode>)
         )}
       </div>
 
-      {/* Output handle (bottom) */}
+      {/* Output handle (bottom) - invisible but functional */}
       <Handle
         type="source"
         position={Position.Bottom}
-        className={cn(
-          '!w-3 !h-3 !rounded-full !border-2 transition-colors',
-          statusStyle.border,
-          statusStyle.bg
-        )}
+        className="!w-2 !h-2 !bg-transparent !border-0 !min-w-0 !min-h-0"
       />
     </div>
   );
