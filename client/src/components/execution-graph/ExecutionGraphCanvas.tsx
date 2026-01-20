@@ -110,22 +110,57 @@ function toReactFlowNode(
 }
 
 /**
+ * Edge color configuration.
+ * Uses neutral colors that CONTRAST with node border colors (green/blue/red/yellow).
+ * - Node borders: green (success), blue (running), red (failed), yellow (skipped), gray (pending)
+ * - Edge colors: slate gray (neutral) - clearly different from status colors
+ */
+const EDGE_COLORS = {
+  default: '#64748b', // slate-500 - neutral gray that contrasts with all status colors
+  animated: '#a78bfa', // violet-400 - distinct from blue (running) for visibility
+} as const;
+
+/**
+ * Determine if an edge is a "backward" edge (target appears before source in layout).
+ * Backward edges need special routing to avoid intersecting nodes.
+ */
+function isBackwardEdge(
+  sourceNode: ExecutionNodeState | undefined,
+  targetNode: ExecutionNodeState | undefined
+): boolean {
+  if (!sourceNode || !targetNode) return false;
+
+  const kindOrder: Record<NodeKind, number> = {
+    ORCHESTRATOR: 0,
+    EFFECT: 1,
+    COMPUTE: 2,
+    REDUCER: 3,
+  };
+
+  // Edge goes backward if target has lower order than source
+  return kindOrder[targetNode.nodeKind] < kindOrder[sourceNode.nodeKind];
+}
+
+/**
  * Convert ExecutionEdge to React Flow Edge with styling.
+ * - Uses neutral colors that contrast with node borders
+ * - Routes backward edges below nodes to avoid intersections
  */
 function toReactFlowEdge(
   edge: { id: string; source: string; target: string },
-  sourceNode: ExecutionNodeState | undefined
+  sourceNode: ExecutionNodeState | undefined,
+  targetNode: ExecutionNodeState | undefined
 ): Edge {
   const isAnimated = sourceNode?.status === 'running';
-  const isSuccess = sourceNode?.status === 'success';
-  const isFailed = sourceNode?.status === 'failed';
+  const isBackward = isBackwardEdge(sourceNode, targetNode);
 
-  let strokeColor = '#6b7280'; // gray-500 default
-  if (isAnimated)
-    strokeColor = '#3b82f6'; // blue-500
-  else if (isSuccess)
-    strokeColor = '#22c55e'; // green-500
-  else if (isFailed) strokeColor = '#ef4444'; // red-500
+  // Use neutral colors that contrast with node border colors
+  const strokeColor = isAnimated ? EDGE_COLORS.animated : EDGE_COLORS.default;
+
+  // For backward edges (e.g., reducer -> orchestrator), route below nodes
+  // by using bottom/top handles instead of right/left
+  const sourceHandle = isBackward ? 'source-bottom' : 'source-right';
+  const targetHandle = isBackward ? 'target-top' : 'target-left';
 
   return {
     id: edge.id,
@@ -144,9 +179,14 @@ function toReactFlowEdge(
       width: 20,
       height: 20,
     },
-    // Use right-to-left handles for horizontal flow (source right → target left)
-    sourceHandle: 'source-right',
-    targetHandle: 'target-left',
+    sourceHandle,
+    targetHandle,
+    // For backward edges, add offset to route below the graph
+    ...(isBackward && {
+      pathOptions: {
+        offset: 80, // Route the edge further away from nodes
+      },
+    }),
   };
 }
 
@@ -186,7 +226,8 @@ export function ExecutionGraphCanvas({
   const edges = useMemo((): Edge[] => {
     return graph.edges.map((edge) => {
       const sourceNode = graph.nodes[edge.source];
-      return toReactFlowEdge(edge, sourceNode);
+      const targetNode = graph.nodes[edge.target];
+      return toReactFlowEdge(edge, sourceNode, targetNode);
     });
   }, [graph.edges, graph.nodes]);
 
