@@ -211,13 +211,14 @@ export const widgetShowcaseMockData: DashboardData = {
   totalEvents: 12847,
 
   // Line chart time series (array of objects)
+  // Uses 'name' field for X-axis compatibility with ChartWidget's XAxis dataKey="name"
   requestTimeSeries: [
-    { time: '00:00', requests: 120, errors: 3 },
-    { time: '04:00', requests: 85, errors: 2 },
-    { time: '08:00', requests: 230, errors: 8 },
-    { time: '12:00', requests: 310, errors: 12 },
-    { time: '16:00', requests: 275, errors: 6 },
-    { time: '20:00', requests: 180, errors: 4 },
+    { name: '00:00', requests: 120, errors: 3 },
+    { name: '04:00', requests: 85, errors: 2 },
+    { name: '08:00', requests: 230, errors: 8 },
+    { name: '12:00', requests: 310, errors: 12 },
+    { name: '16:00', requests: 275, errors: 6 },
+    { name: '20:00', requests: 180, errors: 4 },
   ],
 
   // Status grid data (array with id, name, status)
@@ -233,12 +234,13 @@ export const widgetShowcaseMockData: DashboardData = {
   ],
 
   // Bar chart data
+  // Uses 'name' field for X-axis compatibility with ChartWidget's XAxis dataKey="name"
   eventsByType: [
-    { type: 'Routing', count: 342 },
-    { type: 'Transform', count: 256 },
-    { type: 'Validate', count: 189 },
-    { type: 'Execute', count: 421 },
-    { type: 'Complete', count: 398 },
+    { name: 'Routing', count: 342 },
+    { name: 'Transform', count: 256 },
+    { name: 'Validate', count: 189 },
+    { name: 'Execute', count: 421 },
+    { name: 'Complete', count: 398 },
   ],
 
   // Pie chart data

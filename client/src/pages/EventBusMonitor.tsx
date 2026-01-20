@@ -83,6 +83,13 @@ export default function EventBusMonitor() {
       data.id || data.correlationId || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const timestamp = data.createdAt || data.timestamp || new Date().toISOString();
 
+    // Honor upstream priority when available, with fallback to error-based detection
+    const priority =
+      data.priority ??
+      data.severity ??
+      data.headers?.priority ??
+      (data.actionType === 'error' ? 'critical' : 'normal');
+
     return {
       id,
       topic,
@@ -90,7 +97,7 @@ export default function EventBusMonitor() {
       eventType,
       source: data.agentName || data.sourceAgent || data.selectedAgent || 'system',
       timestamp: typeof timestamp === 'string' ? timestamp : new Date(timestamp).toISOString(),
-      priority: data.actionType === 'error' ? 'critical' : 'normal',
+      priority,
       correlationId: data.correlationId,
       payload: JSON.stringify(data).slice(0, 200),
     };
@@ -238,12 +245,15 @@ export default function EventBusMonitor() {
           if (metric) {
             const event = createEventEntry('performance', metric, 'router-performance-metrics');
             updateDashboardWithEvent(event);
-            // Also update performance stats
+            // Also update performance stats with NaN guard
             if (stats) {
-              setDashboardData((prev) => ({
-                ...prev,
-                eventsPerSecond: Math.round((stats.totalQueries / 3600) * 10) / 10,
-              }));
+              const totalQueries = Number(stats.totalQueries);
+              if (Number.isFinite(totalQueries)) {
+                setDashboardData((prev) => ({
+                  ...prev,
+                  eventsPerSecond: Math.round((totalQueries / 3600) * 10) / 10,
+                }));
+              }
             }
           }
           break;
