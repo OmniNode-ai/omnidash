@@ -9,6 +9,7 @@
  * Run with: npm run seed-events or tsx scripts/seed-events.ts
  */
 
+import 'dotenv/config';
 import { Kafka, Partitioners } from 'kafkajs';
 import { randomUUID } from 'crypto';
 
