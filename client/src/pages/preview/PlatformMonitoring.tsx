@@ -11,8 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, Server, Users, AlertTriangle, Settings, RefreshCw, Bell } from 'lucide-react';
 
 // Import existing components
-import PlatformHealth from '../PlatformHealth';
-import DeveloperExperience from '../DeveloperExperience';
+import PlatformHealth from '@/_archive/pages/PlatformHealth';
+import DeveloperExperience from '@/_archive/pages/DeveloperExperience';
 
 // Types imported from data source
 import type { ServiceStatus as _ServiceStatus } from '@/lib/data-sources';

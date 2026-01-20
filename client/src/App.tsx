@@ -12,15 +12,18 @@ import { DemoModeProvider } from '@/contexts/DemoModeContext';
 import { DemoModeToggle } from '@/components/DemoModeToggle';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
-import PatternLearning from '@/pages/PatternLearning';
-import IntelligenceOperations from '@/pages/IntelligenceOperations';
-import CodeIntelligence from '@/pages/CodeIntelligence';
-import EventFlow from '@/pages/EventFlow';
-import EventBusExplorer from '@/pages/EventBusExplorer';
+// Archived legacy pages (OMN-1377)
+import PatternLearning from '@/_archive/pages/PatternLearning';
+import IntelligenceOperations from '@/_archive/pages/IntelligenceOperations';
+import CodeIntelligence from '@/_archive/pages/CodeIntelligence';
+import EventFlow from '@/_archive/pages/EventFlow';
+import EventBusExplorer from '@/_archive/pages/EventBusExplorer';
+import KnowledgeGraph from '@/_archive/pages/KnowledgeGraph';
+import PlatformHealth from '@/_archive/pages/PlatformHealth';
+import DeveloperExperience from '@/_archive/pages/DeveloperExperience';
+
+// Active pages
 import EventBusMonitor from '@/pages/EventBusMonitor';
-import KnowledgeGraph from '@/pages/KnowledgeGraph';
-import PlatformHealth from '@/pages/PlatformHealth';
-import DeveloperExperience from '@/pages/DeveloperExperience';
 import Chat from '@/pages/Chat';
 import CorrelationTrace from '@/pages/CorrelationTrace';
 import DashboardDemo from '@/pages/DashboardDemo';

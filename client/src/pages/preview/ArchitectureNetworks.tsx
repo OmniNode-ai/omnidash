@@ -19,8 +19,8 @@ import {
 
 // Import existing components
 import NodeNetworkComposer from './NodeNetworkComposer';
-import KnowledgeGraph from '../KnowledgeGraph';
-import EventFlow from '../EventFlow';
+import KnowledgeGraph from '@/_archive/pages/KnowledgeGraph';
+import EventFlow from '@/_archive/pages/EventFlow';
 
 // Mock data interfaces
 interface ArchitectureSummary {

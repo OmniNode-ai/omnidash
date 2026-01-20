@@ -229,7 +229,8 @@ describe('IntelligenceOperations page', () => {
     // Configure mock before rendering
     mockFetchAll.mockResolvedValue(operationsData);
 
-    const { default: IntelligenceOperations } = await import('../IntelligenceOperations');
+    const { default: IntelligenceOperations } =
+      await import('@/_archive/pages/IntelligenceOperations');
 
     const result = renderWithClient(<IntelligenceOperations />);
     queryClient = result.queryClient;
@@ -279,7 +280,8 @@ describe('IntelligenceOperations page', () => {
       isMock: false,
     });
 
-    const { default: IntelligenceOperations } = await import('../IntelligenceOperations');
+    const { default: IntelligenceOperations } =
+      await import('@/_archive/pages/IntelligenceOperations');
 
     const result = renderWithClient(<IntelligenceOperations />);
     queryClient = result.queryClient;

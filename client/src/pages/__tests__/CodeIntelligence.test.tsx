@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
-import CodeIntelligence from '../CodeIntelligence';
+import CodeIntelligence from '@/_archive/pages/CodeIntelligence';
 import { codeIntelligenceSource } from '@/lib/data-sources';
 
 type LocalStorageMock = {

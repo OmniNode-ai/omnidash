@@ -115,15 +115,27 @@ export const widgetConfigSchema = z.discriminatedUnion('config_kind', [
   widgetConfigEventFeedSchema,
 ]);
 
+/**
+ * Widget Definition Schema
+ *
+ * Aligned with omnibase_core/models/dashboard/ModelWidgetDefinition.
+ * Validates widget configuration at runtime for crash-fast behavior.
+ *
+ * @see omnibase_core/models/dashboard/model_widget_definition.py
+ */
 export const widgetDefinitionSchema = z.object({
   widget_id: z.string().min(1),
   title: z.string().min(1),
   config: widgetConfigSchema,
   row: z.number().int().min(0),
   col: z.number().int().min(0),
-  width: z.number().int().min(1).max(12),
-  height: z.number().int().min(1),
+  width: z.number().int().min(1).max(12), // Matches omnibase_core: ge=1, le=12
+  height: z.number().int().min(1), // Matches omnibase_core: ge=1
   description: z.string().optional(),
+  // Aligned with omnibase_core ModelWidgetDefinition.data_source
+  data_source: z.string().optional(),
+  // Aligned with omnibase_core ModelWidgetDefinition.extra_config (Mapping[str, str])
+  extra_config: z.record(z.string(), z.string()).optional(),
 });
 
 export const dashboardLayoutSchema = z.object({

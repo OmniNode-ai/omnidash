@@ -123,16 +123,43 @@ export interface MetricThreshold {
   label?: string;
 }
 
-// Widget Definition
+/**
+ * Widget Definition
+ *
+ * Aligned with omnibase_core/models/dashboard/ModelWidgetDefinition.
+ * Fields match the Pydantic model for cross-system compatibility.
+ *
+ * @see omnibase_core/models/dashboard/model_widget_definition.py
+ */
 export interface WidgetDefinition {
+  /** Unique identifier for the widget (UUID in omnibase_core) */
   widget_id: string;
+  /** Display title for the widget */
   title: string;
+  /** Widget configuration - discriminated union by config_kind */
   config: WidgetConfig;
+  /** Grid row position (0-indexed) */
   row: number;
+  /** Grid column position (0-indexed) */
   col: number;
+  /** Widget width in grid columns (1-12, validated by Zod) */
   width: number;
+  /** Widget height in grid rows (min 1) */
   height: number;
+  /** Optional description for the widget */
   description?: string;
+  /**
+   * Optional data source override for this widget.
+   * If not specified, uses the dashboard-level data_source.
+   * Aligned with omnibase_core ModelWidgetDefinition.data_source
+   */
+  data_source?: string;
+  /**
+   * Optional extra configuration key-value pairs.
+   * Allows widget-specific customization without schema changes.
+   * Aligned with omnibase_core ModelWidgetDefinition.extra_config
+   */
+  extra_config?: Record<string, string>;
 }
 
 // Layout Configuration

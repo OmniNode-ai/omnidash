@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import PlatformHealth from '../PlatformHealth';
+import PlatformHealth from '@/_archive/pages/PlatformHealth';
 import { platformHealthSource } from '@/lib/data-sources';
 
 type LocalStorageMock = {
