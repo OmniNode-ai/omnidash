@@ -41,53 +41,39 @@ import type {
 
 const NODE_WIDTH = 192; // w-48 = 12rem = 192px
 const NODE_HEIGHT = 100; // Approximate height of node
-const HORIZONTAL_SPACING = 64; // Gap between nodes horizontally
-const VERTICAL_SPACING = 150; // Gap between node kind tiers
-
-// Y-position for each node kind tier
-const KIND_Y_POSITIONS: Record<NodeKind, number> = {
-  ORCHESTRATOR: 0,
-  EFFECT: VERTICAL_SPACING,
-  COMPUTE: VERTICAL_SPACING * 2,
-  REDUCER: VERTICAL_SPACING * 3,
-};
+const HORIZONTAL_SPACING = 100; // Gap between nodes horizontally
+const VERTICAL_SPACING = 50; // Small vertical offset for visual interest
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layout Algorithm
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Calculate node positions based on node kind tiers.
- * Nodes are positioned hierarchically with ORCHESTRATOR at top,
- * spreading horizontally if multiple nodes share the same kind.
+ * Calculate node positions for a LEFT-TO-RIGHT horizontal flow.
+ * Nodes are arranged in execution order with clear spacing.
  */
 function calculateNodePositions(
   nodes: Record<string, ExecutionNodeState>
 ): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>();
+  const nodeList = Object.values(nodes);
 
-  // Group nodes by kind
-  const nodesByKind: Record<NodeKind, ExecutionNodeState[]> = {
-    ORCHESTRATOR: [],
-    EFFECT: [],
-    COMPUTE: [],
-    REDUCER: [],
+  // Sort nodes by kind to get execution order: ORCHESTRATOR -> EFFECT -> COMPUTE -> REDUCER
+  const kindOrder: Record<NodeKind, number> = {
+    ORCHESTRATOR: 0,
+    EFFECT: 1,
+    COMPUTE: 2,
+    REDUCER: 3,
   };
 
-  Object.values(nodes).forEach((node) => {
-    nodesByKind[node.nodeKind].push(node);
-  });
+  nodeList.sort((a, b) => kindOrder[a.nodeKind] - kindOrder[b.nodeKind]);
 
-  // Calculate positions for each tier
-  Object.entries(nodesByKind).forEach(([kind, kindNodes]) => {
-    const y = KIND_Y_POSITIONS[kind as NodeKind];
-    const totalWidth = kindNodes.length * NODE_WIDTH + (kindNodes.length - 1) * HORIZONTAL_SPACING;
-    const startX = -totalWidth / 2 + NODE_WIDTH / 2;
-
-    kindNodes.forEach((node, index) => {
-      const x = startX + index * (NODE_WIDTH + HORIZONTAL_SPACING);
-      positions.set(node.nodeName, { x, y });
-    });
+  // Position nodes left-to-right with slight vertical stagger
+  nodeList.forEach((node, index) => {
+    const x = index * (NODE_WIDTH + HORIZONTAL_SPACING);
+    // Stagger vertically for visual interest
+    const y = (index % 2) * VERTICAL_SPACING;
+    positions.set(node.nodeName, { x, y });
   });
 
   return positions;
@@ -158,9 +144,9 @@ function toReactFlowEdge(
       width: 20,
       height: 20,
     },
-    // Use bottom-to-top handles for clear vertical flow between nodes
-    sourceHandle: 'source-bottom',
-    targetHandle: 'target-top',
+    // Use right-to-left handles for horizontal flow (source right → target left)
+    sourceHandle: 'source-right',
+    targetHandle: 'target-left',
   };
 }
 

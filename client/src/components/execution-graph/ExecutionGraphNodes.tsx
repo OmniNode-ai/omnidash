@@ -107,20 +107,26 @@ export function ExecutionGraphNode({ data, selected }: NodeProps<ExecutionNode>)
         status === 'running' && 'animate-pulse'
       )}
     >
-      {/* Input handle (top) - invisible but functional */}
+      {/* Input handle (top) */}
       <Handle
         type="target"
         position={Position.Top}
         id="target-top"
         className="!w-2 !h-2 !bg-transparent !border-0 !min-w-0 !min-h-0"
       />
-      {/* Input handle (right side) - for routing edges around nodes */}
+      {/* Input handle (left side) - main horizontal flow input */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="target-left"
+        className="!w-2 !h-2 !bg-transparent !border-0 !min-w-0 !min-h-0"
+      />
+      {/* Input handle (right side) */}
       <Handle
         type="target"
         position={Position.Right}
         id="target-right"
         className="!w-2 !h-2 !bg-transparent !border-0 !min-w-0 !min-h-0"
-        style={{ top: '30%' }}
       />
 
       {/* Node content */}
