@@ -144,11 +144,15 @@ function toReactFlowEdge(
     id: edge.id,
     source: edge.source,
     target: edge.target,
+    type: 'smoothstep',
     animated: isAnimated,
     style: {
       stroke: strokeColor,
       strokeWidth: 2,
     },
+    // Use side handles so edges route around nodes instead of through center
+    sourceHandle: 'source-right',
+    targetHandle: 'target-right',
   };
 }
 

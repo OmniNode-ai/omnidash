@@ -111,7 +111,16 @@ export function ExecutionGraphNode({ data, selected }: NodeProps<ExecutionNode>)
       <Handle
         type="target"
         position={Position.Top}
+        id="target-top"
         className="!w-2 !h-2 !bg-transparent !border-0 !min-w-0 !min-h-0"
+      />
+      {/* Input handle (right side) - for routing edges around nodes */}
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="target-right"
+        className="!w-2 !h-2 !bg-transparent !border-0 !min-w-0 !min-h-0"
+        style={{ top: '30%' }}
       />
 
       {/* Node content */}
@@ -168,7 +177,16 @@ export function ExecutionGraphNode({ data, selected }: NodeProps<ExecutionNode>)
       <Handle
         type="source"
         position={Position.Bottom}
+        id="source-bottom"
         className="!w-2 !h-2 !bg-transparent !border-0 !min-w-0 !min-h-0"
+      />
+      {/* Output handle (right side) - for routing edges around nodes */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="source-right"
+        className="!w-2 !h-2 !bg-transparent !border-0 !min-w-0 !min-h-0"
+        style={{ top: '70%' }}
       />
     </div>
   );
