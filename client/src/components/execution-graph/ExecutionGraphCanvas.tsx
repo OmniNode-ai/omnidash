@@ -19,6 +19,7 @@ import {
   MiniMap,
   Background,
   BackgroundVariant,
+  MarkerType,
   type Node,
   type Edge,
   type NodeMouseHandler,
@@ -149,6 +150,13 @@ function toReactFlowEdge(
     style: {
       stroke: strokeColor,
       strokeWidth: 2,
+    },
+    // Arrow marker to show data flow direction
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: strokeColor,
+      width: 20,
+      height: 20,
     },
     // Use side handles so edges route around nodes instead of through center
     sourceHandle: 'source-right',
