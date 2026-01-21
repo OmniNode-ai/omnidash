@@ -28,6 +28,17 @@ export type AnyHealthStatus =
   | 'error';
 
 /**
+ * Severity order for health statuses (lower = more severe)
+ * Useful for sorting items by health priority (critical issues first)
+ */
+export const HEALTH_SEVERITY_ORDER: Record<SemanticHealthLevel, number> = {
+  critical: 0,
+  warning: 1,
+  healthy: 2,
+  unknown: 3,
+};
+
+/**
  * Normalize any health status string to a canonical semantic level
  *
  * Mappings:
@@ -188,16 +199,9 @@ export function sortByHealthSeverity<T>(
   items: T[],
   getStatus: (item: T) => string | null | undefined
 ): T[] {
-  const severityOrder: Record<SemanticHealthLevel, number> = {
-    critical: 0,
-    warning: 1,
-    healthy: 2,
-    unknown: 3,
-  };
-
   return [...items].sort((a, b) => {
     const statusA = normalizeHealthStatus(getStatus(a));
     const statusB = normalizeHealthStatus(getStatus(b));
-    return severityOrder[statusA] - severityOrder[statusB];
+    return HEALTH_SEVERITY_ORDER[statusA] - HEALTH_SEVERITY_ORDER[statusB];
   });
 }

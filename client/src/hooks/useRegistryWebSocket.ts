@@ -14,7 +14,7 @@ import { useWebSocket } from './useWebSocket';
 
 /**
  * Generate a correlation ID for event deduplication.
- * Uses crypto.randomUUID() which is available in all modern browsers.
+ * crypto.randomUUID() is available in all modern browsers (Chrome 92+, Safari 15.4+, Firefox 95+).
  */
 function generateCorrelationId(): string {
   return crypto.randomUUID();
@@ -27,10 +27,12 @@ function generateCorrelationId(): string {
 export const DEFAULT_MAX_RECENT_EVENTS = 50;
 
 /**
- * Maximum number of seen event IDs to track for deduplication.
- * Should be larger than DEFAULT_MAX_RECENT_EVENTS to handle burst scenarios.
+ * Multiplier for seenEventIds cleanup threshold.
+ * When seenEventIds.size exceeds maxRecentEvents * this multiplier,
+ * the Set is pruned to only contain IDs currently in recentEvents.
+ * A value of 5 provides good balance between deduplication window and memory usage.
  */
-export const MAX_SEEN_EVENT_IDS = 100;
+export const SEEN_EVENT_IDS_CLEANUP_MULTIPLIER = 5;
 
 /**
  * Registry event types as defined in the WebSocket Event Spec v1.2
@@ -248,14 +250,6 @@ export function useRegistryWebSocket(
         }
         if (correlationId) {
           seenEventIds.current.add(correlationId);
-          // Prevent memory leak: keep only last MAX_SEEN_EVENT_IDS IDs
-          if (seenEventIds.current.size > MAX_SEEN_EVENT_IDS) {
-            const idsToRemove = Array.from(seenEventIds.current).slice(
-              0,
-              seenEventIds.current.size - maxRecentEvents
-            );
-            idsToRemove.forEach((id) => seenEventIds.current.delete(id));
-          }
         }
 
         if (debug) {
@@ -274,6 +268,16 @@ export function useRegistryWebSocket(
           };
 
           const updated = [newEvent, ...prev].slice(0, maxRecentEvents);
+
+          // Memory cleanup: prevent unbounded growth of seenEventIds
+          // When Set exceeds threshold, prune to only current event IDs
+          // This ensures deduplication continues to work for visible events while
+          // preventing memory leaks in long-running sessions
+          if (seenEventIds.current.size > maxRecentEvents * SEEN_EVENT_IDS_CLEANUP_MULTIPLIER) {
+            const currentIds = new Set(updated.map((e) => e.id));
+            seenEventIds.current = currentIds;
+          }
+
           return updated;
         });
 

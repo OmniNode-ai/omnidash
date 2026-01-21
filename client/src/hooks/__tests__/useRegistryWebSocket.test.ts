@@ -6,7 +6,7 @@
  * - Event filtering (only registry event types should be processed)
  * - Stats tracking (totalEventsReceived, eventsByType, lastEventTime)
  * - clearEvents functionality
- * - Memory leak prevention (seenEventIds bounded to MAX_SEEN_EVENT_IDS)
+ * - Memory leak prevention (seenEventIds cleanup via SEEN_EVENT_IDS_CLEANUP_MULTIPLIER)
  * - Query invalidation on relevant events
  */
 
@@ -48,7 +48,7 @@ vi.mock('@tanstack/react-query', () => ({
 import {
   useRegistryWebSocket,
   DEFAULT_MAX_RECENT_EVENTS,
-  MAX_SEEN_EVENT_IDS,
+  SEEN_EVENT_IDS_CLEANUP_MULTIPLIER,
   type RegistryEventType,
 } from '../useRegistryWebSocket';
 
@@ -390,27 +390,45 @@ describe('useRegistryWebSocket', () => {
       expect(result.current.recentEvents).toHaveLength(DEFAULT_MAX_RECENT_EVENTS);
     });
 
-    it('should bound seenEventIds to MAX_SEEN_EVENT_IDS to prevent memory leaks', () => {
-      const { result } = renderHook(() => useRegistryWebSocket());
+    it('should cleanup seenEventIds when exceeding threshold to prevent memory leaks', () => {
+      // Use small maxRecentEvents to make threshold easier to hit
+      const maxRecentEvents = 10;
+      const threshold = maxRecentEvents * SEEN_EVENT_IDS_CLEANUP_MULTIPLIER; // 50
+      const { result } = renderHook(() => useRegistryWebSocket({ maxRecentEvents }));
 
-      // Add more events than MAX_SEEN_EVENT_IDS
-      for (let i = 0; i < MAX_SEEN_EVENT_IDS + 50; i++) {
+      // Add events up to threshold - no cleanup yet
+      for (let i = 0; i < threshold; i++) {
         act(() => {
           mockOnMessage?.(createEvent('NODE_REGISTERED', `event-${i}`));
         });
       }
 
       // The hook should have processed all events
-      expect(result.current.stats.totalEventsReceived).toBe(MAX_SEEN_EVENT_IDS + 50);
+      expect(result.current.stats.totalEventsReceived).toBe(threshold);
 
-      // Old correlation IDs should have been pruned, allowing them to be reused
-      // The first events should now be allowed again since their IDs were removed
+      // At this point, seenEventIds has exactly 50 IDs
+      // Try to reuse event-0 - should be deduplicated (still in seenEventIds)
+      act(() => {
+        mockOnMessage?.(createEvent('NODE_REGISTERED', 'event-0'));
+      });
+      expect(result.current.stats.totalEventsReceived).toBe(threshold); // No change - deduplicated
+
+      // Add one more event to trigger cleanup (size > threshold)
+      act(() => {
+        mockOnMessage?.(createEvent('NODE_REGISTERED', `event-${threshold}`));
+      });
+
+      // After cleanup, seenEventIds should only contain the last 10 event IDs
+      expect(result.current.stats.totalEventsReceived).toBe(threshold + 1);
+
+      // event-0 should have been pruned from seenEventIds during cleanup
+      // (because it's no longer in the 10 most recent events)
       act(() => {
         mockOnMessage?.(createEvent('NODE_REGISTERED', 'event-0'));
       });
 
       // This should now be accepted since event-0 was pruned from seenEventIds
-      expect(result.current.stats.totalEventsReceived).toBe(MAX_SEEN_EVENT_IDS + 51);
+      expect(result.current.stats.totalEventsReceived).toBe(threshold + 2);
     });
 
     it('should keep eventsByType bounded to 7 keys (one per RegistryEventType)', () => {
