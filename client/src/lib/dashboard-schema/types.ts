@@ -50,6 +50,12 @@ export interface WidgetConfigTable {
   default_sort_direction?: 'asc' | 'desc';
   striped?: boolean;
   hover_highlight?: boolean;
+  /**
+   * When true, indicates the table rows are clickable.
+   * The actual click handler is passed via props to the TableWidget.
+   * This flag enables hover highlight by default and adds visual affordances.
+   */
+  clickable?: boolean;
 }
 
 /**

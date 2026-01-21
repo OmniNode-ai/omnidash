@@ -184,7 +184,12 @@ export function LiveIndicatorCompact({
   };
 
   return (
-    <div className={cn('inline-flex', className)} title={getTitle()}>
+    <div
+      className={cn('inline-flex', className)}
+      title={getTitle()}
+      aria-label={getTitle()}
+      role="status"
+    >
       <div className={getDotClasses()} />
     </div>
   );

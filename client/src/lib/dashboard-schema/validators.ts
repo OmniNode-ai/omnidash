@@ -70,6 +70,7 @@ export const widgetConfigTableSchema = z.object({
   default_sort_direction: z.enum(['asc', 'desc']).optional(),
   striped: z.boolean().optional(),
   hover_highlight: z.boolean().optional(),
+  clickable: z.boolean().optional(),
 });
 
 export const widgetConfigMetricCardSchema = z.object({

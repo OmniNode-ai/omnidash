@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { formatRelativeTime } from '@/lib/date-utils';
 import {
   Zap,
   Cpu,
@@ -172,33 +173,6 @@ export interface NodeDetailPanelProps {
    * Callback when the panel should close
    */
   onClose: () => void;
-}
-
-/**
- * Formats a relative time string from a timestamp
- */
-function formatRelativeTime(timestamp: string | Date): string {
-  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffSeconds < 10) {
-    return 'just now';
-  }
-  if (diffSeconds < 60) {
-    return `${diffSeconds} seconds ago`;
-  }
-  if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
-  }
-  if (diffHours < 24) {
-    return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-  }
-  return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
 }
 
 /**

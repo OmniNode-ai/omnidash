@@ -13,6 +13,22 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from './useWebSocket';
 
 /**
+ * Generate a UUID with fallback for non-secure contexts (HTTP).
+ * crypto.randomUUID() may not be available in non-HTTPS environments.
+ */
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback UUID v4 generator using Math.random()
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+/**
  * Registry event types as defined in the WebSocket Event Spec v1.2
  */
 export type RegistryEventType =
@@ -199,14 +215,14 @@ export function useRegistryWebSocket(
       const event: RegistryEvent = eventData || {
         type: eventType,
         timestamp: message.timestamp,
-        correlation_id: crypto.randomUUID(),
+        correlation_id: generateUUID(),
         payload: {},
       };
 
       // Update recent events
       setRecentEvents((prev) => {
         const newEvent: RecentRegistryEvent = {
-          id: event.correlation_id || crypto.randomUUID(),
+          id: event.correlation_id || generateUUID(),
           type: event.type,
           timestamp: new Date(event.timestamp),
           payload: event.payload,
@@ -256,7 +272,7 @@ export function useRegistryWebSocket(
     [debug, maxRecentEvents, queryClient]
   );
 
-  const { isConnected, connectionStatus, error, subscribe, reconnect } = useWebSocket({
+  const { isConnected, connectionStatus, error, subscribe, unsubscribe, reconnect } = useWebSocket({
     onMessage: handleMessage,
     debug,
   });
@@ -276,7 +292,19 @@ export function useRegistryWebSocket(
     if (!isConnected) {
       hasSubscribed.current = false;
     }
-  }, [isConnected, autoSubscribe, subscribe, debug]);
+
+    // Cleanup: unsubscribe when unmounting or when autoSubscribe changes
+    return () => {
+      if (hasSubscribed.current && isConnected) {
+        if (debug) {
+          // eslint-disable-next-line no-console
+          console.log('[RegistryWebSocket] Unsubscribing from registry topics');
+        }
+        unsubscribe(['registry']);
+        hasSubscribed.current = false;
+      }
+    };
+  }, [isConnected, autoSubscribe, subscribe, unsubscribe, debug]);
 
   /**
    * Clear all recent events

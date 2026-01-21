@@ -16,7 +16,7 @@ import type { NodeType, RegistrationState, HealthStatus } from '@shared/registry
 export type { NodeType, RegistrationState as NodeState, HealthStatus };
 
 export interface RegisteredNodeInfo {
-  node_id?: string; // From API response (RegistryNodeView.node_id)
+  node_id: string; // From API response (RegistryNodeView.node_id)
   name: string;
   node_type: NodeType;
   state: RegistrationState;
@@ -27,6 +27,7 @@ export interface RegisteredNodeInfo {
 }
 
 export interface LiveInstanceInfo {
+  node_id: string;
   service_name: string;
   address: string;
   port: number;
@@ -237,6 +238,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
 
   const nodes: RegisteredNodeInfo[] = [
     {
+      node_id: 'node-001-auth-effect',
       name: 'NodeAuthEffect',
       node_type: 'EFFECT',
       state: 'ACTIVE',
@@ -244,6 +246,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
       capabilities: ['authenticate', 'authorize', 'token-refresh'],
     },
     {
+      node_id: 'node-002-transform-compute',
       name: 'NodeTransformCompute',
       node_type: 'COMPUTE',
       state: 'ACTIVE',
@@ -251,6 +254,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
       capabilities: ['json-transform', 'xml-parse', 'csv-convert'],
     },
     {
+      node_id: 'node-003-aggregate-reducer',
       name: 'NodeAggregateReducer',
       node_type: 'REDUCER',
       state: 'ACTIVE',
@@ -258,6 +262,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
       capabilities: ['sum', 'avg', 'count', 'group-by'],
     },
     {
+      node_id: 'node-004-workflow-orchestrator',
       name: 'NodeWorkflowOrchestrator',
       node_type: 'ORCHESTRATOR',
       state: 'ACTIVE',
@@ -265,6 +270,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
       capabilities: ['parallel-execute', 'conditional-branch', 'retry'],
     },
     {
+      node_id: 'node-005-database-effect',
       name: 'NodeDatabaseEffect',
       node_type: 'EFFECT',
       state: 'PENDING_REGISTRATION',
@@ -272,6 +278,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
       capabilities: ['query', 'insert', 'update', 'delete'],
     },
     {
+      node_id: 'node-006-ml-compute',
       name: 'NodeMLCompute',
       node_type: 'COMPUTE',
       state: 'AWAITING_ACK',
@@ -279,6 +286,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
       capabilities: ['inference', 'embedding', 'classification'],
     },
     {
+      node_id: 'node-007-cache-reducer',
       name: 'NodeCacheReducer',
       node_type: 'REDUCER',
       state: 'LIVENESS_EXPIRED',
@@ -286,6 +294,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
       capabilities: ['lru-cache', 'distributed-cache'],
     },
     {
+      node_id: 'node-008-queue-effect',
       name: 'NodeQueueEffect',
       node_type: 'EFFECT',
       state: 'ACTIVE',
@@ -296,6 +305,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
 
   const live_instances: LiveInstanceInfo[] = [
     {
+      node_id: 'node-001-auth-effect',
       service_name: 'node-auth-effect',
       address: '192.168.86.201',
       port: 8001,
@@ -303,6 +313,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
       last_check_at: new Date(now.getTime() - 5000).toISOString(),
     },
     {
+      node_id: 'node-002-transform-compute',
       service_name: 'node-transform-compute',
       address: '192.168.86.201',
       port: 8002,
@@ -310,6 +321,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
       last_check_at: new Date(now.getTime() - 8000).toISOString(),
     },
     {
+      node_id: 'node-003-aggregate-reducer',
       service_name: 'node-aggregate-reducer',
       address: '192.168.86.200',
       port: 8003,
@@ -317,6 +329,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
       last_check_at: new Date(now.getTime() - 30000).toISOString(),
     },
     {
+      node_id: 'node-004-workflow-orchestrator',
       service_name: 'node-workflow-orchestrator',
       address: '192.168.86.200',
       port: 8004,
@@ -324,6 +337,7 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
       last_check_at: new Date(now.getTime() - 3000).toISOString(),
     },
     {
+      node_id: 'node-008-queue-effect',
       service_name: 'node-queue-effect',
       address: '192.168.86.100',
       port: 8005,

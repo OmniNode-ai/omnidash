@@ -281,6 +281,11 @@ class RegistryEventEmitterClass extends EventEmitter {
           HEALTH_CHECK_STATUSES[Math.floor(Math.random() * HEALTH_CHECK_STATUSES.length)];
         let newHealth =
           HEALTH_CHECK_STATUSES[Math.floor(Math.random() * HEALTH_CHECK_STATUSES.length)];
+        // Ensure health actually changes
+        while (newHealth === previousHealth) {
+          newHealth =
+            HEALTH_CHECK_STATUSES[Math.floor(Math.random() * HEALTH_CHECK_STATUSES.length)];
+        }
         payload = {
           instance_id: `${node.node_id}-instance-${Math.floor(Math.random() * 3) + 1}`,
           node_id: node.node_id,

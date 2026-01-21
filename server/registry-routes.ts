@@ -106,14 +106,16 @@ router.get('/discovery', (req: Request, res: Response) => {
     // Generate mock data
     const allNodes = generateMockNodes();
     const allInstances = generateMockInstances(allNodes);
-    const summary = generateMockSummary(allNodes, allInstances);
 
-    // Filter nodes
+    // Filter nodes first
     const { nodes: filteredNodes, total } = filterNodes(allNodes, params);
 
     // Filter instances to only include those for returned nodes
     const nodeIds = new Set(filteredNodes.map((n) => n.node_id));
     const filteredInstances = allInstances.filter((i) => nodeIds.has(i.node_id));
+
+    // Generate summary from FILTERED data (not all data)
+    const summary = generateMockSummary(filteredNodes, filteredInstances);
 
     const response: RegistryDiscoveryResponse = {
       timestamp: new Date().toISOString(),

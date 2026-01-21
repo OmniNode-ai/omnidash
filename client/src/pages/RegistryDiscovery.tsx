@@ -34,22 +34,14 @@ import { useRegistryWebSocket } from '@/hooks/useRegistryWebSocket';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { LiveIndicator } from '@/components/LiveIndicator';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { RegistryEmptyState } from '@/components/EmptyState';
+import { FilterBar, type FilterConfig } from '@/components/FilterBar';
+import { DashboardPageHeader } from '@/components/DashboardPageHeader';
 import {
   NodeDetailPanel,
   NodeTypeIcon,
@@ -57,23 +49,7 @@ import {
   NODE_TYPE_CONFIG,
   NODE_STATE_CONFIG,
 } from '@/components/NodeDetailPanel';
-import {
-  RefreshCw,
-  AlertCircle,
-  Database,
-  Filter,
-  X,
-  Loader2,
-  Radio,
-  Activity,
-  Trash2,
-  Search,
-  Clock,
-  Keyboard,
-  Zap,
-  ChevronRight,
-  ChevronDown,
-} from 'lucide-react';
+import { AlertCircle, X, Radio, Activity, Trash2, Zap, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // LocalStorage key for banner dismissal
@@ -130,26 +106,6 @@ function formatTime(date: Date): string {
     minute: '2-digit',
     second: '2-digit',
   });
-}
-
-// Format relative time
-function formatRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-
-  if (diffSeconds < 10) {
-    return 'just now';
-  }
-  if (diffSeconds < 60) {
-    return `${diffSeconds} seconds ago`;
-  }
-  if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
-  }
-  return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
 }
 
 export default function RegistryDiscovery() {
@@ -243,7 +199,12 @@ export default function RegistryDiscovery() {
       );
     }
 
-    // Filter instances by health
+    // Filter instances to only include those belonging to filtered nodes
+    // This ensures by_health summary reflects the filtered node set
+    const filteredNodeIds = new Set(filteredNodes.map((n) => n.node_id));
+    filteredInstances = filteredInstances.filter((inst) => filteredNodeIds.has(inst.node_id));
+
+    // Filter instances by health (applied after node-based filtering)
     if (healthFilter) {
       filteredInstances = filteredInstances.filter((inst) => inst.health_status === healthFilter);
     }
@@ -350,6 +311,105 @@ export default function RegistryDiscovery() {
   const hasNoData =
     !filteredData || (filteredData.nodes.length === 0 && filteredData.live_instances.length === 0);
 
+  // Build filter configs for FilterBar
+  const filterConfigs = useMemo<FilterConfig[]>(() => {
+    return [
+      {
+        type: 'select' as const,
+        id: 'type',
+        placeholder: 'Node Type',
+        value: typeFilter,
+        onChange: setTypeFilter,
+        allLabel: 'All Types',
+        options: NODE_TYPES.map((type) => {
+          const config = NODE_TYPE_CONFIG[type];
+          const Icon = config.icon;
+          return {
+            value: type,
+            label: type,
+            icon: <Icon className={cn('h-3.5 w-3.5', config.color)} />,
+          };
+        }),
+      },
+      {
+        type: 'select' as const,
+        id: 'state',
+        placeholder: 'State',
+        value: stateFilter,
+        onChange: setStateFilter,
+        allLabel: 'All States',
+        options: NODE_STATES.map((state) => ({
+          value: state,
+          label: NODE_STATE_CONFIG[state]?.label || state,
+        })),
+      },
+      {
+        type: 'select' as const,
+        id: 'health',
+        placeholder: 'Health',
+        value: healthFilter,
+        onChange: setHealthFilter,
+        allLabel: 'All Health',
+        options: HEALTH_STATUSES.map((status) => ({
+          value: status,
+          label: status.charAt(0).toUpperCase() + status.slice(1),
+        })),
+      },
+      {
+        type: 'search' as const,
+        id: 'capability',
+        placeholder: 'Search...',
+        value: capabilitySearch,
+        onChange: setCapabilitySearch,
+        inputRef: capabilityInputRef,
+      },
+    ];
+  }, [typeFilter, stateFilter, healthFilter, capabilitySearch]);
+
+  // Keyboard shortcuts for DashboardPageHeader
+  const keyboardShortcuts = useMemo(
+    () => [
+      { key: 'R', description: 'Refresh data' },
+      { key: 'F', description: 'Focus search' },
+      { key: 'Esc', description: 'Close panel' },
+    ],
+    []
+  );
+
+  // Header action buttons
+  const headerActions = useMemo(
+    () => (
+      <>
+        {/* Event feed toggle */}
+        <Button
+          variant={showEventFeed ? 'secondary' : 'outline'}
+          size="sm"
+          onClick={() => setShowEventFeed(!showEventFeed)}
+          className="gap-2"
+        >
+          <Activity className="h-4 w-4" />
+          <span className="hidden sm:inline">Events</span>
+          {stats.totalEventsReceived > 0 && (
+            <Badge variant="outline" className="ml-1 text-xs">
+              {stats.totalEventsReceived}
+            </Badge>
+          )}
+        </Button>
+
+        {/* Toggle mock data */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setUseMockData(!useMockData)}
+          className="hidden md:flex"
+        >
+          {useMockData ? 'Use Live Data' : 'Use Mock Data'}
+        </Button>
+      </>
+    ),
+    [showEventFeed, stats.totalEventsReceived, useMockData]
+  );
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -410,230 +470,28 @@ export default function RegistryDiscovery() {
         )}
 
         {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-xl md:text-2xl font-semibold">
-              {registryDiscoveryDashboardConfig.name}
-            </h1>
-            <p className="text-muted-foreground text-sm md:text-base">
-              {registryDiscoveryDashboardConfig.description}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 md:gap-4">
-            {/* Last updated timestamp */}
-            {lastUpdated && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Updated</span>{' '}
-                    {formatRelativeTime(lastUpdated)}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Last updated: {lastUpdated.toLocaleString()}</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-
-            {/* Live indicator (WebSocket status) */}
-            <LiveIndicator
-              isConnected={isConnected}
-              connectionStatus={connectionStatus}
-              size="sm"
-            />
-
-            {/* Data source badge */}
-            <Badge variant={useMockData ? 'secondary' : 'default'} className="gap-1 hidden sm:flex">
-              <Database className="h-3 w-3" />
-              {useMockData ? 'Mock Data' : 'Live API'}
-            </Badge>
-
-            {/* Fetching indicator */}
-            {isFetching && !isLoading && (
-              <Badge variant="outline" className="gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span className="hidden sm:inline">Updating...</span>
-              </Badge>
-            )}
-
-            {/* Keyboard shortcuts hint */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="hidden md:flex">
-                  <Keyboard className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <div className="space-y-1 text-xs">
-                  <p>
-                    <kbd className="bg-muted px-1 rounded">R</kbd> Refresh data
-                  </p>
-                  <p>
-                    <kbd className="bg-muted px-1 rounded">F</kbd> Focus search
-                  </p>
-                  <p>
-                    <kbd className="bg-muted px-1 rounded">Esc</kbd> Close panel
-                  </p>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Event feed toggle */}
-            <Button
-              variant={showEventFeed ? 'secondary' : 'outline'}
-              size="sm"
-              onClick={() => setShowEventFeed(!showEventFeed)}
-              className="gap-2"
-            >
-              <Activity className="h-4 w-4" />
-              <span className="hidden sm:inline">Events</span>
-              {stats.totalEventsReceived > 0 && (
-                <Badge variant="outline" className="ml-1 text-xs">
-                  {stats.totalEventsReceived}
-                </Badge>
-              )}
-            </Button>
-
-            {/* Toggle mock data */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setUseMockData(!useMockData)}
-              className="hidden md:flex"
-            >
-              {useMockData ? 'Use Live Data' : 'Use Mock Data'}
-            </Button>
-
-            {/* Refresh button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isLoading || useMockData}
-              className="gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
-          </div>
-        </div>
+        <DashboardPageHeader
+          title={registryDiscoveryDashboardConfig.name}
+          description={registryDiscoveryDashboardConfig.description}
+          lastUpdated={lastUpdated}
+          isConnected={isConnected}
+          connectionStatus={connectionStatus}
+          onRefresh={handleRefresh}
+          isFetching={isFetching}
+          isLoading={isLoading}
+          useMockData={useMockData}
+          keyboardShortcuts={keyboardShortcuts}
+          actions={headerActions}
+        />
 
         {/* Collapsible Filters */}
-        <Collapsible open={isFiltersOpen || !!hasFilters} onOpenChange={setIsFiltersOpen}>
-          <div className="flex items-center gap-2">
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 h-8 px-2">
-                <Filter className="h-4 w-4" />
-                <span className="text-sm font-medium">Filters</span>
-                <ChevronDown
-                  className={cn(
-                    'h-4 w-4 transition-transform',
-                    (isFiltersOpen || !!hasFilters) && 'rotate-180'
-                  )}
-                />
-              </Button>
-            </CollapsibleTrigger>
-            {hasFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="gap-1 text-muted-foreground h-7"
-              >
-                <X className="h-3 w-3" />
-                Clear
-              </Button>
-            )}
-          </div>
-          <CollapsibleContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 p-3 border rounded-lg bg-muted/20">
-              {/* Node type filter */}
-              <Select
-                value={typeFilter ?? 'all'}
-                onValueChange={(value) => setTypeFilter(value === 'all' ? undefined : value)}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Node Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {NODE_TYPES.map((type) => {
-                    const config = NODE_TYPE_CONFIG[type];
-                    const Icon = config.icon;
-                    return (
-                      <SelectItem key={type} value={type}>
-                        <span className="flex items-center gap-2">
-                          <Icon className={cn('h-3.5 w-3.5', config.color)} />
-                          {type}
-                        </span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-
-              {/* State filter */}
-              <Select
-                value={stateFilter ?? 'all'}
-                onValueChange={(value) => setStateFilter(value === 'all' ? undefined : value)}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="State" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All States</SelectItem>
-                  {NODE_STATES.map((state) => (
-                    <SelectItem key={state} value={state}>
-                      {NODE_STATE_CONFIG[state]?.label || state}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Health filter */}
-              <Select
-                value={healthFilter ?? 'all'}
-                onValueChange={(value) => setHealthFilter(value === 'all' ? undefined : value)}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Health" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Health</SelectItem>
-                  {HEALTH_STATUSES.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Capability search */}
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  ref={capabilityInputRef}
-                  placeholder="Search..."
-                  value={capabilitySearch}
-                  onChange={(e) => setCapabilitySearch(e.target.value)}
-                  className="pl-9 h-9"
-                />
-                {capabilitySearch && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                    onClick={() => setCapabilitySearch('')}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+        <FilterBar
+          filters={filterConfigs}
+          isOpen={isFiltersOpen}
+          onOpenChange={setIsFiltersOpen}
+          onClear={clearFilters}
+          hasActiveFilters={!!hasFilters}
+        />
 
         {/* Warnings */}
         {rawData?.warnings && rawData.warnings.length > 0 && (

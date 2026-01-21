@@ -166,7 +166,10 @@ app.use((req, res, next) => {
       !process.env.VITEST &&
       process.env.ENABLE_MOCK_REGISTRY_EVENTS !== 'false'
     ) {
-      const mockInterval = parseInt(process.env.MOCK_REGISTRY_EVENT_INTERVAL || '5000', 10);
+      const parsedInterval = parseInt(process.env.MOCK_REGISTRY_EVENT_INTERVAL || '5000', 10);
+      // Validate interval is a positive finite number with minimum of 1000ms to prevent event storms
+      const mockInterval =
+        !Number.isFinite(parsedInterval) || parsedInterval < 1000 ? 5000 : parsedInterval;
       log(`Starting mock registry events (interval: ${mockInterval}ms)`);
       startMockRegistryEvents(mockInterval);
     }
