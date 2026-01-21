@@ -7,5 +7,5 @@ export { WidgetRenderer } from './WidgetRenderer';
 export { MetricCardWidget } from './MetricCardWidget';
 export { ChartWidget } from './ChartWidget';
 export { EventFeedWidget } from './EventFeedWidget';
-export { TableWidget } from './TableWidget';
+export { TableWidget, type RowData } from './TableWidget';
 export { StatusGridWidget } from './StatusGridWidget';
