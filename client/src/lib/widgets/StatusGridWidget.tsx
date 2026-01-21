@@ -55,7 +55,16 @@ interface StatusGridWidgetProps {
 }
 
 /** Status values that map to each semantic color */
-const STATUS_HEALTHY = ['healthy', 'active', 'success', 'online', 'running', 'up', 'passed'];
+const STATUS_HEALTHY = [
+  'healthy',
+  'active',
+  'success',
+  'online',
+  'running',
+  'up',
+  'passed',
+  'passing',
+];
 const STATUS_WARNING = ['warning', 'degraded', 'pending', 'slow'];
 const STATUS_ERROR = ['error', 'failed', 'down', 'critical', 'offline'];
 // Everything else maps to inactive/gray
@@ -221,6 +230,7 @@ export function StatusGridWidget({
   const columns = config.columns ?? 4;
   const showLabels = config.show_labels ?? true;
   const compact = config.compact ?? false;
+  const showSummary = config.show_summary ?? true;
 
   // Loading state with skeleton grid
   if (isLoading) {
@@ -327,44 +337,46 @@ export function StatusGridWidget({
         ))}
       </div>
 
-      {/* Count Summary */}
-      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
-        {statusCounts.healthy > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-status-healthy" />
-            <span>
-              <span className="font-mono text-foreground">{statusCounts.healthy}</span> healthy
-            </span>
-          </div>
-        )}
-        {statusCounts.warning > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-status-warning" />
-            <span>
-              <span className="font-mono text-foreground">{statusCounts.warning}</span> warning
-            </span>
-          </div>
-        )}
-        {statusCounts.error > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-status-error" />
-            <span>
-              <span className="font-mono text-foreground">{statusCounts.error}</span> error
-            </span>
-          </div>
-        )}
-        {statusCounts.inactive > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-status-offline" />
-            <span>
-              <span className="font-mono text-foreground">{statusCounts.inactive}</span> inactive
-            </span>
-          </div>
-        )}
-        <span className="ml-auto">
-          Total: <span className="font-mono text-foreground">{items.length}</span>
-        </span>
-      </div>
+      {/* Count Summary (optional) */}
+      {showSummary && (
+        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+          {statusCounts.healthy > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-status-healthy" />
+              <span>
+                <span className="font-mono text-foreground">{statusCounts.healthy}</span> healthy
+              </span>
+            </div>
+          )}
+          {statusCounts.warning > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-status-warning" />
+              <span>
+                <span className="font-mono text-foreground">{statusCounts.warning}</span> warning
+              </span>
+            </div>
+          )}
+          {statusCounts.error > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-status-error" />
+              <span>
+                <span className="font-mono text-foreground">{statusCounts.error}</span> error
+              </span>
+            </div>
+          )}
+          {statusCounts.inactive > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-status-offline" />
+              <span>
+                <span className="font-mono text-foreground">{statusCounts.inactive}</span> inactive
+              </span>
+            </div>
+          )}
+          <span className="ml-auto">
+            Total: <span className="font-mono text-foreground">{items.length}</span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }

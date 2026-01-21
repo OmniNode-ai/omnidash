@@ -1,4 +1,4 @@
-import { Server, Radio, ChevronRight, Search, Layers, Activity, GitBranch } from 'lucide-react';
+import { Radio, ChevronRight, Search, Layers, Activity, GitBranch, Globe } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
   Sidebar,
@@ -27,16 +27,16 @@ const dashboards = [
     description: 'Node execution visualization (investor demo)',
   },
   {
-    title: 'Node Registry',
-    url: '/registry',
-    icon: Server,
-    description: '2-way node registration monitoring',
-  },
-  {
     title: 'Event Bus',
     url: '/events',
     icon: Radio,
     description: 'Kafka event stream visualization',
+  },
+  {
+    title: 'Registry Discovery',
+    url: '/discovery',
+    icon: Globe,
+    description: 'Contract-driven node and service discovery',
   },
 ];
 

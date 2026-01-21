@@ -50,6 +50,12 @@ export interface WidgetConfigTable {
   default_sort_direction?: 'asc' | 'desc';
   striped?: boolean;
   hover_highlight?: boolean;
+  /**
+   * When true, indicates the table rows are clickable.
+   * The actual click handler is passed via props to the TableWidget.
+   * This flag enables hover highlight by default and adds visual affordances.
+   */
+  clickable?: boolean;
 }
 
 /**
@@ -170,6 +176,21 @@ export interface WidgetConfigMetricCard {
    * Uses the icon system defined in the component library.
    */
   icon?: string;
+
+  /**
+   * Explicit semantic status that overrides threshold-based calculation.
+   * Use this for metrics where the status is determined by the metric's
+   * semantic meaning rather than its value (e.g., "Active" should always
+   * be green, "Pending" should always be amber).
+   *
+   * - `'healthy'`: Green - success/active state
+   * - `'warning'`: Amber - pending/watch state
+   * - `'error'`: Red - failure/critical state
+   * - `'neutral'`: No status coloring - informational only
+   *
+   * When set, `thresholds` are ignored.
+   */
+  semantic_status?: 'healthy' | 'warning' | 'error' | 'neutral';
 }
 
 export interface WidgetConfigStatusGrid {
@@ -181,6 +202,8 @@ export interface WidgetConfigStatusGrid {
   columns?: number;
   show_labels?: boolean;
   compact?: boolean;
+  /** Whether to show the summary footer with status counts. Default: true */
+  show_summary?: boolean;
 }
 
 export interface WidgetConfigEventFeed {

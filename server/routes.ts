@@ -5,6 +5,7 @@ import savingsRoutes from './savings-routes';
 import agentRegistryRoutes from './agent-registry-routes';
 import { chatRouter } from './chat-routes';
 import eventBusRoutes from './event-bus-routes';
+import registryRoutes from './registry-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -27,6 +28,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount event bus routes for event querying and statistics
   app.use('/api/event-bus', eventBusRoutes);
+
+  // Mount registry routes for ONEX node registry discovery (contract-driven dashboards)
+  app.use('/api/registry', registryRoutes);
 
   const httpServer = createServer(app);
 

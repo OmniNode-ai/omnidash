@@ -25,6 +25,14 @@ import { cn } from '@/lib/utils';
 import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
+ * Type for a single row of data in the table.
+ *
+ * Represents a generic record where keys are column identifiers
+ * and values can be any type (formatted by CellValue based on column config).
+ */
+export type RowData = Record<string, unknown>;
+
+/**
  * Props for the TableWidget component.
  *
  * @interface TableWidgetProps
@@ -60,6 +68,14 @@ interface TableWidgetProps {
    * @default false
    */
   isLoading?: boolean;
+
+  /**
+   * Optional callback fired when a row is clicked.
+   * When provided, rows become clickable with pointer cursor.
+   *
+   * @param row - The data object for the clicked row
+   */
+  onRowClick?: (row: RowData) => void;
 }
 
 /**
@@ -81,14 +97,6 @@ interface SortState {
   /** The sort direction */
   direction: SortDirection;
 }
-
-/**
- * Type for a single row of data in the table.
- *
- * Represents a generic record where keys are column identifiers
- * and values can be any type (formatted by CellValue based on column config).
- */
-type RowData = Record<string, unknown>;
 
 /**
  * Renders a data table widget with sorting and pagination support.
@@ -130,7 +138,13 @@ type RowData = Record<string, unknown>;
  * @param props - Component props
  * @returns A table component with sorting and pagination
  */
-export function TableWidget({ widget: _widget, config, data, isLoading }: TableWidgetProps) {
+export function TableWidget({
+  widget: _widget,
+  config,
+  data,
+  isLoading,
+  onRowClick,
+}: TableWidgetProps) {
   // Initialize sort state from config defaults
   const [sortState, setSortState] = useState<SortState>({
     key: config.default_sort_key ?? null,
@@ -282,8 +296,10 @@ export function TableWidget({ widget: _widget, config, data, isLoading }: TableW
                 key={String(row.id ?? row.node_id ?? row.widget_id ?? rowIndex)}
                 className={cn(
                   config.striped && rowIndex % 2 === 1 && 'bg-muted/30',
-                  config.hover_highlight && 'hover:bg-muted/50'
+                  config.hover_highlight && 'hover:bg-muted/50',
+                  onRowClick && 'cursor-pointer'
                 )}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
                 {config.columns.map((column) => (
                   <TableCell

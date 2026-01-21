@@ -341,12 +341,12 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
         data={chartData}
         dataKey={valueKey}
         nameKey={nameKey}
-        cx="50%"
+        cx={config.show_legend ? '40%' : '50%'}
         cy="50%"
         innerRadius={PIE_INNER_RADIUS}
         outerRadius={PIE_OUTER_RADIUS}
         paddingAngle={PIE_PADDING_ANGLE}
-        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
         labelLine={false}
       >
         {(chartData as Record<string, unknown>[]).map((_, index) => (
@@ -354,7 +354,14 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
         ))}
       </Pie>
       <Tooltip contentStyle={tooltipStyle} />
-      {config.show_legend && <Legend />}
+      {config.show_legend && (
+        <Legend
+          layout="vertical"
+          align="right"
+          verticalAlign="middle"
+          wrapperStyle={{ paddingLeft: '20px' }}
+        />
+      )}
     </PieChart>
   );
 }
