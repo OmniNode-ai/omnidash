@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/select';
 import { Radio, Activity, Trash2, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { normalizeHealthStatus } from '@/lib/health-utils';
 import {
   DEFAULT_MAX_RECENT_EVENTS,
   type RecentRegistryEvent,
@@ -95,6 +96,7 @@ export const SEVERITY_FILTER_OPTIONS: { value: SeverityFilter; label: string }[]
 
 /**
  * Derive severity from event type and payload.
+ * Uses the centralized health-utils for consistent health status normalization.
  *
  * @param event - The registry event
  * @returns The derived severity level
@@ -104,14 +106,19 @@ export function getEventSeverity(event: RecentRegistryEvent): SeverityFilter {
   if (event.type === 'INSTANCE_HEALTH_CHANGED') {
     const newHealth = event.payload?.new_health as string | undefined;
     const healthStatus = event.payload?.health_status as string | undefined;
-    const health = (newHealth || healthStatus || '').toLowerCase();
+    const healthString = newHealth || healthStatus || '';
 
-    if (health === 'critical' || health === 'unhealthy' || health === 'dead') {
+    // Use centralized health normalization
+    const normalizedHealth = normalizeHealthStatus(healthString);
+
+    // Map semantic health levels to severity
+    if (normalizedHealth === 'critical') {
       return 'error';
     }
-    if (health === 'degraded' || health === 'warning') {
+    if (normalizedHealth === 'warning') {
       return 'warning';
     }
+    // 'healthy' and 'unknown' are informational
     return 'info';
   }
 
