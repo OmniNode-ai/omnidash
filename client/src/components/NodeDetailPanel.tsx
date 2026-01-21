@@ -74,38 +74,48 @@ export const NODE_TYPE_CONFIG: Record<
   },
 };
 
-// State badge configurations
+// State badge configurations - matches RegistrationState from ONEX state machine
 export const NODE_STATE_CONFIG: Record<
   NodeState,
   { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }
 > = {
-  registered: {
-    label: 'Registered',
-    variant: 'secondary',
-    className: 'bg-gray-500/10 text-gray-600 border-gray-300',
-  },
-  active: {
-    label: 'Active',
-    variant: 'default',
-    className: 'bg-green-500/10 text-green-600 border-green-300',
-  },
-  inactive: {
-    label: 'Inactive',
-    variant: 'secondary',
-    className: 'bg-gray-500/10 text-gray-500 border-gray-300',
-  },
-  pending: {
+  PENDING_REGISTRATION: {
     label: 'Pending',
     variant: 'outline',
     className: 'bg-yellow-500/10 text-yellow-600 border-yellow-300',
   },
-  deprecated: {
-    label: 'Deprecated',
+  ACCEPTED: {
+    label: 'Accepted',
+    variant: 'secondary',
+    className: 'bg-blue-500/10 text-blue-600 border-blue-300',
+  },
+  AWAITING_ACK: {
+    label: 'Awaiting ACK',
     variant: 'outline',
+    className: 'bg-yellow-500/10 text-yellow-600 border-yellow-300',
+  },
+  ACK_RECEIVED: {
+    label: 'ACK Received',
+    variant: 'secondary',
+    className: 'bg-blue-500/10 text-blue-600 border-blue-300',
+  },
+  ACTIVE: {
+    label: 'Active',
+    variant: 'default',
+    className: 'bg-green-500/10 text-green-600 border-green-300',
+  },
+  ACK_TIMED_OUT: {
+    label: 'ACK Timeout',
+    variant: 'destructive',
     className: 'bg-orange-500/10 text-orange-600 border-orange-300',
   },
-  failed: {
-    label: 'Failed',
+  LIVENESS_EXPIRED: {
+    label: 'Expired',
+    variant: 'destructive',
+    className: 'bg-red-500/10 text-red-600 border-red-300',
+  },
+  REJECTED: {
+    label: 'Rejected',
     variant: 'destructive',
     className: 'bg-red-500/10 text-red-600 border-red-300',
   },
@@ -205,13 +215,10 @@ function formatRelativeTime(timestamp: string | Date): string {
  * ```
  */
 export function NodeDetailPanel({ node, instances = [], open, onClose }: NodeDetailPanelProps) {
-  // Parse capabilities from comma-separated string
+  // Capabilities are now an array from the API
   const capabilities = useMemo(() => {
     if (!node?.capabilities) return [];
-    return node.capabilities
-      .split(',')
-      .map((cap) => cap.trim())
-      .filter(Boolean);
+    return node.capabilities.filter(Boolean);
   }, [node?.capabilities]);
 
   // Get matching instances for this node
@@ -315,7 +322,7 @@ export function NodeDetailPanel({ node, instances = [], open, onClose }: NodeDet
               </h4>
               {capabilities.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
-                  {capabilities.map((cap, idx) => (
+                  {capabilities.map((cap: string, idx: number) => (
                     <Badge key={idx} variant="outline" className="text-xs font-mono bg-muted/50">
                       {cap}
                     </Badge>

@@ -10,20 +10,18 @@
 
 import type { DashboardConfig, DashboardData } from '@/lib/dashboard-schema';
 import { DashboardTheme } from '@/lib/dashboard-schema';
+import type { NodeType, RegistrationState, HealthStatus } from '@shared/registry-types';
 
-// Types for Registry Discovery data
-export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
-
-export type NodeState = 'registered' | 'active' | 'inactive' | 'pending' | 'deprecated' | 'failed';
-
-export type HealthStatus = 'passing' | 'warning' | 'critical' | 'unknown';
+// Re-export types for use in other components
+export type { NodeType, RegistrationState as NodeState, HealthStatus };
 
 export interface RegisteredNodeInfo {
+  node_id?: string; // From API response (RegistryNodeView.node_id)
   name: string;
   node_type: NodeType;
-  state: NodeState;
+  state: RegistrationState;
   version: string;
-  capabilities: string;
+  capabilities: string[];
   description?: string;
   registered_at?: string;
 }
@@ -65,25 +63,25 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
   theme: DashboardTheme.SYSTEM,
   layout: {
     columns: 12,
-    row_height: 100,
+    row_height: 80,
     gap: 16,
     responsive: true,
   },
   data_source: 'api:/api/registry/discovery',
   refresh_interval_seconds: 30,
   widgets: [
-    // Row 0: Summary metrics (4 cards)
+    // Row 0: Summary metrics (4 cards) - using flattened keys from transformRegistryData
     {
       widget_id: 'total-nodes',
       title: 'Total Nodes',
-      description: 'Total number of registered nodes',
+      description: 'Total registered',
       row: 0,
       col: 0,
       width: 3,
       height: 1,
       config: {
         config_kind: 'metric_card',
-        metric_key: 'summary.total_nodes',
+        metric_key: 'total_nodes',
         label: 'Total Nodes',
         value_format: 'number',
         precision: 0,
@@ -93,14 +91,14 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
     {
       widget_id: 'active-nodes',
       title: 'Active Nodes',
-      description: 'Nodes currently in active state',
+      description: 'Currently active',
       row: 0,
       col: 3,
       width: 3,
       height: 1,
       config: {
         config_kind: 'metric_card',
-        metric_key: 'summary.active_nodes',
+        metric_key: 'active_nodes',
         label: 'Active',
         value_format: 'number',
         precision: 0,
@@ -111,14 +109,14 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
     {
       widget_id: 'pending-nodes',
       title: 'Pending Nodes',
-      description: 'Nodes awaiting registration or activation',
+      description: 'Awaiting activation',
       row: 0,
       col: 6,
       width: 3,
       height: 1,
       config: {
         config_kind: 'metric_card',
-        metric_key: 'summary.pending_nodes',
+        metric_key: 'pending_nodes',
         label: 'Pending',
         value_format: 'number',
         precision: 0,
@@ -132,14 +130,14 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
     {
       widget_id: 'failed-nodes',
       title: 'Failed Nodes',
-      description: 'Nodes with failed or error state',
+      description: 'Error state',
       row: 0,
       col: 9,
       width: 3,
       height: 1,
       config: {
         config_kind: 'metric_card',
-        metric_key: 'summary.failed_nodes',
+        metric_key: 'failed_nodes',
         label: 'Failed',
         value_format: 'number',
         precision: 0,
@@ -151,11 +149,11 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
       },
     },
 
-    // Row 1-2: Node type distribution (pie) + Health status (status grid)
+    // Row 1: Pie chart and status grid side by side
     {
       widget_id: 'node-type-distribution',
       title: 'Node Types',
-      description: 'Distribution of nodes by type',
+      description: 'Distribution by node type',
       row: 1,
       col: 0,
       width: 6,
@@ -163,14 +161,14 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
       config: {
         config_kind: 'chart',
         chart_type: 'pie',
-        series: [{ name: 'Node Types', data_key: 'summary.by_type' }],
+        series: [{ name: 'Node Types', data_key: 'nodeTypeDistribution' }],
         show_legend: true,
       },
     },
     {
       widget_id: 'health-status',
       title: 'Instance Health',
-      description: 'Health status of live service instances',
+      description: 'Live service health from Consul',
       row: 1,
       col: 6,
       width: 6,
@@ -186,68 +184,7 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
         compact: false,
       },
     },
-
-    // Row 3-5: Registered nodes table
-    {
-      widget_id: 'nodes-table',
-      title: 'Registered Nodes',
-      description: 'All registered nodes with their metadata',
-      row: 3,
-      col: 0,
-      width: 12,
-      height: 3,
-      config: {
-        config_kind: 'table',
-        rows_key: 'nodes',
-        columns: [
-          { key: 'name', header: 'Name', sortable: true, width: 200 },
-          { key: 'node_type', header: 'Type', sortable: true, width: 120 },
-          { key: 'state', header: 'State', format: 'badge', sortable: true, width: 120 },
-          { key: 'version', header: 'Version', width: 100 },
-          { key: 'capabilities', header: 'Capabilities', width: 250 },
-        ],
-        page_size: 10,
-        show_pagination: true,
-        default_sort_key: 'name',
-        default_sort_direction: 'asc',
-        striped: true,
-        hover_highlight: true,
-      },
-    },
-
-    // Row 6-8: Live instances table
-    {
-      widget_id: 'instances-table',
-      title: 'Live Instances',
-      description: 'Active service instances from Consul',
-      row: 6,
-      col: 0,
-      width: 12,
-      height: 3,
-      config: {
-        config_kind: 'table',
-        rows_key: 'live_instances',
-        columns: [
-          { key: 'service_name', header: 'Service', sortable: true, width: 200 },
-          { key: 'address', header: 'Address', width: 150 },
-          { key: 'port', header: 'Port', width: 80, align: 'right' },
-          { key: 'health_status', header: 'Health', format: 'badge', sortable: true, width: 100 },
-          {
-            key: 'last_check_at',
-            header: 'Last Check',
-            format: 'datetime',
-            sortable: true,
-            width: 180,
-          },
-        ],
-        page_size: 10,
-        show_pagination: true,
-        default_sort_key: 'service_name',
-        default_sort_direction: 'asc',
-        striped: true,
-        hover_highlight: true,
-      },
-    },
+    // NOTE: Tables removed - using custom interactive table in RegistryDiscovery.tsx instead
   ],
 };
 
@@ -282,6 +219,13 @@ export function transformRegistryData(data: RegistryDiscoveryData): DashboardDat
   return {
     ...data,
     healthStatusItems,
+    // Flatten summary fields for MetricCard widgets (they use data[key] directly, not nested paths)
+    total_nodes: data.summary.total_nodes,
+    active_nodes: data.summary.active_nodes,
+    pending_nodes: data.summary.pending_nodes,
+    failed_nodes: data.summary.failed_nodes,
+    // Flatten by_type for chart widget
+    nodeTypeDistribution: data.summary.by_type,
   };
 }
 
@@ -295,58 +239,58 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
     {
       name: 'NodeAuthEffect',
       node_type: 'EFFECT',
-      state: 'active',
+      state: 'ACTIVE',
       version: '1.4.2',
-      capabilities: 'authenticate, authorize, token-refresh',
+      capabilities: ['authenticate', 'authorize', 'token-refresh'],
     },
     {
       name: 'NodeTransformCompute',
       node_type: 'COMPUTE',
-      state: 'active',
+      state: 'ACTIVE',
       version: '1.4.2',
-      capabilities: 'json-transform, xml-parse, csv-convert',
+      capabilities: ['json-transform', 'xml-parse', 'csv-convert'],
     },
     {
       name: 'NodeAggregateReducer',
       node_type: 'REDUCER',
-      state: 'active',
+      state: 'ACTIVE',
       version: '1.4.1',
-      capabilities: 'sum, avg, count, group-by',
+      capabilities: ['sum', 'avg', 'count', 'group-by'],
     },
     {
       name: 'NodeWorkflowOrchestrator',
       node_type: 'ORCHESTRATOR',
-      state: 'active',
+      state: 'ACTIVE',
       version: '1.4.2',
-      capabilities: 'parallel-execute, conditional-branch, retry',
+      capabilities: ['parallel-execute', 'conditional-branch', 'retry'],
     },
     {
       name: 'NodeDatabaseEffect',
       node_type: 'EFFECT',
-      state: 'pending',
+      state: 'PENDING_REGISTRATION',
       version: '1.4.2',
-      capabilities: 'query, insert, update, delete',
+      capabilities: ['query', 'insert', 'update', 'delete'],
     },
     {
       name: 'NodeMLCompute',
       node_type: 'COMPUTE',
-      state: 'pending',
+      state: 'AWAITING_ACK',
       version: '1.4.2',
-      capabilities: 'inference, embedding, classification',
+      capabilities: ['inference', 'embedding', 'classification'],
     },
     {
       name: 'NodeCacheReducer',
       node_type: 'REDUCER',
-      state: 'failed',
+      state: 'LIVENESS_EXPIRED',
       version: '1.3.9',
-      capabilities: 'lru-cache, distributed-cache',
+      capabilities: ['lru-cache', 'distributed-cache'],
     },
     {
       name: 'NodeQueueEffect',
       node_type: 'EFFECT',
-      state: 'active',
+      state: 'ACTIVE',
       version: '1.4.2',
-      capabilities: 'enqueue, dequeue, peek',
+      capabilities: ['enqueue', 'dequeue', 'peek'],
     },
   ];
 
@@ -388,9 +332,14 @@ export function generateMockRegistryDiscoveryData(): RegistryDiscoveryData {
     },
   ];
 
-  const activeNodes = nodes.filter((n) => n.state === 'active').length;
-  const pendingNodes = nodes.filter((n) => n.state === 'pending').length;
-  const failedNodes = nodes.filter((n) => n.state === 'failed').length;
+  // Note: States are UPPERCASE to match RegistrationState enum
+  const activeNodes = nodes.filter((n) => n.state === 'ACTIVE').length;
+  const pendingNodes = nodes.filter((n) =>
+    ['PENDING_REGISTRATION', 'AWAITING_ACK', 'ACCEPTED', 'ACK_RECEIVED'].includes(n.state)
+  ).length;
+  const failedNodes = nodes.filter((n) =>
+    ['REJECTED', 'LIVENESS_EXPIRED', 'ACK_TIMED_OUT'].includes(n.state)
+  ).length;
 
   const typeCounts = nodes.reduce(
     (acc, n) => {

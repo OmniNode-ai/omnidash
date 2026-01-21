@@ -45,7 +45,9 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { LiveIndicator } from '@/components/LiveIndicator';
 import { RegistryEmptyState } from '@/components/EmptyState';
 import {
@@ -53,6 +55,7 @@ import {
   NodeTypeIcon,
   NodeStateBadge,
   NODE_TYPE_CONFIG,
+  NODE_STATE_CONFIG,
 } from '@/components/NodeDetailPanel';
 import {
   RefreshCw,
@@ -65,23 +68,28 @@ import {
   Activity,
   Trash2,
   Search,
-  Info,
   Clock,
   Keyboard,
   Zap,
   ChevronRight,
+  ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// LocalStorage key for banner dismissal
+const BANNER_DISMISSED_KEY = 'registry-discovery-banner-dismissed';
 
 // Filter options
 const NODE_TYPES: NodeType[] = ['EFFECT', 'COMPUTE', 'REDUCER', 'ORCHESTRATOR'];
 const NODE_STATES: NodeState[] = [
-  'registered',
-  'active',
-  'inactive',
-  'pending',
-  'deprecated',
-  'failed',
+  'PENDING_REGISTRATION',
+  'ACCEPTED',
+  'AWAITING_ACK',
+  'ACK_RECEIVED',
+  'ACTIVE',
+  'ACK_TIMED_OUT',
+  'LIVENESS_EXPIRED',
+  'REJECTED',
 ];
 const HEALTH_STATUSES: HealthStatus[] = ['passing', 'warning', 'critical', 'unknown'];
 
@@ -95,6 +103,17 @@ const EVENT_TYPE_STYLES: Record<string, { color: string; icon: string; bg: strin
   INSTANCE_ADDED: { color: 'text-green-500', icon: '+', bg: 'bg-green-500/10' },
   INSTANCE_REMOVED: { color: 'text-red-500', icon: '-', bg: 'bg-red-500/10' },
 };
+
+// Registry-specific event types to show in Live Events panel
+// Excludes NODE_HEARTBEAT as it's too noisy for the feed
+const REGISTRY_EVENT_TYPES = [
+  'NODE_REGISTERED',
+  'NODE_STATE_CHANGED',
+  'NODE_DEREGISTERED',
+  'INSTANCE_HEALTH_CHANGED',
+  'INSTANCE_ADDED',
+  'INSTANCE_REMOVED',
+];
 
 // Format event type for display
 function formatEventType(type: string): string {
@@ -142,6 +161,15 @@ export default function RegistryDiscovery() {
   const [useMockData, setUseMockData] = useState(false);
   const [showEventFeed, setShowEventFeed] = useState(true);
 
+  // UI state
+  const [isBannerDismissed, setIsBannerDismissed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(BANNER_DISMISSED_KEY) === 'true';
+    }
+    return false;
+  });
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+
   // Node detail panel state
   const [selectedNode, setSelectedNode] = useState<RegisteredNodeInfo | null>(null);
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
@@ -151,6 +179,12 @@ export default function RegistryDiscovery() {
 
   // Ref for capability search input (for keyboard shortcut)
   const capabilityInputRef = useRef<HTMLInputElement>(null);
+
+  // Dismiss banner handler
+  const dismissBanner = useCallback(() => {
+    setIsBannerDismissed(true);
+    localStorage.setItem(BANNER_DISMISSED_KEY, 'true');
+  }, []);
 
   // WebSocket connection for real-time updates (OMN-1278 Phase 4)
   const { isConnected, connectionStatus, recentEvents, clearEvents, stats } = useRegistryWebSocket({
@@ -204,7 +238,7 @@ export default function RegistryDiscovery() {
       const searchLower = capabilitySearch.toLowerCase().trim();
       filteredNodes = filteredNodes.filter(
         (node) =>
-          node.capabilities.toLowerCase().includes(searchLower) ||
+          node.capabilities.some((cap) => cap.toLowerCase().includes(searchLower)) ||
           node.name.toLowerCase().includes(searchLower)
       );
     }
@@ -215,9 +249,14 @@ export default function RegistryDiscovery() {
     }
 
     // Recalculate summary based on filtered data
-    const activeNodes = filteredNodes.filter((n) => n.state === 'active').length;
-    const pendingNodes = filteredNodes.filter((n) => n.state === 'pending').length;
-    const failedNodes = filteredNodes.filter((n) => n.state === 'failed').length;
+    // Note: States are UPPERCASE to match RegistrationState enum from @shared/registry-types
+    const activeNodes = filteredNodes.filter((n) => n.state === 'ACTIVE').length;
+    const pendingNodes = filteredNodes.filter((n) =>
+      ['PENDING_REGISTRATION', 'AWAITING_ACK', 'ACCEPTED', 'ACK_RECEIVED'].includes(n.state)
+    ).length;
+    const failedNodes = filteredNodes.filter((n) =>
+      ['REJECTED', 'LIVENESS_EXPIRED', 'ACK_TIMED_OUT'].includes(n.state)
+    ).length;
 
     const typeCounts = filteredNodes.reduce(
       (acc, n) => {
@@ -274,6 +313,11 @@ export default function RegistryDiscovery() {
     }
     return transformRegistryData(filteredData);
   }, [filteredData]);
+
+  // Filter events to registry-specific types only (memoized for performance)
+  const filteredRegistryEvents = useMemo(() => {
+    return recentEvents.filter((event) => REGISTRY_EVENT_TYPES.includes(event.type));
+  }, [recentEvents]);
 
   // Handle refresh
   const handleRefresh = useCallback(() => {
@@ -344,40 +388,26 @@ export default function RegistryDiscovery() {
   return (
     <TooltipProvider>
       <div className="space-y-4 md:space-y-6">
-        {/* Contract-Driven Banner */}
-        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <div className="rounded-full bg-primary/10 p-2 flex-shrink-0">
-              <Zap className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm flex items-center gap-2">
-                Registry is the Source of Truth
-                <Badge variant="secondary" className="text-xs">
-                  Contract-Driven
-                </Badge>
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                This dashboard auto-configures based on registered nodes. No hardcoded widgets
-                &mdash; add a node to the registry and it automatically appears here with its
-                capabilities, health status, and live instances.
+        {/* Contract-Driven Banner - Dismissable */}
+        {!isBannerDismissed && (
+          <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-lg p-3">
+            <div className="flex items-center gap-3">
+              <Zap className="h-4 w-4 text-primary flex-shrink-0" />
+              <p className="text-sm text-muted-foreground flex-1">
+                <span className="font-medium text-foreground">Contract-driven dashboard</span>
+                {' — '}nodes auto-register their capabilities. No hardcoded widgets.
               </p>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 flex-shrink-0 hover:bg-destructive/10"
+                onClick={dismissBanner}
+              >
+                <X className="h-3 w-3" />
+              </Button>
             </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="flex-shrink-0">
-                  <Info className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="max-w-xs">
-                <p className="text-sm">
-                  The ONEX 4-node architecture (Effect, Compute, Reducer, Orchestrator) enables
-                  self-describing nodes that report their capabilities through contracts.
-                </p>
-              </TooltipContent>
-            </Tooltip>
           </div>
-        </div>
+        )}
 
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -490,109 +520,120 @@ export default function RegistryDiscovery() {
           </div>
         </div>
 
-        {/* Enhanced Filters */}
-        <div className="flex flex-col gap-3 p-4 border rounded-lg bg-muted/30">
+        {/* Collapsible Filters */}
+        <Collapsible open={isFiltersOpen || !!hasFilters} onOpenChange={setIsFiltersOpen}>
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Filters</span>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2 h-8 px-2">
+                <Filter className="h-4 w-4" />
+                <span className="text-sm font-medium">Filters</span>
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 transition-transform',
+                    (isFiltersOpen || !!hasFilters) && 'rotate-180'
+                  )}
+                />
+              </Button>
+            </CollapsibleTrigger>
             {hasFilters && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={clearFilters}
-                className="gap-1 text-muted-foreground h-7 ml-auto"
+                className="gap-1 text-muted-foreground h-7"
               >
                 <X className="h-3 w-3" />
-                Clear all
+                Clear
               </Button>
             )}
           </div>
+          <CollapsibleContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 p-3 border rounded-lg bg-muted/20">
+              {/* Node type filter */}
+              <Select
+                value={typeFilter ?? 'all'}
+                onValueChange={(value) => setTypeFilter(value === 'all' ? undefined : value)}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Node Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {NODE_TYPES.map((type) => {
+                    const config = NODE_TYPE_CONFIG[type];
+                    const Icon = config.icon;
+                    return (
+                      <SelectItem key={type} value={type}>
+                        <span className="flex items-center gap-2">
+                          <Icon className={cn('h-3.5 w-3.5', config.color)} />
+                          {type}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {/* Node type filter */}
-            <Select
-              value={typeFilter ?? 'all'}
-              onValueChange={(value) => setTypeFilter(value === 'all' ? undefined : value)}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Node Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {NODE_TYPES.map((type) => {
-                  const config = NODE_TYPE_CONFIG[type];
-                  const Icon = config.icon;
-                  return (
-                    <SelectItem key={type} value={type}>
-                      <span className="flex items-center gap-2">
-                        <Icon className={cn('h-3.5 w-3.5', config.color)} />
-                        {type}
-                      </span>
+              {/* State filter */}
+              <Select
+                value={stateFilter ?? 'all'}
+                onValueChange={(value) => setStateFilter(value === 'all' ? undefined : value)}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="State" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All States</SelectItem>
+                  {NODE_STATES.map((state) => (
+                    <SelectItem key={state} value={state}>
+                      {NODE_STATE_CONFIG[state]?.label || state}
                     </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            {/* State filter */}
-            <Select
-              value={stateFilter ?? 'all'}
-              onValueChange={(value) => setStateFilter(value === 'all' ? undefined : value)}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="State" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All States</SelectItem>
-                {NODE_STATES.map((state) => (
-                  <SelectItem key={state} value={state}>
-                    {state.charAt(0).toUpperCase() + state.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {/* Health filter */}
+              <Select
+                value={healthFilter ?? 'all'}
+                onValueChange={(value) => setHealthFilter(value === 'all' ? undefined : value)}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Health" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Health</SelectItem>
+                  {HEALTH_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            {/* Health filter */}
-            <Select
-              value={healthFilter ?? 'all'}
-              onValueChange={(value) => setHealthFilter(value === 'all' ? undefined : value)}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Health" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Health</SelectItem>
-                {HEALTH_STATUSES.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Capability search */}
-            <div className="relative lg:col-span-2">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                ref={capabilityInputRef}
-                placeholder="Search capabilities or node name..."
-                value={capabilitySearch}
-                onChange={(e) => setCapabilitySearch(e.target.value)}
-                className="pl-9 h-9"
-              />
-              {capabilitySearch && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                  onClick={() => setCapabilitySearch('')}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
+              {/* Capability search */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  ref={capabilityInputRef}
+                  placeholder="Search..."
+                  value={capabilitySearch}
+                  onChange={(e) => setCapabilitySearch(e.target.value)}
+                  className="pl-9 h-9"
+                />
+                {capabilitySearch && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                    onClick={() => setCapabilitySearch('')}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Warnings */}
         {rawData?.warnings && rawData.warnings.length > 0 && (
@@ -644,13 +685,17 @@ export default function RegistryDiscovery() {
             />
           ) : (
             <div className="space-y-6">
+              {/* Metric Cards + Charts */}
               <DashboardRenderer
                 config={registryDiscoveryDashboardConfig}
                 data={dashboardData}
                 isLoading={isLoading && !useMockData}
               />
 
-              {/* Enhanced Nodes Table with clickable rows */}
+              {/* Visual separator between charts and tables */}
+              <Separator className="my-2" />
+
+              {/* Interactive Nodes Table */}
               {filteredData && filteredData.nodes.length > 0 && (
                 <Card>
                   <CardHeader className="pb-3">
@@ -678,16 +723,14 @@ export default function RegistryDiscovery() {
                             </tr>
                           </thead>
                           <tbody>
-                            {filteredData.nodes.map((node, idx) => {
-                              const capabilities = node.capabilities
-                                .split(',')
-                                .map((c) => c.trim());
+                            {filteredData.nodes.map((node: RegisteredNodeInfo, idx: number) => {
+                              const capabilities = node.capabilities;
                               const displayCaps = capabilities.slice(0, 3);
                               const moreCaps = capabilities.length - 3;
 
                               return (
                                 <tr
-                                  key={idx}
+                                  key={node.node_id || node.name}
                                   className={cn(
                                     'border-b last:border-b-0 cursor-pointer transition-colors',
                                     'hover:bg-muted/50',
@@ -709,9 +752,9 @@ export default function RegistryDiscovery() {
                                   </td>
                                   <td className="py-3 px-4 hidden lg:table-cell">
                                     <div className="flex flex-wrap gap-1 max-w-[300px]">
-                                      {displayCaps.map((cap, capIdx) => (
+                                      {displayCaps.map((cap) => (
                                         <Badge
-                                          key={capIdx}
+                                          key={cap}
                                           variant="outline"
                                           className="text-xs font-mono bg-muted/50"
                                         >
@@ -751,7 +794,7 @@ export default function RegistryDiscovery() {
                     Live Events
                   </CardTitle>
                   <div className="flex items-center gap-2">
-                    {recentEvents.length > 0 && (
+                    {filteredRegistryEvents.length > 0 && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -762,7 +805,7 @@ export default function RegistryDiscovery() {
                       </Button>
                     )}
                     <Badge variant="outline" className="text-xs">
-                      {recentEvents.length}
+                      {filteredRegistryEvents.length}
                     </Badge>
                   </div>
                 </div>
@@ -773,13 +816,13 @@ export default function RegistryDiscovery() {
                 )}
               </CardHeader>
               <CardContent className="pt-0">
-                {recentEvents.length === 0 ? (
+                {filteredRegistryEvents.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground text-sm">
                     {isConnected ? (
                       <>
                         <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>Waiting for events...</p>
-                        <p className="text-xs mt-1">Events will appear here in real-time</p>
+                        <p>Waiting for registry events...</p>
+                        <p className="text-xs mt-1">Node and instance events will appear here</p>
                       </>
                     ) : (
                       <>
@@ -792,7 +835,7 @@ export default function RegistryDiscovery() {
                 ) : (
                   <ScrollArea className="h-[300px] md:h-[400px] pr-4">
                     <div className="space-y-2">
-                      {recentEvents.slice(0, 50).map((event) => {
+                      {filteredRegistryEvents.slice(0, 50).map((event, idx) => {
                         const style = EVENT_TYPE_STYLES[event.type] || {
                           color: 'text-gray-500',
                           icon: '?',
@@ -800,33 +843,41 @@ export default function RegistryDiscovery() {
                         };
                         return (
                           <div
-                            key={event.id}
+                            key={`${event.id}-${idx}`}
                             className={cn(
                               'p-2 rounded-md text-xs border border-transparent hover:border-border transition-colors',
                               style.bg
                             )}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className={cn('font-mono font-bold', style.color)}>
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span
+                                  className={cn('font-mono font-bold flex-shrink-0', style.color)}
+                                >
                                   {style.icon}
                                 </span>
-                                <span className="font-medium truncate">
-                                  {formatEventType(event.type)}
-                                </span>
+                                <span className="font-medium">{formatEventType(event.type)}</span>
                               </div>
-                              <span className="text-muted-foreground whitespace-nowrap">
+                              <span className="text-muted-foreground whitespace-nowrap text-[10px]">
                                 {formatTime(event.timestamp)}
                               </span>
                             </div>
                             {event.payload && Object.keys(event.payload).length > 0 && (
-                              <div className="mt-1 pl-5 text-muted-foreground">
+                              <div className="mt-1 pl-5 text-muted-foreground space-y-0.5">
                                 {'node_id' in event.payload && (
-                                  <p className="truncate">Node: {String(event.payload.node_id)}</p>
+                                  <p className="break-all">
+                                    <span className="text-muted-foreground/70">Node:</span>{' '}
+                                    <span className="font-mono">
+                                      {String(event.payload.node_id)}
+                                    </span>
+                                  </p>
                                 )}
                                 {'instance_id' in event.payload && (
-                                  <p className="truncate">
-                                    Instance: {String(event.payload.instance_id)}
+                                  <p className="break-all">
+                                    <span className="text-muted-foreground/70">Instance:</span>{' '}
+                                    <span className="font-mono">
+                                      {String(event.payload.instance_id)}
+                                    </span>
                                   </p>
                                 )}
                                 {'new_state' in event.payload && (
