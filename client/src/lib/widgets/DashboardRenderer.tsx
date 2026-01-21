@@ -125,7 +125,8 @@ export function DashboardRenderer({
     () => ({
       display: 'grid',
       gridTemplateColumns: `repeat(${layout.columns}, 1fr)`,
-      gridAutoRows: `${layout.row_height}px`,
+      // Use minmax for content-aware sizing: minimum row_height but grow to fit content
+      gridAutoRows: `minmax(${layout.row_height}px, auto)`,
       gap: `${layout.gap}px`,
     }),
     [layout]

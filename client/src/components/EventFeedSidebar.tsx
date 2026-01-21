@@ -175,8 +175,8 @@ export function EventFeedSidebar({
             )}
           </div>
         ) : (
-          <ScrollArea className="h-[300px] md:h-[400px] pr-4">
-            <div className="space-y-2">
+          <ScrollArea className="h-[300px] md:h-[400px]">
+            <div className="space-y-2 px-1">
               {events.slice(0, maxEvents).map((event, idx) => {
                 const style = EVENT_TYPE_STYLES[event.type] || {
                   color: 'text-gray-500',
@@ -187,7 +187,7 @@ export function EventFeedSidebar({
                   <div
                     key={`${event.id}-${idx}`}
                     className={cn(
-                      'p-2 rounded-md text-xs border border-transparent hover:border-border transition-colors',
+                      'p-3 rounded-md text-xs border border-transparent hover:border-border transition-colors',
                       style.bg
                     )}
                   >

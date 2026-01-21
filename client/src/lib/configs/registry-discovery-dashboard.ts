@@ -157,7 +157,7 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
       row: 1,
       col: 0,
       width: 6,
-      height: 2,
+      height: 3,
       config: {
         config_kind: 'chart',
         chart_type: 'pie',
@@ -172,7 +172,7 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
       row: 1,
       col: 6,
       width: 6,
-      height: 2,
+      height: 3,
       config: {
         config_kind: 'status_grid',
         items_key: 'healthStatusItems',

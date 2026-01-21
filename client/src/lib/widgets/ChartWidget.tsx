@@ -336,15 +336,15 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
   const nameKey = 'name';
 
   return (
-    <PieChart>
+    <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
       <Pie
         data={chartData}
         dataKey={valueKey}
         nameKey={nameKey}
-        cx={config.show_legend ? '40%' : '50%'}
+        cx={config.show_legend ? '35%' : '50%'}
         cy="50%"
-        innerRadius={PIE_INNER_RADIUS}
-        outerRadius={PIE_OUTER_RADIUS}
+        innerRadius={35}
+        outerRadius={70}
         paddingAngle={PIE_PADDING_ANGLE}
         label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
         labelLine={false}
@@ -511,7 +511,7 @@ export function ChartWidget({ widget, config, data, isLoading }: ChartWidgetProp
           <CardDescription className="text-xs">{widget.description}</CardDescription>
         )}
       </CardHeader>
-      <CardContent className="flex-1 min-h-0">
+      <CardContent className="flex-1 min-h-0 pb-4">
         {chartData.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
             No data available

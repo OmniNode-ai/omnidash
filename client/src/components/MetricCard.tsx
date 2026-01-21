@@ -26,7 +26,7 @@ export function MetricCard({
   tooltip,
 }: MetricCardProps) {
   const labelContent = (
-    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{label}</div>
+    <div className="text-sm uppercase tracking-wide text-muted-foreground mb-3">{label}</div>
   );
 
   // Status-based card styling for visual differentiation
