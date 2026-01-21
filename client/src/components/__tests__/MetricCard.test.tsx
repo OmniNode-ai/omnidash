@@ -44,7 +44,9 @@ describe('MetricCard', () => {
   it('should render status indicator', () => {
     render(<MetricCard label="Health" value="Healthy" status="healthy" />);
 
-    expect(screen.getByText('healthy')).toBeInTheDocument();
+    // Status is now shown via CSS classes on the card (left border)
+    const card = screen.getByTestId('card-metric-health');
+    expect(card).toHaveClass('border-l-status-healthy');
   });
 
   it('should apply correct status colors', () => {
@@ -124,7 +126,9 @@ describe('MetricCard', () => {
         <MetricCard label={`Test ${status}`} value="100" status={status} />
       );
 
-      expect(screen.getByText(status)).toBeInTheDocument();
+      // Status is now shown via CSS classes on the card (left border)
+      const card = screen.getByTestId(`card-metric-test-${status}`);
+      expect(card).toHaveClass(`border-l-status-${status}`);
       unmount();
     });
   });

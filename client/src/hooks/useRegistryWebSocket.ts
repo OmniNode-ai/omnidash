@@ -13,19 +13,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from './useWebSocket';
 
 /**
- * Generate a UUID with fallback for non-secure contexts (HTTP).
- * crypto.randomUUID() may not be available in non-HTTPS environments.
+ * Generate a correlation ID for event deduplication.
+ * Uses crypto.randomUUID() which is available in all modern browsers.
  */
-function generateUUID(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  // Fallback UUID v4 generator using Math.random()
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+function generateCorrelationId(): string {
+  return crypto.randomUUID();
 }
 
 /**
@@ -240,7 +232,7 @@ export function useRegistryWebSocket(
         const event: RegistryEvent = eventData || {
           type: eventType,
           timestamp: message.timestamp,
-          correlation_id: generateUUID(),
+          correlation_id: generateCorrelationId(),
           payload: {},
         };
 
@@ -274,7 +266,7 @@ export function useRegistryWebSocket(
         // Update recent events
         setRecentEvents((prev) => {
           const newEvent: RecentRegistryEvent = {
-            id: event.correlation_id || generateUUID(),
+            id: event.correlation_id || generateCorrelationId(),
             type: event.type,
             timestamp: new Date(event.timestamp),
             payload: event.payload,

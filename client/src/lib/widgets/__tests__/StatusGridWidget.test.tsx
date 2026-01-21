@@ -83,9 +83,9 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    // Find the status indicator dot
-    const indicator = screen.getByLabelText('Status: healthy');
-    expect(indicator).toHaveClass('bg-status-healthy');
+    // Find the card by its title attribute (new component structure)
+    const card = document.querySelector('[title="Test Service: healthy"]');
+    expect(card).toHaveClass('border-l-status-healthy');
   });
 
   it('should show correct color for warning status', () => {
@@ -97,8 +97,9 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    const indicator = screen.getByLabelText('Status: warning');
-    expect(indicator).toHaveClass('bg-status-warning');
+    // Find the card by its title attribute (new component structure)
+    const card = document.querySelector('[title="Test Service: warning"]');
+    expect(card).toHaveClass('border-l-status-warning');
   });
 
   it('should show correct color for error status', () => {
@@ -110,8 +111,9 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    const indicator = screen.getByLabelText('Status: error');
-    expect(indicator).toHaveClass('bg-status-error');
+    // Find the card by its title attribute (new component structure)
+    const card = document.querySelector('[title="Test Service: error"]');
+    expect(card).toHaveClass('border-l-status-error');
   });
 
   it('should show correct color for inactive/unknown status', () => {
@@ -123,8 +125,9 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    const indicator = screen.getByLabelText('Status: unknown');
-    expect(indicator).toHaveClass('bg-status-offline');
+    // Find the card by its title attribute (new component structure)
+    const card = document.querySelector('[title="Test Service: unknown"]');
+    expect(card).toHaveClass('border-l-status-offline');
   });
 
   it('should map degraded status to warning', () => {
@@ -136,8 +139,9 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    const indicator = screen.getByLabelText('Status: degraded');
-    expect(indicator).toHaveClass('bg-status-warning');
+    // Find the card by its title attribute (new component structure)
+    const card = document.querySelector('[title="Test Service: degraded"]');
+    expect(card).toHaveClass('border-l-status-warning');
   });
 
   it('should map active status to healthy', () => {
@@ -149,8 +153,9 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    const indicator = screen.getByLabelText('Status: active');
-    expect(indicator).toHaveClass('bg-status-healthy');
+    // Find the card by its title attribute (new component structure)
+    const card = document.querySelector('[title="Test Service: active"]');
+    expect(card).toHaveClass('border-l-status-healthy');
   });
 
   it('should map failed status to error', () => {
@@ -162,8 +167,9 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    const indicator = screen.getByLabelText('Status: failed');
-    expect(indicator).toHaveClass('bg-status-error');
+    // Find the card by its title attribute (new component structure)
+    const card = document.querySelector('[title="Test Service: failed"]');
+    expect(card).toHaveClass('border-l-status-error');
   });
 
   it('should display labels when show_labels=true', () => {
@@ -200,9 +206,9 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    // In compact mode, indicator should have smaller size classes
-    const indicator = screen.getByLabelText('Status: healthy');
-    expect(indicator).toHaveClass('h-2', 'w-2');
+    // In compact mode, card should have smaller padding (p-2 instead of p-4)
+    const card = document.querySelector('[title="API Server: healthy"]');
+    expect(card).toHaveClass('p-2');
   });
 
   it('should apply normal mode styling when compact=false', () => {
@@ -214,9 +220,9 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    // In normal mode, indicator should have larger size classes
-    const indicator = screen.getByLabelText('Status: healthy');
-    expect(indicator).toHaveClass('h-3', 'w-3');
+    // In normal mode, card should have standard padding (p-4)
+    const card = document.querySelector('[title="API Server: healthy"]');
+    expect(card).toHaveClass('p-4');
   });
 
   it('should show loading skeleton when isLoading=true', () => {
@@ -296,7 +302,7 @@ describe('StatusGridWidget', () => {
     expect(screen.getByText('6')).toBeInTheDocument();
   });
 
-  it('should apply pulse animation to healthy items', () => {
+  it('should apply transition animation to healthy items', () => {
     const widget = createWidget();
     const config = createConfig();
     const data: DashboardData = {
@@ -305,11 +311,12 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    const indicator = screen.getByLabelText('Status: healthy');
-    expect(indicator).toHaveClass('animate-pulse');
+    // Cards now use transition-colors for smooth state changes
+    const card = document.querySelector('[title="Test Service: healthy"]');
+    expect(card).toHaveClass('transition-colors');
   });
 
-  it('should not apply pulse animation to non-healthy items', () => {
+  it('should apply transition animation to all items consistently', () => {
     const widget = createWidget();
     const config = createConfig();
     const data: DashboardData = {
@@ -318,8 +325,9 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    const indicator = screen.getByLabelText('Status: error');
-    expect(indicator).not.toHaveClass('animate-pulse');
+    // All cards use transition-colors for smooth state changes
+    const card = document.querySelector('[title="Test Service: error"]');
+    expect(card).toHaveClass('transition-colors');
   });
 
   it('should display status badge in non-compact mode', () => {
@@ -382,9 +390,9 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
-    // Card should have warning border class
+    // Card should have warning left border class (new component uses border-l-4 pattern)
     const card = document.querySelector('[title="Test: warning"]');
-    expect(card).toHaveClass('border-status-warning/30');
+    expect(card).toHaveClass('border-l-status-warning');
   });
 
   it('should apply error border to error items', () => {
@@ -396,7 +404,8 @@ describe('StatusGridWidget', () => {
 
     render(<StatusGridWidget widget={widget} config={config} data={data} />);
 
+    // Card should have error left border class (new component uses border-l-4 pattern)
     const card = document.querySelector('[title="Test: error"]');
-    expect(card).toHaveClass('border-status-error/30');
+    expect(card).toHaveClass('border-l-status-error');
   });
 });

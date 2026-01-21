@@ -136,8 +136,9 @@ describe('MetricCardWidget', () => {
 
     render(<MetricCardWidget widget={widget} config={config} data={data} />);
 
-    // The card should show warning status text
-    expect(screen.getByText('warning')).toBeInTheDocument();
+    // The card should have warning status styling (left border)
+    const card = screen.getByTestId('card-metric-error-rate');
+    expect(card).toHaveClass('border-l-status-warning');
   });
 
   it('should apply error threshold styling for critical severity', () => {
@@ -154,8 +155,9 @@ describe('MetricCardWidget', () => {
 
     render(<MetricCardWidget widget={widget} config={config} data={data} />);
 
-    // Critical maps to 'error' status
-    expect(screen.getByText('error')).toBeInTheDocument();
+    // Critical maps to 'error' status styling (left border)
+    const card = screen.getByTestId('card-metric-error-rate');
+    expect(card).toHaveClass('border-l-status-error');
   });
 
   it('should show healthy status when below all thresholds', () => {
@@ -172,7 +174,9 @@ describe('MetricCardWidget', () => {
 
     render(<MetricCardWidget widget={widget} config={config} data={data} />);
 
-    expect(screen.getByText('healthy')).toBeInTheDocument();
+    // Below all thresholds should show healthy status styling (left border)
+    const card = screen.getByTestId('card-metric-error-rate');
+    expect(card).toHaveClass('border-l-status-healthy');
   });
 
   it('should display unit suffix via precision in currency format', () => {
