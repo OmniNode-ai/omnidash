@@ -336,12 +336,14 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
   const nameKey = 'name';
 
   return (
-    <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+    // Increased top/bottom margins to prevent percentage labels from being clipped
+    // Labels at 12 o'clock and 6 o'clock positions extend beyond the pie outer radius
+    <PieChart margin={{ top: 25, right: 10, bottom: 25, left: 10 }}>
       <Pie
         data={chartData}
         dataKey={valueKey}
         nameKey={nameKey}
-        cx={config.show_legend ? '35%' : '50%'}
+        cx={config.show_legend ? '32%' : '50%'}
         cy="50%"
         innerRadius={35}
         outerRadius={70}
@@ -359,7 +361,14 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
           layout="vertical"
           align="right"
           verticalAlign="middle"
-          wrapperStyle={{ paddingLeft: '20px' }}
+          wrapperStyle={{
+            paddingLeft: '12px',
+            fontSize: '11px',
+            lineHeight: '1.4',
+          }}
+          formatter={(value: string) => (
+            <span style={{ display: 'inline', whiteSpace: 'nowrap' }}>{value}</span>
+          )}
         />
       )}
     </PieChart>

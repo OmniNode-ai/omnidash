@@ -41,9 +41,14 @@ import { RegistryEmptyState } from '@/components/EmptyState';
 import { FilterBar, type FilterConfig } from '@/components/FilterBar';
 import { DashboardPageHeader } from '@/components/DashboardPageHeader';
 import { NodeDetailPanel, NODE_TYPE_CONFIG, NODE_STATE_CONFIG } from '@/components/NodeDetailPanel';
+import {
+  SystemHealthBadge,
+  calculateHealthLevel,
+  getHealthTooltip,
+} from '@/components/SystemHealthBadge';
 import { NodesTable } from '@/components/NodesTable';
 import { EventFeedSidebar } from '@/components/EventFeedSidebar';
-import { Activity, AlertCircle, X, Zap } from 'lucide-react';
+import { AlertCircle, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // LocalStorage key for banner dismissal
@@ -92,7 +97,6 @@ export default function RegistryDiscovery() {
   const [healthFilter, setHealthFilter] = useState<string | undefined>(undefined);
   const [capabilitySearch, setCapabilitySearch] = useState('');
   const [useMockData, setUseMockData] = useState(false);
-  const [showEventFeed, setShowEventFeed] = useState(true);
 
   // UI state
   const [isBannerDismissed, setIsBannerDismissed] = useState(() => {
@@ -357,22 +361,6 @@ export default function RegistryDiscovery() {
   const headerActions = useMemo(
     () => (
       <>
-        {/* Event feed toggle */}
-        <Button
-          variant={showEventFeed ? 'secondary' : 'outline'}
-          size="sm"
-          onClick={() => setShowEventFeed(!showEventFeed)}
-          className="gap-2"
-        >
-          <Activity className="h-4 w-4" />
-          <span className="hidden sm:inline">Events</span>
-          {stats.totalEventsReceived > 0 && (
-            <Badge variant="outline" className="ml-1 text-xs">
-              {stats.totalEventsReceived}
-            </Badge>
-          )}
-        </Button>
-
         {/* Toggle mock data */}
         <Button
           variant="outline"
@@ -384,8 +372,28 @@ export default function RegistryDiscovery() {
         </Button>
       </>
     ),
-    [showEventFeed, stats.totalEventsReceived, useMockData]
+    [useMockData]
   );
+
+  // Calculate system health status from filtered data
+  const healthBadge = useMemo(() => {
+    if (!filteredData || isLoading) {
+      return null;
+    }
+
+    const healthData = {
+      total_nodes: filteredData.summary.total_nodes,
+      active_nodes: filteredData.summary.active_nodes,
+      failed_nodes: filteredData.summary.failed_nodes,
+      pending_nodes: filteredData.summary.pending_nodes,
+      by_health: filteredData.summary.by_health,
+    };
+
+    const status = calculateHealthLevel(healthData);
+    const tooltip = getHealthTooltip(healthData, status);
+
+    return <SystemHealthBadge status={status} title={tooltip} />;
+  }, [filteredData, isLoading]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -450,6 +458,7 @@ export default function RegistryDiscovery() {
         <DashboardPageHeader
           title={registryDiscoveryDashboardConfig.name}
           description={registryDiscoveryDashboardConfig.description}
+          statusBadge={healthBadge}
           lastUpdated={lastUpdated}
           isConnected={isConnected}
           connectionStatus={connectionStatus}
@@ -503,50 +512,40 @@ export default function RegistryDiscovery() {
           </Alert>
         )}
 
-        {/* Main content area with optional event feed */}
-        <div
-          className={cn(
-            'grid gap-4 md:gap-6',
-            showEventFeed ? 'grid-cols-1 lg:grid-cols-[1fr_320px]' : ''
-          )}
-        >
-          {/* Dashboard grid or empty state */}
-          {hasNoData && !isLoading ? (
-            <RegistryEmptyState
-              hasFilters={!!hasFilters}
-              onClearFilters={clearFilters}
-              onRefresh={handleRefresh}
-              className="min-h-[400px] border rounded-lg"
+        {/* Main content area */}
+        {hasNoData && !isLoading ? (
+          <RegistryEmptyState
+            hasFilters={!!hasFilters}
+            onClearFilters={clearFilters}
+            onRefresh={handleRefresh}
+            className="min-h-[400px] border rounded-lg"
+          />
+        ) : (
+          <div className="space-y-6">
+            {/* Metric Cards */}
+            <DashboardRenderer
+              config={registryDiscoveryDashboardConfig}
+              data={dashboardData}
+              isLoading={isLoading && !useMockData}
             />
-          ) : (
-            <div className="space-y-6">
-              {/* Metric Cards + Charts */}
-              <DashboardRenderer
-                config={registryDiscoveryDashboardConfig}
-                data={dashboardData}
-                isLoading={isLoading && !useMockData}
-              />
 
-              {/* Visual separator between charts and tables */}
-              <Separator className="my-2" />
-
-              {/* Interactive Nodes Table */}
-              {filteredData && filteredData.nodes.length > 0 && (
-                <NodesTable nodes={filteredData.nodes} onNodeClick={handleNodeClick} />
-              )}
-            </div>
-          )}
-
-          {/* Event feed sidebar */}
-          {showEventFeed && (
+            {/* Live Events Widget - integrated into main dashboard flow */}
             <EventFeedSidebar
               events={filteredRegistryEvents}
               isConnected={isConnected}
               onClearEvents={clearEvents}
               lastEventTime={stats.lastEventTime}
             />
-          )}
-        </div>
+
+            {/* Visual separator between events and tables */}
+            <Separator className="my-2" />
+
+            {/* Interactive Nodes Table */}
+            {filteredData && filteredData.nodes.length > 0 && (
+              <NodesTable nodes={filteredData.nodes} onNodeClick={handleNodeClick} />
+            )}
+          </div>
+        )}
 
         {/* Node Detail Panel */}
         <NodeDetailPanel

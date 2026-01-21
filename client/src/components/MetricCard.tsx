@@ -26,24 +26,26 @@ export function MetricCard({
   tooltip,
 }: MetricCardProps) {
   const labelContent = (
-    <div className="text-sm uppercase tracking-wide text-muted-foreground mb-3">{label}</div>
+    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">{label}</div>
   );
 
   // Status-based card styling for visual differentiation
+  // The colored left border is the primary status indicator
+  // Background tint is very subtle (3%) to avoid visual heaviness
   const statusCardStyles = {
-    healthy: 'border-l-4 border-l-status-healthy bg-status-healthy/5',
-    warning: 'border-l-4 border-l-status-warning bg-status-warning/5',
-    error: 'border-l-4 border-l-status-error bg-status-error/5',
-    offline: 'border-l-4 border-l-status-offline bg-status-offline/5',
+    healthy: 'border-l-4 border-l-status-healthy bg-status-healthy/[0.03]',
+    warning: 'border-l-4 border-l-status-warning bg-status-warning/[0.03]',
+    error: 'border-l-4 border-l-status-error bg-status-error/[0.03]',
+    offline: 'border-l-4 border-l-status-offline bg-status-offline/[0.03]',
   };
 
   return (
     <Card
-      className={cn('p-6', status && statusCardStyles[status], className)}
+      className={cn('py-3 px-4', status && statusCardStyles[status], className)}
       data-testid={`card-metric-${label.toLowerCase().replace(/\s/g, '-')}`}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
           {tooltip ? (
             <TooltipProvider>
               <Tooltip>
@@ -56,47 +58,35 @@ export function MetricCard({
           ) : (
             labelContent
           )}
-          <div className="text-4xl font-bold font-mono">{value}</div>
-          {trend && (
-            <div
-              className={cn(
-                'text-sm mt-2 font-medium',
-                trend.isPositive ? 'text-status-healthy' : 'text-status-error'
-              )}
-            >
-              {trend.isPositive ? '+' : ''}
-              {trend.value}%
-            </div>
-          )}
+          <div className="flex items-baseline gap-2">
+            <div className="text-2xl font-bold font-mono">{value}</div>
+            {trend && (
+              <div
+                className={cn(
+                  'text-xs font-medium',
+                  trend.isPositive ? 'text-status-healthy' : 'text-status-error'
+                )}
+              >
+                {trend.isPositive ? '+' : ''}
+                {trend.value}%
+              </div>
+            )}
+          </div>
         </div>
         {Icon && (
           <div
             className={cn(
-              'p-3 rounded-lg',
+              'p-2 rounded-lg flex-shrink-0',
               status === 'healthy' && 'bg-status-healthy/10 text-status-healthy',
               status === 'warning' && 'bg-status-warning/10 text-status-warning',
               status === 'error' && 'bg-status-error/10 text-status-error',
               !status && 'bg-primary/10 text-primary'
             )}
           >
-            <Icon className="w-6 h-6" />
+            <Icon className="w-5 h-5" />
           </div>
         )}
       </div>
-      {status && (
-        <div className="flex items-center gap-2 mt-4 pt-4 border-t border-card-border">
-          <div
-            className={cn(
-              'h-2 w-2 rounded-full',
-              status === 'healthy' && 'bg-status-healthy',
-              status === 'warning' && 'bg-status-warning',
-              status === 'error' && 'bg-status-error',
-              status === 'offline' && 'bg-status-offline'
-            )}
-          />
-          <span className="text-xs text-muted-foreground capitalize">{status}</span>
-        </div>
-      )}
     </Card>
   );
 }

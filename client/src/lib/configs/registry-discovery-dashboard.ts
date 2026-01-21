@@ -149,11 +149,12 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
       },
     },
 
-    // Row 1: Pie chart and status grid side by side
+    // Row 1: Two pie charts side-by-side (Node Types, Instance Health)
     {
       widget_id: 'node-type-distribution',
       title: 'Node Types',
-      description: 'Distribution by node type',
+      description:
+        'Distribution of registered nodes by type (Effect, Compute, Reducer, Orchestrator)',
       row: 1,
       col: 0,
       width: 6,
@@ -166,68 +167,39 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
       },
     },
     {
-      widget_id: 'health-status',
+      widget_id: 'instance-health-chart',
       title: 'Instance Health',
-      description: 'Live service health from Consul',
+      description: 'Health status distribution of running instances',
       row: 1,
       col: 6,
       width: 6,
       height: 3,
       config: {
-        config_kind: 'status_grid',
-        items_key: 'healthStatusItems',
-        id_field: 'id',
-        label_field: 'label',
-        status_field: 'status',
-        columns: 2,
-        show_labels: true,
-        compact: false,
-        // Hide summary since the grid shows status TYPES (not instances).
-        // The label already shows the count (e.g., "Passing (4)").
-        show_summary: false,
+        config_kind: 'chart',
+        chart_type: 'pie',
+        series: [{ name: 'Instance Health', data_key: 'instanceHealthDistribution' }],
+        show_legend: true,
       },
     },
     // NOTE: Tables removed - using custom interactive table in RegistryDiscovery.tsx instead
+    // NOTE: Events widget rendered separately via EventFeedSidebar component in RegistryDiscovery.tsx
+    // This preserves rich registry-specific event payload handling (node_id, state changes, health changes)
+    // that the generic EventFeedWidget doesn't support
   ],
 };
 
 /**
  * Transform API response to dashboard-friendly format.
- * Converts health summary to status grid items.
- *
- * Status colors are SEMANTIC - they represent the STATUS TYPE, not an assessment:
- * - passing → green (healthy status type)
- * - warning → yellow (warning status type)
- * - critical → red (error/critical status type)
- * - unknown → gray (inactive/unknown status type)
+ * Flattens summary fields for widget consumption.
  */
 export function transformRegistryData(data: RegistryDiscoveryData): DashboardData {
-  const healthStatusItems = [
-    {
-      id: 'passing',
-      label: `Passing (${data.summary.by_health.passing})`,
-      status: 'passing', // Always green - this IS the passing/healthy status type
-    },
-    {
-      id: 'warning',
-      label: `Warning (${data.summary.by_health.warning})`,
-      status: 'warning', // Always yellow - this IS the warning status type
-    },
-    {
-      id: 'critical',
-      label: `Critical (${data.summary.by_health.critical})`,
-      status: 'critical', // Always red - this IS the critical/error status type
-    },
-    {
-      id: 'unknown',
-      label: `Unknown (${data.summary.by_health.unknown})`,
-      status: 'unknown', // Always gray - this IS the unknown/inactive status type
-    },
-  ];
+  // Convert by_health object to array format for pie chart
+  const instanceHealthDistribution = Object.entries(data.summary.by_health).map(
+    ([name, value]) => ({ name, value })
+  );
 
   return {
     ...data,
-    healthStatusItems,
     // Flatten summary fields for MetricCard widgets (they use data[key] directly, not nested paths)
     total_nodes: data.summary.total_nodes,
     active_nodes: data.summary.active_nodes,
@@ -235,6 +207,8 @@ export function transformRegistryData(data: RegistryDiscoveryData): DashboardDat
     failed_nodes: data.summary.failed_nodes,
     // Flatten by_type for chart widget
     nodeTypeDistribution: data.summary.by_type,
+    // Flatten by_health for instance health pie chart
+    instanceHealthDistribution,
   };
 }
 
