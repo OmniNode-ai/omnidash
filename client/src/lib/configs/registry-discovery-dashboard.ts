@@ -72,10 +72,11 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
   refresh_interval_seconds: 30,
   widgets: [
     // Row 0: Summary metrics (4 cards) - using flattened keys from transformRegistryData
+    // Visual hierarchy: Total (neutral), Active (green), Pending (amber), Failed (red when > 0)
     {
       widget_id: 'total-nodes',
       title: 'Total Nodes',
-      description: 'Total registered',
+      description: 'Total registered nodes in the system',
       row: 0,
       col: 0,
       width: 3,
@@ -87,12 +88,13 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
         value_format: 'number',
         precision: 0,
         icon: 'server',
+        // No semantic_status - neutral/informational card
       },
     },
     {
       widget_id: 'active-nodes',
       title: 'Active Nodes',
-      description: 'Currently active',
+      description: 'Currently active and running nodes',
       row: 0,
       col: 3,
       width: 3,
@@ -104,13 +106,14 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
         value_format: 'number',
         precision: 0,
         icon: 'check-circle',
-        thresholds: [{ value: 0, severity: 'warning', label: 'None active' }],
+        // Always green - active nodes represent success/healthy state
+        semantic_status: 'healthy',
       },
     },
     {
       widget_id: 'pending-nodes',
       title: 'Pending Nodes',
-      description: 'Awaiting activation',
+      description: 'Nodes awaiting activation or acknowledgment',
       row: 0,
       col: 6,
       width: 3,
@@ -122,16 +125,14 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
         value_format: 'number',
         precision: 0,
         icon: 'clock',
-        thresholds: [
-          { value: 5, severity: 'warning', label: 'Many pending' },
-          { value: 10, severity: 'error', label: 'Too many pending' },
-        ],
+        // Always amber - pending nodes need attention
+        semantic_status: 'warning',
       },
     },
     {
       widget_id: 'failed-nodes',
       title: 'Failed Nodes',
-      description: 'Error state',
+      description: 'Nodes in error or expired state',
       row: 0,
       col: 9,
       width: 3,
@@ -143,10 +144,8 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
         value_format: 'number',
         precision: 0,
         icon: 'alert-circle',
-        thresholds: [
-          { value: 1, severity: 'warning', label: 'Has failures' },
-          { value: 3, severity: 'error', label: 'Multiple failures' },
-        ],
+        // Threshold-based: muted when 0, red/error when >= 1
+        thresholds: [{ value: 1, severity: 'error', label: 'Has failures' }],
       },
     },
 
@@ -183,6 +182,9 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
         columns: 2,
         show_labels: true,
         compact: false,
+        // Hide summary since the grid shows status TYPES (not instances).
+        // The label already shows the count (e.g., "Passing (4)").
+        show_summary: false,
       },
     },
     // NOTE: Tables removed - using custom interactive table in RegistryDiscovery.tsx instead
@@ -192,28 +194,34 @@ export const registryDiscoveryDashboardConfig: DashboardConfig = {
 /**
  * Transform API response to dashboard-friendly format.
  * Converts health summary to status grid items.
+ *
+ * Status colors are SEMANTIC - they represent the STATUS TYPE, not an assessment:
+ * - passing → green (healthy status type)
+ * - warning → yellow (warning status type)
+ * - critical → red (error/critical status type)
+ * - unknown → gray (inactive/unknown status type)
  */
 export function transformRegistryData(data: RegistryDiscoveryData): DashboardData {
   const healthStatusItems = [
     {
       id: 'passing',
       label: `Passing (${data.summary.by_health.passing})`,
-      status: data.summary.by_health.passing > 0 ? 'healthy' : 'warning',
+      status: 'passing', // Always green - this IS the passing/healthy status type
     },
     {
       id: 'warning',
       label: `Warning (${data.summary.by_health.warning})`,
-      status: data.summary.by_health.warning > 0 ? 'warning' : 'healthy',
+      status: 'warning', // Always yellow - this IS the warning status type
     },
     {
       id: 'critical',
       label: `Critical (${data.summary.by_health.critical})`,
-      status: data.summary.by_health.critical > 0 ? 'error' : 'healthy',
+      status: 'critical', // Always red - this IS the critical/error status type
     },
     {
       id: 'unknown',
       label: `Unknown (${data.summary.by_health.unknown})`,
-      status: data.summary.by_health.unknown > 0 ? 'warning' : 'healthy',
+      status: 'unknown', // Always gray - this IS the unknown/inactive status type
     },
   ];
 

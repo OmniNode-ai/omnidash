@@ -84,6 +84,7 @@ export const widgetConfigMetricCardSchema = z.object({
   trend_key: z.string().optional(),
   thresholds: z.array(metricThresholdSchema).optional(),
   icon: z.string().optional(),
+  semantic_status: z.enum(['healthy', 'warning', 'error', 'neutral']).optional(),
 });
 
 export const widgetConfigStatusGridSchema = z.object({

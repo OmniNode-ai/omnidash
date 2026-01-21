@@ -96,9 +96,13 @@ export function MetricCardWidget({ widget, config, data, isLoading }: MetricCard
     typeof rawValue === 'number' ? rawValue : typeof rawValue === 'string' ? rawValue : 0;
   const formattedValue = formatValue(value, config.value_format, config.precision);
 
-  // Determine status from thresholds (semantic → theme token mapping in MetricCard)
+  // Determine status: semantic_status takes precedence over threshold calculation
   let status: 'healthy' | 'warning' | 'error' | undefined;
-  if (config.thresholds && typeof value === 'number') {
+  if (config.semantic_status) {
+    // Explicit semantic status: 'neutral' maps to undefined (no status styling)
+    status = config.semantic_status === 'neutral' ? undefined : config.semantic_status;
+  } else if (config.thresholds && typeof value === 'number') {
+    // Fallback to threshold-based calculation
     // Sort thresholds descending by value to find the first one exceeded
     const sortedThresholds = [...config.thresholds].sort((a, b) => b.value - a.value);
     for (const threshold of sortedThresholds) {

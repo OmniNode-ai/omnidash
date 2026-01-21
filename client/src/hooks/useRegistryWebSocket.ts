@@ -177,6 +177,9 @@ export function useRegistryWebSocket(
   // Track if we've subscribed to avoid duplicate subscriptions
   const hasSubscribed = useRef(false);
 
+  // Track seen event IDs to deduplicate events (server may send same event on multiple topics)
+  const seenEventIds = useRef(new Set<string>());
+
   // Track callback ref to avoid stale closures
   const onEventRef = useRef(onEvent);
   useEffect(() => {
@@ -206,11 +209,6 @@ export function useRegistryWebSocket(
       const eventType = message.type as RegistryEventType;
       const eventData = message.data as RegistryEvent | undefined;
 
-      if (debug) {
-        // eslint-disable-next-line no-console
-        console.log('[RegistryWebSocket] Received event:', eventType, eventData);
-      }
-
       // Create the event object
       const event: RegistryEvent = eventData || {
         type: eventType,
@@ -218,6 +216,33 @@ export function useRegistryWebSocket(
         correlation_id: generateUUID(),
         payload: {},
       };
+
+      // Deduplicate events - server may broadcast same event on multiple topics
+      // (e.g., 'registry' and 'registry-nodes' both receive NODE_* events)
+      const correlationId = event.correlation_id;
+      if (correlationId && seenEventIds.current.has(correlationId)) {
+        if (debug) {
+          // eslint-disable-next-line no-console
+          console.log('[RegistryWebSocket] Skipping duplicate event:', correlationId);
+        }
+        return;
+      }
+      if (correlationId) {
+        seenEventIds.current.add(correlationId);
+        // Prevent memory leak: keep only last maxRecentEvents * 2 IDs
+        if (seenEventIds.current.size > maxRecentEvents * 2) {
+          const idsToRemove = Array.from(seenEventIds.current).slice(
+            0,
+            seenEventIds.current.size - maxRecentEvents
+          );
+          idsToRemove.forEach((id) => seenEventIds.current.delete(id));
+        }
+      }
+
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.log('[RegistryWebSocket] Received event:', eventType, eventData);
+      }
 
       // Update recent events
       setRecentEvents((prev) => {

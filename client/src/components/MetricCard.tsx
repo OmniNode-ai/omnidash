@@ -29,9 +29,17 @@ export function MetricCard({
     <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{label}</div>
   );
 
+  // Status-based card styling for visual differentiation
+  const statusCardStyles = {
+    healthy: 'border-l-4 border-l-status-healthy bg-status-healthy/5',
+    warning: 'border-l-4 border-l-status-warning bg-status-warning/5',
+    error: 'border-l-4 border-l-status-error bg-status-error/5',
+    offline: 'border-l-4 border-l-status-offline bg-status-offline/5',
+  };
+
   return (
     <Card
-      className={cn('p-6', className)}
+      className={cn('p-6', status && statusCardStyles[status], className)}
       data-testid={`card-metric-${label.toLowerCase().replace(/\s/g, '-')}`}
     >
       <div className="flex items-start justify-between gap-4">
