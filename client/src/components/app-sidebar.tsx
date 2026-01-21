@@ -1,4 +1,13 @@
-import { Server, Radio, ChevronRight, Search, Layers, Activity, GitBranch } from 'lucide-react';
+import {
+  Server,
+  Radio,
+  ChevronRight,
+  Search,
+  Layers,
+  Activity,
+  GitBranch,
+  Globe,
+} from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
   Sidebar,
@@ -37,6 +46,12 @@ const dashboards = [
     url: '/events',
     icon: Radio,
     description: 'Kafka event stream visualization',
+  },
+  {
+    title: 'Registry Discovery',
+    url: '/discovery',
+    icon: Globe,
+    description: 'Contract-driven node and service discovery',
   },
 ];
 

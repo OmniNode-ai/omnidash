@@ -14,6 +14,7 @@ import { setupWebSocket } from './websocket';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
+import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
 
 const app = express();
 
@@ -156,6 +157,19 @@ app.use((req, res, next) => {
   // Setup WebSocket for real-time events
   if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
     setupWebSocket(server);
+
+    // Start mock registry events in development mode for testing (OMN-1278 Phase 4)
+    // Skip in test environment to prevent hanging tests
+    if (
+      app.get('env') === 'development' &&
+      process.env.NODE_ENV !== 'test' &&
+      !process.env.VITEST &&
+      process.env.ENABLE_MOCK_REGISTRY_EVENTS !== 'false'
+    ) {
+      const mockInterval = parseInt(process.env.MOCK_REGISTRY_EVENT_INTERVAL || '5000', 10);
+      log(`Starting mock registry events (interval: ${mockInterval}ms)`);
+      startMockRegistryEvents(mockInterval);
+    }
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -190,6 +204,7 @@ app.use((req, res, next) => {
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();
+    stopMockRegistryEvents();
     server.close(() => {
       log('Server closed');
       process.exit(0);
@@ -201,6 +216,7 @@ app.use((req, res, next) => {
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();
+    stopMockRegistryEvents();
     server.close(() => {
       log('Server closed');
       process.exit(0);

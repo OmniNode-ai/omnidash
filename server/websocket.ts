@@ -15,6 +15,7 @@ import {
   transformNodeStateChangeToSnakeCase,
   transformNodesToSnakeCase,
 } from './utils/case-transform';
+import { registryEventEmitter, type RegistryEvent } from './registry-events';
 
 // Valid subscription topics that clients can subscribe to
 const VALID_TOPICS = [
@@ -30,6 +31,10 @@ const VALID_TOPICS = [
   'node-heartbeat',
   'node-state-change',
   'node-registry',
+  // Registry discovery topics (Phase 4 - OMN-1278)
+  'registry',
+  'registry-nodes',
+  'registry-instances',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -205,6 +210,39 @@ export function setupWebSocket(httpServer: HTTPServer) {
     const data = transformNodesToSnakeCase(nodes);
     broadcast('NODE_REGISTRY_UPDATE', data, 'node-registry');
   });
+
+  // Registry Discovery event listeners (OMN-1278 Phase 4)
+  // These provide granular registry events for the registry discovery dashboard
+  const registryHandler = (event: RegistryEvent) => {
+    // Broadcast to 'registry' topic (all registry events)
+    broadcast(event.type, event, 'registry');
+  };
+
+  const registryNodesHandler = (event: RegistryEvent) => {
+    // Broadcast to 'registry-nodes' topic (node-specific events)
+    broadcast(event.type, event, 'registry-nodes');
+  };
+
+  const registryInstancesHandler = (event: RegistryEvent) => {
+    // Broadcast to 'registry-instances' topic (instance-specific events)
+    broadcast(event.type, event, 'registry-instances');
+  };
+
+  // Register registry event listeners
+  registryEventEmitter.on('registry', registryHandler);
+  registryEventEmitter.on('registry-nodes', registryNodesHandler);
+  registryEventEmitter.on('registry-instances', registryInstancesHandler);
+
+  // Track these listeners for cleanup (manually since they use a different emitter)
+  const registryListeners = [
+    { emitter: registryEventEmitter, event: 'registry', handler: registryHandler },
+    { emitter: registryEventEmitter, event: 'registry-nodes', handler: registryNodesHandler },
+    {
+      emitter: registryEventEmitter,
+      event: 'registry-instances',
+      handler: registryInstancesHandler,
+    },
+  ];
 
   // Handle WebSocket connections
   wss.on('connection', (ws: WebSocket, request: IncomingMessage) => {
@@ -428,6 +466,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
       eventConsumer.removeListener(event, handler);
     });
     eventListeners.length = 0; // Clear the array
+
+    // Remove registry event listeners
+    console.log(`Removing ${registryListeners.length} registry event listeners...`);
+    registryListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    registryListeners.length = 0;
 
     // Terminate all client connections
     console.log(`Terminating ${clients.size} client connections...`);
