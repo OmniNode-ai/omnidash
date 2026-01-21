@@ -29,7 +29,24 @@ function generateUUID(): string {
 }
 
 /**
+ * Default maximum number of recent events to keep in memory.
+ * Used as the default value for the maxRecentEvents option.
+ */
+export const DEFAULT_MAX_RECENT_EVENTS = 50;
+
+/**
+ * Maximum number of seen event IDs to track for deduplication.
+ * Should be larger than DEFAULT_MAX_RECENT_EVENTS to handle burst scenarios.
+ */
+export const MAX_SEEN_EVENT_IDS = 100;
+
+/**
  * Registry event types as defined in the WebSocket Event Spec v1.2
+ *
+ * BOUNDED SET: This union type defines exactly 7 known event types.
+ * The eventsByType stats object is bounded by this finite set, preventing
+ * memory leaks in long-running sessions. Only events matching these types
+ * are processed and counted.
  */
 export type RegistryEventType =
   | 'NODE_REGISTERED'
@@ -164,7 +181,12 @@ export interface UseRegistryWebSocketReturn {
 export function useRegistryWebSocket(
   options: UseRegistryWebSocketOptions = {}
 ): UseRegistryWebSocketReturn {
-  const { debug = false, maxRecentEvents = 50, autoSubscribe = true, onEvent } = options;
+  const {
+    debug = false,
+    maxRecentEvents = DEFAULT_MAX_RECENT_EVENTS,
+    autoSubscribe = true,
+    onEvent,
+  } = options;
 
   const queryClient = useQueryClient();
   const [recentEvents, setRecentEvents] = useState<RecentRegistryEvent[]>([]);
@@ -187,111 +209,125 @@ export function useRegistryWebSocket(
   }, [onEvent]);
 
   /**
-   * Handle incoming WebSocket messages
+   * Handle incoming WebSocket messages.
+   *
+   * Wrapped in try-catch to prevent malformed events from crashing the component.
+   * WebSocket messages from external sources may have unexpected structure,
+   * invalid timestamps, or missing fields that could cause runtime errors.
    */
   const handleMessage = useCallback(
     (message: { type: string; data?: RegistryEvent; timestamp: string }) => {
-      // Check if this is a registry event
-      const registryEventTypes: RegistryEventType[] = [
-        'NODE_REGISTERED',
-        'NODE_STATE_CHANGED',
-        'NODE_HEARTBEAT',
-        'NODE_DEREGISTERED',
-        'INSTANCE_HEALTH_CHANGED',
-        'INSTANCE_ADDED',
-        'INSTANCE_REMOVED',
-      ];
+      try {
+        // Check if this is a registry event
+        const registryEventTypes: RegistryEventType[] = [
+          'NODE_REGISTERED',
+          'NODE_STATE_CHANGED',
+          'NODE_HEARTBEAT',
+          'NODE_DEREGISTERED',
+          'INSTANCE_HEALTH_CHANGED',
+          'INSTANCE_ADDED',
+          'INSTANCE_REMOVED',
+        ];
 
-      if (!registryEventTypes.includes(message.type as RegistryEventType)) {
-        return;
-      }
-
-      const eventType = message.type as RegistryEventType;
-      const eventData = message.data as RegistryEvent | undefined;
-
-      // Create the event object
-      const event: RegistryEvent = eventData || {
-        type: eventType,
-        timestamp: message.timestamp,
-        correlation_id: generateUUID(),
-        payload: {},
-      };
-
-      // Deduplicate events - server may broadcast same event on multiple topics
-      // (e.g., 'registry' and 'registry-nodes' both receive NODE_* events)
-      const correlationId = event.correlation_id;
-      if (correlationId && seenEventIds.current.has(correlationId)) {
-        if (debug) {
-          // eslint-disable-next-line no-console
-          console.log('[RegistryWebSocket] Skipping duplicate event:', correlationId);
+        if (!registryEventTypes.includes(message.type as RegistryEventType)) {
+          return;
         }
-        return;
-      }
-      if (correlationId) {
-        seenEventIds.current.add(correlationId);
-        // Prevent memory leak: keep only last maxRecentEvents * 2 IDs
-        if (seenEventIds.current.size > maxRecentEvents * 2) {
-          const idsToRemove = Array.from(seenEventIds.current).slice(
-            0,
-            seenEventIds.current.size - maxRecentEvents
-          );
-          idsToRemove.forEach((id) => seenEventIds.current.delete(id));
-        }
-      }
 
-      if (debug) {
-        // eslint-disable-next-line no-console
-        console.log('[RegistryWebSocket] Received event:', eventType, eventData);
-      }
+        const eventType = message.type as RegistryEventType;
+        const eventData = message.data as RegistryEvent | undefined;
 
-      // Update recent events
-      setRecentEvents((prev) => {
-        const newEvent: RecentRegistryEvent = {
-          id: event.correlation_id || generateUUID(),
-          type: event.type,
-          timestamp: new Date(event.timestamp),
-          payload: event.payload,
-          correlationId: event.correlation_id,
+        // Create the event object
+        const event: RegistryEvent = eventData || {
+          type: eventType,
+          timestamp: message.timestamp,
+          correlation_id: generateUUID(),
+          payload: {},
         };
 
-        const updated = [newEvent, ...prev].slice(0, maxRecentEvents);
-        return updated;
-      });
+        // Deduplicate events - server may broadcast same event on multiple topics
+        // (e.g., 'registry' and 'registry-nodes' both receive NODE_* events)
+        const correlationId = event.correlation_id;
+        if (correlationId && seenEventIds.current.has(correlationId)) {
+          if (debug) {
+            // eslint-disable-next-line no-console
+            console.log('[RegistryWebSocket] Skipping duplicate event:', correlationId);
+          }
+          return;
+        }
+        if (correlationId) {
+          seenEventIds.current.add(correlationId);
+          // Prevent memory leak: keep only last MAX_SEEN_EVENT_IDS IDs
+          if (seenEventIds.current.size > MAX_SEEN_EVENT_IDS) {
+            const idsToRemove = Array.from(seenEventIds.current).slice(
+              0,
+              seenEventIds.current.size - maxRecentEvents
+            );
+            idsToRemove.forEach((id) => seenEventIds.current.delete(id));
+          }
+        }
 
-      // Update stats
-      setStats((prev) => ({
-        totalEventsReceived: prev.totalEventsReceived + 1,
-        eventsByType: {
-          ...prev.eventsByType,
-          [eventType]: (prev.eventsByType[eventType] || 0) + 1,
-        },
-        lastEventTime: new Date(),
-      }));
+        if (debug) {
+          // eslint-disable-next-line no-console
+          console.log('[RegistryWebSocket] Received event:', eventType, eventData);
+        }
 
-      // Call event callback if provided
-      onEventRef.current?.(event);
+        // Update recent events
+        setRecentEvents((prev) => {
+          const newEvent: RecentRegistryEvent = {
+            id: event.correlation_id || generateUUID(),
+            type: event.type,
+            timestamp: new Date(event.timestamp),
+            payload: event.payload,
+            correlationId: event.correlation_id,
+          };
 
-      // Invalidate relevant queries based on event type
-      switch (eventType) {
-        case 'NODE_REGISTERED':
-        case 'NODE_STATE_CHANGED':
-        case 'NODE_DEREGISTERED':
-          // Node-level changes - full refetch
-          queryClient.invalidateQueries({ queryKey: ['registry-discovery'] });
-          break;
+          const updated = [newEvent, ...prev].slice(0, maxRecentEvents);
+          return updated;
+        });
 
-        case 'INSTANCE_HEALTH_CHANGED':
-        case 'INSTANCE_ADDED':
-        case 'INSTANCE_REMOVED':
-          // Instance-level changes - full refetch
-          queryClient.invalidateQueries({ queryKey: ['registry-discovery'] });
-          break;
+        // Update stats
+        // NOTE: eventsByType is bounded to max 7 keys (one per RegistryEventType).
+        // This prevents memory leaks in long-running sessions since only events
+        // passing the registryEventTypes.includes() check above reach this point.
+        setStats((prev) => ({
+          totalEventsReceived: prev.totalEventsReceived + 1,
+          eventsByType: {
+            ...prev.eventsByType,
+            [eventType]: (prev.eventsByType[eventType] || 0) + 1,
+          },
+          lastEventTime: new Date(),
+        }));
 
-        case 'NODE_HEARTBEAT':
-          // Heartbeats are frequent and don't change data structure
-          // Only update if we want to show "last seen" timestamps
-          // For now, we don't trigger a full refetch for heartbeats
-          break;
+        // Call event callback if provided
+        onEventRef.current?.(event);
+
+        // Invalidate relevant queries based on event type
+        switch (eventType) {
+          case 'NODE_REGISTERED':
+          case 'NODE_STATE_CHANGED':
+          case 'NODE_DEREGISTERED':
+            // Node-level changes - full refetch
+            queryClient.invalidateQueries({ queryKey: ['registry-discovery'] });
+            break;
+
+          case 'INSTANCE_HEALTH_CHANGED':
+          case 'INSTANCE_ADDED':
+          case 'INSTANCE_REMOVED':
+            // Instance-level changes - full refetch
+            queryClient.invalidateQueries({ queryKey: ['registry-discovery'] });
+            break;
+
+          case 'NODE_HEARTBEAT':
+            // Heartbeats are frequent and don't change data structure
+            // Only update if we want to show "last seen" timestamps
+            // For now, we don't trigger a full refetch for heartbeats
+            break;
+        }
+      } catch (err) {
+        // Log error in debug mode but don't propagate - component should remain stable
+        if (debug) {
+          console.error('[RegistryWebSocket] Error processing message:', err, message);
+        }
       }
     },
     [debug, maxRecentEvents, queryClient]
@@ -332,15 +368,20 @@ export function useRegistryWebSocket(
   }, [isConnected, autoSubscribe, subscribe, unsubscribe, debug]);
 
   /**
-   * Clear all recent events
+   * Clear all recent events and reset stats.
+   * This provides a manual reset mechanism for long-running sessions,
+   * though eventsByType is already bounded to 7 keys (one per RegistryEventType).
    */
   const clearEvents = useCallback(() => {
     setRecentEvents([]);
+    // Reset all stats including eventsByType counts
     setStats({
       totalEventsReceived: 0,
       eventsByType: {} as Record<RegistryEventType, number>,
       lastEventTime: null,
     });
+    // Also clear seen event IDs to allow re-processing if needed
+    seenEventIds.current.clear();
   }, []);
 
   return {

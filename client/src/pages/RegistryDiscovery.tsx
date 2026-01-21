@@ -35,25 +35,30 @@ import type { DashboardData } from '@/lib/dashboard-schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { RegistryEmptyState } from '@/components/EmptyState';
 import { FilterBar, type FilterConfig } from '@/components/FilterBar';
 import { DashboardPageHeader } from '@/components/DashboardPageHeader';
-import {
-  NodeDetailPanel,
-  NodeTypeIcon,
-  NodeStateBadge,
-  NODE_TYPE_CONFIG,
-  NODE_STATE_CONFIG,
-} from '@/components/NodeDetailPanel';
-import { AlertCircle, X, Radio, Activity, Trash2, Zap, ChevronRight } from 'lucide-react';
+import { NodeDetailPanel, NODE_TYPE_CONFIG, NODE_STATE_CONFIG } from '@/components/NodeDetailPanel';
+import { NodesTable } from '@/components/NodesTable';
+import { EventFeedSidebar } from '@/components/EventFeedSidebar';
+import { Activity, AlertCircle, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // LocalStorage key for banner dismissal
 const BANNER_DISMISSED_KEY = 'registry-discovery-banner-dismissed';
+
+/**
+ * Format a raw state name (e.g., "PENDING_REGISTRATION") to a readable label (e.g., "Pending Registration")
+ * Used as fallback when NODE_STATE_CONFIG doesn't have a label for a state
+ */
+function formatStateName(state: string): string {
+  return state
+    .split('_')
+    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+    .join(' ');
+}
 
 // Filter options
 const NODE_TYPES: NodeType[] = ['EFFECT', 'COMPUTE', 'REDUCER', 'ORCHESTRATOR'];
@@ -69,17 +74,6 @@ const NODE_STATES: NodeState[] = [
 ];
 const HEALTH_STATUSES: HealthStatus[] = ['passing', 'warning', 'critical', 'unknown'];
 
-// Event type styling
-const EVENT_TYPE_STYLES: Record<string, { color: string; icon: string; bg: string }> = {
-  NODE_REGISTERED: { color: 'text-green-500', icon: '+', bg: 'bg-green-500/10' },
-  NODE_STATE_CHANGED: { color: 'text-blue-500', icon: '~', bg: 'bg-blue-500/10' },
-  NODE_HEARTBEAT: { color: 'text-gray-500', icon: '*', bg: 'bg-gray-500/10' },
-  NODE_DEREGISTERED: { color: 'text-red-500', icon: '-', bg: 'bg-red-500/10' },
-  INSTANCE_HEALTH_CHANGED: { color: 'text-yellow-500', icon: '!', bg: 'bg-yellow-500/10' },
-  INSTANCE_ADDED: { color: 'text-green-500', icon: '+', bg: 'bg-green-500/10' },
-  INSTANCE_REMOVED: { color: 'text-red-500', icon: '-', bg: 'bg-red-500/10' },
-};
-
 // Registry-specific event types to show in Live Events panel
 // Excludes NODE_HEARTBEAT as it's too noisy for the feed
 const REGISTRY_EVENT_TYPES = [
@@ -90,23 +84,6 @@ const REGISTRY_EVENT_TYPES = [
   'INSTANCE_ADDED',
   'INSTANCE_REMOVED',
 ];
-
-// Format event type for display
-function formatEventType(type: string): string {
-  return type
-    .replace(/_/g, ' ')
-    .toLowerCase()
-    .replace(/\b\w/g, (l) => l.toUpperCase());
-}
-
-// Format timestamp for display
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-}
 
 export default function RegistryDiscovery() {
   // Filter state
@@ -340,7 +317,7 @@ export default function RegistryDiscovery() {
         allLabel: 'All States',
         options: NODE_STATES.map((state) => ({
           value: state,
-          label: NODE_STATE_CONFIG[state]?.label || state,
+          label: NODE_STATE_CONFIG[state]?.label || formatStateName(state),
         })),
       },
       {
@@ -555,214 +532,19 @@ export default function RegistryDiscovery() {
 
               {/* Interactive Nodes Table */}
               {filteredData && filteredData.nodes.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-medium">Registered Nodes</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Click a node to view details and live instances
-                    </p>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="rounded-md border overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b bg-muted/50">
-                              <th className="text-left py-3 px-4 font-medium">Name</th>
-                              <th className="text-left py-3 px-4 font-medium">Type</th>
-                              <th className="text-left py-3 px-4 font-medium">State</th>
-                              <th className="text-left py-3 px-4 font-medium hidden md:table-cell">
-                                Version
-                              </th>
-                              <th className="text-left py-3 px-4 font-medium hidden lg:table-cell">
-                                Capabilities
-                              </th>
-                              <th className="w-10"></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredData.nodes.map((node: RegisteredNodeInfo, idx: number) => {
-                              const capabilities = node.capabilities;
-                              const displayCaps = capabilities.slice(0, 3);
-                              const moreCaps = capabilities.length - 3;
-
-                              return (
-                                <tr
-                                  key={node.node_id || node.name}
-                                  className={cn(
-                                    'border-b last:border-b-0 cursor-pointer transition-colors',
-                                    'hover:bg-muted/50',
-                                    idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'
-                                  )}
-                                  onClick={() => handleNodeClick(node)}
-                                >
-                                  <td className="py-3 px-4">
-                                    <span className="font-medium">{node.name}</span>
-                                  </td>
-                                  <td className="py-3 px-4">
-                                    <NodeTypeIcon type={node.node_type} showLabel />
-                                  </td>
-                                  <td className="py-3 px-4">
-                                    <NodeStateBadge state={node.state} />
-                                  </td>
-                                  <td className="py-3 px-4 hidden md:table-cell">
-                                    <span className="font-mono text-xs">{node.version}</span>
-                                  </td>
-                                  <td className="py-3 px-4 hidden lg:table-cell">
-                                    <div className="flex flex-wrap gap-1 max-w-[300px]">
-                                      {displayCaps.map((cap) => (
-                                        <Badge
-                                          key={cap}
-                                          variant="outline"
-                                          className="text-xs font-mono bg-muted/50"
-                                        >
-                                          {cap}
-                                        </Badge>
-                                      ))}
-                                      {moreCaps > 0 && (
-                                        <Badge variant="secondary" className="text-xs">
-                                          +{moreCaps} more
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="py-3 px-4">
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <NodesTable nodes={filteredData.nodes} onNodeClick={handleNodeClick} />
               )}
             </div>
           )}
 
           {/* Event feed sidebar */}
           {showEventFeed && (
-            <Card className="h-fit lg:sticky lg:top-4">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Radio className="h-4 w-4" />
-                    Live Events
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    {filteredRegistryEvents.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearEvents}
-                        className="h-7 px-2 text-muted-foreground hover:text-foreground"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    )}
-                    <Badge variant="outline" className="text-xs">
-                      {filteredRegistryEvents.length}
-                    </Badge>
-                  </div>
-                </div>
-                {stats.lastEventTime && (
-                  <p className="text-xs text-muted-foreground">
-                    Last event: {formatTime(stats.lastEventTime)}
-                  </p>
-                )}
-              </CardHeader>
-              <CardContent className="pt-0">
-                {filteredRegistryEvents.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
-                    {isConnected ? (
-                      <>
-                        <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>Waiting for registry events...</p>
-                        <p className="text-xs mt-1">Node and instance events will appear here</p>
-                      </>
-                    ) : (
-                      <>
-                        <Radio className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>Not connected</p>
-                        <p className="text-xs mt-1">WebSocket connection required</p>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <ScrollArea className="h-[300px] md:h-[400px] pr-4">
-                    <div className="space-y-2">
-                      {filteredRegistryEvents.slice(0, 50).map((event, idx) => {
-                        const style = EVENT_TYPE_STYLES[event.type] || {
-                          color: 'text-gray-500',
-                          icon: '?',
-                          bg: 'bg-gray-500/10',
-                        };
-                        return (
-                          <div
-                            key={`${event.id}-${idx}`}
-                            className={cn(
-                              'p-2 rounded-md text-xs border border-transparent hover:border-border transition-colors',
-                              style.bg
-                            )}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span
-                                  className={cn('font-mono font-bold flex-shrink-0', style.color)}
-                                >
-                                  {style.icon}
-                                </span>
-                                <span className="font-medium">{formatEventType(event.type)}</span>
-                              </div>
-                              <span className="text-muted-foreground whitespace-nowrap text-[10px]">
-                                {formatTime(event.timestamp)}
-                              </span>
-                            </div>
-                            {event.payload && Object.keys(event.payload).length > 0 && (
-                              <div className="mt-1 pl-5 text-muted-foreground space-y-0.5">
-                                {'node_id' in event.payload && (
-                                  <p className="break-all">
-                                    <span className="text-muted-foreground/70">Node:</span>{' '}
-                                    <span className="font-mono">
-                                      {String(event.payload.node_id)}
-                                    </span>
-                                  </p>
-                                )}
-                                {'instance_id' in event.payload && (
-                                  <p className="break-all">
-                                    <span className="text-muted-foreground/70">Instance:</span>{' '}
-                                    <span className="font-mono">
-                                      {String(event.payload.instance_id)}
-                                    </span>
-                                  </p>
-                                )}
-                                {'new_state' in event.payload && (
-                                  <p>
-                                    State: {String(event.payload.previous_state)} &rarr;{' '}
-                                    {String(event.payload.new_state)}
-                                  </p>
-                                )}
-                                {'new_health' in event.payload && (
-                                  <p>
-                                    Health: {String(event.payload.previous_health)} &rarr;{' '}
-                                    {String(event.payload.new_health)}
-                                  </p>
-                                )}
-                                {'health_status' in event.payload && (
-                                  <p>Status: {String(event.payload.health_status)}</p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
-                )}
-              </CardContent>
-            </Card>
+            <EventFeedSidebar
+              events={filteredRegistryEvents}
+              isConnected={isConnected}
+              onClearEvents={clearEvents}
+              lastEventTime={stats.lastEventTime}
+            />
           )}
         </div>
 

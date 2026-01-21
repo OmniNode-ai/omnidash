@@ -7,7 +7,7 @@
  * @module components/FilterBar
  */
 
-import { forwardRef, type ReactNode, type RefObject } from 'react';
+import { type ReactNode, type RefObject } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -217,29 +217,27 @@ function SelectFilter({ filter }: { filter: SelectFilterConfig }) {
 /**
  * Renders a search input filter with clear button.
  */
-const SearchFilter = forwardRef<HTMLInputElement, { filter: SearchFilterConfig }>(
-  function SearchFilter({ filter }, _ref) {
-    return (
-      <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          ref={filter.inputRef}
-          placeholder={filter.placeholder}
-          value={filter.value}
-          onChange={(e) => filter.onChange(e.target.value)}
-          className="pl-9 h-9"
-        />
-        {filter.value && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-            onClick={() => filter.onChange('')}
-          >
-            <X className="h-3 w-3" />
-          </Button>
-        )}
-      </div>
-    );
-  }
-);
+function SearchFilter({ filter }: { filter: SearchFilterConfig }) {
+  return (
+    <div className="relative">
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        ref={filter.inputRef}
+        placeholder={filter.placeholder}
+        value={filter.value}
+        onChange={(e) => filter.onChange(e.target.value)}
+        className="pl-9 h-9"
+      />
+      {filter.value && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+          onClick={() => filter.onChange('')}
+        >
+          <X className="h-3 w-3" />
+        </Button>
+      )}
+    </div>
+  );
+}
