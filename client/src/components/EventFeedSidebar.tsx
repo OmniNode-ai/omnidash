@@ -258,6 +258,7 @@ export function EventFeedSidebar({
                 size="sm"
                 onClick={onClearEvents}
                 className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear events"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>

@@ -512,7 +512,7 @@ describe('EventFeedSidebar Component', () => {
       );
 
       // Find and click the trash button (clear events)
-      const clearButton = screen.getByRole('button', { name: '' });
+      const clearButton = screen.getByRole('button', { name: 'Clear events' });
       await user.click(clearButton);
 
       expect(mockOnClearEvents).toHaveBeenCalledTimes(1);
