@@ -2,26 +2,28 @@
  * SystemHealthBadge Component
  *
  * Displays an at-a-glance health status indicator for a system or dashboard.
- * Shows HEALTHY (green), WARNING (yellow), or CRITICAL (red) based on the
- * provided health data.
+ * Shows HEALTHY (green), WARNING (yellow), CRITICAL (red), or UNKNOWN (gray)
+ * based on the provided health data.
  *
  * @module components/SystemHealthBadge
  */
 
 import { cn } from '@/lib/utils';
-import { CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { type SemanticHealthLevel } from '@/lib/health-utils';
+import { CheckCircle2, AlertTriangle, XCircle, HelpCircle } from 'lucide-react';
 
 /**
- * Health status level
+ * Health status level - re-exported from centralized health-utils for backward compatibility
+ * @deprecated Use SemanticHealthLevel from @/lib/health-utils directly
  */
-export type HealthLevel = 'healthy' | 'warning' | 'critical';
+export type HealthLevel = SemanticHealthLevel;
 
 /**
  * Props for the SystemHealthBadge component.
  */
 export interface SystemHealthBadgeProps {
   /** The health level to display */
-  status: HealthLevel;
+  status: SemanticHealthLevel;
   /** Optional tooltip/title text */
   title?: string;
   /** Optional className for additional styling */
@@ -34,7 +36,7 @@ export interface SystemHealthBadgeProps {
  * Configuration for each health status level
  */
 const STATUS_CONFIG: Record<
-  HealthLevel,
+  SemanticHealthLevel,
   {
     label: string;
     icon: typeof CheckCircle2;
@@ -60,6 +62,12 @@ const STATUS_CONFIG: Record<
     icon: XCircle,
     containerClass: 'bg-red-500/15 border-red-500/30 text-red-600 dark:text-red-400',
     iconClass: 'text-red-500',
+  },
+  unknown: {
+    label: 'UNKNOWN',
+    icon: HelpCircle,
+    containerClass: 'bg-gray-500/15 border-gray-500/30 text-gray-600 dark:text-gray-400',
+    iconClass: 'text-gray-500',
   },
 };
 
@@ -134,7 +142,7 @@ export function calculateHealthLevel(data: {
     critical?: number;
     warning?: number;
   };
-}): HealthLevel {
+}): SemanticHealthLevel {
   // Extract values with safe defaults for missing/undefined properties
   const failedNodes = data.failed_nodes ?? 0;
   const pendingNodes = data.pending_nodes ?? 0;
@@ -174,7 +182,7 @@ export function getHealthTooltip(
       critical: number;
     };
   },
-  status: HealthLevel
+  status: SemanticHealthLevel
 ): string {
   const parts: string[] = [];
 
@@ -196,7 +204,10 @@ export function getHealthTooltip(
         `${data.by_health.warning} warning instance${data.by_health.warning === 1 ? '' : 's'}`
       );
     }
+  } else if (status === 'unknown') {
+    parts.push('Health status unavailable');
   } else {
+    // healthy
     parts.push(`${data.active_nodes} of ${data.total_nodes} nodes active`);
     if (data.by_health.passing > 0) {
       parts.push(

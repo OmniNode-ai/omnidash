@@ -30,7 +30,16 @@ export const DEFAULT_MAX_RECENT_EVENTS = 50;
  * Multiplier for seenEventIds cleanup threshold.
  * When seenEventIds.size exceeds maxRecentEvents * this multiplier,
  * the Set is pruned to only contain IDs currently in recentEvents.
- * A value of 5 provides good balance between deduplication window and memory usage.
+ *
+ * Why 5? With DEFAULT_MAX_RECENT_EVENTS=50 and multiplier=5:
+ * - Cleanup triggers at 250 seen IDs
+ * - At typical rates (1-5 events/sec), this provides 50-250 seconds of dedup history
+ * - Memory overhead: ~250 UUIDs x 36 bytes = ~9KB (negligible)
+ *
+ * Trade-off: Higher values extend the deduplication window (catches duplicates
+ * arriving later) but use more memory. Lower values save memory but may miss
+ * duplicates that arrive after the window closes. Value of 5 balances memory
+ * efficiency with practical deduplication needs for WebSocket event streams.
  */
 export const SEEN_EVENT_IDS_CLEANUP_MULTIPLIER = 5;
 

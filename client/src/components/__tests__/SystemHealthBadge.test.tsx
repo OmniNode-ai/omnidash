@@ -400,11 +400,12 @@ describe('SystemHealthBadge component', () => {
   });
 
   describe('all statuses render correctly', () => {
-    const statuses: HealthLevel[] = ['healthy', 'warning', 'critical'];
-    const expectedLabels = {
+    const statuses: HealthLevel[] = ['healthy', 'warning', 'critical', 'unknown'];
+    const expectedLabels: Record<HealthLevel, string> = {
       healthy: 'HEALTHY',
       warning: 'WARNING',
       critical: 'CRITICAL',
+      unknown: 'UNKNOWN',
     };
 
     statuses.forEach((status) => {
