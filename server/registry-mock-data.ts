@@ -209,96 +209,187 @@ function getRecentDate(): string {
 }
 
 // ============================================================================
-// Mock Data Generators
+// Mock Data Store (Singleton with Lazy Initialization)
 // ============================================================================
 
 /**
- * Generate mock nodes with consistent IDs (cached for consistency across calls)
+ * MockDataStore provides in-memory caching for mock registry data.
+ * Data is generated once on first access and reused for subsequent requests.
+ * Use refresh() to regenerate all data for testing/demos.
  */
-let cachedNodes: RegistryNodeView[] | null = null;
+class MockDataStore {
+  private nodes: RegistryNodeView[] | null = null;
+  private instances: RegistryInstanceView[] | null = null;
+  private lastRefresh: Date | null = null;
 
-export function generateMockNodes(): RegistryNodeView[] {
-  if (cachedNodes) {
-    // Update heartbeat times for freshness
-    return cachedNodes.map((node) => ({
+  /**
+   * Get cached nodes (generates on first access)
+   */
+  getNodes(): RegistryNodeView[] {
+    if (!this.nodes) {
+      this.nodes = this.generateNodes();
+      this.lastRefresh = new Date();
+    }
+    // Update heartbeat times for freshness on active nodes
+    return this.nodes.map((node) => ({
       ...node,
       last_heartbeat_at: node.state === 'ACTIVE' ? getRecentDate() : node.last_heartbeat_at,
     }));
   }
 
-  cachedNodes = MOCK_NODE_DEFINITIONS.map((def) => {
-    const nodeId = randomUUID();
-    const state = getRandomState();
+  /**
+   * Get cached instances (generates on first access)
+   */
+  getInstances(): RegistryInstanceView[] {
+    // Ensure nodes are generated first
+    const nodes = this.getNodes();
 
-    return {
-      node_id: nodeId,
-      name: def.name,
-      service_name: def.service_name,
-      namespace: def.namespace,
-      display_name: def.display_name,
-      node_type: def.node_type,
-      version: def.version,
-      state,
-      capabilities: def.capabilities,
-      registered_at: getRandomDate(30),
-      last_heartbeat_at: state === 'ACTIVE' ? getRecentDate() : null,
-    };
-  });
-
-  return cachedNodes;
-}
-
-/**
- * Generate mock instances for nodes
- */
-export function generateMockInstances(nodes: RegistryNodeView[]): RegistryInstanceView[] {
-  const instances: RegistryInstanceView[] = [];
-
-  for (const node of nodes) {
-    // Only active or partially active nodes have instances
-    if (['ACTIVE', 'ACK_RECEIVED', 'AWAITING_ACK'].includes(node.state)) {
-      // Generate 1-3 instances per node
-      const instanceCount = 1 + Math.floor(Math.random() * 3);
-
-      for (let i = 0; i < instanceCount; i++) {
-        const healthStatus = getRandomHealthStatus();
-        const port = 8000 + Math.floor(Math.random() * 1000);
-
-        instances.push({
-          node_id: node.node_id,
-          service_name: node.service_name,
-          service_id: `${node.service_name}-${i + 1}`,
-          instance_id: randomUUID(),
-          address: `192.168.1.${100 + Math.floor(Math.random() * 100)}`,
-          port,
-          health_status: healthStatus,
-          health_output:
-            healthStatus === 'passing'
-              ? 'TCP connect succeeded'
-              : healthStatus === 'warning'
-                ? 'High latency detected (>500ms)'
-                : healthStatus === 'critical'
-                  ? 'Connection refused'
-                  : null,
-          last_check_at: healthStatus !== 'unknown' ? getRecentDate() : null,
-          tags: [node.node_type.toLowerCase(), node.namespace || 'default', `v${node.version}`],
-          meta: {
-            node_type: node.node_type,
-            version: node.version,
-            namespace: node.namespace || 'default',
-          },
-        });
-      }
+    if (!this.instances) {
+      this.instances = this.generateInstances(nodes);
     }
+    // Update check times for freshness
+    return this.instances.map((instance) => ({
+      ...instance,
+      last_check_at:
+        instance.health_status !== 'unknown' ? getRecentDate() : instance.last_check_at,
+    }));
   }
 
-  return instances;
+  /**
+   * Compute summary from cached data
+   */
+  getSummary(): RegistrySummary {
+    const nodes = this.getNodes();
+    const instances = this.getInstances();
+    return computeSummary(nodes, instances);
+  }
+
+  /**
+   * Regenerate all mock data (for testing/demos)
+   */
+  refresh(): void {
+    this.nodes = this.generateNodes();
+    this.instances = this.generateInstances(this.nodes);
+    this.lastRefresh = new Date();
+  }
+
+  /**
+   * Check if data has been initialized
+   */
+  isInitialized(): boolean {
+    return this.nodes !== null;
+  }
+
+  /**
+   * Get timestamp of last refresh
+   */
+  getLastRefresh(): Date | null {
+    return this.lastRefresh;
+  }
+
+  /**
+   * Generate nodes from definitions (internal)
+   */
+  private generateNodes(): RegistryNodeView[] {
+    return MOCK_NODE_DEFINITIONS.map((def) => {
+      const nodeId = randomUUID();
+      const state = getRandomState();
+
+      return {
+        node_id: nodeId,
+        name: def.name,
+        service_name: def.service_name,
+        namespace: def.namespace,
+        display_name: def.display_name,
+        node_type: def.node_type,
+        version: def.version,
+        state,
+        capabilities: def.capabilities,
+        registered_at: getRandomDate(30),
+        last_heartbeat_at: state === 'ACTIVE' ? getRecentDate() : null,
+      };
+    });
+  }
+
+  /**
+   * Generate instances for nodes (internal)
+   */
+  private generateInstances(nodes: RegistryNodeView[]): RegistryInstanceView[] {
+    const instances: RegistryInstanceView[] = [];
+
+    for (const node of nodes) {
+      // Only active or partially active nodes have instances
+      if (['ACTIVE', 'ACK_RECEIVED', 'AWAITING_ACK'].includes(node.state)) {
+        // Generate 1-3 instances per node
+        const instanceCount = 1 + Math.floor(Math.random() * 3);
+
+        for (let i = 0; i < instanceCount; i++) {
+          const healthStatus = getRandomHealthStatus();
+          const port = 8000 + Math.floor(Math.random() * 1000);
+
+          instances.push({
+            node_id: node.node_id,
+            service_name: node.service_name,
+            service_id: `${node.service_name}-${i + 1}`,
+            instance_id: randomUUID(),
+            address: `192.168.1.${100 + Math.floor(Math.random() * 100)}`,
+            port,
+            health_status: healthStatus,
+            health_output:
+              healthStatus === 'passing'
+                ? 'TCP connect succeeded'
+                : healthStatus === 'warning'
+                  ? 'High latency detected (>500ms)'
+                  : healthStatus === 'critical'
+                    ? 'Connection refused'
+                    : null,
+            last_check_at: healthStatus !== 'unknown' ? getRecentDate() : null,
+            tags: [node.node_type.toLowerCase(), node.namespace || 'default', `v${node.version}`],
+            meta: {
+              node_type: node.node_type,
+              version: node.version,
+              namespace: node.namespace || 'default',
+            },
+          });
+        }
+      }
+    }
+
+    return instances;
+  }
+}
+
+// Export singleton instance
+export const mockDataStore = new MockDataStore();
+
+// ============================================================================
+// Legacy Functions (for backward compatibility)
+// ============================================================================
+
+/**
+ * Generate mock nodes with consistent IDs (uses cached store)
+ * @deprecated Use mockDataStore.getNodes() instead
+ */
+export function generateMockNodes(): RegistryNodeView[] {
+  return mockDataStore.getNodes();
 }
 
 /**
- * Generate summary statistics from nodes and instances
+ * Generate mock instances for nodes (uses cached store)
+ * @deprecated Use mockDataStore.getInstances() instead
  */
-export function generateMockSummary(
+export function generateMockInstances(_nodes: RegistryNodeView[]): RegistryInstanceView[] {
+  return mockDataStore.getInstances();
+}
+
+// ============================================================================
+// Summary Computation
+// ============================================================================
+
+/**
+ * Compute summary statistics from nodes and instances
+ */
+function computeSummary(
   nodes: RegistryNodeView[],
   instances: RegistryInstanceView[]
 ): RegistrySummary {
@@ -345,6 +436,17 @@ export function generateMockSummary(
     by_type: byType,
     by_health: byHealth,
   };
+}
+
+/**
+ * Generate summary statistics from nodes and instances
+ * @deprecated Use mockDataStore.getSummary() or computeSummary() directly
+ */
+export function generateMockSummary(
+  nodes: RegistryNodeView[],
+  instances: RegistryInstanceView[]
+): RegistrySummary {
+  return computeSummary(nodes, instances);
 }
 
 /**
@@ -492,7 +594,8 @@ export function getWidgetMappings(): RegistryWidgetMapping[] {
 
 /**
  * Reset cached data (useful for testing)
+ * @deprecated Use mockDataStore.refresh() instead
  */
 export function resetMockData(): void {
-  cachedNodes = null;
+  mockDataStore.refresh();
 }
