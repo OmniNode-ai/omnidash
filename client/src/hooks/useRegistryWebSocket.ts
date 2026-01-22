@@ -13,19 +13,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from './useWebSocket';
 
 /**
- * Generate a UUID with fallback for non-secure contexts (HTTP).
- * crypto.randomUUID() may not be available in non-HTTPS environments.
+ * Generate a correlation ID for event deduplication.
+ * crypto.randomUUID() is available in all modern browsers (Chrome 92+, Safari 15.4+, Firefox 95+).
  */
-function generateUUID(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  // Fallback UUID v4 generator using Math.random()
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+function generateCorrelationId(): string {
+  return crypto.randomUUID();
 }
 
 /**
@@ -35,10 +27,21 @@ function generateUUID(): string {
 export const DEFAULT_MAX_RECENT_EVENTS = 50;
 
 /**
- * Maximum number of seen event IDs to track for deduplication.
- * Should be larger than DEFAULT_MAX_RECENT_EVENTS to handle burst scenarios.
+ * Multiplier for seenEventIds cleanup threshold.
+ * When seenEventIds.size exceeds maxRecentEvents * this multiplier,
+ * the Set is pruned to only contain IDs currently in recentEvents.
+ *
+ * Why 5? With DEFAULT_MAX_RECENT_EVENTS=50 and multiplier=5:
+ * - Cleanup triggers at 250 seen IDs
+ * - At typical rates (1-5 events/sec), this provides 50-250 seconds of dedup history
+ * - Memory overhead: ~250 UUIDs x 36 bytes = ~9KB (negligible)
+ *
+ * Trade-off: Higher values extend the deduplication window (catches duplicates
+ * arriving later) but use more memory. Lower values save memory but may miss
+ * duplicates that arrive after the window closes. Value of 5 balances memory
+ * efficiency with practical deduplication needs for WebSocket event streams.
  */
-export const MAX_SEEN_EVENT_IDS = 100;
+export const SEEN_EVENT_IDS_CLEANUP_MULTIPLIER = 5;
 
 /**
  * Registry event types as defined in the WebSocket Event Spec v1.2
@@ -240,7 +243,7 @@ export function useRegistryWebSocket(
         const event: RegistryEvent = eventData || {
           type: eventType,
           timestamp: message.timestamp,
-          correlation_id: generateUUID(),
+          correlation_id: generateCorrelationId(),
           payload: {},
         };
 
@@ -256,14 +259,6 @@ export function useRegistryWebSocket(
         }
         if (correlationId) {
           seenEventIds.current.add(correlationId);
-          // Prevent memory leak: keep only last MAX_SEEN_EVENT_IDS IDs
-          if (seenEventIds.current.size > MAX_SEEN_EVENT_IDS) {
-            const idsToRemove = Array.from(seenEventIds.current).slice(
-              0,
-              seenEventIds.current.size - maxRecentEvents
-            );
-            idsToRemove.forEach((id) => seenEventIds.current.delete(id));
-          }
         }
 
         if (debug) {
@@ -274,7 +269,7 @@ export function useRegistryWebSocket(
         // Update recent events
         setRecentEvents((prev) => {
           const newEvent: RecentRegistryEvent = {
-            id: event.correlation_id || generateUUID(),
+            id: event.correlation_id || generateCorrelationId(),
             type: event.type,
             timestamp: new Date(event.timestamp),
             payload: event.payload,
@@ -282,6 +277,16 @@ export function useRegistryWebSocket(
           };
 
           const updated = [newEvent, ...prev].slice(0, maxRecentEvents);
+
+          // Memory cleanup: prevent unbounded growth of seenEventIds
+          // When Set exceeds threshold, prune to only current event IDs
+          // This ensures deduplication continues to work for visible events while
+          // preventing memory leaks in long-running sessions
+          if (seenEventIds.current.size > maxRecentEvents * SEEN_EVENT_IDS_CLEANUP_MULTIPLIER) {
+            const currentIds = new Set(updated.map((e) => e.id));
+            seenEventIds.current = currentIds;
+          }
+
           return updated;
         });
 

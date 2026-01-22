@@ -21,6 +21,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/date-utils';
 import {
+  normalizeHealthStatus,
+  consulToSemantic,
+  type SemanticHealthLevel,
+} from '@/lib/health-utils';
+import {
   Zap,
   Cpu,
   Layers,
@@ -122,14 +127,15 @@ export const NODE_STATE_CONFIG: Record<
   },
 };
 
-// Health status configurations
+// Health status configurations using semantic health levels
+// This config uses SemanticHealthLevel from health-utils for consistency
 export const HEALTH_STATUS_CONFIG: Record<
-  HealthStatus,
+  SemanticHealthLevel,
   { icon: LucideIcon; label: string; color: string; bgColor: string }
 > = {
-  passing: {
+  healthy: {
     icon: CheckCircle,
-    label: 'Passing',
+    label: 'Healthy',
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
   },
@@ -152,6 +158,15 @@ export const HEALTH_STATUS_CONFIG: Record<
     bgColor: 'bg-gray-500/10',
   },
 };
+
+/**
+ * Get health status config for any health status string.
+ * Normalizes the input using health-utils before looking up the config.
+ */
+export function getHealthConfig(status: string | null | undefined) {
+  const normalized = normalizeHealthStatus(status);
+  return HEALTH_STATUS_CONFIG[normalized];
+}
 
 export interface NodeDetailPanelProps {
   /**
@@ -355,7 +370,8 @@ export function NodeDetailPanel({ node, instances = [], open, onClose }: NodeDet
               {nodeInstances.length > 0 ? (
                 <div className="space-y-2">
                   {nodeInstances.map((instance, idx) => {
-                    const healthConfig = HEALTH_STATUS_CONFIG[instance.health_status];
+                    // Normalize health status using centralized utility
+                    const healthConfig = getHealthConfig(instance.health_status);
                     const HealthIcon = healthConfig.icon;
 
                     return (
@@ -456,17 +472,19 @@ export function NodeStateBadge({ state, className }: { state: NodeState; classNa
 
 /**
  * HealthStatusBadge - Reusable health status badge component
+ * Accepts any health status string and normalizes it using the centralized utility.
  */
 export function HealthStatusBadge({
   status,
   showIcon = true,
   className,
 }: {
-  status: HealthStatus;
+  status: string;
   showIcon?: boolean;
   className?: string;
 }) {
-  const config = HEALTH_STATUS_CONFIG[status];
+  // Normalize any health status string to semantic level
+  const config = getHealthConfig(status);
   const Icon = config.icon;
 
   return (

@@ -10,6 +10,19 @@
 
 import { EventEmitter } from 'events';
 import crypto from 'crypto';
+import { log } from './vite';
+
+/**
+ * Debug logging that only outputs in development mode or when DEBUG is set.
+ * Uses the standard log() utility for consistent formatting.
+ */
+const DEBUG_ENABLED = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+
+function debugLog(message: string): void {
+  if (DEBUG_ENABLED) {
+    log(message, 'registry-events');
+  }
+}
 
 /**
  * Registry event types as defined in the WebSocket Event Spec v1.2
@@ -179,11 +192,11 @@ class RegistryEventEmitterClass extends EventEmitter {
    */
   startMockEvents(interval = 5000): void {
     if (this.isRunning) {
-      console.log('[RegistryEvents] Mock events already running');
+      debugLog('Mock events already running');
       return;
     }
 
-    console.log(`[RegistryEvents] Starting mock event generation (interval: ${interval}ms)`);
+    debugLog(`Starting mock event generation (interval: ${interval}ms)`);
     this.isRunning = true;
 
     this.mockIntervalId = setInterval(() => {
@@ -201,7 +214,7 @@ class RegistryEventEmitterClass extends EventEmitter {
       this.mockIntervalId = null;
     }
     this.isRunning = false;
-    console.log('[RegistryEvents] Mock event generation stopped');
+    debugLog('Mock event generation stopped');
   }
 
   /**

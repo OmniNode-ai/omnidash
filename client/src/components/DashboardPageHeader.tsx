@@ -36,6 +36,8 @@ export interface DashboardPageHeaderProps {
   title: string;
   /** Page description */
   description?: string;
+  /** Optional status badge to display next to the title (e.g., system health indicator) */
+  statusBadge?: ReactNode;
   /** Last data update timestamp */
   lastUpdated?: Date | null;
   /** Whether the WebSocket/real-time connection is active */
@@ -90,6 +92,7 @@ export interface DashboardPageHeaderProps {
 export function DashboardPageHeader({
   title,
   description,
+  statusBadge,
   lastUpdated,
   isConnected,
   connectionStatus,
@@ -106,7 +109,10 @@ export function DashboardPageHeader({
       className={`flex flex-col gap-4 md:flex-row md:items-center md:justify-between ${className ?? ''}`}
     >
       <div>
-        <h1 className="text-xl md:text-2xl font-semibold">{title}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl md:text-2xl font-semibold">{title}</h1>
+          {statusBadge}
+        </div>
         {description && <p className="text-muted-foreground text-sm md:text-base">{description}</p>}
       </div>
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import WebSocket from 'ws';
 import { Server as HTTPServer } from 'http';
 import { EventEmitter } from 'events';
@@ -69,9 +69,16 @@ vi.mock('../event-consumer', () => {
   };
 });
 
-// Import after mocking
-const { setupWebSocket } = await import('../websocket');
-const { eventConsumer: mockEventConsumer } = await import('../event-consumer');
+/**
+ * IMPORTANT: These dynamic imports are moved to be lazy-loaded to prevent CI failures.
+ * The esbuild TextEncoder invariant check fails in some CI Node.js environments when
+ * these imports are evaluated at module load time. Since the tests are skipped anyway,
+ * we only perform the imports when tests would actually run.
+ *
+ * See: https://github.com/evanw/esbuild/issues/1921
+ */
+let setupWebSocket: typeof import('../websocket').setupWebSocket;
+let mockEventConsumer: typeof mockInstance;
 
 const EVENT_CONSUMER_EVENTS = [
   'metricUpdate',
@@ -156,6 +163,14 @@ describe.skip('WebSocket Server', () => {
   let httpServer: HTTPServer | null;
   let wss: WebSocket.Server | null;
   let serverPort: number;
+
+  // Lazy-load imports only when tests actually run (not during module load)
+  // This prevents esbuild TextEncoder invariant errors in CI
+  beforeAll(async () => {
+    const websocketModule = await import('../websocket');
+    setupWebSocket = websocketModule.setupWebSocket;
+    mockEventConsumer = mockInstance;
+  });
 
   beforeEach(async () => {
     // Create HTTP server for WebSocket to attach to

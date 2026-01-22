@@ -142,23 +142,35 @@ function getStatusBadgeClasses(severity: StatusSeverity): string {
 }
 
 /**
- * Gets the card border classes to emphasize non-healthy statuses.
- *
- * Warning and error items receive tinted borders for visual prominence.
- * Healthy and inactive items use the default card border.
+ * Gets the card styling classes to match MetricCard visual style.
+ * Uses colored left border + light background tint for visual consistency.
  *
  * @param severity - The semantic severity level
- * @returns Tailwind class for the border color
+ * @returns Tailwind classes for border and background
  */
-function getStatusBorderClass(severity: StatusSeverity): string {
+function getStatusCardClasses(severity: StatusSeverity): string {
   switch (severity) {
+    case 'healthy':
+      return 'border-l-4 border-l-status-healthy bg-status-healthy/5';
     case 'warning':
-      return 'border-status-warning/30';
+      return 'border-l-4 border-l-status-warning bg-status-warning/5';
     case 'error':
-      return 'border-status-error/30';
+      return 'border-l-4 border-l-status-error bg-status-error/5';
+    case 'inactive':
     default:
-      return 'border-card-border';
+      return 'border-l-4 border-l-status-offline bg-status-offline/5';
   }
+}
+
+/**
+ * Parses a label like "Passing (19)" into { name: "Passing", count: 19 }
+ */
+function parseLabel(label: string): { name: string; count: number | null } {
+  const match = label.match(/^(.+?)\s*\((\d+)\)$/);
+  if (match) {
+    return { name: match[1].trim(), count: parseInt(match[2], 10) };
+  }
+  return { name: label, count: null };
 }
 
 /**
@@ -292,49 +304,40 @@ export function StatusGridWidget({
           gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
         }}
       >
-        {items.map((item, index) => (
-          <Card
-            key={item.id || `status-item-${index}`}
-            className={cn(
-              'transition-colors',
-              compact ? 'p-2' : 'p-3',
-              getStatusBorderClass(item.severity)
-            )}
-            title={`${item.label}: ${item.status}`}
-          >
-            <div className="flex items-center gap-2">
-              {/* Status indicator dot */}
-              <div
-                className={cn(
-                  'rounded-full flex-shrink-0',
-                  compact ? 'h-2 w-2' : 'h-3 w-3',
-                  getStatusDotClass(item.severity),
-                  item.severity === 'healthy' && 'animate-pulse'
-                )}
-                aria-label={`Status: ${item.status}`}
-              />
+        {items.map((item, index) => {
+          const { name, count } = parseLabel(item.label);
 
-              {/* Label */}
-              {showLabels && (
-                <span className={cn('truncate font-medium', compact ? 'text-xs' : 'text-sm')}>
-                  {item.label}
-                </span>
+          return (
+            <Card
+              key={item.id || `status-item-${index}`}
+              className={cn(
+                'transition-colors',
+                compact ? 'p-2' : 'p-4',
+                getStatusCardClasses(item.severity)
               )}
-            </div>
+              title={`${item.label}: ${item.status}`}
+            >
+              {/* Label at top */}
+              {showLabels && (
+                <div
+                  className={cn(
+                    'uppercase tracking-wide text-muted-foreground',
+                    compact ? 'text-xs mb-1' : 'text-xs mb-2'
+                  )}
+                >
+                  {name}
+                </div>
+              )}
 
-            {/* Status badge (non-compact only) */}
-            {!compact && (
-              <div
-                className={cn(
-                  'mt-2 text-xs px-2 py-0.5 rounded-md w-fit capitalize',
-                  getStatusBadgeClasses(item.severity)
-                )}
-              >
-                {item.status}
-              </div>
-            )}
-          </Card>
-        ))}
+              {/* Large count number */}
+              {count !== null && (
+                <div className={cn('font-bold font-mono', compact ? 'text-xl' : 'text-3xl')}>
+                  {count}
+                </div>
+              )}
+            </Card>
+          );
+        })}
       </div>
 
       {/* Count Summary (optional) */}

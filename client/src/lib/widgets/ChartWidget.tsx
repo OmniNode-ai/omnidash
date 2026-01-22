@@ -336,15 +336,17 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
   const nameKey = 'name';
 
   return (
-    <PieChart>
+    // Increased top/bottom margins to prevent percentage labels from being clipped
+    // Labels at 12 o'clock and 6 o'clock positions extend beyond the pie outer radius
+    <PieChart margin={{ top: 25, right: 10, bottom: 25, left: 10 }}>
       <Pie
         data={chartData}
         dataKey={valueKey}
         nameKey={nameKey}
-        cx={config.show_legend ? '40%' : '50%'}
+        cx={config.show_legend ? '32%' : '50%'}
         cy="50%"
-        innerRadius={PIE_INNER_RADIUS}
-        outerRadius={PIE_OUTER_RADIUS}
+        innerRadius={35}
+        outerRadius={70}
         paddingAngle={PIE_PADDING_ANGLE}
         label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
         labelLine={false}
@@ -359,7 +361,14 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
           layout="vertical"
           align="right"
           verticalAlign="middle"
-          wrapperStyle={{ paddingLeft: '20px' }}
+          wrapperStyle={{
+            paddingLeft: '12px',
+            fontSize: '11px',
+            lineHeight: '1.4',
+          }}
+          formatter={(value: string) => (
+            <span style={{ display: 'inline', whiteSpace: 'nowrap' }}>{value}</span>
+          )}
         />
       )}
     </PieChart>
@@ -511,7 +520,7 @@ export function ChartWidget({ widget, config, data, isLoading }: ChartWidgetProp
           <CardDescription className="text-xs">{widget.description}</CardDescription>
         )}
       </CardHeader>
-      <CardContent className="flex-1 min-h-0">
+      <CardContent className="flex-1 min-h-0 pb-4">
         {chartData.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
             No data available
