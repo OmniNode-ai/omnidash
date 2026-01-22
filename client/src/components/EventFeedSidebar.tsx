@@ -313,6 +313,7 @@ export function EventFeedSidebar({
               }}
               className="h-7 px-2 text-muted-foreground hover:text-foreground flex-shrink-0"
               title="Clear filters"
+              aria-label="Clear filters"
             >
               <Filter className="h-3 w-3" />
             </Button>

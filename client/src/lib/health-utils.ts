@@ -39,12 +39,47 @@ export const HEALTH_SEVERITY_ORDER: Record<SemanticHealthLevel, number> = {
 };
 
 /**
+ * Status category Sets for O(1) lookup performance
+ * Used by normalizeHealthStatus for efficient status categorization
+ */
+const HEALTHY_STATUSES: Set<string> = new Set([
+  'passing',
+  'healthy',
+  'up',
+  'online',
+  'ok',
+  'good',
+  'active',
+]);
+
+const WARNING_STATUSES: Set<string> = new Set([
+  'warning',
+  'degraded',
+  'slow',
+  'warn',
+  'caution',
+  'impaired',
+]);
+
+const CRITICAL_STATUSES: Set<string> = new Set([
+  'critical',
+  'unhealthy',
+  'dead',
+  'down',
+  'failed',
+  'error',
+  'failing',
+  'offline',
+  'unavailable',
+]);
+
+/**
  * Normalize any health status string to a canonical semantic level
  *
  * Mappings:
- * - healthy: passing, healthy, up, online
- * - warning: warning, degraded, slow
- * - critical: critical, unhealthy, dead, down, failed, error
+ * - healthy: passing, healthy, up, online, ok, good, active
+ * - warning: warning, degraded, slow, warn, caution, impaired
+ * - critical: critical, unhealthy, dead, down, failed, error, failing, offline, unavailable
  * - unknown: everything else
  */
 export function normalizeHealthStatus(status: string | null | undefined): SemanticHealthLevel {
@@ -54,34 +89,18 @@ export function normalizeHealthStatus(status: string | null | undefined): Semant
 
   const normalized = status.toLowerCase().trim();
 
-  // Healthy states
-  if (['passing', 'healthy', 'up', 'online', 'ok', 'good', 'active'].includes(normalized)) {
+  if (HEALTHY_STATUSES.has(normalized)) {
     return 'healthy';
   }
 
-  // Warning states
-  if (['warning', 'degraded', 'slow', 'warn', 'caution', 'impaired'].includes(normalized)) {
+  if (WARNING_STATUSES.has(normalized)) {
     return 'warning';
   }
 
-  // Critical states
-  if (
-    [
-      'critical',
-      'unhealthy',
-      'dead',
-      'down',
-      'failed',
-      'error',
-      'failing',
-      'offline',
-      'unavailable',
-    ].includes(normalized)
-  ) {
+  if (CRITICAL_STATUSES.has(normalized)) {
     return 'critical';
   }
 
-  // Unknown fallback
   return 'unknown';
 }
 
