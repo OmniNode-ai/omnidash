@@ -29,9 +29,7 @@ import type {
   RegistryInstanceQueryParams,
 } from '@shared/registry-types';
 import {
-  generateMockNodes,
-  generateMockInstances,
-  generateMockSummary,
+  mockDataStore,
   filterNodes,
   filterInstances,
   getWidgetMappings,
@@ -103,9 +101,9 @@ router.get('/discovery', (req: Request, res: Response) => {
       offset,
     };
 
-    // Generate mock data
-    const allNodes = generateMockNodes();
-    const allInstances = generateMockInstances(allNodes);
+    // Get cached mock data
+    const allNodes = mockDataStore.getNodes();
+    const allInstances = mockDataStore.getInstances();
 
     // Filter nodes first
     const { nodes: filteredNodes, total } = filterNodes(allNodes, params);
@@ -114,8 +112,39 @@ router.get('/discovery', (req: Request, res: Response) => {
     const nodeIds = new Set(filteredNodes.map((n) => n.node_id));
     const filteredInstances = allInstances.filter((i) => nodeIds.has(i.node_id));
 
-    // Generate summary from FILTERED data (not all data)
-    const summary = generateMockSummary(filteredNodes, filteredInstances);
+    // Compute summary from FILTERED data (not all data)
+    const byType: Record<NodeType, number> = { EFFECT: 0, COMPUTE: 0, REDUCER: 0, ORCHESTRATOR: 0 };
+    const byHealth: Record<HealthStatus, number> = {
+      passing: 0,
+      warning: 0,
+      critical: 0,
+      unknown: 0,
+    };
+    let activeNodes = 0,
+      pendingNodes = 0,
+      failedNodes = 0;
+
+    for (const node of filteredNodes) {
+      byType[node.node_type]++;
+      if (node.state === 'ACTIVE') activeNodes++;
+      else if (['PENDING_REGISTRATION', 'ACCEPTED', 'AWAITING_ACK'].includes(node.state))
+        pendingNodes++;
+      else if (['ACK_TIMED_OUT', 'LIVENESS_EXPIRED', 'REJECTED'].includes(node.state))
+        failedNodes++;
+    }
+    for (const instance of filteredInstances) {
+      byHealth[instance.health_status]++;
+    }
+
+    const summary = {
+      total_nodes: filteredNodes.length,
+      active_nodes: activeNodes,
+      pending_nodes: pendingNodes,
+      failed_nodes: failedNodes,
+      unhealthy_instances: byHealth.critical + byHealth.warning,
+      by_type: byType,
+      by_health: byHealth,
+    };
 
     const response: RegistryDiscoveryResponse = {
       timestamp: new Date().toISOString(),
@@ -159,7 +188,7 @@ router.get('/nodes', (req: Request, res: Response) => {
       offset,
     };
 
-    const allNodes = generateMockNodes();
+    const allNodes = mockDataStore.getNodes();
     const { nodes: filteredNodes, total } = filterNodes(allNodes, params);
 
     const response: RegistryNodesResponse = {
@@ -191,7 +220,7 @@ router.get('/nodes/:id', (req: Request, res: Response) => {
 
     const { id } = req.params;
 
-    const allNodes = generateMockNodes();
+    const allNodes = mockDataStore.getNodes();
     const node = allNodes.find((n) => n.node_id === id || n.name === id);
 
     if (!node) {
@@ -200,7 +229,7 @@ router.get('/nodes/:id', (req: Request, res: Response) => {
         .json(createErrorResponse('not_found', `Node with ID '${id}' not found`));
     }
 
-    const allInstances = generateMockInstances(allNodes);
+    const allInstances = mockDataStore.getInstances();
     const nodeInstances = allInstances.filter((i) => i.node_id === node.node_id);
 
     const response: RegistryNodeDetailResponse = {
@@ -235,8 +264,7 @@ router.get('/instances', (req: Request, res: Response) => {
       offset,
     };
 
-    const allNodes = generateMockNodes();
-    const allInstances = generateMockInstances(allNodes);
+    const allInstances = mockDataStore.getInstances();
     const { instances: filteredInstances, total } = filterInstances(allInstances, params);
 
     const response: RegistryInstancesResponse = {

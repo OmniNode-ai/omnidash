@@ -47,6 +47,7 @@ import {
 import { NodesTable } from '@/components/NodesTable';
 import { EventFeedSidebar } from '@/components/EventFeedSidebar';
 import { AlertCircle } from 'lucide-react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // LocalStorage key for banner dismissal
 const BANNER_STORAGE_KEY = 'registry-discovery-banner-dismissed';
@@ -182,113 +183,143 @@ export default function RegistryDiscovery() {
     [useMockData]
   );
 
-  return (
-    <TooltipProvider>
+  // Custom fallback for RegistryDiscovery page errors
+  const errorFallback = useMemo(
+    () => (
       <div className="space-y-4 md:space-y-6">
-        {/* Contract-Driven Banner */}
-        <ContractBanner
-          storageKey={BANNER_STORAGE_KEY}
-          title="Contract-driven dashboard"
-          description="nodes auto-register their capabilities. No hardcoded widgets."
-        />
-
-        {/* Header */}
         <DashboardPageHeader
           title={registryDiscoveryDashboardConfig.name}
           description={registryDiscoveryDashboardConfig.description}
-          statusBadge={healthBadge}
-          lastUpdated={lastUpdated}
-          isConnected={isConnected}
-          connectionStatus={connectionStatus}
           onRefresh={handleRefresh}
-          isFetching={isFetching}
-          isLoading={isLoading}
-          useMockData={useMockData}
-          keyboardShortcuts={KEYBOARD_SHORTCUTS}
-          actions={headerActions}
+          isLoading={false}
+          isFetching={false}
         />
-
-        {/* Filters */}
-        <FilterBar
-          filters={filterConfigs}
-          isOpen={isFiltersOpen}
-          onOpenChange={setIsFiltersOpen}
-          onClear={clearFilters}
-          hasActiveFilters={hasFilters}
-        />
-
-        {/* Warnings */}
-        {rawData?.warnings && rawData.warnings.length > 0 && (
-          <Alert variant="default">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Warnings</AlertTitle>
-            <AlertDescription>
-              <ul className="list-disc list-inside mt-2">
-                {rawData.warnings.map((warning, index) => (
-                  <li key={index} className="text-sm">
-                    {warning}
-                  </li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Error state */}
-        {isError && !useMockData && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error loading data</AlertTitle>
-            <AlertDescription>
-              {error?.message || 'Failed to fetch registry discovery data.'}
-              <div className="mt-2">
-                <Button variant="outline" size="sm" onClick={handleRefresh}>
-                  Retry
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Main content */}
-        {hasNoData && !isLoading ? (
-          <RegistryEmptyState
-            hasFilters={hasFilters}
-            onClearFilters={clearFilters}
-            onRefresh={handleRefresh}
-            className="min-h-[400px] border rounded-lg"
-          />
-        ) : (
-          <div className="space-y-6">
-            <DashboardRenderer
-              config={registryDiscoveryDashboardConfig}
-              data={dashboardData}
-              isLoading={isLoading && !useMockData}
-            />
-
-            <EventFeedSidebar
-              events={filteredRegistryEvents}
-              isConnected={isConnected}
-              onClearEvents={clearEvents}
-              lastEventTime={stats.lastEventTime}
-            />
-
-            <Separator className="my-2" />
-
-            {filteredData && filteredData.nodes.length > 0 && (
-              <NodesTable nodes={filteredData.nodes} onNodeClick={handleNodeClick} />
-            )}
-          </div>
-        )}
-
-        {/* Node Detail Panel */}
-        <NodeDetailPanel
-          node={selectedNode}
-          instances={filteredData?.live_instances || []}
-          open={isDetailPanelOpen}
-          onClose={closeDetailPanel}
-        />
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Dashboard Error</AlertTitle>
+          <AlertDescription>
+            An unexpected error occurred while rendering the Registry Discovery dashboard.
+            <div className="mt-2">
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                Reload Page
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
       </div>
+    ),
+    [handleRefresh]
+  );
+
+  return (
+    <TooltipProvider>
+      <ErrorBoundary fallback={errorFallback}>
+        <div className="space-y-4 md:space-y-6">
+          {/* Contract-Driven Banner */}
+          <ContractBanner
+            storageKey={BANNER_STORAGE_KEY}
+            title="Contract-driven dashboard"
+            description="nodes auto-register their capabilities. No hardcoded widgets."
+          />
+
+          {/* Header */}
+          <DashboardPageHeader
+            title={registryDiscoveryDashboardConfig.name}
+            description={registryDiscoveryDashboardConfig.description}
+            statusBadge={healthBadge}
+            lastUpdated={lastUpdated}
+            isConnected={isConnected}
+            connectionStatus={connectionStatus}
+            onRefresh={handleRefresh}
+            isFetching={isFetching}
+            isLoading={isLoading}
+            useMockData={useMockData}
+            keyboardShortcuts={KEYBOARD_SHORTCUTS}
+            actions={headerActions}
+          />
+
+          {/* Filters */}
+          <FilterBar
+            filters={filterConfigs}
+            isOpen={isFiltersOpen}
+            onOpenChange={setIsFiltersOpen}
+            onClear={clearFilters}
+            hasActiveFilters={hasFilters}
+          />
+
+          {/* Warnings */}
+          {rawData?.warnings && rawData.warnings.length > 0 && (
+            <Alert variant="default">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Warnings</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc list-inside mt-2">
+                  {rawData.warnings.map((warning, index) => (
+                    <li key={index} className="text-sm">
+                      {warning}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Error state */}
+          {isError && !useMockData && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error loading data</AlertTitle>
+              <AlertDescription>
+                {error?.message || 'Failed to fetch registry discovery data.'}
+                <div className="mt-2">
+                  <Button variant="outline" size="sm" onClick={handleRefresh}>
+                    Retry
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Main content */}
+          {hasNoData && !isLoading ? (
+            <RegistryEmptyState
+              hasFilters={hasFilters}
+              onClearFilters={clearFilters}
+              onRefresh={handleRefresh}
+              className="min-h-[400px] border rounded-lg"
+            />
+          ) : (
+            <div className="space-y-6">
+              <DashboardRenderer
+                config={registryDiscoveryDashboardConfig}
+                data={dashboardData}
+                isLoading={isLoading && !useMockData}
+              />
+
+              <EventFeedSidebar
+                events={filteredRegistryEvents}
+                isConnected={isConnected}
+                onClearEvents={clearEvents}
+                lastEventTime={stats.lastEventTime}
+              />
+
+              <Separator className="my-2" />
+
+              {filteredData && filteredData.nodes.length > 0 && (
+                <NodesTable nodes={filteredData.nodes} onNodeClick={handleNodeClick} />
+              )}
+            </div>
+          )}
+
+          {/* Node Detail Panel */}
+          <NodeDetailPanel
+            node={selectedNode}
+            instances={filteredData?.live_instances || []}
+            open={isDetailPanelOpen}
+            onClose={closeDetailPanel}
+          />
+        </div>
+      </ErrorBoundary>
     </TooltipProvider>
   );
 }
