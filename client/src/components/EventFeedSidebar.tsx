@@ -244,7 +244,7 @@ export function EventFeedSidebar({
   const hasActiveFilters = typeFilter !== 'all' || severityFilter !== 'all';
 
   return (
-    <Card className={cn('h-fit lg:sticky lg:top-4', className)}>
+    <Card className={cn('h-fit', className)}>
       <CardHeader className="pb-2 pt-3 px-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
