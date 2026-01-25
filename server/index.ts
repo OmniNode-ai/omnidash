@@ -15,6 +15,7 @@ import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
+import { runtimeIdentity } from './runtime-identity';
 
 const app = express();
 
@@ -77,6 +78,13 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Log runtime identity on startup (identity loaded from shared module)
+  if (runtimeIdentity.supervised) {
+    log(`Running under ONEX runtime: node_id=${runtimeIdentity.nodeId}`);
+  } else {
+    log(`Running in standalone mode (no runtime supervision)`);
+  }
+
   const server = await registerRoutes(app);
 
   // Validate and start Kafka event consumer

@@ -10,9 +10,9 @@
 // ============================================================================
 
 /**
- * ONEX node type classification (4-node architecture)
+ * ONEX node type classification (4-node architecture + SERVICE for long-running services)
  */
-export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
+export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR' | 'SERVICE';
 
 /**
  * Node registration state machine states

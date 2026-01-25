@@ -113,7 +113,13 @@ router.get('/discovery', (req: Request, res: Response) => {
     const filteredInstances = allInstances.filter((i) => nodeIds.has(i.node_id));
 
     // Compute summary from FILTERED data (not all data)
-    const byType: Record<NodeType, number> = { EFFECT: 0, COMPUTE: 0, REDUCER: 0, ORCHESTRATOR: 0 };
+    const byType: Record<NodeType, number> = {
+      EFFECT: 0,
+      COMPUTE: 0,
+      REDUCER: 0,
+      ORCHESTRATOR: 0,
+      SERVICE: 0,
+    };
     const byHealth: Record<HealthStatus, number> = {
       passing: 0,
       warning: 0,

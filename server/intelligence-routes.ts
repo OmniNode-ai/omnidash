@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { intelligenceEvents } from './intelligence-event-adapter';
 import { eventConsumer } from './event-consumer';
 import { getIntelligenceDb } from './storage';
+import { getRuntimeIdentityForApi } from './runtime-identity';
 import {
   agentManifestInjections,
   patternLineageNodes,
@@ -586,6 +587,18 @@ intelligenceRouter.get('/health', async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   }
+});
+
+// ============================================================================
+// Runtime Identity Endpoint
+// ============================================================================
+
+/**
+ * GET /api/intelligence/runtime/identity
+ * Reports injected identity from runtime supervisor (read-only)
+ */
+intelligenceRouter.get('/runtime/identity', (req, res) => {
+  res.json(getRuntimeIdentityForApi());
 });
 
 // ============================================================================
