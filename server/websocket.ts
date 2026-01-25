@@ -16,6 +16,11 @@ import {
   transformNodesToSnakeCase,
 } from './utils/case-transform';
 import { registryEventEmitter, type RegistryEvent } from './registry-events';
+import {
+  intentEventEmitter,
+  type IntentStoredEventPayload,
+  type IntentDistributionEventPayload,
+} from './intent-events';
 
 // Valid subscription topics that clients can subscribe to
 const VALID_TOPICS = [
@@ -214,13 +219,18 @@ export function setupWebSocket(httpServer: HTTPServer) {
   });
 
   // Intent classification event listeners (OMN-1516)
-  registerEventListener('intentUpdate', (intent: any) => {
-    broadcast('INTENT_UPDATE', intent, 'intent');
-  });
+  // Note: Intent events are emitted from intentEventEmitter, NOT eventConsumer
+  const intentStoredHandler = (payload: IntentStoredEventPayload) => {
+    broadcast('INTENT_UPDATE', payload, 'intent');
+  };
 
-  registerEventListener('intentDistribution', (distribution: any) => {
-    broadcast('INTENT_DISTRIBUTION', distribution, 'intent');
-  });
+  const intentDistributionHandler = (payload: IntentDistributionEventPayload) => {
+    broadcast('INTENT_DISTRIBUTION', payload, 'intent');
+  };
+
+  // Register listeners on intentEventEmitter (not eventConsumer)
+  intentEventEmitter.on('intentStored', intentStoredHandler);
+  intentEventEmitter.on('intentDistribution', intentDistributionHandler);
 
   // Registry Discovery event listeners (OMN-1278 Phase 4)
   // These provide granular registry events for the registry discovery dashboard
@@ -252,6 +262,16 @@ export function setupWebSocket(httpServer: HTTPServer) {
       emitter: registryEventEmitter,
       event: 'registry-instances',
       handler: registryInstancesHandler,
+    },
+  ];
+
+  // Track intent event listeners for cleanup (OMN-1516)
+  const intentListeners = [
+    { emitter: intentEventEmitter, event: 'intentStored', handler: intentStoredHandler },
+    {
+      emitter: intentEventEmitter,
+      event: 'intentDistribution',
+      handler: intentDistributionHandler,
     },
   ];
 
@@ -484,6 +504,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
       emitter.removeListener(event, handler);
     });
     registryListeners.length = 0;
+
+    // Remove intent event listeners (OMN-1516)
+    console.log(`Removing ${intentListeners.length} intent event listeners...`);
+    intentListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    intentListeners.length = 0;
 
     // Terminate all client connections
     console.log(`Terminating ${clients.size} client connections...`);

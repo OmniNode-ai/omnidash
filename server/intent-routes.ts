@@ -343,7 +343,7 @@ intentRouter.get('/recent', async (req, res) => {
  */
 intentRouter.post('/store', async (req, res) => {
   try {
-    const { sessionRef, intentCategory, confidence = 0.95, keywords = [] } = req.body;
+    const { sessionRef, intentCategory, keywords = [] } = req.body;
 
     if (!intentCategory) {
       return res.status(400).json({
@@ -352,12 +352,18 @@ intentRouter.post('/store', async (req, res) => {
       });
     }
 
+    // Parse confidence safely - if invalid, use default
+    const rawConfidence = req.body.confidence;
+    const parsedConfidence =
+      typeof rawConfidence === 'number' && !Number.isNaN(rawConfidence) ? rawConfidence : 0.95;
+    const confidence = Math.max(0, Math.min(1, parsedConfidence));
+
     // Create the intent record
     const intent: IntentRecord = {
       intentId: randomUUID(),
       sessionRef: sessionRef || `session-${randomUUID().slice(0, 8)}`,
       intentCategory,
-      confidence: Math.max(0, Math.min(1, confidence)),
+      confidence,
       keywords: Array.isArray(keywords) ? keywords : [],
       createdAt: new Date().toISOString(),
     };
