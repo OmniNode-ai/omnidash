@@ -32,13 +32,19 @@ interface DistributionResponse {
 
 interface SessionIntentsResponse {
   intents: IntentRecord[];
-  total_count: number;
+  /** Number of intents returned in this response */
+  count: number;
+  /** Total intents available for this session (before limit applied) */
+  total_available: number;
   session_ref: string;
 }
 
 interface RecentIntentsResponse {
   intents: IntentRecord[];
-  total_count: number;
+  /** Number of intents returned in this response */
+  count: number;
+  /** Total intents available (before limit applied) */
+  total_available: number;
 }
 
 interface StoreIntentResponse {
@@ -126,15 +132,20 @@ function getIntentsFromStore(timeRangeHours: number): IntentRecord[] {
 
 /**
  * Get intents from circular buffer filtered by session
+ * Returns both the sliced intents and the total available count before limiting
  */
 function getIntentsBySession(
   sessionRef: string,
   limit: number,
   minConfidence: number
-): IntentRecord[] {
-  return getAllIntentsFromBuffer()
-    .filter((intent) => intent.sessionRef === sessionRef && intent.confidence >= minConfidence)
-    .slice(0, limit);
+): { intents: IntentRecord[]; totalAvailable: number } {
+  const filtered = getAllIntentsFromBuffer().filter(
+    (intent) => intent.sessionRef === sessionRef && intent.confidence >= minConfidence
+  );
+  return {
+    intents: filtered.slice(0, limit),
+    totalAvailable: filtered.length,
+  };
 }
 
 // ============================================================================
@@ -144,16 +155,78 @@ function getIntentsBySession(
 const rateLimitStore: Map<string, { count: number; resetTime: number }> = new Map();
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 100;
+// Maximum number of unique IPs to track. Prevents unbounded memory growth under attack.
+const RATE_LIMIT_MAX_IPS = parseInt(process.env.RATE_LIMIT_MAX_IPS || '10000', 10);
+
+/**
+ * Evict expired entries from the rate limit store.
+ * Returns the number of entries removed.
+ */
+function evictExpiredRateLimitEntries(): number {
+  const now = Date.now();
+  let evictedCount = 0;
+  rateLimitStore.forEach((entry, ip) => {
+    if (now > entry.resetTime) {
+      rateLimitStore.delete(ip);
+      evictedCount++;
+    }
+  });
+  return evictedCount;
+}
+
+/**
+ * Evict the oldest (soonest-to-expire) entry from the rate limit store.
+ * Used as a fallback when max size is reached and no expired entries exist.
+ */
+function evictOldestRateLimitEntry(): void {
+  let oldestIp: string | null = null;
+  let oldestResetTime = Infinity;
+
+  rateLimitStore.forEach((entry, ip) => {
+    if (entry.resetTime < oldestResetTime) {
+      oldestResetTime = entry.resetTime;
+      oldestIp = ip;
+    }
+  });
+
+  if (oldestIp !== null) {
+    rateLimitStore.delete(oldestIp);
+  }
+}
+
+/**
+ * Ensure the rate limit store does not exceed max size.
+ * First clears expired entries, then evicts oldest if still at capacity.
+ */
+function enforceRateLimitStoreMaxSize(): void {
+  if (rateLimitStore.size < RATE_LIMIT_MAX_IPS) {
+    return;
+  }
+
+  // First, try to clear expired entries
+  const evicted = evictExpiredRateLimitEntries();
+
+  // If still at max capacity, evict oldest entries until under limit
+  while (rateLimitStore.size >= RATE_LIMIT_MAX_IPS) {
+    evictOldestRateLimitEntry();
+  }
+}
 
 /**
  * Check if a request from the given IP is within rate limits.
  * Returns true if request is allowed, false if rate limit exceeded.
+ *
+ * Enforces max store size to prevent unbounded memory growth.
  */
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const entry = rateLimitStore.get(ip);
 
   if (!entry || now > entry.resetTime) {
+    // New entry needed - enforce max size before adding
+    if (!rateLimitStore.has(ip)) {
+      enforceRateLimitStoreMaxSize();
+    }
     rateLimitStore.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
     return true;
   }
@@ -189,23 +262,27 @@ function getRateLimitResetSeconds(ip: string): number {
 }
 
 // Singleton guard to prevent multiple cleanup intervals during hot-reload.
-// In development, module re-execution would otherwise create duplicate intervals,
-// causing memory leaks and redundant cleanup operations.
-let rateLimitCleanupInterval: NodeJS.Timeout | null = null;
+// In development with Vite HMR, module re-execution would otherwise create
+// duplicate intervals. Using globalThis ensures the interval reference survives
+// module replacement, preventing memory leaks and redundant cleanup operations.
+const RATE_LIMIT_CLEANUP_KEY = '__omnidash_intent_rate_limit_cleanup_interval__';
 
-if (!rateLimitCleanupInterval) {
-  rateLimitCleanupInterval = setInterval(
-    () => {
-      const now = Date.now();
-      rateLimitStore.forEach((entry, ip) => {
-        if (now > entry.resetTime) {
-          rateLimitStore.delete(ip);
-        }
-      });
-    },
-    5 * 60 * 1000
-  );
+// Clear any existing interval before setting a new one (handles HMR)
+if ((globalThis as Record<string, unknown>)[RATE_LIMIT_CLEANUP_KEY]) {
+  clearInterval((globalThis as Record<string, unknown>)[RATE_LIMIT_CLEANUP_KEY] as NodeJS.Timeout);
 }
+
+(globalThis as Record<string, unknown>)[RATE_LIMIT_CLEANUP_KEY] = setInterval(
+  () => {
+    const now = Date.now();
+    rateLimitStore.forEach((entry, ip) => {
+      if (now > entry.resetTime) {
+        rateLimitStore.delete(ip);
+      }
+    });
+  },
+  5 * 60 * 1000
+);
 
 // ============================================================================
 // Helper Functions
@@ -321,7 +398,8 @@ intentRouter.get('/distribution', async (req, res) => {
  * Response:
  * {
  *   intents: IntentRecord[],
- *   total_count: number,
+ *   count: number,           // Number of intents returned in this response
+ *   total_available: number, // Total intents matching filters (before limit applied)
  *   session_ref: string
  * }
  */
@@ -366,7 +444,8 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
         if (result?.intents) {
           const response: SessionIntentsResponse = {
             intents: result.intents,
-            total_count: result.total_count || result.intents.length,
+            count: result.intents.length,
+            total_available: result.total_count || result.intents.length,
             session_ref: sessionId,
           };
           return res.json(response);
@@ -382,11 +461,12 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
     }
 
     // Fallback: use in-memory store
-    const intents = getIntentsBySession(sessionId, limit, minConfidence);
+    const { intents, totalAvailable } = getIntentsBySession(sessionId, limit, minConfidence);
 
     const response: SessionIntentsResponse = {
       intents,
-      total_count: intents.length,
+      count: intents.length,
+      total_available: totalAvailable,
       session_ref: sessionId,
     };
 
@@ -412,7 +492,8 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
  * Response:
  * {
  *   intents: IntentRecord[],
- *   total_count: number
+ *   count: number,           // Number of intents returned in this response
+ *   total_available: number  // Total intents in time range (before limit applied)
  * }
  */
 intentRouter.get('/recent', async (req, res) => {
@@ -443,9 +524,11 @@ intentRouter.get('/recent', async (req, res) => {
         );
 
         if (result?.intents) {
+          const slicedIntents = result.intents.slice(0, limit);
           const response: RecentIntentsResponse = {
-            intents: result.intents.slice(0, limit),
-            total_count: result.total_count || result.intents.length,
+            intents: slicedIntents,
+            count: slicedIntents.length,
+            total_available: result.total_count || result.intents.length,
           };
           return res.json(response);
         }
@@ -460,11 +543,13 @@ intentRouter.get('/recent', async (req, res) => {
     }
 
     // Fallback: use in-memory store
-    const intents = getIntentsFromStore(timeRangeHours).slice(0, limit);
+    const allIntentsInRange = getIntentsFromStore(timeRangeHours);
+    const intents = allIntentsInRange.slice(0, limit);
 
     const response: RecentIntentsResponse = {
       intents,
-      total_count: intents.length,
+      count: intents.length,
+      total_available: allIntentsInRange.length,
     };
 
     return res.json(response);
@@ -570,3 +655,60 @@ intentRouter.post('/store', async (req, res) => {
     });
   }
 });
+
+// ============================================================================
+// Test Exports (for unit testing internal functions)
+// ============================================================================
+
+/**
+ * Reset circular buffer state (for testing purposes only)
+ */
+function resetBuffer(): void {
+  intentBuffer.fill(null);
+  bufferHead = 0;
+  bufferCount = 0;
+}
+
+/**
+ * Reset rate limit store (for testing purposes only)
+ */
+function resetRateLimitStore(): void {
+  rateLimitStore.clear();
+}
+
+/**
+ * Get current buffer state (for testing/debugging purposes)
+ */
+function getBufferState(): { head: number; count: number; maxSize: number } {
+  return { head: bufferHead, count: bufferCount, maxSize: MAX_STORED_INTENTS };
+}
+
+/**
+ * Get current rate limit store size (for testing/debugging purposes)
+ */
+function getRateLimitStoreSize(): number {
+  return rateLimitStore.size;
+}
+
+// Export internal functions for testing
+// These are prefixed with underscore to indicate they are internal/test-only
+export const _testHelpers = {
+  // Buffer functions
+  addToStore,
+  getAllIntentsFromBuffer,
+  getIntentsFromStore,
+  getIntentsBySession,
+  resetBuffer,
+  getBufferState,
+  // Rate limit functions
+  checkRateLimit,
+  getRateLimitRemaining,
+  getRateLimitResetSeconds,
+  resetRateLimitStore,
+  getRateLimitStoreSize,
+  // Constants
+  MAX_STORED_INTENTS,
+  RATE_LIMIT_WINDOW_MS,
+  RATE_LIMIT_MAX_REQUESTS,
+  RATE_LIMIT_MAX_IPS,
+};
