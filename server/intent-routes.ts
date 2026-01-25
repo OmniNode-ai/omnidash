@@ -18,6 +18,40 @@ import { getIntelligenceEvents, IntelligenceEventAdapter } from './intelligence-
 export const intentRouter = Router();
 
 // ============================================================================
+// Constants: Valid Intent Categories
+// ============================================================================
+
+/**
+ * Valid intent categories for validation.
+ * Must match the categories defined in client/src/lib/intent-colors.ts
+ */
+const VALID_INTENT_CATEGORIES = [
+  'debugging',
+  'code_generation',
+  'refactoring',
+  'testing',
+  'documentation',
+  'analysis',
+  'pattern_learning',
+  'quality_assessment',
+  'semantic_analysis',
+  'deployment',
+  'configuration',
+  'question',
+  'unknown',
+] as const;
+
+/**
+ * Validates that a category is a known intent category.
+ * Comparison is case-insensitive.
+ */
+function isValidIntentCategory(category: string): boolean {
+  return VALID_INTENT_CATEGORIES.includes(
+    category.toLowerCase() as (typeof VALID_INTENT_CATEGORIES)[number]
+  );
+}
+
+// ============================================================================
 // Helper: Validate sessionId format
 // ============================================================================
 
@@ -258,6 +292,13 @@ intentRouter.post('/store', async (req, res) => {
         ok: false,
         error:
           'Invalid session_id format. Must be alphanumeric with hyphens/underscores, max 128 characters.',
+      });
+    }
+
+    if (!isValidIntentCategory(intent_category)) {
+      return res.status(400).json({
+        ok: false,
+        error: `Invalid intent_category. Must be one of: ${VALID_INTENT_CATEGORIES.join(', ')}`,
       });
     }
 

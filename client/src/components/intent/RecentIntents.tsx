@@ -25,6 +25,13 @@ import type { IntentRecordPayload } from '@shared/intent-types';
 import { getIntentBadgeClasses, getConfidenceColor, formatCategoryName } from '@/lib/intent-colors';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Number of items to animate on initial render */
+const ANIMATE_ITEM_COUNT = 10;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -116,7 +123,7 @@ interface IntentItemRowProps {
 }
 
 function IntentItemRow({ intent, index, showConfidence, onClick }: IntentItemRowProps) {
-  const isNew = index < 10; // Only animate first 10 items
+  const isNew = index < ANIMATE_ITEM_COUNT;
   // Use created_at from IntentRecordPayload, fallback to id for display timestamp
   const displayTimestamp = intent.created_at;
 
