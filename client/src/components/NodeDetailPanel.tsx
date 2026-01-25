@@ -78,6 +78,12 @@ export const NODE_TYPE_CONFIG: Record<
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
   },
+  SERVICE: {
+    icon: Server,
+    label: 'Service Node',
+    color: 'text-cyan-500',
+    bgColor: 'bg-cyan-500/10',
+  },
 };
 
 // State badge configurations - matches RegistrationState from ONEX state machine
@@ -245,6 +251,10 @@ export function NodeDetailPanel({ node, instances = [], open, onClose }: NodeDet
       ORCHESTRATOR: {
         intents: ['Workflow Control', 'Task Coordination', 'Dependency Resolution'],
         protocols: ['DAG Execution', 'Parallel Dispatch', 'Error Handling'],
+      },
+      SERVICE: {
+        intents: ['Long-Running Service', 'API Endpoint', 'Real-Time Processing'],
+        protocols: ['HTTP/REST', 'WebSocket', 'Event Streaming'],
       },
     };
 

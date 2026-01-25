@@ -16,7 +16,11 @@ import {
   transformNodesToSnakeCase,
 } from './utils/case-transform';
 import { registryEventEmitter, type RegistryEvent } from './registry-events';
-import { intentEventEmitter, type IntentEvent } from './intent-events';
+import {
+  intentEventEmitter,
+  type IntentStoredEventPayload,
+  type IntentDistributionEventPayload,
+} from './intent-events';
 
 // Valid subscription topics that clients can subscribe to
 const VALID_TOPICS = [
@@ -36,10 +40,8 @@ const VALID_TOPICS = [
   'registry',
   'registry-nodes',
   'registry-instances',
-  // Intent classification topics (OMN-1458)
-  'intents',
-  'intents-stored',
-  'intents-distribution',
+  // Intent classification events (OMN-1516)
+  'intent',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -216,6 +218,20 @@ export function setupWebSocket(httpServer: HTTPServer) {
     broadcast('NODE_REGISTRY_UPDATE', data, 'node-registry');
   });
 
+  // Intent classification event listeners (OMN-1516)
+  // Note: Intent events are emitted from intentEventEmitter, NOT eventConsumer
+  const intentStoredHandler = (payload: IntentStoredEventPayload) => {
+    broadcast('INTENT_UPDATE', payload, 'intent');
+  };
+
+  const intentDistributionHandler = (payload: IntentDistributionEventPayload) => {
+    broadcast('INTENT_DISTRIBUTION', payload, 'intent');
+  };
+
+  // Register listeners on intentEventEmitter (not eventConsumer)
+  intentEventEmitter.on('intentStored', intentStoredHandler);
+  intentEventEmitter.on('intentDistribution', intentDistributionHandler);
+
   // Registry Discovery event listeners (OMN-1278 Phase 4)
   // These provide granular registry events for the registry discovery dashboard
   const registryHandler = (event: RegistryEvent) => {
@@ -249,36 +265,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
     },
   ];
 
-  // Intent event listeners (OMN-1458 - Real-time Intent Dashboard)
-  // These provide real-time intent classification events for the intent dashboard
-  const intentsHandler = (event: IntentEvent) => {
-    // Broadcast to 'intents' topic (all intent events)
-    broadcast(event.type, event, 'intents');
-  };
-
-  const intentsStoredHandler = (event: IntentEvent) => {
-    // Broadcast to 'intents-stored' topic (storage confirmations)
-    broadcast(event.type, event, 'intents-stored');
-  };
-
-  const intentsDistributionHandler = (event: IntentEvent) => {
-    // Broadcast to 'intents-distribution' topic (distribution updates)
-    broadcast(event.type, event, 'intents-distribution');
-  };
-
-  // Register intent event listeners
-  intentEventEmitter.on('intents', intentsHandler);
-  intentEventEmitter.on('intents-stored', intentsStoredHandler);
-  intentEventEmitter.on('intents-distribution', intentsDistributionHandler);
-
-  // Track intent listeners for cleanup
+  // Track intent event listeners for cleanup (OMN-1516)
   const intentListeners = [
-    { emitter: intentEventEmitter, event: 'intents', handler: intentsHandler },
-    { emitter: intentEventEmitter, event: 'intents-stored', handler: intentsStoredHandler },
+    { emitter: intentEventEmitter, event: 'intentStored', handler: intentStoredHandler },
     {
       emitter: intentEventEmitter,
-      event: 'intents-distribution',
-      handler: intentsDistributionHandler,
+      event: 'intentDistribution',
+      handler: intentDistributionHandler,
     },
   ];
 
@@ -512,7 +505,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
     });
     registryListeners.length = 0;
 
-    // Remove intent event listeners
+    // Remove intent event listeners (OMN-1516)
     console.log(`Removing ${intentListeners.length} intent event listeners...`);
     intentListeners.forEach(({ emitter, event, handler }) => {
       emitter.removeListener(event, handler);

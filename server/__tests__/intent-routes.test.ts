@@ -1,835 +1,653 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import request from 'supertest';
-import express, { type Express } from 'express';
-import { intentRouter } from '../intent-routes';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { _testHelpers } from '../intent-routes';
+import type { IntentRecord } from '../intent-events';
 
-// Create mock functions using vi.hoisted() so they're available during module loading
-const { mockRequest, mockEmitDistributionUpdate, mockEmitIntentStored } = vi.hoisted(() => ({
-  mockRequest: vi.fn(),
-  mockEmitDistributionUpdate: vi.fn(),
-  mockEmitIntentStored: vi.fn(),
-}));
+// ============================================================================
+// Test Data Helpers
+// ============================================================================
 
-// Mock the intelligence event adapter
-let mockIntelInstance: {
-  started: boolean;
-  start: ReturnType<typeof vi.fn>;
-  request: typeof mockRequest;
-} | null = null;
+/**
+ * Create a mock IntentRecord for testing
+ */
+function createMockIntent(overrides: Partial<IntentRecord> = {}): IntentRecord {
+  return {
+    intentId: `intent-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    sessionRef: 'test-session',
+    intentCategory: 'code_generation',
+    confidence: 0.95,
+    keywords: ['test', 'mock'],
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
 
-vi.mock('../intelligence-event-adapter', () => ({
-  getIntelligenceEvents: vi.fn(() => mockIntelInstance),
-  IntelligenceEventAdapter: vi.fn(),
-}));
+/**
+ * Create multiple mock intents with sequential timestamps
+ */
+function createMockIntents(count: number, baseTime = Date.now()): IntentRecord[] {
+  return Array.from({ length: count }, (_, i) =>
+    createMockIntent({
+      intentId: `intent-${i}`,
+      createdAt: new Date(baseTime - i * 1000).toISOString(), // Each 1 second apart
+    })
+  );
+}
 
-// Mock the intent event emitter
-vi.mock('../intent-events', () => ({
-  intentEventEmitter: {
-    emitDistributionUpdate: mockEmitDistributionUpdate,
-    emitIntentStored: mockEmitIntentStored,
-    emitIntentEvent: vi.fn(),
-    on: vi.fn(),
-    emit: vi.fn(),
-  },
-}));
+// ============================================================================
+// Circular Buffer Tests
+// ============================================================================
 
-describe('Intent Routes', () => {
-  let app: Express;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-
+describe('Circular Buffer', () => {
+  // Reset buffer state before each test
   beforeEach(() => {
-    app = express();
-    app.use(express.json());
-    app.use('/api/intents', intentRouter);
-    vi.clearAllMocks();
-
-    // Suppress console.error output during tests
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    // Default mock instance setup
-    mockIntelInstance = {
-      started: true,
-      start: vi.fn().mockResolvedValue(undefined),
-      request: mockRequest,
-    };
-    mockRequest.mockResolvedValue({
-      distribution: { code_generation: 10, debugging: 5 },
-      total_intents: 15,
-      execution_time_ms: 42,
-    });
+    _testHelpers.resetBuffer();
   });
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore();
+    _testHelpers.resetBuffer();
   });
 
-  // ============================================================================
-  // GET /api/intents/distribution
-  // ============================================================================
+  describe('addToStore', () => {
+    it('should add items to an empty buffer', () => {
+      const intent = createMockIntent();
+      _testHelpers.addToStore(intent);
 
-  describe('GET /api/intents/distribution', () => {
-    it('should return 503 if intelligence adapter unavailable', async () => {
-      mockIntelInstance = null;
-
-      const response = await request(app).get('/api/intents/distribution').expect(503);
-
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body).toHaveProperty('error', 'Intent service unavailable');
-      expect(response.body).toHaveProperty('reason', 'Event adapter not configured');
+      const state = _testHelpers.getBufferState();
+      expect(state.count).toBe(1);
+      expect(state.head).toBe(1);
     });
 
-    it('should return distribution with proper structure on success', async () => {
-      mockRequest.mockResolvedValue({
-        distribution: { code_generation: 25, debugging: 15, documentation: 10 },
-        total_intents: 50,
-        execution_time_ms: 35,
-      });
+    it('should add multiple items sequentially', () => {
+      const intents = createMockIntents(5);
+      intents.forEach((intent) => _testHelpers.addToStore(intent));
 
-      const response = await request(app)
-        .get('/api/intents/distribution?time_range_hours=24')
-        .expect(200);
-
-      expect(response.body).toHaveProperty('ok', true);
-      expect(response.body).toHaveProperty('distribution');
-      expect(response.body.distribution).toEqual({
-        code_generation: 25,
-        debugging: 15,
-        documentation: 10,
-      });
-      expect(response.body).toHaveProperty('total_intents', 50);
-      expect(response.body).toHaveProperty('time_range_hours', 24);
-      expect(response.body).toHaveProperty('execution_time_ms', 35);
+      const state = _testHelpers.getBufferState();
+      expect(state.count).toBe(5);
+      expect(state.head).toBe(5);
     });
 
-    it('should emit distribution update event on success', async () => {
-      mockRequest.mockResolvedValue({
-        distribution: { testing: 8 },
-        total_intents: 8,
-        execution_time_ms: 20,
-      });
+    it('should wrap around when buffer is full', () => {
+      // Note: MAX_STORED_INTENTS defaults to 10000, which is too large for this test
+      // We'll add items and verify the buffer wraps correctly by checking state
+      const maxSize = _testHelpers.MAX_STORED_INTENTS;
 
-      await request(app).get('/api/intents/distribution').expect(200);
+      // Add exactly maxSize items
+      for (let i = 0; i < maxSize; i++) {
+        _testHelpers.addToStore(
+          createMockIntent({
+            intentId: `intent-${i}`,
+          })
+        );
+      }
 
-      expect(mockEmitDistributionUpdate).toHaveBeenCalledWith({
-        distribution: { testing: 8 },
-        total_intents: 8,
-        time_range_hours: 24, // default value
-      });
-    });
+      let state = _testHelpers.getBufferState();
+      expect(state.count).toBe(maxSize);
+      expect(state.head).toBe(0); // Wrapped back to start
 
-    it('should clamp time_range_hours to minimum of 1', async () => {
-      mockRequest.mockResolvedValue({
-        distribution: {},
-        total_intents: 0,
-        execution_time_ms: 10,
-      });
-
-      const response = await request(app)
-        .get('/api/intents/distribution?time_range_hours=-5')
-        .expect(200);
-
-      expect(response.body.time_range_hours).toBe(1);
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_distribution',
-        expect.objectContaining({
-          time_range_hours: 1,
-        }),
-        expect.any(Number)
+      // Add one more to trigger wrap overwrite
+      _testHelpers.addToStore(
+        createMockIntent({
+          intentId: 'overflow-intent',
+        })
       );
-    });
 
-    it('should clamp time_range_hours to maximum of 168 (7 days)', async () => {
-      mockRequest.mockResolvedValue({
-        distribution: {},
-        total_intents: 0,
-        execution_time_ms: 10,
-      });
-
-      const response = await request(app)
-        .get('/api/intents/distribution?time_range_hours=1000')
-        .expect(200);
-
-      expect(response.body.time_range_hours).toBe(168);
-    });
-
-    it('should use default time_range_hours of 24 when not specified', async () => {
-      mockRequest.mockResolvedValue({
-        distribution: {},
-        total_intents: 0,
-        execution_time_ms: 10,
-      });
-
-      const response = await request(app).get('/api/intents/distribution').expect(200);
-
-      expect(response.body.time_range_hours).toBe(24);
-    });
-
-    it('should return 500 on internal error', async () => {
-      mockRequest.mockRejectedValue(new Error('Kafka connection failed'));
-
-      const response = await request(app).get('/api/intents/distribution').expect(500);
-
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body).toHaveProperty('error', 'Kafka connection failed');
-    });
-
-    it('should start adapter if not started', async () => {
-      mockIntelInstance = {
-        started: false,
-        start: vi.fn().mockResolvedValue(undefined),
-        request: mockRequest,
-      };
-      mockRequest.mockResolvedValue({
-        distribution: {},
-        total_intents: 0,
-        execution_time_ms: 5,
-      });
-
-      await request(app).get('/api/intents/distribution').expect(200);
-
-      expect(mockIntelInstance.start).toHaveBeenCalled();
-    });
-
-    it('should handle empty distribution response', async () => {
-      mockRequest.mockResolvedValue({});
-
-      const response = await request(app).get('/api/intents/distribution').expect(200);
-
-      expect(response.body).toHaveProperty('distribution', {});
-      expect(response.body).toHaveProperty('total_intents', 0);
+      state = _testHelpers.getBufferState();
+      expect(state.count).toBe(maxSize); // Count should stay at max
+      expect(state.head).toBe(1); // Head should advance
     });
   });
 
-  // ============================================================================
-  // GET /api/intents/session/:sessionId
-  // ============================================================================
-
-  describe('GET /api/intents/session/:sessionId', () => {
-    it('should return 400 if sessionId format invalid', async () => {
-      // Session ID with invalid characters (special chars not allowed)
-      const response = await request(app)
-        .get('/api/intents/session/invalid@session#id!')
-        .expect(400);
-
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body.error).toContain('Invalid sessionId format');
+  describe('getAllIntentsFromBuffer', () => {
+    it('should return empty array for empty buffer', () => {
+      const intents = _testHelpers.getAllIntentsFromBuffer();
+      expect(intents).toEqual([]);
     });
 
-    it('should return 400 if sessionId is too long', async () => {
-      const longSessionId = 'a'.repeat(150); // Exceeds 128 character limit
-      const response = await request(app).get(`/api/intents/session/${longSessionId}`).expect(400);
+    it('should return items in reverse chronological order (newest first)', () => {
+      const intent1 = createMockIntent({ intentId: 'first' });
+      const intent2 = createMockIntent({ intentId: 'second' });
+      const intent3 = createMockIntent({ intentId: 'third' });
 
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body.error).toContain('Invalid sessionId format');
+      _testHelpers.addToStore(intent1);
+      _testHelpers.addToStore(intent2);
+      _testHelpers.addToStore(intent3);
+
+      const result = _testHelpers.getAllIntentsFromBuffer();
+
+      expect(result).toHaveLength(3);
+      expect(result[0].intentId).toBe('third'); // Newest first
+      expect(result[1].intentId).toBe('second');
+      expect(result[2].intentId).toBe('first'); // Oldest last
     });
 
-    it('should return 503 if intelligence adapter unavailable', async () => {
-      mockIntelInstance = null;
+    it('should maintain order after buffer wrap', () => {
+      const maxSize = _testHelpers.MAX_STORED_INTENTS;
 
-      const response = await request(app)
-        .get('/api/intents/session/valid-session-id-123')
-        .expect(503);
+      // Fill buffer completely
+      for (let i = 0; i < maxSize; i++) {
+        _testHelpers.addToStore(
+          createMockIntent({
+            intentId: `intent-${i}`,
+          })
+        );
+      }
 
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body).toHaveProperty('error', 'Intent service unavailable');
-    });
+      // Add 5 more items (these will overwrite the oldest)
+      for (let i = 0; i < 5; i++) {
+        _testHelpers.addToStore(
+          createMockIntent({
+            intentId: `overflow-${i}`,
+          })
+        );
+      }
 
-    it('should return session intents with proper structure', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [
-          {
-            intent_id: 'intent-1',
-            intent_category: 'code_generation',
-            confidence: 0.95,
-            created_at: '2024-01-01T00:00:00Z',
-          },
-          {
-            intent_id: 'intent-2',
-            intent_category: 'debugging',
-            confidence: 0.88,
-            created_at: '2024-01-01T00:01:00Z',
-          },
-        ],
-        total_count: 2,
-        execution_time_ms: 28,
-      });
+      const result = _testHelpers.getAllIntentsFromBuffer();
 
-      const response = await request(app)
-        .get('/api/intents/session/test-session-abc123')
-        .expect(200);
-
-      expect(response.body).toHaveProperty('ok', true);
-      expect(response.body).toHaveProperty('session_id', 'test-session-abc123');
-      expect(response.body).toHaveProperty('intents');
-      expect(response.body.intents).toHaveLength(2);
-      expect(response.body).toHaveProperty('total_count', 2);
-      expect(response.body).toHaveProperty('execution_time_ms', 28);
-    });
-
-    it('should accept valid UUID format sessionId', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [],
-        total_count: 0,
-        execution_time_ms: 15,
-      });
-
-      const response = await request(app)
-        .get('/api/intents/session/123e4567-e89b-12d3-a456-426614174000')
-        .expect(200);
-
-      expect(response.body).toHaveProperty('ok', true);
-      expect(response.body).toHaveProperty('session_id', '123e4567-e89b-12d3-a456-426614174000');
-    });
-
-    it('should accept alphanumeric with hyphens and underscores', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [],
-        total_count: 0,
-        execution_time_ms: 10,
-      });
-
-      const response = await request(app)
-        .get('/api/intents/session/my_session-123_test')
-        .expect(200);
-
-      expect(response.body).toHaveProperty('ok', true);
-    });
-
-    it('should respect min_confidence parameter', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [],
-        total_count: 0,
-        execution_time_ms: 12,
-      });
-
-      await request(app).get('/api/intents/session/test-session?min_confidence=0.8').expect(200);
-
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_session',
-        expect.objectContaining({
-          min_confidence: 0.8,
-        }),
-        expect.any(Number)
-      );
-    });
-
-    it('should clamp min_confidence to valid range [0, 1]', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [],
-        total_count: 0,
-        execution_time_ms: 10,
-      });
-
-      await request(app).get('/api/intents/session/test-session?min_confidence=1.5').expect(200);
-
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_session',
-        expect.objectContaining({
-          min_confidence: 1, // clamped to 1
-        }),
-        expect.any(Number)
-      );
-    });
-
-    it('should respect limit parameter', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [],
-        total_count: 0,
-        execution_time_ms: 10,
-      });
-
-      await request(app).get('/api/intents/session/test-session?limit=50').expect(200);
-
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_session',
-        expect.objectContaining({
-          limit: 50,
-        }),
-        expect.any(Number)
-      );
-    });
-
-    it('should clamp limit to maximum of 1000', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [],
-        total_count: 0,
-        execution_time_ms: 10,
-      });
-
-      await request(app).get('/api/intents/session/test-session?limit=5000').expect(200);
-
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_session',
-        expect.objectContaining({
-          limit: 1000,
-        }),
-        expect.any(Number)
-      );
-    });
-
-    it('should return 500 on internal error', async () => {
-      mockRequest.mockRejectedValue(new Error('Database query failed'));
-
-      const response = await request(app).get('/api/intents/session/valid-session').expect(500);
-
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body).toHaveProperty('error', 'Database query failed');
-    });
-
-    it('should handle empty intents response', async () => {
-      mockRequest.mockResolvedValue({});
-
-      const response = await request(app).get('/api/intents/session/empty-session').expect(200);
-
-      expect(response.body).toHaveProperty('intents', []);
-      expect(response.body).toHaveProperty('total_count', 0);
+      expect(result).toHaveLength(maxSize);
+      // Newest items should be first
+      expect(result[0].intentId).toBe('overflow-4');
+      expect(result[1].intentId).toBe('overflow-3');
+      expect(result[2].intentId).toBe('overflow-2');
+      expect(result[3].intentId).toBe('overflow-1');
+      expect(result[4].intentId).toBe('overflow-0');
     });
   });
 
-  // ============================================================================
-  // GET /api/intents/recent
-  // ============================================================================
-
-  describe('GET /api/intents/recent', () => {
-    it('should return 503 if intelligence adapter unavailable', async () => {
-      mockIntelInstance = null;
-
-      const response = await request(app).get('/api/intents/recent').expect(503);
-
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body).toHaveProperty('error', 'Intent service unavailable');
+  describe('getIntentsFromStore (time-based filtering)', () => {
+    it('should return empty array when buffer is empty', () => {
+      const result = _testHelpers.getIntentsFromStore(24);
+      expect(result).toEqual([]);
     });
 
-    it('should return recent intents with proper structure', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [
-          {
-            intent_id: 'recent-1',
-            session_id: 'session-a',
-            intent_category: 'testing',
-            confidence: 0.92,
-            created_at: '2024-01-01T10:00:00Z',
-          },
-        ],
-        total_count: 1,
-        execution_time_ms: 18,
+    it('should filter intents by time range', () => {
+      const now = Date.now();
+
+      // Create intents at different times
+      // Note: Use times safely inside/outside boundaries to avoid edge case failures
+      const recentIntent = createMockIntent({
+        intentId: 'recent',
+        createdAt: new Date(now - 1000).toISOString(), // 1 second ago
+      });
+      const hourAgoIntent = createMockIntent({
+        intentId: 'hour-ago',
+        createdAt: new Date(now - 61 * 60 * 1000).toISOString(), // 61 minutes ago (safely outside 1 hour)
+      });
+      const dayAgoIntent = createMockIntent({
+        intentId: 'day-ago',
+        createdAt: new Date(now - 25 * 60 * 60 * 1000).toISOString(), // 25 hours ago
       });
 
-      const response = await request(app).get('/api/intents/recent').expect(200);
+      _testHelpers.addToStore(dayAgoIntent);
+      _testHelpers.addToStore(hourAgoIntent);
+      _testHelpers.addToStore(recentIntent);
 
-      expect(response.body).toHaveProperty('ok', true);
-      expect(response.body).toHaveProperty('intents');
-      expect(response.body.intents).toHaveLength(1);
-      expect(response.body).toHaveProperty('total_count', 1);
-      expect(response.body).toHaveProperty('time_range_hours', 1); // default
-      expect(response.body).toHaveProperty('execution_time_ms', 18);
+      // Query for last 24 hours - should exclude day-ago intent
+      const result24h = _testHelpers.getIntentsFromStore(24);
+      expect(result24h).toHaveLength(2);
+      expect(result24h.map((i) => i.intentId)).toContain('recent');
+      expect(result24h.map((i) => i.intentId)).toContain('hour-ago');
+      expect(result24h.map((i) => i.intentId)).not.toContain('day-ago');
+
+      // Query for last 1 hour - should only return recent (hour-ago is 61 min ago, outside 1hr window)
+      const result1h = _testHelpers.getIntentsFromStore(1);
+      expect(result1h).toHaveLength(1);
+      expect(result1h[0].intentId).toBe('recent');
+
+      // Query for last 48 hours - should return all
+      const result48h = _testHelpers.getIntentsFromStore(48);
+      expect(result48h).toHaveLength(3);
     });
 
-    it('should respect limit parameter bounds (min 1, max 100)', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [],
-        total_count: 0,
-        execution_time_ms: 10,
-      });
+    it('should return intents in reverse chronological order after filtering', () => {
+      const now = Date.now();
 
-      // Test minimum bound
-      await request(app).get('/api/intents/recent?limit=-10').expect(200);
-
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_recent',
-        expect.objectContaining({
-          limit: 1,
-        }),
-        expect.any(Number)
+      _testHelpers.addToStore(
+        createMockIntent({
+          intentId: 'oldest',
+          createdAt: new Date(now - 3000).toISOString(),
+        })
+      );
+      _testHelpers.addToStore(
+        createMockIntent({
+          intentId: 'middle',
+          createdAt: new Date(now - 2000).toISOString(),
+        })
+      );
+      _testHelpers.addToStore(
+        createMockIntent({
+          intentId: 'newest',
+          createdAt: new Date(now - 1000).toISOString(),
+        })
       );
 
-      vi.clearAllMocks();
-      mockRequest.mockResolvedValue({
-        intents: [],
-        total_count: 0,
-        execution_time_ms: 10,
-      });
+      const result = _testHelpers.getIntentsFromStore(24);
 
-      // Test maximum bound
-      await request(app).get('/api/intents/recent?limit=500').expect(200);
-
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_recent',
-        expect.objectContaining({
-          limit: 100,
-        }),
-        expect.any(Number)
-      );
-    });
-
-    it('should use default limit of 50 when not specified', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [],
-        total_count: 0,
-        execution_time_ms: 10,
-      });
-
-      await request(app).get('/api/intents/recent').expect(200);
-
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_recent',
-        expect.objectContaining({
-          limit: 50,
-        }),
-        expect.any(Number)
-      );
-    });
-
-    it('should clamp time_range_hours to maximum of 168 (7 days)', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [],
-        total_count: 0,
-        execution_time_ms: 10,
-      });
-
-      const response = await request(app)
-        .get('/api/intents/recent?time_range_hours=1000')
-        .expect(200);
-
-      expect(response.body.time_range_hours).toBe(168);
-    });
-
-    it('should respect min_confidence parameter', async () => {
-      mockRequest.mockResolvedValue({
-        intents: [],
-        total_count: 0,
-        execution_time_ms: 10,
-      });
-
-      await request(app).get('/api/intents/recent?min_confidence=0.7').expect(200);
-
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_recent',
-        expect.objectContaining({
-          min_confidence: 0.7,
-        }),
-        expect.any(Number)
-      );
-    });
-
-    it('should return 500 on internal error', async () => {
-      mockRequest.mockRejectedValue(new Error('Service timeout'));
-
-      const response = await request(app).get('/api/intents/recent').expect(500);
-
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body).toHaveProperty('error', 'Service timeout');
-    });
-
-    it('should handle empty intents response', async () => {
-      mockRequest.mockResolvedValue({});
-
-      const response = await request(app).get('/api/intents/recent').expect(200);
-
-      expect(response.body).toHaveProperty('intents', []);
-      expect(response.body).toHaveProperty('total_count', 0);
+      expect(result[0].intentId).toBe('newest');
+      expect(result[1].intentId).toBe('middle');
+      expect(result[2].intentId).toBe('oldest');
     });
   });
 
-  // ============================================================================
-  // POST /api/intents/store
-  // ============================================================================
-
-  describe('POST /api/intents/store', () => {
-    it('should return 400 if session_id missing', async () => {
-      const response = await request(app)
-        .post('/api/intents/store')
-        .send({ intent_category: 'code_generation' })
-        .expect(400);
-
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body.error).toContain('session_id and intent_category are required');
+  describe('getIntentsBySession (session-based filtering)', () => {
+    it('should return empty result when buffer is empty', () => {
+      const result = _testHelpers.getIntentsBySession('any-session', 100, 0);
+      expect(result.intents).toEqual([]);
+      expect(result.totalAvailable).toBe(0);
     });
 
-    it('should return 400 if intent_category missing', async () => {
-      const response = await request(app)
-        .post('/api/intents/store')
-        .send({ session_id: 'test-session-123' })
-        .expect(400);
+    it('should filter intents by session reference', () => {
+      _testHelpers.addToStore(createMockIntent({ sessionRef: 'session-A', intentId: 'a1' }));
+      _testHelpers.addToStore(createMockIntent({ sessionRef: 'session-B', intentId: 'b1' }));
+      _testHelpers.addToStore(createMockIntent({ sessionRef: 'session-A', intentId: 'a2' }));
+      _testHelpers.addToStore(createMockIntent({ sessionRef: 'session-B', intentId: 'b2' }));
 
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body.error).toContain('session_id and intent_category are required');
+      const resultA = _testHelpers.getIntentsBySession('session-A', 100, 0);
+      expect(resultA.intents).toHaveLength(2);
+      expect(resultA.totalAvailable).toBe(2);
+      expect(resultA.intents.every((i) => i.sessionRef === 'session-A')).toBe(true);
+
+      const resultB = _testHelpers.getIntentsBySession('session-B', 100, 0);
+      expect(resultB.intents).toHaveLength(2);
+      expect(resultB.totalAvailable).toBe(2);
+      expect(resultB.intents.every((i) => i.sessionRef === 'session-B')).toBe(true);
     });
 
-    it('should return 400 if both session_id and intent_category missing', async () => {
-      const response = await request(app).post('/api/intents/store').send({}).expect(400);
+    it('should filter by minimum confidence', () => {
+      _testHelpers.addToStore(createMockIntent({ confidence: 0.5, intentId: 'low' }));
+      _testHelpers.addToStore(createMockIntent({ confidence: 0.75, intentId: 'medium' }));
+      _testHelpers.addToStore(createMockIntent({ confidence: 0.95, intentId: 'high' }));
 
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body.error).toContain('session_id and intent_category are required');
+      // All have same session for this test
+      const allSameSession = 'test-session';
+
+      const result50 = _testHelpers.getIntentsBySession(allSameSession, 100, 0.5);
+      expect(result50.intents).toHaveLength(3);
+      expect(result50.totalAvailable).toBe(3);
+
+      const result70 = _testHelpers.getIntentsBySession(allSameSession, 100, 0.7);
+      expect(result70.intents).toHaveLength(2);
+      expect(result70.totalAvailable).toBe(2);
+
+      const result90 = _testHelpers.getIntentsBySession(allSameSession, 100, 0.9);
+      expect(result90.intents).toHaveLength(1);
+      expect(result90.totalAvailable).toBe(1);
+      expect(result90.intents[0].intentId).toBe('high');
     });
 
-    it('should return 400 if session_id format invalid', async () => {
-      const response = await request(app)
-        .post('/api/intents/store')
-        .send({
-          session_id: 'invalid@session!id#',
-          intent_category: 'debugging',
-        })
-        .expect(400);
+    it('should respect limit parameter and return total available count', () => {
+      // Add 10 intents with same session
+      for (let i = 0; i < 10; i++) {
+        _testHelpers.addToStore(
+          createMockIntent({
+            sessionRef: 'limited-session',
+            intentId: `intent-${i}`,
+          })
+        );
+      }
 
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body.error).toContain('Invalid session_id format');
+      const result = _testHelpers.getIntentsBySession('limited-session', 5, 0);
+      expect(result.intents).toHaveLength(5);
+      expect(result.totalAvailable).toBe(10); // Total matching is 10, but only 5 returned
     });
 
-    it('should return 503 if intelligence adapter unavailable', async () => {
-      mockIntelInstance = null;
-
-      const response = await request(app)
-        .post('/api/intents/store')
-        .send({
-          session_id: 'valid-session-123',
-          intent_category: 'code_generation',
-        })
-        .expect(503);
-
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body).toHaveProperty('error', 'Intent service unavailable');
-    });
-
-    it('should emit intent stored event on success', async () => {
-      mockRequest.mockResolvedValue({
-        success: true,
-        intent_id: 'new-intent-uuid',
-        created: true,
-        execution_time_ms: 45,
-      });
-
-      await request(app)
-        .post('/api/intents/store')
-        .send({
-          session_id: 'my-session-123',
-          intent_category: 'testing',
-          confidence: 0.85,
-          keywords: ['unit', 'test'],
-        })
-        .expect(200);
-
-      expect(mockEmitIntentStored).toHaveBeenCalledWith(
-        expect.objectContaining({
-          intent_id: 'new-intent-uuid',
-          session_id: 'my-session-123',
-          intent_category: 'testing',
-          confidence: 0.85,
-          keywords: ['unit', 'test'],
-        })
+    it('should combine session filter with confidence filter', () => {
+      _testHelpers.addToStore(
+        createMockIntent({ sessionRef: 'combo-session', confidence: 0.5, intentId: 'low-combo' })
       );
-    });
-
-    it('should return success response with proper structure', async () => {
-      mockRequest.mockResolvedValue({
-        success: true,
-        intent_id: 'stored-intent-id',
-        created: true,
-        execution_time_ms: 30,
-      });
-
-      const response = await request(app)
-        .post('/api/intents/store')
-        .send({
-          session_id: 'test-session',
-          intent_category: 'documentation',
-          confidence: 0.9,
-          keywords: ['readme', 'docs'],
-          user_context: 'Updating documentation',
-        })
-        .expect(200);
-
-      expect(response.body).toHaveProperty('ok', true);
-      expect(response.body).toHaveProperty('intent_id', 'stored-intent-id');
-      expect(response.body).toHaveProperty('session_id', 'test-session');
-      expect(response.body).toHaveProperty('created', true);
-      expect(response.body).toHaveProperty('execution_time_ms', 30);
-    });
-
-    it('should use default confidence of 0.5 when not provided', async () => {
-      mockRequest.mockResolvedValue({
-        success: true,
-        intent_id: 'test-intent',
-        created: true,
-        execution_time_ms: 20,
-      });
-
-      await request(app)
-        .post('/api/intents/store')
-        .send({
-          session_id: 'test-session',
-          intent_category: 'refactoring',
-        })
-        .expect(200);
-
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_store',
-        expect.objectContaining({
-          confidence: 0.5,
-        }),
-        expect.any(Number)
+      _testHelpers.addToStore(
+        createMockIntent({ sessionRef: 'combo-session', confidence: 0.9, intentId: 'high-combo' })
       );
-    });
-
-    it('should use empty array for keywords when not provided', async () => {
-      mockRequest.mockResolvedValue({
-        success: true,
-        intent_id: 'test-intent',
-        created: true,
-        execution_time_ms: 20,
-      });
-
-      await request(app)
-        .post('/api/intents/store')
-        .send({
-          session_id: 'test-session',
-          intent_category: 'analysis', // valid category
-        })
-        .expect(200);
-
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_store',
-        expect.objectContaining({
-          keywords: [],
-        }),
-        expect.any(Number)
+      _testHelpers.addToStore(
+        createMockIntent({ sessionRef: 'other-session', confidence: 0.95, intentId: 'high-other' })
       );
+
+      const result = _testHelpers.getIntentsBySession('combo-session', 100, 0.8);
+      expect(result.intents).toHaveLength(1);
+      expect(result.totalAvailable).toBe(1);
+      expect(result.intents[0].intentId).toBe('high-combo');
     });
 
-    it('should return 400 for invalid intent_category', async () => {
-      const response = await request(app)
-        .post('/api/intents/store')
-        .send({
-          session_id: 'test-session',
-          intent_category: 'invalid_category',
-        })
-        .expect(400);
+    it('should return correct totalAvailable when limit is less than matches', () => {
+      // Add 20 intents with same session
+      for (let i = 0; i < 20; i++) {
+        _testHelpers.addToStore(
+          createMockIntent({
+            sessionRef: 'large-session',
+            intentId: `intent-${i}`,
+          })
+        );
+      }
 
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body.error).toContain('Invalid intent_category');
-      expect(response.body.error).toContain('Must be one of');
-    });
-
-    it('should not emit event if request fails', async () => {
-      mockRequest.mockResolvedValue({
-        success: false,
-        error: 'Storage failed',
-        execution_time_ms: 15,
-      });
-
-      const response = await request(app)
-        .post('/api/intents/store')
-        .send({
-          session_id: 'test-session',
-          intent_category: 'debugging',
-        })
-        .expect(200);
-
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body).toHaveProperty('error', 'Storage failed');
-      expect(mockEmitIntentStored).not.toHaveBeenCalled();
-    });
-
-    it('should return 500 on internal error', async () => {
-      mockRequest.mockRejectedValue(new Error('Network error'));
-
-      const response = await request(app)
-        .post('/api/intents/store')
-        .send({
-          session_id: 'test-session',
-          intent_category: 'testing',
-        })
-        .expect(500);
-
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body).toHaveProperty('error', 'Network error');
-    });
-
-    it('should handle non-Error exceptions', async () => {
-      mockRequest.mockRejectedValue('String error');
-
-      const response = await request(app)
-        .post('/api/intents/store')
-        .send({
-          session_id: 'test-session',
-          intent_category: 'testing',
-        })
-        .expect(500);
-
-      expect(response.body).toHaveProperty('ok', false);
-      expect(response.body).toHaveProperty('error', 'String error');
+      const result = _testHelpers.getIntentsBySession('large-session', 3, 0);
+      expect(result.intents).toHaveLength(3);
+      expect(result.totalAvailable).toBe(20);
     });
   });
 
-  // ============================================================================
-  // Edge cases and validation
-  // ============================================================================
+  describe('resetBuffer', () => {
+    it('should clear all items from buffer', () => {
+      // Add some items
+      _testHelpers.addToStore(createMockIntent());
+      _testHelpers.addToStore(createMockIntent());
+      _testHelpers.addToStore(createMockIntent());
 
-  describe('Edge cases and validation', () => {
-    it('should handle timeout parameter correctly in distribution', async () => {
-      mockRequest.mockResolvedValue({
-        distribution: {},
-        total_intents: 0,
-        execution_time_ms: 5,
-      });
+      expect(_testHelpers.getBufferState().count).toBe(3);
 
-      await request(app).get('/api/intents/distribution?timeout=15000').expect(200);
+      // Reset
+      _testHelpers.resetBuffer();
 
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_distribution',
-        expect.any(Object),
-        15000
+      const state = _testHelpers.getBufferState();
+      expect(state.count).toBe(0);
+      expect(state.head).toBe(0);
+      expect(_testHelpers.getAllIntentsFromBuffer()).toEqual([]);
+    });
+  });
+});
+
+// ============================================================================
+// Rate Limiting Tests
+// ============================================================================
+
+describe('Rate Limiting', () => {
+  beforeEach(() => {
+    _testHelpers.resetRateLimitStore();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    _testHelpers.resetRateLimitStore();
+    vi.useRealTimers();
+  });
+
+  describe('checkRateLimit', () => {
+    it('should allow first request from an IP', () => {
+      const result = _testHelpers.checkRateLimit('192.168.1.1');
+      expect(result).toBe(true);
+    });
+
+    it('should allow requests under the limit', () => {
+      const ip = '192.168.1.2';
+      const maxRequests = _testHelpers.RATE_LIMIT_MAX_REQUESTS;
+
+      // Make maxRequests requests - all should be allowed
+      for (let i = 0; i < maxRequests; i++) {
+        const result = _testHelpers.checkRateLimit(ip);
+        expect(result).toBe(true);
+      }
+    });
+
+    it('should block requests over the limit', () => {
+      const ip = '192.168.1.3';
+      const maxRequests = _testHelpers.RATE_LIMIT_MAX_REQUESTS;
+
+      // Exhaust the limit
+      for (let i = 0; i < maxRequests; i++) {
+        _testHelpers.checkRateLimit(ip);
+      }
+
+      // Next request should be blocked
+      const result = _testHelpers.checkRateLimit(ip);
+      expect(result).toBe(false);
+    });
+
+    it('should track different IPs independently', () => {
+      const ip1 = '192.168.1.100';
+      const ip2 = '192.168.1.101';
+      const maxRequests = _testHelpers.RATE_LIMIT_MAX_REQUESTS;
+
+      // Exhaust limit for ip1
+      for (let i = 0; i < maxRequests; i++) {
+        _testHelpers.checkRateLimit(ip1);
+      }
+
+      // ip1 should be blocked
+      expect(_testHelpers.checkRateLimit(ip1)).toBe(false);
+
+      // ip2 should still be allowed
+      expect(_testHelpers.checkRateLimit(ip2)).toBe(true);
+    });
+
+    it('should reset rate limit after window expires', () => {
+      const ip = '192.168.1.4';
+      const maxRequests = _testHelpers.RATE_LIMIT_MAX_REQUESTS;
+      const windowMs = _testHelpers.RATE_LIMIT_WINDOW_MS;
+
+      // Exhaust the limit
+      for (let i = 0; i < maxRequests; i++) {
+        _testHelpers.checkRateLimit(ip);
+      }
+
+      // Should be blocked
+      expect(_testHelpers.checkRateLimit(ip)).toBe(false);
+
+      // Advance time past the window
+      vi.advanceTimersByTime(windowMs + 100);
+
+      // Should be allowed again
+      expect(_testHelpers.checkRateLimit(ip)).toBe(true);
+    });
+
+    it('should reset count to 1 after window expires', () => {
+      const ip = '192.168.1.5';
+      const maxRequests = _testHelpers.RATE_LIMIT_MAX_REQUESTS;
+      const windowMs = _testHelpers.RATE_LIMIT_WINDOW_MS;
+
+      // Use some requests
+      for (let i = 0; i < 50; i++) {
+        _testHelpers.checkRateLimit(ip);
+      }
+
+      expect(_testHelpers.getRateLimitRemaining(ip)).toBe(maxRequests - 50);
+
+      // Advance time past the window
+      vi.advanceTimersByTime(windowMs + 100);
+
+      // After first request, remaining should be maxRequests - 1
+      _testHelpers.checkRateLimit(ip);
+      expect(_testHelpers.getRateLimitRemaining(ip)).toBe(maxRequests - 1);
+    });
+  });
+
+  describe('getRateLimitRemaining', () => {
+    it('should return max requests for unknown IP', () => {
+      const result = _testHelpers.getRateLimitRemaining('unknown-ip');
+      expect(result).toBe(_testHelpers.RATE_LIMIT_MAX_REQUESTS);
+    });
+
+    it('should return correct remaining count', () => {
+      const ip = '192.168.1.6';
+      const maxRequests = _testHelpers.RATE_LIMIT_MAX_REQUESTS;
+
+      // Make 10 requests
+      for (let i = 0; i < 10; i++) {
+        _testHelpers.checkRateLimit(ip);
+      }
+
+      expect(_testHelpers.getRateLimitRemaining(ip)).toBe(maxRequests - 10);
+    });
+
+    it('should return 0 when limit is exhausted', () => {
+      const ip = '192.168.1.7';
+      const maxRequests = _testHelpers.RATE_LIMIT_MAX_REQUESTS;
+
+      // Exhaust limit
+      for (let i = 0; i < maxRequests; i++) {
+        _testHelpers.checkRateLimit(ip);
+      }
+
+      expect(_testHelpers.getRateLimitRemaining(ip)).toBe(0);
+    });
+
+    it('should return max after window expires', () => {
+      const ip = '192.168.1.8';
+      const windowMs = _testHelpers.RATE_LIMIT_WINDOW_MS;
+
+      // Use some requests
+      for (let i = 0; i < 50; i++) {
+        _testHelpers.checkRateLimit(ip);
+      }
+
+      // Advance past window
+      vi.advanceTimersByTime(windowMs + 100);
+
+      expect(_testHelpers.getRateLimitRemaining(ip)).toBe(_testHelpers.RATE_LIMIT_MAX_REQUESTS);
+    });
+  });
+
+  describe('getRateLimitResetSeconds', () => {
+    it('should return full window duration for unknown IP', () => {
+      const windowSeconds = Math.ceil(_testHelpers.RATE_LIMIT_WINDOW_MS / 1000);
+      const result = _testHelpers.getRateLimitResetSeconds('unknown-ip');
+      expect(result).toBe(windowSeconds);
+    });
+
+    it('should return time remaining until reset', () => {
+      const ip = '192.168.1.9';
+      const windowMs = _testHelpers.RATE_LIMIT_WINDOW_MS;
+
+      // Make a request to create entry
+      _testHelpers.checkRateLimit(ip);
+
+      // Advance time by half the window
+      vi.advanceTimersByTime(windowMs / 2);
+
+      const remaining = _testHelpers.getRateLimitResetSeconds(ip);
+      // Should be approximately half the window (in seconds)
+      expect(remaining).toBeGreaterThan(0);
+      expect(remaining).toBeLessThanOrEqual(Math.ceil(windowMs / 2 / 1000));
+    });
+
+    it('should return 0 or full window when entry has expired', () => {
+      const ip = '192.168.1.10';
+      const windowMs = _testHelpers.RATE_LIMIT_WINDOW_MS;
+      const windowSeconds = Math.ceil(windowMs / 1000);
+
+      // Make a request
+      _testHelpers.checkRateLimit(ip);
+
+      // Advance past window
+      vi.advanceTimersByTime(windowMs + 100);
+
+      // Should return full window duration (new entry would be created)
+      expect(_testHelpers.getRateLimitResetSeconds(ip)).toBe(windowSeconds);
+    });
+
+    it('should decrease as time passes', () => {
+      const ip = '192.168.1.11';
+
+      // Make a request
+      _testHelpers.checkRateLimit(ip);
+
+      const initialReset = _testHelpers.getRateLimitResetSeconds(ip);
+
+      // Advance by 10 seconds
+      vi.advanceTimersByTime(10000);
+
+      const laterReset = _testHelpers.getRateLimitResetSeconds(ip);
+
+      expect(laterReset).toBeLessThan(initialReset);
+      expect(initialReset - laterReset).toBeLessThanOrEqual(11); // Allow for rounding
+    });
+  });
+
+  describe('resetRateLimitStore', () => {
+    it('should clear all rate limit entries', () => {
+      // Create entries for multiple IPs
+      _testHelpers.checkRateLimit('ip1');
+      _testHelpers.checkRateLimit('ip2');
+      _testHelpers.checkRateLimit('ip3');
+
+      expect(_testHelpers.getRateLimitStoreSize()).toBe(3);
+
+      // Reset
+      _testHelpers.resetRateLimitStore();
+
+      expect(_testHelpers.getRateLimitStoreSize()).toBe(0);
+
+      // All IPs should have full quota
+      expect(_testHelpers.getRateLimitRemaining('ip1')).toBe(_testHelpers.RATE_LIMIT_MAX_REQUESTS);
+      expect(_testHelpers.getRateLimitRemaining('ip2')).toBe(_testHelpers.RATE_LIMIT_MAX_REQUESTS);
+      expect(_testHelpers.getRateLimitRemaining('ip3')).toBe(_testHelpers.RATE_LIMIT_MAX_REQUESTS);
+    });
+  });
+
+  describe('boundary conditions', () => {
+    it('should handle exactly max requests (boundary)', () => {
+      const ip = '192.168.1.12';
+      const maxRequests = _testHelpers.RATE_LIMIT_MAX_REQUESTS;
+
+      // Make exactly maxRequests - 1 requests
+      for (let i = 0; i < maxRequests - 1; i++) {
+        expect(_testHelpers.checkRateLimit(ip)).toBe(true);
+      }
+
+      // This should be the last allowed request
+      expect(_testHelpers.checkRateLimit(ip)).toBe(true);
+      expect(_testHelpers.getRateLimitRemaining(ip)).toBe(0);
+
+      // This should be blocked
+      expect(_testHelpers.checkRateLimit(ip)).toBe(false);
+    });
+
+    it('should handle rapid requests within same millisecond', () => {
+      const ip = '192.168.1.13';
+
+      // Make multiple requests without advancing time
+      const results = [];
+      for (let i = 0; i < 10; i++) {
+        results.push(_testHelpers.checkRateLimit(ip));
+      }
+
+      // All should be allowed
+      expect(results.every((r) => r === true)).toBe(true);
+      expect(_testHelpers.getRateLimitRemaining(ip)).toBe(
+        _testHelpers.RATE_LIMIT_MAX_REQUESTS - 10
       );
     });
 
-    it('should clamp timeout to minimum of 1000ms', async () => {
-      mockRequest.mockResolvedValue({
-        distribution: {},
-        total_intents: 0,
-        execution_time_ms: 5,
-      });
+    it('should handle request at exactly window boundary', () => {
+      const ip = '192.168.1.14';
+      const windowMs = _testHelpers.RATE_LIMIT_WINDOW_MS;
+      const maxRequests = _testHelpers.RATE_LIMIT_MAX_REQUESTS;
 
-      await request(app).get('/api/intents/distribution?timeout=100').expect(200);
+      // Exhaust limit
+      for (let i = 0; i < maxRequests; i++) {
+        _testHelpers.checkRateLimit(ip);
+      }
 
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_distribution',
-        expect.any(Object),
-        1000
-      );
+      // Advance to exactly the window boundary
+      vi.advanceTimersByTime(windowMs);
+
+      // At exactly the boundary, should still be blocked (not past reset time)
+      // The check is "now > entry.resetTime", so equal is still blocked
+      // However, the implementation uses Date.now() which may vary
+      // Let's advance 1ms more to be safe
+      vi.advanceTimersByTime(1);
+
+      // Now should be allowed
+      expect(_testHelpers.checkRateLimit(ip)).toBe(true);
     });
+  });
+});
 
-    it('should clamp timeout to maximum of 30000ms', async () => {
-      mockRequest.mockResolvedValue({
-        distribution: {},
-        total_intents: 0,
-        execution_time_ms: 5,
-      });
+// ============================================================================
+// Constants Tests
+// ============================================================================
 
-      await request(app).get('/api/intents/distribution?timeout=60000').expect(200);
+describe('Constants', () => {
+  it('should have expected default values', () => {
+    // These are the default values when env vars are not set
+    expect(_testHelpers.MAX_STORED_INTENTS).toBeGreaterThan(0);
+    expect(_testHelpers.RATE_LIMIT_WINDOW_MS).toBe(60000); // 1 minute
+    expect(_testHelpers.RATE_LIMIT_MAX_REQUESTS).toBe(100);
+  });
 
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_distribution',
-        expect.any(Object),
-        30000
-      );
-    });
+  it('should have sensible rate limit values', () => {
+    // Rate limit should be reasonable
+    expect(_testHelpers.RATE_LIMIT_MAX_REQUESTS).toBeGreaterThan(0);
+    expect(_testHelpers.RATE_LIMIT_MAX_REQUESTS).toBeLessThanOrEqual(1000);
 
-    it('should include correlation_id in all requests', async () => {
-      mockRequest.mockResolvedValue({
-        distribution: {},
-        total_intents: 0,
-        execution_time_ms: 5,
-      });
-
-      await request(app).get('/api/intents/distribution').expect(200);
-
-      expect(mockRequest).toHaveBeenCalledWith(
-        'intent_query_distribution',
-        expect.objectContaining({
-          correlation_id: expect.any(String),
-        }),
-        expect.any(Number)
-      );
-    });
+    // Window should be at least 1 second
+    expect(_testHelpers.RATE_LIMIT_WINDOW_MS).toBeGreaterThanOrEqual(1000);
   });
 });

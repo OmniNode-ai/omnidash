@@ -99,6 +99,16 @@ const MOCK_NODE_DEFINITIONS: MockNodeDefinition[] = [
     capabilities: ['semantic_similarity', 'embedding_comparison', 'routing_decision'],
     namespace: 'routing',
   },
+  // Omnidash Dashboard - Self-referential entry (OMN-1280)
+  {
+    name: 'OmnidashDashboard',
+    service_name: 'omnidash-dashboard',
+    display_name: 'Omnidash Dashboard',
+    node_type: 'SERVICE',
+    version: '1.0.0',
+    capabilities: ['dashboard_rendering', 'real_time_events', 'intelligence_query'],
+    namespace: 'observability',
+  },
 
   // Reducer Nodes - Aggregation and persistence
   {
@@ -398,6 +408,7 @@ function computeSummary(
     COMPUTE: 0,
     REDUCER: 0,
     ORCHESTRATOR: 0,
+    SERVICE: 0,
   };
 
   const byHealth: Record<HealthStatus, number> = {
