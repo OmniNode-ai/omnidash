@@ -14,6 +14,7 @@ import {
   type NodeBecameActivePayload,
   type NodeHeartbeatPayload,
   type NodeLivenessExpiredPayload,
+  type NodeState,
 } from '@shared/schemas';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
@@ -191,7 +192,8 @@ export interface RegisteredNode {
 }
 
 // Canonical ONEX node state for event-driven updates
-export type OnexNodeState = 'PENDING' | 'ACTIVE' | 'OFFLINE';
+// Re-exported from shared schemas for backward compatibility
+export type OnexNodeState = NodeState;
 
 export interface CanonicalOnexNode {
   node_id: string;
@@ -1397,6 +1399,13 @@ export class EventConsumer extends EventEmitter {
         state: 'PENDING',
         last_heartbeat_at: emittedAtMs,
         last_event_at: emittedAtMs,
+      });
+
+      // Emit dashboard event so newly discovered nodes appear immediately
+      this.emit('nodeRegistryUpdate', {
+        type: 'NODE_DISCOVERED',
+        payload: { node_id: payload.node_id, last_heartbeat_at: emittedAtMs },
+        emitted_at: emittedAtMs,
       });
       return;
     }

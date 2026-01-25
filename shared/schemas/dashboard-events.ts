@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+// Canonical node state values (shared between client and server)
+export const NodeStateSchema = z.enum(['PENDING', 'ACTIVE', 'OFFLINE']);
+export type NodeState = z.infer<typeof NodeStateSchema>;
+
 // Canonical dashboard event shape (UI does not see Kafka internals)
 export const DashboardEventSchema = z.object({
   topic: z.enum(['registry', 'registry-nodes', 'metrics', 'actions']),
@@ -56,7 +60,7 @@ export type WsNodeLivenessExpiredPayload = z.infer<typeof WsNodeLivenessExpiredP
 // Projected node state (what the dashboard maintains)
 export const ProjectedNodeSchema = z.object({
   node_id: z.string().uuid(),
-  state: z.enum(['PENDING', 'ACTIVE', 'OFFLINE']),
+  state: NodeStateSchema,
   capabilities: z.record(z.string(), z.unknown()).optional(),
   activated_at: z.number().optional(),
   last_heartbeat_at: z.number().optional(),

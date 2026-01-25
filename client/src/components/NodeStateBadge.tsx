@@ -1,7 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-
-type NodeState = 'PENDING' | 'ACTIVE' | 'OFFLINE';
+import type { NodeState } from '@shared/schemas';
 
 const stateConfig: Record<NodeState, { color: string; label: string }> = {
   PENDING: { color: 'bg-gray-400 text-white', label: 'Registering' },
