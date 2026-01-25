@@ -2,6 +2,13 @@ import { Kafka, Consumer } from 'kafkajs';
 import { EventEmitter } from 'events';
 import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
+import {
+  ONEX_EVT_OMNIINTELLIGENCE_INTENT_CLASSIFIED_V1,
+  ONEX_EVT_OMNIMEMORY_INTENT_STORED_V1,
+  ONEX_EVT_OMNIMEMORY_INTENT_QUERY_RESPONSE_V1,
+  withEnvPrefix,
+  getTopicEnvPrefix,
+} from './topics/onex-intent-topics';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 const RETRY_BASE_DELAY_MS = isTestEnv ? 20 : 1000;
@@ -16,10 +23,17 @@ const SQL_PRELOAD_ACTIONS_LIMIT = 200;
 const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 
-// Intent topics (ONEX canonical naming: dev.onex.{evt|cmd}.{owner}.{event-name}.v{n})
-const INTENT_STORED_TOPIC = 'dev.onex.evt.omnimemory.intent-stored.v1';
-const INTENT_QUERY_RESPONSE_TOPIC = 'dev.onex.evt.omnimemory.intent-query-response.v1';
-const INTENT_CLASSIFIED_TOPIC = 'dev.onex.evt.omniintelligence.intent-classified.v1';
+// Intent topics with environment prefix (ONEX canonical naming)
+const TOPIC_ENV_PREFIX = getTopicEnvPrefix();
+const INTENT_STORED_TOPIC = withEnvPrefix(TOPIC_ENV_PREFIX, ONEX_EVT_OMNIMEMORY_INTENT_STORED_V1);
+const INTENT_QUERY_RESPONSE_TOPIC = withEnvPrefix(
+  TOPIC_ENV_PREFIX,
+  ONEX_EVT_OMNIMEMORY_INTENT_QUERY_RESPONSE_V1
+);
+const INTENT_CLASSIFIED_TOPIC = withEnvPrefix(
+  TOPIC_ENV_PREFIX,
+  ONEX_EVT_OMNIINTELLIGENCE_INTENT_CLASSIFIED_V1
+);
 
 export interface AgentMetrics {
   agent: string;
@@ -371,7 +385,7 @@ export interface RawNodeStateChangeEvent {
 
 /**
  * Intent classification event from Kafka
- * Topic: dev.omniintelligence.intent.classified.v1
+ * Topic: {env}.onex.evt.omniintelligence.intent-classified.v1
  */
 export interface IntentClassifiedEvent {
   id: string;
@@ -406,7 +420,7 @@ export interface RawIntentClassifiedEvent {
 
 /**
  * Intent stored event from Kafka
- * Topic: dev.omnimemory.intent.stored.v1
+ * Topic: {env}.onex.evt.omnimemory.intent-stored.v1
  */
 export interface RawIntentStoredEvent {
   id?: string;
@@ -425,7 +439,7 @@ export interface RawIntentStoredEvent {
 
 /**
  * Intent query response event from Kafka
- * Topic: dev.omnimemory.intent.query.response.v1
+ * Topic: {env}.onex.evt.omnimemory.intent-query-response.v1
  */
 export interface RawIntentQueryResponseEvent {
   query_id?: string;

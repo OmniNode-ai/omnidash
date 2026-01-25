@@ -158,6 +158,10 @@ describe('EventConsumer', () => {
           'dev.onex.evt.registration-completed.v1',
           'node.heartbeat',
           'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
+          // Intent topics
+          'dev.onex.evt.omnimemory.intent-stored.v1',
+          'dev.onex.evt.omnimemory.intent-query-response.v1',
+          'dev.onex.evt.omniintelligence.intent-classified.v1',
         ],
         fromBeginning: true,
       });
