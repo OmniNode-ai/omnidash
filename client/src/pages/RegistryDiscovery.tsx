@@ -69,6 +69,10 @@ const KEYBOARD_SHORTCUTS = [
   { key: 'Esc', description: 'Close panel' },
 ];
 
+// Node state categories for filtering
+const OFFLINE_STATES = ['REJECTED', 'LIVENESS_EXPIRED', 'ACK_TIMED_OUT'];
+const PENDING_STATES = ['PENDING_REGISTRATION', 'AWAITING_ACK', 'ACCEPTED', 'ACK_RECEIVED'];
+
 export default function RegistryDiscovery() {
   // Filter state and configuration
   const {
@@ -88,6 +92,23 @@ export default function RegistryDiscovery() {
   const [selectedNode, setSelectedNode] = useState<RegisteredNodeInfo | null>(null);
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Health badge decay timer - forces re-render every second for heartbeat recency
+  const [healthTick, setHealthTick] = useState(0);
+
+  // Visibility toggles for offline/pending nodes
+  const [showOffline, setShowOffline] = useState(false);
+  const [showPending, setShowPending] = useState(true);
+
+  // Health badge decay timer - triggers re-render every 1 second
+  // This ensures health badges reflect heartbeat recency (green -> yellow -> red)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHealthTick((t) => t + 1);
+    }, 1000); // Every 1 second (matches "< 1 second" success criteria)
+
+    return () => clearInterval(interval);
+  }, []);
 
   // WebSocket connection for real-time updates
   const { isConnected, connectionStatus, recentEvents, clearEvents, stats } = useRegistryWebSocket({
@@ -128,10 +149,51 @@ export default function RegistryDiscovery() {
     : apiData;
 
   // Transform and filter data
-  const { filteredData, dashboardData, hasNoData, healthBadgeData } = useRegistryData(rawData, {
+  const {
+    filteredData: baseFilteredData,
+    dashboardData,
+    hasNoData: baseHasNoData,
+    healthBadgeData,
+  } = useRegistryData(rawData, {
     healthFilter,
     capabilitySearch,
   });
+
+  // Apply visibility toggles for offline/pending nodes
+  // healthTick is included as dependency to force re-computation for health badge decay
+  const filteredData = useMemo(() => {
+    if (!baseFilteredData) return undefined;
+
+    const visibleNodes = baseFilteredData.nodes.filter((node) => {
+      // Filter out offline nodes if toggle is off
+      if (!showOffline && OFFLINE_STATES.includes(node.state)) {
+        return false;
+      }
+      // Filter out pending nodes if toggle is off
+      if (!showPending && PENDING_STATES.includes(node.state)) {
+        return false;
+      }
+      return true;
+    });
+
+    // Filter instances to match visible nodes
+    const visibleNodeIds = new Set(visibleNodes.map((n) => n.node_id));
+    const visibleInstances = baseFilteredData.live_instances.filter((inst) =>
+      visibleNodeIds.has(inst.node_id)
+    );
+
+    return {
+      ...baseFilteredData,
+      nodes: visibleNodes,
+      live_instances: visibleInstances,
+    };
+  }, [baseFilteredData, showOffline, showPending, healthTick]);
+
+  // Recompute hasNoData based on visibility-filtered data
+  const hasNoData =
+    baseHasNoData ||
+    !filteredData ||
+    (filteredData.nodes.length === 0 && filteredData.live_instances.length === 0);
 
   // Filter events to registry-specific types only
   const filteredRegistryEvents = useMemo(
@@ -162,12 +224,13 @@ export default function RegistryDiscovery() {
   });
 
   // Computed values
+  // healthTick dependency ensures badge re-renders every second for health decay visualization
   const healthBadge = useMemo(() => {
     if (!healthBadgeData || isLoading) return null;
     const status = calculateHealthLevel(healthBadgeData);
     const tooltip = getHealthTooltip(healthBadgeData, status);
     return <SystemHealthBadge status={status} title={tooltip} />;
-  }, [healthBadgeData, isLoading]);
+  }, [healthBadgeData, isLoading, healthTick]);
 
   const headerActions = useMemo(
     () => (
@@ -246,6 +309,28 @@ export default function RegistryDiscovery() {
             onClear={clearFilters}
             hasActiveFilters={hasFilters}
           />
+
+          {/* Visibility Toggles */}
+          <div className="flex items-center gap-6 text-sm">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showOffline}
+                onChange={(e) => setShowOffline(e.target.checked)}
+                className="rounded border-input h-4 w-4 accent-primary"
+              />
+              <span className="text-muted-foreground">Show offline</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showPending}
+                onChange={(e) => setShowPending(e.target.checked)}
+                className="rounded border-input h-4 w-4 accent-primary"
+              />
+              <span className="text-muted-foreground">Show pending</span>
+            </label>
+          </div>
 
           {/* Warnings */}
           {rawData?.warnings && rawData.warnings.length > 0 && (

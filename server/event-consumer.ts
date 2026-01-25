@@ -1,7 +1,20 @@
-import { Kafka, Consumer } from 'kafkajs';
+import { Kafka, Consumer, KafkaMessage } from 'kafkajs';
 import { EventEmitter } from 'events';
 import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
+import { LRUCache } from 'lru-cache';
+import { z } from 'zod';
+import {
+  EventEnvelopeSchema,
+  NodeBecameActivePayloadSchema,
+  NodeHeartbeatPayloadSchema,
+  NodeLivenessExpiredPayloadSchema,
+  NodeIntrospectionPayloadSchema,
+  type EventEnvelope,
+  type NodeBecameActivePayload,
+  type NodeHeartbeatPayload,
+  type NodeLivenessExpiredPayload,
+} from '@shared/schemas';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 const RETRY_BASE_DELAY_MS = isTestEnv ? 20 : 1000;
@@ -15,6 +28,17 @@ const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 const SQL_PRELOAD_ACTIONS_LIMIT = 200;
 const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
+
+// Environment-aware ONEX topic naming
+const ONEX_ENV = process.env.ONEX_ENV || 'dev';
+
+/**
+ * Generate canonical ONEX topic name for event subscriptions.
+ * Format: {env}.onex.evt.{event-name}.v1
+ */
+function onexTopic(eventName: string): string {
+  return `${ONEX_ENV}.onex.evt.${eventName}.v1`;
+}
 
 export interface AgentMetrics {
   agent: string;
@@ -164,6 +188,19 @@ export interface RegisteredNode {
   memoryUsageMb?: number;
   cpuUsagePercent?: number;
   endpoints?: Record<string, string>;
+}
+
+// Canonical ONEX node state for event-driven updates
+export type OnexNodeState = 'PENDING' | 'ACTIVE' | 'OFFLINE';
+
+export interface CanonicalOnexNode {
+  node_id: string;
+  state: OnexNodeState;
+  capabilities?: Record<string, unknown>;
+  activated_at?: number;
+  last_heartbeat_at?: number;
+  last_event_at: number;
+  offline_at?: number;
 }
 
 export interface NodeIntrospectionEvent {
@@ -447,6 +484,12 @@ export class EventConsumer extends EventEmitter {
   private nodeStateChangeEvents: NodeStateChangeEvent[] = [];
   private maxNodeEvents = 100;
 
+  // Canonical ONEX node registry (event-driven state)
+  private canonicalNodes = new Map<string, CanonicalOnexNode>();
+
+  // Deduplication cache for idempotency (max 10,000 entries)
+  private processedEvents = new LRUCache<string, number>({ max: 10_000 });
+
   // Performance metrics storage
   private performanceMetrics: Array<{
     id: string;
@@ -488,6 +531,50 @@ export class EventConsumer extends EventEmitter {
     this.consumer = this.kafka.consumer({
       groupId: 'omnidash-consumers-v2', // Changed to force reading from beginning
     });
+  }
+
+  // ============================================================================
+  // Deduplication and Event Processing Helpers
+  // ============================================================================
+
+  /**
+   * Check if an event with this correlation_id has already been processed.
+   * Uses LRU cache to prevent duplicate processing while bounding memory.
+   */
+  private isDuplicate(correlationId: string): boolean {
+    if (this.processedEvents.has(correlationId)) {
+      return true;
+    }
+    this.processedEvents.set(correlationId, Date.now());
+    return false;
+  }
+
+  /**
+   * Check if an event should be processed based on event ordering.
+   * Returns true only if the event is newer than the node's last processed event.
+   */
+  private shouldProcess(node: CanonicalOnexNode | undefined, eventEmittedAt: number): boolean {
+    if (!node) return true;
+    return eventEmittedAt > (node.last_event_at || 0);
+  }
+
+  /**
+   * Parse a Kafka message into a validated ONEX event envelope with typed payload.
+   * Returns null if parsing or validation fails.
+   */
+  private parseEnvelope<T>(
+    message: KafkaMessage,
+    payloadSchema: z.ZodSchema<T>
+  ): EventEnvelope<T> | null {
+    try {
+      const raw = JSON.parse(message.value?.toString() || '{}');
+      const envelope = EventEnvelopeSchema.parse(raw);
+      const payload = payloadSchema.parse(envelope.payload);
+      return { ...envelope, payload };
+    } catch (e) {
+      console.warn('[EventConsumer] Failed to parse event envelope:', e);
+      return null;
+    }
   }
 
   /**
@@ -631,11 +718,16 @@ export class EventConsumer extends EventEmitter {
           'agent-transformation-events',
           'router-performance-metrics',
           'agent-actions',
-          // Node registry topics (actual Kafka topic names from omnibase_infra)
+          // Node registry topics (legacy - actual Kafka topic names from omnibase_infra)
           'dev.omninode_bridge.onex.evt.node-introspection.v1',
           'dev.onex.evt.registration-completed.v1',
           'node.heartbeat',
           'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
+          // Canonical ONEX topics (OMN-1279)
+          onexTopic('node-became-active'),
+          onexTopic('node-liveness-expired'),
+          onexTopic('node-heartbeat'),
+          onexTopic('node-introspection'),
         ],
         fromBeginning: true, // Reprocess historical events to populate metrics
       });
@@ -689,6 +781,24 @@ export class EventConsumer extends EventEmitter {
                   `[EventConsumer] Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
                 );
                 this.handleNodeStateChange(event);
+                break;
+
+              // Canonical ONEX topics (OMN-1279)
+              default:
+                // Handle canonical ONEX topics using environment-aware routing
+                if (topic === onexTopic('node-became-active')) {
+                  console.log(`[EventConsumer] Processing canonical node-became-active event`);
+                  this.handleCanonicalNodeBecameActive(message);
+                } else if (topic === onexTopic('node-liveness-expired')) {
+                  console.log(`[EventConsumer] Processing canonical node-liveness-expired event`);
+                  this.handleCanonicalNodeLivenessExpired(message);
+                } else if (topic === onexTopic('node-heartbeat')) {
+                  console.log(`[EventConsumer] Processing canonical node-heartbeat event`);
+                  this.handleCanonicalNodeHeartbeat(message);
+                } else if (topic === onexTopic('node-introspection')) {
+                  console.log(`[EventConsumer] Processing canonical node-introspection event`);
+                  this.handleCanonicalNodeIntrospection(message);
+                }
                 break;
             }
           } catch (error) {
@@ -1170,6 +1280,189 @@ export class EventConsumer extends EventEmitter {
     }
   }
 
+  // ============================================================================
+  // Canonical ONEX Event Handlers (OMN-1279)
+  // These handlers use the new event envelope format with proper deduplication
+  // ============================================================================
+
+  /**
+   * Handle canonical node-became-active events.
+   * Updates the canonical node registry and emits dashboard events.
+   */
+  private handleCanonicalNodeBecameActive(message: KafkaMessage): void {
+    const envelope = this.parseEnvelope(message, NodeBecameActivePayloadSchema);
+    if (!envelope) return;
+    if (this.isDuplicate(envelope.correlation_id)) {
+      console.log(
+        `[EventConsumer] Duplicate node-became-active event, skipping: ${envelope.correlation_id}`
+      );
+      return;
+    }
+
+    const { payload, emitted_at } = envelope;
+    const emittedAtMs = new Date(emitted_at).getTime();
+
+    const existing = this.canonicalNodes.get(payload.node_id);
+    if (existing && !this.shouldProcess(existing, emittedAtMs)) {
+      console.log(`[EventConsumer] Stale node-became-active event, skipping: ${payload.node_id}`);
+      return;
+    }
+
+    // Update canonical node state
+    this.canonicalNodes.set(payload.node_id, {
+      node_id: payload.node_id,
+      state: 'ACTIVE',
+      capabilities: payload.capabilities,
+      activated_at: emittedAtMs,
+      last_heartbeat_at: emittedAtMs,
+      last_event_at: emittedAtMs,
+    });
+
+    // Emit dashboard event for WebSocket broadcast
+    this.emit('nodeRegistryUpdate', {
+      type: 'NODE_ACTIVATED',
+      payload: { node_id: payload.node_id, capabilities: payload.capabilities },
+      emitted_at: emittedAtMs,
+    });
+
+    console.log(`[EventConsumer] Canonical node-became-active processed: ${payload.node_id}`);
+  }
+
+  /**
+   * Handle canonical node-liveness-expired events.
+   * Marks the node as OFFLINE in the canonical registry.
+   */
+  private handleCanonicalNodeLivenessExpired(message: KafkaMessage): void {
+    const envelope = this.parseEnvelope(message, NodeLivenessExpiredPayloadSchema);
+    if (!envelope) return;
+    if (this.isDuplicate(envelope.correlation_id)) {
+      console.log(
+        `[EventConsumer] Duplicate node-liveness-expired event, skipping: ${envelope.correlation_id}`
+      );
+      return;
+    }
+
+    const { payload, emitted_at } = envelope;
+    const emittedAtMs = new Date(emitted_at).getTime();
+
+    const node = this.canonicalNodes.get(payload.node_id);
+    if (!node) {
+      console.log(`[EventConsumer] Node not found for liveness-expired: ${payload.node_id}`);
+      return;
+    }
+    if (!this.shouldProcess(node, emittedAtMs)) {
+      console.log(
+        `[EventConsumer] Stale node-liveness-expired event, skipping: ${payload.node_id}`
+      );
+      return;
+    }
+
+    // Update node state to OFFLINE
+    node.state = 'OFFLINE';
+    node.offline_at = emittedAtMs;
+    node.last_event_at = emittedAtMs;
+
+    // Emit dashboard event for WebSocket broadcast
+    this.emit('nodeRegistryUpdate', {
+      type: 'NODE_OFFLINE',
+      payload: { node_id: payload.node_id },
+      emitted_at: emittedAtMs,
+    });
+
+    console.log(`[EventConsumer] Canonical node-liveness-expired processed: ${payload.node_id}`);
+  }
+
+  /**
+   * Handle canonical node-heartbeat events.
+   * Updates the last_heartbeat_at timestamp for the node.
+   */
+  private handleCanonicalNodeHeartbeat(message: KafkaMessage): void {
+    const envelope = this.parseEnvelope(message, NodeHeartbeatPayloadSchema);
+    if (!envelope) return;
+    if (this.isDuplicate(envelope.correlation_id)) {
+      return; // Silent skip for heartbeats (high frequency)
+    }
+
+    const { payload, emitted_at } = envelope;
+    const emittedAtMs = new Date(emitted_at).getTime();
+
+    const node = this.canonicalNodes.get(payload.node_id);
+    if (!node) {
+      // Node not registered yet, create a pending entry
+      this.canonicalNodes.set(payload.node_id, {
+        node_id: payload.node_id,
+        state: 'PENDING',
+        last_heartbeat_at: emittedAtMs,
+        last_event_at: emittedAtMs,
+      });
+      return;
+    }
+
+    if (!this.shouldProcess(node, emittedAtMs)) {
+      return; // Stale heartbeat, skip
+    }
+
+    // Update heartbeat timestamp
+    node.last_heartbeat_at = emittedAtMs;
+    node.last_event_at = emittedAtMs;
+
+    // Emit dashboard event for WebSocket broadcast
+    this.emit('nodeRegistryUpdate', {
+      type: 'NODE_HEARTBEAT',
+      payload: { node_id: payload.node_id, last_heartbeat_at: emittedAtMs },
+      emitted_at: emittedAtMs,
+    });
+  }
+
+  /**
+   * Handle canonical node-introspection events.
+   * Updates node metadata in the canonical registry.
+   */
+  private handleCanonicalNodeIntrospection(message: KafkaMessage): void {
+    const envelope = this.parseEnvelope(message, NodeIntrospectionPayloadSchema);
+    if (!envelope) return;
+    if (this.isDuplicate(envelope.correlation_id)) {
+      console.log(
+        `[EventConsumer] Duplicate node-introspection event, skipping: ${envelope.correlation_id}`
+      );
+      return;
+    }
+
+    const { payload, emitted_at } = envelope;
+    const emittedAtMs = new Date(emitted_at).getTime();
+
+    const existing = this.canonicalNodes.get(payload.node_id);
+    if (existing && !this.shouldProcess(existing, emittedAtMs)) {
+      console.log(`[EventConsumer] Stale node-introspection event, skipping: ${payload.node_id}`);
+      return;
+    }
+
+    // Update or create canonical node
+    const node: CanonicalOnexNode = existing
+      ? {
+          ...existing,
+          capabilities: payload.capabilities || existing.capabilities,
+          last_event_at: emittedAtMs,
+        }
+      : {
+          node_id: payload.node_id,
+          state: 'PENDING',
+          capabilities: payload.capabilities,
+          last_event_at: emittedAtMs,
+        };
+
+    this.canonicalNodes.set(payload.node_id, node);
+
+    // Emit dashboard event for WebSocket broadcast
+    this.emit('nodeRegistryUpdate', {
+      type: 'NODE_INTROSPECTION',
+      payload: { node_id: payload.node_id, capabilities: payload.capabilities },
+      emitted_at: emittedAtMs,
+    });
+
+    console.log(`[EventConsumer] Canonical node-introspection processed: ${payload.node_id}`);
+  }
+
   private cleanupOldMetrics() {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const entries = Array.from(this.agentMetrics.entries());
@@ -1606,6 +1899,43 @@ export class EventConsumer extends EventEmitter {
     };
   }
 
+  // ============================================================================
+  // Canonical ONEX Node Registry Getters (OMN-1279)
+  // ============================================================================
+
+  /**
+   * Get all canonical ONEX nodes from the event-driven registry.
+   * These nodes use the new ONEX event envelope format.
+   */
+  getCanonicalNodes(): CanonicalOnexNode[] {
+    return Array.from(this.canonicalNodes.values());
+  }
+
+  /**
+   * Get a specific canonical node by ID.
+   */
+  getCanonicalNode(nodeId: string): CanonicalOnexNode | undefined {
+    return this.canonicalNodes.get(nodeId);
+  }
+
+  /**
+   * Get statistics for the canonical node registry.
+   */
+  getCanonicalNodeStats(): {
+    totalNodes: number;
+    activeNodes: number;
+    pendingNodes: number;
+    offlineNodes: number;
+  } {
+    const nodes = this.getCanonicalNodes();
+    return {
+      totalNodes: nodes.length,
+      activeNodes: nodes.filter((n) => n.state === 'ACTIVE').length,
+      pendingNodes: nodes.filter((n) => n.state === 'PENDING').length,
+      offlineNodes: nodes.filter((n) => n.state === 'OFFLINE').length,
+    };
+  }
+
   /**
    * Stop the Kafka event consumer and clean up resources.
    *
@@ -1758,7 +2088,8 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
         prop === 'getRegisteredNodes' ||
         prop === 'getNodeIntrospectionEvents' ||
         prop === 'getNodeHeartbeatEvents' ||
-        prop === 'getNodeStateChangeEvents'
+        prop === 'getNodeStateChangeEvents' ||
+        prop === 'getCanonicalNodes'
       ) {
         return () => [];
       }
@@ -1771,7 +2102,15 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
           typeDistribution: {},
         });
       }
-      if (prop === 'getRegisteredNode') {
+      if (prop === 'getCanonicalNodeStats') {
+        return () => ({
+          totalNodes: 0,
+          activeNodes: 0,
+          pendingNodes: 0,
+          offlineNodes: 0,
+        });
+      }
+      if (prop === 'getRegisteredNode' || prop === 'getCanonicalNode') {
         return () => undefined;
       }
       if (prop === 'getPerformanceStats') {
