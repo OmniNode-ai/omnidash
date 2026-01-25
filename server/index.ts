@@ -15,6 +15,7 @@ import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
+import { runtimeIdentity } from './runtime-identity';
 
 const app = express();
 
@@ -77,16 +78,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Read injected identity from runtime (if present)
-  const runtimeIdentity = {
-    nodeId: process.env.ONEX_NODE_ID || null,
-    contractFingerprint: process.env.ONEX_CONTRACT_FINGERPRINT || null,
-    runtimeMode: process.env.ONEX_RUNTIME_MODE || 'standalone',
-    env: process.env.ONEX_ENV || 'dev',
-  };
-
-  // Log identity on startup
-  if (runtimeIdentity.nodeId) {
+  // Log runtime identity on startup (identity loaded from shared module)
+  if (runtimeIdentity.supervised) {
     log(`Running under ONEX runtime: node_id=${runtimeIdentity.nodeId}`);
   } else {
     log(`Running in standalone mode (no runtime supervision)`);

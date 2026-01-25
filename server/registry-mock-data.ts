@@ -104,7 +104,7 @@ const MOCK_NODE_DEFINITIONS: MockNodeDefinition[] = [
     name: 'OmnidashDashboard',
     service_name: 'omnidash-dashboard',
     display_name: 'Omnidash Dashboard',
-    node_type: 'COMPUTE',
+    node_type: 'SERVICE',
     version: '1.0.0',
     capabilities: ['dashboard_rendering', 'real_time_events', 'intelligence_query'],
     namespace: 'observability',
@@ -408,6 +408,7 @@ function computeSummary(
     COMPUTE: 0,
     REDUCER: 0,
     ORCHESTRATOR: 0,
+    SERVICE: 0,
   };
 
   const byHealth: Record<HealthStatus, number> = {
