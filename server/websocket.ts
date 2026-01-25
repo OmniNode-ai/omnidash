@@ -16,6 +16,7 @@ import {
   transformNodesToSnakeCase,
 } from './utils/case-transform';
 import { registryEventEmitter, type RegistryEvent } from './registry-events';
+import { intentEventEmitter, type IntentEvent } from './intent-events';
 
 // Valid subscription topics that clients can subscribe to
 const VALID_TOPICS = [
@@ -35,6 +36,10 @@ const VALID_TOPICS = [
   'registry',
   'registry-nodes',
   'registry-instances',
+  // Intent classification topics (OMN-1458)
+  'intents',
+  'intents-stored',
+  'intents-distribution',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -241,6 +246,39 @@ export function setupWebSocket(httpServer: HTTPServer) {
       emitter: registryEventEmitter,
       event: 'registry-instances',
       handler: registryInstancesHandler,
+    },
+  ];
+
+  // Intent event listeners (OMN-1458 - Real-time Intent Dashboard)
+  // These provide real-time intent classification events for the intent dashboard
+  const intentsHandler = (event: IntentEvent) => {
+    // Broadcast to 'intents' topic (all intent events)
+    broadcast(event.type, event, 'intents');
+  };
+
+  const intentsStoredHandler = (event: IntentEvent) => {
+    // Broadcast to 'intents-stored' topic (storage confirmations)
+    broadcast(event.type, event, 'intents-stored');
+  };
+
+  const intentsDistributionHandler = (event: IntentEvent) => {
+    // Broadcast to 'intents-distribution' topic (distribution updates)
+    broadcast(event.type, event, 'intents-distribution');
+  };
+
+  // Register intent event listeners
+  intentEventEmitter.on('intents', intentsHandler);
+  intentEventEmitter.on('intents-stored', intentsStoredHandler);
+  intentEventEmitter.on('intents-distribution', intentsDistributionHandler);
+
+  // Track intent listeners for cleanup
+  const intentListeners = [
+    { emitter: intentEventEmitter, event: 'intents', handler: intentsHandler },
+    { emitter: intentEventEmitter, event: 'intents-stored', handler: intentsStoredHandler },
+    {
+      emitter: intentEventEmitter,
+      event: 'intents-distribution',
+      handler: intentsDistributionHandler,
     },
   ];
 
@@ -473,6 +511,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
       emitter.removeListener(event, handler);
     });
     registryListeners.length = 0;
+
+    // Remove intent event listeners
+    console.log(`Removing ${intentListeners.length} intent event listeners...`);
+    intentListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    intentListeners.length = 0;
 
     // Terminate all client connections
     console.log(`Terminating ${clients.size} client connections...`);

@@ -16,6 +16,11 @@ const SQL_PRELOAD_ACTIONS_LIMIT = 200;
 const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 
+// Intent topics (ONEX canonical naming: dev.onex.{evt|cmd}.{owner}.{event-name}.v{n})
+const INTENT_STORED_TOPIC = 'dev.onex.evt.omnimemory.intent-stored.v1';
+const INTENT_QUERY_RESPONSE_TOPIC = 'dev.onex.evt.omnimemory.intent-query-response.v1';
+const INTENT_CLASSIFIED_TOPIC = 'dev.onex.evt.omniintelligence.intent-classified.v1';
+
 export interface AgentMetrics {
   agent: string;
   totalRequests: number;
@@ -360,6 +365,81 @@ export interface RawNodeStateChangeEvent {
   createdAt?: string;
 }
 
+// ============================================================================
+// Intent Event Interfaces
+// ============================================================================
+
+/**
+ * Intent classification event from Kafka
+ * Topic: dev.omniintelligence.intent.classified.v1
+ */
+export interface IntentClassifiedEvent {
+  id: string;
+  correlationId: string;
+  intentType: string;
+  confidence: number;
+  rawText: string;
+  extractedEntities?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+}
+
+/**
+ * Raw intent classified event from Kafka (snake_case)
+ */
+export interface RawIntentClassifiedEvent {
+  id?: string;
+  correlation_id?: string;
+  correlationId?: string;
+  intent_type?: string;
+  intentType?: string;
+  confidence?: number;
+  raw_text?: string;
+  rawText?: string;
+  extracted_entities?: Record<string, unknown>;
+  extractedEntities?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
+/**
+ * Intent stored event from Kafka
+ * Topic: dev.omnimemory.intent.stored.v1
+ */
+export interface RawIntentStoredEvent {
+  id?: string;
+  correlation_id?: string;
+  correlationId?: string;
+  intent_id?: string;
+  intentId?: string;
+  intent_type?: string;
+  intentType?: string;
+  storage_location?: string;
+  storageLocation?: string;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
+/**
+ * Intent query response event from Kafka
+ * Topic: dev.omnimemory.intent.query.response.v1
+ */
+export interface RawIntentQueryResponseEvent {
+  query_id?: string;
+  queryId?: string;
+  correlation_id?: string;
+  correlationId?: string;
+  results?: unknown[];
+  total_count?: number;
+  totalCount?: number;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
 /**
  * EventConsumer class for aggregating Kafka events and emitting real-time updates.
  *
@@ -446,6 +526,11 @@ export class EventConsumer extends EventEmitter {
   private nodeHeartbeatEvents: NodeHeartbeatEvent[] = [];
   private nodeStateChangeEvents: NodeStateChangeEvent[] = [];
   private maxNodeEvents = 100;
+
+  // Intent event storage
+  private recentIntents: IntentClassifiedEvent[] = [];
+  private maxIntents = 100;
+  private intentDistribution: Record<string, number> = {};
 
   // Performance metrics storage
   private performanceMetrics: Array<{
@@ -636,6 +721,10 @@ export class EventConsumer extends EventEmitter {
           'dev.onex.evt.registration-completed.v1',
           'node.heartbeat',
           'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
+          // Intent topics
+          INTENT_STORED_TOPIC,
+          INTENT_QUERY_RESPONSE_TOPIC,
+          INTENT_CLASSIFIED_TOPIC,
         ],
         fromBeginning: true, // Reprocess historical events to populate metrics
       });
@@ -689,6 +778,24 @@ export class EventConsumer extends EventEmitter {
                   `[EventConsumer] Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
                 );
                 this.handleNodeStateChange(event);
+                break;
+              case INTENT_CLASSIFIED_TOPIC:
+                console.log(
+                  `[EventConsumer] Processing intent classified: ${event.intent_type || event.intentType} (confidence: ${event.confidence})`
+                );
+                this.handleIntentClassified(event);
+                break;
+              case INTENT_STORED_TOPIC:
+                console.log(
+                  `[EventConsumer] Processing intent stored: ${event.intent_id || event.intentId}`
+                );
+                this.handleIntentStored(event);
+                break;
+              case INTENT_QUERY_RESPONSE_TOPIC:
+                console.log(
+                  `[EventConsumer] Processing intent query response: ${event.query_id || event.queryId}`
+                );
+                this.handleIntentQueryResponse(event);
                 break;
             }
           } catch (error) {
@@ -1170,6 +1277,90 @@ export class EventConsumer extends EventEmitter {
     }
   }
 
+  private handleIntentClassified(event: RawIntentClassifiedEvent): void {
+    try {
+      const intentType = event.intent_type || event.intentType || 'unknown';
+
+      const intentEvent: IntentClassifiedEvent = {
+        id: event.id || crypto.randomUUID(),
+        correlationId: event.correlation_id || event.correlationId || '',
+        intentType,
+        confidence: event.confidence || 0,
+        rawText: event.raw_text || event.rawText || '',
+        extractedEntities: event.extracted_entities || event.extractedEntities,
+        metadata: event.metadata,
+        createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
+      };
+
+      // Store in recent intents
+      this.recentIntents.unshift(intentEvent);
+      if (this.recentIntents.length > this.maxIntents) {
+        this.recentIntents = this.recentIntents.slice(0, this.maxIntents);
+      }
+
+      // Update intent distribution
+      this.intentDistribution[intentType] = (this.intentDistribution[intentType] || 0) + 1;
+
+      // Emit event for WebSocket broadcast
+      this.emit('intent-event', {
+        topic: INTENT_CLASSIFIED_TOPIC,
+        payload: intentEvent,
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(
+        `[EventConsumer] Processed intent classified: ${intentType} (confidence: ${intentEvent.confidence})`
+      );
+    } catch (error) {
+      console.error('[EventConsumer] Error processing intent classified:', error);
+    }
+  }
+
+  private handleIntentStored(event: RawIntentStoredEvent): void {
+    try {
+      // Emit event for WebSocket broadcast
+      this.emit('intent-event', {
+        topic: INTENT_STORED_TOPIC,
+        payload: {
+          id: event.id || crypto.randomUUID(),
+          intentId: event.intent_id || event.intentId,
+          intentType: event.intent_type || event.intentType,
+          storageLocation: event.storage_location || event.storageLocation,
+          correlationId: event.correlation_id || event.correlationId,
+          createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
+        },
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(`[EventConsumer] Processed intent stored: ${event.intent_id || event.intentId}`);
+    } catch (error) {
+      console.error('[EventConsumer] Error processing intent stored:', error);
+    }
+  }
+
+  private handleIntentQueryResponse(event: RawIntentQueryResponseEvent): void {
+    try {
+      // Emit event for WebSocket broadcast
+      this.emit('intent-query-response', {
+        query_id: event.query_id || event.queryId,
+        correlation_id: event.correlation_id || event.correlationId,
+        payload: {
+          queryId: event.query_id || event.queryId,
+          correlationId: event.correlation_id || event.correlationId,
+          results: event.results || [],
+          totalCount: event.total_count || event.totalCount || 0,
+          createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
+        },
+      });
+
+      console.log(
+        `[EventConsumer] Processed intent query response: ${event.query_id || event.queryId}`
+      );
+    } catch (error) {
+      console.error('[EventConsumer] Error processing intent query response:', error);
+    }
+  }
+
   private cleanupOldMetrics() {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const entries = Array.from(this.agentMetrics.entries());
@@ -1254,6 +1445,14 @@ export class EventConsumer extends EventEmitter {
     }
     const nodesRemoved = nodesBefore - this.registeredNodes.size;
 
+    // Prune intent events
+    const intentsBefore = this.recentIntents.length;
+    this.recentIntents = this.recentIntents.filter((intent) => {
+      const timestamp = new Date(intent.createdAt).getTime();
+      return timestamp > cutoff;
+    });
+    const intentsRemoved = intentsBefore - this.recentIntents.length;
+
     // Log pruning statistics if anything was removed
     const totalRemoved =
       actionsRemoved +
@@ -1263,10 +1462,11 @@ export class EventConsumer extends EventEmitter {
       introspectionRemoved +
       heartbeatRemoved +
       stateChangeRemoved +
-      nodesRemoved;
+      nodesRemoved +
+      intentsRemoved;
     if (totalRemoved > 0) {
       console.log(
-        `🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes (total: ${totalRemoved})`
+        `🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes, ${intentsRemoved} intents (total: ${totalRemoved})`
       );
     }
   }
@@ -1606,6 +1806,49 @@ export class EventConsumer extends EventEmitter {
     };
   }
 
+  // Intent getters
+
+  /**
+   * Get recent intent classification events from the in-memory buffer.
+   *
+   * @param limit - Maximum number of intents to return (default: 50)
+   * @returns Array of intent classification events, newest first
+   */
+  getRecentIntents(limit: number = 50): IntentClassifiedEvent[] {
+    return this.recentIntents.slice(0, limit);
+  }
+
+  /**
+   * Get the distribution of intent types.
+   *
+   * @returns Object mapping intent types to their counts
+   */
+  getIntentDistribution(): Record<string, number> {
+    return { ...this.intentDistribution };
+  }
+
+  /**
+   * Get intent statistics summary.
+   *
+   * @returns Object with total count and type distribution
+   */
+  getIntentStats() {
+    const totalIntents = Object.values(this.intentDistribution).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+    const topIntentTypes = Object.entries(this.intentDistribution)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+
+    return {
+      totalIntents,
+      recentIntentsCount: this.recentIntents.length,
+      typeDistribution: this.intentDistribution,
+      topIntentTypes,
+    };
+  }
+
   /**
    * Stop the Kafka event consumer and clean up resources.
    *
@@ -1758,9 +2001,21 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
         prop === 'getRegisteredNodes' ||
         prop === 'getNodeIntrospectionEvents' ||
         prop === 'getNodeHeartbeatEvents' ||
-        prop === 'getNodeStateChangeEvents'
+        prop === 'getNodeStateChangeEvents' ||
+        prop === 'getRecentIntents'
       ) {
         return () => [];
+      }
+      if (prop === 'getIntentDistribution') {
+        return () => ({});
+      }
+      if (prop === 'getIntentStats') {
+        return () => ({
+          totalIntents: 0,
+          recentIntentsCount: 0,
+          typeDistribution: {},
+          topIntentTypes: [],
+        });
       }
       if (prop === 'getNodeRegistryStats') {
         return () => ({
