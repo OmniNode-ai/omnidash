@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from './useWebSocket';
 import type { ProjectedNode } from '@shared/schemas';
 import {
+  ProjectedNodeSchema,
   WsNodeHeartbeatPayloadSchema,
   WsNodeBecameActivePayloadSchema,
   WsNodeLivenessExpiredPayloadSchema,
@@ -247,7 +248,8 @@ export function useRegistryWebSocket(
 
   /**
    * Update a single projected node state (OMN-1279)
-   * Creates new node if not exists, merges updates into existing node
+   * Creates new node if not exists, merges updates into existing node.
+   * Uses Zod schema validation to ensure type safety when creating new nodes.
    */
   const updateNode = useCallback((nodeId: string, updates: Partial<ProjectedNode>) => {
     setProjectedNodes((prev) => {
@@ -257,12 +259,24 @@ export function useRegistryWebSocket(
         newMap.set(nodeId, { ...existing, ...updates });
       } else {
         // Create new node with updates - use defaults for required fields
-        newMap.set(nodeId, {
+        // Validate with Zod schema to ensure type safety
+        const newNodeData = {
           node_id: nodeId,
-          state: 'PENDING',
+          state: 'PENDING' as const,
           last_event_at: Date.now(),
           ...updates,
-        } as ProjectedNode);
+        };
+        const parsed = ProjectedNodeSchema.safeParse(newNodeData);
+        if (parsed.success) {
+          newMap.set(nodeId, parsed.data);
+        } else {
+          // Log validation error but don't crash - skip creating invalid node
+          // This can happen if nodeId is not a valid UUID (relaxed WebSocket payloads)
+          console.warn(
+            '[RegistryWebSocket] Invalid node data, skipping:',
+            parsed.error.flatten().fieldErrors
+          );
+        }
       }
       return newMap;
     });

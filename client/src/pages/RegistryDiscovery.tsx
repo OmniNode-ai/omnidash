@@ -70,8 +70,16 @@ const KEYBOARD_SHORTCUTS = [
 ];
 
 // Node state categories for filtering
-const OFFLINE_STATES = ['REJECTED', 'LIVENESS_EXPIRED', 'ACK_TIMED_OUT'];
-const PENDING_STATES = ['PENDING_REGISTRATION', 'AWAITING_ACK', 'ACCEPTED', 'ACK_RECEIVED'];
+// Supports both canonical states (PENDING, ACTIVE, OFFLINE from shared/schemas/dashboard-events.ts)
+// and legacy API states (REJECTED, LIVENESS_EXPIRED, etc.) for backward compatibility
+const OFFLINE_STATES = ['OFFLINE', 'REJECTED', 'LIVENESS_EXPIRED', 'ACK_TIMED_OUT'];
+const PENDING_STATES = [
+  'PENDING',
+  'PENDING_REGISTRATION',
+  'AWAITING_ACK',
+  'ACCEPTED',
+  'ACK_RECEIVED',
+];
 
 export default function RegistryDiscovery() {
   // Filter state and configuration
