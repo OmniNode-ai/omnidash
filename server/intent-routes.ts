@@ -72,7 +72,12 @@ const SessionQuerySchema = z.object({
 
 const RecentQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(1000).optional().default(50),
+  offset: z.coerce.number().int().min(0).max(10000).optional().default(0),
   time_range_hours: z.coerce.number().int().min(1).max(168).optional().default(24),
+});
+
+const StoreQuerySchema = z.object({
+  emit_distribution: z.coerce.boolean().optional().default(true),
 });
 
 // ============================================================================
@@ -486,14 +491,15 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
  * Returns recent intents across all sessions.
  *
  * Query parameters:
- * - limit: number (default: 50)
- * - time_range_hours: number (default: 24)
+ * - limit: number (default: 50, max: 1000)
+ * - offset: number (default: 0, max: 10000)
+ * - time_range_hours: number (default: 24, max: 168)
  *
  * Response:
  * {
  *   intents: IntentRecord[],
  *   count: number,           // Number of intents returned in this response
- *   total_available: number  // Total intents in time range (before limit applied)
+ *   total_available: number  // Total intents in time range (before limit/offset applied)
  * }
  */
 intentRouter.get('/recent', async (req, res) => {
@@ -507,7 +513,7 @@ intentRouter.get('/recent', async (req, res) => {
           .join('; '),
       });
     }
-    const { limit, time_range_hours: timeRangeHours } = queryResult.data;
+    const { limit, offset, time_range_hours: timeRangeHours } = queryResult.data;
 
     // Try to get data from Kafka/intelligence service
     const intelligenceEvents = getIntelligenceEvents();
@@ -518,13 +524,14 @@ intentRouter.get('/recent', async (req, res) => {
           {
             operation_type: 'INTENT_RECENT_QUERY',
             limit,
+            offset,
             time_range_hours: timeRangeHours,
           },
           5000
         );
 
         if (result?.intents) {
-          const slicedIntents = result.intents.slice(0, limit);
+          const slicedIntents = result.intents.slice(offset, offset + limit);
           const response: RecentIntentsResponse = {
             intents: slicedIntents,
             count: slicedIntents.length,
@@ -544,7 +551,7 @@ intentRouter.get('/recent', async (req, res) => {
 
     // Fallback: use in-memory store
     const allIntentsInRange = getIntentsFromStore(timeRangeHours);
-    const intents = allIntentsInRange.slice(0, limit);
+    const intents = allIntentsInRange.slice(offset, offset + limit);
 
     const response: RecentIntentsResponse = {
       intents,
@@ -567,6 +574,10 @@ intentRouter.get('/recent', async (req, res) => {
  *
  * Store intent data for manual testing.
  * Emits to WebSocket subscribers for real-time updates.
+ *
+ * Query parameters:
+ * - emit_distribution: boolean (default: true) - Whether to emit distribution update via WebSocket.
+ *   Set to false for high-volume scenarios to reduce WebSocket traffic.
  *
  * Request body:
  * {
@@ -616,6 +627,18 @@ intentRouter.post('/store', async (req, res) => {
 
     const { sessionRef, intentCategory, confidence, keywords } = parseResult.data;
 
+    // Validate query parameters
+    const queryResult = StoreQuerySchema.safeParse(req.query);
+    if (!queryResult.success) {
+      return res.status(400).json({
+        error: 'Invalid query parameters',
+        message: queryResult.error.errors
+          .map((e) => `${e.path.join('.')}: ${e.message}`)
+          .join('; '),
+      });
+    }
+    const { emit_distribution: emitDistribution } = queryResult.data;
+
     // Create the intent record
     const intent: IntentRecord = {
       intentId: randomUUID(),
@@ -632,19 +655,26 @@ intentRouter.post('/store', async (req, res) => {
     // Emit to WebSocket subscribers
     emitIntentUpdate(intent);
 
-    // Also emit updated distribution
-    const recentIntents = getIntentsFromStore(24);
-    const distribution = calculateDistribution(recentIntents);
-    emitIntentDistributionUpdate({
-      distribution,
-      total_intents: recentIntents.length,
-      time_range_hours: 24,
-    });
+    // Conditionally emit updated distribution (can be disabled for high-volume scenarios)
+    if (emitDistribution) {
+      const recentIntents = getIntentsFromStore(24);
+      const distribution = calculateDistribution(recentIntents);
+      emitIntentDistributionUpdate({
+        distribution,
+        total_intents: recentIntents.length,
+        time_range_hours: 24,
+      });
+    }
 
     const response: StoreIntentResponse = {
       success: true,
       intent_id: intent.intentId,
     };
+
+    // Add rate limit headers to all responses (not just 429)
+    res.set('X-RateLimit-Limit', String(RATE_LIMIT_MAX_REQUESTS));
+    res.set('X-RateLimit-Remaining', String(getRateLimitRemaining(clientIp)));
+    res.set('X-RateLimit-Reset', String(getRateLimitResetSeconds(clientIp)));
 
     return res.status(201).json(response);
   } catch (error) {
