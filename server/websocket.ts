@@ -35,6 +35,8 @@ const VALID_TOPICS = [
   'registry',
   'registry-nodes',
   'registry-instances',
+  // Intent classification events (OMN-1516)
+  'intent',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -209,6 +211,15 @@ export function setupWebSocket(httpServer: HTTPServer) {
     // Transform to client-expected format (snake_case for registered nodes)
     const data = transformNodesToSnakeCase(nodes);
     broadcast('NODE_REGISTRY_UPDATE', data, 'node-registry');
+  });
+
+  // Intent classification event listeners (OMN-1516)
+  registerEventListener('intentUpdate', (intent: any) => {
+    broadcast('INTENT_UPDATE', intent, 'intent');
+  });
+
+  registerEventListener('intentDistribution', (distribution: any) => {
+    broadcast('INTENT_DISTRIBUTION', distribution, 'intent');
   });
 
   // Registry Discovery event listeners (OMN-1278 Phase 4)
