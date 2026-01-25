@@ -188,18 +188,24 @@ function getRateLimitResetSeconds(ip: string): number {
   return Math.ceil(Math.max(0, entry.resetTime - Date.now()) / 1000);
 }
 
-// Clean up stale rate limit entries every 5 minutes
-setInterval(
-  () => {
-    const now = Date.now();
-    rateLimitStore.forEach((entry, ip) => {
-      if (now > entry.resetTime) {
-        rateLimitStore.delete(ip);
-      }
-    });
-  },
-  5 * 60 * 1000
-);
+// Singleton guard to prevent multiple cleanup intervals during hot-reload.
+// In development, module re-execution would otherwise create duplicate intervals,
+// causing memory leaks and redundant cleanup operations.
+let rateLimitCleanupInterval: NodeJS.Timeout | null = null;
+
+if (!rateLimitCleanupInterval) {
+  rateLimitCleanupInterval = setInterval(
+    () => {
+      const now = Date.now();
+      rateLimitStore.forEach((entry, ip) => {
+        if (now > entry.resetTime) {
+          rateLimitStore.delete(ip);
+        }
+      });
+    },
+    5 * 60 * 1000
+  );
+}
 
 // ============================================================================
 // Helper Functions
@@ -271,10 +277,12 @@ intentRouter.get('/distribution', async (req, res) => {
           return res.json(response);
         }
       } catch (kafkaError) {
-        console.warn(
-          '[intent-routes] Kafka request failed, falling back to in-memory store:',
-          kafkaError
-        );
+        if (process.env.DEBUG_INTENT_EVENTS === 'true') {
+          console.warn(
+            '[intent-routes] Kafka request failed, falling back to in-memory store:',
+            kafkaError
+          );
+        }
       }
     }
 
@@ -364,10 +372,12 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
           return res.json(response);
         }
       } catch (kafkaError) {
-        console.warn(
-          '[intent-routes] Kafka request failed, falling back to in-memory store:',
-          kafkaError
-        );
+        if (process.env.DEBUG_INTENT_EVENTS === 'true') {
+          console.warn(
+            '[intent-routes] Kafka request failed, falling back to in-memory store:',
+            kafkaError
+          );
+        }
       }
     }
 
@@ -440,10 +450,12 @@ intentRouter.get('/recent', async (req, res) => {
           return res.json(response);
         }
       } catch (kafkaError) {
-        console.warn(
-          '[intent-routes] Kafka request failed, falling back to in-memory store:',
-          kafkaError
-        );
+        if (process.env.DEBUG_INTENT_EVENTS === 'true') {
+          console.warn(
+            '[intent-routes] Kafka request failed, falling back to in-memory store:',
+            kafkaError
+          );
+        }
       }
     }
 
@@ -499,7 +511,7 @@ intentRouter.post('/store', async (req, res) => {
       return res.status(429).json({
         error: 'Too Many Requests',
         message: `Rate limit exceeded. Maximum ${RATE_LIMIT_MAX_REQUESTS} requests per minute.`,
-        retry_after_seconds: resetSeconds,
+        retryAfterSeconds: resetSeconds,
       });
     }
 
