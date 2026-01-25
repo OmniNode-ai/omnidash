@@ -27,6 +27,32 @@ export const NodeHeartbeatUpdateSchema = z.object({
 });
 export type NodeHeartbeatUpdate = z.infer<typeof NodeHeartbeatUpdateSchema>;
 
+// WebSocket payload schemas (relaxed validation - allow optional fields for partial events)
+// Note: Prefixed with "Ws" to distinguish from strict Kafka schemas in event-envelope.ts
+export const WsNodeHeartbeatPayloadSchema = z.object({
+  node_id: z.string(),
+  last_heartbeat_at: z.number().optional(),
+});
+export type WsNodeHeartbeatPayload = z.infer<typeof WsNodeHeartbeatPayloadSchema>;
+
+export const WsNodeBecameActivePayloadSchema = z.object({
+  node_id: z.string(),
+  capabilities: z.record(z.string(), z.unknown()).optional(),
+});
+export type WsNodeBecameActivePayload = z.infer<typeof WsNodeBecameActivePayloadSchema>;
+
+export const WsNodeIntrospectionPayloadSchema = z.object({
+  node_id: z.string(),
+  capabilities: z.record(z.string(), z.unknown()).optional(),
+});
+export type WsNodeIntrospectionPayload = z.infer<typeof WsNodeIntrospectionPayloadSchema>;
+
+// WebSocket offline payload (relaxed - no UUID requirement)
+export const WsNodeLivenessExpiredPayloadSchema = z.object({
+  node_id: z.string(),
+});
+export type WsNodeLivenessExpiredPayload = z.infer<typeof WsNodeLivenessExpiredPayloadSchema>;
+
 // Projected node state (what the dashboard maintains)
 export const ProjectedNodeSchema = z.object({
   node_id: z.string().uuid(),

@@ -160,7 +160,6 @@ export default function RegistryDiscovery() {
   });
 
   // Apply visibility toggles for offline/pending nodes
-  // healthTick is included as dependency to force re-computation for health badge decay
   const filteredData = useMemo(() => {
     if (!baseFilteredData) return undefined;
 
@@ -187,7 +186,7 @@ export default function RegistryDiscovery() {
       nodes: visibleNodes,
       live_instances: visibleInstances,
     };
-  }, [baseFilteredData, showOffline, showPending, healthTick]);
+  }, [baseFilteredData, showOffline, showPending]); // Note: healthTick excluded - filtering doesn't depend on time
 
   // Recompute hasNoData based on visibility-filtered data
   const hasNoData =

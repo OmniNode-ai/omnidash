@@ -1357,10 +1357,13 @@ export class EventConsumer extends EventEmitter {
       return;
     }
 
-    // Update node state to OFFLINE
-    node.state = 'OFFLINE';
-    node.offline_at = emittedAtMs;
-    node.last_event_at = emittedAtMs;
+    // Update node state to OFFLINE (immutable update)
+    this.canonicalNodes.set(payload.node_id, {
+      ...node,
+      state: 'OFFLINE',
+      offline_at: emittedAtMs,
+      last_event_at: emittedAtMs,
+    });
 
     // Emit dashboard event for WebSocket broadcast
     this.emit('nodeRegistryUpdate', {
@@ -1402,9 +1405,12 @@ export class EventConsumer extends EventEmitter {
       return; // Stale heartbeat, skip
     }
 
-    // Update heartbeat timestamp
-    node.last_heartbeat_at = emittedAtMs;
-    node.last_event_at = emittedAtMs;
+    // Update heartbeat timestamp (immutable update)
+    this.canonicalNodes.set(payload.node_id, {
+      ...node,
+      last_heartbeat_at: emittedAtMs,
+      last_event_at: emittedAtMs,
+    });
 
     // Emit dashboard event for WebSocket broadcast
     this.emit('nodeRegistryUpdate', {

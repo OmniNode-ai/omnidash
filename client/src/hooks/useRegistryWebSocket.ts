@@ -11,7 +11,13 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from './useWebSocket';
-import type { DashboardEvent, ProjectedNode } from '@shared/schemas';
+import type { ProjectedNode } from '@shared/schemas';
+import {
+  WsNodeHeartbeatPayloadSchema,
+  WsNodeBecameActivePayloadSchema,
+  WsNodeLivenessExpiredPayloadSchema,
+  WsNodeIntrospectionPayloadSchema,
+} from '@shared/schemas';
 
 /**
  * Generate a correlation ID for event deduplication.
@@ -43,6 +49,24 @@ export const DEFAULT_MAX_RECENT_EVENTS = 50;
  * efficiency with practical deduplication needs for WebSocket event streams.
  */
 export const SEEN_EVENT_IDS_CLEANUP_MULTIPLIER = 5;
+
+/**
+ * Time in milliseconds after which an OFFLINE node is eligible for cleanup.
+ * Nodes that have been offline for longer than this duration will be removed
+ * from the projectedNodes Map to prevent unbounded memory growth.
+ *
+ * @default 300000 (5 minutes)
+ */
+export const OFFLINE_NODE_CLEANUP_MS = 300_000;
+
+/**
+ * Interval in milliseconds for running the offline node cleanup check.
+ * The cleanup effect runs periodically at this interval to remove stale
+ * offline nodes from memory.
+ *
+ * @default 60000 (1 minute)
+ */
+export const CLEANUP_INTERVAL_MS = 60_000;
 
 /**
  * Registry event types as defined in the WebSocket Event Spec v1.2
@@ -370,10 +394,17 @@ export function useRegistryWebSocket(
           case 'NODE_HEARTBEAT': {
             // OMN-1279: Update local projected node state for heartbeats
             // Heartbeats are frequent - update local state without full refetch
-            const heartbeatPayload = event.payload as {
-              node_id: string;
-              last_heartbeat_at?: number;
-            };
+            const heartbeatParsed = WsNodeHeartbeatPayloadSchema.safeParse(event.payload);
+            if (!heartbeatParsed.success) {
+              if (debug) {
+                console.warn(
+                  '[RegistryWebSocket] Invalid heartbeat payload:',
+                  heartbeatParsed.error
+                );
+              }
+              break;
+            }
+            const heartbeatPayload = heartbeatParsed.data;
             if (heartbeatPayload.node_id) {
               updateNode(heartbeatPayload.node_id, {
                 last_heartbeat_at: heartbeatPayload.last_heartbeat_at || Date.now(),
@@ -384,10 +415,17 @@ export function useRegistryWebSocket(
 
           case 'NODE_ACTIVATED': {
             // OMN-1279: Node has completed activation - update local state
-            const activatedPayload = event.payload as {
-              node_id: string;
-              capabilities?: Record<string, unknown>;
-            };
+            const activatedParsed = WsNodeBecameActivePayloadSchema.safeParse(event.payload);
+            if (!activatedParsed.success) {
+              if (debug) {
+                console.warn(
+                  '[RegistryWebSocket] Invalid activated payload:',
+                  activatedParsed.error
+                );
+              }
+              break;
+            }
+            const activatedPayload = activatedParsed.data;
             if (activatedPayload.node_id) {
               const emittedAt = new Date(event.timestamp).getTime();
               updateNode(activatedPayload.node_id, {
@@ -406,7 +444,14 @@ export function useRegistryWebSocket(
 
           case 'NODE_OFFLINE': {
             // OMN-1279: Node has gone offline - update local state
-            const offlinePayload = event.payload as { node_id: string };
+            const offlineParsed = WsNodeLivenessExpiredPayloadSchema.safeParse(event.payload);
+            if (!offlineParsed.success) {
+              if (debug) {
+                console.warn('[RegistryWebSocket] Invalid offline payload:', offlineParsed.error);
+              }
+              break;
+            }
+            const offlinePayload = offlineParsed.data;
             if (offlinePayload.node_id) {
               const emittedAt = new Date(event.timestamp).getTime();
               updateNode(offlinePayload.node_id, {
@@ -422,10 +467,17 @@ export function useRegistryWebSocket(
 
           case 'NODE_INTROSPECTION': {
             // OMN-1279: Node introspection received - update capabilities
-            const introspectionPayload = event.payload as {
-              node_id: string;
-              capabilities?: Record<string, unknown>;
-            };
+            const introspectionParsed = WsNodeIntrospectionPayloadSchema.safeParse(event.payload);
+            if (!introspectionParsed.success) {
+              if (debug) {
+                console.warn(
+                  '[RegistryWebSocket] Invalid introspection payload:',
+                  introspectionParsed.error
+                );
+              }
+              break;
+            }
+            const introspectionPayload = introspectionParsed.data;
             if (introspectionPayload.node_id) {
               const emittedAt = new Date(event.timestamp).getTime();
               updateNode(introspectionPayload.node_id, {
@@ -483,6 +535,44 @@ export function useRegistryWebSocket(
       }
     };
   }, [isConnected, autoSubscribe, subscribe, unsubscribe, debug]);
+
+  // Periodic cleanup of stale offline nodes to prevent unbounded memory growth
+  // Removes nodes that have been OFFLINE for longer than OFFLINE_NODE_CLEANUP_MS
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setProjectedNodes((prev) => {
+        const newMap = new Map(prev);
+        let cleaned = 0;
+
+        // Use Array.from() for TypeScript compatibility with Map iteration
+        Array.from(prev.entries()).forEach(([nodeId, node]) => {
+          // Only clean up nodes that are OFFLINE and have been offline for longer than threshold
+          if (
+            node.state === 'OFFLINE' &&
+            node.offline_at &&
+            now - node.offline_at > OFFLINE_NODE_CLEANUP_MS
+          ) {
+            newMap.delete(nodeId);
+            cleaned++;
+          }
+        });
+
+        if (cleaned > 0) {
+          if (debug) {
+            // eslint-disable-next-line no-console
+            console.log(`[RegistryWebSocket] Cleaned up ${cleaned} stale offline nodes`);
+          }
+          return newMap;
+        }
+
+        // Return previous reference if nothing changed to avoid unnecessary re-renders
+        return prev;
+      });
+    }, CLEANUP_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [debug]);
 
   /**
    * Clear all recent events, projected nodes, and reset stats.
