@@ -358,6 +358,8 @@ export class IntentEventEmitter extends EventEmitter {
         // We'd need additional context to emit a proper session update
         if (response.intents && response.intents.length > 0) {
           const firstIntent = response.intents[0];
+          // NOTE: Assumes intents are sorted newest-first (descending by created_at).
+          // first_intent_at = oldest = last in array, last_intent_at = newest = first in array
           const sessionSummary: SessionIntentSummary = {
             session_ref: firstIntent.session_ref,
             intent_count: response.total_count,

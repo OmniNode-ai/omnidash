@@ -70,43 +70,136 @@ const RecentQuerySchema = z.object({
 });
 
 // ============================================================================
-// In-Memory Store (for development/testing)
+// In-Memory Store (Circular Buffer for O(1) insertion)
 // ============================================================================
 
-// In-memory storage for intents when Kafka is not available
-const intentStore: IntentRecord[] = [];
-const MAX_STORED_INTENTS = 10000;
+// Configurable via environment variable, default 10000
+const MAX_STORED_INTENTS = parseInt(process.env.INTENT_STORE_MAX_SIZE || '10000', 10);
+
+// Circular buffer implementation for O(1) insertion
+// Instead of unshift() which is O(n), we use a fixed-size array with head tracking
+const intentBuffer: (IntentRecord | null)[] = new Array(MAX_STORED_INTENTS).fill(null);
+let bufferHead = 0; // Points to where the next item will be inserted
+let bufferCount = 0; // Number of items currently in buffer
 
 /**
- * Add intent to in-memory store with size limit
+ * Add intent to circular buffer with O(1) insertion time
+ *
+ * Performance: O(1) vs O(n) for unshift()
+ * Memory: Fixed allocation of MAX_STORED_INTENTS slots
  */
 function addToStore(intent: IntentRecord): void {
-  intentStore.unshift(intent);
-  if (intentStore.length > MAX_STORED_INTENTS) {
-    intentStore.pop();
+  intentBuffer[bufferHead] = intent;
+  bufferHead = (bufferHead + 1) % MAX_STORED_INTENTS;
+  if (bufferCount < MAX_STORED_INTENTS) {
+    bufferCount++;
   }
 }
 
 /**
- * Get intents from in-memory store filtered by time range
+ * Get all intents from circular buffer in reverse chronological order (newest first)
+ *
+ * This maintains the same ordering as the previous unshift()-based implementation
  */
-function getIntentsFromStore(timeRangeHours: number): IntentRecord[] {
-  const cutoff = new Date(Date.now() - timeRangeHours * 60 * 60 * 1000);
-  return intentStore.filter((intent) => new Date(intent.createdAt) >= cutoff);
+function getAllIntentsFromBuffer(): IntentRecord[] {
+  if (bufferCount === 0) return [];
+
+  const result: IntentRecord[] = [];
+  // Start from the most recently added item (bufferHead - 1) and go backwards
+  for (let i = 0; i < bufferCount; i++) {
+    const index = (bufferHead - 1 - i + MAX_STORED_INTENTS) % MAX_STORED_INTENTS;
+    const intent = intentBuffer[index];
+    if (intent !== null) {
+      result.push(intent);
+    }
+  }
+  return result;
 }
 
 /**
- * Get intents from in-memory store filtered by session
+ * Get intents from circular buffer filtered by time range
+ */
+function getIntentsFromStore(timeRangeHours: number): IntentRecord[] {
+  const cutoff = new Date(Date.now() - timeRangeHours * 60 * 60 * 1000);
+  return getAllIntentsFromBuffer().filter((intent) => new Date(intent.createdAt) >= cutoff);
+}
+
+/**
+ * Get intents from circular buffer filtered by session
  */
 function getIntentsBySession(
   sessionRef: string,
   limit: number,
   minConfidence: number
 ): IntentRecord[] {
-  return intentStore
+  return getAllIntentsFromBuffer()
     .filter((intent) => intent.sessionRef === sessionRef && intent.confidence >= minConfidence)
     .slice(0, limit);
 }
+
+// ============================================================================
+// Rate Limiting for POST /store
+// ============================================================================
+
+const rateLimitStore: Map<string, { count: number; resetTime: number }> = new Map();
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 100;
+
+/**
+ * Check if a request from the given IP is within rate limits.
+ * Returns true if request is allowed, false if rate limit exceeded.
+ */
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitStore.get(ip);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitStore.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
+}
+
+/**
+ * Get remaining requests for an IP within the current window.
+ */
+function getRateLimitRemaining(ip: string): number {
+  const entry = rateLimitStore.get(ip);
+  if (!entry || Date.now() > entry.resetTime) {
+    return RATE_LIMIT_MAX_REQUESTS;
+  }
+  return Math.max(0, RATE_LIMIT_MAX_REQUESTS - entry.count);
+}
+
+/**
+ * Get time until rate limit resets for an IP (in seconds).
+ */
+function getRateLimitResetSeconds(ip: string): number {
+  const entry = rateLimitStore.get(ip);
+  if (!entry || Date.now() > entry.resetTime) {
+    return Math.ceil(RATE_LIMIT_WINDOW_MS / 1000);
+  }
+  return Math.ceil(Math.max(0, entry.resetTime - Date.now()) / 1000);
+}
+
+// Clean up stale rate limit entries every 5 minutes
+setInterval(
+  () => {
+    const now = Date.now();
+    rateLimitStore.forEach((entry, ip) => {
+      if (now > entry.resetTime) {
+        rateLimitStore.delete(ip);
+      }
+    });
+  },
+  5 * 60 * 1000
+);
 
 // ============================================================================
 // Helper Functions
@@ -229,7 +322,7 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
     const { sessionId } = req.params;
 
     // Validate sessionId
-    if (!sessionId || sessionId.length > 255) {
+    if (!sessionId || sessionId.length === 0 || sessionId.length > 255) {
       return res.status(400).json({
         error: 'Invalid parameter',
         message: 'sessionId must be between 1-255 characters',
@@ -394,6 +487,22 @@ intentRouter.get('/recent', async (req, res) => {
  */
 intentRouter.post('/store', async (req, res) => {
   try {
+    // Rate limiting check
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    if (!checkRateLimit(clientIp)) {
+      const remaining = getRateLimitRemaining(clientIp);
+      const resetSeconds = getRateLimitResetSeconds(clientIp);
+      res.set('X-RateLimit-Limit', String(RATE_LIMIT_MAX_REQUESTS));
+      res.set('X-RateLimit-Remaining', String(remaining));
+      res.set('X-RateLimit-Reset', String(resetSeconds));
+      res.set('Retry-After', String(resetSeconds));
+      return res.status(429).json({
+        error: 'Too Many Requests',
+        message: `Rate limit exceeded. Maximum ${RATE_LIMIT_MAX_REQUESTS} requests per minute.`,
+        retry_after_seconds: resetSeconds,
+      });
+    }
+
     // Validate request body with Zod
     const parseResult = StoreIntentSchema.safeParse(req.body);
 
