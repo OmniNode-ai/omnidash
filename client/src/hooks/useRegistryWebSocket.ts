@@ -69,14 +69,20 @@ export const OFFLINE_NODE_CLEANUP_MS = 300_000;
 export const CLEANUP_INTERVAL_MS = 60_000;
 
 /**
+ * Topics to subscribe for registry events.
+ * Includes both legacy registry topic and new canonical node events.
+ */
+export const REGISTRY_TOPICS = ['registry', 'registry-nodes'] as const;
+
+/**
  * Registry event types as defined in the WebSocket Event Spec v1.2
  *
- * BOUNDED SET: This union type defines exactly 11 known event types.
+ * BOUNDED SET: This union type defines exactly 12 known event types.
  * The eventsByType stats object is bounded by this finite set, preventing
  * memory leaks in long-running sessions. Only events matching these types
  * are processed and counted.
  *
- * OMN-1279 additions: NODE_ACTIVATED, NODE_OFFLINE, NODE_INTROSPECTION
+ * OMN-1279 additions: NODE_ACTIVATED, NODE_OFFLINE, NODE_INTROSPECTION, NODE_DISCOVERED
  */
 export type RegistryEventType =
   | 'NODE_REGISTERED'
@@ -88,7 +94,8 @@ export type RegistryEventType =
   | 'INSTANCE_REMOVED'
   | 'NODE_ACTIVATED'
   | 'NODE_OFFLINE'
-  | 'NODE_INTROSPECTION';
+  | 'NODE_INTROSPECTION'
+  | 'NODE_DISCOVERED';
 
 /**
  * Registry event structure received from WebSocket
@@ -284,7 +291,7 @@ export function useRegistryWebSocket(
     (message: { type: string; data?: RegistryEvent; timestamp: string }) => {
       try {
         // Check if this is a registry event
-        // OMN-1279: Added NODE_ACTIVATED, NODE_OFFLINE, NODE_INTROSPECTION
+        // OMN-1279: Added NODE_ACTIVATED, NODE_OFFLINE, NODE_INTROSPECTION, NODE_DISCOVERED
         const registryEventTypes: RegistryEventType[] = [
           'NODE_REGISTERED',
           'NODE_STATE_CHANGED',
@@ -296,6 +303,7 @@ export function useRegistryWebSocket(
           'NODE_ACTIVATED',
           'NODE_OFFLINE',
           'NODE_INTROSPECTION',
+          'NODE_DISCOVERED',
         ];
 
         if (!registryEventTypes.includes(message.type as RegistryEventType)) {
@@ -357,7 +365,7 @@ export function useRegistryWebSocket(
         });
 
         // Update stats
-        // NOTE: eventsByType is bounded to max 11 keys (one per RegistryEventType).
+        // NOTE: eventsByType is bounded to max 12 keys (one per RegistryEventType).
         // This prevents memory leaks in long-running sessions since only events
         // passing the registryEventTypes.includes() check above reach this point.
         setStats((prev) => ({
@@ -511,10 +519,10 @@ export function useRegistryWebSocket(
     if (isConnected && autoSubscribe && !hasSubscribed.current) {
       if (debug) {
         // eslint-disable-next-line no-console
-        console.log('[RegistryWebSocket] Subscribing to registry topics: registry, registry-nodes');
+        console.log('[RegistryWebSocket] Subscribing to registry topics:', REGISTRY_TOPICS);
       }
       // OMN-1279: Subscribe to both registry topics for complete event coverage
-      subscribe(['registry', 'registry-nodes']);
+      subscribe([...REGISTRY_TOPICS]);
       hasSubscribed.current = true;
     }
 
@@ -530,7 +538,7 @@ export function useRegistryWebSocket(
           // eslint-disable-next-line no-console
           console.log('[RegistryWebSocket] Unsubscribing from registry topics');
         }
-        unsubscribe(['registry', 'registry-nodes']);
+        unsubscribe([...REGISTRY_TOPICS]);
         hasSubscribed.current = false;
       }
     };
@@ -545,8 +553,7 @@ export function useRegistryWebSocket(
         const newMap = new Map(prev);
         let cleaned = 0;
 
-        // Use Array.from() for TypeScript compatibility with Map iteration
-        Array.from(prev.entries()).forEach(([nodeId, node]) => {
+        for (const [nodeId, node] of prev) {
           // Only clean up nodes that are OFFLINE and have been offline for longer than threshold
           if (
             node.state === 'OFFLINE' &&
@@ -556,7 +563,7 @@ export function useRegistryWebSocket(
             newMap.delete(nodeId);
             cleaned++;
           }
-        });
+        }
 
         if (cleaned > 0) {
           if (debug) {
@@ -577,7 +584,7 @@ export function useRegistryWebSocket(
   /**
    * Clear all recent events, projected nodes, and reset stats.
    * This provides a manual reset mechanism for long-running sessions,
-   * though eventsByType is already bounded to 11 keys (one per RegistryEventType).
+   * though eventsByType is already bounded to 12 keys (one per RegistryEventType).
    */
   const clearEvents = useCallback(() => {
     setRecentEvents([]);

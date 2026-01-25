@@ -7,13 +7,29 @@ interface CapabilityTagsProps {
   maxVisible?: number;
 }
 
+/**
+ * Determines if a capability value should be considered "enabled".
+ *
+ * Enabled values:
+ *   - `true` (boolean)
+ *   - Positive numbers (e.g., version numbers, counts)
+ *   - Non-empty strings (e.g., capability descriptions)
+ *
+ * Disabled/ignored values:
+ *   - `false`, `0`, `''` (falsy primitives)
+ *   - `null`, `undefined`
+ *   - Objects `{}` and arrays `[]` (nested config, not simple flags)
+ */
+function isCapabilityEnabled(value: unknown): boolean {
+  if (value === true) return true;
+  if (typeof value === 'number') return value > 0;
+  if (typeof value === 'string') return value.length > 0;
+  return false;
+}
+
 export function CapabilityTags({ capabilities, className, maxVisible = 5 }: CapabilityTagsProps) {
-  // Extract enabled capabilities (truthy values)
   const enabledCaps = Object.entries(capabilities)
-    .filter(
-      ([_, v]) =>
-        v === true || (typeof v === 'number' && v > 0) || (typeof v === 'string' && v.length > 0)
-    )
+    .filter(([_, v]) => isCapabilityEnabled(v))
     .map(([k]) => k);
 
   const visibleCaps = enabledCaps.slice(0, maxVisible);

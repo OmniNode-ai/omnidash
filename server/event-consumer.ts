@@ -18,6 +18,7 @@ import {
 } from '@shared/schemas';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
+const DEBUG_CANONICAL_EVENTS = process.env.DEBUG_CANONICAL_EVENTS === 'true' || isTestEnv;
 const RETRY_BASE_DELAY_MS = isTestEnv ? 20 : 1000;
 const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
 
@@ -789,16 +790,24 @@ export class EventConsumer extends EventEmitter {
               default:
                 // Handle canonical ONEX topics using environment-aware routing
                 if (topic === onexTopic('node-became-active')) {
-                  console.log(`[EventConsumer] Processing canonical node-became-active event`);
+                  if (DEBUG_CANONICAL_EVENTS) {
+                    console.log(`[EventConsumer] Processing canonical node-became-active event`);
+                  }
                   this.handleCanonicalNodeBecameActive(message);
                 } else if (topic === onexTopic('node-liveness-expired')) {
-                  console.log(`[EventConsumer] Processing canonical node-liveness-expired event`);
+                  if (DEBUG_CANONICAL_EVENTS) {
+                    console.log(`[EventConsumer] Processing canonical node-liveness-expired event`);
+                  }
                   this.handleCanonicalNodeLivenessExpired(message);
                 } else if (topic === onexTopic('node-heartbeat')) {
-                  console.log(`[EventConsumer] Processing canonical node-heartbeat event`);
+                  if (DEBUG_CANONICAL_EVENTS) {
+                    console.log(`[EventConsumer] Processing canonical node-heartbeat event`);
+                  }
                   this.handleCanonicalNodeHeartbeat(message);
                 } else if (topic === onexTopic('node-introspection')) {
-                  console.log(`[EventConsumer] Processing canonical node-introspection event`);
+                  if (DEBUG_CANONICAL_EVENTS) {
+                    console.log(`[EventConsumer] Processing canonical node-introspection event`);
+                  }
                   this.handleCanonicalNodeIntrospection(message);
                 }
                 break;
@@ -1295,9 +1304,11 @@ export class EventConsumer extends EventEmitter {
     const envelope = this.parseEnvelope(message, NodeBecameActivePayloadSchema);
     if (!envelope) return;
     if (this.isDuplicate(envelope.correlation_id)) {
-      console.log(
-        `[EventConsumer] Duplicate node-became-active event, skipping: ${envelope.correlation_id}`
-      );
+      if (DEBUG_CANONICAL_EVENTS) {
+        console.log(
+          `[EventConsumer] Duplicate node-became-active event, skipping: ${envelope.correlation_id}`
+        );
+      }
       return;
     }
 
@@ -1306,7 +1317,9 @@ export class EventConsumer extends EventEmitter {
 
     const existing = this.canonicalNodes.get(payload.node_id);
     if (existing && !this.shouldProcess(existing, emittedAtMs)) {
-      console.log(`[EventConsumer] Stale node-became-active event, skipping: ${payload.node_id}`);
+      if (DEBUG_CANONICAL_EVENTS) {
+        console.log(`[EventConsumer] Stale node-became-active event, skipping: ${payload.node_id}`);
+      }
       return;
     }
 
@@ -1327,7 +1340,9 @@ export class EventConsumer extends EventEmitter {
       emitted_at: emittedAtMs,
     });
 
-    console.log(`[EventConsumer] Canonical node-became-active processed: ${payload.node_id}`);
+    if (DEBUG_CANONICAL_EVENTS) {
+      console.log(`[EventConsumer] Canonical node-became-active processed: ${payload.node_id}`);
+    }
   }
 
   /**
@@ -1338,9 +1353,11 @@ export class EventConsumer extends EventEmitter {
     const envelope = this.parseEnvelope(message, NodeLivenessExpiredPayloadSchema);
     if (!envelope) return;
     if (this.isDuplicate(envelope.correlation_id)) {
-      console.log(
-        `[EventConsumer] Duplicate node-liveness-expired event, skipping: ${envelope.correlation_id}`
-      );
+      if (DEBUG_CANONICAL_EVENTS) {
+        console.log(
+          `[EventConsumer] Duplicate node-liveness-expired event, skipping: ${envelope.correlation_id}`
+        );
+      }
       return;
     }
 
@@ -1349,13 +1366,17 @@ export class EventConsumer extends EventEmitter {
 
     const node = this.canonicalNodes.get(payload.node_id);
     if (!node) {
-      console.log(`[EventConsumer] Node not found for liveness-expired: ${payload.node_id}`);
+      if (DEBUG_CANONICAL_EVENTS) {
+        console.log(`[EventConsumer] Node not found for liveness-expired: ${payload.node_id}`);
+      }
       return;
     }
     if (!this.shouldProcess(node, emittedAtMs)) {
-      console.log(
-        `[EventConsumer] Stale node-liveness-expired event, skipping: ${payload.node_id}`
-      );
+      if (DEBUG_CANONICAL_EVENTS) {
+        console.log(
+          `[EventConsumer] Stale node-liveness-expired event, skipping: ${payload.node_id}`
+        );
+      }
       return;
     }
 
@@ -1374,7 +1395,9 @@ export class EventConsumer extends EventEmitter {
       emitted_at: emittedAtMs,
     });
 
-    console.log(`[EventConsumer] Canonical node-liveness-expired processed: ${payload.node_id}`);
+    if (DEBUG_CANONICAL_EVENTS) {
+      console.log(`[EventConsumer] Canonical node-liveness-expired processed: ${payload.node_id}`);
+    }
   }
 
   /**
@@ -1437,9 +1460,11 @@ export class EventConsumer extends EventEmitter {
     const envelope = this.parseEnvelope(message, NodeIntrospectionPayloadSchema);
     if (!envelope) return;
     if (this.isDuplicate(envelope.correlation_id)) {
-      console.log(
-        `[EventConsumer] Duplicate node-introspection event, skipping: ${envelope.correlation_id}`
-      );
+      if (DEBUG_CANONICAL_EVENTS) {
+        console.log(
+          `[EventConsumer] Duplicate node-introspection event, skipping: ${envelope.correlation_id}`
+        );
+      }
       return;
     }
 
@@ -1448,7 +1473,9 @@ export class EventConsumer extends EventEmitter {
 
     const existing = this.canonicalNodes.get(payload.node_id);
     if (existing && !this.shouldProcess(existing, emittedAtMs)) {
-      console.log(`[EventConsumer] Stale node-introspection event, skipping: ${payload.node_id}`);
+      if (DEBUG_CANONICAL_EVENTS) {
+        console.log(`[EventConsumer] Stale node-introspection event, skipping: ${payload.node_id}`);
+      }
       return;
     }
 
@@ -1475,7 +1502,9 @@ export class EventConsumer extends EventEmitter {
       emitted_at: emittedAtMs,
     });
 
-    console.log(`[EventConsumer] Canonical node-introspection processed: ${payload.node_id}`);
+    if (DEBUG_CANONICAL_EVENTS) {
+      console.log(`[EventConsumer] Canonical node-introspection processed: ${payload.node_id}`);
+    }
   }
 
   private cleanupOldMetrics() {

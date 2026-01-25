@@ -93,22 +93,9 @@ export default function RegistryDiscovery() {
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Health badge decay timer - forces re-render every second for heartbeat recency
-  const [healthTick, setHealthTick] = useState(0);
-
   // Visibility toggles for offline/pending nodes
   const [showOffline, setShowOffline] = useState(false);
   const [showPending, setShowPending] = useState(true);
-
-  // Health badge decay timer - triggers re-render every 1 second
-  // This ensures health badges reflect heartbeat recency (green -> yellow -> red)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setHealthTick((t) => t + 1);
-    }, 1000); // Every 1 second (matches "< 1 second" success criteria)
-
-    return () => clearInterval(interval);
-  }, []);
 
   // WebSocket connection for real-time updates
   const { isConnected, connectionStatus, recentEvents, clearEvents, stats } = useRegistryWebSocket({
@@ -186,7 +173,11 @@ export default function RegistryDiscovery() {
       nodes: visibleNodes,
       live_instances: visibleInstances,
     };
-  }, [baseFilteredData, showOffline, showPending]); // Note: healthTick excluded - filtering doesn't depend on time
+    // Note: No time-based dependency needed here. Filtering logic operates on
+    // node state strings (showOffline, showPending), not on heartbeat recency.
+    // Health badge calculation (calculateHealthLevel) also uses static counts
+    // rather than time-based values, so no timer-based re-renders are required.
+  }, [baseFilteredData, showOffline, showPending]);
 
   // Recompute hasNoData based on visibility-filtered data
   const hasNoData =
@@ -223,13 +214,16 @@ export default function RegistryDiscovery() {
   });
 
   // Computed values
-  // healthTick dependency ensures badge re-renders every second for health decay visualization
+  // Note: healthTick is NOT included here because calculateHealthLevel()
+  // uses static counts (failed_nodes, pending_nodes, by_health) rather than
+  // time-based heartbeat recency. The badge only needs to re-render when
+  // the underlying health data changes, not every second.
   const healthBadge = useMemo(() => {
     if (!healthBadgeData || isLoading) return null;
     const status = calculateHealthLevel(healthBadgeData);
     const tooltip = getHealthTooltip(healthBadgeData, status);
     return <SystemHealthBadge status={status} title={tooltip} />;
-  }, [healthBadgeData, isLoading, healthTick]);
+  }, [healthBadgeData, isLoading]);
 
   const headerActions = useMemo(
     () => (
