@@ -589,6 +589,26 @@ intelligenceRouter.get('/health', async (req, res) => {
 });
 
 // ============================================================================
+// Runtime Identity Endpoint
+// ============================================================================
+
+/**
+ * GET /api/intelligence/runtime/identity
+ * Reports injected identity from runtime supervisor (read-only)
+ */
+intelligenceRouter.get('/runtime/identity', (req, res) => {
+  res.json({
+    node_id: process.env.ONEX_NODE_ID || null,
+    contract_fingerprint: process.env.ONEX_CONTRACT_FINGERPRINT || null,
+    runtime_mode: process.env.ONEX_RUNTIME_MODE || 'standalone',
+    env: process.env.ONEX_ENV || 'dev',
+    supervised: !!process.env.ONEX_NODE_ID,
+    supervisor_pid: process.env.ONEX_SUPERVISOR_PID || null,
+    injected_at: process.env.ONEX_INJECTED_AT || null,
+  });
+});
+
+// ============================================================================
 // Pattern Discovery Endpoints (PostgreSQL Database)
 // ============================================================================
 

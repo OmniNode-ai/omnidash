@@ -99,6 +99,16 @@ const MOCK_NODE_DEFINITIONS: MockNodeDefinition[] = [
     capabilities: ['semantic_similarity', 'embedding_comparison', 'routing_decision'],
     namespace: 'routing',
   },
+  // Omnidash Dashboard - Self-referential entry (OMN-1280)
+  {
+    name: 'OmnidashDashboard',
+    service_name: 'omnidash-dashboard',
+    display_name: 'Omnidash Dashboard',
+    node_type: 'COMPUTE',
+    version: '1.0.0',
+    capabilities: ['dashboard_rendering', 'real_time_events', 'intelligence_query'],
+    namespace: 'observability',
+  },
 
   // Reducer Nodes - Aggregation and persistence
   {

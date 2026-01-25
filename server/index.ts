@@ -77,6 +77,21 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Read injected identity from runtime (if present)
+  const runtimeIdentity = {
+    nodeId: process.env.ONEX_NODE_ID || null,
+    contractFingerprint: process.env.ONEX_CONTRACT_FINGERPRINT || null,
+    runtimeMode: process.env.ONEX_RUNTIME_MODE || 'standalone',
+    env: process.env.ONEX_ENV || 'dev',
+  };
+
+  // Log identity on startup
+  if (runtimeIdentity.nodeId) {
+    log(`Running under ONEX runtime: node_id=${runtimeIdentity.nodeId}`);
+  } else {
+    log(`Running in standalone mode (no runtime supervision)`);
+  }
+
   const server = await registerRoutes(app);
 
   // Validate and start Kafka event consumer
