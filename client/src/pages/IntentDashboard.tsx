@@ -14,7 +14,7 @@
  * - Stats summary cards
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { IntentDistribution, RecentIntents, SessionTimeline } from '@/components/intent';
 import { useIntentStream } from '@/hooks/useIntentStream';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -99,6 +99,17 @@ interface IntentDetailProps {
 }
 
 function IntentDetail({ intent, onClose }: IntentDetailProps) {
+  // Keyboard accessibility: close panel on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (intent) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [intent, onClose]);
+
   if (!intent) return null;
 
   return (
@@ -287,19 +298,19 @@ export default function IntentDashboard() {
           onIntentClick={handleIntentClick}
         />
 
-        {/* Legend */}
+        {/* Legend - thresholds match RecentIntents and SessionTimeline (90%/70%) */}
         <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2 border-t">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span>High confidence (&gt;80%)</span>
+            <span>High confidence (&ge;90%)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-yellow-500" />
-            <span>Medium confidence (60-80%)</span>
+            <span>Medium confidence (70-90%)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-red-500" />
-            <span>Low confidence (&lt;60%)</span>
+            <span>Low confidence (&lt;70%)</span>
           </div>
         </div>
 

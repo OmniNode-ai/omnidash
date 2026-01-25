@@ -116,7 +116,10 @@ function transformToChartData(intents: IntentItem[], categoryOrder: string[]): C
       z: 100 + intent.confidence * 200, // Size range: 100-300
       intent,
       category: intent.intent_category,
-      color: getIntentColorWithConfidence(intent.intent_category, intent.confidence),
+      color: getIntentColorWithConfidence(
+        intent.intent_category,
+        Math.max(0, Math.min(1, intent.confidence))
+      ),
     };
   });
 }
@@ -279,9 +282,11 @@ function ErrorState({ error }: { error: string }) {
 interface ChartTooltipProps {
   active?: boolean;
   payload?: Array<{ payload: ChartDataPoint }>;
+  /** Whether to show the "Click for details" hint */
+  showClickHint?: boolean;
 }
 
-function ChartTooltip({ active, payload }: ChartTooltipProps) {
+function ChartTooltip({ active, payload, showClickHint = false }: ChartTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -356,8 +361,10 @@ function ChartTooltip({ active, payload }: ChartTooltipProps) {
         </div>
       )}
 
-      {/* Click hint */}
-      <div className="text-xs text-muted-foreground/70 mt-2 pt-2 border-t">Click for details</div>
+      {/* Click hint - only shown when clicking is enabled */}
+      {showClickHint && (
+        <div className="text-xs text-muted-foreground/70 mt-2 pt-2 border-t">Click for details</div>
+      )}
     </div>
   );
 }
@@ -439,12 +446,17 @@ function TimelineChart({ intents, onIntentClick, height = 300 }: TimelineChartPr
         />
         <ZAxis type="number" dataKey="z" range={[100, 400]} name="Confidence" />
         <Tooltip
-          content={<ChartTooltip />}
+          content={<ChartTooltip showClickHint={!!onIntentClick} />}
           cursor={{ strokeDasharray: '3 3', stroke: 'hsl(var(--muted-foreground))' }}
         />
         <Scatter
           data={chartData}
-          onClick={(data) => handleClick(data as unknown as ChartDataPoint)}
+          onClick={(data) => {
+            // Recharts passes the data point in a nested structure
+            if (data && data.payload) {
+              handleClick(data.payload as ChartDataPoint);
+            }
+          }}
           style={{ cursor: onIntentClick ? 'pointer' : 'default' }}
         >
           {chartData.map((entry, index) => (

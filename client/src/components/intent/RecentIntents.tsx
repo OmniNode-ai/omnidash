@@ -7,7 +7,7 @@
  * Features:
  * - Initial load from /api/intents/recent
  * - WebSocket subscription for live updates
- * - Color-coded confidence badges (green >80%, yellow 60-80%, red <60%)
+ * - Color-coded confidence badges (green >=90%, yellow 70-90%, red <70%)
  * - Smooth animations for new items
  * - Scrollable list with fixed height
  */
@@ -123,6 +123,8 @@ interface IntentItemRowProps {
 }
 
 function IntentItemRow({ intent, index, showConfidence, onClick }: IntentItemRowProps) {
+  // isNew controls animation - first N items animate on initial render.
+  // This is index-based for visual effect, not based on actual timestamp newness.
   const isNew = index < ANIMATE_ITEM_COUNT;
   // Use created_at from IntentRecordPayload, fallback to id for display timestamp
   const displayTimestamp = intent.created_at;
@@ -151,13 +153,13 @@ function IntentItemRow({ intent, index, showConfidence, onClick }: IntentItemRow
           : undefined
       }
     >
-      {/* Left indicator bar */}
+      {/* Left indicator bar - thresholds: 90%/70% to match SessionTimeline and legend */}
       <div
         className={cn(
           'w-1 rounded',
-          intent.confidence >= 0.8
+          intent.confidence >= 0.9
             ? 'bg-green-500'
-            : intent.confidence >= 0.6
+            : intent.confidence >= 0.7
               ? 'bg-yellow-500'
               : 'bg-red-500'
         )}

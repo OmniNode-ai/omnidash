@@ -47,6 +47,14 @@ export const INTENT_STORED_TOPIC = 'dev.onex.evt.omnimemory.intent-stored.v1';
 
 /**
  * Kafka topic for intent classified events (event - classification completed)
+ *
+ * NOTE: Topic name vs event_type distinction:
+ * - Topic name (this constant): Used for Kafka routing, follows ONEX canonical naming
+ *   Format: dev.onex.{evt|cmd}.{owner}.{event-name}.v{n}
+ * - event_type field: Short identifier within the event payload (e.g., "IntentClassified")
+ *
+ * The IntentClassifiedEvent.event_type field contains "IntentClassified" (the event type name),
+ * NOT this topic constant. See isIntentClassifiedEvent() type guard for usage.
  */
 export const INTENT_CLASSIFIED_TOPIC = 'dev.onex.evt.omniintelligence.intent-classified.v1';
 
@@ -386,12 +394,21 @@ export function isIntentStoredEvent(event: unknown): event is IntentStoredEvent 
 
 /**
  * Type guard to check if an event is an IntentClassifiedEvent
+ *
+ * NOTE: Uses literal 'IntentClassified' instead of INTENT_CLASSIFIED_TOPIC because:
+ * - event_type field contains the event type NAME ("IntentClassified")
+ * - INTENT_CLASSIFIED_TOPIC is the Kafka TOPIC for routing ("dev.onex.evt.omniintelligence.intent-classified.v1")
+ * - These serve different purposes: type identification vs message routing
+ *
+ * This differs from isIntentQueryResponse() and isIntentStoredEvent() where
+ * event_type happens to match the topic constant (legacy pattern).
  */
 export function isIntentClassifiedEvent(event: unknown): event is IntentClassifiedEvent {
   return (
     typeof event === 'object' &&
     event !== null &&
     'event_type' in event &&
+    // Uses literal 'IntentClassified' (event type name), not INTENT_CLASSIFIED_TOPIC (Kafka topic)
     (event as IntentClassifiedEvent).event_type === 'IntentClassified'
   );
 }

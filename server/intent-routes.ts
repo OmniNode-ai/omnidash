@@ -67,6 +67,56 @@ function isValidSessionId(sessionId: string): boolean {
 }
 
 // ============================================================================
+// Constants: Input Validation Limits
+// ============================================================================
+
+/** Maximum time range in hours for intent queries (7 days) */
+const MAX_TIME_RANGE_HOURS = 168;
+
+/** Maximum number of keywords allowed per intent */
+const MAX_KEYWORDS_COUNT = 20;
+
+/** Maximum length of each keyword string */
+const MAX_KEYWORD_LENGTH = 100;
+
+/** Maximum length of user_context string */
+const MAX_USER_CONTEXT_LENGTH = 2000;
+
+// ============================================================================
+// Helper: Sanitize string input
+// ============================================================================
+
+/**
+ * Sanitize a string by trimming whitespace and removing control characters.
+ * Returns empty string if input is not a valid string.
+ */
+function sanitizeString(input: unknown, maxLength: number): string {
+  if (typeof input !== 'string') {
+    return '';
+  }
+  // Remove control characters (except newlines and tabs for user_context)
+  // and trim whitespace
+  return input
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .trim()
+    .slice(0, maxLength);
+}
+
+/**
+ * Sanitize an array of keywords.
+ * Returns an array of sanitized, non-empty strings, limited to MAX_KEYWORDS_COUNT.
+ */
+function sanitizeKeywords(input: unknown): string[] {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+  return input
+    .slice(0, MAX_KEYWORDS_COUNT)
+    .map((k) => sanitizeString(k, MAX_KEYWORD_LENGTH))
+    .filter((k) => k.length > 0);
+}
+
+// ============================================================================
 // Helper: Get intelligence events adapter (with lazy init)
 // ============================================================================
 
@@ -90,7 +140,7 @@ intentRouter.get('/distribution', async (req, res) => {
   try {
     const timeRangeHours = Math.max(
       1,
-      Math.min(720, parseInt(req.query.time_range_hours as string, 10) || 24)
+      Math.min(MAX_TIME_RANGE_HOURS, parseInt(req.query.time_range_hours as string, 10) || 24)
     );
     const timeoutMs = Math.max(
       1000,
@@ -222,7 +272,7 @@ intentRouter.get('/recent', async (req, res) => {
   try {
     const timeRangeHours = Math.max(
       1,
-      Math.min(24, parseInt(req.query.time_range_hours as string, 10) || 1)
+      Math.min(MAX_TIME_RANGE_HOURS, parseInt(req.query.time_range_hours as string, 10) || 1)
     );
     const minConfidence = Math.max(
       0,
@@ -287,7 +337,10 @@ intentRouter.post('/store', async (req, res) => {
       });
     }
 
-    if (!isValidSessionId(session_id)) {
+    // Validate session_id format
+    const sanitizedSessionId =
+      typeof session_id === 'string' ? session_id.trim().slice(0, 128) : '';
+    if (!isValidSessionId(sanitizedSessionId)) {
       return res.status(400).json({
         ok: false,
         error:
@@ -295,12 +348,27 @@ intentRouter.post('/store', async (req, res) => {
       });
     }
 
-    if (!isValidIntentCategory(intent_category)) {
+    // Validate intent_category (case-insensitive)
+    const sanitizedCategory =
+      typeof intent_category === 'string' ? intent_category.trim().toLowerCase() : '';
+    if (!isValidIntentCategory(sanitizedCategory)) {
       return res.status(400).json({
         ok: false,
         error: `Invalid intent_category. Must be one of: ${VALID_INTENT_CATEGORIES.join(', ')}`,
       });
     }
+
+    // Validate and clamp confidence to [0, 1]
+    const sanitizedConfidence = Math.max(
+      0,
+      Math.min(1, typeof confidence === 'number' ? confidence : 0.5)
+    );
+
+    // Sanitize keywords array (max 20 items, max 100 chars each)
+    const sanitizedKeywords = sanitizeKeywords(keywords);
+
+    // Sanitize user_context (max 2000 chars, remove control characters)
+    const sanitizedUserContext = sanitizeString(user_context, MAX_USER_CONTEXT_LENGTH);
 
     const intel = await getIntentAdapter();
     if (!intel) {
@@ -315,11 +383,11 @@ intentRouter.post('/store', async (req, res) => {
       'intent_store',
       {
         operation_type: 'INTENT_STORE',
-        session_id,
-        intent_category,
-        confidence: confidence || 0.5,
-        keywords: keywords || [],
-        user_context: user_context || '',
+        session_id: sanitizedSessionId,
+        intent_category: sanitizedCategory,
+        confidence: sanitizedConfidence,
+        keywords: sanitizedKeywords,
+        user_context: sanitizedUserContext,
         correlation_id: correlationId,
       },
       5000
@@ -329,10 +397,10 @@ intentRouter.post('/store', async (req, res) => {
     if (result.success) {
       intentEventEmitter.emitIntentStored({
         intent_id: result.intent_id,
-        session_id,
-        intent_category,
-        confidence: confidence || 0.5,
-        keywords: keywords || [],
+        session_id: sanitizedSessionId,
+        intent_category: sanitizedCategory,
+        confidence: sanitizedConfidence,
+        keywords: sanitizedKeywords,
         correlation_id: correlationId,
       });
     }
@@ -340,7 +408,7 @@ intentRouter.post('/store', async (req, res) => {
     return res.json({
       ok: result.success,
       intent_id: result.intent_id,
-      session_id,
+      session_id: sanitizedSessionId,
       created: result.created,
       execution_time_ms: result.execution_time_ms,
       error: result.error,

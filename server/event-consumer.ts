@@ -411,10 +411,12 @@ export interface RawNodeStateChangeEvent {
 // ============================================================================
 
 /**
- * Intent classification event from Kafka
+ * Internal intent classification event structure (camelCase for in-memory processing).
+ * Note: This uses camelCase (intentType, correlationId) while the shared/intent-types.ts
+ * IntentClassifiedEvent uses snake_case (intent_type, correlation_id).
  * Topic: {env}.onex.evt.omniintelligence.intent-classified.v1
  */
-export interface IntentClassifiedEvent {
+export interface InternalIntentClassifiedEvent {
   id: string;
   correlationId: string;
   intentType: string;
@@ -569,7 +571,7 @@ export class EventConsumer extends EventEmitter {
   private maxNodeEvents = 100;
 
   // Intent event storage
-  private recentIntents: IntentClassifiedEvent[] = [];
+  private recentIntents: InternalIntentClassifiedEvent[] = [];
   private maxIntents = 100;
   private intentDistribution: Record<string, number> = {};
 
@@ -1322,7 +1324,7 @@ export class EventConsumer extends EventEmitter {
     try {
       const intentType = event.intent_type || event.intentType || 'unknown';
 
-      const intentEvent: IntentClassifiedEvent = {
+      const intentEvent: InternalIntentClassifiedEvent = {
         id: event.id || crypto.randomUUID(),
         correlationId: event.correlation_id || event.correlationId || '',
         intentType,
@@ -1353,7 +1355,12 @@ export class EventConsumer extends EventEmitter {
         `Processed intent classified: ${intentType} (confidence: ${intentEvent.confidence})`
       );
     } catch (error) {
-      intentLogger.error('Error processing intent classified:', error);
+      intentLogger.error(
+        `Error processing intent classified event: id=${event.id || 'unknown'}, ` +
+          `correlationId=${event.correlation_id || event.correlationId || 'unknown'}, ` +
+          `intentType=${event.intent_type || event.intentType || 'unknown'}`,
+        error
+      );
     }
   }
 
@@ -1491,6 +1498,17 @@ export class EventConsumer extends EventEmitter {
       return timestamp > cutoff;
     });
     const intentsRemoved = intentsBefore - this.recentIntents.length;
+
+    // Prune intent distribution - reset when intents are pruned to prevent unbounded growth
+    // The distribution will naturally rebuild from the remaining recentIntents
+    if (intentsRemoved > 0) {
+      // Rebuild distribution from remaining intents
+      this.intentDistribution = {};
+      for (const intent of this.recentIntents) {
+        this.intentDistribution[intent.intentType] =
+          (this.intentDistribution[intent.intentType] || 0) + 1;
+      }
+    }
 
     // Log pruning statistics if anything was removed
     const totalRemoved =
@@ -1853,7 +1871,7 @@ export class EventConsumer extends EventEmitter {
    * @param limit - Maximum number of intents to return (default: 50)
    * @returns Array of intent classification events, newest first
    */
-  getRecentIntents(limit: number = 50): IntentClassifiedEvent[] {
+  getRecentIntents(limit: number = 50): InternalIntentClassifiedEvent[] {
     return this.recentIntents.slice(0, limit);
   }
 

@@ -138,7 +138,7 @@ describe('Intent Routes', () => {
       );
     });
 
-    it('should clamp time_range_hours to maximum of 720', async () => {
+    it('should clamp time_range_hours to maximum of 168 (7 days)', async () => {
       mockRequest.mockResolvedValue({
         distribution: {},
         total_intents: 0,
@@ -149,7 +149,7 @@ describe('Intent Routes', () => {
         .get('/api/intents/distribution?time_range_hours=1000')
         .expect(200);
 
-      expect(response.body.time_range_hours).toBe(720);
+      expect(response.body.time_range_hours).toBe(168);
     });
 
     it('should use default time_range_hours of 24 when not specified', async () => {
@@ -480,7 +480,7 @@ describe('Intent Routes', () => {
       );
     });
 
-    it('should clamp time_range_hours to maximum of 24', async () => {
+    it('should clamp time_range_hours to maximum of 168 (7 days)', async () => {
       mockRequest.mockResolvedValue({
         intents: [],
         total_count: 0,
@@ -488,10 +488,10 @@ describe('Intent Routes', () => {
       });
 
       const response = await request(app)
-        .get('/api/intents/recent?time_range_hours=100')
+        .get('/api/intents/recent?time_range_hours=1000')
         .expect(200);
 
-      expect(response.body.time_range_hours).toBe(24);
+      expect(response.body.time_range_hours).toBe(168);
     });
 
     it('should respect min_confidence parameter', async () => {

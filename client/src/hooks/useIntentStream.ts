@@ -126,7 +126,9 @@ export interface UseIntentStreamReturn {
   connect: () => void;
 
   /**
-   * Manually disconnect from WebSocket
+   * Unsubscribe from intent topics (does not close WebSocket connection).
+   * The WebSocket is managed by useWebSocket and shared across the app.
+   * Use this to stop receiving intent events without closing the connection.
    */
   disconnect: () => void;
 
@@ -199,11 +201,31 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
   // Track seen event IDs to deduplicate events
   const seenEventIds = useRef(new Set<string>());
 
+  // Track current intents in a ref for cleanup operations (avoids using setState as getter)
+  const intentsRef = useRef<ProcessedIntent[]>([]);
+
+  // Track if cleanup is needed after state update
+  const needsCleanupRef = useRef(false);
+
   // Track callback ref to avoid stale closures
   const onIntentRef = useRef(onIntent);
   useEffect(() => {
     onIntentRef.current = onIntent;
   }, [onIntent]);
+
+  // Keep intentsRef in sync with intents state for cleanup operations
+  useEffect(() => {
+    intentsRef.current = intents;
+  }, [intents]);
+
+  // Perform deferred cleanup of seenEventIds after state updates
+  useEffect(() => {
+    if (needsCleanupRef.current) {
+      needsCleanupRef.current = false;
+      const currentIds = new Set(intentsRef.current.map((i) => i.id));
+      seenEventIds.current = currentIds;
+    }
+  }, [intents]);
 
   /**
    * Process an incoming WebSocket message into a ProcessedIntent
@@ -300,15 +322,14 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
         // Update intents array
         setIntents((prev) => {
           const updated = [processedIntent, ...prev].slice(0, maxItems);
-
-          // Memory cleanup: prevent unbounded growth of seenEventIds
-          if (seenEventIds.current.size > maxItems * SEEN_EVENT_IDS_CLEANUP_MULTIPLIER) {
-            const currentIds = new Set(updated.map((i) => i.id));
-            seenEventIds.current = currentIds;
-          }
-
           return updated;
         });
+
+        // Schedule memory cleanup if seenEventIds has grown too large
+        // Cleanup is deferred to useEffect to avoid mutating refs during render
+        if (seenEventIds.current.size > maxItems * SEEN_EVENT_IDS_CLEANUP_MULTIPLIER) {
+          needsCleanupRef.current = true;
+        }
 
         // Update distribution
         setDistribution((prev) => ({
@@ -368,6 +389,12 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
     debug,
   });
 
+  // Track connection state in a ref for cleanup function (avoids stale closure)
+  const isConnectedRef = useRef(isConnected);
+  useEffect(() => {
+    isConnectedRef.current = isConnected;
+  }, [isConnected]);
+
   // Subscribe to intent topics when connected
   useEffect(() => {
     if (!autoConnect) {
@@ -390,8 +417,9 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
     }
 
     // Cleanup: unsubscribe when unmounting
+    // Uses isConnectedRef to avoid stale closure on isConnected
     return () => {
-      if (hasSubscribed.current && isConnected) {
+      if (hasSubscribed.current && isConnectedRef.current) {
         if (debug) {
           // eslint-disable-next-line no-console
           console.log('[IntentStream] Unsubscribing from intent topics');
@@ -405,28 +433,24 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
   /**
    * Interval-based cleanup of seenEventIds to prevent memory accumulation during idle periods.
    * Runs every SEEN_EVENT_IDS_CLEANUP_INTERVAL_MS and prunes stale IDs.
+   * Uses intentsRef to read current state without triggering re-renders.
    */
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       // Only cleanup if we have accumulated more IDs than currently displayed
       if (seenEventIds.current.size > maxItems) {
-        // Get current intent IDs from latest state
-        setIntents((currentIntents) => {
-          const currentIds = new Set(currentIntents.map((i) => i.id));
-          seenEventIds.current = currentIds;
+        // Get current intent IDs from ref (avoids using setState as a getter)
+        const currentIds = new Set(intentsRef.current.map((i) => i.id));
+        seenEventIds.current = currentIds;
 
-          if (debug) {
-            // eslint-disable-next-line no-console
-            console.log(
-              '[IntentStream] Periodic cleanup: pruned seenEventIds to',
-              currentIds.size,
-              'entries'
-            );
-          }
-
-          // Return unchanged to avoid unnecessary re-render
-          return currentIntents;
-        });
+        if (debug) {
+          // eslint-disable-next-line no-console
+          console.log(
+            '[IntentStream] Periodic cleanup: pruned seenEventIds to',
+            currentIds.size,
+            'entries'
+          );
+        }
       }
     }, SEEN_EVENT_IDS_CLEANUP_INTERVAL_MS);
 
@@ -458,13 +482,30 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
   }, [reconnect]);
 
   /**
-   * Disconnect is handled by the base hook on unmount.
-   * This function clears state and resets subscription flag.
+   * Unsubscribe from intent topics and reset subscription state.
+   *
+   * Note: This does NOT close the underlying WebSocket connection, as that is
+   * managed by the useWebSocket hook and shared across the application.
+   * This function only:
+   * 1. Unsubscribes from intent-specific topics
+   * 2. Resets the subscription flag so reconnecting will re-subscribe
+   *
+   * The WebSocket connection itself remains open and is only closed when:
+   * - The component using useWebSocket unmounts
+   * - A network error occurs (followed by automatic reconnection)
+   *
+   * To fully disconnect, the parent component should unmount.
    */
   const disconnect = useCallback(() => {
+    if (hasSubscribed.current && isConnectedRef.current) {
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.log('[IntentStream] Disconnecting: unsubscribing from intent topics');
+      }
+      unsubscribe(['intents', 'intents-stored']);
+    }
     hasSubscribed.current = false;
-    // Note: The actual WebSocket close is handled by useWebSocket cleanup
-  }, []);
+  }, [unsubscribe, debug]);
 
   // Combine errors from both this hook and the WebSocket hook
   const combinedError = error || (wsError ? new Error(wsError) : null);
