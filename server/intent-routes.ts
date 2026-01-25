@@ -18,6 +18,21 @@ import { getIntelligenceEvents, IntelligenceEventAdapter } from './intelligence-
 export const intentRouter = Router();
 
 // ============================================================================
+// Helper: Validate sessionId format
+// ============================================================================
+
+/**
+ * Validate sessionId format.
+ * Accepts UUIDs and alphanumeric strings with hyphens/underscores (max 128 chars)
+ */
+function isValidSessionId(sessionId: string): boolean {
+  // Allow UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  // Or alphanumeric with hyphens/underscores, max 128 chars
+  const sessionIdPattern = /^[a-zA-Z0-9_-]{1,128}$/;
+  return sessionIdPattern.test(sessionId);
+}
+
+// ============================================================================
 // Helper: Get intelligence events adapter (with lazy init)
 // ============================================================================
 
@@ -83,11 +98,12 @@ intentRouter.get('/distribution', async (req, res) => {
       time_range_hours: timeRangeHours,
       execution_time_ms: result.execution_time_ms,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error('Error querying intent distribution:', err);
     return res.status(500).json({
       ok: false,
-      error: err?.message || String(err),
+      error: message,
     });
   }
 });
@@ -104,6 +120,14 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
       return res.status(400).json({
         ok: false,
         error: 'sessionId is required',
+      });
+    }
+
+    if (!isValidSessionId(sessionId)) {
+      return res.status(400).json({
+        ok: false,
+        error:
+          'Invalid sessionId format. Must be alphanumeric with hyphens/underscores, max 128 characters.',
       });
     }
 
@@ -145,11 +169,12 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
       total_count: result.total_count || 0,
       execution_time_ms: result.execution_time_ms,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error('Error querying session intents:', err);
     return res.status(500).json({
       ok: false,
-      error: err?.message || String(err),
+      error: message,
     });
   }
 });
@@ -203,11 +228,12 @@ intentRouter.get('/recent', async (req, res) => {
       time_range_hours: timeRangeHours,
       execution_time_ms: result.execution_time_ms,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error('Error querying recent intents:', err);
     return res.status(500).json({
       ok: false,
-      error: err?.message || String(err),
+      error: message,
     });
   }
 });
@@ -224,6 +250,14 @@ intentRouter.post('/store', async (req, res) => {
       return res.status(400).json({
         ok: false,
         error: 'session_id and intent_category are required',
+      });
+    }
+
+    if (!isValidSessionId(session_id)) {
+      return res.status(400).json({
+        ok: false,
+        error:
+          'Invalid session_id format. Must be alphanumeric with hyphens/underscores, max 128 characters.',
       });
     }
 
@@ -270,11 +304,12 @@ intentRouter.post('/store', async (req, res) => {
       execution_time_ms: result.execution_time_ms,
       error: result.error,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error('Error storing intent:', err);
     return res.status(500).json({
       ok: false,
-      error: err?.message || String(err),
+      error: message,
     });
   }
 });

@@ -31,6 +31,13 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Clock, MessageSquare, AlertCircle, Inbox, BarChart3, List } from 'lucide-react';
 import type { IntentItem } from './RecentIntents';
+import {
+  getIntentColor,
+  getIntentBgClass,
+  getConfidenceOpacity,
+  getIntentColorWithConfidence,
+  formatCategoryName,
+} from '@/lib/intent-colors';
 
 // ============================================================================
 // Types
@@ -88,127 +95,6 @@ function formatTime(isoString: string): string {
 }
 
 /**
- * Format timestamp to readable date + time string
- */
-function formatDateTime(isoString: string): string {
-  try {
-    const date = new Date(isoString);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return isoString;
-  }
-}
-
-/**
- * Get color classes based on intent category
- */
-function getCategoryColor(category: string): string {
-  const categoryLower = category.toLowerCase();
-
-  if (categoryLower.includes('debug') || categoryLower.includes('fix')) {
-    return 'bg-amber-500';
-  }
-  if (categoryLower.includes('code') || categoryLower.includes('generate')) {
-    return 'bg-blue-500';
-  }
-  if (categoryLower.includes('test')) {
-    return 'bg-green-500';
-  }
-  if (categoryLower.includes('refactor') || categoryLower.includes('improve')) {
-    return 'bg-purple-500';
-  }
-  if (categoryLower.includes('doc') || categoryLower.includes('explain')) {
-    return 'bg-cyan-500';
-  }
-  if (categoryLower.includes('review') || categoryLower.includes('analyze')) {
-    return 'bg-indigo-500';
-  }
-
-  return 'bg-primary';
-}
-
-/**
- * Get opacity based on confidence (0.0 - 1.0)
- * Maps confidence to opacity range of 0.4 - 1.0
- */
-function getConfidenceOpacity(confidence: number): number {
-  const minOpacity = 0.4;
-  const maxOpacity = 1.0;
-  const clampedConfidence = Math.max(0, Math.min(1, confidence));
-  return minOpacity + clampedConfidence * (maxOpacity - minOpacity);
-}
-
-/**
- * Format category name for display
- */
-function formatCategory(category: string): string {
-  return category
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-}
-
-/**
- * Get category color hex value for chart visualization
- */
-const CATEGORY_COLORS: Record<string, string> = {
-  debugging: '#ef4444', // red
-  debug: '#ef4444',
-  fix: '#f97316', // orange
-  code_generation: '#3b82f6', // blue
-  code: '#3b82f6',
-  generate: '#3b82f6',
-  testing: '#22c55e', // green
-  test: '#22c55e',
-  refactoring: '#a855f7', // purple
-  refactor: '#a855f7',
-  improve: '#8b5cf6', // violet
-  documentation: '#06b6d4', // cyan
-  doc: '#06b6d4',
-  explain: '#0ea5e9', // sky
-  review: '#6366f1', // indigo
-  analyze: '#6366f1',
-  analysis: '#6366f1',
-  question: '#ec4899', // pink
-};
-
-const DEFAULT_CATEGORY_COLOR = '#64748b'; // slate
-
-function getCategoryHexColor(category: string): string {
-  const categoryLower = category.toLowerCase();
-
-  // Check for exact match
-  if (CATEGORY_COLORS[categoryLower]) {
-    return CATEGORY_COLORS[categoryLower];
-  }
-
-  // Check for partial matches
-  for (const [key, color] of Object.entries(CATEGORY_COLORS)) {
-    if (categoryLower.includes(key)) {
-      return color;
-    }
-  }
-
-  return DEFAULT_CATEGORY_COLOR;
-}
-
-/**
- * Adjust color opacity based on confidence (0.0 - 1.0)
- * Returns hex color with alpha channel
- */
-function getColorWithConfidence(hexColor: string, confidence: number): string {
-  // Clamp confidence to 0.4 - 1.0 range for visibility
-  const alpha = Math.round((0.4 + confidence * 0.6) * 255);
-  const alphaHex = alpha.toString(16).padStart(2, '0');
-  return `${hexColor}${alphaHex}`;
-}
-
-/**
  * Transform intents to chart data format
  */
 interface ChartDataPoint {
@@ -223,7 +109,6 @@ interface ChartDataPoint {
 function transformToChartData(intents: IntentItem[], categoryOrder: string[]): ChartDataPoint[] {
   return intents.map((intent) => {
     const categoryIndex = categoryOrder.indexOf(intent.intent_category);
-    const color = getCategoryHexColor(intent.intent_category);
 
     return {
       x: new Date(intent.created_at).getTime(),
@@ -231,7 +116,7 @@ function transformToChartData(intents: IntentItem[], categoryOrder: string[]): C
       z: 100 + intent.confidence * 200, // Size range: 100-300
       intent,
       category: intent.intent_category,
-      color: getColorWithConfidence(color, intent.confidence),
+      color: getIntentColorWithConfidence(intent.intent_category, intent.confidence),
     };
   });
 }
@@ -248,7 +133,7 @@ interface TimelineNodeProps {
 
 function TimelineNode({ intent, isLast, onClick }: TimelineNodeProps) {
   const opacity = getConfidenceOpacity(intent.confidence);
-  const categoryColor = getCategoryColor(intent.intent_category);
+  const categoryColor = getIntentBgClass(intent.intent_category);
 
   return (
     <div
@@ -267,7 +152,9 @@ function TimelineNode({ intent, isLast, onClick }: TimelineNodeProps) {
           : undefined
       }
       aria-label={
-        onClick ? `View details for ${formatCategory(intent.intent_category)} intent` : undefined
+        onClick
+          ? `View details for ${formatCategoryName(intent.intent_category)} intent`
+          : undefined
       }
     >
       {/* Timeline rail with dot */}
@@ -287,7 +174,7 @@ function TimelineNode({ intent, isLast, onClick }: TimelineNodeProps) {
         {/* Header: category badge + timestamp */}
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <Badge variant="outline" className="text-xs" style={{ opacity }}>
-            {formatCategory(intent.intent_category)}
+            {formatCategoryName(intent.intent_category)}
           </Badge>
           <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
             <Clock className="w-3 h-3" />
@@ -423,9 +310,9 @@ function ChartTooltip({ active, payload }: ChartTooltipProps) {
       <div className="flex items-center gap-2 mb-1">
         <div
           className="w-3 h-3 rounded-full"
-          style={{ backgroundColor: getCategoryHexColor(intent.intent_category) }}
+          style={{ backgroundColor: getIntentColor(intent.intent_category) }}
         />
-        <span className="font-medium">{formatCategory(intent.intent_category)}</span>
+        <span className="font-medium">{formatCategoryName(intent.intent_category)}</span>
       </div>
 
       {/* Confidence */}
@@ -542,7 +429,7 @@ function TimelineChart({ intents, onIntentClick, height = 300 }: TimelineChartPr
           ticks={categories.map((_, i) => i)}
           tickFormatter={(value) => {
             const category = categories[value];
-            return category ? formatCategory(category) : '';
+            return category ? formatCategoryName(category) : '';
           }}
           stroke="hsl(var(--muted-foreground))"
           fontSize={11}
@@ -564,7 +451,7 @@ function TimelineChart({ intents, onIntentClick, height = 300 }: TimelineChartPr
             <Cell
               key={`cell-${index}`}
               fill={entry.color}
-              stroke={getCategoryHexColor(entry.category)}
+              stroke={getIntentColor(entry.category)}
               strokeWidth={1}
             />
           ))}

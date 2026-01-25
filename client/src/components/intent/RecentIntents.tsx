@@ -12,7 +12,7 @@
  * - Scrollable list with fixed height
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { Card } from '@/components/ui/card';
@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Brain, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import type { IntentRecordPayload } from '@shared/intent-types';
+import { getIntentBadgeClasses, getConfidenceColor, formatCategoryName } from '@/lib/intent-colors';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -61,24 +62,6 @@ interface RecentIntentsResponse {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
-const INTENT_CATEGORY_COLORS: Record<string, string> = {
-  debugging: 'bg-red-500/10 text-red-600 border-red-500/20',
-  code_generation: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-  testing: 'bg-green-500/10 text-green-600 border-green-500/20',
-  documentation: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
-  refactoring: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
-  analysis: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
-  deployment: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-  configuration: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
-  question: 'bg-pink-500/10 text-pink-600 border-pink-500/20',
-};
-
-const DEFAULT_CATEGORY_COLOR = 'bg-muted text-muted-foreground border-border';
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Utility Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -94,25 +77,6 @@ function formatTimestamp(timestamp: string): string {
   } catch {
     return timestamp;
   }
-}
-
-function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.8) {
-    return 'bg-green-500/10 text-green-600 border-green-500/20';
-  }
-  if (confidence >= 0.6) {
-    return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
-  }
-  return 'bg-red-500/10 text-red-600 border-red-500/20';
-}
-
-function getCategoryColor(category: string): string {
-  const normalizedCategory = category.toLowerCase().replace(/[^a-z_]/g, '');
-  return INTENT_CATEGORY_COLORS[normalizedCategory] || DEFAULT_CATEGORY_COLOR;
-}
-
-function formatCategory(category: string): string {
-  return category.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function truncateText(text: string, maxLength: number): string {
@@ -203,9 +167,9 @@ function IntentItemRow({ intent, index, showConfidence, onClick }: IntentItemRow
           {/* Intent category badge */}
           <Badge
             variant="outline"
-            className={cn('text-xs border', getCategoryColor(intent.intent_category))}
+            className={cn('text-xs border', getIntentBadgeClasses(intent.intent_category))}
           >
-            {formatCategory(intent.intent_category)}
+            {formatCategoryName(intent.intent_category)}
           </Badge>
 
           {/* Confidence badge */}
@@ -251,6 +215,9 @@ export function RecentIntents({
 }: RecentIntentsProps) {
   const queryClient = useQueryClient();
   const [intents, setIntents] = useState<IntentItem[]>([]);
+
+  // Ref for debounced query invalidation to prevent excessive re-fetching
+  const invalidateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch initial data
   const { data, isLoading, isError, error } = useQuery<RecentIntentsResponse>({
@@ -300,8 +267,16 @@ export function RecentIntents({
           // Prepend new intent and cap at limit
           setIntents((prev) => [newIntent, ...prev].slice(0, limit));
 
-          // Invalidate query to keep it in sync
-          queryClient.invalidateQueries({ queryKey: ['/api/intents/recent'] });
+          // Debounced query invalidation to prevent excessive re-fetching under high event volume
+          // Clear any pending invalidation (reset debounce timer)
+          if (invalidateTimeoutRef.current) {
+            clearTimeout(invalidateTimeoutRef.current);
+          }
+          // Schedule new invalidation after 2 second debounce period
+          invalidateTimeoutRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['/api/intents/recent'] });
+            invalidateTimeoutRef.current = null;
+          }, 2000);
         }
       }
     },
@@ -321,6 +296,15 @@ export function RecentIntents({
       return () => unsubscribe(['intents', 'intents-stored']);
     }
   }, [isConnected, subscribe, unsubscribe]);
+
+  // Cleanup debounced invalidation timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (invalidateTimeoutRef.current) {
+        clearTimeout(invalidateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Render content
   const content = (

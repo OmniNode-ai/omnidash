@@ -16,28 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Activity, AlertCircle } from 'lucide-react';
 import { distributionToArray, type IntentCategoryCount } from '@shared/intent-types';
-
-/**
- * Color mapping for intent categories.
- * Colors are chosen to match the design requirements and be visually distinct.
- */
-const INTENT_COLORS: Record<string, string> = {
-  debugging: '#f97316', // orange (red/orange tones)
-  code_generation: '#3b82f6', // blue (blue tones)
-  refactoring: '#a855f7', // purple (purple tones)
-  testing: '#22c55e', // green (green tones)
-  documentation: '#6b7280', // gray (gray tones)
-  analysis: '#06b6d4', // cyan (cyan tones)
-  pattern_learning: '#eab308', // yellow (yellow tones)
-  quality_assessment: '#ec4899', // pink (pink tones)
-  semantic_analysis: '#6366f1', // indigo (indigo tones)
-  unknown: '#9ca3af', // gray
-};
-
-/**
- * Default color for categories not in the color map.
- */
-const DEFAULT_COLOR = '#6b7280';
+import { getIntentColor } from '@/lib/intent-colors';
 
 /**
  * API response structure for intent distribution.
@@ -78,13 +57,6 @@ async function fetchIntentDistribution(
     throw new Error(data.error);
   }
   return data;
-}
-
-/**
- * Gets the color for an intent category.
- */
-function getIntentColor(category: string): string {
-  return INTENT_COLORS[category.toLowerCase()] ?? DEFAULT_COLOR;
 }
 
 /**
