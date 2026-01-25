@@ -192,7 +192,7 @@ export class IntentEventEmitter extends EventEmitter {
     // Also emit to the specific event type topic for targeted subscriptions
     this.emit(eventType, data);
 
-    if (process.env.DEBUG_INTENT_EVENTS === 'true' || process.env.NODE_ENV === 'development') {
+    if (process.env.DEBUG_INTENT_EVENTS === 'true') {
       console.log(`[IntentEventEmitter] Emitted ${eventType} event`);
     }
   }
@@ -404,7 +404,7 @@ let intentEventEmitterInstance: IntentEventEmitter | null = null;
 export function getIntentEventEmitter(): IntentEventEmitter {
   if (!intentEventEmitterInstance) {
     intentEventEmitterInstance = new IntentEventEmitter();
-    if (process.env.DEBUG_INTENT_EVENTS === 'true' || process.env.NODE_ENV === 'development') {
+    if (process.env.DEBUG_INTENT_EVENTS === 'true') {
       console.log('[IntentEventEmitter] Initialized singleton instance');
     }
   }

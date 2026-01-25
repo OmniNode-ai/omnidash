@@ -54,6 +54,21 @@ const StoreIntentSchema = z.object({
   keywords: z.array(z.string().max(100)).max(50).optional().default([]),
 });
 
+// Zod schemas for query parameter validation
+const DistributionQuerySchema = z.object({
+  time_range_hours: z.coerce.number().int().min(1).max(168).optional().default(24),
+});
+
+const SessionQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(1000).optional().default(100),
+  min_confidence: z.coerce.number().min(0).max(1).optional().default(0),
+});
+
+const RecentQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(1000).optional().default(50),
+  time_range_hours: z.coerce.number().int().min(1).max(168).optional().default(24),
+});
+
 // ============================================================================
 // In-Memory Store (for development/testing)
 // ============================================================================
@@ -130,7 +145,16 @@ function calculateDistribution(intents: IntentRecord[]): Record<string, number> 
  */
 intentRouter.get('/distribution', async (req, res) => {
   try {
-    const timeRangeHours = parseInt(req.query.time_range_hours as string) || 24;
+    const queryResult = DistributionQuerySchema.safeParse(req.query);
+    if (!queryResult.success) {
+      return res.status(400).json({
+        error: 'Invalid query parameters',
+        message: queryResult.error.errors
+          .map((e) => `${e.path.join('.')}: ${e.message}`)
+          .join('; '),
+      });
+    }
+    const { time_range_hours: timeRangeHours } = queryResult.data;
 
     // Try to get data from Kafka/intelligence service
     const intelligenceEvents = getIntelligenceEvents();
@@ -203,15 +227,25 @@ intentRouter.get('/distribution', async (req, res) => {
 intentRouter.get('/session/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
-    const minConfidence = parseFloat(req.query.min_confidence as string) || 0.0;
 
-    if (!sessionId) {
+    // Validate sessionId
+    if (!sessionId || sessionId.length > 255) {
       return res.status(400).json({
-        error: 'Missing required parameter',
-        message: 'sessionId is required',
+        error: 'Invalid parameter',
+        message: 'sessionId must be between 1-255 characters',
       });
     }
+
+    const queryResult = SessionQuerySchema.safeParse(req.query);
+    if (!queryResult.success) {
+      return res.status(400).json({
+        error: 'Invalid query parameters',
+        message: queryResult.error.errors
+          .map((e) => `${e.path.join('.')}: ${e.message}`)
+          .join('; '),
+      });
+    }
+    const { limit, min_confidence: minConfidence } = queryResult.data;
 
     // Try to get data from Kafka/intelligence service
     const intelligenceEvents = getIntelligenceEvents();
@@ -280,8 +314,16 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
  */
 intentRouter.get('/recent', async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 1000);
-    const timeRangeHours = parseInt(req.query.time_range_hours as string) || 24;
+    const queryResult = RecentQuerySchema.safeParse(req.query);
+    if (!queryResult.success) {
+      return res.status(400).json({
+        error: 'Invalid query parameters',
+        message: queryResult.error.errors
+          .map((e) => `${e.path.join('.')}: ${e.message}`)
+          .join('; '),
+      });
+    }
+    const { limit, time_range_hours: timeRangeHours } = queryResult.data;
 
     // Try to get data from Kafka/intelligence service
     const intelligenceEvents = getIntelligenceEvents();
