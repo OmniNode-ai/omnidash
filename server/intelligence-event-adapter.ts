@@ -11,7 +11,13 @@ export class IntelligenceEventAdapter {
   private kafka: Kafka;
   private producer: Producer | null = null;
   private consumer: Consumer | null = null;
-  private started = false;
+  private _started = false;
+
+  /** Whether the adapter has been started and is ready for requests */
+  get started(): boolean {
+    return this._started;
+  }
+
   private pending: Map<
     string,
     {
@@ -49,7 +55,7 @@ export class IntelligenceEventAdapter {
   }
 
   async start(): Promise<void> {
-    if (this.started) return;
+    if (this._started) return;
 
     this.producer = this.kafka.producer();
     await this.producer.connect();
@@ -102,7 +108,7 @@ export class IntelligenceEventAdapter {
       },
     });
 
-    this.started = true;
+    this._started = true;
   }
 
   async stop(): Promise<void> {
@@ -114,7 +120,7 @@ export class IntelligenceEventAdapter {
       await this.producer.disconnect();
       this.producer = null;
     }
-    this.started = false;
+    this._started = false;
   }
 
   /**
@@ -125,7 +131,7 @@ export class IntelligenceEventAdapter {
     payload: Record<string, any>,
     timeoutMs: number = 5000
   ): Promise<any> {
-    if (!this.started || !this.producer) throw new Error('IntelligenceEventAdapter not started');
+    if (!this._started || !this.producer) throw new Error('IntelligenceEventAdapter not started');
 
     const rawCorrelationId = payload?.correlation_id || payload?.correlationId || randomUUID();
     const correlationId = String(rawCorrelationId);

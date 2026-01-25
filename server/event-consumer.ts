@@ -35,6 +35,33 @@ const INTENT_CLASSIFIED_TOPIC = withEnvPrefix(
   ONEX_EVT_OMNIINTELLIGENCE_INTENT_CLASSIFIED_V1
 );
 
+// Structured logging for intent handlers
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
+const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 } as const;
+const currentLogLevel = LOG_LEVELS[LOG_LEVEL as keyof typeof LOG_LEVELS] ?? LOG_LEVELS.info;
+
+const intentLogger = {
+  debug: (message: string) => {
+    if (currentLogLevel <= LOG_LEVELS.debug) {
+      console.log(`[EventConsumer:intent:debug] ${message}`);
+    }
+  },
+  info: (message: string) => {
+    if (currentLogLevel <= LOG_LEVELS.info) {
+      console.log(`[EventConsumer:intent] ${message}`);
+    }
+  },
+  warn: (message: string) => {
+    if (currentLogLevel <= LOG_LEVELS.warn) {
+      console.warn(`[EventConsumer:intent:warn] ${message}`);
+    }
+  },
+  error: (message: string, error?: unknown) => {
+    // Errors always log regardless of level
+    console.error(`[EventConsumer:intent:error] ${message}`, error ?? '');
+  },
+};
+
 export interface AgentMetrics {
   agent: string;
   totalRequests: number;
@@ -794,20 +821,20 @@ export class EventConsumer extends EventEmitter {
                 this.handleNodeStateChange(event);
                 break;
               case INTENT_CLASSIFIED_TOPIC:
-                console.log(
-                  `[EventConsumer] Processing intent classified: ${event.intent_type || event.intentType} (confidence: ${event.confidence})`
+                intentLogger.debug(
+                  `Processing intent classified: ${event.intent_type || event.intentType} (confidence: ${event.confidence})`
                 );
                 this.handleIntentClassified(event);
                 break;
               case INTENT_STORED_TOPIC:
-                console.log(
-                  `[EventConsumer] Processing intent stored: ${event.intent_id || event.intentId}`
+                intentLogger.debug(
+                  `Processing intent stored: ${event.intent_id || event.intentId}`
                 );
                 this.handleIntentStored(event);
                 break;
               case INTENT_QUERY_RESPONSE_TOPIC:
-                console.log(
-                  `[EventConsumer] Processing intent query response: ${event.query_id || event.queryId}`
+                intentLogger.debug(
+                  `Processing intent query response: ${event.query_id || event.queryId}`
                 );
                 this.handleIntentQueryResponse(event);
                 break;
@@ -1322,11 +1349,11 @@ export class EventConsumer extends EventEmitter {
         timestamp: new Date().toISOString(),
       });
 
-      console.log(
-        `[EventConsumer] Processed intent classified: ${intentType} (confidence: ${intentEvent.confidence})`
+      intentLogger.info(
+        `Processed intent classified: ${intentType} (confidence: ${intentEvent.confidence})`
       );
     } catch (error) {
-      console.error('[EventConsumer] Error processing intent classified:', error);
+      intentLogger.error('Error processing intent classified:', error);
     }
   }
 
@@ -1346,9 +1373,9 @@ export class EventConsumer extends EventEmitter {
         timestamp: new Date().toISOString(),
       });
 
-      console.log(`[EventConsumer] Processed intent stored: ${event.intent_id || event.intentId}`);
+      intentLogger.info(`Processed intent stored: ${event.intent_id || event.intentId}`);
     } catch (error) {
-      console.error('[EventConsumer] Error processing intent stored:', error);
+      intentLogger.error('Error processing intent stored:', error);
     }
   }
 
@@ -1367,11 +1394,9 @@ export class EventConsumer extends EventEmitter {
         },
       });
 
-      console.log(
-        `[EventConsumer] Processed intent query response: ${event.query_id || event.queryId}`
-      );
+      intentLogger.info(`Processed intent query response: ${event.query_id || event.queryId}`);
     } catch (error) {
-      console.error('[EventConsumer] Error processing intent query response:', error);
+      intentLogger.error('Error processing intent query response:', error);
     }
   }
 

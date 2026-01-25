@@ -30,7 +30,13 @@ export const DEFAULT_MAX_INTENTS = 100;
  * When seenEventIds.size exceeds maxItems * this multiplier,
  * the Set is pruned to only contain IDs currently in the intents array.
  */
-export const SEEN_EVENT_IDS_CLEANUP_MULTIPLIER = 5;
+export const SEEN_EVENT_IDS_CLEANUP_MULTIPLIER = 3;
+
+/**
+ * Interval in milliseconds for periodic seenEventIds cleanup.
+ * Ensures memory is bounded even during idle periods.
+ */
+export const SEEN_EVENT_IDS_CLEANUP_INTERVAL_MS = 60_000;
 
 /**
  * Intent event types received from WebSocket
@@ -395,6 +401,39 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
       }
     };
   }, [isConnected, autoConnect, subscribe, unsubscribe, debug]);
+
+  /**
+   * Interval-based cleanup of seenEventIds to prevent memory accumulation during idle periods.
+   * Runs every SEEN_EVENT_IDS_CLEANUP_INTERVAL_MS and prunes stale IDs.
+   */
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      // Only cleanup if we have accumulated more IDs than currently displayed
+      if (seenEventIds.current.size > maxItems) {
+        // Get current intent IDs from latest state
+        setIntents((currentIntents) => {
+          const currentIds = new Set(currentIntents.map((i) => i.id));
+          seenEventIds.current = currentIds;
+
+          if (debug) {
+            // eslint-disable-next-line no-console
+            console.log(
+              '[IntentStream] Periodic cleanup: pruned seenEventIds to',
+              currentIds.size,
+              'entries'
+            );
+          }
+
+          // Return unchanged to avoid unnecessary re-render
+          return currentIntents;
+        });
+      }
+    }, SEEN_EVENT_IDS_CLEANUP_INTERVAL_MS);
+
+    return () => {
+      clearInterval(cleanupInterval);
+    };
+  }, [maxItems, debug]);
 
   /**
    * Clear all intents and reset state

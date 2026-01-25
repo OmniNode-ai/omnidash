@@ -13,7 +13,7 @@
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
 import { intentEventEmitter } from './intent-events';
-import { getIntelligenceEvents } from './intelligence-event-adapter';
+import { getIntelligenceEvents, IntelligenceEventAdapter } from './intelligence-event-adapter';
 
 export const intentRouter = Router();
 
@@ -21,12 +21,12 @@ export const intentRouter = Router();
 // Helper: Get intelligence events adapter (with lazy init)
 // ============================================================================
 
-async function getIntentAdapter() {
+async function getIntentAdapter(): Promise<IntelligenceEventAdapter | null> {
   const intel = getIntelligenceEvents();
   if (!intel) {
     return null;
   }
-  if (!(intel as any).started) {
+  if (!intel.started) {
     await intel.start();
   }
   return intel;

@@ -30,16 +30,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Clock, MessageSquare, AlertCircle, Inbox, BarChart3, List } from 'lucide-react';
-import type { IntentRecordPayload } from '@shared/intent-types';
+import type { IntentItem } from './RecentIntents';
 
 // ============================================================================
 // Types
 // ============================================================================
-
-export interface IntentItem extends IntentRecordPayload {
-  /** Optional user context/prompt text */
-  user_context?: string;
-}
 
 interface SessionIntentsResponse {
   ok: boolean;
