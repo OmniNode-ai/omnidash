@@ -192,7 +192,9 @@ export class IntentEventEmitter extends EventEmitter {
     // Also emit to the specific event type topic for targeted subscriptions
     this.emit(eventType, data);
 
-    console.log(`[IntentEventEmitter] Emitted ${eventType} event`);
+    if (process.env.DEBUG_INTENT_EVENTS === 'true' || process.env.NODE_ENV === 'development') {
+      console.log(`[IntentEventEmitter] Emitted ${eventType} event`);
+    }
   }
 
   /**
@@ -402,7 +404,9 @@ let intentEventEmitterInstance: IntentEventEmitter | null = null;
 export function getIntentEventEmitter(): IntentEventEmitter {
   if (!intentEventEmitterInstance) {
     intentEventEmitterInstance = new IntentEventEmitter();
-    console.log('[IntentEventEmitter] Initialized singleton instance');
+    if (process.env.DEBUG_INTENT_EVENTS === 'true' || process.env.NODE_ENV === 'development') {
+      console.log('[IntentEventEmitter] Initialized singleton instance');
+    }
   }
   return intentEventEmitterInstance;
 }
@@ -471,7 +475,7 @@ export interface IntentDistribution {
  *
  * @param distribution - The distribution summary
  */
-export function emitDistributionUpdate(distribution: IntentDistribution): void {
+export function emitIntentDistributionUpdate(distribution: IntentDistribution): void {
   // Convert Record<string, number> to IntentCategoryDistribution[]
   const total = distribution.total_intents;
   const categories: IntentCategoryDistribution[] = Object.entries(distribution.distribution).map(

@@ -9,11 +9,12 @@
 
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
+import { z } from 'zod';
 import { getIntelligenceEvents } from './intelligence-event-adapter';
 import {
   intentEventEmitter,
   emitIntentUpdate,
-  emitDistributionUpdate,
+  emitIntentDistributionUpdate,
   type IntentRecord,
 } from './intent-events';
 
@@ -44,6 +45,14 @@ interface StoreIntentResponse {
   success: boolean;
   intent_id: string;
 }
+
+// Zod schema for POST /store request body validation
+const StoreIntentSchema = z.object({
+  sessionRef: z.string().max(255).optional(),
+  intentCategory: z.string().min(1, 'intentCategory cannot be empty').max(100),
+  confidence: z.number().min(0).max(1).optional().default(0.95),
+  keywords: z.array(z.string().max(100)).max(50).optional().default([]),
+});
 
 // ============================================================================
 // In-Memory Store (for development/testing)
@@ -343,20 +352,21 @@ intentRouter.get('/recent', async (req, res) => {
  */
 intentRouter.post('/store', async (req, res) => {
   try {
-    const { sessionRef, intentCategory, keywords = [] } = req.body;
+    // Validate request body with Zod
+    const parseResult = StoreIntentSchema.safeParse(req.body);
 
-    if (!intentCategory) {
+    if (!parseResult.success) {
+      const errorMessages = parseResult.error.errors.map(
+        (err) => `${err.path.join('.')}: ${err.message}`
+      );
       return res.status(400).json({
-        error: 'Missing required field',
-        message: 'intentCategory is required',
+        error: 'Validation failed',
+        message: errorMessages.join('; '),
+        details: parseResult.error.errors,
       });
     }
 
-    // Parse confidence safely - if invalid, use default
-    const rawConfidence = req.body.confidence;
-    const parsedConfidence =
-      typeof rawConfidence === 'number' && !Number.isNaN(rawConfidence) ? rawConfidence : 0.95;
-    const confidence = Math.max(0, Math.min(1, parsedConfidence));
+    const { sessionRef, intentCategory, confidence, keywords } = parseResult.data;
 
     // Create the intent record
     const intent: IntentRecord = {
@@ -364,7 +374,7 @@ intentRouter.post('/store', async (req, res) => {
       sessionRef: sessionRef || `session-${randomUUID().slice(0, 8)}`,
       intentCategory,
       confidence,
-      keywords: Array.isArray(keywords) ? keywords : [],
+      keywords,
       createdAt: new Date().toISOString(),
     };
 
@@ -377,7 +387,7 @@ intentRouter.post('/store', async (req, res) => {
     // Also emit updated distribution
     const recentIntents = getIntentsFromStore(24);
     const distribution = calculateDistribution(recentIntents);
-    emitDistributionUpdate({
+    emitIntentDistributionUpdate({
       distribution,
       total_intents: recentIntents.length,
       time_range_hours: 24,
