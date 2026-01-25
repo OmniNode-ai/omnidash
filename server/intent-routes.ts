@@ -119,6 +119,12 @@ function getAllIntentsFromBuffer(): IntentRecord[] {
   // Start from the most recently added item (bufferHead - 1) and go backwards
   for (let i = 0; i < bufferCount; i++) {
     const index = (bufferHead - 1 - i + MAX_STORED_INTENTS) % MAX_STORED_INTENTS;
+    // Defensive bounds check - should never trigger with correct modulo math,
+    // but guards against future refactoring errors
+    if (index < 0 || index >= MAX_STORED_INTENTS) {
+      console.error(`[intent-routes] Buffer index out of bounds: ${index}`);
+      continue;
+    }
     const intent = intentBuffer[index];
     if (intent !== null) {
       result.push(intent);
@@ -531,10 +537,11 @@ intentRouter.get('/recent', async (req, res) => {
         );
 
         if (result?.intents) {
-          const slicedIntents = result.intents.slice(offset, offset + limit);
+          // NOTE: Kafka service owns pagination - it applies offset/limit upstream.
+          // We trust the response is already paginated; do not slice again here.
           const response: RecentIntentsResponse = {
-            intents: slicedIntents,
-            count: slicedIntents.length,
+            intents: result.intents,
+            count: result.intents.length,
             total_available: result.total_count || result.intents.length,
           };
           return res.json(response);

@@ -426,8 +426,9 @@ export const intentEventEmitter = getIntentEventEmitter();
 // ============================================================================
 
 /**
- * IntentRecord type alias for camelCase field naming convention.
- * Maps to IntentRecordPayload with camelCase fields.
+ * IntentRecord uses camelCase for internal domain logic (TypeScript conventions).
+ * IntentRecordPayload uses snake_case for external wire format (Kafka, HTTP API).
+ * Use toSnakeCase() to convert at API boundaries.
  */
 export interface IntentRecord {
   intentId: string;
