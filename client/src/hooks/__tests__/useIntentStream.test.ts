@@ -14,7 +14,7 @@ import {
   DEFAULT_MAX_INTENTS,
   SEEN_EVENT_IDS_CLEANUP_MULTIPLIER,
   SEEN_EVENT_IDS_CLEANUP_INTERVAL_MS,
-} from '../useIntentStream';
+} from '@/hooks/useIntentStream';
 import type { IntentClassifiedEvent, IntentStoredEvent } from '@shared/intent-types';
 
 // Mock useWebSocket hook
@@ -71,6 +71,7 @@ describe('useIntentStream', () => {
   afterEach(() => {
     vi.clearAllTimers();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   // Helper to create a mock INTENT_CLASSIFIED message

@@ -12,7 +12,7 @@ import {
   getConfidenceOpacity,
   getIntentColorWithConfidence,
   formatCategoryName,
-} from '../intent-colors';
+} from '@/lib/intent-colors';
 
 describe('intent-colors', () => {
   describe('Constants', () => {

@@ -30,7 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Clock, MessageSquare, AlertCircle, Inbox, BarChart3, List } from 'lucide-react';
-import type { IntentItem } from './RecentIntents';
+import type { IntentItem } from '@/components/intent/RecentIntents';
 import {
   getIntentColor,
   getIntentBgClass,
