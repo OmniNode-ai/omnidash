@@ -101,7 +101,7 @@ describe('useRegistryWebSocket', () => {
     it('should auto-subscribe to registry topics when connected', () => {
       renderHook(() => useRegistryWebSocket());
 
-      expect(mockSubscribe).toHaveBeenCalledWith(['registry']);
+      expect(mockSubscribe).toHaveBeenCalledWith(['registry', 'registry-nodes']);
     });
 
     it('should not auto-subscribe when autoSubscribe is false', () => {
