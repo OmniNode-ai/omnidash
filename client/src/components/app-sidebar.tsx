@@ -1,4 +1,13 @@
-import { Radio, ChevronRight, Search, Layers, Activity, GitBranch, Globe } from 'lucide-react';
+import {
+  Radio,
+  ChevronRight,
+  Search,
+  Layers,
+  Activity,
+  GitBranch,
+  Globe,
+  Brain,
+} from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
   Sidebar,
@@ -37,6 +46,12 @@ const dashboards = [
     url: '/discovery',
     icon: Globe,
     description: 'Contract-driven node and service discovery',
+  },
+  {
+    title: 'Intent Dashboard',
+    url: '/intents',
+    icon: Brain,
+    description: 'Real-time intent classification and analysis',
   },
 ];
 

@@ -25,6 +25,7 @@ export const intentRouter = Router();
 // ============================================================================
 
 interface DistributionResponse {
+  ok: boolean;
   distribution: Record<string, number>;
   total_intents: number;
   time_range_hours: number;
@@ -52,12 +53,52 @@ interface StoreIntentResponse {
   intent_id: string;
 }
 
+// ============================================================================
+// Input Sanitization
+// ============================================================================
+
+/**
+ * Sanitize user-controlled strings for safe storage.
+ *
+ * This function:
+ * - Trims leading/trailing whitespace
+ * - Removes control characters that could cause issues in logs, databases, or JSON
+ *
+ * Security notes:
+ * - HTML entity escaping is NOT applied here because:
+ *   1. Data is returned via JSON API only (no server-side HTML rendering)
+ *   2. React frontend auto-escapes text content in JSX (XSS protection built-in)
+ *   3. Escaping here would cause double-encoding (e.g., "test & debug" → "test &amp; debug")
+ * - If this data is ever rendered in server-side HTML templates, escape at render time
+ *
+ * @param input - The user-provided string to sanitize
+ * @returns Sanitized string safe for storage and JSON API responses
+ */
+function sanitizeString(input: string): string {
+  return (
+    input
+      .trim()
+      // Remove control characters (U+0000 to U+001F except tab/newline/carriage return, plus DEL)
+      // These can cause issues in logs, databases, terminals, and JSON parsing
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+  );
+}
+
 // Zod schema for POST /store request body validation
 const StoreIntentSchema = z.object({
-  sessionRef: z.string().max(255).optional(),
-  intentCategory: z.string().min(1, 'intentCategory cannot be empty').max(100),
-  confidence: z.number().min(0).max(1).optional().default(0.95),
-  keywords: z.array(z.string().max(100)).max(50).optional().default([]),
+  sessionRef: z
+    .string()
+    .max(255)
+    .optional()
+    .transform((val) => (val ? sanitizeString(val) : val)),
+  intentCategory: z
+    .string()
+    .min(1, 'intentCategory cannot be empty')
+    .max(100)
+    .transform(sanitizeString),
+  // Use z.coerce.number() to handle both number and string inputs (e.g., 0.85 and "0.85")
+  confidence: z.coerce.number().min(0).max(1).optional().default(0.95),
+  keywords: z.array(z.string().max(100).transform(sanitizeString)).max(50).optional().default([]),
 });
 
 // Zod schemas for query parameter validation
@@ -335,6 +376,7 @@ intentRouter.get('/distribution', async (req, res) => {
     const queryResult = DistributionQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
       return res.status(400).json({
+        ok: false,
         error: 'Invalid query parameters',
         message: queryResult.error.errors
           .map((e) => `${e.path.join('.')}: ${e.message}`)
@@ -344,8 +386,9 @@ intentRouter.get('/distribution', async (req, res) => {
     const { time_range_hours: timeRangeHours } = queryResult.data;
 
     // Try to get data from Kafka/intelligence service
+    // Check both that adapter exists AND is started (using public getter)
     const intelligenceEvents = getIntelligenceEvents();
-    if (intelligenceEvents) {
+    if (intelligenceEvents?.started) {
       try {
         const result = await intelligenceEvents.request(
           'intent_distribution',
@@ -358,6 +401,7 @@ intentRouter.get('/distribution', async (req, res) => {
 
         if (result?.distribution) {
           const response: DistributionResponse = {
+            ok: true,
             distribution: result.distribution,
             total_intents: result.total_intents || 0,
             time_range_hours: timeRangeHours,
@@ -379,6 +423,7 @@ intentRouter.get('/distribution', async (req, res) => {
     const distribution = calculateDistribution(intents);
 
     const response: DistributionResponse = {
+      ok: true,
       distribution,
       total_intents: intents.length,
       time_range_hours: timeRangeHours,
@@ -388,6 +433,7 @@ intentRouter.get('/distribution', async (req, res) => {
   } catch (error) {
     console.error('[intent-routes] Error fetching intent distribution:', error);
     return res.status(500).json({
+      ok: false,
       error: 'Failed to fetch intent distribution',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
@@ -421,6 +467,7 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
     // Validate sessionId
     if (!sessionId || sessionId.length === 0 || sessionId.length > 255) {
       return res.status(400).json({
+        ok: false,
         error: 'Invalid parameter',
         message: 'sessionId must be between 1-255 characters',
       });
@@ -429,6 +476,7 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
     const queryResult = SessionQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
       return res.status(400).json({
+        ok: false,
         error: 'Invalid query parameters',
         message: queryResult.error.errors
           .map((e) => `${e.path.join('.')}: ${e.message}`)
@@ -438,8 +486,9 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
     const { limit, min_confidence: minConfidence } = queryResult.data;
 
     // Try to get data from Kafka/intelligence service
+    // Check both that adapter exists AND is started (using public getter)
     const intelligenceEvents = getIntelligenceEvents();
-    if (intelligenceEvents) {
+    if (intelligenceEvents?.started) {
       try {
         const result = await intelligenceEvents.request(
           'intent_session',
@@ -485,6 +534,7 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
   } catch (error) {
     console.error('[intent-routes] Error fetching session intents:', error);
     return res.status(500).json({
+      ok: false,
       error: 'Failed to fetch session intents',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
@@ -513,6 +563,7 @@ intentRouter.get('/recent', async (req, res) => {
     const queryResult = RecentQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
       return res.status(400).json({
+        ok: false,
         error: 'Invalid query parameters',
         message: queryResult.error.errors
           .map((e) => `${e.path.join('.')}: ${e.message}`)
@@ -522,8 +573,9 @@ intentRouter.get('/recent', async (req, res) => {
     const { limit, offset, time_range_hours: timeRangeHours } = queryResult.data;
 
     // Try to get data from Kafka/intelligence service
+    // Check both that adapter exists AND is started (using public getter)
     const intelligenceEvents = getIntelligenceEvents();
-    if (intelligenceEvents) {
+    if (intelligenceEvents?.started) {
       try {
         const result = await intelligenceEvents.request(
           'intent_recent',
@@ -570,6 +622,7 @@ intentRouter.get('/recent', async (req, res) => {
   } catch (error) {
     console.error('[intent-routes] Error fetching recent intents:', error);
     return res.status(500).json({
+      ok: false,
       error: 'Failed to fetch recent intents',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
@@ -603,7 +656,16 @@ intentRouter.get('/recent', async (req, res) => {
 intentRouter.post('/store', async (req, res) => {
   try {
     // Rate limiting check
-    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    // Attempt to get client IP from various sources
+    let clientIp = req.ip || req.socket.remoteAddress;
+    if (!clientIp) {
+      // Log when IP detection fails - helps debug proxy/load balancer issues
+      console.warn(
+        '[intent-routes] IP detection failed for rate limiting - falling back to "unknown". ' +
+          'Consider configuring trust proxy settings if behind a reverse proxy.'
+      );
+      clientIp = 'unknown';
+    }
     if (!checkRateLimit(clientIp)) {
       const remaining = getRateLimitRemaining(clientIp);
       const resetSeconds = getRateLimitResetSeconds(clientIp);
@@ -612,6 +674,7 @@ intentRouter.post('/store', async (req, res) => {
       res.set('X-RateLimit-Reset', String(resetSeconds));
       res.set('Retry-After', String(resetSeconds));
       return res.status(429).json({
+        ok: false,
         error: 'Too Many Requests',
         message: `Rate limit exceeded. Maximum ${RATE_LIMIT_MAX_REQUESTS} requests per minute.`,
         retryAfterSeconds: resetSeconds,
@@ -626,6 +689,7 @@ intentRouter.post('/store', async (req, res) => {
         (err) => `${err.path.join('.')}: ${err.message}`
       );
       return res.status(400).json({
+        ok: false,
         error: 'Validation failed',
         message: errorMessages.join('; '),
         details: parseResult.error.errors,
@@ -638,6 +702,7 @@ intentRouter.post('/store', async (req, res) => {
     const queryResult = StoreQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
       return res.status(400).json({
+        ok: false,
         error: 'Invalid query parameters',
         message: queryResult.error.errors
           .map((e) => `${e.path.join('.')}: ${e.message}`)
@@ -687,6 +752,7 @@ intentRouter.post('/store', async (req, res) => {
   } catch (error) {
     console.error('[intent-routes] Error storing intent:', error);
     return res.status(500).json({
+      ok: false,
       error: 'Failed to store intent',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
