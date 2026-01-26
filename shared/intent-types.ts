@@ -743,21 +743,85 @@ export function isIntentQueryResponse(event: unknown): event is IntentQueryRespo
 /**
  * Type guard to check if an event is an IntentStoredEvent.
  * Uses INTENT_STORED_TOPIC constant for consistent event_type matching.
- * Validates all required fields to ensure proper type narrowing.
+ *
+ * Validates ALL required fields from the IntentStoredEvent interface:
+ * - event_type: Must equal INTENT_STORED_TOPIC
+ * - intent_id: Non-empty string (UUID)
+ * - session_ref: Non-empty string
+ * - intent_category: Non-empty string
+ * - confidence: Number (0.0-1.0)
+ * - keywords: Array of strings
+ * - created: Boolean indicating if newly created or merged
+ * - stored_at: Non-empty string (ISO-8601 timestamp)
+ * - execution_time_ms: Non-negative number
+ * - status: 'success' or 'error'
+ *
+ * Optional fields (not validated, may be undefined):
+ * - correlation_id: UUID string for request tracing
+ * - error_message: Error details if status is 'error'
+ *
+ * @param event - The unknown event to validate
+ * @returns True if event matches IntentStoredEvent structure with all required fields
+ *
+ * @example
+ * ```typescript
+ * if (isIntentStoredEvent(event)) {
+ *   // TypeScript knows event has all required IntentStoredEvent fields
+ *   console.log(event.intent_id, event.keywords, event.status);
+ * }
+ * ```
  */
 export function isIntentStoredEvent(event: unknown): event is IntentStoredEvent {
   if (typeof event !== 'object' || event === null) {
     return false;
   }
   const e = event as Record<string, unknown>;
-  return (
-    e.event_type === INTENT_STORED_TOPIC &&
-    typeof e.intent_id === 'string' &&
-    typeof e.session_ref === 'string' &&
-    typeof e.intent_category === 'string' &&
-    typeof e.confidence === 'number' &&
-    typeof e.stored_at === 'string'
-  );
+
+  // Validate event_type matches the expected topic
+  if (e.event_type !== INTENT_STORED_TOPIC) {
+    return false;
+  }
+
+  // Validate required string fields are non-empty strings
+  if (
+    typeof e.intent_id !== 'string' ||
+    e.intent_id.length === 0 ||
+    typeof e.session_ref !== 'string' ||
+    e.session_ref.length === 0 ||
+    typeof e.intent_category !== 'string' ||
+    e.intent_category.length === 0 ||
+    typeof e.stored_at !== 'string' ||
+    e.stored_at.length === 0
+  ) {
+    return false;
+  }
+
+  // Validate confidence is a number
+  if (typeof e.confidence !== 'number') {
+    return false;
+  }
+
+  // Validate keywords is an array (elements validated as strings if needed)
+  if (!Array.isArray(e.keywords)) {
+    return false;
+  }
+
+  // Validate created is a boolean
+  if (typeof e.created !== 'boolean') {
+    return false;
+  }
+
+  // Validate execution_time_ms is a non-negative number
+  if (typeof e.execution_time_ms !== 'number' || e.execution_time_ms < 0) {
+    return false;
+  }
+
+  // Validate status is one of the allowed values
+  if (e.status !== 'success' && e.status !== 'error') {
+    return false;
+  }
+
+  return true;
 }
 
 /**

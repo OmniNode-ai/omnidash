@@ -2804,10 +2804,11 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
       return undefined;
     }
     // Delegate to actual instance
-    const value = (instance as any)[prop];
+    // Type assertion needed for Proxy property access - TypeScript doesn't fully support dynamic property access in Proxies
+    const value = instance[prop as keyof EventConsumer];
     // Bind methods to the instance to preserve 'this' context
     if (typeof value === 'function') {
-      return value.bind(instance);
+      return (value as (...args: unknown[]) => unknown).bind(instance);
     }
     return value;
   },

@@ -19,6 +19,8 @@ import {
   INTENT_STORED_TOPIC,
   EVENT_TYPE_NAMES,
   VALID_INTENT_CATEGORIES,
+  isIntentClassifiedEvent,
+  isIntentStoredEvent,
   type IntentClassifiedEvent,
   type IntentStoredEvent,
   type IntentCategory,
@@ -252,11 +254,12 @@ function generateSessionRefs(count: number): string[] {
 
 /**
  * Generate an IntentClassifiedEvent
+ * Validates the generated event passes the type guard before returning.
  */
 function generateIntentClassifiedEvent(sessionId: string): IntentClassifiedEvent {
   const category = selectWeightedCategory();
 
-  return {
+  const event: IntentClassifiedEvent = {
     event_type: EVENT_TYPE_NAMES.INTENT_CLASSIFIED,
     session_id: sessionId,
     correlation_id: randomUUID(),
@@ -264,17 +267,30 @@ function generateIntentClassifiedEvent(sessionId: string): IntentClassifiedEvent
     confidence: randomConfidence(),
     timestamp: new Date().toISOString(),
   };
+
+  // Validate the event passes the type guard
+  if (!isIntentClassifiedEvent(event)) {
+    throw new Error(
+      `Generated IntentClassifiedEvent failed type guard validation: ${JSON.stringify(event)}`
+    );
+  }
+
+  return event;
 }
 
 /**
  * Generate an IntentStoredEvent (complementary to classified events)
+ * Validates the generated event passes the type guard before returning.
+ *
+ * NOTE: Uses INTENT_STORED_TOPIC as event_type to match the isIntentStoredEvent type guard.
+ * This differs from IntentClassifiedEvent which uses EVENT_TYPE_NAMES.INTENT_CLASSIFIED.
  */
 function generateIntentStoredEvent(
   sessionRef: string,
   category: IntentCategory,
   confidence: number
 ): IntentStoredEvent {
-  return {
+  const event: IntentStoredEvent = {
     event_type: INTENT_STORED_TOPIC,
     correlation_id: randomUUID(),
     intent_id: randomUUID(),
@@ -287,6 +303,15 @@ function generateIntentStoredEvent(
     execution_time_ms: randomInt(5, 50),
     status: 'success',
   };
+
+  // Validate the event passes the type guard
+  if (!isIntentStoredEvent(event)) {
+    throw new Error(
+      `Generated IntentStoredEvent failed type guard validation: ${JSON.stringify(event)}`
+    );
+  }
+
+  return event;
 }
 
 // ============================================================================
