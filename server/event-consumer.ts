@@ -1,6 +1,6 @@
 import { Kafka, Consumer, KafkaMessage } from 'kafkajs';
 import { EventEmitter } from 'events';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 import { LRUCache } from 'lru-cache';
@@ -1607,18 +1607,17 @@ export class EventConsumer extends EventEmitter {
       });
 
       // Forward to IntentEventEmitter for new WebSocket subscription pattern
-      // Convert to IntentRecordPayload format for consistent broadcasting
-      const intentRecordPayload: IntentRecordPayload = {
-        intent_id: intentEvent.id,
-        session_ref: intentEvent.sessionId || '',
-        intent_category: intentType,
-        confidence: intentEvent.confidence,
-        keywords: [], // IntentClassifiedEvent doesn't include keywords; set empty array
-        created_at: createdAt.toISOString(),
-      };
-
       // Use type guard for validation before emitting
       if (isIntentClassifiedEvent(event)) {
+        // Convert to IntentRecordPayload format for consistent broadcasting
+        const intentRecordPayload: IntentRecordPayload = {
+          intent_id: intentEvent.id,
+          session_ref: intentEvent.sessionId || '',
+          intent_category: intentType,
+          confidence: intentEvent.confidence,
+          keywords: [], // IntentClassifiedEvent doesn't include keywords; set empty array
+          created_at: createdAt.toISOString(),
+        };
         getIntentEventEmitter().emitIntentStored(intentRecordPayload);
         intentLogger.debug(
           `Forwarded intent classified to IntentEventEmitter: ${intentRecordPayload.intent_id}`

@@ -269,7 +269,7 @@ function generateIntentStoredEvent(
   confidence: number
 ): IntentStoredEvent {
   return {
-    event_type: INTENT_STORED_TOPIC,
+    event_type: EVENT_TYPE_NAMES.INTENT_STORED,
     correlation_id: randomUUID(),
     intent_id: randomUUID(),
     session_ref: sessionRef,
