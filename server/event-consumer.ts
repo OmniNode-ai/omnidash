@@ -1,5 +1,6 @@
 import { Kafka, Consumer, KafkaMessage } from 'kafkajs';
 import { EventEmitter } from 'events';
+import crypto from 'crypto';
 import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 import { LRUCache } from 'lru-cache';
