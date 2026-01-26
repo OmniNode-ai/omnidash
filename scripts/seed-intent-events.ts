@@ -192,6 +192,7 @@ function randomConfidence(): number {
 
 /**
  * Select a category based on weighted distribution
+ * Validates that the selected category is a valid IntentCategory
  */
 function selectWeightedCategory(): IntentCategory {
   const totalWeight = WEIGHTED_CATEGORIES.reduce((sum, c) => sum + c.weight, 0);
@@ -200,6 +201,11 @@ function selectWeightedCategory(): IntentCategory {
   for (const { category, weight } of WEIGHTED_CATEGORIES) {
     random -= weight;
     if (random <= 0) {
+      // Runtime validation - ensure category is valid
+      if (!VALID_INTENT_CATEGORIES.includes(category)) {
+        console.warn(`Invalid category '${category}' in WEIGHTED_CATEGORIES, using 'unknown'`);
+        return 'unknown';
+      }
       return category;
     }
   }

@@ -1701,7 +1701,7 @@ export class EventConsumer extends EventEmitter {
         const intentId = event.intent_id || event.intentId || crypto.randomUUID();
         const intentRecordPayload: IntentRecordPayload = {
           intent_id: intentId,
-          session_ref: '', // Not available in legacy format
+          session_ref: 'unknown', // Sentinel value for legacy events without session tracking
           intent_category: event.intent_type || event.intentType || 'unknown',
           confidence: 0, // Not available in legacy format
           keywords: [],

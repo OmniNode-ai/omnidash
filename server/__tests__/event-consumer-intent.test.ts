@@ -107,8 +107,11 @@ describe('EventConsumer Intent Forwarding', () => {
     vi.useRealTimers();
     try {
       await consumer.stop();
-    } catch {
-      // Ignore cleanup errors
+    } catch (error) {
+      // Consumer may not be fully initialized in some test scenarios
+      // (e.g., if start() was mocked or test failed before consumer.start() completed).
+      // Log at debug level for troubleshooting but don't fail the test.
+      console.debug('Cleanup: consumer.stop() error (expected in some tests):', error);
     }
   });
 
@@ -285,8 +288,8 @@ describe('EventConsumer Intent Forwarding', () => {
 
       const payload = mockEmitIntentStored.mock.calls[0][0];
       expect(payload.intent_id).toBe('legacy-intent-123');
-      // Legacy format doesn't have session_ref
-      expect(payload.session_ref).toBe('');
+      // Legacy format doesn't have session_ref, uses 'unknown' sentinel value
+      expect(payload.session_ref).toBe('unknown');
       // Legacy format uses intent_type which maps to intent_category
       expect(payload.intent_category).toBe('analysis');
       // Legacy format doesn't have confidence
