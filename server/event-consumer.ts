@@ -11,8 +11,13 @@ import {
   INTENT_QUERY_RESPONSE_TOPIC as SHARED_INTENT_QUERY_RESPONSE_TOPIC,
   EVENT_TYPE_NAMES,
   isIntentClassifiedEvent,
+  isIntentStoredEvent,
   type IntentClassifiedEvent as SharedIntentClassifiedEvent,
+  type IntentStoredEvent as SharedIntentStoredEvent,
+  type IntentRecordPayload,
 } from '@shared/intent-types';
+// Import intentEventEmitter for WebSocket broadcasting of intent events
+import { getIntentEventEmitter } from './intent-events';
 // Import env prefix utilities from server-side topics module
 import { withEnvPrefix, getTopicEnvPrefix } from './topics/onex-intent-topics';
 import {
@@ -1593,12 +1598,31 @@ export class EventConsumer extends EventEmitter {
         });
       }
 
-      // Emit event for WebSocket broadcast
+      // Emit event for WebSocket broadcast (legacy EventEmitter pattern)
       this.emit('intent-event', {
         topic: INTENT_CLASSIFIED_TOPIC,
         payload: intentEvent,
         timestamp: new Date().toISOString(),
       });
+
+      // Forward to IntentEventEmitter for new WebSocket subscription pattern
+      // Convert to IntentRecordPayload format for consistent broadcasting
+      const intentRecordPayload: IntentRecordPayload = {
+        intent_id: intentEvent.id,
+        session_ref: intentEvent.sessionId || '',
+        intent_category: intentType,
+        confidence: intentEvent.confidence,
+        keywords: [], // IntentClassifiedEvent doesn't include keywords; set empty array
+        created_at: createdAt.toISOString(),
+      };
+
+      // Use type guard for validation before emitting
+      if (isIntentClassifiedEvent(event)) {
+        getIntentEventEmitter().emitIntentStored(intentRecordPayload);
+        intentLogger.debug(
+          `Forwarded intent classified to IntentEventEmitter: ${intentRecordPayload.intent_id}`
+        );
+      }
 
       intentLogger.info(
         `Processed intent classified: ${intentType} (confidence: ${intentEvent.confidence}, session: ${intentEvent.sessionId || 'unknown'})`
@@ -1642,7 +1666,7 @@ export class EventConsumer extends EventEmitter {
         new Date()
       );
 
-      // Emit event for WebSocket broadcast
+      // Emit event for WebSocket broadcast (legacy EventEmitter pattern)
       this.emit('intent-event', {
         topic: INTENT_STORED_TOPIC,
         payload: {
@@ -1655,6 +1679,40 @@ export class EventConsumer extends EventEmitter {
         },
         timestamp: new Date().toISOString(),
       });
+
+      // Forward to IntentEventEmitter for new WebSocket subscription pattern
+      // Use type guard for validation - if event matches SharedIntentStoredEvent format
+      if (isIntentStoredEvent(event)) {
+        // Event matches the full SharedIntentStoredEvent format with all fields
+        const storedEvent = event as unknown as SharedIntentStoredEvent;
+        const intentRecordPayload: IntentRecordPayload = {
+          intent_id: storedEvent.intent_id,
+          session_ref: storedEvent.session_ref,
+          intent_category: storedEvent.intent_category,
+          confidence: storedEvent.confidence,
+          keywords: storedEvent.keywords || [],
+          created_at: storedEvent.stored_at,
+        };
+        getIntentEventEmitter().emitIntentStored(intentRecordPayload);
+        intentLogger.debug(
+          `Forwarded intent stored to IntentEventEmitter: ${intentRecordPayload.intent_id}`
+        );
+      } else {
+        // Legacy format - create minimal IntentRecordPayload from available fields
+        const intentId = event.intent_id || event.intentId || crypto.randomUUID();
+        const intentRecordPayload: IntentRecordPayload = {
+          intent_id: intentId,
+          session_ref: '', // Not available in legacy format
+          intent_category: event.intent_type || event.intentType || 'unknown',
+          confidence: 0, // Not available in legacy format
+          keywords: [],
+          created_at: createdAt.toISOString(),
+        };
+        getIntentEventEmitter().emitIntentStored(intentRecordPayload);
+        intentLogger.debug(
+          `Forwarded legacy intent stored to IntentEventEmitter: ${intentRecordPayload.intent_id}`
+        );
+      }
 
       intentLogger.info(`Processed intent stored: ${event.intent_id || event.intentId}`);
     } catch (error) {
