@@ -350,14 +350,14 @@ function ChartTooltip({ active, payload, showClickHint = false }: ChartTooltipPr
       </div>
 
       {/* Session ID (truncated) - guard against null/undefined session_ref */}
-      {intent.session_ref && (
-        <div className="text-xs text-muted-foreground font-mono">
-          Session:{' '}
-          {intent.session_ref.length > 12
+      <div className="text-xs text-muted-foreground font-mono">
+        Session:{' '}
+        {intent.session_ref
+          ? intent.session_ref.length > 12
             ? `${intent.session_ref.slice(0, 12)}...`
-            : intent.session_ref}
-        </div>
-      )}
+            : intent.session_ref
+          : 'unknown'}
+      </div>
 
       {/* Keywords */}
       {intent.keywords && intent.keywords.length > 0 && (
