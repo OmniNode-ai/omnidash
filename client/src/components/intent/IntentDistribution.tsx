@@ -18,6 +18,15 @@ import { Activity, AlertCircle } from 'lucide-react';
 import { distributionToArray, type IntentCategoryCount } from '@shared/intent-types';
 import { getIntentColor } from '@/lib/intent-colors';
 
+/** Maximum height for the chart container to prevent excessively tall charts */
+const MAX_CHART_HEIGHT = 500;
+/** Minimum height for the chart to ensure readability */
+const MIN_CHART_HEIGHT = 200;
+/** Height per bar in pixels */
+const HEIGHT_PER_BAR = 40;
+/** Padding for the chart */
+const CHART_PADDING = 20;
+
 /**
  * API response structure for intent distribution.
  * Matches the actual response from /api/intents/distribution
@@ -211,8 +220,10 @@ export function IntentDistribution({
     return <IntentDistributionEmpty title={title} className={className} />;
   }
 
-  // Calculate chart height based on number of categories (40px per bar + padding)
-  const chartHeight = Math.max(200, chartData.length * 40 + 20);
+  // Calculate chart height based on number of categories, capped at MAX_CHART_HEIGHT
+  const calculatedHeight = chartData.length * HEIGHT_PER_BAR + CHART_PADDING;
+  const chartHeight = Math.min(MAX_CHART_HEIGHT, Math.max(MIN_CHART_HEIGHT, calculatedHeight));
+  const needsScroll = calculatedHeight > MAX_CHART_HEIGHT;
 
   return (
     <Card className={cn('h-full', className)}>
@@ -229,8 +240,11 @@ export function IntentDistribution({
           {data?.time_range_hours ?? timeRangeHours}h
         </p>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={chartHeight}>
+      <CardContent
+        className={cn(needsScroll && 'overflow-y-auto')}
+        style={needsScroll ? { maxHeight: MAX_CHART_HEIGHT } : undefined}
+      >
+        <ResponsiveContainer width="100%" height={needsScroll ? calculatedHeight : chartHeight}>
           <BarChart
             data={chartData}
             layout="vertical"

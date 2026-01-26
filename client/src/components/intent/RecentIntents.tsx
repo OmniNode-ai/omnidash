@@ -28,8 +28,8 @@ import { getIntentBadgeClasses, getConfidenceColor, formatCategoryName } from '@
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Number of items to animate on initial render */
-const ANIMATE_ITEM_COUNT = 10;
+/** Duration in ms after which "new" animation state is cleared */
+const NEW_ITEM_ANIMATION_DURATION_MS = 1500;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -117,15 +117,13 @@ function IntentSkeleton() {
 
 interface IntentItemRowProps {
   intent: IntentItem;
-  index: number;
+  /** Whether this item is newly added via WebSocket (controls animation) */
+  isNew: boolean;
   showConfidence: boolean;
   onClick?: () => void;
 }
 
-function IntentItemRow({ intent, index, showConfidence, onClick }: IntentItemRowProps) {
-  // isNew controls animation - first N items animate on initial render.
-  // This is index-based for visual effect, not based on actual timestamp newness.
-  const isNew = index < ANIMATE_ITEM_COUNT;
+function IntentItemRow({ intent, isNew, showConfidence, onClick }: IntentItemRowProps) {
   // Use created_at from IntentRecordPayload, fallback to id for display timestamp
   const displayTimestamp = intent.created_at;
 
@@ -140,7 +138,6 @@ function IntentItemRow({ intent, index, showConfidence, onClick }: IntentItemRow
         onClick &&
           'cursor-pointer transition-all duration-200 ease-in-out hover:bg-accent/50 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.99]'
       )}
-      style={isNew ? { animationDelay: `${index * 50}ms` } : undefined}
       onClick={onClick}
       onKeyDown={
         onClick
@@ -225,8 +222,15 @@ export function RecentIntents({
   const queryClient = useQueryClient();
   const [intents, setIntents] = useState<IntentItem[]>([]);
 
+  // Track IDs of items that arrived via WebSocket (truly "new" items)
+  // Only these items should animate, not items from initial API load
+  const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set());
+
   // Ref for debounced query invalidation to prevent excessive re-fetching
   const invalidateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Ref for animation cleanup timeouts (keyed by intent_id)
+  const animationTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Fetch initial data
   const { data, isLoading, isError, error } = useQuery<RecentIntentsResponse>({
@@ -263,15 +267,33 @@ export function RecentIntents({
         };
 
         if (eventData.intent_category) {
+          const intentId =
+            eventData.intent_id || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
           const newIntent: IntentItem = {
-            intent_id:
-              eventData.intent_id || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            intent_id: intentId,
             session_ref: eventData.session_ref || eventData.session_id || '',
             created_at: message.timestamp,
             intent_category: eventData.intent_category,
             confidence: eventData.confidence || 0.5,
             keywords: eventData.keywords || [],
           };
+
+          // Mark this item as "new" for animation purposes
+          setNewItemIds((prev) => new Set(prev).add(intentId));
+
+          // Schedule removal of "new" status after animation completes
+          const timeoutId = setTimeout(() => {
+            setNewItemIds((prev) => {
+              const updated = new Set(prev);
+              updated.delete(intentId);
+              return updated;
+            });
+            animationTimeoutsRef.current.delete(intentId);
+          }, NEW_ITEM_ANIMATION_DURATION_MS);
+
+          // Track timeout for cleanup on unmount
+          animationTimeoutsRef.current.set(intentId, timeoutId);
 
           // Prepend new intent and cap at limit
           setIntents((prev) => [newIntent, ...prev].slice(0, limit));
@@ -306,12 +328,16 @@ export function RecentIntents({
     }
   }, [isConnected, subscribe, unsubscribe]);
 
-  // Cleanup debounced invalidation timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
+      // Clear query invalidation timeout
       if (invalidateTimeoutRef.current) {
         clearTimeout(invalidateTimeoutRef.current);
       }
+      // Clear all animation cleanup timeouts
+      animationTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+      animationTimeoutsRef.current.clear();
     };
   }, []);
 
@@ -370,11 +396,11 @@ export function RecentIntents({
       {!isLoading && !isError && intents.length > 0 && (
         <ScrollArea className="pr-4" style={{ maxHeight: `${maxHeight}px` }}>
           <div className="space-y-2">
-            {intents.map((intent, index) => (
+            {intents.map((intent) => (
               <IntentItemRow
                 key={intent.intent_id}
                 intent={intent}
-                index={index}
+                isNew={newItemIds.has(intent.intent_id)}
                 showConfidence={showConfidence}
                 onClick={onIntentClick ? () => onIntentClick(intent) : undefined}
               />
