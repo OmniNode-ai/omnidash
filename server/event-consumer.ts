@@ -2,13 +2,15 @@ import { Kafka, Consumer } from 'kafkajs';
 import { EventEmitter } from 'events';
 import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
+// Import topic constants from shared module (single source of truth)
 import {
-  ONEX_EVT_OMNIINTELLIGENCE_INTENT_CLASSIFIED_V1,
-  ONEX_EVT_OMNIMEMORY_INTENT_STORED_V1,
-  ONEX_EVT_OMNIMEMORY_INTENT_QUERY_RESPONSE_V1,
-  withEnvPrefix,
-  getTopicEnvPrefix,
-} from './topics/onex-intent-topics';
+  INTENT_CLASSIFIED_TOPIC as SHARED_INTENT_CLASSIFIED_TOPIC,
+  INTENT_STORED_TOPIC as SHARED_INTENT_STORED_TOPIC,
+  INTENT_QUERY_RESPONSE_TOPIC as SHARED_INTENT_QUERY_RESPONSE_TOPIC,
+  type IntentClassifiedEvent as SharedIntentClassifiedEvent,
+} from '@shared/intent-types';
+// Import env prefix utilities from server-side topics module
+import { withEnvPrefix, getTopicEnvPrefix } from './topics/onex-intent-topics';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 const RETRY_BASE_DELAY_MS = isTestEnv ? 20 : 1000;
@@ -24,15 +26,24 @@ const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 
 // Intent topics with environment prefix (ONEX canonical naming)
+// Derive canonical names from shared constants by removing the 'dev.' prefix
 const TOPIC_ENV_PREFIX = getTopicEnvPrefix();
-const INTENT_STORED_TOPIC = withEnvPrefix(TOPIC_ENV_PREFIX, ONEX_EVT_OMNIMEMORY_INTENT_STORED_V1);
+const extractCanonicalName = (topic: string): string => {
+  // Shared constants have format: 'dev.onex.evt...' - extract 'onex.evt...'
+  const match = topic.match(/^dev\.(.+)$/);
+  return match ? match[1] : topic;
+};
+const INTENT_STORED_TOPIC = withEnvPrefix(
+  TOPIC_ENV_PREFIX,
+  extractCanonicalName(SHARED_INTENT_STORED_TOPIC)
+);
 const INTENT_QUERY_RESPONSE_TOPIC = withEnvPrefix(
   TOPIC_ENV_PREFIX,
-  ONEX_EVT_OMNIMEMORY_INTENT_QUERY_RESPONSE_V1
+  extractCanonicalName(SHARED_INTENT_QUERY_RESPONSE_TOPIC)
 );
 const INTENT_CLASSIFIED_TOPIC = withEnvPrefix(
   TOPIC_ENV_PREFIX,
-  ONEX_EVT_OMNIINTELLIGENCE_INTENT_CLASSIFIED_V1
+  extractCanonicalName(SHARED_INTENT_CLASSIFIED_TOPIC)
 );
 
 // Structured logging for intent handlers
@@ -61,6 +72,45 @@ const intentLogger = {
     console.error(`[EventConsumer:intent:error] ${message}`, error ?? '');
   },
 };
+
+/**
+ * Validate and sanitize a timestamp string.
+ * Returns a valid Date object or the current date if the input is invalid.
+ *
+ * @param timestamp - The timestamp string to validate (ISO-8601 format expected)
+ * @param fallback - Optional fallback date (defaults to current time)
+ * @returns A valid Date object
+ */
+function sanitizeTimestamp(timestamp: string | undefined | null, fallback?: Date): Date {
+  if (!timestamp) {
+    return fallback ?? new Date();
+  }
+
+  // Try to parse the timestamp
+  const parsed = new Date(timestamp);
+
+  // Check if the parsed date is valid (not NaN)
+  if (isNaN(parsed.getTime())) {
+    intentLogger.warn(`Invalid timestamp string: "${timestamp}", using fallback`);
+    return fallback ?? new Date();
+  }
+
+  // Sanity check: reject timestamps too far in the future (more than 1 day ahead)
+  const maxFuture = Date.now() + 24 * 60 * 60 * 1000;
+  if (parsed.getTime() > maxFuture) {
+    intentLogger.warn(`Timestamp too far in future: "${timestamp}", using fallback`);
+    return fallback ?? new Date();
+  }
+
+  // Sanity check: reject timestamps too far in the past (before year 2000)
+  const minPast = new Date('2000-01-01').getTime();
+  if (parsed.getTime() < minPast) {
+    intentLogger.warn(`Timestamp too far in past: "${timestamp}", using fallback`);
+    return fallback ?? new Date();
+  }
+
+  return parsed;
+}
 
 export interface AgentMetrics {
   agent: string;
@@ -413,13 +463,20 @@ export interface RawNodeStateChangeEvent {
 /**
  * Internal intent classification event structure (camelCase for in-memory processing).
  * Note: This uses camelCase (intentType, correlationId) while the shared/intent-types.ts
- * IntentClassifiedEvent uses snake_case (intent_type, correlation_id).
+ * IntentClassifiedEvent uses snake_case (intent_category, correlation_id, session_id).
+ *
+ * Aligned with shared IntentClassifiedEvent:
+ * - intentType maps to intent_category (the category classification)
+ * - sessionId maps to session_id (session reference)
+ * - correlationId maps to correlation_id (request tracing)
+ *
  * Topic: {env}.onex.evt.omniintelligence.intent-classified.v1
  */
 export interface InternalIntentClassifiedEvent {
   id: string;
   correlationId: string;
-  intentType: string;
+  sessionId: string; // Added to align with shared IntentClassifiedEvent.session_id
+  intentType: string; // Maps to shared IntentClassifiedEvent.intent_category
   confidence: number;
   rawText: string;
   extractedEntities?: Record<string, unknown>;
@@ -429,20 +486,31 @@ export interface InternalIntentClassifiedEvent {
 
 /**
  * Raw intent classified event from Kafka (snake_case)
+ * Aligned with shared/intent-types.ts IntentClassifiedEvent interface.
+ *
+ * NOTE: The shared interface uses snake_case (intent_category, session_id, correlation_id).
+ * We support both snake_case and camelCase for backward compatibility with different producers.
  */
 export interface RawIntentClassifiedEvent {
   id?: string;
+  // Fields aligned with shared IntentClassifiedEvent
+  event_type?: string;
+  session_id?: string;
+  sessionId?: string;
   correlation_id?: string;
   correlationId?: string;
-  intent_type?: string;
+  intent_category?: string; // Shared interface field name
+  intentCategory?: string;
+  intent_type?: string; // Legacy field name (for backward compatibility)
   intentType?: string;
   confidence?: number;
+  timestamp?: string;
+  // Additional fields for extended events (not in shared interface)
   raw_text?: string;
   rawText?: string;
   extracted_entities?: Record<string, unknown>;
   extractedEntities?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
-  timestamp?: string;
   created_at?: string;
   createdAt?: string;
 }
@@ -573,7 +641,10 @@ export class EventConsumer extends EventEmitter {
   // Intent event storage
   private recentIntents: InternalIntentClassifiedEvent[] = [];
   private maxIntents = 100;
-  private intentDistribution: Record<string, number> = {};
+  // Intent distribution with timestamp tracking for proper pruning
+  // Each entry tracks (count, timestamps[]) to allow time-based pruning
+  private intentDistributionWithTimestamps: Map<string, { count: number; timestamps: number[] }> =
+    new Map();
 
   // Performance metrics storage
   private performanceMetrics: Array<{
@@ -1322,17 +1393,30 @@ export class EventConsumer extends EventEmitter {
 
   private handleIntentClassified(event: RawIntentClassifiedEvent): void {
     try {
-      const intentType = event.intent_type || event.intentType || 'unknown';
+      // Use intent_category (shared interface) with fallback to intent_type (legacy)
+      const intentType =
+        event.intent_category ||
+        event.intentCategory ||
+        event.intent_type ||
+        event.intentType ||
+        'unknown';
+
+      // Validate and sanitize timestamp
+      const createdAt = sanitizeTimestamp(
+        event.timestamp || event.created_at || event.createdAt,
+        new Date()
+      );
 
       const intentEvent: InternalIntentClassifiedEvent = {
         id: event.id || crypto.randomUUID(),
         correlationId: event.correlation_id || event.correlationId || '',
+        sessionId: event.session_id || event.sessionId || '', // Added for shared interface alignment
         intentType,
-        confidence: event.confidence || 0,
+        confidence: event.confidence ?? 0,
         rawText: event.raw_text || event.rawText || '',
         extractedEntities: event.extracted_entities || event.extractedEntities,
         metadata: event.metadata,
-        createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
+        createdAt,
       };
 
       // Store in recent intents
@@ -1341,8 +1425,18 @@ export class EventConsumer extends EventEmitter {
         this.recentIntents = this.recentIntents.slice(0, this.maxIntents);
       }
 
-      // Update intent distribution
-      this.intentDistribution[intentType] = (this.intentDistribution[intentType] || 0) + 1;
+      // Update intent distribution with timestamp tracking for proper pruning
+      const existing = this.intentDistributionWithTimestamps.get(intentType);
+      const now = Date.now();
+      if (existing) {
+        existing.count++;
+        existing.timestamps.push(now);
+      } else {
+        this.intentDistributionWithTimestamps.set(intentType, {
+          count: 1,
+          timestamps: [now],
+        });
+      }
 
       // Emit event for WebSocket broadcast
       this.emit('intent-event', {
@@ -1355,17 +1449,41 @@ export class EventConsumer extends EventEmitter {
         `Processed intent classified: ${intentType} (confidence: ${intentEvent.confidence})`
       );
     } catch (error) {
+      // Preserve full error context from the event for debugging
+      const errorContext = {
+        eventId: event.id ?? 'unknown',
+        correlationId: event.correlation_id ?? event.correlationId ?? 'unknown',
+        sessionId: event.session_id ?? event.sessionId ?? 'unknown',
+        intentCategory: event.intent_category ?? event.intentCategory ?? 'unknown',
+        intentType: event.intent_type ?? event.intentType ?? 'unknown',
+        confidence: event.confidence ?? 'unknown',
+        timestamp: event.timestamp ?? event.created_at ?? event.createdAt ?? 'unknown',
+        eventType: event.event_type ?? 'unknown',
+      };
+
       intentLogger.error(
-        `Error processing intent classified event: id=${event.id || 'unknown'}, ` +
-          `correlationId=${event.correlation_id || event.correlationId || 'unknown'}, ` +
-          `intentType=${event.intent_type || event.intentType || 'unknown'}`,
+        `Error processing intent classified event. Context: ${JSON.stringify(errorContext)}`,
         error
       );
+
+      // Emit error event with context for observability
+      this.emit('error', {
+        type: 'intent-classification-error',
+        context: errorContext,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
   private handleIntentStored(event: RawIntentStoredEvent): void {
     try {
+      // Validate and sanitize timestamp
+      const createdAt = sanitizeTimestamp(
+        event.timestamp || event.created_at || event.createdAt,
+        new Date()
+      );
+
       // Emit event for WebSocket broadcast
       this.emit('intent-event', {
         topic: INTENT_STORED_TOPIC,
@@ -1375,19 +1493,46 @@ export class EventConsumer extends EventEmitter {
           intentType: event.intent_type || event.intentType,
           storageLocation: event.storage_location || event.storageLocation,
           correlationId: event.correlation_id || event.correlationId,
-          createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
+          createdAt,
         },
         timestamp: new Date().toISOString(),
       });
 
       intentLogger.info(`Processed intent stored: ${event.intent_id || event.intentId}`);
     } catch (error) {
-      intentLogger.error('Error processing intent stored:', error);
+      // Preserve full error context from the event for debugging
+      const errorContext = {
+        eventId: event.id ?? 'unknown',
+        intentId: event.intent_id ?? event.intentId ?? 'unknown',
+        correlationId: event.correlation_id ?? event.correlationId ?? 'unknown',
+        intentType: event.intent_type ?? event.intentType ?? 'unknown',
+        storageLocation: event.storage_location ?? event.storageLocation ?? 'unknown',
+        timestamp: event.timestamp ?? event.created_at ?? event.createdAt ?? 'unknown',
+      };
+
+      intentLogger.error(
+        `Error processing intent stored event. Context: ${JSON.stringify(errorContext)}`,
+        error
+      );
+
+      // Emit error event with context for observability
+      this.emit('error', {
+        type: 'intent-stored-error',
+        context: errorContext,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
   private handleIntentQueryResponse(event: RawIntentQueryResponseEvent): void {
     try {
+      // Validate and sanitize timestamp
+      const createdAt = sanitizeTimestamp(
+        event.timestamp || event.created_at || event.createdAt,
+        new Date()
+      );
+
       // Emit event for WebSocket broadcast
       this.emit('intent-query-response', {
         query_id: event.query_id || event.queryId,
@@ -1397,13 +1542,33 @@ export class EventConsumer extends EventEmitter {
           correlationId: event.correlation_id || event.correlationId,
           results: event.results || [],
           totalCount: event.total_count || event.totalCount || 0,
-          createdAt: new Date(event.timestamp || event.createdAt || Date.now()),
+          createdAt,
         },
       });
 
       intentLogger.info(`Processed intent query response: ${event.query_id || event.queryId}`);
     } catch (error) {
-      intentLogger.error('Error processing intent query response:', error);
+      // Preserve full error context from the event for debugging
+      const errorContext = {
+        queryId: event.query_id ?? event.queryId ?? 'unknown',
+        correlationId: event.correlation_id ?? event.correlationId ?? 'unknown',
+        totalCount: event.total_count ?? event.totalCount ?? 'unknown',
+        resultsCount: event.results?.length ?? 0,
+        timestamp: event.timestamp ?? event.created_at ?? event.createdAt ?? 'unknown',
+      };
+
+      intentLogger.error(
+        `Error processing intent query response. Context: ${JSON.stringify(errorContext)}`,
+        error
+      );
+
+      // Emit error event with context for observability
+      this.emit('error', {
+        type: 'intent-query-response-error',
+        context: errorContext,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
@@ -1499,14 +1664,25 @@ export class EventConsumer extends EventEmitter {
     });
     const intentsRemoved = intentsBefore - this.recentIntents.length;
 
-    // Prune intent distribution - reset when intents are pruned to prevent unbounded growth
-    // The distribution will naturally rebuild from the remaining recentIntents
-    if (intentsRemoved > 0) {
-      // Rebuild distribution from remaining intents
-      this.intentDistribution = {};
-      for (const intent of this.recentIntents) {
-        this.intentDistribution[intent.intentType] =
-          (this.intentDistribution[intent.intentType] || 0) + 1;
+    // Prune intent distribution with proper timestamp-based pruning
+    // This prevents unbounded memory growth in the distribution map
+    let distributionEntriesPruned = 0;
+    const distributionEntries = Array.from(this.intentDistributionWithTimestamps.entries());
+    for (const [intentType, data] of distributionEntries) {
+      // Filter out timestamps older than cutoff
+      const validTimestamps = data.timestamps.filter((ts: number) => ts > cutoff);
+
+      if (validTimestamps.length === 0) {
+        // No valid timestamps - remove the entire entry
+        this.intentDistributionWithTimestamps.delete(intentType);
+        distributionEntriesPruned++;
+      } else if (validTimestamps.length < data.timestamps.length) {
+        // Some timestamps pruned - update the entry
+        const removed = data.timestamps.length - validTimestamps.length;
+        this.intentDistributionWithTimestamps.set(intentType, {
+          count: data.count - removed,
+          timestamps: validTimestamps,
+        });
       }
     }
 
@@ -1520,10 +1696,11 @@ export class EventConsumer extends EventEmitter {
       heartbeatRemoved +
       stateChangeRemoved +
       nodesRemoved +
-      intentsRemoved;
+      intentsRemoved +
+      distributionEntriesPruned;
     if (totalRemoved > 0) {
       console.log(
-        `🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes, ${intentsRemoved} intents (total: ${totalRemoved})`
+        `🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes, ${intentsRemoved} intents, ${distributionEntriesPruned} distribution entries (total: ${totalRemoved})`
       );
     }
   }
@@ -1881,7 +2058,12 @@ export class EventConsumer extends EventEmitter {
    * @returns Object mapping intent types to their counts
    */
   getIntentDistribution(): Record<string, number> {
-    return { ...this.intentDistribution };
+    const distribution: Record<string, number> = {};
+    const entries = Array.from(this.intentDistributionWithTimestamps.entries());
+    for (const [intentType, data] of entries) {
+      distribution[intentType] = data.count;
+    }
+    return distribution;
   }
 
   /**
@@ -1890,18 +2072,16 @@ export class EventConsumer extends EventEmitter {
    * @returns Object with total count and type distribution
    */
   getIntentStats() {
-    const totalIntents = Object.values(this.intentDistribution).reduce(
-      (sum, count) => sum + count,
-      0
-    );
-    const topIntentTypes = Object.entries(this.intentDistribution)
+    const distribution = this.getIntentDistribution();
+    const totalIntents = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+    const topIntentTypes = Object.entries(distribution)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
 
     return {
       totalIntents,
       recentIntentsCount: this.recentIntents.length,
-      typeDistribution: this.intentDistribution,
+      typeDistribution: distribution,
       topIntentTypes,
     };
   }

@@ -9,6 +9,7 @@ export { SessionTimeline } from './SessionTimeline';
 export type { SessionTimelineProps, TimelineViewMode } from './SessionTimeline';
 
 export { IntentDistribution } from './IntentDistribution';
+export type { IntentDistributionProps } from './IntentDistribution';
 
 export { RecentIntents } from './RecentIntents';
 export type { RecentIntentsProps, IntentItem } from './RecentIntents';

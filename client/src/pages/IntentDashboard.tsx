@@ -14,7 +14,7 @@
  * - Stats summary cards
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { IntentDistribution, RecentIntents, SessionTimeline } from '@/components/intent';
 import { useIntentStream } from '@/hooks/useIntentStream';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,7 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DashboardPageHeader } from '@/components/DashboardPageHeader';
 import { cn } from '@/lib/utils';
+import { CONFIDENCE_THRESHOLD_HIGH, CONFIDENCE_THRESHOLD_MEDIUM } from '@/lib/intent-colors';
 import { Brain, Activity, TrendingUp, Clock, BarChart3, RefreshCw } from 'lucide-react';
 import type { IntentItem } from '@/components/intent';
 
@@ -50,6 +51,11 @@ type TimeRangeHours = (typeof TIME_RANGE_OPTIONS)[number]['value'];
 // ─────────────────────────────────────────────────────────────────────────────
 // Stat Card Component
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Note: This component is similar to MetricCard from @/components/MetricCard.
+// StatCard provides an always-visible `description` field, whereas MetricCard
+// uses a `tooltip` for additional context. StatCard is preferred here for UX
+// where the description text should be immediately visible without hover.
 
 interface StatCardProps {
   title: string;
@@ -99,25 +105,54 @@ interface IntentDetailProps {
 }
 
 function IntentDetail({ intent, onClose }: IntentDetailProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Memoize close handler to avoid unnecessary effect re-runs
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
   // Keyboard accessibility: close panel on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') handleClose();
     };
     if (intent) {
       document.addEventListener('keydown', handleEscape);
       return () => document.removeEventListener('keydown', handleEscape);
     }
-  }, [intent, onClose]);
+  }, [intent, handleClose]);
+
+  // Focus management: focus close button when panel opens
+  useEffect(() => {
+    if (intent && closeButtonRef.current) {
+      closeButtonRef.current.focus();
+    }
+  }, [intent]);
 
   if (!intent) return null;
 
   return (
-    <Card className="fixed bottom-4 right-4 w-96 z-50 shadow-xl border-2">
+    <Card
+      ref={panelRef}
+      role="dialog"
+      aria-label={`Intent details for ${intent.intent_category}`}
+      aria-modal="false"
+      className="fixed bottom-4 right-4 w-96 z-50 shadow-xl border-2"
+    >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium">Intent Details</CardTitle>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <CardTitle id="intent-detail-title" className="text-sm font-medium">
+            Intent Details
+          </CardTitle>
+          <Button
+            ref={closeButtonRef}
+            variant="ghost"
+            size="sm"
+            onClick={handleClose}
+            aria-label="Close intent details panel"
+          >
             Close
           </Button>
         </div>
@@ -162,14 +197,15 @@ export default function IntentDashboard() {
   const [selectedIntent, setSelectedIntent] = useState<IntentItem | null>(null);
 
   // Use the intent stream for live connection status and data
-  const { intents, distribution, isConnected, connectionStatus, stats, clearIntents } =
-    useIntentStream({
-      maxItems: 100,
-      autoConnect: true,
-    });
+  // Note: stats.byCategory and distribution contain identical data; we use stats.byCategory
+  // to avoid redundant destructuring. Consider consolidating in useIntentStream if needed.
+  const { intents, isConnected, connectionStatus, stats, clearIntents } = useIntentStream({
+    maxItems: 100,
+    autoConnect: true,
+  });
 
-  // Compute derived stats
-  const categoryCount = useMemo(() => Object.keys(distribution).length, [distribution]);
+  // Compute derived stats using stats.byCategory (equivalent to distribution)
+  const categoryCount = useMemo(() => Object.keys(stats.byCategory).length, [stats.byCategory]);
 
   const avgConfidence = useMemo(() => {
     if (intents.length === 0) return 0;
@@ -298,19 +334,22 @@ export default function IntentDashboard() {
           onIntentClick={handleIntentClick}
         />
 
-        {/* Legend - thresholds match RecentIntents and SessionTimeline (90%/70%) */}
+        {/* Legend - thresholds from shared constants (intent-colors.ts) */}
         <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2 border-t">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span>High confidence (&ge;90%)</span>
+            <span>High confidence (&ge;{Math.round(CONFIDENCE_THRESHOLD_HIGH * 100)}%)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-yellow-500" />
-            <span>Medium confidence (70-90%)</span>
+            <span>
+              Medium confidence ({Math.round(CONFIDENCE_THRESHOLD_MEDIUM * 100)}-
+              {Math.round(CONFIDENCE_THRESHOLD_HIGH * 100)}%)
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-red-500" />
-            <span>Low confidence (&lt;70%)</span>
+            <span>Low confidence (&lt;{Math.round(CONFIDENCE_THRESHOLD_MEDIUM * 100)}%)</span>
           </div>
         </div>
 

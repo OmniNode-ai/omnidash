@@ -109,17 +109,16 @@ interface ChartDataPoint {
 function transformToChartData(intents: IntentItem[], categoryOrder: string[]): ChartDataPoint[] {
   return intents.map((intent) => {
     const categoryIndex = categoryOrder.indexOf(intent.intent_category);
+    // Clamp confidence to [0, 1] range before any calculations
+    const clampedConfidence = Math.max(0, Math.min(1, intent.confidence));
 
     return {
       x: new Date(intent.created_at).getTime(),
       y: categoryIndex >= 0 ? categoryIndex : categoryOrder.length,
-      z: 100 + intent.confidence * 200, // Size range: 100-300
+      z: 100 + clampedConfidence * 200, // Size range: 100-300
       intent,
       category: intent.intent_category,
-      color: getIntentColorWithConfidence(
-        intent.intent_category,
-        Math.max(0, Math.min(1, intent.confidence))
-      ),
+      color: getIntentColorWithConfidence(intent.intent_category, clampedConfidence),
     };
   });
 }
@@ -135,7 +134,9 @@ interface TimelineNodeProps {
 }
 
 function TimelineNode({ intent, isLast, onClick }: TimelineNodeProps) {
-  const opacity = getConfidenceOpacity(intent.confidence);
+  // Clamp confidence to [0, 1] range before computing opacity
+  const clampedConfidence = Math.max(0, Math.min(1, intent.confidence));
+  const opacity = getConfidenceOpacity(clampedConfidence);
   const categoryColor = getIntentBgClass(intent.intent_category);
 
   return (
@@ -361,7 +362,8 @@ function ChartTooltip({ active, payload, showClickHint = false }: ChartTooltipPr
         </div>
       )}
 
-      {/* Click hint - only shown when clicking is enabled */}
+      {/* Click hint - only shown when onIntentClick handler is provided (showClickHint=true) */}
+      {/* This prevents misleading UI when clicking is disabled */}
       {showClickHint && (
         <div className="text-xs text-muted-foreground/70 mt-2 pt-2 border-t">Click for details</div>
       )}
@@ -451,10 +453,12 @@ function TimelineChart({ intents, onIntentClick, height = 300 }: TimelineChartPr
         />
         <Scatter
           data={chartData}
-          onClick={(data) => {
-            // Recharts passes the data point in a nested structure
-            if (data && data.payload) {
-              handleClick(data.payload as ChartDataPoint);
+          onClick={(data: { payload?: ChartDataPoint } | null) => {
+            // Recharts Scatter onClick passes an object with payload containing the original data point
+            // Access the original ChartDataPoint via data.payload, not data directly
+            const originalData = data?.payload;
+            if (originalData) {
+              handleClick(originalData);
             }
           }}
           style={{ cursor: onIntentClick ? 'pointer' : 'default' }}

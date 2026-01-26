@@ -1,12 +1,20 @@
 /**
  * Intent Event Types
  *
- * TypeScript interfaces for intent event models matching omnibase_core 0.9.4 Python models.
+ * TypeScript interfaces and Zod schemas for intent event models matching omnibase_core 0.9.4 Python models.
  * Used for Kafka event consumption and API responses in the Real-time Intent Dashboard.
+ *
+ * This module provides:
+ * - TypeScript interfaces for compile-time type checking
+ * - Zod schemas for runtime validation
+ * - Factory functions for creating events
+ * - Type guards for event discrimination
+ * - Shared constants (VALID_INTENT_CATEGORIES, topic names)
  *
  * @see OMN-1458 - Real-time Intent Dashboard Panel
  */
 
+import { z } from 'zod';
 import { generateUUID } from './uuid';
 
 // ============================================================================
@@ -83,27 +91,106 @@ export const EVENT_TYPE_NAMES = {
 } as const;
 
 // ============================================================================
-// Enums / Union Types
+// Valid Intent Categories
 // ============================================================================
 
 /**
- * Types of intent queries supported
+ * Valid intent categories supported by the system.
+ * This is the canonical list of categories used for classification.
+ *
+ * Usage:
+ * - Import and use for validation: `VALID_INTENT_CATEGORIES.includes(category)`
+ * - Use with Zod: `z.enum(VALID_INTENT_CATEGORIES)`
+ *
+ * @example
+ * ```typescript
+ * import { VALID_INTENT_CATEGORIES } from '@shared/intent-types';
+ *
+ * function isValidCategory(category: string): boolean {
+ *   return VALID_INTENT_CATEGORIES.includes(category as IntentCategory);
+ * }
+ * ```
  */
-export type IntentQueryType = 'distribution' | 'session' | 'recent';
+export const VALID_INTENT_CATEGORIES = [
+  'debugging',
+  'code_generation',
+  'refactoring',
+  'testing',
+  'documentation',
+  'analysis',
+  'pattern_learning',
+  'quality_assessment',
+  'semantic_analysis',
+  'deployment',
+  'configuration',
+  'question',
+  'unknown',
+] as const;
 
 /**
- * Status of an intent query response
+ * Type for valid intent categories
  */
-export type IntentQueryStatus = 'success' | 'error' | 'not_found' | 'no_results';
+export type IntentCategory = (typeof VALID_INTENT_CATEGORIES)[number];
+
+// ============================================================================
+// Enums / Union Types with Zod Schemas
+// ============================================================================
+
+/**
+ * Types of intent queries supported.
+ * - 'distribution': Get category distribution counts
+ * - 'session': Get intents for a specific session
+ * - 'recent': Get recent intents across all sessions
+ * - 'search': Search intents by keywords (server-only)
+ */
+export const IntentQueryTypeSchema = z.enum(['distribution', 'session', 'recent', 'search']);
+export type IntentQueryType = z.infer<typeof IntentQueryTypeSchema>;
+
+/**
+ * Status of an intent query response.
+ * - 'success': Query completed successfully
+ * - 'error': Query failed with an error
+ * - 'partial': Query returned partial results (server-only)
+ * - 'not_found': Requested resource not found
+ * - 'no_results': Query succeeded but returned no results
+ */
+export const IntentQueryStatusSchema = z.enum([
+  'success',
+  'error',
+  'partial',
+  'not_found',
+  'no_results',
+]);
+export type IntentQueryStatus = z.infer<typeof IntentQueryStatusSchema>;
 
 /**
  * Status of an intent storage operation
  */
-export type IntentStoredStatus = 'success' | 'error';
+export const IntentStoredStatusSchema = z.enum(['success', 'error']);
+export type IntentStoredStatus = z.infer<typeof IntentStoredStatusSchema>;
 
 // ============================================================================
-// Payload Types
+// Payload Types with Zod Schemas
 // ============================================================================
+
+/**
+ * Zod schema for IntentRecordPayload
+ * Used for runtime validation of intent records from API responses and Kafka events.
+ */
+export const IntentRecordPayloadSchema = z.object({
+  /** Unique identifier for the intent (UUID) */
+  intent_id: z.string().uuid(),
+  /** Session reference that generated this intent */
+  session_ref: z.string().min(1),
+  /** Classified category (e.g., "debugging", "code_generation") */
+  intent_category: z.string().min(1),
+  /** Classification confidence score (0.0-1.0) */
+  confidence: z.number().min(0).max(1),
+  /** Extracted keywords from the intent */
+  keywords: z.array(z.string()),
+  /** When the intent was created (ISO-8601) */
+  created_at: z.string().datetime({ offset: true }).or(z.string().datetime()),
+});
 
 /**
  * Intent record payload - embedded in query responses
@@ -125,8 +212,35 @@ export interface IntentRecordPayload {
 }
 
 // ============================================================================
-// Query Request Events
+// Query Request Events with Zod Schemas
 // ============================================================================
+
+/**
+ * Zod schema for IntentQueryRequestedEvent
+ * Used for runtime validation of query request events.
+ */
+export const IntentQueryRequestedEventSchema = z.object({
+  /** Event type identifier (= INTENT_QUERY_REQUESTED_TOPIC) */
+  event_type: z.string(),
+  /** Correlation ID for request tracing (UUID, optional) */
+  correlation_id: z.string().uuid().optional(),
+  /** Unique query identifier (UUID) */
+  query_id: z.string().uuid(),
+  /** Type of query to execute */
+  query_type: IntentQueryTypeSchema,
+  /** Session reference for session queries (optional) */
+  session_ref: z.string().optional(),
+  /** Time range in hours to query (default: 24) */
+  time_range_hours: z.number().positive(),
+  /** Minimum confidence threshold (default: 0.0) */
+  min_confidence: z.number().min(0).max(1),
+  /** Maximum number of results (default: 100) */
+  limit: z.number().positive().int(),
+  /** Name of the requesting service (e.g., "omnidash") */
+  requester_name: z.string().min(1),
+  /** When the request was made (ISO-8601) */
+  requested_at: z.string().datetime({ offset: true }).or(z.string().datetime()),
+});
 
 /**
  * Intent query request event - sent to request intent data
@@ -156,12 +270,64 @@ export interface IntentQueryRequestedEvent {
 }
 
 // ============================================================================
-// Query Response Events
+// Query Response Events with Zod Schemas
 // ============================================================================
+
+/**
+ * Zod schema for IntentQueryResponseEvent
+ * Used for runtime validation of query response events.
+ *
+ * NOTE: distribution and intents are optional because they depend on query_type:
+ * - distribution queries return distribution (Record or Array format)
+ * - session/recent queries return intents
+ * - search queries return intents
+ *
+ * The distribution field can be either:
+ * - Record<string, number>: Simple category -> count mapping (from Kafka)
+ * - IntentCategoryDistribution[]: Array with category, count, percentage (from server)
+ *
+ * Use distributionToArray() to normalize Record format to array format.
+ */
+export const IntentQueryResponseEventSchema = z.object({
+  /** Event type identifier (= INTENT_QUERY_RESPONSE_TOPIC) */
+  event_type: z.string(),
+  /** Correlation ID matching the request (UUID, optional) */
+  correlation_id: z.string().uuid().optional(),
+  /** Query ID matching the request (UUID) */
+  query_id: z.string().uuid(),
+  /** Type of query that was executed */
+  query_type: IntentQueryTypeSchema,
+  /** Status of the query execution */
+  status: IntentQueryStatusSchema,
+  /** Category distribution for distribution queries (category -> count) - optional for non-distribution queries */
+  distribution: z.record(z.string(), z.number()).optional(),
+  /** Intent records for session/recent/search queries - optional for distribution queries */
+  intents: z.array(IntentRecordPayloadSchema).optional(),
+  /** Number of results returned */
+  total_count: z.number().int().nonnegative(),
+  /** Total intents across all categories (for distribution queries) - optional for non-distribution queries */
+  total_intents: z.number().int().nonnegative().optional(),
+  /** Time range that was queried (hours) - optional, not all queries use it */
+  time_range_hours: z.number().positive().optional(),
+  /** Query execution time in milliseconds - optional, may not be tracked */
+  execution_time_ms: z.number().nonnegative().optional(),
+  /** When the response was generated (ISO-8601) - optional for backward compatibility */
+  responded_at: z.string().datetime({ offset: true }).or(z.string().datetime()).optional(),
+  /** Error message if status is "error" */
+  error_message: z.string().optional(),
+});
 
 /**
  * Intent query response event - response to a query request
  * Published to INTENT_QUERY_RESPONSE_TOPIC
+ *
+ * NOTE: Field optionality aligned with server/intent-events.ts IntentQueryResponseEvent.
+ * - distribution: Optional, only present for distribution queries
+ * - intents: Optional, only present for session/recent/search queries
+ * - total_intents: Optional, only meaningful for distribution queries
+ * - time_range_hours: Optional, not all query types use it
+ * - execution_time_ms: Optional, may not be tracked by all producers
+ * - responded_at: Optional, for backward compatibility
  */
 export interface IntentQueryResponseEvent {
   /** Event type identifier (= INTENT_QUERY_RESPONSE_TOPIC) */
@@ -175,26 +341,57 @@ export interface IntentQueryResponseEvent {
   /** Status of the query execution */
   status: IntentQueryStatus;
   /** Category distribution for distribution queries (category -> count) */
-  distribution: Record<string, number>;
-  /** Intent records for session/recent queries */
-  intents: IntentRecordPayload[];
+  distribution?: Record<string, number>;
+  /** Intent records for session/recent/search queries */
+  intents?: IntentRecordPayload[];
   /** Number of results returned */
   total_count: number;
   /** Total intents across all categories (for distribution queries) */
-  total_intents: number;
+  total_intents?: number;
   /** Time range that was queried (hours) */
-  time_range_hours: number;
+  time_range_hours?: number;
   /** Query execution time in milliseconds */
-  execution_time_ms: number;
+  execution_time_ms?: number;
   /** When the response was generated (ISO-8601) */
-  responded_at: string;
+  responded_at?: string;
   /** Error message if status is "error" */
   error_message?: string;
 }
 
 // ============================================================================
-// Write Path Events
+// Write Path Events with Zod Schemas
 // ============================================================================
+
+/**
+ * Zod schema for IntentStoredEvent
+ * Used for runtime validation of intent stored events from Kafka.
+ */
+export const IntentStoredEventSchema = z.object({
+  /** Event type identifier (= INTENT_STORED_TOPIC) */
+  event_type: z.string(),
+  /** Correlation ID for request tracing (UUID, optional) */
+  correlation_id: z.string().uuid().optional(),
+  /** Unique identifier for the stored intent (UUID) */
+  intent_id: z.string().uuid(),
+  /** Session reference that generated this intent */
+  session_ref: z.string().min(1),
+  /** Classified category */
+  intent_category: z.string().min(1),
+  /** Classification confidence score (0.0-1.0) */
+  confidence: z.number().min(0).max(1),
+  /** Extracted keywords */
+  keywords: z.array(z.string()),
+  /** True if newly created, false if merged with existing */
+  created: z.boolean(),
+  /** When the intent was stored (ISO-8601) */
+  stored_at: z.string().datetime({ offset: true }).or(z.string().datetime()),
+  /** Storage operation time in milliseconds */
+  execution_time_ms: z.number().nonnegative(),
+  /** Status of the storage operation */
+  status: IntentStoredStatusSchema,
+  /** Error message if status is "error" */
+  error_message: z.string().optional(),
+});
 
 /**
  * Intent stored event - emitted when an intent is persisted
@@ -228,12 +425,38 @@ export interface IntentStoredEvent {
 }
 
 // ============================================================================
-// Classification Pipeline Events
+// Classification Pipeline Events with Zod Schemas
 // ============================================================================
+
+/**
+ * Zod schema for IntentClassifiedEvent
+ * Used for runtime validation of intent classification events from Kafka.
+ *
+ * NOTE: Uses EVENT_TYPE_NAMES.INTENT_CLASSIFIED for event_type validation,
+ * NOT the topic constant (INTENT_CLASSIFIED_TOPIC). The event_type field
+ * contains the event type name, while the topic is used for Kafka routing.
+ */
+export const IntentClassifiedEventSchema = z.object({
+  /** Event type identifier ("IntentClassified") */
+  event_type: z.literal(EVENT_TYPE_NAMES.INTENT_CLASSIFIED),
+  /** Session that generated this intent */
+  session_id: z.string().min(1),
+  /** Correlation ID for request tracing (UUID) */
+  correlation_id: z.string().uuid(),
+  /** Classified category */
+  intent_category: z.string().min(1),
+  /** Classification confidence score (0.0-1.0) */
+  confidence: z.number().min(0).max(1),
+  /** When the classification occurred (ISO-8601) */
+  timestamp: z.string().datetime({ offset: true }).or(z.string().datetime()),
+});
 
 /**
  * Intent classified event - emitted when an intent is classified
  * Published to INTENT_CLASSIFIED_TOPIC
+ *
+ * NOTE: The event_type field contains EVENT_TYPE_NAMES.INTENT_CLASSIFIED ("IntentClassified"),
+ * NOT the Kafka topic name. See isIntentClassifiedEvent() type guard for correct usage.
  */
 export interface IntentClassifiedEvent {
   /** Event type identifier ("IntentClassified") */
@@ -393,7 +616,21 @@ export function createRecentQuery(options: RecentQueryOptions = {}): IntentQuery
 // ============================================================================
 
 /**
- * Type guard to check if an event is an IntentQueryResponseEvent
+ * Type guard to check if an event is an IntentQueryRequestedEvent.
+ * Uses INTENT_QUERY_REQUESTED_TOPIC constant for consistent event_type matching.
+ */
+export function isIntentQueryRequestedEvent(event: unknown): event is IntentQueryRequestedEvent {
+  return (
+    typeof event === 'object' &&
+    event !== null &&
+    'event_type' in event &&
+    (event as IntentQueryRequestedEvent).event_type === INTENT_QUERY_REQUESTED_TOPIC
+  );
+}
+
+/**
+ * Type guard to check if an event is an IntentQueryResponseEvent.
+ * Uses INTENT_QUERY_RESPONSE_TOPIC constant for consistent event_type matching.
  */
 export function isIntentQueryResponse(event: unknown): event is IntentQueryResponseEvent {
   return (
@@ -405,7 +642,8 @@ export function isIntentQueryResponse(event: unknown): event is IntentQueryRespo
 }
 
 /**
- * Type guard to check if an event is an IntentStoredEvent
+ * Type guard to check if an event is an IntentStoredEvent.
+ * Uses INTENT_STORED_TOPIC constant for consistent event_type matching.
  */
 export function isIntentStoredEvent(event: unknown): event is IntentStoredEvent {
   return (
@@ -417,10 +655,15 @@ export function isIntentStoredEvent(event: unknown): event is IntentStoredEvent 
 }
 
 /**
- * Type guard to check if an event is an IntentClassifiedEvent
+ * Type guard to check if an event is an IntentClassifiedEvent.
  *
  * Uses EVENT_TYPE_NAMES.INTENT_CLASSIFIED (event type name in payload),
  * not INTENT_CLASSIFIED_TOPIC (Kafka topic for routing).
+ *
+ * NOTE: IntentClassifiedEvent uses a different pattern - the event_type field
+ * contains the event type name ("IntentClassified"), not the Kafka topic.
+ * This is because classified events may be routed through different topics
+ * but always have the same event_type value.
  */
 export function isIntentClassifiedEvent(event: unknown): event is IntentClassifiedEvent {
   return (
@@ -432,8 +675,21 @@ export function isIntentClassifiedEvent(event: unknown): event is IntentClassifi
 }
 
 // ============================================================================
-// Utility Types
+// Utility Types with Zod Schemas
 // ============================================================================
+
+/**
+ * Zod schema for IntentEvent union type.
+ * Validates any of the four intent event types.
+ *
+ * NOTE: Uses z.union() with the event type schemas for comprehensive validation.
+ */
+export const IntentEventSchema = z.union([
+  IntentQueryRequestedEventSchema,
+  IntentQueryResponseEventSchema,
+  IntentStoredEventSchema,
+  IntentClassifiedEventSchema,
+]);
 
 /**
  * All intent event types union
@@ -443,6 +699,16 @@ export type IntentEvent =
   | IntentQueryResponseEvent
   | IntentStoredEvent
   | IntentClassifiedEvent;
+
+/**
+ * Zod schema for IntentCategoryCount
+ * Used for runtime validation of distribution data in visualization components.
+ */
+export const IntentCategoryCountSchema = z.object({
+  category: z.string(),
+  count: z.number().int().nonnegative(),
+  percentage: z.number().min(0).max(100),
+});
 
 /**
  * Intent category with count - useful for distribution visualization
@@ -455,6 +721,21 @@ export interface IntentCategoryCount {
 
 /**
  * Convert distribution record to array with percentages
+ *
+ * @param distribution - Record mapping category names to counts
+ * @param totalIntents - Total number of intents for percentage calculation
+ * @returns Array of IntentCategoryCount sorted by count descending
+ *
+ * @example
+ * ```typescript
+ * const distribution = { debugging: 50, code_generation: 30, testing: 20 };
+ * const array = distributionToArray(distribution, 100);
+ * // Returns: [
+ * //   { category: 'debugging', count: 50, percentage: 50 },
+ * //   { category: 'code_generation', count: 30, percentage: 30 },
+ * //   { category: 'testing', count: 20, percentage: 20 }
+ * // ]
+ * ```
  */
 export function distributionToArray(
   distribution: Record<string, number>,
@@ -467,4 +748,62 @@ export function distributionToArray(
       percentage: totalIntents > 0 ? (count / totalIntents) * 100 : 0,
     }))
     .sort((a, b) => b.count - a.count);
+}
+
+// ============================================================================
+// Validation Utilities
+// ============================================================================
+
+/**
+ * Validate an intent category against VALID_INTENT_CATEGORIES.
+ *
+ * @param category - The category string to validate
+ * @returns true if the category is valid, false otherwise
+ *
+ * @example
+ * ```typescript
+ * isValidIntentCategory('debugging') // true
+ * isValidIntentCategory('invalid_category') // false
+ * ```
+ */
+export function isValidIntentCategory(category: string): category is IntentCategory {
+  return VALID_INTENT_CATEGORIES.includes(category as IntentCategory);
+}
+
+/**
+ * Parse and validate an IntentRecordPayload using Zod schema.
+ *
+ * @param data - The data to validate
+ * @returns Parsed IntentRecordPayload or throws ZodError
+ *
+ * @example
+ * ```typescript
+ * const payload = parseIntentRecord(rawData);
+ * // Throws if validation fails
+ * ```
+ */
+export function parseIntentRecord(data: unknown): IntentRecordPayload {
+  return IntentRecordPayloadSchema.parse(data);
+}
+
+/**
+ * Safely parse an IntentRecordPayload using Zod schema.
+ *
+ * @param data - The data to validate
+ * @returns Result object with success status and data or error
+ *
+ * @example
+ * ```typescript
+ * const result = safeParseIntentRecord(rawData);
+ * if (result.success) {
+ *   console.log(result.data.intent_id);
+ * } else {
+ *   console.error(result.error);
+ * }
+ * ```
+ */
+export function safeParseIntentRecord(
+  data: unknown
+): z.SafeParseReturnType<unknown, IntentRecordPayload> {
+  return IntentRecordPayloadSchema.safeParse(data);
 }

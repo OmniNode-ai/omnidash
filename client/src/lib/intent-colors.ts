@@ -80,6 +80,32 @@ export const INTENT_BADGE_CLASSES: Record<string, string> = {
  */
 export const DEFAULT_BADGE_CLASSES = 'bg-muted text-muted-foreground border-border';
 
+/**
+ * Tailwind background classes for each intent category.
+ * Consistent with INTENT_COLORS hex values.
+ * Used for timeline indicators and chart elements.
+ */
+export const INTENT_BG_CLASSES: Record<string, string> = {
+  debugging: 'bg-orange-500', // matches #f97316
+  code_generation: 'bg-blue-500', // matches #3b82f6
+  refactoring: 'bg-purple-500', // matches #a855f7
+  testing: 'bg-green-500', // matches #22c55e
+  documentation: 'bg-gray-500', // matches #6b7280
+  analysis: 'bg-cyan-500', // matches #06b6d4
+  pattern_learning: 'bg-yellow-500', // matches #eab308
+  quality_assessment: 'bg-pink-500', // matches #ec4899
+  semantic_analysis: 'bg-indigo-500', // matches #6366f1
+  deployment: 'bg-amber-500', // matches #f59e0b
+  configuration: 'bg-violet-500', // matches #8b5cf6
+  question: 'bg-pink-500', // matches #ec4899
+  unknown: 'bg-gray-400',
+};
+
+/**
+ * Default Tailwind background class for unrecognized categories.
+ */
+export const DEFAULT_BG_CLASS = 'bg-primary';
+
 // ============================================================================
 // Confidence Threshold Constants
 // ============================================================================
@@ -109,17 +135,23 @@ function normalizeCategory(category: string): string {
 }
 
 /**
- * Resolves a category to its canonical form using aliases.
+ * Resolves a category to its canonical form using aliases and partial matching.
+ * Resolution order:
+ * 1. Exact match in INTENT_COLORS
+ * 2. Exact match in INTENT_CATEGORY_ALIASES
+ * 3. Partial match in aliases (e.g., 'debug_task' contains 'debug')
+ * 4. Partial match in category names (e.g., 'performance_analysis' contains 'analysis')
+ * 5. Default to 'unknown'
  */
 function resolveCategory(category: string): string {
   const normalized = normalizeCategory(category);
 
-  // Check for exact match
+  // Check for exact match in categories
   if (INTENT_COLORS[normalized]) {
     return normalized;
   }
 
-  // Check aliases
+  // Check for exact match in aliases
   if (INTENT_CATEGORY_ALIASES[normalized]) {
     return INTENT_CATEGORY_ALIASES[normalized];
   }
@@ -128,6 +160,13 @@ function resolveCategory(category: string): string {
   for (const [alias, canonical] of Object.entries(INTENT_CATEGORY_ALIASES)) {
     if (normalized.includes(alias)) {
       return canonical;
+    }
+  }
+
+  // Check for partial matches in category names
+  for (const categoryName of Object.keys(INTENT_COLORS)) {
+    if (normalized.includes(categoryName)) {
+      return categoryName;
     }
   }
 
@@ -196,40 +235,20 @@ export function getConfidenceColor(confidence: number): string {
  * Gets a Tailwind background color class for an intent category.
  * Useful for timeline indicators and chart elements.
  *
+ * Uses the same resolution logic as other functions (resolveCategory).
+ * Colors are consistent with INTENT_COLORS hex values.
+ *
  * @param category - The intent category name
  * @returns Tailwind background class (e.g., 'bg-orange-500')
  *
  * @example
  * getIntentBgClass('debugging') // 'bg-orange-500'
  * getIntentBgClass('testing') // 'bg-green-500'
+ * getIntentBgClass('debug') // 'bg-orange-500' (alias resolved)
  */
 export function getIntentBgClass(category: string): string {
-  const categoryLower = category.toLowerCase();
-
-  if (categoryLower.includes('debug') || categoryLower.includes('fix')) {
-    return 'bg-amber-500';
-  }
-  if (categoryLower.includes('code') || categoryLower.includes('generate')) {
-    return 'bg-blue-500';
-  }
-  if (categoryLower.includes('test')) {
-    return 'bg-green-500';
-  }
-  if (categoryLower.includes('refactor') || categoryLower.includes('improve')) {
-    return 'bg-purple-500';
-  }
-  if (categoryLower.includes('doc') || categoryLower.includes('explain')) {
-    return 'bg-cyan-500';
-  }
-  if (
-    categoryLower.includes('review') ||
-    categoryLower.includes('analyze') ||
-    categoryLower.includes('analysis')
-  ) {
-    return 'bg-indigo-500';
-  }
-
-  return 'bg-primary';
+  const resolved = resolveCategory(category);
+  return INTENT_BG_CLASSES[resolved] ?? DEFAULT_BG_CLASS;
 }
 
 /**
@@ -255,6 +274,9 @@ export function getConfidenceOpacity(confidence: number): number {
  * Gets a hex color with alpha channel based on confidence.
  * Useful for chart visualizations where color intensity indicates confidence.
  *
+ * Confidence is clamped to [0, 1] before computing alpha.
+ * Alpha range is 0.4-1.0 (102-255) for visibility.
+ *
  * @param category - The intent category name
  * @param confidence - Confidence value between 0 and 1
  * @returns Hex color with alpha (e.g., '#f97316cc')
@@ -265,8 +287,10 @@ export function getConfidenceOpacity(confidence: number): number {
  */
 export function getIntentColorWithConfidence(category: string, confidence: number): string {
   const hexColor = getIntentColor(category);
-  // Clamp confidence to 0.4 - 1.0 range for visibility
-  const alpha = Math.round((0.4 + confidence * 0.6) * 255);
+  // Clamp confidence to [0, 1] range before computing alpha
+  const clampedConfidence = Math.max(0, Math.min(1, confidence));
+  // Map clamped confidence to 0.4-1.0 alpha range for visibility
+  const alpha = Math.round((0.4 + clampedConfidence * 0.6) * 255);
   const alphaHex = alpha.toString(16).padStart(2, '0');
   return `${hexColor}${alphaHex}`;
 }

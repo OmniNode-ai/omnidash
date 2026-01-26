@@ -52,12 +52,46 @@ interface StoreIntentResponse {
   intent_id: string;
 }
 
+// ============================================================================
+// Input Sanitization
+// ============================================================================
+
+/**
+ * Sanitize user-controlled strings to prevent XSS and injection attacks.
+ * - Trims whitespace
+ * - Removes control characters (except newlines/tabs in some contexts)
+ * - Escapes HTML entities for safe storage/display
+ */
+function sanitizeString(input: string): string {
+  return (
+    input
+      .trim()
+      // Remove control characters (U+0000 to U+001F except tab/newline/carriage return)
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      // Escape HTML entities to prevent XSS
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+  );
+}
+
 // Zod schema for POST /store request body validation
 const StoreIntentSchema = z.object({
-  sessionRef: z.string().max(255).optional(),
-  intentCategory: z.string().min(1, 'intentCategory cannot be empty').max(100),
-  confidence: z.number().min(0).max(1).optional().default(0.95),
-  keywords: z.array(z.string().max(100)).max(50).optional().default([]),
+  sessionRef: z
+    .string()
+    .max(255)
+    .optional()
+    .transform((val) => (val ? sanitizeString(val) : val)),
+  intentCategory: z
+    .string()
+    .min(1, 'intentCategory cannot be empty')
+    .max(100)
+    .transform(sanitizeString),
+  // Use z.coerce.number() to handle both number and string inputs (e.g., 0.85 and "0.85")
+  confidence: z.coerce.number().min(0).max(1).optional().default(0.95),
+  keywords: z.array(z.string().max(100).transform(sanitizeString)).max(50).optional().default([]),
 });
 
 // Zod schemas for query parameter validation
@@ -344,8 +378,9 @@ intentRouter.get('/distribution', async (req, res) => {
     const { time_range_hours: timeRangeHours } = queryResult.data;
 
     // Try to get data from Kafka/intelligence service
+    // Check both that adapter exists AND is started (using public getter)
     const intelligenceEvents = getIntelligenceEvents();
-    if (intelligenceEvents) {
+    if (intelligenceEvents?.started) {
       try {
         const result = await intelligenceEvents.request(
           'intent_distribution',
@@ -438,8 +473,9 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
     const { limit, min_confidence: minConfidence } = queryResult.data;
 
     // Try to get data from Kafka/intelligence service
+    // Check both that adapter exists AND is started (using public getter)
     const intelligenceEvents = getIntelligenceEvents();
-    if (intelligenceEvents) {
+    if (intelligenceEvents?.started) {
       try {
         const result = await intelligenceEvents.request(
           'intent_session',
@@ -522,8 +558,9 @@ intentRouter.get('/recent', async (req, res) => {
     const { limit, offset, time_range_hours: timeRangeHours } = queryResult.data;
 
     // Try to get data from Kafka/intelligence service
+    // Check both that adapter exists AND is started (using public getter)
     const intelligenceEvents = getIntelligenceEvents();
-    if (intelligenceEvents) {
+    if (intelligenceEvents?.started) {
       try {
         const result = await intelligenceEvents.request(
           'intent_recent',

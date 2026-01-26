@@ -217,12 +217,17 @@ describe('intent-colors', () => {
   });
 
   describe('getIntentBgClass', () => {
+    // Colors now match INTENT_COLORS for consistency:
+    // - debugging: bg-orange-500 (matches #f97316)
+    // - documentation: bg-gray-500 (matches #6b7280)
+    // - analysis: bg-cyan-500 (matches #06b6d4)
+
     it('should return correct bg class for debug-related categories', () => {
-      expect(getIntentBgClass('debugging')).toBe('bg-amber-500');
-      expect(getIntentBgClass('debug')).toBe('bg-amber-500');
-      expect(getIntentBgClass('fix')).toBe('bg-amber-500');
-      expect(getIntentBgClass('debug_task')).toBe('bg-amber-500');
-      expect(getIntentBgClass('fix_bug')).toBe('bg-amber-500');
+      expect(getIntentBgClass('debugging')).toBe('bg-orange-500');
+      expect(getIntentBgClass('debug')).toBe('bg-orange-500');
+      expect(getIntentBgClass('fix')).toBe('bg-orange-500');
+      expect(getIntentBgClass('debug_task')).toBe('bg-orange-500');
+      expect(getIntentBgClass('fix_bug')).toBe('bg-orange-500');
     });
 
     it('should return correct bg class for code-related categories', () => {
@@ -248,30 +253,41 @@ describe('intent-colors', () => {
     });
 
     it('should return correct bg class for documentation-related categories', () => {
-      expect(getIntentBgClass('doc')).toBe('bg-cyan-500');
-      expect(getIntentBgClass('documentation')).toBe('bg-cyan-500');
-      expect(getIntentBgClass('explain')).toBe('bg-cyan-500');
+      // Now consistent with INTENT_COLORS (documentation = #6b7280 = gray)
+      expect(getIntentBgClass('doc')).toBe('bg-gray-500');
+      expect(getIntentBgClass('documentation')).toBe('bg-gray-500');
+      expect(getIntentBgClass('explain')).toBe('bg-gray-500');
     });
 
     it('should return correct bg class for analysis-related categories', () => {
-      expect(getIntentBgClass('review')).toBe('bg-indigo-500');
-      expect(getIntentBgClass('analyze')).toBe('bg-indigo-500');
-      expect(getIntentBgClass('analysis')).toBe('bg-indigo-500');
+      // Now consistent with INTENT_COLORS (analysis = #06b6d4 = cyan)
+      expect(getIntentBgClass('review')).toBe('bg-cyan-500');
+      expect(getIntentBgClass('analyze')).toBe('bg-cyan-500');
+      expect(getIntentBgClass('analysis')).toBe('bg-cyan-500');
       // Note: 'code_analysis' matches 'code' first due to check order in implementation
       expect(getIntentBgClass('code_analysis')).toBe('bg-blue-500');
-      expect(getIntentBgClass('performance_analysis')).toBe('bg-indigo-500');
+      expect(getIntentBgClass('performance_analysis')).toBe('bg-cyan-500');
     });
 
-    it('should return default bg-primary for unrecognized categories', () => {
-      expect(getIntentBgClass('unknown')).toBe('bg-primary');
-      expect(getIntentBgClass('foobar')).toBe('bg-primary');
-      expect(getIntentBgClass('')).toBe('bg-primary');
-      expect(getIntentBgClass('deployment')).toBe('bg-primary');
-      expect(getIntentBgClass('configuration')).toBe('bg-primary');
+    it('should return correct bg class for other known categories', () => {
+      // Now these have proper mappings in INTENT_BG_CLASSES
+      expect(getIntentBgClass('deployment')).toBe('bg-amber-500');
+      expect(getIntentBgClass('configuration')).toBe('bg-violet-500');
+      expect(getIntentBgClass('pattern_learning')).toBe('bg-yellow-500');
+      expect(getIntentBgClass('quality_assessment')).toBe('bg-pink-500');
+      expect(getIntentBgClass('semantic_analysis')).toBe('bg-indigo-500');
+    });
+
+    it('should return bg-gray-400 for unknown and bg-primary for truly unrecognized categories', () => {
+      // 'unknown' is a known category with its own class
+      expect(getIntentBgClass('unknown')).toBe('bg-gray-400');
+      // Truly unrecognized strings resolve to 'unknown' category
+      expect(getIntentBgClass('foobar')).toBe('bg-gray-400');
+      expect(getIntentBgClass('')).toBe('bg-gray-400');
     });
 
     it('should handle case-insensitive input', () => {
-      expect(getIntentBgClass('DEBUG')).toBe('bg-amber-500');
+      expect(getIntentBgClass('DEBUG')).toBe('bg-orange-500');
       expect(getIntentBgClass('Test')).toBe('bg-green-500');
       expect(getIntentBgClass('REFACTOR')).toBe('bg-purple-500');
     });

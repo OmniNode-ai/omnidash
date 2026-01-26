@@ -26,6 +26,11 @@ interface UseWebSocketReturn {
   subscribe: (topics: string[]) => void;
   unsubscribe: (topics: string[]) => void;
   reconnect: () => void;
+  /**
+   * Close the WebSocket connection and stop reconnection attempts.
+   * Use this when you want to fully disconnect from the server.
+   */
+  close: () => void;
 }
 
 /**
@@ -154,6 +159,40 @@ export function useWebSocket({
     connect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * Close the WebSocket connection and prevent automatic reconnection.
+   * To reconnect after calling close(), use reconnect().
+   */
+  const close = useCallback(() => {
+    log('Closing WebSocket connection');
+
+    // Clear any pending reconnection attempts
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = undefined;
+    }
+
+    // Clear any pending disconnect timeout
+    if (disconnectTimeoutRef.current) {
+      clearTimeout(disconnectTimeoutRef.current);
+      disconnectTimeoutRef.current = undefined;
+    }
+
+    // Set reconnect count to max to prevent auto-reconnection
+    reconnectCountRef.current = reconnectAttempts;
+
+    // Close the WebSocket if open
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    // Update state immediately
+    setIsConnected(false);
+    setConnectionStatus('disconnected');
+    stableConnectionRef.current = false;
+  }, [log, reconnectAttempts]);
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return;
@@ -321,5 +360,6 @@ export function useWebSocket({
     subscribe,
     unsubscribe,
     reconnect,
+    close,
   };
 }

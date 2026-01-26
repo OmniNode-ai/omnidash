@@ -21,13 +21,14 @@ import type { IntentClassifiedEvent, IntentStoredEvent } from '@shared/intent-ty
 const mockSubscribe = vi.fn();
 const mockUnsubscribe = vi.fn();
 const mockReconnect = vi.fn();
+const mockClose = vi.fn();
 let mockIsConnected = true;
 let mockOnMessage:
   | ((message: { type: string; data?: unknown; timestamp: string }) => void)
   | undefined;
 let mockOnError: ((event: Event) => void) | undefined;
 
-vi.mock('../useWebSocket', () => ({
+vi.mock('@/hooks/useWebSocket', () => ({
   useWebSocket: vi.fn(
     (options: {
       onMessage?: (message: { type: string; data?: unknown; timestamp: string }) => void;
@@ -45,6 +46,7 @@ vi.mock('../useWebSocket', () => ({
         subscribe: mockSubscribe,
         unsubscribe: mockUnsubscribe,
         reconnect: mockReconnect,
+        close: mockClose,
       };
     }
   ),
@@ -504,7 +506,7 @@ describe('useIntentStream', () => {
 
     it('should call onIntent callback when provided', () => {
       const onIntentCallback = vi.fn();
-      renderHook(() => useIntentStream({ onIntent: onIntentCallback }));
+      renderHook(() => useIntentStream({ onIntent: onIntentCallback, onIntentThrottleMs: 0 }));
 
       const message = createClassifiedMessage({
         intent_category: 'callback-test',
@@ -526,7 +528,7 @@ describe('useIntentStream', () => {
 
     it('should not call onIntent for duplicate events', () => {
       const onIntentCallback = vi.fn();
-      renderHook(() => useIntentStream({ onIntent: onIntentCallback }));
+      renderHook(() => useIntentStream({ onIntent: onIntentCallback, onIntentThrottleMs: 0 }));
 
       const sharedId = 'callback-dedupe-id';
       const message1 = createClassifiedMessage({ correlation_id: sharedId });
@@ -541,13 +543,46 @@ describe('useIntentStream', () => {
       expect(onIntentCallback).toHaveBeenCalledTimes(1);
     });
 
+    it('should throttle onIntent callback to prevent excessive calls', () => {
+      const onIntentCallback = vi.fn();
+      // Use default throttle of 100ms
+      renderHook(() => useIntentStream({ onIntent: onIntentCallback, onIntentThrottleMs: 100 }));
+
+      // Send 5 events in rapid succession
+      act(() => {
+        for (let i = 0; i < 5; i++) {
+          mockOnMessage?.(createClassifiedMessage({ intent_category: `event-${i}` }));
+        }
+      });
+
+      // First call should happen immediately
+      expect(onIntentCallback).toHaveBeenCalledTimes(1);
+      expect(onIntentCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ category: 'event-0' })
+      );
+
+      // Advance time to trigger trailing call
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+
+      // Trailing call should happen with most recent event
+      expect(onIntentCallback).toHaveBeenCalledTimes(2);
+      expect(onIntentCallback).toHaveBeenLastCalledWith(
+        expect.objectContaining({ category: 'event-4' })
+      );
+    });
+
     it('should handle updated onIntent callback (not stale closure)', () => {
       const onIntentCallback1 = vi.fn();
       const onIntentCallback2 = vi.fn();
 
-      const { rerender } = renderHook(({ onIntent }) => useIntentStream({ onIntent }), {
-        initialProps: { onIntent: onIntentCallback1 },
-      });
+      const { rerender } = renderHook(
+        ({ onIntent }) => useIntentStream({ onIntent, onIntentThrottleMs: 0 }),
+        {
+          initialProps: { onIntent: onIntentCallback1 },
+        }
+      );
 
       // Send first event
       act(() => {
@@ -596,6 +631,24 @@ describe('useIntentStream', () => {
       });
 
       expect(mockReconnect).toHaveBeenCalled();
+    });
+
+    it('should disconnect by unsubscribing and closing WebSocket', () => {
+      const { result } = renderHook(() => useIntentStream());
+
+      // Verify we're subscribed first
+      expect(mockSubscribe).toHaveBeenCalledWith(['intents', 'intents-stored']);
+
+      // Call disconnect
+      act(() => {
+        result.current.disconnect();
+      });
+
+      // Should unsubscribe from topics
+      expect(mockUnsubscribe).toHaveBeenCalledWith(['intents', 'intents-stored']);
+
+      // Should close the WebSocket connection
+      expect(mockClose).toHaveBeenCalled();
     });
 
     it('should expose connection status from useWebSocket', () => {

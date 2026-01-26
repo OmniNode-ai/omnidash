@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useCallback, useState, useRef } from 'react';
-import { useWebSocket } from './useWebSocket';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import type { IntentClassifiedEvent, IntentStoredEvent } from '@shared/intent-types';
 import { WS_CHANNEL_INTENTS, WS_CHANNEL_INTENTS_STORED } from '@shared/intent-types';
 import { generateUUID } from '@shared/uuid';
@@ -18,6 +18,12 @@ import { generateUUID } from '@shared/uuid';
  * Default maximum number of intents to keep in memory.
  */
 export const DEFAULT_MAX_INTENTS = 100;
+
+/**
+ * Default throttle interval for onIntent callback (in milliseconds).
+ * Prevents excessive callback invocations and potential query invalidation spam.
+ */
+export const DEFAULT_ON_INTENT_THROTTLE_MS = 100;
 
 /**
  * Multiplier for seenEventIds cleanup threshold.
@@ -79,9 +85,18 @@ export interface UseIntentStreamOptions {
   autoConnect?: boolean;
 
   /**
-   * Callback fired when a new intent is received
+   * Callback fired when a new intent is received.
+   * This callback is throttled to prevent excessive invocations.
+   * @see onIntentThrottleMs to configure throttle interval
    */
   onIntent?: (intent: ProcessedIntent) => void;
+
+  /**
+   * Throttle interval in milliseconds for onIntent callback.
+   * Helps prevent query invalidation spam when receiving many events.
+   * @default 100
+   */
+  onIntentThrottleMs?: number;
 
   /**
    * Enable debug logging
@@ -120,9 +135,9 @@ export interface UseIntentStreamReturn {
   connect: () => void;
 
   /**
-   * Unsubscribe from intent topics (does not close WebSocket connection).
-   * The WebSocket is managed by useWebSocket and shared across the app.
-   * Use this to stop receiving intent events without closing the connection.
+   * Disconnect from WebSocket and stop receiving intent events.
+   * This closes the underlying WebSocket connection and prevents reconnection.
+   * To reconnect, call connect().
    */
   disconnect: () => void;
 
@@ -177,7 +192,13 @@ export interface UseIntentStreamReturn {
  * ```
  */
 export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntentStreamReturn {
-  const { maxItems = DEFAULT_MAX_INTENTS, autoConnect = true, onIntent, debug = false } = options;
+  const {
+    maxItems = DEFAULT_MAX_INTENTS,
+    autoConnect = true,
+    onIntent,
+    onIntentThrottleMs = DEFAULT_ON_INTENT_THROTTLE_MS,
+    debug = false,
+  } = options;
 
   // State
   const [intents, setIntents] = useState<ProcessedIntent[]>([]);
@@ -207,10 +228,59 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
     onIntentRef.current = onIntent;
   }, [onIntent]);
 
+  // Throttle state for onIntent callback
+  const throttleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastCallTimeRef = useRef<number>(0);
+  const pendingIntentRef = useRef<ProcessedIntent | null>(null);
+
   // Keep intentsRef in sync with intents state for cleanup operations
   useEffect(() => {
     intentsRef.current = intents;
   }, [intents]);
+
+  /**
+   * Throttled callback invocation to prevent query invalidation spam.
+   * Uses trailing edge: if multiple intents arrive within throttle window,
+   * the callback is called with the most recent intent after the window expires.
+   */
+  const invokeOnIntentThrottled = useCallback(
+    (intent: ProcessedIntent) => {
+      const now = Date.now();
+      const timeSinceLastCall = now - lastCallTimeRef.current;
+
+      if (timeSinceLastCall >= onIntentThrottleMs) {
+        // Enough time has passed, call immediately
+        lastCallTimeRef.current = now;
+        onIntentRef.current?.(intent);
+      } else {
+        // Within throttle window, schedule trailing call with latest intent
+        pendingIntentRef.current = intent;
+
+        if (!throttleTimeoutRef.current) {
+          const remainingTime = onIntentThrottleMs - timeSinceLastCall;
+          throttleTimeoutRef.current = setTimeout(() => {
+            throttleTimeoutRef.current = null;
+            lastCallTimeRef.current = Date.now();
+            if (pendingIntentRef.current) {
+              onIntentRef.current?.(pendingIntentRef.current);
+              pendingIntentRef.current = null;
+            }
+          }, remainingTime);
+        }
+      }
+    },
+    [onIntentThrottleMs]
+  );
+
+  // Cleanup throttle timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (throttleTimeoutRef.current) {
+        clearTimeout(throttleTimeoutRef.current);
+        throttleTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Perform deferred cleanup of seenEventIds after state updates
   useEffect(() => {
@@ -344,8 +414,10 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
         // Clear any previous error on successful event
         setError(null);
 
-        // Call callback if provided
-        onIntentRef.current?.(processedIntent);
+        // Call throttled callback if provided
+        if (onIntentRef.current) {
+          invokeOnIntentThrottled(processedIntent);
+        }
       } catch (err) {
         if (debug) {
           console.error('[IntentStream] Error processing message:', err, message);
@@ -353,7 +425,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
         setError(err instanceof Error ? err : new Error(String(err)));
       }
     },
-    [debug, maxItems, processIntentEvent]
+    [debug, maxItems, processIntentEvent, invokeOnIntentThrottled]
   );
 
   /**
@@ -377,6 +449,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
     subscribe,
     unsubscribe,
     reconnect,
+    close: closeWebSocket,
   } = useWebSocket({
     onMessage: handleMessage,
     onError: handleError,
@@ -411,14 +484,21 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
     }
 
     // Cleanup: unsubscribe when unmounting
-    // Uses isConnectedRef to avoid stale closure on isConnected
+    // Check both hasSubscribed flag and connection state to avoid
+    // attempting unsubscribe after WebSocket has already disconnected
     return () => {
-      if (hasSubscribed.current && isConnectedRef.current) {
-        if (debug) {
+      if (hasSubscribed.current) {
+        // Only attempt unsubscribe if WebSocket is still connected
+        if (isConnectedRef.current) {
+          if (debug) {
+            // eslint-disable-next-line no-console
+            console.log('[IntentStream] Unsubscribing from intent topics');
+          }
+          unsubscribe([WS_CHANNEL_INTENTS, WS_CHANNEL_INTENTS_STORED]);
+        } else if (debug) {
           // eslint-disable-next-line no-console
-          console.log('[IntentStream] Unsubscribing from intent topics');
+          console.log('[IntentStream] Skipping unsubscribe - WebSocket already disconnected');
         }
-        unsubscribe([WS_CHANNEL_INTENTS, WS_CHANNEL_INTENTS_STORED]);
         hasSubscribed.current = false;
       }
     };
@@ -476,30 +556,37 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
   }, [reconnect]);
 
   /**
-   * Unsubscribe from intent topics and reset subscription state.
+   * Disconnect from the WebSocket and stop receiving intent events.
    *
-   * Note: This does NOT close the underlying WebSocket connection, as that is
-   * managed by the useWebSocket hook and shared across the application.
-   * This function only:
-   * 1. Unsubscribes from intent-specific topics
-   * 2. Resets the subscription flag so reconnecting will re-subscribe
+   * This function:
+   * 1. Unsubscribes from intent-specific topics (if still connected)
+   * 2. Closes the underlying WebSocket connection
+   * 3. Prevents automatic reconnection
+   * 4. Resets subscription state
    *
-   * The WebSocket connection itself remains open and is only closed when:
-   * - The component using useWebSocket unmounts
-   * - A network error occurs (followed by automatic reconnection)
-   *
-   * To fully disconnect, the parent component should unmount.
+   * To reconnect after calling disconnect(), call connect().
    */
   const disconnect = useCallback(() => {
+    if (debug) {
+      // eslint-disable-next-line no-console
+      console.log('[IntentStream] Disconnecting from WebSocket');
+    }
+
+    // Unsubscribe from topics if still connected
     if (hasSubscribed.current && isConnectedRef.current) {
       if (debug) {
         // eslint-disable-next-line no-console
-        console.log('[IntentStream] Disconnecting: unsubscribing from intent topics');
+        console.log('[IntentStream] Unsubscribing from intent topics before disconnect');
       }
       unsubscribe([WS_CHANNEL_INTENTS, WS_CHANNEL_INTENTS_STORED]);
     }
+
+    // Reset subscription flag
     hasSubscribed.current = false;
-  }, [unsubscribe, debug]);
+
+    // Close the WebSocket connection
+    closeWebSocket();
+  }, [unsubscribe, closeWebSocket, debug]);
 
   // Combine errors from both this hook and the WebSocket hook
   const combinedError = error || (wsError ? new Error(wsError) : null);
