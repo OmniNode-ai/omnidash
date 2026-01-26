@@ -743,13 +743,20 @@ export function isIntentQueryResponse(event: unknown): event is IntentQueryRespo
 /**
  * Type guard to check if an event is an IntentStoredEvent.
  * Uses INTENT_STORED_TOPIC constant for consistent event_type matching.
+ * Validates all required fields to ensure proper type narrowing.
  */
 export function isIntentStoredEvent(event: unknown): event is IntentStoredEvent {
+  if (typeof event !== 'object' || event === null) {
+    return false;
+  }
+  const e = event as Record<string, unknown>;
   return (
-    typeof event === 'object' &&
-    event !== null &&
-    'event_type' in event &&
-    (event as IntentStoredEvent).event_type === INTENT_STORED_TOPIC
+    e.event_type === INTENT_STORED_TOPIC &&
+    typeof e.intent_id === 'string' &&
+    typeof e.session_ref === 'string' &&
+    typeof e.intent_category === 'string' &&
+    typeof e.confidence === 'number' &&
+    typeof e.stored_at === 'string'
   );
 }
 
@@ -758,6 +765,7 @@ export function isIntentStoredEvent(event: unknown): event is IntentStoredEvent 
  *
  * Uses EVENT_TYPE_NAMES.INTENT_CLASSIFIED (event type name in payload),
  * not INTENT_CLASSIFIED_TOPIC (Kafka topic for routing).
+ * Validates all required fields to ensure proper type narrowing.
  *
  * NOTE: IntentClassifiedEvent uses a different pattern - the event_type field
  * contains the event type name ("IntentClassified"), not the Kafka topic.
@@ -765,11 +773,17 @@ export function isIntentStoredEvent(event: unknown): event is IntentStoredEvent 
  * but always have the same event_type value.
  */
 export function isIntentClassifiedEvent(event: unknown): event is IntentClassifiedEvent {
+  if (typeof event !== 'object' || event === null) {
+    return false;
+  }
+  const e = event as Record<string, unknown>;
   return (
-    typeof event === 'object' &&
-    event !== null &&
-    'event_type' in event &&
-    (event as IntentClassifiedEvent).event_type === EVENT_TYPE_NAMES.INTENT_CLASSIFIED
+    e.event_type === EVENT_TYPE_NAMES.INTENT_CLASSIFIED &&
+    typeof e.session_id === 'string' &&
+    typeof e.correlation_id === 'string' &&
+    typeof e.intent_category === 'string' &&
+    typeof e.confidence === 'number' &&
+    typeof e.timestamp === 'string'
   );
 }
 

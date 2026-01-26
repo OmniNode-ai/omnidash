@@ -275,7 +275,7 @@ function generateIntentStoredEvent(
   confidence: number
 ): IntentStoredEvent {
   return {
-    event_type: EVENT_TYPE_NAMES.INTENT_STORED,
+    event_type: INTENT_STORED_TOPIC,
     correlation_id: randomUUID(),
     intent_id: randomUUID(),
     session_ref: sessionRef,
