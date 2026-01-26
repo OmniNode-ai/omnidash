@@ -36,6 +36,7 @@ import {
   getIntentBgClass,
   getConfidenceOpacity,
   getIntentColorWithConfidence,
+  getConfidenceBadgeClasses,
   formatCategoryName,
 } from '@/lib/intent-colors';
 
@@ -187,13 +188,7 @@ function TimelineNode({ intent, isLast, onClick }: TimelineNodeProps) {
           <span
             className={cn(
               'text-xs px-1.5 py-0.5 rounded-full',
-              intent.confidence >= 0.9
-                ? 'bg-green-500/20 text-green-700 dark:text-green-400'
-                : intent.confidence >= 0.7
-                  ? 'bg-blue-500/20 text-blue-700 dark:text-blue-400'
-                  : intent.confidence >= 0.5
-                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400'
-                    : 'bg-red-500/20 text-red-700 dark:text-red-400'
+              getConfidenceBadgeClasses(intent.confidence)
             )}
           >
             {(intent.confidence * 100).toFixed(0)}%
@@ -280,21 +275,41 @@ function ErrorState({ error }: { error: string }) {
 // Chart Components
 // ============================================================================
 
+/**
+ * Recharts tooltip payload item type.
+ * Recharts can pass malformed or undefined payloads, so we use defensive typing.
+ */
+interface RechartsPayloadItem {
+  payload?: ChartDataPoint;
+  value?: number;
+  name?: string;
+  dataKey?: string;
+}
+
 interface ChartTooltipProps {
   active?: boolean;
-  payload?: Array<{ payload: ChartDataPoint }>;
+  payload?: RechartsPayloadItem[];
   /** Whether to show the "Click for details" hint */
   showClickHint?: boolean;
 }
 
 function ChartTooltip({ active, payload, showClickHint = false }: ChartTooltipProps) {
+  // Defensive checks for Recharts payload
   if (!active || !payload || payload.length === 0) {
     return null;
   }
 
-  const data = payload[0].payload;
+  // Recharts can pass malformed payloads; guard against undefined
+  const data = payload[0]?.payload;
+  if (!data || !data.intent) {
+    return null;
+  }
+
   const intent = data.intent;
   const date = new Date(data.x);
+
+  // Clamp confidence to [0, 1] range for display calculations
+  const clampedConfidence = Math.max(0, Math.min(1, intent.confidence));
 
   return (
     <div className="rounded-lg border bg-background px-3 py-2 shadow-lg text-sm min-w-[200px]">
@@ -327,26 +342,22 @@ function ChartTooltip({ active, payload, showClickHint = false }: ChartTooltipPr
         <span
           className={cn(
             'px-1.5 py-0.5 rounded-full font-medium',
-            intent.confidence >= 0.9
-              ? 'bg-green-500/20 text-green-700 dark:text-green-400'
-              : intent.confidence >= 0.7
-                ? 'bg-blue-500/20 text-blue-700 dark:text-blue-400'
-                : intent.confidence >= 0.5
-                  ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400'
-                  : 'bg-red-500/20 text-red-700 dark:text-red-400'
+            getConfidenceBadgeClasses(clampedConfidence)
           )}
         >
-          {(intent.confidence * 100).toFixed(0)}%
+          {(clampedConfidence * 100).toFixed(0)}%
         </span>
       </div>
 
-      {/* Session ID (truncated) */}
-      <div className="text-xs text-muted-foreground font-mono">
-        Session:{' '}
-        {intent.session_ref.length > 12
-          ? `${intent.session_ref.slice(0, 12)}...`
-          : intent.session_ref}
-      </div>
+      {/* Session ID (truncated) - guard against null/undefined session_ref */}
+      {intent.session_ref && (
+        <div className="text-xs text-muted-foreground font-mono">
+          Session:{' '}
+          {intent.session_ref.length > 12
+            ? `${intent.session_ref.slice(0, 12)}...`
+            : intent.session_ref}
+        </div>
+      )}
 
       {/* Keywords */}
       {intent.keywords && intent.keywords.length > 0 && (

@@ -232,6 +232,34 @@ export function getConfidenceColor(confidence: number): string {
 }
 
 /**
+ * Gets Tailwind CSS classes for a confidence badge with dark mode support.
+ * Uses the same 3-tier system as getConfidenceColor but with explicit dark mode classes.
+ *
+ * - >= 0.9 (90%): green (high confidence)
+ * - >= 0.7 (70%): yellow (medium confidence)
+ * - < 0.7: red (low confidence)
+ *
+ * Thresholds use CONFIDENCE_THRESHOLD_HIGH and CONFIDENCE_THRESHOLD_MEDIUM constants.
+ *
+ * @param confidence - Confidence value between 0 and 1
+ * @returns Tailwind classes string for confidence badge with dark mode support
+ *
+ * @example
+ * getConfidenceBadgeClasses(0.95) // 'bg-green-500/20 text-green-700 dark:text-green-400'
+ * getConfidenceBadgeClasses(0.8) // 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
+ * getConfidenceBadgeClasses(0.5) // 'bg-red-500/20 text-red-700 dark:text-red-400'
+ */
+export function getConfidenceBadgeClasses(confidence: number): string {
+  if (confidence >= CONFIDENCE_THRESHOLD_HIGH) {
+    return 'bg-green-500/20 text-green-700 dark:text-green-400';
+  }
+  if (confidence >= CONFIDENCE_THRESHOLD_MEDIUM) {
+    return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400';
+  }
+  return 'bg-red-500/20 text-red-700 dark:text-red-400';
+}
+
+/**
  * Gets a Tailwind background color class for an intent category.
  * Useful for timeline indicators and chart elements.
  *

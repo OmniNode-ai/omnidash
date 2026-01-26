@@ -88,6 +88,12 @@ export const WS_CHANNEL_INTENTS_STORED = 'intents-stored';
 export const EVENT_TYPE_NAMES = {
   /** Event type for intent classification events */
   INTENT_CLASSIFIED: 'IntentClassified',
+  /** Event type for intent stored events */
+  INTENT_STORED: 'IntentStored',
+  /** Event type for intent query request events */
+  INTENT_QUERY_REQUESTED: 'IntentQueryRequested',
+  /** Event type for intent query response events */
+  INTENT_QUERY_RESPONSE: 'IntentQueryResponse',
 } as const;
 
 // ============================================================================
@@ -168,6 +174,12 @@ export type IntentQueryStatus = z.infer<typeof IntentQueryStatusSchema>;
  */
 export const IntentStoredStatusSchema = z.enum(['success', 'error']);
 export type IntentStoredStatus = z.infer<typeof IntentStoredStatusSchema>;
+
+/**
+ * Zod schema for IntentCategory validation.
+ * Uses the VALID_INTENT_CATEGORIES array for enum validation.
+ */
+export const IntentCategorySchema = z.enum(VALID_INTENT_CATEGORIES);
 
 // ============================================================================
 // Payload Types with Zod Schemas
@@ -274,6 +286,47 @@ export interface IntentQueryRequestedEvent {
 // ============================================================================
 
 /**
+ * Zod schema for IntentCategoryDistribution (array format used by server).
+ * This format includes pre-calculated percentages.
+ */
+export const IntentCategoryDistributionSchema = z.object({
+  /** Category name */
+  category: z.string(),
+  /** Count of intents in this category */
+  count: z.number().int().nonnegative(),
+  /** Percentage of total intents */
+  percentage: z.number().min(0).max(100),
+});
+
+/**
+ * Intent category distribution entry (array format).
+ * Used by server/intent-events.ts for distribution responses.
+ */
+export interface IntentCategoryDistribution {
+  /** Category name */
+  category: string;
+  /** Count of intents in this category */
+  count: number;
+  /** Percentage of total intents */
+  percentage: number;
+}
+
+/**
+ * Zod schema for distribution field - supports both Record and Array formats.
+ * - Record<string, number>: Simple category -> count mapping (from Kafka)
+ * - IntentCategoryDistribution[]: Array with category, count, percentage (from server)
+ */
+export const DistributionFieldSchema = z.union([
+  z.record(z.string(), z.number()),
+  z.array(IntentCategoryDistributionSchema),
+]);
+
+/**
+ * Type for distribution field - supports both Record and Array formats.
+ */
+export type DistributionField = Record<string, number> | IntentCategoryDistribution[];
+
+/**
  * Zod schema for IntentQueryResponseEvent
  * Used for runtime validation of query response events.
  *
@@ -299,8 +352,8 @@ export const IntentQueryResponseEventSchema = z.object({
   query_type: IntentQueryTypeSchema,
   /** Status of the query execution */
   status: IntentQueryStatusSchema,
-  /** Category distribution for distribution queries (category -> count) - optional for non-distribution queries */
-  distribution: z.record(z.string(), z.number()).optional(),
+  /** Category distribution for distribution queries - supports Record or Array format */
+  distribution: DistributionFieldSchema.optional(),
   /** Intent records for session/recent/search queries - optional for distribution queries */
   intents: z.array(IntentRecordPayloadSchema).optional(),
   /** Number of results returned */
@@ -322,7 +375,7 @@ export const IntentQueryResponseEventSchema = z.object({
  * Published to INTENT_QUERY_RESPONSE_TOPIC
  *
  * NOTE: Field optionality aligned with server/intent-events.ts IntentQueryResponseEvent.
- * - distribution: Optional, only present for distribution queries
+ * - distribution: Optional, only present for distribution queries (supports Record or Array format)
  * - intents: Optional, only present for session/recent/search queries
  * - total_intents: Optional, only meaningful for distribution queries
  * - time_range_hours: Optional, not all query types use it
@@ -340,8 +393,13 @@ export interface IntentQueryResponseEvent {
   query_type: IntentQueryType;
   /** Status of the query execution */
   status: IntentQueryStatus;
-  /** Category distribution for distribution queries (category -> count) */
-  distribution?: Record<string, number>;
+  /**
+   * Category distribution for distribution queries.
+   * Supports two formats:
+   * - Record<string, number>: Simple category -> count mapping (from Kafka)
+   * - IntentCategoryDistribution[]: Array with category, count, percentage (from server)
+   */
+  distribution?: DistributionField;
   /** Intent records for session/recent/search queries */
   intents?: IntentRecordPayload[];
   /** Number of results returned */
@@ -478,6 +536,19 @@ export interface IntentClassifiedEvent {
 // ============================================================================
 
 /**
+ * Zod schema for DistributionQueryOptions.
+ * Used for runtime validation of distribution query parameters.
+ */
+export const DistributionQueryOptionsSchema = z.object({
+  /** Time range in hours (default: 24) */
+  time_range_hours: z.number().positive().optional(),
+  /** Minimum confidence threshold (default: 0.0) */
+  min_confidence: z.number().min(0).max(1).optional(),
+  /** Correlation ID for tracing (auto-generated if not provided) */
+  correlation_id: z.string().uuid().optional(),
+});
+
+/**
  * Options for creating a distribution query
  */
 export interface DistributionQueryOptions {
@@ -490,6 +561,19 @@ export interface DistributionQueryOptions {
 }
 
 /**
+ * Zod schema for SessionQueryOptions.
+ * Used for runtime validation of session query parameters.
+ */
+export const SessionQueryOptionsSchema = z.object({
+  /** Minimum confidence threshold (default: 0.0) */
+  min_confidence: z.number().min(0).max(1).optional(),
+  /** Maximum number of results (default: 100) */
+  limit: z.number().positive().int().optional(),
+  /** Correlation ID for tracing (auto-generated if not provided) */
+  correlation_id: z.string().uuid().optional(),
+});
+
+/**
  * Options for creating a session query
  */
 export interface SessionQueryOptions {
@@ -500,6 +584,21 @@ export interface SessionQueryOptions {
   /** Correlation ID for tracing (auto-generated if not provided) */
   correlation_id?: string;
 }
+
+/**
+ * Zod schema for RecentQueryOptions.
+ * Used for runtime validation of recent query parameters.
+ */
+export const RecentQueryOptionsSchema = z.object({
+  /** Time range in hours (default: 24) */
+  time_range_hours: z.number().positive().optional(),
+  /** Maximum number of results (default: 100) */
+  limit: z.number().positive().int().optional(),
+  /** Minimum confidence threshold (default: 0.0) */
+  min_confidence: z.number().min(0).max(1).optional(),
+  /** Correlation ID for tracing (auto-generated if not provided) */
+  correlation_id: z.string().uuid().optional(),
+});
 
 /**
  * Options for creating a recent query
@@ -701,23 +800,20 @@ export type IntentEvent =
   | IntentClassifiedEvent;
 
 /**
- * Zod schema for IntentCategoryCount
+ * Zod schema for IntentCategoryCount (alias of IntentCategoryDistributionSchema)
  * Used for runtime validation of distribution data in visualization components.
+ *
+ * @deprecated Use IntentCategoryDistributionSchema instead
  */
-export const IntentCategoryCountSchema = z.object({
-  category: z.string(),
-  count: z.number().int().nonnegative(),
-  percentage: z.number().min(0).max(100),
-});
+export const IntentCategoryCountSchema = IntentCategoryDistributionSchema;
 
 /**
- * Intent category with count - useful for distribution visualization
+ * Intent category with count - useful for distribution visualization.
+ * This is an alias of IntentCategoryDistribution for backward compatibility.
+ *
+ * @see IntentCategoryDistribution - The canonical type
  */
-export interface IntentCategoryCount {
-  category: string;
-  count: number;
-  percentage: number;
-}
+export type IntentCategoryCount = IntentCategoryDistribution;
 
 /**
  * Convert distribution record to array with percentages
@@ -806,4 +902,156 @@ export function safeParseIntentRecord(
   data: unknown
 ): z.SafeParseReturnType<unknown, IntentRecordPayload> {
   return IntentRecordPayloadSchema.safeParse(data);
+}
+
+// ============================================================================
+// Timestamp Validation Utilities
+// ============================================================================
+
+/**
+ * Validate an ISO-8601 timestamp string.
+ *
+ * @param timestamp - The timestamp string to validate
+ * @returns true if the timestamp is valid ISO-8601, false otherwise
+ *
+ * @example
+ * ```typescript
+ * isValidTimestamp('2026-01-26T10:30:00Z') // true
+ * isValidTimestamp('2026-01-26T10:30:00.123Z') // true
+ * isValidTimestamp('2026-01-26T10:30:00+05:00') // true
+ * isValidTimestamp('invalid') // false
+ * isValidTimestamp('') // false
+ * ```
+ */
+export function isValidTimestamp(timestamp: string): boolean {
+  if (!timestamp || typeof timestamp !== 'string') {
+    return false;
+  }
+
+  // Try parsing as a Date and check if it's valid
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) {
+    return false;
+  }
+
+  // Additional check: ISO-8601 format validation
+  // This regex matches common ISO-8601 formats including:
+  // - 2026-01-26T10:30:00Z (UTC)
+  // - 2026-01-26T10:30:00.123Z (with milliseconds)
+  // - 2026-01-26T10:30:00+05:00 (with offset)
+  // - 2026-01-26T10:30:00-05:00 (with negative offset)
+  const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})?$/;
+  return iso8601Regex.test(timestamp);
+}
+
+/**
+ * Parse a timestamp string safely, returning null for invalid timestamps.
+ *
+ * @param timestamp - The timestamp string to parse
+ * @returns Date object if valid, null otherwise
+ *
+ * @example
+ * ```typescript
+ * const date = safeParseTimestamp('2026-01-26T10:30:00Z');
+ * if (date) {
+ *   console.log(date.toISOString());
+ * }
+ * ```
+ */
+export function safeParseTimestamp(timestamp: string): Date | null {
+  if (!isValidTimestamp(timestamp)) {
+    return null;
+  }
+  return new Date(timestamp);
+}
+
+/**
+ * Get a valid timestamp or a fallback value.
+ * Useful for ensuring a valid timestamp in event processing.
+ *
+ * @param timestamp - The timestamp string to validate
+ * @param fallback - Optional fallback value (defaults to current time)
+ * @returns Valid ISO-8601 timestamp string
+ *
+ * @example
+ * ```typescript
+ * const ts = getValidTimestamp(event.timestamp);
+ * // Returns event.timestamp if valid, otherwise current time
+ *
+ * const ts2 = getValidTimestamp(event.timestamp, '2026-01-01T00:00:00Z');
+ * // Returns event.timestamp if valid, otherwise the fallback
+ * ```
+ */
+export function getValidTimestamp(timestamp: string | undefined | null, fallback?: string): string {
+  if (timestamp && isValidTimestamp(timestamp)) {
+    return timestamp;
+  }
+  if (fallback && isValidTimestamp(fallback)) {
+    return fallback;
+  }
+  return new Date().toISOString();
+}
+
+// ============================================================================
+// Distribution Normalization Utilities
+// ============================================================================
+
+/**
+ * Check if distribution is in array format (IntentCategoryDistribution[]).
+ *
+ * @param distribution - The distribution to check
+ * @returns true if array format, false if record format
+ */
+export function isDistributionArray(
+  distribution: DistributionField
+): distribution is IntentCategoryDistribution[] {
+  return Array.isArray(distribution);
+}
+
+/**
+ * Normalize distribution to array format with percentages.
+ * Handles both Record<string, number> and IntentCategoryDistribution[] formats.
+ *
+ * @param distribution - Distribution in either format
+ * @param totalIntents - Total intents for percentage calculation (required for Record format)
+ * @returns Array of IntentCategoryDistribution sorted by count descending
+ *
+ * @example
+ * ```typescript
+ * // From Record format
+ * const arr1 = normalizeDistribution({ debugging: 50, testing: 30 }, 80);
+ *
+ * // From Array format (passes through, recalculates if totalIntents differs)
+ * const arr2 = normalizeDistribution([{ category: 'debugging', count: 50, percentage: 62.5 }]);
+ * ```
+ */
+export function normalizeDistribution(
+  distribution: DistributionField,
+  totalIntents?: number
+): IntentCategoryDistribution[] {
+  if (isDistributionArray(distribution)) {
+    // Already in array format
+    if (totalIntents !== undefined) {
+      // Recalculate percentages with provided total
+      return distribution
+        .map((d) => ({
+          category: d.category,
+          count: d.count,
+          percentage: totalIntents > 0 ? (d.count / totalIntents) * 100 : 0,
+        }))
+        .sort((a, b) => b.count - a.count);
+    }
+    // Return as-is, already has percentages
+    return [...distribution].sort((a, b) => b.count - a.count);
+  }
+
+  // Record format - convert to array
+  const total = totalIntents ?? Object.values(distribution).reduce((sum, count) => sum + count, 0);
+  return Object.entries(distribution)
+    .map(([category, count]) => ({
+      category,
+      count,
+      percentage: total > 0 ? (count / total) * 100 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
 }

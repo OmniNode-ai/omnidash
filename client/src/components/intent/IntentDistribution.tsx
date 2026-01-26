@@ -10,7 +10,17 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  LabelList,
+} from 'recharts';
+import type { LabelProps } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -171,6 +181,41 @@ function CustomTooltip({
 }
 
 /**
+ * Custom label renderer for bar chart labels.
+ * Uses content prop pattern to properly access payload data.
+ */
+function BarLabelContent(props: LabelProps) {
+  const { x, y, width, height, value } = props;
+  // Access the full data item from the payload array
+  const payload = (props as LabelProps & { payload?: IntentCategoryCount }).payload;
+  const percentage = payload?.percentage;
+
+  if (
+    typeof x !== 'number' ||
+    typeof y !== 'number' ||
+    typeof width !== 'number' ||
+    typeof height !== 'number'
+  ) {
+    return null;
+  }
+
+  const displayText = percentage !== undefined ? `${percentage.toFixed(0)}%` : `${value}`;
+
+  return (
+    <text
+      x={x + width + 8}
+      y={y + height / 2}
+      fill="hsl(var(--muted-foreground))"
+      fontSize={11}
+      dominantBaseline="middle"
+      textAnchor="start"
+    >
+      {displayText}
+    </text>
+  );
+}
+
+/**
  * IntentDistribution Component
  *
  * Renders a horizontal bar chart showing the distribution of intent categories
@@ -274,19 +319,8 @@ export function IntentDistribution({
               content={<CustomTooltip />}
               cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }}
             />
-            <Bar
-              dataKey="count"
-              radius={[0, 4, 4, 0]}
-              label={{
-                position: 'right',
-                fill: 'hsl(var(--muted-foreground))',
-                fontSize: 11,
-                formatter: (_value: number, entry: { payload?: IntentCategoryCount }) => {
-                  const percentage = entry?.payload?.percentage;
-                  return percentage !== undefined ? `${percentage.toFixed(0)}%` : '';
-                },
-              }}
-            >
+            <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+              <LabelList dataKey="count" content={BarLabelContent} />
               {chartData.map((entry) => (
                 <Cell key={entry.category} fill={getIntentColor(entry.category)} />
               ))}

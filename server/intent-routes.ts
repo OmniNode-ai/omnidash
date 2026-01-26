@@ -656,7 +656,16 @@ intentRouter.get('/recent', async (req, res) => {
 intentRouter.post('/store', async (req, res) => {
   try {
     // Rate limiting check
-    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    // Attempt to get client IP from various sources
+    let clientIp = req.ip || req.socket.remoteAddress;
+    if (!clientIp) {
+      // Log when IP detection fails - helps debug proxy/load balancer issues
+      console.warn(
+        '[intent-routes] IP detection failed for rate limiting - falling back to "unknown". ' +
+          'Consider configuring trust proxy settings if behind a reverse proxy.'
+      );
+      clientIp = 'unknown';
+    }
     if (!checkRateLimit(clientIp)) {
       const remaining = getRateLimitRemaining(clientIp);
       const resetSeconds = getRateLimitResetSeconds(clientIp);

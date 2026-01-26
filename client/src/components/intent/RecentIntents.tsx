@@ -396,9 +396,9 @@ export function RecentIntents({
       {!isLoading && !isError && intents.length > 0 && (
         <ScrollArea className="pr-4" style={{ maxHeight: `${maxHeight}px` }}>
           <div className="space-y-2">
-            {intents.map((intent) => (
+            {intents.map((intent, index) => (
               <IntentItemRow
-                key={intent.intent_id}
+                key={`${intent.intent_id}-${intent.created_at}-${index}`}
                 intent={intent}
                 isNew={newItemIds.has(intent.intent_id)}
                 showConfidence={showConfidence}

@@ -341,11 +341,52 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
   );
 
   /**
+   * Validate that a WebSocket message has the expected structure.
+   * Returns true if the message appears to be a valid intent event payload.
+   */
+  const isValidIntentEventPayload = useCallback(
+    (data: unknown): data is IntentClassifiedEvent | IntentStoredEvent => {
+      // Must be an object
+      if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+        return false;
+      }
+
+      const obj = data as Record<string, unknown>;
+
+      // Must have at least one of the expected identifier fields
+      const hasIdentifier =
+        typeof obj.correlation_id === 'string' ||
+        typeof obj.intent_id === 'string' ||
+        typeof obj.session_id === 'string' ||
+        typeof obj.session_ref === 'string';
+
+      // Must have a category (optional but expected)
+      const hasCategory =
+        typeof obj.intent_category === 'string' || obj.intent_category === undefined;
+
+      return hasIdentifier && hasCategory;
+    },
+    []
+  );
+
+  /**
    * Handle incoming WebSocket messages.
+   *
+   * Validates message structure before processing to handle malformed events gracefully.
+   * Events that fail validation are logged (in debug mode) and ignored.
    */
   const handleMessage = useCallback(
     (message: { type: string; data?: unknown; timestamp: string }) => {
       try {
+        // Validate message has required structure
+        if (!message || typeof message.type !== 'string') {
+          if (debug) {
+            // eslint-disable-next-line no-console
+            console.log('[IntentStream] Skipping invalid message: missing type', message);
+          }
+          return;
+        }
+
         // Check if this is an intent event
         const intentEventTypes = ['INTENT_CLASSIFIED', 'IntentClassified', 'INTENT_STORED'];
 
@@ -353,10 +394,20 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
           return;
         }
 
-        const eventData = message.data as IntentClassifiedEvent | IntentStoredEvent | undefined;
-        if (!eventData) {
+        // Validate event data structure before processing
+        if (!isValidIntentEventPayload(message.data)) {
+          if (debug) {
+            // eslint-disable-next-line no-console
+            console.log(
+              '[IntentStream] Skipping malformed event payload:',
+              message.type,
+              message.data
+            );
+          }
           return;
         }
+
+        const eventData = message.data;
 
         // Process the event
         const processedIntent = processIntentEvent(eventData, message.type);
@@ -419,7 +470,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
         setError(err instanceof Error ? err : new Error(String(err)));
       }
     },
-    [debug, maxItems, processIntentEvent, invokeOnIntentThrottled]
+    [debug, maxItems, processIntentEvent, invokeOnIntentThrottled, isValidIntentEventPayload]
   );
 
   /**

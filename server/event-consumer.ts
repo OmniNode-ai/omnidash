@@ -4,11 +4,13 @@ import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 import { LRUCache } from 'lru-cache';
 import { z } from 'zod';
-// Import topic constants from shared module (single source of truth)
+// Import topic constants and type utilities from shared module (single source of truth)
 import {
   INTENT_CLASSIFIED_TOPIC as SHARED_INTENT_CLASSIFIED_TOPIC,
   INTENT_STORED_TOPIC as SHARED_INTENT_STORED_TOPIC,
   INTENT_QUERY_RESPONSE_TOPIC as SHARED_INTENT_QUERY_RESPONSE_TOPIC,
+  EVENT_TYPE_NAMES,
+  isIntentClassifiedEvent,
   type IntentClassifiedEvent as SharedIntentClassifiedEvent,
 } from '@shared/intent-types';
 // Import env prefix utilities from server-side topics module
@@ -646,9 +648,13 @@ export class EventConsumer extends EventEmitter {
   private consumer: Consumer | null = null;
   private isRunning = false;
 
-  // Data retention configuration
-  private readonly DATA_RETENTION_MS = 24 * 60 * 60 * 1000; // 24 hours
-  private readonly PRUNE_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+  // Data retention configuration (configurable via environment variables)
+  // INTENT_RETENTION_HOURS: Number of hours to retain intent data (default: 24)
+  // PRUNE_INTERVAL_HOURS: How often to run pruning in hours (default: 1)
+  private readonly DATA_RETENTION_MS =
+    (parseInt(process.env.INTENT_RETENTION_HOURS || '24', 10) || 24) * 60 * 60 * 1000;
+  private readonly PRUNE_INTERVAL_MS =
+    (parseInt(process.env.PRUNE_INTERVAL_HOURS || '1', 10) || 1) * 60 * 60 * 1000;
   private pruneTimer?: NodeJS.Timeout;
   private canonicalNodeCleanupInterval?: NodeJS.Timeout;
 
@@ -1529,6 +1535,14 @@ export class EventConsumer extends EventEmitter {
 
   private handleIntentClassified(event: RawIntentClassifiedEvent): void {
     try {
+      // Validate event_type matches shared IntentClassifiedEvent interface
+      // Use EVENT_TYPE_NAMES.INTENT_CLASSIFIED from shared module for consistency
+      if (event.event_type && event.event_type !== EVENT_TYPE_NAMES.INTENT_CLASSIFIED) {
+        intentLogger.warn(
+          `Unexpected event_type: expected "${EVENT_TYPE_NAMES.INTENT_CLASSIFIED}", got "${event.event_type}". Processing anyway for backward compatibility.`
+        );
+      }
+
       // Use intent_category (shared interface) with fallback to intent_type (legacy)
       const intentType =
         event.intent_category ||
@@ -1562,11 +1576,12 @@ export class EventConsumer extends EventEmitter {
       }
 
       // Update intent distribution with timestamp tracking for proper pruning
+      // Use event timestamp (not current time) for accurate distribution tracking
       const existing = this.intentDistributionWithTimestamps.get(intentType);
-      const now = Date.now();
+      const eventTimestamp = createdAt.getTime();
       if (existing) {
         existing.count++;
-        existing.timestamps.push(now);
+        existing.timestamps.push(eventTimestamp);
         // Cap timestamps array to prevent unbounded growth
         if (existing.timestamps.length > MAX_TIMESTAMPS_PER_CATEGORY) {
           existing.timestamps = existing.timestamps.slice(-MAX_TIMESTAMPS_PER_CATEGORY);
@@ -1574,7 +1589,7 @@ export class EventConsumer extends EventEmitter {
       } else {
         this.intentDistributionWithTimestamps.set(intentType, {
           count: 1,
-          timestamps: [now],
+          timestamps: [eventTimestamp],
         });
       }
 
@@ -1606,11 +1621,14 @@ export class EventConsumer extends EventEmitter {
         error
       );
 
-      // Emit error event with context for observability
+      // Emit error event with full context for observability
+      // Preserve stack trace and original error details for debugging
       this.emit('error', {
         type: 'intent-classification-error',
         context: errorContext,
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        originalError: error,
         timestamp: new Date().toISOString(),
       });
     }
@@ -1655,11 +1673,14 @@ export class EventConsumer extends EventEmitter {
         error
       );
 
-      // Emit error event with context for observability
+      // Emit error event with full context for observability
+      // Preserve stack trace and original error details for debugging
       this.emit('error', {
         type: 'intent-stored-error',
         context: errorContext,
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        originalError: error,
         timestamp: new Date().toISOString(),
       });
     }
@@ -1702,11 +1723,14 @@ export class EventConsumer extends EventEmitter {
         error
       );
 
-      // Emit error event with context for observability
+      // Emit error event with full context for observability
+      // Preserve stack trace and original error details for debugging
       this.emit('error', {
         type: 'intent-query-response-error',
         context: errorContext,
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        originalError: error,
         timestamp: new Date().toISOString(),
       });
     }

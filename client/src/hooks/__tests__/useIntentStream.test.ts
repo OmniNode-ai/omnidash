@@ -52,11 +52,8 @@ vi.mock('@/hooks/useWebSocket', () => ({
   ),
 }));
 
-// Mock crypto.randomUUID
+// UUID counter for deterministic test IDs
 let uuidCounter = 0;
-vi.stubGlobal('crypto', {
-  randomUUID: () => `test-uuid-${++uuidCounter}`,
-});
 
 describe('useIntentStream', () => {
   beforeEach(() => {
@@ -66,6 +63,12 @@ describe('useIntentStream', () => {
     mockIsConnected = true;
     mockOnMessage = undefined;
     mockOnError = undefined;
+
+    // Mock crypto.randomUUID in beforeEach for deterministic UUIDs across all tests
+    // This ensures consistent behavior when tests run in different orders
+    vi.stubGlobal('crypto', {
+      randomUUID: () => `test-uuid-${++uuidCounter}`,
+    });
   });
 
   afterEach(() => {
@@ -222,17 +225,18 @@ describe('useIntentStream', () => {
       expect(result.current.stats.totalReceived).toBe(1);
     });
 
-    it('should handle events with missing optional fields', () => {
+    it('should handle events with missing optional fields (confidence, timestamp) but valid identifier', () => {
       const { result } = renderHook(() => useIntentStream());
 
-      // Message with minimal fields (missing optional ones)
+      // Message with minimal required fields (at least one identifier required)
+      // Missing: correlation_id, timestamp, confidence
       const message = {
         type: 'INTENT_CLASSIFIED',
         data: {
           event_type: 'IntentClassified',
-          // Missing session_id, correlation_id, timestamp
+          session_id: 'session-with-missing-optionals', // Required: at least one identifier
           intent_category: 'unknown_category',
-          // Missing confidence
+          // Missing: correlation_id, timestamp, confidence
         } as Partial<IntentClassifiedEvent>,
         timestamp: new Date().toISOString(),
       };
@@ -245,8 +249,8 @@ describe('useIntentStream', () => {
 
       expect(result.current.intents).toHaveLength(1);
       expect(result.current.intents[0].category).toBe('unknown_category');
-      expect(result.current.intents[0].confidence).toBe(0); // Default
-      expect(result.current.intents[0].sessionId).toBe(''); // Default
+      expect(result.current.intents[0].confidence).toBe(0); // Default when missing
+      expect(result.current.intents[0].sessionId).toBe('session-with-missing-optionals');
     });
 
     it('should ignore events without data payload', () => {
@@ -634,7 +638,7 @@ describe('useIntentStream', () => {
       expect(mockReconnect).toHaveBeenCalled();
     });
 
-    it('should disconnect by unsubscribing and closing WebSocket', () => {
+    it('should disconnect by unsubscribing from topics and closing WebSocket connection', () => {
       const { result } = renderHook(() => useIntentStream());
 
       // Verify we're subscribed first
@@ -650,6 +654,41 @@ describe('useIntentStream', () => {
 
       // Should close the WebSocket connection
       expect(mockClose).toHaveBeenCalled();
+    });
+
+    it('should not attempt unsubscribe when WebSocket is already disconnected', () => {
+      // Start with disconnected state
+      mockIsConnected = false;
+
+      const { result } = renderHook(() => useIntentStream());
+
+      // Clear mocks to check fresh calls
+      vi.clearAllMocks();
+
+      // Call disconnect when already disconnected
+      act(() => {
+        result.current.disconnect();
+      });
+
+      // Should NOT call unsubscribe since WebSocket is already disconnected
+      expect(mockUnsubscribe).not.toHaveBeenCalled();
+
+      // Should still close to ensure cleanup
+      expect(mockClose).toHaveBeenCalled();
+    });
+
+    it('should handle multiple disconnect calls safely', () => {
+      const { result } = renderHook(() => useIntentStream());
+
+      // Call disconnect multiple times
+      act(() => {
+        result.current.disconnect();
+        result.current.disconnect();
+        result.current.disconnect();
+      });
+
+      // close should be called for each disconnect call (idempotent)
+      expect(mockClose).toHaveBeenCalledTimes(3);
     });
 
     it('should expose connection status from useWebSocket', () => {
@@ -692,27 +731,108 @@ describe('useIntentStream', () => {
       expect(result.current.error).toBeNull();
     });
 
-    it('should handle malformed message data gracefully', () => {
+    it('should reject malformed message data with string instead of object', () => {
       const { result } = renderHook(() => useIntentStream());
 
-      // Message with invalid data structure that will cause processing to fail
+      // Message with invalid data structure (string instead of object)
       const malformedMessage = {
         type: 'INTENT_CLASSIFIED',
-        data: 'not-an-object', // String instead of object
+        data: 'not-an-object',
         timestamp: new Date().toISOString(),
       };
 
-      // Should not throw - the hook handles errors gracefully
+      // Should not throw and should not add intent
       act(() => {
         mockOnMessage?.(
           malformedMessage as unknown as { type: string; data?: unknown; timestamp: string }
         );
       });
 
-      // Intent may or may not be added depending on how the hook handles the malformed data
-      // The important thing is that it doesn't crash
-      // The hook extracts fields with optional chaining, so it may create an intent with defaults
-      expect(result.current.intents.length).toBeLessThanOrEqual(1);
+      // Malformed data should be rejected by validation
+      expect(result.current.intents).toHaveLength(0);
+    });
+
+    it('should reject message data that is an array instead of object', () => {
+      const { result } = renderHook(() => useIntentStream());
+
+      const arrayDataMessage = {
+        type: 'INTENT_CLASSIFIED',
+        data: ['not', 'an', 'object'],
+        timestamp: new Date().toISOString(),
+      };
+
+      act(() => {
+        mockOnMessage?.(
+          arrayDataMessage as unknown as { type: string; data?: unknown; timestamp: string }
+        );
+      });
+
+      expect(result.current.intents).toHaveLength(0);
+    });
+
+    it('should reject message data missing all identifier fields', () => {
+      const { result } = renderHook(() => useIntentStream());
+
+      // Object but missing all identifier fields (correlation_id, intent_id, session_id, session_ref)
+      const noIdentifierMessage = {
+        type: 'INTENT_CLASSIFIED',
+        data: {
+          event_type: 'IntentClassified',
+          intent_category: 'debugging',
+          confidence: 0.85,
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      act(() => {
+        mockOnMessage?.(
+          noIdentifierMessage as unknown as { type: string; data?: unknown; timestamp: string }
+        );
+      });
+
+      // Should be rejected due to missing identifier fields
+      expect(result.current.intents).toHaveLength(0);
+    });
+
+    it('should accept message with only session_id as identifier', () => {
+      const { result } = renderHook(() => useIntentStream());
+
+      // Valid message with only session_id (no correlation_id)
+      const sessionOnlyMessage = {
+        type: 'INTENT_CLASSIFIED',
+        data: {
+          event_type: 'IntentClassified',
+          session_id: 'session-only-test',
+          intent_category: 'debugging',
+          confidence: 0.85,
+          timestamp: new Date().toISOString(),
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      act(() => {
+        mockOnMessage?.(sessionOnlyMessage as { type: string; data?: unknown; timestamp: string });
+      });
+
+      expect(result.current.intents).toHaveLength(1);
+    });
+
+    it('should handle null message data gracefully', () => {
+      const { result } = renderHook(() => useIntentStream());
+
+      const nullDataMessage = {
+        type: 'INTENT_CLASSIFIED',
+        data: null,
+        timestamp: new Date().toISOString(),
+      };
+
+      act(() => {
+        mockOnMessage?.(
+          nullDataMessage as unknown as { type: string; data?: unknown; timestamp: string }
+        );
+      });
+
+      expect(result.current.intents).toHaveLength(0);
     });
   });
 

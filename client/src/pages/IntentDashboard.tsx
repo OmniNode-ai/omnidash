@@ -2,16 +2,26 @@
  * Intent Dashboard Page (OMN-1458)
  *
  * Real-time Intent Classification Dashboard that combines:
- * - IntentDistribution: Bar chart showing category distribution
- * - RecentIntents: Streaming list of recent classifications
- * - SessionTimeline: Chronological timeline visualization
+ * - IntentDistribution: Bar chart showing category distribution (time-range filtered)
+ * - RecentIntents: Streaming list of recent classifications (live, unfiltered)
+ * - SessionTimeline: Chronological timeline visualization (live, unfiltered)
  *
  * Features:
  * - WebSocket-based live updates
  * - Animated connection status indicator
  * - Responsive grid layout
- * - Time range selector
+ * - Time range selector (affects IntentDistribution only)
  * - Stats summary cards
+ *
+ * Time Range Behavior:
+ * The time-range selector only affects IntentDistribution. This is intentional:
+ * - IntentDistribution: Shows aggregated statistics that benefit from historical filtering
+ * - RecentIntents: Shows a live stream of the most recent N items (real-time UX)
+ * - SessionTimeline: Shows recent intents or session-specific data (real-time UX)
+ *
+ * The real-time components (RecentIntents, SessionTimeline) prioritize showing the
+ * latest activity regardless of time range, while the distribution chart allows
+ * historical analysis over configurable periods.
  */
 
 import { useState, useMemo } from 'react';
@@ -288,7 +298,7 @@ export default function IntentDashboard() {
           lastUpdated={stats.lastEventTime}
           actions={
             <div className="flex items-center gap-2">
-              {/* Time Range Selector */}
+              {/* Time Range Selector - affects IntentDistribution only (see module docstring) */}
               <Select value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRangeHours)}>
                 <SelectTrigger className="w-[140px]">
                   <Clock className="h-4 w-4 mr-2" />
