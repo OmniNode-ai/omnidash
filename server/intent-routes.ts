@@ -15,7 +15,9 @@ import {
   intentEventEmitter,
   emitIntentUpdate,
   emitIntentDistributionUpdate,
+  toSnakeCase,
   type IntentRecord,
+  type IntentRecordPayload,
 } from './intent-events';
 
 export const intentRouter = Router();
@@ -32,7 +34,7 @@ interface DistributionResponse {
 }
 
 interface SessionIntentsResponse {
-  intents: IntentRecord[];
+  intents: IntentRecordPayload[];
   /** Number of intents returned in this response */
   count: number;
   /** Total intents available for this session (before limit applied) */
@@ -41,7 +43,7 @@ interface SessionIntentsResponse {
 }
 
 interface RecentIntentsResponse {
-  intents: IntentRecord[];
+  intents: IntentRecordPayload[];
   /** Number of intents returned in this response */
   count: number;
   /** Total intents available (before limit applied) */
@@ -524,7 +526,7 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
     const { intents, totalAvailable } = getIntentsBySession(sessionId, limit, minConfidence);
 
     const response: SessionIntentsResponse = {
-      intents,
+      intents: intents.map(toSnakeCase),
       count: intents.length,
       total_available: totalAvailable,
       session_ref: sessionId,
@@ -613,7 +615,7 @@ intentRouter.get('/recent', async (req, res) => {
     const intents = allIntentsInRange.slice(offset, offset + limit);
 
     const response: RecentIntentsResponse = {
-      intents,
+      intents: intents.map(toSnakeCase),
       count: intents.length,
       total_available: allIntentsInRange.length,
     };

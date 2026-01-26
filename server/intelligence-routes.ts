@@ -56,8 +56,8 @@ intelligenceRouter.get('/events/test/patterns', async (req, res) => {
   try {
     const sourcePath = (req.query.path as string) || 'node_*_effect.py';
     const language = (req.query.lang as string) || 'python';
-    const timeout = Number((req.query as any).timeout ?? 15000);
-    if ((intelligenceEvents as any).started !== true) {
+    const timeout = Number(req.query.timeout ?? 15000);
+    if (intelligenceEvents.started !== true) {
       await intelligenceEvents.start();
     }
     const result = await intelligenceEvents.requestPatternDiscovery(
@@ -97,7 +97,7 @@ intelligenceRouter.get('/analysis/patterns', async (req, res) => {
       ? Math.max(1000, Math.min(60000, parseInt(timeoutParam, 10) || 0))
       : 6000;
 
-    if ((intelligenceEvents as any).started !== true) {
+    if (intelligenceEvents.started !== true) {
       await intelligenceEvents.start();
     }
 

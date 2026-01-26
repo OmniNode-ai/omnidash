@@ -23,6 +23,8 @@
     "db:push": "drizzle-kit push",
     "seed-events": "tsx scripts/seed-events.ts",
     "seed-events:continuous": "tsx scripts/seed-events.ts --continuous",
+    "seed-intents": "tsx scripts/seed-intent-events.ts",
+    "seed-intents:continuous": "tsx scripts/seed-intent-events.ts --continuous",
     "check-topics": "tsx scripts/check-kafka-topics.ts",
     "clean:screenshots": "bash scripts/clean-screenshots.sh",
     "postinstall": "patch-package",

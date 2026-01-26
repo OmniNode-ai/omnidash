@@ -2,6 +2,21 @@ import { Kafka, Producer, Consumer } from 'kafkajs';
 import { randomUUID } from 'crypto';
 
 /**
+ * Error class for intelligence request failures with optional error code.
+ * Used when intelligence requests fail with structured error information.
+ */
+export class IntelligenceError extends Error {
+  /** Optional error code from the intelligence service */
+  readonly error_code?: string;
+
+  constructor(message: string, error_code?: string) {
+    super(message);
+    this.name = 'IntelligenceError';
+    this.error_code = error_code;
+  }
+}
+
+/**
  * IntelligenceEventAdapter
  * - Request/response over Kafka for intelligence operations
  * - Correlation ID tracking with in-memory pending map
@@ -97,8 +112,7 @@ export class IntelligenceEventAdapter {
             const errorPayload = event?.payload || event;
             const errorMsg =
               errorPayload?.error_message || errorPayload?.error || 'Intelligence request failed';
-            const error = new Error(errorMsg);
-            (error as any).error_code = errorPayload?.error_code;
+            const error = new IntelligenceError(errorMsg, errorPayload?.error_code);
             pending.reject(error);
           }
         } catch (err) {
@@ -280,10 +294,11 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
       return undefined;
     }
     // Delegate to actual instance
-    const value = (instance as any)[prop];
+    // Type assertion needed for Proxy property access - TypeScript doesn't fully support dynamic property access in Proxies
+    const value = instance[prop as keyof IntelligenceEventAdapter];
     // Bind methods to preserve 'this' context
     if (typeof value === 'function') {
-      return value.bind(instance);
+      return (value as (...args: unknown[]) => unknown).bind(instance);
     }
     return value;
   },

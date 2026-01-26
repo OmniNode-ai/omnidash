@@ -1,5 +1,6 @@
 import { Kafka, Consumer, KafkaMessage } from 'kafkajs';
 import { EventEmitter } from 'events';
+import crypto from 'node:crypto';
 import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 import { LRUCache } from 'lru-cache';
@@ -11,8 +12,13 @@ import {
   INTENT_QUERY_RESPONSE_TOPIC as SHARED_INTENT_QUERY_RESPONSE_TOPIC,
   EVENT_TYPE_NAMES,
   isIntentClassifiedEvent,
+  isIntentStoredEvent,
   type IntentClassifiedEvent as SharedIntentClassifiedEvent,
+  type IntentStoredEvent as SharedIntentStoredEvent,
+  type IntentRecordPayload,
 } from '@shared/intent-types';
+// Import intentEventEmitter for WebSocket broadcasting of intent events
+import { getIntentEventEmitter } from './intent-events';
 // Import env prefix utilities from server-side topics module
 import { withEnvPrefix, getTopicEnvPrefix } from './topics/onex-intent-topics';
 import {
@@ -1593,12 +1599,30 @@ export class EventConsumer extends EventEmitter {
         });
       }
 
-      // Emit event for WebSocket broadcast
+      // Emit event for WebSocket broadcast (legacy EventEmitter pattern)
       this.emit('intent-event', {
         topic: INTENT_CLASSIFIED_TOPIC,
         payload: intentEvent,
         timestamp: new Date().toISOString(),
       });
+
+      // Forward to IntentEventEmitter for new WebSocket subscription pattern
+      // Use type guard for validation before emitting
+      if (isIntentClassifiedEvent(event)) {
+        // Convert to IntentRecordPayload format for consistent broadcasting
+        const intentRecordPayload: IntentRecordPayload = {
+          intent_id: intentEvent.id,
+          session_ref: intentEvent.sessionId || '',
+          intent_category: intentType,
+          confidence: intentEvent.confidence,
+          keywords: [], // IntentClassifiedEvent doesn't include keywords; set empty array
+          created_at: createdAt.toISOString(),
+        };
+        getIntentEventEmitter().emitIntentStored(intentRecordPayload);
+        intentLogger.debug(
+          `Forwarded intent classified to IntentEventEmitter: ${intentRecordPayload.intent_id}`
+        );
+      }
 
       intentLogger.info(
         `Processed intent classified: ${intentType} (confidence: ${intentEvent.confidence}, session: ${intentEvent.sessionId || 'unknown'})`
@@ -1642,7 +1666,7 @@ export class EventConsumer extends EventEmitter {
         new Date()
       );
 
-      // Emit event for WebSocket broadcast
+      // Emit event for WebSocket broadcast (legacy EventEmitter pattern)
       this.emit('intent-event', {
         topic: INTENT_STORED_TOPIC,
         payload: {
@@ -1655,6 +1679,39 @@ export class EventConsumer extends EventEmitter {
         },
         timestamp: new Date().toISOString(),
       });
+
+      // Forward to IntentEventEmitter for new WebSocket subscription pattern
+      // Use type guard for validation - if event matches SharedIntentStoredEvent format
+      if (isIntentStoredEvent(event)) {
+        // Type guard narrows event to SharedIntentStoredEvent with all required fields
+        const intentRecordPayload: IntentRecordPayload = {
+          intent_id: event.intent_id,
+          session_ref: event.session_ref,
+          intent_category: event.intent_category,
+          confidence: event.confidence,
+          keywords: event.keywords || [],
+          created_at: event.stored_at,
+        };
+        getIntentEventEmitter().emitIntentStored(intentRecordPayload);
+        intentLogger.debug(
+          `Forwarded intent stored to IntentEventEmitter: ${intentRecordPayload.intent_id}`
+        );
+      } else {
+        // Legacy format - create minimal IntentRecordPayload from available fields
+        const intentId = event.intent_id || event.intentId || crypto.randomUUID();
+        const intentRecordPayload: IntentRecordPayload = {
+          intent_id: intentId,
+          session_ref: 'unknown', // Sentinel value for legacy events without session tracking
+          intent_category: event.intent_type || event.intentType || 'unknown',
+          confidence: 0, // Not available in legacy format
+          keywords: [],
+          created_at: createdAt.toISOString(),
+        };
+        getIntentEventEmitter().emitIntentStored(intentRecordPayload);
+        intentLogger.debug(
+          `Forwarded legacy intent stored to IntentEventEmitter: ${intentRecordPayload.intent_id}`
+        );
+      }
 
       intentLogger.info(`Processed intent stored: ${event.intent_id || event.intentId}`);
     } catch (error) {
@@ -2747,10 +2804,11 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
       return undefined;
     }
     // Delegate to actual instance
-    const value = (instance as any)[prop];
+    // Type assertion needed for Proxy property access - TypeScript doesn't fully support dynamic property access in Proxies
+    const value = instance[prop as keyof EventConsumer];
     // Bind methods to the instance to preserve 'this' context
     if (typeof value === 'function') {
-      return value.bind(instance);
+      return (value as (...args: unknown[]) => unknown).bind(instance);
     }
     return value;
   },
