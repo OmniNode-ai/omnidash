@@ -14,12 +14,19 @@
  * - Stats summary cards
  */
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { IntentDistribution, RecentIntents, SessionTimeline } from '@/components/intent';
 import { useIntentStream } from '@/hooks/useIntentStream';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import {
   Select,
   SelectContent,
@@ -163,7 +170,7 @@ function StatCard({ title, value, description, icon: Icon, trend, className }: S
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Intent Detail Drawer (placeholder for future enhancement)
+// Intent Detail Sheet
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface IntentDetailProps {
@@ -171,86 +178,54 @@ interface IntentDetailProps {
   onClose: () => void;
 }
 
+/**
+ * Sheet component for displaying detailed intent information.
+ * Slides in from the right when an intent is selected.
+ * Automatically handles:
+ * - Escape key to close
+ * - Click outside to close
+ * - Focus management
+ */
 function IntentDetail({ intent, onClose }: IntentDetailProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Memoize close handler to avoid unnecessary effect re-runs
-  const handleClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
-
-  // Keyboard accessibility: close panel on Escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
-    };
-    if (intent) {
-      document.addEventListener('keydown', handleEscape);
-      return () => document.removeEventListener('keydown', handleEscape);
-    }
-  }, [intent, handleClose]);
-
-  // Focus management: focus close button when panel opens
-  useEffect(() => {
-    if (intent && closeButtonRef.current) {
-      closeButtonRef.current.focus();
-    }
-  }, [intent]);
-
-  if (!intent) return null;
-
   return (
-    <Card
-      ref={panelRef}
-      role="dialog"
-      aria-label={`Intent details for ${intent.intent_category}`}
-      aria-modal="false"
-      className="fixed bottom-4 right-4 w-96 z-50 shadow-xl border-2"
-    >
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle id="intent-detail-title" className="text-sm font-medium">
-            Intent Details
-          </CardTitle>
-          <Button
-            ref={closeButtonRef}
-            variant="ghost"
-            size="sm"
-            onClick={handleClose}
-            aria-label="Close intent details panel"
-          >
-            Close
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Category:</span>
-          <Badge variant="outline">{intent.intent_category}</Badge>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Confidence:</span>
-          <span className="font-mono">{(intent.confidence * 100).toFixed(1)}%</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Session:</span>
-          <span className="font-mono text-xs truncate max-w-[180px]">{intent.session_ref}</span>
-        </div>
-        {intent.keywords && intent.keywords.length > 0 && (
-          <div>
-            <span className="text-muted-foreground">Keywords:</span>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {intent.keywords.slice(0, 5).map((kw, i) => (
-                <Badge key={i} variant="secondary" className="text-xs">
-                  {kw}
-                </Badge>
-              ))}
+    <Sheet open={!!intent} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="right" className="w-96 sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Intent Details</SheetTitle>
+          {intent && (
+            <SheetDescription>Classification details for {intent.intent_category}</SheetDescription>
+          )}
+        </SheetHeader>
+        {intent && (
+          <div className="space-y-4 mt-6 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Category:</span>
+              <Badge variant="outline">{intent.intent_category}</Badge>
             </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Confidence:</span>
+              <span className="font-mono">{(intent.confidence * 100).toFixed(1)}%</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Session:</span>
+              <span className="font-mono text-xs truncate max-w-[180px]">{intent.session_ref}</span>
+            </div>
+            {intent.keywords && intent.keywords.length > 0 && (
+              <div>
+                <span className="text-muted-foreground">Keywords:</span>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {intent.keywords.slice(0, 5).map((kw, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      {kw}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -432,10 +407,8 @@ export default function IntentDashboard() {
           </div>
         </div>
 
-        {/* Intent Detail Panel */}
-        {selectedIntent && (
-          <IntentDetail intent={selectedIntent} onClose={() => setSelectedIntent(null)} />
-        )}
+        {/* Intent Detail Sheet */}
+        <IntentDetail intent={selectedIntent} onClose={() => setSelectedIntent(null)} />
       </div>
     </TooltipProvider>
   );
