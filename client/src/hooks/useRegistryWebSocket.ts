@@ -99,6 +99,25 @@ export type RegistryEventType =
   | 'NODE_DISCOVERED';
 
 /**
+ * Registry event types for message filtering.
+ * BOUNDED SET: Exactly 11 known event types to prevent unbounded memory growth.
+ * Only events matching these types are processed and counted.
+ */
+export const REGISTRY_EVENT_TYPES: RegistryEventType[] = [
+  'NODE_REGISTERED',
+  'NODE_STATE_CHANGED',
+  'NODE_HEARTBEAT',
+  'NODE_DEREGISTERED',
+  'INSTANCE_HEALTH_CHANGED',
+  'INSTANCE_ADDED',
+  'INSTANCE_REMOVED',
+  'NODE_ACTIVATED',
+  'NODE_OFFLINE',
+  'NODE_INTROSPECTION',
+  'NODE_DISCOVERED',
+];
+
+/**
  * Registry event structure received from WebSocket
  */
 export interface RegistryEvent {
@@ -304,23 +323,8 @@ export function useRegistryWebSocket(
   const handleMessage = useCallback(
     (message: { type: string; data?: RegistryEvent; timestamp: string }) => {
       try {
-        // Check if this is a registry event
-        // OMN-1279: Added NODE_ACTIVATED, NODE_OFFLINE, NODE_INTROSPECTION, NODE_DISCOVERED
-        const registryEventTypes: RegistryEventType[] = [
-          'NODE_REGISTERED',
-          'NODE_STATE_CHANGED',
-          'NODE_HEARTBEAT',
-          'NODE_DEREGISTERED',
-          'INSTANCE_HEALTH_CHANGED',
-          'INSTANCE_ADDED',
-          'INSTANCE_REMOVED',
-          'NODE_ACTIVATED',
-          'NODE_OFFLINE',
-          'NODE_INTROSPECTION',
-          'NODE_DISCOVERED',
-        ];
-
-        if (!registryEventTypes.includes(message.type as RegistryEventType)) {
+        // Check if this is a registry event (uses module-level constant for efficiency)
+        if (!REGISTRY_EVENT_TYPES.includes(message.type as RegistryEventType)) {
           return;
         }
 

@@ -31,6 +31,10 @@ const SQL_PRELOAD_ACTIONS_LIMIT = 200;
 const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 
+// Canonical node cleanup configuration
+const CANONICAL_NODE_CLEANUP_INTERVAL_MS = 60_000; // 1 minute
+const CANONICAL_NODE_OFFLINE_TTL_MS = 300_000; // 5 minutes
+
 // Environment-aware ONEX topic naming
 const ONEX_ENV = process.env.ONEX_ENV || 'dev';
 
@@ -456,6 +460,7 @@ export class EventConsumer extends EventEmitter {
   private readonly DATA_RETENTION_MS = 24 * 60 * 60 * 1000; // 24 hours
   private readonly PRUNE_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
   private pruneTimer?: NodeJS.Timeout;
+  private canonicalNodeCleanupInterval?: NodeJS.Timeout;
 
   // In-memory aggregations
   private agentMetrics = new Map<
@@ -842,6 +847,12 @@ export class EventConsumer extends EventEmitter {
       this.pruneTimer = setInterval(() => {
         this.pruneOldData();
       }, this.PRUNE_INTERVAL_MS);
+
+      // Start periodic cleanup of stale offline canonical nodes
+      this.canonicalNodeCleanupInterval = setInterval(
+        () => this.cleanupStaleCanonicalNodes(),
+        CANONICAL_NODE_CLEANUP_INTERVAL_MS
+      );
 
       console.log('✅ Event consumer started with automatic data pruning');
     } catch (error) {
@@ -1366,6 +1377,9 @@ export class EventConsumer extends EventEmitter {
 
     const node = this.canonicalNodes.get(payload.node_id);
     if (!node) {
+      // Intentional early return: Unlike heartbeat/introspection events which can discover
+      // new nodes, liveness-expired only applies to nodes we're already tracking.
+      // If we receive this event for an unknown node, we skip it - there's nothing to mark offline.
       if (DEBUG_CANONICAL_EVENTS) {
         console.log(`[EventConsumer] Node not found for liveness-expired: ${payload.node_id}`);
       }
@@ -1604,6 +1618,33 @@ export class EventConsumer extends EventEmitter {
     if (totalRemoved > 0) {
       console.log(
         `🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes (total: ${totalRemoved})`
+      );
+    }
+  }
+
+  /**
+   * Clean up stale offline nodes from the canonical registry.
+   * Removes nodes with state='OFFLINE' and offline_at older than CANONICAL_NODE_OFFLINE_TTL_MS.
+   * This prevents unbounded memory growth from nodes that go offline and never come back.
+   */
+  private cleanupStaleCanonicalNodes(): void {
+    const now = Date.now();
+    let removedCount = 0;
+
+    for (const [nodeId, node] of this.canonicalNodes) {
+      if (
+        node.state === 'OFFLINE' &&
+        node.offline_at &&
+        now - node.offline_at > CANONICAL_NODE_OFFLINE_TTL_MS
+      ) {
+        this.canonicalNodes.delete(nodeId);
+        removedCount++;
+      }
+    }
+
+    if (removedCount > 0) {
+      console.log(
+        `🧹 Cleaned up ${removedCount} stale offline canonical nodes (TTL: ${CANONICAL_NODE_OFFLINE_TTL_MS / 1000}s)`
       );
     }
   }
@@ -2012,6 +2053,12 @@ export class EventConsumer extends EventEmitter {
       if (this.pruneTimer) {
         clearInterval(this.pruneTimer);
         this.pruneTimer = undefined;
+      }
+
+      // Clear canonical node cleanup timer
+      if (this.canonicalNodeCleanupInterval) {
+        clearInterval(this.canonicalNodeCleanupInterval);
+        this.canonicalNodeCleanupInterval = undefined;
       }
 
       await this.consumer.disconnect();
