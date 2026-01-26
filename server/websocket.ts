@@ -20,6 +20,8 @@ import {
   intentEventEmitter,
   type IntentStoredEventPayload,
   type IntentDistributionEventPayload,
+  type IntentSessionEventPayload,
+  type IntentRecentEventPayload,
 } from './intent-events';
 
 // Valid subscription topics that clients can subscribe to
@@ -228,9 +230,19 @@ export function setupWebSocket(httpServer: HTTPServer) {
     broadcast('INTENT_DISTRIBUTION', payload, 'intent');
   };
 
+  const intentSessionHandler = (payload: IntentSessionEventPayload) => {
+    broadcast('INTENT_SESSION', payload, 'intent');
+  };
+
+  const intentRecentHandler = (payload: IntentRecentEventPayload) => {
+    broadcast('INTENT_RECENT', payload, 'intent');
+  };
+
   // Register listeners on intentEventEmitter (not eventConsumer)
   intentEventEmitter.on('intentStored', intentStoredHandler);
   intentEventEmitter.on('intentDistribution', intentDistributionHandler);
+  intentEventEmitter.on('intentSession', intentSessionHandler);
+  intentEventEmitter.on('intentRecent', intentRecentHandler);
 
   // Registry Discovery event listeners (OMN-1278 Phase 4)
   // These provide granular registry events for the registry discovery dashboard
@@ -273,6 +285,8 @@ export function setupWebSocket(httpServer: HTTPServer) {
       event: 'intentDistribution',
       handler: intentDistributionHandler,
     },
+    { emitter: intentEventEmitter, event: 'intentSession', handler: intentSessionHandler },
+    { emitter: intentEventEmitter, event: 'intentRecent', handler: intentRecentHandler },
   ];
 
   // Handle WebSocket connections

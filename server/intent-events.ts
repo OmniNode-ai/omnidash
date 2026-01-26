@@ -442,7 +442,7 @@ export interface IntentRecord {
 /**
  * Convert IntentRecord (camelCase) to IntentRecordPayload (snake_case)
  */
-function toSnakeCase(intent: IntentRecord): IntentRecordPayload {
+export function toSnakeCase(intent: IntentRecord): IntentRecordPayload {
   return {
     intent_id: intent.intentId,
     session_ref: intent.sessionRef,
