@@ -11,14 +11,8 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useWebSocket } from './useWebSocket';
 import type { IntentClassifiedEvent, IntentStoredEvent } from '@shared/intent-types';
-
-/**
- * Generate a correlation ID for event deduplication.
- * crypto.randomUUID() is available in all modern browsers (Chrome 92+, Safari 15.4+, Firefox 95+).
- */
-function generateCorrelationId(): string {
-  return crypto.randomUUID();
-}
+import { WS_CHANNEL_INTENTS, WS_CHANNEL_INTENTS_STORED } from '@shared/intent-types';
+import { generateUUID } from '@shared/uuid';
 
 /**
  * Default maximum number of intents to keep in memory.
@@ -245,7 +239,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
 
       if (eventType === 'INTENT_CLASSIFIED' || eventType === 'IntentClassified') {
         const classified = eventData as IntentClassifiedEvent;
-        id = classified.correlation_id || generateCorrelationId();
+        id = classified.correlation_id || generateUUID();
         sessionId = classified.session_id || '';
         category = classified.intent_category || 'unknown';
         confidence = classified.confidence ?? 0;
@@ -253,7 +247,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
         correlationId = classified.correlation_id || id;
       } else if (eventType === 'INTENT_STORED') {
         const stored = eventData as IntentStoredEvent;
-        id = stored.intent_id || stored.correlation_id || generateCorrelationId();
+        id = stored.intent_id || stored.correlation_id || generateUUID();
         sessionId = stored.session_ref || '';
         category = stored.intent_category || 'unknown';
         confidence = stored.confidence ?? 0;
@@ -407,7 +401,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
         console.log('[IntentStream] Subscribing to intent topics');
       }
       // Subscribe to both main intent topic and stored events
-      subscribe(['intents', 'intents-stored']);
+      subscribe([WS_CHANNEL_INTENTS, WS_CHANNEL_INTENTS_STORED]);
       hasSubscribed.current = true;
     }
 
@@ -424,7 +418,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
           // eslint-disable-next-line no-console
           console.log('[IntentStream] Unsubscribing from intent topics');
         }
-        unsubscribe(['intents', 'intents-stored']);
+        unsubscribe([WS_CHANNEL_INTENTS, WS_CHANNEL_INTENTS_STORED]);
         hasSubscribed.current = false;
       }
     };
@@ -502,7 +496,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
         // eslint-disable-next-line no-console
         console.log('[IntentStream] Disconnecting: unsubscribing from intent topics');
       }
-      unsubscribe(['intents', 'intents-stored']);
+      unsubscribe([WS_CHANNEL_INTENTS, WS_CHANNEL_INTENTS_STORED]);
     }
     hasSubscribed.current = false;
   }, [unsubscribe, debug]);

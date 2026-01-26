@@ -7,22 +7,7 @@
  * @see OMN-1458 - Real-time Intent Dashboard Panel
  */
 
-/**
- * Generate a UUID v4 using native crypto API
- * Works in Node.js 14.17.0+ and modern browsers
- */
-function generateUUID(): string {
-  // Use crypto.randomUUID() if available (Node.js 19+, modern browsers)
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  // Fallback for older environments
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
+import { generateUUID } from './uuid';
 
 // ============================================================================
 // Topic Constants (ONEX canonical naming: dev.onex.{evt|cmd}.{owner}.{event-name}.v{n})
@@ -57,6 +42,45 @@ export const INTENT_STORED_TOPIC = 'dev.onex.evt.omnimemory.intent-stored.v1';
  * NOT this topic constant. See isIntentClassifiedEvent() type guard for usage.
  */
 export const INTENT_CLASSIFIED_TOPIC = 'dev.onex.evt.omniintelligence.intent-classified.v1';
+
+// ============================================================================
+// WebSocket Channel Constants
+// ============================================================================
+
+/**
+ * WebSocket channel for intent classified events.
+ * Used by useIntentStream hook to subscribe to real-time intent classifications.
+ *
+ * NOTE: This is a WebSocket subscription channel name, NOT a Kafka topic.
+ * The server maps this channel to the appropriate Kafka topic internally.
+ */
+export const WS_CHANNEL_INTENTS = 'intents';
+
+/**
+ * WebSocket channel for intent stored events.
+ * Used by useIntentStream hook to subscribe to real-time intent storage notifications.
+ *
+ * NOTE: This is a WebSocket subscription channel name, NOT a Kafka topic.
+ * The server maps this channel to the appropriate Kafka topic internally.
+ */
+export const WS_CHANNEL_INTENTS_STORED = 'intents-stored';
+
+// ============================================================================
+// Event Type Names (distinct from topic names)
+// These are the values that appear in the event_type field of event payloads
+// ============================================================================
+
+/**
+ * Event type names used in the event_type field of event payloads.
+ *
+ * NOTE: These are DIFFERENT from Kafka topic constants:
+ * - Topic names (INTENT_*_TOPIC): Used for Kafka routing
+ * - Event type names (EVENT_TYPE_NAMES.*): Values in event payloads
+ */
+export const EVENT_TYPE_NAMES = {
+  /** Event type for intent classification events */
+  INTENT_CLASSIFIED: 'IntentClassified',
+} as const;
 
 // ============================================================================
 // Enums / Union Types
@@ -395,21 +419,15 @@ export function isIntentStoredEvent(event: unknown): event is IntentStoredEvent 
 /**
  * Type guard to check if an event is an IntentClassifiedEvent
  *
- * NOTE: Uses literal 'IntentClassified' instead of INTENT_CLASSIFIED_TOPIC because:
- * - event_type field contains the event type NAME ("IntentClassified")
- * - INTENT_CLASSIFIED_TOPIC is the Kafka TOPIC for routing ("dev.onex.evt.omniintelligence.intent-classified.v1")
- * - These serve different purposes: type identification vs message routing
- *
- * This differs from isIntentQueryResponse() and isIntentStoredEvent() where
- * event_type happens to match the topic constant (legacy pattern).
+ * Uses EVENT_TYPE_NAMES.INTENT_CLASSIFIED (event type name in payload),
+ * not INTENT_CLASSIFIED_TOPIC (Kafka topic for routing).
  */
 export function isIntentClassifiedEvent(event: unknown): event is IntentClassifiedEvent {
   return (
     typeof event === 'object' &&
     event !== null &&
     'event_type' in event &&
-    // Uses literal 'IntentClassified' (event type name), not INTENT_CLASSIFIED_TOPIC (Kafka topic)
-    (event as IntentClassifiedEvent).event_type === 'IntentClassified'
+    (event as IntentClassifiedEvent).event_type === EVENT_TYPE_NAMES.INTENT_CLASSIFIED
   );
 }
 

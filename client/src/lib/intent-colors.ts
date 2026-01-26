@@ -81,6 +81,23 @@ export const INTENT_BADGE_CLASSES: Record<string, string> = {
 export const DEFAULT_BADGE_CLASSES = 'bg-muted text-muted-foreground border-border';
 
 // ============================================================================
+// Confidence Threshold Constants
+// ============================================================================
+
+/**
+ * Confidence threshold for high confidence classification.
+ * Values >= 0.9 (90%) are considered high confidence.
+ */
+export const CONFIDENCE_THRESHOLD_HIGH = 0.9;
+
+/**
+ * Confidence threshold for medium confidence classification.
+ * Values >= 0.7 (70%) but < 0.9 are considered medium confidence.
+ * Values < 0.7 are considered low confidence.
+ */
+export const CONFIDENCE_THRESHOLD_MEDIUM = 0.7;
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -151,23 +168,25 @@ export function getIntentBadgeClasses(category: string): string {
 /**
  * Gets Tailwind CSS classes based on confidence level.
  * Returns color classes indicating confidence tier:
- * - >= 0.8: green (high confidence)
- * - >= 0.6: yellow (medium confidence)
- * - < 0.6: red (low confidence)
+ * - >= 0.9 (90%): green (high confidence)
+ * - >= 0.7 (70%): yellow (medium confidence)
+ * - < 0.7: red (low confidence)
+ *
+ * Thresholds match RecentIntents indicator bar and IntentDashboard legend.
  *
  * @param confidence - Confidence value between 0 and 1
  * @returns Tailwind classes string for the confidence badge
  *
  * @example
  * getConfidenceColor(0.95) // 'bg-green-500/10 text-green-600 border-green-500/20'
- * getConfidenceColor(0.7) // 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
- * getConfidenceColor(0.4) // 'bg-red-500/10 text-red-600 border-red-500/20'
+ * getConfidenceColor(0.8) // 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
+ * getConfidenceColor(0.5) // 'bg-red-500/10 text-red-600 border-red-500/20'
  */
 export function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.8) {
+  if (confidence >= CONFIDENCE_THRESHOLD_HIGH) {
     return 'bg-green-500/10 text-green-600 border-green-500/20';
   }
-  if (confidence >= 0.6) {
+  if (confidence >= CONFIDENCE_THRESHOLD_MEDIUM) {
     return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
   }
   return 'bg-red-500/10 text-red-600 border-red-500/20';

@@ -173,37 +173,36 @@ describe('intent-colors', () => {
   });
 
   describe('getConfidenceColor', () => {
-    it('should return green classes for high confidence (>= 0.8)', () => {
+    it('should return green classes for high confidence (>= 0.9)', () => {
       const expected = 'bg-green-500/10 text-green-600 border-green-500/20';
-      expect(getConfidenceColor(0.8)).toBe(expected);
-      expect(getConfidenceColor(0.85)).toBe(expected);
       expect(getConfidenceColor(0.9)).toBe(expected);
       expect(getConfidenceColor(0.95)).toBe(expected);
       expect(getConfidenceColor(1.0)).toBe(expected);
     });
 
-    it('should return yellow classes for medium confidence (>= 0.6, < 0.8)', () => {
+    it('should return yellow classes for medium confidence (>= 0.7, < 0.9)', () => {
       const expected = 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
-      expect(getConfidenceColor(0.6)).toBe(expected);
-      expect(getConfidenceColor(0.65)).toBe(expected);
       expect(getConfidenceColor(0.7)).toBe(expected);
       expect(getConfidenceColor(0.75)).toBe(expected);
-      expect(getConfidenceColor(0.79)).toBe(expected);
+      expect(getConfidenceColor(0.8)).toBe(expected);
+      expect(getConfidenceColor(0.85)).toBe(expected);
+      expect(getConfidenceColor(0.89)).toBe(expected);
     });
 
-    it('should return red classes for low confidence (< 0.6)', () => {
+    it('should return red classes for low confidence (< 0.7)', () => {
       const expected = 'bg-red-500/10 text-red-600 border-red-500/20';
       expect(getConfidenceColor(0.0)).toBe(expected);
       expect(getConfidenceColor(0.1)).toBe(expected);
       expect(getConfidenceColor(0.3)).toBe(expected);
       expect(getConfidenceColor(0.5)).toBe(expected);
-      expect(getConfidenceColor(0.59)).toBe(expected);
+      expect(getConfidenceColor(0.6)).toBe(expected);
+      expect(getConfidenceColor(0.69)).toBe(expected);
     });
 
     it('should handle edge cases at exact boundaries', () => {
-      // Exactly at boundaries
-      expect(getConfidenceColor(0.8)).toBe('bg-green-500/10 text-green-600 border-green-500/20');
-      expect(getConfidenceColor(0.6)).toBe('bg-yellow-500/10 text-yellow-600 border-yellow-500/20');
+      // Exactly at boundaries (0.9 for high, 0.7 for medium)
+      expect(getConfidenceColor(0.9)).toBe('bg-green-500/10 text-green-600 border-green-500/20');
+      expect(getConfidenceColor(0.7)).toBe('bg-yellow-500/10 text-yellow-600 border-yellow-500/20');
     });
 
     it('should handle values outside 0-1 range', () => {
