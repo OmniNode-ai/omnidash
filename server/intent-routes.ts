@@ -25,6 +25,7 @@ export const intentRouter = Router();
 // ============================================================================
 
 interface DistributionResponse {
+  ok: boolean;
   distribution: Record<string, number>;
   total_intents: number;
   time_range_hours: number;
@@ -399,6 +400,7 @@ intentRouter.get('/distribution', async (req, res) => {
 
         if (result?.distribution) {
           const response: DistributionResponse = {
+            ok: true,
             distribution: result.distribution,
             total_intents: result.total_intents || 0,
             time_range_hours: timeRangeHours,
@@ -420,6 +422,7 @@ intentRouter.get('/distribution', async (req, res) => {
     const distribution = calculateDistribution(intents);
 
     const response: DistributionResponse = {
+      ok: true,
       distribution,
       total_intents: intents.length,
       time_range_hours: timeRangeHours,

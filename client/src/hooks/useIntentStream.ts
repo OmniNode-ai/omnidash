@@ -115,7 +115,8 @@ export interface UseIntentStreamReturn {
   intents: ProcessedIntent[];
 
   /**
-   * Intent category distribution counts
+   * Intent category distribution counts.
+   * Note: This is derived from stats.byCategory (single source of truth).
    */
   distribution: Record<string, number>;
 
@@ -202,7 +203,6 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
 
   // State
   const [intents, setIntents] = useState<ProcessedIntent[]>([]);
-  const [distribution, setDistribution] = useState<Record<string, number>>({});
   const [error, setError] = useState<Error | null>(null);
   const [stats, setStats] = useState<UseIntentStreamReturn['stats']>({
     totalReceived: 0,
@@ -272,7 +272,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
     [onIntentThrottleMs]
   );
 
-  // Cleanup throttle timeout on unmount
+  // Cleanup throttle timeout on unmount OR when throttle interval changes
   useEffect(() => {
     return () => {
       if (throttleTimeoutRef.current) {
@@ -280,7 +280,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
         throttleTimeoutRef.current = null;
       }
     };
-  }, []);
+  }, [onIntentThrottleMs]);
 
   // Perform deferred cleanup of seenEventIds after state updates
   useEffect(() => {
@@ -395,13 +395,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
           needsCleanupRef.current = true;
         }
 
-        // Update distribution
-        setDistribution((prev) => ({
-          ...prev,
-          [processedIntent.category]: (prev[processedIntent.category] || 0) + 1,
-        }));
-
-        // Update stats
+        // Update stats (byCategory serves as the single source of truth for distribution)
         setStats((prev) => ({
           totalReceived: prev.totalReceived + 1,
           byCategory: {
@@ -538,7 +532,6 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
    */
   const clearIntents = useCallback(() => {
     setIntents([]);
-    setDistribution({});
     setStats({
       totalReceived: 0,
       byCategory: {},
@@ -593,7 +586,7 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
 
   return {
     intents,
-    distribution,
+    distribution: stats.byCategory, // Derived from stats (single source of truth)
     isConnected,
     error: combinedError,
     connect,

@@ -31,7 +31,16 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { DashboardPageHeader } from '@/components/DashboardPageHeader';
 import { cn } from '@/lib/utils';
 import { CONFIDENCE_THRESHOLD_HIGH, CONFIDENCE_THRESHOLD_MEDIUM } from '@/lib/intent-colors';
-import { Brain, Activity, TrendingUp, Clock, BarChart3, RefreshCw } from 'lucide-react';
+import {
+  Brain,
+  Activity,
+  TrendingUp,
+  Clock,
+  BarChart3,
+  RefreshCw,
+  AlertCircle,
+} from 'lucide-react';
+import React from 'react';
 import type { IntentItem } from '@/components/intent';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,6 +56,64 @@ const TIME_RANGE_OPTIONS = [
 ] as const;
 
 type TimeRangeHours = (typeof TIME_RANGE_OPTIONS)[number]['value'];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Error Boundary Component
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface IntentErrorBoundaryProps {
+  children: React.ReactNode;
+  fallbackTitle?: string;
+}
+
+interface IntentErrorBoundaryState {
+  hasError: boolean;
+}
+
+/**
+ * Error boundary for Intent Dashboard visualization components.
+ * Catches errors from child components and displays a user-friendly fallback UI.
+ */
+class IntentErrorBoundary extends React.Component<
+  IntentErrorBoundaryProps,
+  IntentErrorBoundaryState
+> {
+  constructor(props: IntentErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): IntentErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo): void {
+    console.error('[IntentDashboard] Component error:', error, info.componentStack);
+  }
+
+  handleRetry = (): void => {
+    this.setState({ hasError: false });
+  };
+
+  render(): React.ReactNode {
+    if (this.state.hasError) {
+      return (
+        <Card className="h-full">
+          <CardContent className="flex flex-col items-center justify-center h-48 gap-3">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+            <p className="text-sm text-muted-foreground">
+              Failed to load {this.props.fallbackTitle || 'component'}
+            </p>
+            <Button variant="outline" size="sm" onClick={this.handleRetry}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Stat Card Component
@@ -310,35 +377,41 @@ export default function IntentDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Left Column: Distribution Chart (~40% width on lg) */}
           <div className="lg:col-span-2">
-            <IntentDistribution
-              timeRangeHours={timeRangeHours}
-              refreshInterval={30000}
-              title={`Intent Distribution (${TIME_RANGE_OPTIONS.find((o) => o.value === timeRange)?.label})`}
-              className="h-full"
-            />
+            <IntentErrorBoundary fallbackTitle="intent distribution">
+              <IntentDistribution
+                timeRangeHours={timeRangeHours}
+                refreshInterval={30000}
+                title={`Intent Distribution (${TIME_RANGE_OPTIONS.find((o) => o.value === timeRange)?.label})`}
+                className="h-full"
+              />
+            </IntentErrorBoundary>
           </div>
 
           {/* Right Column: Recent Intents (~60% width on lg) */}
           <div className="lg:col-span-3">
-            <RecentIntents
-              limit={50}
-              showConfidence={true}
-              maxHeight={400}
-              onIntentClick={handleIntentClick}
-              className="h-full"
-            />
+            <IntentErrorBoundary fallbackTitle="recent intents">
+              <RecentIntents
+                limit={50}
+                showConfidence={true}
+                maxHeight={400}
+                onIntentClick={handleIntentClick}
+                className="h-full"
+              />
+            </IntentErrorBoundary>
           </div>
         </div>
 
         {/* Session Timeline (Full Width) */}
-        <SessionTimeline
-          maxHeight={350}
-          showCard={true}
-          refetchInterval={30000}
-          defaultView="chart"
-          showViewToggle={true}
-          onIntentClick={handleIntentClick}
-        />
+        <IntentErrorBoundary fallbackTitle="session timeline">
+          <SessionTimeline
+            maxHeight={350}
+            showCard={true}
+            refetchInterval={30000}
+            defaultView="chart"
+            showViewToggle={true}
+            onIntentClick={handleIntentClick}
+          />
+        </IntentErrorBoundary>
 
         {/* Legend - thresholds from shared constants (intent-colors.ts) */}
         <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2 border-t">
