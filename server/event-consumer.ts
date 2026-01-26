@@ -10,6 +10,8 @@ import {
   NodeHeartbeatPayloadSchema,
   NodeLivenessExpiredPayloadSchema,
   NodeIntrospectionPayloadSchema,
+  OFFLINE_NODE_TTL_MS,
+  CLEANUP_INTERVAL_MS,
   type EventEnvelope,
   type NodeBecameActivePayload,
   type NodeHeartbeatPayload,
@@ -30,10 +32,6 @@ const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 const SQL_PRELOAD_ACTIONS_LIMIT = 200;
 const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
-
-// Canonical node cleanup configuration
-const CANONICAL_NODE_CLEANUP_INTERVAL_MS = 60_000; // 1 minute
-const CANONICAL_NODE_OFFLINE_TTL_MS = 300_000; // 5 minutes
 
 // Environment-aware ONEX topic naming
 const ONEX_ENV = process.env.ONEX_ENV || 'dev';
@@ -580,7 +578,12 @@ export class EventConsumer extends EventEmitter {
       const payload = payloadSchema.parse(envelope.payload);
       return { ...envelope, payload };
     } catch (e) {
-      console.warn('[EventConsumer] Failed to parse event envelope:', e);
+      console.warn('[EventConsumer] Failed to parse event envelope:', {
+        error: e instanceof Error ? e.message : String(e),
+        offset: message.offset,
+        key: message.key?.toString(),
+        valuePreview: message.value?.toString().slice(0, 200),
+      });
       return null;
     }
   }
@@ -851,7 +854,7 @@ export class EventConsumer extends EventEmitter {
       // Start periodic cleanup of stale offline canonical nodes
       this.canonicalNodeCleanupInterval = setInterval(
         () => this.cleanupStaleCanonicalNodes(),
-        CANONICAL_NODE_CLEANUP_INTERVAL_MS
+        CLEANUP_INTERVAL_MS
       );
 
       console.log('✅ Event consumer started with automatic data pruning');
@@ -1624,7 +1627,7 @@ export class EventConsumer extends EventEmitter {
 
   /**
    * Clean up stale offline nodes from the canonical registry.
-   * Removes nodes with state='OFFLINE' and offline_at older than CANONICAL_NODE_OFFLINE_TTL_MS.
+   * Removes nodes with state='OFFLINE' and offline_at older than OFFLINE_NODE_TTL_MS.
    * This prevents unbounded memory growth from nodes that go offline and never come back.
    */
   private cleanupStaleCanonicalNodes(): void {
@@ -1635,7 +1638,7 @@ export class EventConsumer extends EventEmitter {
       if (
         node.state === 'OFFLINE' &&
         node.offline_at &&
-        now - node.offline_at > CANONICAL_NODE_OFFLINE_TTL_MS
+        now - node.offline_at > OFFLINE_NODE_TTL_MS
       ) {
         this.canonicalNodes.delete(nodeId);
         removedCount++;
@@ -1644,7 +1647,7 @@ export class EventConsumer extends EventEmitter {
 
     if (removedCount > 0) {
       console.log(
-        `🧹 Cleaned up ${removedCount} stale offline canonical nodes (TTL: ${CANONICAL_NODE_OFFLINE_TTL_MS / 1000}s)`
+        `🧹 Cleaned up ${removedCount} stale offline canonical nodes (TTL: ${OFFLINE_NODE_TTL_MS / 1000}s)`
       );
     }
   }

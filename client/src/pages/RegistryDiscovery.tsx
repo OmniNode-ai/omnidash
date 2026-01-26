@@ -48,6 +48,7 @@ import { NodesTable } from '@/components/NodesTable';
 import { EventFeedSidebar } from '@/components/EventFeedSidebar';
 import { AlertCircle } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { isOfflineState, isPendingState } from '@shared/schemas';
 
 // LocalStorage key for banner dismissal
 const BANNER_STORAGE_KEY = 'registry-discovery-banner-dismissed';
@@ -67,18 +68,6 @@ const KEYBOARD_SHORTCUTS = [
   { key: 'R', description: 'Refresh data' },
   { key: 'F', description: 'Focus search' },
   { key: 'Esc', description: 'Close panel' },
-];
-
-// Node state categories for filtering
-// Supports both canonical states (PENDING, ACTIVE, OFFLINE from shared/schemas/dashboard-events.ts)
-// and legacy API states (REJECTED, LIVENESS_EXPIRED, etc.) for backward compatibility
-const OFFLINE_STATES = ['OFFLINE', 'REJECTED', 'LIVENESS_EXPIRED', 'ACK_TIMED_OUT'];
-const PENDING_STATES = [
-  'PENDING',
-  'PENDING_REGISTRATION',
-  'AWAITING_ACK',
-  'ACCEPTED',
-  'ACK_RECEIVED',
 ];
 
 export default function RegistryDiscovery() {
@@ -160,11 +149,11 @@ export default function RegistryDiscovery() {
 
     const visibleNodes = baseFilteredData.nodes.filter((node) => {
       // Filter out offline nodes if toggle is off
-      if (!showOffline && OFFLINE_STATES.includes(node.state)) {
+      if (!showOffline && isOfflineState(node.state)) {
         return false;
       }
       // Filter out pending nodes if toggle is off
-      if (!showPending && PENDING_STATES.includes(node.state)) {
+      if (!showPending && isPendingState(node.state)) {
         return false;
       }
       return true;

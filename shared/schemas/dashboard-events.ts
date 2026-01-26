@@ -72,6 +72,29 @@ export type ProjectedNode = z.infer<typeof ProjectedNodeSchema>;
 // Health status derived from heartbeat recency
 export type HealthStatus = 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
 
+// State filter constants (for visibility toggles)
+// Supports both canonical states (PENDING, ACTIVE, OFFLINE) and legacy API states
+// (REJECTED, LIVENESS_EXPIRED, etc.) for backward compatibility
+export const OFFLINE_STATES = ['OFFLINE', 'REJECTED', 'LIVENESS_EXPIRED', 'ACK_TIMED_OUT'] as const;
+export const PENDING_STATES = [
+  'PENDING',
+  'PENDING_REGISTRATION',
+  'AWAITING_ACK',
+  'ACCEPTED',
+  'ACK_RECEIVED',
+] as const;
+
+export type OfflineState = (typeof OFFLINE_STATES)[number];
+export type PendingState = (typeof PENDING_STATES)[number];
+
+export function isOfflineState(state: string): state is OfflineState {
+  return (OFFLINE_STATES as readonly string[]).includes(state);
+}
+
+export function isPendingState(state: string): state is PendingState {
+  return (PENDING_STATES as readonly string[]).includes(state);
+}
+
 export const HEALTH_THRESHOLDS = {
   GREEN_MAX_AGE_MS: 30_000, // Last heartbeat within 30s
   YELLOW_MAX_AGE_MS: 60_000, // Last heartbeat within 60s

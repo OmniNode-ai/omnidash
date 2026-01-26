@@ -18,6 +18,8 @@ import {
   WsNodeBecameActivePayloadSchema,
   WsNodeLivenessExpiredPayloadSchema,
   WsNodeIntrospectionPayloadSchema,
+  OFFLINE_NODE_TTL_MS,
+  CLEANUP_INTERVAL_MS,
 } from '@shared/schemas';
 
 /**
@@ -52,24 +54,6 @@ export const DEFAULT_MAX_RECENT_EVENTS = 50;
 export const SEEN_EVENT_IDS_CLEANUP_MULTIPLIER = 5;
 
 /**
- * Time in milliseconds after which an OFFLINE node is eligible for cleanup.
- * Nodes that have been offline for longer than this duration will be removed
- * from the projectedNodes Map to prevent unbounded memory growth.
- *
- * @default 300000 (5 minutes)
- */
-export const OFFLINE_NODE_CLEANUP_MS = 300_000;
-
-/**
- * Interval in milliseconds for running the offline node cleanup check.
- * The cleanup effect runs periodically at this interval to remove stale
- * offline nodes from memory.
- *
- * @default 60000 (1 minute)
- */
-export const CLEANUP_INTERVAL_MS = 60_000;
-
-/**
  * Topics to subscribe for registry events.
  * Includes both legacy registry topic and new canonical node events.
  */
@@ -78,7 +62,7 @@ export const REGISTRY_TOPICS = ['registry', 'registry-nodes'] as const;
 /**
  * Registry event types as defined in the WebSocket Event Spec v1.2
  *
- * BOUNDED SET: This union type defines exactly 12 known event types.
+ * BOUNDED SET: This union type defines exactly 11 known event types.
  * The eventsByType stats object is bounded by this finite set, preventing
  * memory leaks in long-running sessions. Only events matching these types
  * are processed and counted.
@@ -383,7 +367,7 @@ export function useRegistryWebSocket(
         });
 
         // Update stats
-        // NOTE: eventsByType is bounded to max 12 keys (one per RegistryEventType).
+        // NOTE: eventsByType is bounded to max 11 keys (one per RegistryEventType).
         // This prevents memory leaks in long-running sessions since only events
         // passing the registryEventTypes.includes() check above reach this point.
         setStats((prev) => ({
@@ -563,7 +547,7 @@ export function useRegistryWebSocket(
   }, [isConnected, autoSubscribe, subscribe, unsubscribe, debug]);
 
   // Periodic cleanup of stale offline nodes to prevent unbounded memory growth
-  // Removes nodes that have been OFFLINE for longer than OFFLINE_NODE_CLEANUP_MS
+  // Removes nodes that have been OFFLINE for longer than OFFLINE_NODE_TTL_MS
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
@@ -576,7 +560,7 @@ export function useRegistryWebSocket(
           if (
             node.state === 'OFFLINE' &&
             node.offline_at &&
-            now - node.offline_at > OFFLINE_NODE_CLEANUP_MS
+            now - node.offline_at > OFFLINE_NODE_TTL_MS
           ) {
             newMap.delete(nodeId);
             cleaned++;
@@ -602,7 +586,7 @@ export function useRegistryWebSocket(
   /**
    * Clear all recent events, projected nodes, and reset stats.
    * This provides a manual reset mechanism for long-running sessions,
-   * though eventsByType is already bounded to 12 keys (one per RegistryEventType).
+   * though eventsByType is already bounded to 11 keys (one per RegistryEventType).
    */
   const clearEvents = useCallback(() => {
     setRecentEvents([]);
