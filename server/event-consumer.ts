@@ -1683,15 +1683,14 @@ export class EventConsumer extends EventEmitter {
       // Forward to IntentEventEmitter for new WebSocket subscription pattern
       // Use type guard for validation - if event matches SharedIntentStoredEvent format
       if (isIntentStoredEvent(event)) {
-        // Event matches the full SharedIntentStoredEvent format with all fields
-        const storedEvent = event as unknown as SharedIntentStoredEvent;
+        // Type guard narrows event to SharedIntentStoredEvent with all required fields
         const intentRecordPayload: IntentRecordPayload = {
-          intent_id: storedEvent.intent_id,
-          session_ref: storedEvent.session_ref,
-          intent_category: storedEvent.intent_category,
-          confidence: storedEvent.confidence,
-          keywords: storedEvent.keywords || [],
-          created_at: storedEvent.stored_at,
+          intent_id: event.intent_id,
+          session_ref: event.session_ref,
+          intent_category: event.intent_category,
+          confidence: event.confidence,
+          keywords: event.keywords || [],
+          created_at: event.stored_at,
         };
         getIntentEventEmitter().emitIntentStored(intentRecordPayload);
         intentLogger.debug(

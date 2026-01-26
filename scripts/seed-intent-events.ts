@@ -13,7 +13,7 @@
 
 import 'dotenv/config';
 import { Kafka, Partitioners, Producer } from 'kafkajs';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import {
   INTENT_CLASSIFIED_TOPIC,
   INTENT_STORED_TOPIC,
