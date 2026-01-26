@@ -290,7 +290,13 @@ export default function IntentDashboard() {
             value={`${(avgConfidence * 100).toFixed(1)}%`}
             description="Mean classification score"
             icon={TrendingUp}
-            trend={avgConfidence > 0.7 ? 'up' : avgConfidence > 0.5 ? 'neutral' : 'down'}
+            trend={
+              avgConfidence >= CONFIDENCE_THRESHOLD_HIGH
+                ? 'up'
+                : avgConfidence >= CONFIDENCE_THRESHOLD_MEDIUM
+                  ? 'neutral'
+                  : 'down'
+            }
           />
           <StatCard
             title="Last Event"

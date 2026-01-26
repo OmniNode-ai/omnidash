@@ -57,23 +57,29 @@ interface StoreIntentResponse {
 // ============================================================================
 
 /**
- * Sanitize user-controlled strings to prevent XSS and injection attacks.
- * - Trims whitespace
- * - Removes control characters (except newlines/tabs in some contexts)
- * - Escapes HTML entities for safe storage/display
+ * Sanitize user-controlled strings for safe storage.
+ *
+ * This function:
+ * - Trims leading/trailing whitespace
+ * - Removes control characters that could cause issues in logs, databases, or JSON
+ *
+ * Security notes:
+ * - HTML entity escaping is NOT applied here because:
+ *   1. Data is returned via JSON API only (no server-side HTML rendering)
+ *   2. React frontend auto-escapes text content in JSX (XSS protection built-in)
+ *   3. Escaping here would cause double-encoding (e.g., "test & debug" → "test &amp; debug")
+ * - If this data is ever rendered in server-side HTML templates, escape at render time
+ *
+ * @param input - The user-provided string to sanitize
+ * @returns Sanitized string safe for storage and JSON API responses
  */
 function sanitizeString(input: string): string {
   return (
     input
       .trim()
-      // Remove control characters (U+0000 to U+001F except tab/newline/carriage return)
+      // Remove control characters (U+0000 to U+001F except tab/newline/carriage return, plus DEL)
+      // These can cause issues in logs, databases, terminals, and JSON parsing
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-      // Escape HTML entities to prevent XSS
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;')
   );
 }
 
