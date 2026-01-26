@@ -11,6 +11,16 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from './useWebSocket';
+import type { ProjectedNode } from '@shared/schemas';
+import {
+  ProjectedNodeSchema,
+  WsNodeHeartbeatPayloadSchema,
+  WsNodeBecameActivePayloadSchema,
+  WsNodeLivenessExpiredPayloadSchema,
+  WsNodeIntrospectionPayloadSchema,
+  OFFLINE_NODE_TTL_MS,
+  CLEANUP_INTERVAL_MS,
+} from '@shared/schemas';
 
 /**
  * Generate a correlation ID for event deduplication.
@@ -44,12 +54,20 @@ export const DEFAULT_MAX_RECENT_EVENTS = 50;
 export const SEEN_EVENT_IDS_CLEANUP_MULTIPLIER = 5;
 
 /**
+ * Topics to subscribe for registry events.
+ * Includes both legacy registry topic and new canonical node events.
+ */
+export const REGISTRY_TOPICS = ['registry', 'registry-nodes'] as const;
+
+/**
  * Registry event types as defined in the WebSocket Event Spec v1.2
  *
- * BOUNDED SET: This union type defines exactly 7 known event types.
+ * BOUNDED SET: This union type defines exactly 11 known event types.
  * The eventsByType stats object is bounded by this finite set, preventing
  * memory leaks in long-running sessions. Only events matching these types
  * are processed and counted.
+ *
+ * OMN-1279 additions: NODE_ACTIVATED, NODE_OFFLINE, NODE_INTROSPECTION, NODE_DISCOVERED
  */
 export type RegistryEventType =
   | 'NODE_REGISTERED'
@@ -58,7 +76,30 @@ export type RegistryEventType =
   | 'NODE_DEREGISTERED'
   | 'INSTANCE_HEALTH_CHANGED'
   | 'INSTANCE_ADDED'
-  | 'INSTANCE_REMOVED';
+  | 'INSTANCE_REMOVED'
+  | 'NODE_ACTIVATED'
+  | 'NODE_OFFLINE'
+  | 'NODE_INTROSPECTION'
+  | 'NODE_DISCOVERED';
+
+/**
+ * Registry event types for message filtering.
+ * BOUNDED SET: Exactly 11 known event types to prevent unbounded memory growth.
+ * Only events matching these types are processed and counted.
+ */
+export const REGISTRY_EVENT_TYPES: RegistryEventType[] = [
+  'NODE_REGISTERED',
+  'NODE_STATE_CHANGED',
+  'NODE_HEARTBEAT',
+  'NODE_DEREGISTERED',
+  'INSTANCE_HEALTH_CHANGED',
+  'INSTANCE_ADDED',
+  'INSTANCE_REMOVED',
+  'NODE_ACTIVATED',
+  'NODE_OFFLINE',
+  'NODE_INTROSPECTION',
+  'NODE_DISCOVERED',
+];
 
 /**
  * Registry event structure received from WebSocket
@@ -134,6 +175,12 @@ export interface UseRegistryWebSocketReturn {
   recentEvents: RecentRegistryEvent[];
 
   /**
+   * Projected node states updated in real-time from WebSocket events (OMN-1279)
+   * Key: node_id, Value: ProjectedNode state
+   */
+  projectedNodes: Map<string, ProjectedNode>;
+
+  /**
    * Clear all recent events
    */
   clearEvents: () => void;
@@ -199,6 +246,45 @@ export function useRegistryWebSocket(
     lastEventTime: null,
   });
 
+  // OMN-1279: Track projected nodes locally for real-time updates
+  const [projectedNodes, setProjectedNodes] = useState<Map<string, ProjectedNode>>(new Map());
+
+  /**
+   * Update a single projected node state (OMN-1279)
+   * Creates new node if not exists, merges updates into existing node.
+   * Uses Zod schema validation to ensure type safety when creating new nodes.
+   */
+  const updateNode = useCallback((nodeId: string, updates: Partial<ProjectedNode>) => {
+    setProjectedNodes((prev) => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(nodeId);
+      if (existing) {
+        newMap.set(nodeId, { ...existing, ...updates });
+      } else {
+        // Create new node with updates - use defaults for required fields
+        // Validate with Zod schema to ensure type safety
+        const newNodeData = {
+          node_id: nodeId,
+          state: 'PENDING' as const,
+          last_event_at: Date.now(),
+          ...updates,
+        };
+        const parsed = ProjectedNodeSchema.safeParse(newNodeData);
+        if (parsed.success) {
+          newMap.set(nodeId, parsed.data);
+        } else {
+          // Log validation error but don't crash - skip creating invalid node
+          // This can happen if nodeId is not a valid UUID (relaxed WebSocket payloads)
+          console.warn(
+            '[RegistryWebSocket] Invalid node data, skipping:',
+            parsed.error.flatten().fieldErrors
+          );
+        }
+      }
+      return newMap;
+    });
+  }, []);
+
   // Track if we've subscribed to avoid duplicate subscriptions
   const hasSubscribed = useRef(false);
 
@@ -221,18 +307,8 @@ export function useRegistryWebSocket(
   const handleMessage = useCallback(
     (message: { type: string; data?: RegistryEvent; timestamp: string }) => {
       try {
-        // Check if this is a registry event
-        const registryEventTypes: RegistryEventType[] = [
-          'NODE_REGISTERED',
-          'NODE_STATE_CHANGED',
-          'NODE_HEARTBEAT',
-          'NODE_DEREGISTERED',
-          'INSTANCE_HEALTH_CHANGED',
-          'INSTANCE_ADDED',
-          'INSTANCE_REMOVED',
-        ];
-
-        if (!registryEventTypes.includes(message.type as RegistryEventType)) {
+        // Check if this is a registry event (uses module-level constant for efficiency)
+        if (!REGISTRY_EVENT_TYPES.includes(message.type as RegistryEventType)) {
           return;
         }
 
@@ -291,7 +367,7 @@ export function useRegistryWebSocket(
         });
 
         // Update stats
-        // NOTE: eventsByType is bounded to max 7 keys (one per RegistryEventType).
+        // NOTE: eventsByType is bounded to max 11 keys (one per RegistryEventType).
         // This prevents memory leaks in long-running sessions since only events
         // passing the registryEventTypes.includes() check above reach this point.
         setStats((prev) => ({
@@ -307,12 +383,14 @@ export function useRegistryWebSocket(
         onEventRef.current?.(event);
 
         // Invalidate relevant queries based on event type
+        // OMN-1279: Handle new event types with local state updates
         switch (eventType) {
           case 'NODE_REGISTERED':
           case 'NODE_STATE_CHANGED':
           case 'NODE_DEREGISTERED':
             // Node-level changes - full refetch
             queryClient.invalidateQueries({ queryKey: ['registry-discovery'] });
+            queryClient.invalidateQueries({ queryKey: ['registry'] });
             break;
 
           case 'INSTANCE_HEALTH_CHANGED':
@@ -320,13 +398,108 @@ export function useRegistryWebSocket(
           case 'INSTANCE_REMOVED':
             // Instance-level changes - full refetch
             queryClient.invalidateQueries({ queryKey: ['registry-discovery'] });
+            queryClient.invalidateQueries({ queryKey: ['registry'] });
             break;
 
-          case 'NODE_HEARTBEAT':
-            // Heartbeats are frequent and don't change data structure
-            // Only update if we want to show "last seen" timestamps
-            // For now, we don't trigger a full refetch for heartbeats
+          case 'NODE_HEARTBEAT': {
+            // OMN-1279: Update local projected node state for heartbeats
+            // Heartbeats are frequent - update local state without full refetch
+            const heartbeatParsed = WsNodeHeartbeatPayloadSchema.safeParse(event.payload);
+            if (!heartbeatParsed.success) {
+              if (debug) {
+                console.warn(
+                  '[RegistryWebSocket] Invalid heartbeat payload:',
+                  heartbeatParsed.error
+                );
+              }
+              break;
+            }
+            const heartbeatPayload = heartbeatParsed.data;
+            if (heartbeatPayload.node_id) {
+              updateNode(heartbeatPayload.node_id, {
+                last_heartbeat_at: heartbeatPayload.last_heartbeat_at || Date.now(),
+              });
+            }
             break;
+          }
+
+          case 'NODE_ACTIVATED': {
+            // OMN-1279: Node has completed activation - update local state
+            const activatedParsed = WsNodeBecameActivePayloadSchema.safeParse(event.payload);
+            if (!activatedParsed.success) {
+              if (debug) {
+                console.warn(
+                  '[RegistryWebSocket] Invalid activated payload:',
+                  activatedParsed.error
+                );
+              }
+              break;
+            }
+            const activatedPayload = activatedParsed.data;
+            if (activatedPayload.node_id) {
+              const emittedAt = new Date(event.timestamp).getTime();
+              updateNode(activatedPayload.node_id, {
+                state: 'ACTIVE',
+                capabilities: activatedPayload.capabilities,
+                activated_at: emittedAt,
+                last_heartbeat_at: emittedAt,
+                last_event_at: emittedAt,
+              });
+            }
+            // Invalidate queries to refetch full data for UI sync
+            queryClient.invalidateQueries({ queryKey: ['registry-discovery'] });
+            queryClient.invalidateQueries({ queryKey: ['registry'] });
+            break;
+          }
+
+          case 'NODE_OFFLINE': {
+            // OMN-1279: Node has gone offline - update local state
+            const offlineParsed = WsNodeLivenessExpiredPayloadSchema.safeParse(event.payload);
+            if (!offlineParsed.success) {
+              if (debug) {
+                console.warn('[RegistryWebSocket] Invalid offline payload:', offlineParsed.error);
+              }
+              break;
+            }
+            const offlinePayload = offlineParsed.data;
+            if (offlinePayload.node_id) {
+              const emittedAt = new Date(event.timestamp).getTime();
+              updateNode(offlinePayload.node_id, {
+                state: 'OFFLINE',
+                offline_at: emittedAt,
+                last_event_at: emittedAt,
+              });
+            }
+            queryClient.invalidateQueries({ queryKey: ['registry-discovery'] });
+            queryClient.invalidateQueries({ queryKey: ['registry'] });
+            break;
+          }
+
+          case 'NODE_INTROSPECTION': {
+            // OMN-1279: Node introspection received - update capabilities
+            const introspectionParsed = WsNodeIntrospectionPayloadSchema.safeParse(event.payload);
+            if (!introspectionParsed.success) {
+              if (debug) {
+                console.warn(
+                  '[RegistryWebSocket] Invalid introspection payload:',
+                  introspectionParsed.error
+                );
+              }
+              break;
+            }
+            const introspectionPayload = introspectionParsed.data;
+            if (introspectionPayload.node_id) {
+              const emittedAt = new Date(event.timestamp).getTime();
+              updateNode(introspectionPayload.node_id, {
+                state: 'PENDING',
+                capabilities: introspectionPayload.capabilities,
+                last_event_at: emittedAt,
+              });
+            }
+            queryClient.invalidateQueries({ queryKey: ['registry-discovery'] });
+            queryClient.invalidateQueries({ queryKey: ['registry'] });
+            break;
+          }
         }
       } catch (err) {
         // Log error in debug mode but don't propagate - component should remain stable
@@ -335,7 +508,7 @@ export function useRegistryWebSocket(
         }
       }
     },
-    [debug, maxRecentEvents, queryClient]
+    [debug, maxRecentEvents, queryClient, updateNode]
   );
 
   const { isConnected, connectionStatus, error, subscribe, unsubscribe, reconnect } = useWebSocket({
@@ -348,9 +521,10 @@ export function useRegistryWebSocket(
     if (isConnected && autoSubscribe && !hasSubscribed.current) {
       if (debug) {
         // eslint-disable-next-line no-console
-        console.log('[RegistryWebSocket] Subscribing to registry topics');
+        console.log('[RegistryWebSocket] Subscribing to registry topics:', REGISTRY_TOPICS);
       }
-      subscribe(['registry']);
+      // OMN-1279: Subscribe to both registry topics for complete event coverage
+      subscribe([...REGISTRY_TOPICS]);
       hasSubscribed.current = true;
     }
 
@@ -366,16 +540,53 @@ export function useRegistryWebSocket(
           // eslint-disable-next-line no-console
           console.log('[RegistryWebSocket] Unsubscribing from registry topics');
         }
-        unsubscribe(['registry']);
+        unsubscribe([...REGISTRY_TOPICS]);
         hasSubscribed.current = false;
       }
     };
   }, [isConnected, autoSubscribe, subscribe, unsubscribe, debug]);
 
+  // Periodic cleanup of stale offline nodes to prevent unbounded memory growth
+  // Removes nodes that have been OFFLINE for longer than OFFLINE_NODE_TTL_MS
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setProjectedNodes((prev) => {
+        const newMap = new Map(prev);
+        let cleaned = 0;
+
+        for (const [nodeId, node] of prev) {
+          // Only clean up nodes that are OFFLINE and have been offline for longer than threshold
+          if (
+            node.state === 'OFFLINE' &&
+            node.offline_at &&
+            now - node.offline_at > OFFLINE_NODE_TTL_MS
+          ) {
+            newMap.delete(nodeId);
+            cleaned++;
+          }
+        }
+
+        if (cleaned > 0) {
+          if (debug) {
+            // eslint-disable-next-line no-console
+            console.log(`[RegistryWebSocket] Cleaned up ${cleaned} stale offline nodes`);
+          }
+          return newMap;
+        }
+
+        // Return previous reference if nothing changed to avoid unnecessary re-renders
+        return prev;
+      });
+    }, CLEANUP_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [debug]);
+
   /**
-   * Clear all recent events and reset stats.
+   * Clear all recent events, projected nodes, and reset stats.
    * This provides a manual reset mechanism for long-running sessions,
-   * though eventsByType is already bounded to 7 keys (one per RegistryEventType).
+   * though eventsByType is already bounded to 11 keys (one per RegistryEventType).
    */
   const clearEvents = useCallback(() => {
     setRecentEvents([]);
@@ -387,6 +598,8 @@ export function useRegistryWebSocket(
     });
     // Also clear seen event IDs to allow re-processing if needed
     seenEventIds.current.clear();
+    // OMN-1279: Clear projected nodes state
+    setProjectedNodes(new Map());
   }, []);
 
   return {
@@ -394,6 +607,7 @@ export function useRegistryWebSocket(
     connectionStatus,
     error,
     recentEvents,
+    projectedNodes,
     clearEvents,
     reconnect,
     stats,

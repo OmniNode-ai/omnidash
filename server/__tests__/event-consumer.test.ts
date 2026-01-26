@@ -153,7 +153,7 @@ describe('EventConsumer', () => {
           'agent-transformation-events',
           'router-performance-metrics',
           'agent-actions',
-          // Node registry topics
+          // Node registry topics (legacy)
           'dev.omninode_bridge.onex.evt.node-introspection.v1',
           'dev.onex.evt.registration-completed.v1',
           'node.heartbeat',
@@ -162,6 +162,11 @@ describe('EventConsumer', () => {
           'dev.onex.evt.omnimemory.intent-stored.v1',
           'dev.onex.evt.omnimemory.intent-query-response.v1',
           'dev.onex.evt.omniintelligence.intent-classified.v1',
+          // Canonical ONEX topics (OMN-1279)
+          'dev.onex.evt.node-became-active.v1',
+          'dev.onex.evt.node-liveness-expired.v1',
+          'dev.onex.evt.node-heartbeat.v1',
+          'dev.onex.evt.node-introspection.v1',
         ],
         fromBeginning: true,
       });
