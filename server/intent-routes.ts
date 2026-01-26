@@ -376,6 +376,7 @@ intentRouter.get('/distribution', async (req, res) => {
     const queryResult = DistributionQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
       return res.status(400).json({
+        ok: false,
         error: 'Invalid query parameters',
         message: queryResult.error.errors
           .map((e) => `${e.path.join('.')}: ${e.message}`)
@@ -432,6 +433,7 @@ intentRouter.get('/distribution', async (req, res) => {
   } catch (error) {
     console.error('[intent-routes] Error fetching intent distribution:', error);
     return res.status(500).json({
+      ok: false,
       error: 'Failed to fetch intent distribution',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
@@ -465,6 +467,7 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
     // Validate sessionId
     if (!sessionId || sessionId.length === 0 || sessionId.length > 255) {
       return res.status(400).json({
+        ok: false,
         error: 'Invalid parameter',
         message: 'sessionId must be between 1-255 characters',
       });
@@ -473,6 +476,7 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
     const queryResult = SessionQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
       return res.status(400).json({
+        ok: false,
         error: 'Invalid query parameters',
         message: queryResult.error.errors
           .map((e) => `${e.path.join('.')}: ${e.message}`)
@@ -530,6 +534,7 @@ intentRouter.get('/session/:sessionId', async (req, res) => {
   } catch (error) {
     console.error('[intent-routes] Error fetching session intents:', error);
     return res.status(500).json({
+      ok: false,
       error: 'Failed to fetch session intents',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
@@ -558,6 +563,7 @@ intentRouter.get('/recent', async (req, res) => {
     const queryResult = RecentQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
       return res.status(400).json({
+        ok: false,
         error: 'Invalid query parameters',
         message: queryResult.error.errors
           .map((e) => `${e.path.join('.')}: ${e.message}`)
@@ -616,6 +622,7 @@ intentRouter.get('/recent', async (req, res) => {
   } catch (error) {
     console.error('[intent-routes] Error fetching recent intents:', error);
     return res.status(500).json({
+      ok: false,
       error: 'Failed to fetch recent intents',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
@@ -658,6 +665,7 @@ intentRouter.post('/store', async (req, res) => {
       res.set('X-RateLimit-Reset', String(resetSeconds));
       res.set('Retry-After', String(resetSeconds));
       return res.status(429).json({
+        ok: false,
         error: 'Too Many Requests',
         message: `Rate limit exceeded. Maximum ${RATE_LIMIT_MAX_REQUESTS} requests per minute.`,
         retryAfterSeconds: resetSeconds,
@@ -672,6 +680,7 @@ intentRouter.post('/store', async (req, res) => {
         (err) => `${err.path.join('.')}: ${err.message}`
       );
       return res.status(400).json({
+        ok: false,
         error: 'Validation failed',
         message: errorMessages.join('; '),
         details: parseResult.error.errors,
@@ -684,6 +693,7 @@ intentRouter.post('/store', async (req, res) => {
     const queryResult = StoreQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
       return res.status(400).json({
+        ok: false,
         error: 'Invalid query parameters',
         message: queryResult.error.errors
           .map((e) => `${e.path.join('.')}: ${e.message}`)
@@ -733,6 +743,7 @@ intentRouter.post('/store', async (req, res) => {
   } catch (error) {
     console.error('[intent-routes] Error storing intent:', error);
     return res.status(500).json({
+      ok: false,
       error: 'Failed to store intent',
       message: error instanceof Error ? error.message : 'Unknown error',
     });

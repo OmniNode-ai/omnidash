@@ -41,6 +41,7 @@ const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 const SQL_PRELOAD_ACTIONS_LIMIT = 200;
 const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
+const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
 
 // Intent topics with environment prefix (ONEX canonical naming)
 // Derive canonical names from shared constants by removing the 'dev.' prefix
@@ -1566,6 +1567,10 @@ export class EventConsumer extends EventEmitter {
       if (existing) {
         existing.count++;
         existing.timestamps.push(now);
+        // Cap timestamps array to prevent unbounded growth
+        if (existing.timestamps.length > MAX_TIMESTAMPS_PER_CATEGORY) {
+          existing.timestamps = existing.timestamps.slice(-MAX_TIMESTAMPS_PER_CATEGORY);
+        }
       } else {
         this.intentDistributionWithTimestamps.set(intentType, {
           count: 1,
@@ -1581,7 +1586,7 @@ export class EventConsumer extends EventEmitter {
       });
 
       intentLogger.info(
-        `Processed intent classified: ${intentType} (confidence: ${intentEvent.confidence})`
+        `Processed intent classified: ${intentType} (confidence: ${intentEvent.confidence}, session: ${intentEvent.sessionId || 'unknown'})`
       );
     } catch (error) {
       // Preserve full error context from the event for debugging
