@@ -173,6 +173,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
       time_series_window_ms: 5 * 60 * 1000, // 5 minutes
       throughput_window_ms: 60 * 1000, // 1 minute
       max_breakdown_items: 50,
+      periodic_cleanup_interval_ms: 10 * 1000, // 10 seconds - for responsive UX
     },
   },
 
@@ -423,6 +424,7 @@ export function getEventMonitoringConfig() {
     time_series_window_ms: config?.time_series_window_ms ?? 5 * 60 * 1000,
     throughput_window_ms: config?.throughput_window_ms ?? 60 * 1000,
     max_breakdown_items: config?.max_breakdown_items ?? 50,
+    periodic_cleanup_interval_ms: config?.periodic_cleanup_interval_ms ?? 10 * 1000,
   };
 }
 

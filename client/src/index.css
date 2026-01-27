@@ -70,11 +70,13 @@
 
   --input: 210 8% 70%;
   --ring: 211 92% 42%;
-  --chart-1: 211 92% 35%;
-  --chart-2: 188 85% 38%;
-  --chart-3: 271 72% 42%;
-  --chart-4: 32 95% 48%;
-  --chart-5: 340 82% 48%;
+  --chart-1: 211 92% 35%;   /* Blue */
+  --chart-2: 142 76% 36%;   /* Green (was cyan - improved hue separation) */
+  --chart-3: 271 72% 42%;   /* Purple */
+  --chart-4: 32 95% 48%;    /* Orange */
+  --chart-5: 355 82% 48%;   /* Red */
+  --chart-6: 175 70% 38%;   /* Teal */
+  --chart-7: 48 95% 45%;    /* Yellow */
 
   --font-sans: IBM Plex Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: Georgia, serif;
@@ -188,11 +190,13 @@
 
   --input: 210 8% 32%;
   --ring: 211 88% 48%;
-  --chart-1: 211 88% 65%;
-  --chart-2: 188 82% 62%;
-  --chart-3: 271 68% 68%;
-  --chart-4: 32 92% 62%;
-  --chart-5: 340 78% 65%;
+  --chart-1: 211 88% 65%;   /* Blue */
+  --chart-2: 142 72% 58%;   /* Green (was cyan - improved hue separation) */
+  --chart-3: 271 68% 68%;   /* Purple */
+  --chart-4: 32 92% 62%;    /* Orange */
+  --chart-5: 355 78% 65%;   /* Red */
+  --chart-6: 175 66% 58%;   /* Teal */
+  --chart-7: 48 92% 58%;    /* Yellow */
 
   --shadow-2xs: 0px 1px 2px 0px hsl(210 10% 0% / 0.20);
   --shadow-xs: 0px 1px 3px 0px hsl(210 10% 0% / 0.25);

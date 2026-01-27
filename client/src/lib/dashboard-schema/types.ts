@@ -432,6 +432,14 @@ export interface EventMonitoringConfig {
    * @default 50
    */
   max_breakdown_items: number;
+
+  /**
+   * Interval in milliseconds for periodic timestamp cleanup.
+   * Runs on a setInterval to clean stale timestamps even when no events arrive,
+   * ensuring eventsPerSecond drops to 0 when event flow stops.
+   * @default 10000 (10 seconds)
+   */
+  periodic_cleanup_interval_ms: number;
 }
 
 /**

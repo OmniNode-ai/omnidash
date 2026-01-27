@@ -184,6 +184,8 @@ export const EVENT_MONITORING_TIME_SERIES_WINDOW_MS_DEFAULT = 300000;
 export const EVENT_MONITORING_THROUGHPUT_WINDOW_MS_DEFAULT = 60000;
 /** Default max breakdown items before pruning */
 export const EVENT_MONITORING_MAX_BREAKDOWN_ITEMS_DEFAULT = 50;
+/** Default periodic cleanup interval in ms (10 seconds) */
+export const EVENT_MONITORING_PERIODIC_CLEANUP_INTERVAL_MS_DEFAULT = 10000;
 
 /**
  * Event Monitoring Configuration Schema
@@ -228,6 +230,13 @@ export const eventMonitoringConfigSchema = z.object({
     .int()
     .min(5)
     .default(EVENT_MONITORING_MAX_BREAKDOWN_ITEMS_DEFAULT),
+
+  /** Periodic cleanup interval in ms (min 1 second, default 10 seconds) */
+  periodic_cleanup_interval_ms: z
+    .number()
+    .int()
+    .min(1000)
+    .default(EVENT_MONITORING_PERIODIC_CLEANUP_INTERVAL_MS_DEFAULT),
 });
 
 /**

@@ -94,6 +94,24 @@ interface InitialStateEventData {
   priority?: string;
   severity?: string;
   headers?: { priority?: string };
+  [key: string]: unknown; // Allow additional properties
+}
+
+// Type for event data passed to createEventEntry callback
+interface EventData {
+  id?: string;
+  correlationId?: string;
+  actionType?: string;
+  agentName?: string;
+  sourceAgent?: string;
+  selectedAgent?: string;
+  createdAt?: string;
+  timestamp?: string | number;
+  priority?: string;
+  severity?: string;
+  headers?: { priority?: string };
+  message?: string;
+  [key: string]: unknown; // Allow additional properties from various event types
 }
 
 // Type for agent metrics
@@ -107,6 +125,22 @@ const eventConfig = getEventMonitoringConfig();
 
 // Get monitored topics from config
 const monitoredTopics = getMonitoredTopics();
+
+/**
+ * Prune a breakdown array to prevent unbounded growth.
+ * Keeps the items with highest eventCount.
+ *
+ * @param items - Array of items with eventCount property
+ * @param maxItems - Maximum number of items to keep
+ * @returns Pruned array (mutates in place for performance, but also returns)
+ */
+function pruneBreakdownArray<T extends { eventCount: number }>(items: T[], maxItems: number): T[] {
+  if (items.length > maxItems) {
+    items.sort((a, b) => b.eventCount - a.eventCount);
+    items.length = maxItems;
+  }
+  return items;
+}
 
 export default function EventBusMonitor() {
   // Dashboard state - starts empty, populated by real Kafka events via WebSocket
@@ -147,7 +181,7 @@ export default function EventBusMonitor() {
   const eventCountSinceCleanupRef = useRef(0);
 
   // Convert various event types to a unified format for display
-  const createEventEntry = useCallback((eventType: string, data: any, topic: string) => {
+  const createEventEntry = useCallback((eventType: string, data: EventData, topic: string) => {
     const id =
       data.id || data.correlationId || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const timestamp = data.createdAt || data.timestamp || new Date().toISOString();
@@ -247,11 +281,7 @@ export default function EventBusMonitor() {
         }
 
         // Prune topic breakdown to prevent unbounded growth
-        // Keep only the most active topics when limit is exceeded
-        if (topicBreakdownData.length > eventConfig.max_breakdown_items) {
-          topicBreakdownData.sort((a, b) => b.eventCount - a.eventCount);
-          topicBreakdownData.length = eventConfig.max_breakdown_items;
-        }
+        pruneBreakdownArray(topicBreakdownData, eventConfig.max_breakdown_items);
 
         // Update event type breakdown data
         const eventTypeBreakdownData: EventTypeBreakdownItem[] = Array.isArray(
@@ -277,11 +307,7 @@ export default function EventBusMonitor() {
         }
 
         // Prune event type breakdown to prevent unbounded growth
-        // Keep only the most active event types when limit is exceeded
-        if (eventTypeBreakdownData.length > eventConfig.max_breakdown_items) {
-          eventTypeBreakdownData.sort((a, b) => b.eventCount - a.eventCount);
-          eventTypeBreakdownData.length = eventConfig.max_breakdown_items;
-        }
+        pruneBreakdownArray(eventTypeBreakdownData, eventConfig.max_breakdown_items);
 
         // Update time series data (aggregate by 10-second buckets)
         const timeSeriesData: TimeSeriesItem[] = Array.isArray(prev.timeSeriesData)
@@ -438,14 +464,8 @@ export default function EventBusMonitor() {
               });
 
               // Prune merged breakdowns to prevent unbounded growth
-              if (mergedTopicBreakdown.length > eventConfig.max_breakdown_items) {
-                mergedTopicBreakdown.sort((a, b) => b.eventCount - a.eventCount);
-                mergedTopicBreakdown.length = eventConfig.max_breakdown_items;
-              }
-              if (mergedEventTypeBreakdown.length > eventConfig.max_breakdown_items) {
-                mergedEventTypeBreakdown.sort((a, b) => b.eventCount - a.eventCount);
-                mergedEventTypeBreakdown.length = eventConfig.max_breakdown_items;
-              }
+              pruneBreakdownArray(mergedTopicBreakdown, eventConfig.max_breakdown_items);
+              pruneBreakdownArray(mergedEventTypeBreakdown, eventConfig.max_breakdown_items);
 
               return {
                 ...prev,
@@ -635,7 +655,7 @@ export default function EventBusMonitor() {
           eventsPerSecond: newEventsPerSecond,
         };
       });
-    }, 10000); // Clean every 10 seconds for responsive UX
+    }, eventConfig.periodic_cleanup_interval_ms);
 
     return () => clearInterval(cleanupInterval);
   }, []);
