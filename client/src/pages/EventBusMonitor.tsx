@@ -612,14 +612,29 @@ export default function EventBusMonitor() {
   }, []);
 
   // Periodic cleanup of stale timestamps even when no events arrive
-  // This prevents memory accumulation if event flow stops
+  // This prevents memory accumulation if event flow stops and keeps eventsPerSecond accurate
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
-      const cutoff = Date.now() - eventConfig.throughput_window_ms;
+      const now = Date.now();
+      const cutoff = now - eventConfig.throughput_window_ms;
       const currentLength = eventTimestampsRef.current.length;
       if (currentLength > 0) {
         eventTimestampsRef.current = eventTimestampsRef.current.filter((t) => t > cutoff);
       }
+      // Update the displayed metric based on filtered timestamps
+      // This ensures eventsPerSecond drops to 0 when event flow stops
+      const recentCount = eventTimestampsRef.current.length;
+      const newEventsPerSecond = Math.round((recentCount / 60) * 10) / 10;
+      setDashboardData((prev) => {
+        // Only update if value actually changed to avoid unnecessary re-renders
+        if (prev.eventsPerSecond === newEventsPerSecond) {
+          return prev;
+        }
+        return {
+          ...prev,
+          eventsPerSecond: newEventsPerSecond,
+        };
+      });
     }, 30000); // Clean every 30 seconds
 
     return () => clearInterval(cleanupInterval);

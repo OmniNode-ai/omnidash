@@ -83,6 +83,31 @@ function onexTopic(eventName: string): string {
   return `${ONEX_ENV}.onex.evt.${eventName}.v1`;
 }
 
+/**
+ * Generate canonical ONEX topic name with namespace and message type support.
+ * Format: {env}.onex.{type}.{namespace}.{event-name}.v1
+ */
+function onexNamespacedTopic(type: 'cmd' | 'evt', namespace: string, eventName: string): string {
+  return `${ONEX_ENV}.onex.${type}.${namespace}.${eventName}.v1`;
+}
+
+/**
+ * OmniClaude topic constants - environment-aware topic names.
+ * Uses ONEX canonical naming convention with appropriate namespaces.
+ */
+const OMNICLAUDE_TOPICS = {
+  /** Command topic for Claude hook events (prompt submissions from intelligence) */
+  CLAUDE_HOOK_EVENT: onexNamespacedTopic('cmd', 'omniintelligence', 'claude-hook-event'),
+  /** Event topic for prompt submission lifecycle events */
+  PROMPT_SUBMITTED: onexNamespacedTopic('evt', 'omniclaude', 'prompt-submitted'),
+  /** Event topic for session start lifecycle events */
+  SESSION_STARTED: onexNamespacedTopic('evt', 'omniclaude', 'session-started'),
+  /** Event topic for tool execution lifecycle events */
+  TOOL_EXECUTED: onexNamespacedTopic('evt', 'omniclaude', 'tool-executed'),
+  /** Event topic for session end lifecycle events */
+  SESSION_ENDED: onexNamespacedTopic('evt', 'omniclaude', 'session-ended'),
+} as const;
+
 // Structured logging for intent handlers
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 } as const;
@@ -956,12 +981,12 @@ export class EventConsumer extends EventEmitter {
           onexTopic('node-heartbeat'),
           onexTopic('node-introspection'),
           // OmniClaude hook events (prompt submissions, tool executions)
-          'dev.onex.cmd.omniintelligence.claude-hook-event.v1',
+          onexNamespacedTopic('cmd', 'omniintelligence', 'claude-hook-event'),
           // OmniClaude lifecycle events (additional coverage)
-          'dev.onex.evt.omniclaude.prompt-submitted.v1',
-          'dev.onex.evt.omniclaude.session-started.v1',
-          'dev.onex.evt.omniclaude.tool-executed.v1',
-          'dev.onex.evt.omniclaude.session-ended.v1',
+          onexNamespacedTopic('evt', 'omniclaude', 'prompt-submitted'),
+          onexNamespacedTopic('evt', 'omniclaude', 'session-started'),
+          onexNamespacedTopic('evt', 'omniclaude', 'tool-executed'),
+          onexNamespacedTopic('evt', 'omniclaude', 'session-ended'),
         ],
         fromBeginning: true, // Reprocess historical events to populate metrics
       });

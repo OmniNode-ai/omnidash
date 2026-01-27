@@ -148,20 +148,20 @@ function getTopicDomain(topic: string): string {
  * Format timestamp for display
  */
 function formatTimestamp(timestamp: string): string {
-  try {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    });
-  } catch {
-    return timestamp;
+  if (!timestamp) return timestamp;
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) {
+    return timestamp; // Return original if invalid
   }
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
 }
 
 /**
@@ -426,7 +426,7 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
   const [copied, setCopied] = useState(false);
   const [showRawJson, setShowRawJson] = useState(true);
   const [showMetadata, setShowMetadata] = useState(true);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
 
   // Cleanup timeout on unmount
@@ -749,6 +749,8 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
               <div
                 role="button"
                 tabIndex={0}
+                aria-expanded={showRawJson}
+                aria-controls="raw-json-content"
                 onClick={() => setShowRawJson(!showRawJson)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -788,7 +790,7 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
                 </div>
               </div>
               {showRawJson && (
-                <div className="border-t">
+                <div id="raw-json-content" className="border-t">
                   {event.payload ? (
                     <pre className="p-4 text-xs font-mono whitespace-pre-wrap break-words bg-muted/30 max-h-96 overflow-auto">
                       {formattedPayload}
