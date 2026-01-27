@@ -54,9 +54,6 @@ const PIE_INNER_RADIUS = 40;
 const PIE_OUTER_RADIUS = 80;
 const PIE_PADDING_ANGLE = 2;
 
-/** Default max items before aggregating to "Other" */
-const DEFAULT_MAX_ITEMS = 7;
-
 /**
  * Semantic chart colors from CSS variables.
  * These colors are designed to work in both light and dark themes.
@@ -618,7 +615,8 @@ export function ChartWidget({ widget, config, data, isLoading }: ChartWidgetProp
 
   // Check if this chart type benefits from aggregation
   const shouldAggregate = ['pie', 'donut'].includes(activeChartType);
-  const maxItems = config.max_items ?? DEFAULT_MAX_ITEMS;
+  // Default from schema: CHART_MAX_ITEMS_DEFAULT (7)
+  const maxItems = config.max_items ?? 7;
 
   // Extract chart data using explicit data_key or fallback to heuristics
   // Must happen before any returns to maintain hooks order

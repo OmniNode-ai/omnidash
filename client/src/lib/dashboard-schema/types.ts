@@ -326,6 +326,171 @@ export interface DashboardConfig {
   refresh_interval_seconds?: number;
   theme?: DashboardTheme;
   initial_status?: DashboardStatus;
+
+  /**
+   * Optional runtime configuration for dashboard-specific settings.
+   * Contains type-specific configs like event_monitoring for Event Bus dashboards.
+   */
+  runtime_config?: DashboardRuntimeConfig;
+
+  /**
+   * Topic metadata for event bus dashboards.
+   * Maps topic names (string keys) to their display configuration.
+   * Used to provide human-readable labels and categorization for Kafka topics.
+   *
+   * @example
+   * ```typescript
+   * topic_metadata: {
+   *   'agent-actions': {
+   *     label: 'Agent Actions',
+   *     description: 'Tool calls, decisions, errors',
+   *     category: 'actions',
+   *   },
+   * }
+   * ```
+   */
+  topic_metadata?: Record<string, TopicMetadata>;
+
+  /**
+   * List of Kafka topics monitored by this dashboard.
+   * Used for event bus and similar real-time monitoring dashboards.
+   * Topics should have corresponding entries in topic_metadata.
+   *
+   * @example
+   * ```typescript
+   * monitored_topics: [
+   *   'agent-routing-decisions',
+   *   'agent-actions',
+   *   'node.heartbeat',
+   * ]
+   * ```
+   */
+  monitored_topics?: string[];
+}
+
+// ============================================================================
+// Runtime Configuration Types
+// ============================================================================
+
+/**
+ * Event Monitoring Configuration
+ *
+ * Runtime settings for the Event Bus Monitor dashboard component.
+ * Controls memory usage, display limits, and calculation windows.
+ *
+ * @example Basic configuration
+ * ```typescript
+ * const config: EventMonitoringConfig = {
+ *   max_events: 100,
+ *   max_events_options: [50, 100, 200, 500],
+ *   throughput_cleanup_interval: 100,
+ *   time_series_window_ms: 300000, // 5 minutes
+ *   throughput_window_ms: 60000,   // 1 minute
+ *   max_breakdown_items: 50,
+ * };
+ * ```
+ */
+export interface EventMonitoringConfig {
+  /**
+   * Maximum events to retain in memory for display.
+   * Higher values show more history but use more memory.
+   * @default 50
+   */
+  max_events: number;
+
+  /**
+   * Available options for the max events dropdown selector.
+   * Users can switch between these values at runtime.
+   * @default [50, 100, 200, 500, 1000]
+   */
+  max_events_options: number[];
+
+  /**
+   * Number of events between throughput calculation cleanups.
+   * Lower values provide smoother throughput metrics but more CPU usage.
+   * @default 100
+   */
+  throughput_cleanup_interval: number;
+
+  /**
+   * Time series display window in milliseconds.
+   * Determines how far back the time series chart shows data.
+   * @default 300000 (5 minutes)
+   */
+  time_series_window_ms: number;
+
+  /**
+   * Throughput calculation window in milliseconds.
+   * Used to compute events/second over this rolling window.
+   * @default 60000 (1 minute)
+   */
+  throughput_window_ms: number;
+
+  /**
+   * Maximum number of topics/event types to track before pruning.
+   * Prevents unbounded memory growth with many unique event types.
+   * @default 50
+   */
+  max_breakdown_items: number;
+}
+
+/**
+ * Dashboard Runtime Configuration
+ *
+ * Container for dashboard-specific runtime settings that can be
+ * configured per-dashboard. Each dashboard type can have its own
+ * optional configuration section.
+ *
+ * @example Dashboard with event monitoring config
+ * ```typescript
+ * const dashboardConfig: DashboardConfig = {
+ *   dashboard_id: 'event-bus-monitor',
+ *   name: 'Event Bus Monitor',
+ *   // ... other fields
+ *   runtime_config: {
+ *     event_monitoring: {
+ *       max_events: 200,
+ *       max_events_options: [100, 200, 500],
+ *       throughput_cleanup_interval: 50,
+ *       time_series_window_ms: 600000,
+ *       throughput_window_ms: 30000,
+ *       max_breakdown_items: 100,
+ *     },
+ *   },
+ * };
+ * ```
+ */
+export interface DashboardRuntimeConfig {
+  /** Event monitoring specific settings for Event Bus dashboards */
+  event_monitoring?: EventMonitoringConfig;
+}
+
+// ============================================================================
+// Topic Metadata Types (for Event Bus dashboards)
+// ============================================================================
+
+/**
+ * Topic Metadata Configuration
+ *
+ * Describes a Kafka/event bus topic with display information and categorization.
+ * Used by Event Bus dashboards to provide human-readable labels and groupings.
+ *
+ * @example
+ * ```typescript
+ * const topicMeta: TopicMetadata = {
+ *   label: 'Agent Actions',
+ *   description: 'Tool calls, decisions, errors, and successes',
+ *   category: 'actions',
+ * };
+ * ```
+ */
+export interface TopicMetadata {
+  /** Human-readable display label for the topic */
+  label: string;
+  /** Description explaining what events this topic carries */
+  description: string;
+  /** Category for grouping topics (e.g., 'routing', 'lifecycle', 'health', 'actions') */
+  category: string;
 }
 
 // Dashboard Data (fetched once, widgets select from this)

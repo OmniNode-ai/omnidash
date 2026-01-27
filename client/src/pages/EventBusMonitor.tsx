@@ -16,8 +16,9 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { DashboardRenderer } from '@/lib/widgets';
 import {
   eventBusDashboardConfig,
-  MONITORED_TOPICS,
-  TOPIC_METADATA,
+  getEventMonitoringConfig,
+  getTopicLabel,
+  getMonitoredTopics,
   type EventHeaders,
 } from '@/lib/configs/event-bus-dashboard';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -101,10 +102,11 @@ interface AgentMetric {
   [key: string]: unknown;
 }
 
-// Configurable limits
-const DEFAULT_MAX_EVENTS = 50; // Default maximum events
-const MAX_EVENTS_OPTIONS = [50, 100, 200, 500, 1000];
-const TIME_SERIES_WINDOW_MS = 5 * 60 * 1000; // 5 minute window for time series
+// Get event monitoring configuration from contract-driven schema
+const eventConfig = getEventMonitoringConfig();
+
+// Get monitored topics from config
+const monitoredTopics = getMonitoredTopics();
 
 export default function EventBusMonitor() {
   // Dashboard state - starts empty, populated by real Kafka events via WebSocket
@@ -123,7 +125,7 @@ export default function EventBusMonitor() {
   const [eventCount, setEventCount] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
-  const [maxEvents, setMaxEvents] = useState(DEFAULT_MAX_EVENTS);
+  const [maxEvents, setMaxEvents] = useState(eventConfig.max_events);
 
   // Filter state
   const [filters, setFilters] = useState<FilterState>({
@@ -143,7 +145,6 @@ export default function EventBusMonitor() {
   const eventTimestampsRef = useRef<number[]>([]);
   // Counter for periodic cleanup to avoid array allocation on every event
   const eventCountSinceCleanupRef = useRef(0);
-  const CLEANUP_INTERVAL = 100; // Clean up stale timestamps every 100 events
 
   // Convert various event types to a unified format for display
   const createEventEntry = useCallback((eventType: string, data: any, topic: string) => {
@@ -176,15 +177,15 @@ export default function EventBusMonitor() {
     (event: any) => {
       // Update sliding window for throughput calculation
       const now = Date.now();
-      const oneMinuteAgo = now - 60000;
+      const oneMinuteAgo = now - eventConfig.throughput_window_ms;
 
       // Push new timestamp (no array allocation)
       eventTimestampsRef.current.push(now);
       eventCountSinceCleanupRef.current++;
 
-      // Periodic cleanup: only filter stale timestamps every CLEANUP_INTERVAL events
+      // Periodic cleanup: only filter stale timestamps every throughput_cleanup_interval events
       // This avoids creating a new array on every event while still maintaining accuracy
-      if (eventCountSinceCleanupRef.current >= CLEANUP_INTERVAL) {
+      if (eventCountSinceCleanupRef.current >= eventConfig.throughput_cleanup_interval) {
         eventTimestampsRef.current = eventTimestampsRef.current.filter((t) => t > oneMinuteAgo);
         eventCountSinceCleanupRef.current = 0;
       }
@@ -239,10 +240,17 @@ export default function EventBusMonitor() {
         } else {
           // Add new topic
           topicBreakdownData.push({
-            name: TOPIC_METADATA[event.topicRaw]?.label || event.topicRaw,
+            name: getTopicLabel(event.topicRaw),
             topic: event.topicRaw,
             eventCount: 1,
           });
+        }
+
+        // Prune topic breakdown to prevent unbounded growth
+        // Keep only the most active topics when limit is exceeded
+        if (topicBreakdownData.length > eventConfig.max_breakdown_items) {
+          topicBreakdownData.sort((a, b) => b.eventCount - a.eventCount);
+          topicBreakdownData.length = eventConfig.max_breakdown_items;
         }
 
         // Update event type breakdown data
@@ -268,6 +276,13 @@ export default function EventBusMonitor() {
           });
         }
 
+        // Prune event type breakdown to prevent unbounded growth
+        // Keep only the most active event types when limit is exceeded
+        if (eventTypeBreakdownData.length > eventConfig.max_breakdown_items) {
+          eventTypeBreakdownData.sort((a, b) => b.eventCount - a.eventCount);
+          eventTypeBreakdownData.length = eventConfig.max_breakdown_items;
+        }
+
         // Update time series data (aggregate by 10-second buckets)
         const timeSeriesData: TimeSeriesItem[] = Array.isArray(prev.timeSeriesData)
           ? [...(prev.timeSeriesData as TimeSeriesItem[])]
@@ -287,8 +302,8 @@ export default function EventBusMonitor() {
             events: 1,
           });
         }
-        // Keep only last 5 minutes of data
-        const cutoffTime = now - TIME_SERIES_WINDOW_MS;
+        // Keep only data within the configured time series window
+        const cutoffTime = now - eventConfig.time_series_window_ms;
         const filteredTimeSeries = timeSeriesData
           .filter((t) => t.time > cutoffTime)
           .sort((a, b) => a.time - b.time);
@@ -360,7 +375,7 @@ export default function EventBusMonitor() {
               topicCounts[e.topicRaw] = (topicCounts[e.topicRaw] || 0) + 1;
             });
             const topicBreakdownData = Object.entries(topicCounts).map(([topic, count]) => ({
-              name: TOPIC_METADATA[topic]?.label || topic,
+              name: getTopicLabel(topic),
               topic,
               eventCount: count,
             }));
@@ -421,6 +436,16 @@ export default function EventBusMonitor() {
                   mergedEventTypeBreakdown.push(existing);
                 }
               });
+
+              // Prune merged breakdowns to prevent unbounded growth
+              if (mergedTopicBreakdown.length > eventConfig.max_breakdown_items) {
+                mergedTopicBreakdown.sort((a, b) => b.eventCount - a.eventCount);
+                mergedTopicBreakdown.length = eventConfig.max_breakdown_items;
+              }
+              if (mergedEventTypeBreakdown.length > eventConfig.max_breakdown_items) {
+                mergedEventTypeBreakdown.sort((a, b) => b.eventCount - a.eventCount);
+                mergedEventTypeBreakdown.length = eventConfig.max_breakdown_items;
+              }
 
               return {
                 ...prev,
@@ -590,10 +615,10 @@ export default function EventBusMonitor() {
   // This prevents memory accumulation if event flow stops
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
-      const oneMinuteAgo = Date.now() - 60000;
+      const cutoff = Date.now() - eventConfig.throughput_window_ms;
       const currentLength = eventTimestampsRef.current.length;
       if (currentLength > 0) {
-        eventTimestampsRef.current = eventTimestampsRef.current.filter((t) => t > oneMinuteAgo);
+        eventTimestampsRef.current = eventTimestampsRef.current.filter((t) => t > cutoff);
       }
     }, 30000); // Clean every 30 seconds
 
@@ -747,9 +772,9 @@ export default function EventBusMonitor() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Topics</SelectItem>
-              {MONITORED_TOPICS.map((topic) => (
+              {monitoredTopics.map((topic) => (
                 <SelectItem key={topic} value={topic}>
-                  {TOPIC_METADATA[topic].label}
+                  {getTopicLabel(topic)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -795,7 +820,7 @@ export default function EventBusMonitor() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {MAX_EVENTS_OPTIONS.map((option) => (
+                {eventConfig.max_events_options.map((option) => (
                   <SelectItem key={option} value={String(option)}>
                     {option.toLocaleString()}
                   </SelectItem>
@@ -816,9 +841,7 @@ export default function EventBusMonitor() {
           <div className="flex items-center gap-2">
             {filters.topic && (
               <Badge variant="secondary" className="gap-1">
-                Topic:{' '}
-                {TOPIC_METADATA[filters.topic as keyof typeof TOPIC_METADATA]?.label ||
-                  filters.topic}
+                Topic: {getTopicLabel(filters.topic)}
                 <X
                   className="h-3 w-3 cursor-pointer"
                   onClick={() => setFilters((prev) => ({ ...prev, topic: null }))}
@@ -841,7 +864,7 @@ export default function EventBusMonitor() {
       {/* Topic Legend */}
       <div className="flex items-center gap-6 text-sm">
         <span className="text-muted-foreground">Topics:</span>
-        {MONITORED_TOPICS.map((topic) => (
+        {monitoredTopics.map((topic) => (
           <div
             key={topic}
             className="flex items-center gap-2 cursor-pointer hover:opacity-80"
@@ -862,7 +885,7 @@ export default function EventBusMonitor() {
               }`}
             />
             <span className={filters.topic === topic ? 'font-medium' : ''}>
-              {TOPIC_METADATA[topic]?.label || topic}
+              {getTopicLabel(topic)}
             </span>
           </div>
         ))}

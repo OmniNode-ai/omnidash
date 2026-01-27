@@ -45,9 +45,13 @@ export interface EventHeaders {
   retry_count: number;
 }
 
+// ============================================================================
+// Topic Constants (for backwards compatibility and type safety)
+// ============================================================================
+
 /**
- * Topics monitored by this dashboard
- * Split into agent topics (core functionality) and node registry topics
+ * Agent topics - core agent functionality events
+ * @deprecated Use eventBusDashboardConfig.monitored_topics instead for runtime access
  */
 export const AGENT_TOPICS = [
   'agent-routing-decisions',
@@ -56,6 +60,10 @@ export const AGENT_TOPICS = [
   'agent-actions',
 ] as const;
 
+/**
+ * Node registry topics - node lifecycle and health events
+ * @deprecated Use eventBusDashboardConfig.monitored_topics instead for runtime access
+ */
 export const NODE_TOPICS = [
   'dev.omninode_bridge.onex.evt.node-introspection.v1',
   'dev.onex.evt.registration-completed.v1',
@@ -63,14 +71,23 @@ export const NODE_TOPICS = [
   'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
 ] as const;
 
+/**
+ * All monitored topics combined
+ * @deprecated Use eventBusDashboardConfig.monitored_topics instead for runtime access
+ */
 export const MONITORED_TOPICS = [...AGENT_TOPICS, ...NODE_TOPICS] as const;
 
 export type AgentTopic = (typeof AGENT_TOPICS)[number];
 export type NodeTopic = (typeof NODE_TOPICS)[number];
 export type MonitoredTopic = (typeof MONITORED_TOPICS)[number];
 
+// ============================================================================
+// Topic Metadata (contract-driven, now part of dashboard config)
+// ============================================================================
+
 /**
  * Topic metadata for display
+ * @deprecated Use eventBusDashboardConfig.topic_metadata instead for runtime access
  */
 export const TOPIC_METADATA: Record<
   string,
@@ -128,6 +145,11 @@ export const TOPIC_METADATA: Record<
 
 /**
  * Dashboard configuration for Event Bus Monitor
+ *
+ * Contract-driven configuration including:
+ * - runtime_config: Tunable parameters for event monitoring behavior
+ * - topic_metadata: Display metadata for all monitored topics
+ * - monitored_topics: List of Kafka topics to monitor
  */
 export const eventBusDashboardConfig: DashboardConfig = {
   dashboard_id: 'event-bus-monitor',
@@ -141,6 +163,85 @@ export const eventBusDashboardConfig: DashboardConfig = {
   },
   data_source: 'websocket:event-bus',
   refresh_interval_seconds: 5,
+
+  // Runtime configuration for event monitoring behavior
+  runtime_config: {
+    event_monitoring: {
+      max_events: 50,
+      max_events_options: [50, 100, 200, 500, 1000],
+      throughput_cleanup_interval: 100,
+      time_series_window_ms: 5 * 60 * 1000, // 5 minutes
+      throughput_window_ms: 60 * 1000, // 1 minute
+      max_breakdown_items: 50,
+    },
+  },
+
+  // Topic metadata for display labels and categorization
+  topic_metadata: {
+    // Agent topics
+    'agent-routing-decisions': {
+      label: 'Routing Decisions',
+      description: 'Agent selection and routing decisions with confidence scores',
+      category: 'routing',
+    },
+    'agent-transformation-events': {
+      label: 'Transformations',
+      description: 'Polymorphic agent transformation events',
+      category: 'transformation',
+    },
+    'router-performance-metrics': {
+      label: 'Performance',
+      description: 'Routing performance metrics and cache statistics',
+      category: 'performance',
+    },
+    'agent-actions': {
+      label: 'Agent Actions',
+      description: 'Tool calls, decisions, errors, and successes',
+      category: 'actions',
+    },
+    // Node registry topics
+    'dev.omninode_bridge.onex.evt.node-introspection.v1': {
+      label: 'Node Introspection',
+      description: 'Node introspection events for debugging and monitoring',
+      category: 'introspection',
+    },
+    'dev.onex.evt.registration-completed.v1': {
+      label: 'Registration Completed',
+      description: 'Node registration completion events',
+      category: 'lifecycle',
+    },
+    'node.heartbeat': {
+      label: 'Heartbeat',
+      description: 'Node health heartbeat signals',
+      category: 'health',
+    },
+    'dev.omninode_bridge.onex.evt.registry-request-introspection.v1': {
+      label: 'Registry Introspection Request',
+      description: 'Introspection requests from registry to nodes',
+      category: 'introspection',
+    },
+    // Error topics
+    errors: {
+      label: 'Errors',
+      description: 'System errors and failures',
+      category: 'error',
+    },
+  },
+
+  // List of all monitored Kafka topics
+  monitored_topics: [
+    // Agent topics
+    'agent-routing-decisions',
+    'agent-transformation-events',
+    'router-performance-metrics',
+    'agent-actions',
+    // Node registry topics
+    'dev.omninode_bridge.onex.evt.node-introspection.v1',
+    'dev.onex.evt.registration-completed.v1',
+    'node.heartbeat',
+    'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
+  ],
+
   widgets: [
     // Row 1: Metric Cards (4 widgets)
     {
@@ -303,6 +404,56 @@ export const eventBusDashboardConfig: DashboardConfig = {
     },
   ],
 };
+
+// ============================================================================
+// Config Accessor Functions
+// ============================================================================
+
+/**
+ * Get event monitoring runtime configuration with defaults.
+ * Use this instead of directly accessing config.runtime_config.event_monitoring
+ * to ensure all fields have values.
+ */
+export function getEventMonitoringConfig() {
+  const config = eventBusDashboardConfig.runtime_config?.event_monitoring;
+  return {
+    max_events: config?.max_events ?? 50,
+    max_events_options: config?.max_events_options ?? [50, 100, 200, 500, 1000],
+    throughput_cleanup_interval: config?.throughput_cleanup_interval ?? 100,
+    time_series_window_ms: config?.time_series_window_ms ?? 5 * 60 * 1000,
+    throughput_window_ms: config?.throughput_window_ms ?? 60 * 1000,
+    max_breakdown_items: config?.max_breakdown_items ?? 50,
+  };
+}
+
+/**
+ * Get topic metadata from the config.
+ * Falls back to the legacy TOPIC_METADATA constant for backwards compatibility.
+ */
+export function getTopicMetadata(
+  topic: string
+): { label: string; description: string; category: string } | undefined {
+  return eventBusDashboardConfig.topic_metadata?.[topic] ?? TOPIC_METADATA[topic];
+}
+
+/**
+ * Get the label for a topic, with fallback to the topic name itself.
+ */
+export function getTopicLabel(topic: string): string {
+  return getTopicMetadata(topic)?.label ?? topic;
+}
+
+/**
+ * Get all monitored topics from the config.
+ * Falls back to the legacy MONITORED_TOPICS constant for backwards compatibility.
+ */
+export function getMonitoredTopics(): readonly string[] {
+  return eventBusDashboardConfig.monitored_topics ?? MONITORED_TOPICS;
+}
+
+// ============================================================================
+// Mock Data Generation
+// ============================================================================
 
 /**
  * Generate mock data for the Event Bus Monitor dashboard
