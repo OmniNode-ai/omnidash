@@ -120,6 +120,27 @@ interface AgentMetric {
   [key: string]: unknown;
 }
 
+// Type for processed event (return type of createEventEntry)
+interface ProcessedEvent {
+  id: string;
+  topic: string;
+  topicRaw: string;
+  eventType: string;
+  source: string;
+  timestamp: string;
+  priority: string;
+  correlationId?: string;
+  payload: string;
+}
+
+// Type for performance metric WebSocket message data
+interface PerformanceMetricMessageData {
+  metric?: EventData;
+  stats?: {
+    totalQueries?: number;
+  };
+}
+
 // Get event monitoring configuration from contract-driven schema
 const eventConfig = getEventMonitoringConfig();
 
@@ -208,7 +229,7 @@ export default function EventBusMonitor() {
 
   // Update dashboard with a new event
   const updateDashboardWithEvent = useCallback(
-    (event: any) => {
+    (event: ProcessedEvent) => {
       // Update sliding window for throughput calculation
       const now = Date.now();
       const oneMinuteAgo = now - eventConfig.throughput_window_ms;
@@ -216,6 +237,12 @@ export default function EventBusMonitor() {
       // Push new timestamp (no array allocation)
       eventTimestampsRef.current.push(now);
       eventCountSinceCleanupRef.current++;
+
+      // Safety valve: cap array size to prevent memory issues during high bursts
+      const MAX_TIMESTAMP_ENTRIES = 10000;
+      if (eventTimestampsRef.current.length > MAX_TIMESTAMP_ENTRIES) {
+        eventTimestampsRef.current = eventTimestampsRef.current.slice(-MAX_TIMESTAMP_ENTRIES / 2);
+      }
 
       // Periodic cleanup: only filter stale timestamps every throughput_cleanup_interval events
       // This avoids creating a new array on every event while still maintaining accuracy
@@ -419,6 +446,21 @@ export default function EventBusMonitor() {
               })
             );
 
+            // Compute time series data from events (group by 10-second buckets)
+            const timeBuckets: Record<number, number> = {};
+            events.forEach((e) => {
+              const eventTime = new Date(e.timestamp).getTime();
+              const bucketTime = Math.floor(eventTime / 10000) * 10000;
+              timeBuckets[bucketTime] = (timeBuckets[bucketTime] || 0) + 1;
+            });
+            const timeSeriesData: TimeSeriesItem[] = Object.entries(timeBuckets)
+              .map(([time, count]) => ({
+                time: Number(time),
+                timestamp: new Date(Number(time)).toLocaleTimeString(),
+                events: count,
+              }))
+              .sort((a, b) => a.time - b.time);
+
             setEventCount(events.length);
             setDashboardData((prev) => {
               // Merge topic breakdown: combine INITIAL_STATE data with any existing data (e.g., from heartbeats)
@@ -467,6 +509,24 @@ export default function EventBusMonitor() {
               pruneBreakdownArray(mergedTopicBreakdown, eventConfig.max_breakdown_items);
               pruneBreakdownArray(mergedEventTypeBreakdown, eventConfig.max_breakdown_items);
 
+              // Merge time series data: combine with any existing data from real-time events
+              const existingTimeSeries: TimeSeriesItem[] = Array.isArray(prev.timeSeriesData)
+                ? (prev.timeSeriesData as TimeSeriesItem[])
+                : [];
+              const mergedTimeSeries: TimeSeriesItem[] = [...timeSeriesData];
+              existingTimeSeries.forEach((existing) => {
+                const idx = mergedTimeSeries.findIndex((t) => t.time === existing.time);
+                if (idx >= 0) {
+                  // Bucket exists in both - sum the counts (real-time events add to historical)
+                  mergedTimeSeries[idx].events += existing.events;
+                } else {
+                  // Bucket only in existing (real-time events arrived before INITIAL_STATE)
+                  mergedTimeSeries.push(existing);
+                }
+              });
+              // Sort by time ascending
+              mergedTimeSeries.sort((a, b) => a.time - b.time);
+
               return {
                 ...prev,
                 totalEvents: events.length,
@@ -476,6 +536,7 @@ export default function EventBusMonitor() {
                 recentEvents: events,
                 topicBreakdownData: mergedTopicBreakdown,
                 eventTypeBreakdownData: mergedEventTypeBreakdown,
+                timeSeriesData: mergedTimeSeries,
                 liveEvents: events.slice(0, 20).map((e) => ({
                   id: e.id,
                   timestamp: e.timestamp,
@@ -492,7 +553,7 @@ export default function EventBusMonitor() {
 
         case 'AGENT_ACTION': {
           setEventCount((c) => c + 1);
-          const action = message.data as any;
+          const action = message.data as EventData;
           if (action) {
             const event = createEventEntry(action.actionType || 'action', action, 'agent-actions');
             updateDashboardWithEvent(event);
@@ -502,7 +563,7 @@ export default function EventBusMonitor() {
 
         case 'ROUTING_DECISION': {
           setEventCount((c) => c + 1);
-          const decision = message.data as any;
+          const decision = message.data as EventData;
           if (decision) {
             const event = createEventEntry('routing', decision, 'agent-routing-decisions');
             updateDashboardWithEvent(event);
@@ -512,7 +573,7 @@ export default function EventBusMonitor() {
 
         case 'AGENT_TRANSFORMATION': {
           setEventCount((c) => c + 1);
-          const transformation = message.data as any;
+          const transformation = message.data as EventData;
           if (transformation) {
             const event = createEventEntry(
               'transformation',
@@ -526,7 +587,7 @@ export default function EventBusMonitor() {
 
         case 'PERFORMANCE_METRIC': {
           setEventCount((c) => c + 1);
-          const { metric, stats } = (message.data as any) || {};
+          const { metric, stats } = (message.data as PerformanceMetricMessageData) || {};
           if (metric) {
             const event = createEventEntry('performance', metric, 'router-performance-metrics');
             updateDashboardWithEvent(event);
@@ -549,7 +610,7 @@ export default function EventBusMonitor() {
         case 'NODE_STATE_CHANGE':
         case 'NODE_REGISTRY_UPDATE': {
           setEventCount((c) => c + 1);
-          const nodeData = message.data as any;
+          const nodeData = message.data as EventData;
           if (nodeData) {
             const topicMap: Record<string, string> = {
               NODE_INTROSPECTION: 'dev.omninode_bridge.onex.evt.node-introspection.v1',

@@ -1061,23 +1061,23 @@ export class EventConsumer extends EventEmitter {
                 break;
               // OmniClaude hook events (prompt submissions)
               case 'dev.onex.cmd.omniintelligence.claude-hook-event.v1':
-                console.log(
-                  `[EventConsumer] Processing claude hook event: ${event.event_type || event.eventType} - ${(event.payload?.prompt || '').slice(0, 50)}...`
+                intentLogger.debug(
+                  `Processing claude hook event: ${event.event_type || event.eventType} - ${(event.payload?.prompt || '').slice(0, 50)}...`
                 );
                 this.handleClaudeHookEvent(event);
                 break;
               // OmniClaude lifecycle events
               case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
-                console.log(
-                  `[EventConsumer] Processing prompt-submitted: ${(event.payload?.prompt_preview || '').slice(0, 50)}...`
+                intentLogger.debug(
+                  `Processing prompt-submitted: ${(event.payload?.prompt_preview || '').slice(0, 50)}...`
                 );
                 this.handlePromptSubmittedEvent(event);
                 break;
               case 'dev.onex.evt.omniclaude.session-started.v1':
               case 'dev.onex.evt.omniclaude.session-ended.v1':
               case 'dev.onex.evt.omniclaude.tool-executed.v1':
-                console.log(
-                  `[EventConsumer] Processing omniclaude event: ${event.event_type || event.eventType}`
+                intentLogger.debug(
+                  `Processing omniclaude event: ${event.event_type || event.eventType}`
                 );
                 this.handleOmniclaudeLifecycleEvent(event, topic);
                 break;
@@ -1257,8 +1257,8 @@ export class EventConsumer extends EventEmitter {
     existing.lastSeen = new Date();
 
     this.agentMetrics.set(agent, existing);
-    console.log(
-      `[EventConsumer] Updated metrics for ${agent}: ${existing.count} requests, avg confidence ${(existing.totalConfidence / existing.count).toFixed(2)}`
+    intentLogger.debug(
+      `Updated metrics for ${agent}: ${existing.count} requests, avg confidence ${(existing.totalConfidence / existing.count).toFixed(2)}`
     );
 
     // Cleanup old entries (older than 24h)
@@ -1306,8 +1306,8 @@ export class EventConsumer extends EventEmitter {
     };
 
     this.recentActions.unshift(action);
-    console.log(
-      `[EventConsumer] Added action to queue: ${action.actionName} (${action.agentName}), queue size: ${this.recentActions.length}`
+    intentLogger.debug(
+      `Added action to queue: ${action.actionName} (${action.agentName}), queue size: ${this.recentActions.length}`
     );
 
     // Track success/error rates per agent
@@ -1330,8 +1330,8 @@ export class EventConsumer extends EventEmitter {
       existing.lastSeen = new Date();
       this.agentMetrics.set(action.agentName, existing);
 
-      console.log(
-        `[EventConsumer] Updated ${action.agentName} success/error: ${existing.successCount}/${existing.errorCount}`
+      intentLogger.debug(
+        `Updated ${action.agentName} success/error: ${existing.successCount}/${existing.errorCount}`
       );
 
       // Emit metric update since success rate changed
@@ -1385,8 +1385,8 @@ export class EventConsumer extends EventEmitter {
     };
 
     this.recentActions.unshift(action);
-    console.log(
-      `[EventConsumer] Added claude hook event: ${eventType} - "${truncatedPrompt.slice(0, 30)}...", queue size: ${this.recentActions.length}`
+    intentLogger.debug(
+      `Added claude hook event: ${eventType} - "${truncatedPrompt.slice(0, 30)}...", queue size: ${this.recentActions.length}`
     );
 
     // Keep only last N actions
@@ -1438,8 +1438,8 @@ export class EventConsumer extends EventEmitter {
     };
 
     this.recentActions.unshift(action);
-    console.log(
-      `[EventConsumer] Added prompt-submitted: "${promptPreview.slice(0, 30)}...", queue size: ${this.recentActions.length}`
+    intentLogger.debug(
+      `Added prompt-submitted: "${promptPreview.slice(0, 30)}...", queue size: ${this.recentActions.length}`
     );
 
     if (this.recentActions.length > this.maxActions) {
@@ -1481,8 +1481,8 @@ export class EventConsumer extends EventEmitter {
     };
 
     this.recentActions.unshift(action);
-    console.log(
-      `[EventConsumer] Added omniclaude lifecycle: ${eventType}, queue size: ${this.recentActions.length}`
+    intentLogger.debug(
+      `Added omniclaude lifecycle: ${eventType}, queue size: ${this.recentActions.length}`
     );
 
     if (this.recentActions.length > this.maxActions) {
