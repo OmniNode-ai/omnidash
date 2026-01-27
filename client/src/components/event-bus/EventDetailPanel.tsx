@@ -746,48 +746,38 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
 
             {/* Raw JSON Payload - Collapsible */}
             <div className="border rounded-lg">
-              <div
-                role="button"
-                tabIndex={0}
-                aria-expanded={showRawJson}
-                aria-controls="raw-json-content"
-                onClick={() => setShowRawJson(!showRawJson)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setShowRawJson(!showRawJson);
-                  }
-                }}
-                className="w-full flex items-center justify-between p-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                <span className="flex items-center gap-2">
+              <div className="w-full flex items-center justify-between p-3 text-sm font-medium text-muted-foreground">
+                {/* Toggle trigger - only this part is the interactive button */}
+                <button
+                  type="button"
+                  onClick={() => setShowRawJson(!showRawJson)}
+                  aria-expanded={showRawJson}
+                  aria-controls="raw-json-content"
+                  className="flex items-center gap-2 flex-1 hover:text-foreground transition-colors cursor-pointer text-left"
+                >
                   <FileJson className="h-4 w-4" />
                   Raw JSON
-                </span>
-                <div className="flex items-center gap-2">
-                  {event.payload && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopyPayload();
-                      }}
-                      className="h-6 px-2"
-                    >
-                      {copied ? (
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5" />
-                      )}
-                    </Button>
-                  )}
                   {showRawJson ? (
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="h-4 w-4 ml-auto" />
                   ) : (
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4 ml-auto" />
                   )}
-                </div>
+                </button>
+                {/* Copy button - sibling, not nested inside toggle */}
+                {event.payload && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyPayload}
+                    className="h-6 px-2 ml-2"
+                  >
+                    {copied ? (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                  </Button>
+                )}
               </div>
               {showRawJson && (
                 <div id="raw-json-content" className="border-t">
