@@ -12,11 +12,10 @@
  * - Throughput and error rate metrics
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { DashboardRenderer } from '@/lib/widgets';
 import {
   eventBusDashboardConfig,
-  generateEventBusMockData,
   MONITORED_TOPICS,
   TOPIC_METADATA,
   type EventHeaders,
@@ -34,7 +33,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Activity, Wifi, WifiOff, RefreshCw, Filter, X, Pause, Play } from 'lucide-react';
+import { Activity, RefreshCw, Filter, X, Pause, Play } from 'lucide-react';
+import {
+  EventDetailPanel,
+  type EventDetailPanelProps,
+} from '@/components/event-bus/EventDetailPanel';
 
 interface WebSocketEventMessage {
   type: string;
@@ -58,14 +61,29 @@ interface FilterState {
   search: string;
 }
 
+// Configurable limits
+const DEFAULT_MAX_EVENTS = 50; // Default maximum events
+const MAX_EVENTS_OPTIONS = [50, 100, 200, 500, 1000];
+const TIME_SERIES_WINDOW_MS = 5 * 60 * 1000; // 5 minute window for time series
+
 export default function EventBusMonitor() {
-  // Dashboard state
-  const [dashboardData, setDashboardData] = useState<DashboardData>(() =>
-    generateEventBusMockData()
-  );
+  // Dashboard state - starts empty, populated by real Kafka events via WebSocket
+  const [dashboardData, setDashboardData] = useState<DashboardData>({
+    totalEvents: 0,
+    eventsPerSecond: 0,
+    errorRate: 0,
+    activeTopics: 0,
+    recentEvents: [],
+    liveEvents: [],
+    topicBreakdownData: [],
+    eventTypeBreakdownData: [],
+    timeSeriesData: [],
+    topicHealth: [],
+  });
   const [eventCount, setEventCount] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [maxEvents, setMaxEvents] = useState(DEFAULT_MAX_EVENTS);
 
   // Filter state
   const [filters, setFilters] = useState<FilterState>({
@@ -74,8 +92,15 @@ export default function EventBusMonitor() {
     search: '',
   });
 
+  // Event detail panel state
+  const [selectedEvent, setSelectedEvent] = useState<EventDetailPanelProps['event']>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
   // Event buffer for real-time updates (reserved for future batching)
   const [_eventBuffer, _setEventBuffer] = useState<EventBusEvent[]>([]);
+
+  // Sliding window for throughput calculation (event timestamps from last 60 seconds)
+  const eventTimestampsRef = useRef<number[]>([]);
 
   // Convert various event types to a unified format for display
   const createEventEntry = useCallback((eventType: string, data: any, topic: string) => {
@@ -99,48 +124,131 @@ export default function EventBusMonitor() {
       timestamp: typeof timestamp === 'string' ? timestamp : new Date(timestamp).toISOString(),
       priority,
       correlationId: data.correlationId,
-      payload: JSON.stringify(data).slice(0, 200),
+      payload: JSON.stringify(data),
     };
   }, []);
 
   // Update dashboard with a new event
-  const updateDashboardWithEvent = useCallback((event: any) => {
-    setDashboardData((prev) => {
-      const recentEvents = Array.isArray(prev.recentEvents) ? prev.recentEvents : [];
-      const liveEvents = Array.isArray(prev.liveEvents) ? prev.liveEvents : [];
+  const updateDashboardWithEvent = useCallback(
+    (event: any) => {
+      // Update sliding window for throughput calculation
+      const now = Date.now();
+      const oneMinuteAgo = now - 60000;
+      // Add new timestamp and filter to last 60 seconds
+      eventTimestampsRef.current = [...eventTimestampsRef.current, now].filter(
+        (t) => t > oneMinuteAgo
+      );
+      // Calculate events per second (count / 60 seconds, rounded to 1 decimal)
+      const eventsPerSecond = Math.round((eventTimestampsRef.current.length / 60) * 10) / 10;
 
-      const newLiveEvent = {
-        id: event.id,
-        timestamp: event.timestamp,
-        type: mapPriorityToType(event.priority),
-        severity: mapPriorityToType(event.priority),
-        message: `${event.eventType} from ${event.source}`,
-        source: event.topicRaw,
-        // Include fields needed for filtering
-        topicRaw: event.topicRaw,
-        topic: event.topic,
-        priority: event.priority,
-        eventType: event.eventType,
-      };
+      setDashboardData((prev) => {
+        const recentEvents = Array.isArray(prev.recentEvents) ? prev.recentEvents : [];
+        const liveEvents = Array.isArray(prev.liveEvents) ? prev.liveEvents : [];
 
-      // Update totals
-      const totalEvents = (typeof prev.totalEvents === 'number' ? prev.totalEvents : 0) + 1;
-      const isError = event.priority === 'critical';
-      const errorCount = isError
-        ? ((prev.dlqCount as number) || 0) + 1
-        : (prev.dlqCount as number) || 0;
-      const errorRate = totalEvents > 0 ? (errorCount / totalEvents) * 100 : 0;
+        const newLiveEvent = {
+          id: event.id,
+          timestamp: event.timestamp,
+          type: mapPriorityToType(event.priority),
+          severity: mapPriorityToType(event.priority),
+          message: `${event.eventType} from ${event.source}`,
+          source: event.topicRaw,
+          // Include fields needed for filtering
+          topicRaw: event.topicRaw,
+          topic: event.topic,
+          priority: event.priority,
+          eventType: event.eventType,
+        };
 
-      return {
-        ...prev,
-        totalEvents,
-        dlqCount: errorCount,
-        errorRate: Math.round(errorRate * 100) / 100,
-        recentEvents: [event, ...recentEvents].slice(0, 50),
-        liveEvents: [newLiveEvent, ...liveEvents].slice(0, 50),
-      };
-    });
-  }, []);
+        // Update totals
+        const totalEvents = (typeof prev.totalEvents === 'number' ? prev.totalEvents : 0) + 1;
+        const isError = event.priority === 'critical';
+        const errorCount = isError
+          ? ((prev.dlqCount as number) || 0) + 1
+          : (prev.dlqCount as number) || 0;
+        const errorRate = totalEvents > 0 ? (errorCount / totalEvents) * 100 : 0;
+
+        // Update topic breakdown data
+        const topicBreakdownData = Array.isArray(prev.topicBreakdownData)
+          ? [...(prev.topicBreakdownData as any[])]
+          : [];
+        const topicIndex = topicBreakdownData.findIndex((t: any) => t.topic === event.topicRaw);
+        if (topicIndex >= 0) {
+          topicBreakdownData[topicIndex] = {
+            ...topicBreakdownData[topicIndex],
+            eventCount: (topicBreakdownData[topicIndex].eventCount || 0) + 1,
+          };
+        } else {
+          // Add new topic
+          topicBreakdownData.push({
+            name: TOPIC_METADATA[event.topicRaw]?.label || event.topicRaw,
+            topic: event.topicRaw,
+            eventCount: 1,
+          });
+        }
+
+        // Update event type breakdown data
+        const eventTypeBreakdownData = Array.isArray(prev.eventTypeBreakdownData)
+          ? [...(prev.eventTypeBreakdownData as any[])]
+          : [];
+        const eventTypeIndex = eventTypeBreakdownData.findIndex(
+          (t: any) => t.eventType === event.eventType
+        );
+        if (eventTypeIndex >= 0) {
+          eventTypeBreakdownData[eventTypeIndex] = {
+            ...eventTypeBreakdownData[eventTypeIndex],
+            eventCount: (eventTypeBreakdownData[eventTypeIndex].eventCount || 0) + 1,
+          };
+        } else {
+          // Add new event type
+          eventTypeBreakdownData.push({
+            name: event.eventType,
+            eventType: event.eventType,
+            eventCount: 1,
+          });
+        }
+
+        // Update time series data (aggregate by 10-second buckets)
+        const timeSeriesData = Array.isArray(prev.timeSeriesData)
+          ? [...(prev.timeSeriesData as any[])]
+          : [];
+        const bucketTime = Math.floor(now / 10000) * 10000; // 10-second buckets
+        const bucketIndex = timeSeriesData.findIndex((t: any) => t.time === bucketTime);
+        if (bucketIndex >= 0) {
+          timeSeriesData[bucketIndex] = {
+            ...timeSeriesData[bucketIndex],
+            events: (timeSeriesData[bucketIndex].events || 0) + 1,
+          };
+        } else {
+          // Add new time bucket
+          timeSeriesData.push({
+            time: bucketTime,
+            timestamp: new Date(bucketTime).toLocaleTimeString(),
+            events: 1,
+          });
+        }
+        // Keep only last 5 minutes of data
+        const cutoffTime = now - TIME_SERIES_WINDOW_MS;
+        const filteredTimeSeries = timeSeriesData
+          .filter((t: any) => t.time > cutoffTime)
+          .sort((a: any, b: any) => a.time - b.time);
+
+        return {
+          ...prev,
+          totalEvents,
+          eventsPerSecond,
+          dlqCount: errorCount,
+          errorRate: Math.round(errorRate * 100) / 100,
+          activeTopics: topicBreakdownData.length,
+          recentEvents: [event, ...recentEvents].slice(0, maxEvents),
+          liveEvents: [newLiveEvent, ...liveEvents].slice(0, maxEvents),
+          topicBreakdownData,
+          eventTypeBreakdownData,
+          timeSeriesData: filteredTimeSeries,
+        };
+      });
+    },
+    [maxEvents]
+  );
 
   // Process incoming WebSocket messages
   const handleMessage = useCallback(
@@ -182,25 +290,91 @@ export default function EventBusMonitor() {
               ),
             ]
               .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-              .slice(0, 50);
+              .slice(0, maxEvents);
+
+            // Compute topic breakdown from events
+            const topicCounts: Record<string, number> = {};
+            events.forEach((e) => {
+              topicCounts[e.topicRaw] = (topicCounts[e.topicRaw] || 0) + 1;
+            });
+            const topicBreakdownData = Object.entries(topicCounts).map(([topic, count]) => ({
+              name: TOPIC_METADATA[topic]?.label || topic,
+              topic,
+              eventCount: count,
+            }));
+
+            // Compute event type breakdown from events
+            const eventTypeCounts: Record<string, number> = {};
+            events.forEach((e) => {
+              eventTypeCounts[e.eventType] = (eventTypeCounts[e.eventType] || 0) + 1;
+            });
+            const eventTypeBreakdownData = Object.entries(eventTypeCounts).map(
+              ([eventType, count]) => ({
+                name: eventType,
+                eventType,
+                eventCount: count,
+              })
+            );
 
             setEventCount(events.length);
-            setDashboardData((prev) => ({
-              ...prev,
-              totalEvents: events.length,
-              eventsPerSecond: 0,
-              errorRate: 0,
-              activeTopics: 4,
-              recentEvents: events,
-              liveEvents: events.slice(0, 20).map((e) => ({
-                id: e.id,
-                timestamp: e.timestamp,
-                type: mapPriorityToType(e.priority),
-                severity: mapPriorityToType(e.priority),
-                message: `${e.eventType} from ${e.source}`,
-                source: e.topicRaw,
-              })),
-            }));
+            setDashboardData((prev) => {
+              // Merge topic breakdown: combine INITIAL_STATE data with any existing data (e.g., from heartbeats)
+              const existingTopics = Array.isArray(prev.topicBreakdownData)
+                ? (prev.topicBreakdownData as any[])
+                : [];
+              const mergedTopicBreakdown = [...topicBreakdownData];
+              existingTopics.forEach((existing: any) => {
+                const idx = mergedTopicBreakdown.findIndex((t: any) => t.topic === existing.topic);
+                if (idx >= 0) {
+                  // Topic exists in both - keep the higher count (they shouldn't overlap)
+                  mergedTopicBreakdown[idx].eventCount = Math.max(
+                    mergedTopicBreakdown[idx].eventCount,
+                    existing.eventCount
+                  );
+                } else {
+                  // Topic only in existing (e.g., heartbeats arrived before INITIAL_STATE)
+                  mergedTopicBreakdown.push(existing);
+                }
+              });
+
+              // Merge event type breakdown similarly
+              const existingEventTypes = Array.isArray(prev.eventTypeBreakdownData)
+                ? (prev.eventTypeBreakdownData as any[])
+                : [];
+              const mergedEventTypeBreakdown = [...eventTypeBreakdownData];
+              existingEventTypes.forEach((existing: any) => {
+                const idx = mergedEventTypeBreakdown.findIndex(
+                  (t: any) => t.eventType === existing.eventType
+                );
+                if (idx >= 0) {
+                  mergedEventTypeBreakdown[idx].eventCount = Math.max(
+                    mergedEventTypeBreakdown[idx].eventCount,
+                    existing.eventCount
+                  );
+                } else {
+                  mergedEventTypeBreakdown.push(existing);
+                }
+              });
+
+              return {
+                ...prev,
+                totalEvents: events.length,
+                eventsPerSecond: 0,
+                errorRate: 0,
+                activeTopics: mergedTopicBreakdown.length,
+                recentEvents: events,
+                topicBreakdownData: mergedTopicBreakdown,
+                eventTypeBreakdownData: mergedEventTypeBreakdown,
+                liveEvents: events.slice(0, 20).map((e) => ({
+                  id: e.id,
+                  timestamp: e.timestamp,
+                  type: mapPriorityToType(e.priority),
+                  severity: mapPriorityToType(e.priority),
+                  message: `${e.eventType} from ${e.source}`,
+                  source: e.topicRaw,
+                })),
+              };
+            });
           }
           break;
         }
@@ -311,7 +485,7 @@ export default function EventBusMonitor() {
         }
       }
     },
-    [isPaused, createEventEntry, updateDashboardWithEvent]
+    [isPaused, createEventEntry, updateDashboardWithEvent, maxEvents]
   );
 
   // WebSocket connection
@@ -329,16 +503,14 @@ export default function EventBusMonitor() {
     }
   }, [isConnected, subscribe, unsubscribe]);
 
-  // Refresh mock data periodically when not connected
+  // Re-slice event arrays when maxEvents changes to apply limit retroactively
   useEffect(() => {
-    if (!isConnected && !isPaused) {
-      const interval = setInterval(() => {
-        setDashboardData(generateEventBusMockData());
-        setLastUpdate(new Date());
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [isConnected, isPaused]);
+    setDashboardData((prev) => ({
+      ...prev,
+      recentEvents: Array.isArray(prev.recentEvents) ? prev.recentEvents.slice(0, maxEvents) : [],
+      liveEvents: Array.isArray(prev.liveEvents) ? prev.liveEvents.slice(0, maxEvents) : [],
+    }));
+  }, [maxEvents]);
 
   // Filtered data for display
   const filteredData = useMemo(() => {
@@ -383,6 +555,25 @@ export default function EventBusMonitor() {
   };
 
   const hasActiveFilters = filters.topic || filters.priority || filters.search;
+
+  // Handle row click to open event detail panel
+  const handleEventClick = useCallback((widgetId: string, row: Record<string, unknown>) => {
+    // Only handle clicks from the recent events table
+    if (widgetId === 'table-recent-events') {
+      setSelectedEvent({
+        id: String(row.id || ''),
+        topic: String(row.topic || ''),
+        topicRaw: String(row.topicRaw || row.topic || ''),
+        eventType: String(row.eventType || ''),
+        source: String(row.source || ''),
+        timestamp: String(row.timestamp || ''),
+        priority: String(row.priority || 'normal'),
+        correlationId: row.correlationId ? String(row.correlationId) : undefined,
+        payload: row.payload ? String(row.payload) : undefined,
+      });
+      setIsPanelOpen(true);
+    }
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -438,24 +629,7 @@ export default function EventBusMonitor() {
             )}
           </Button>
 
-          {/* Connection status */}
-          <div className="flex items-center gap-2">
-            <div
-              className={`h-2 w-2 rounded-full transition-colors duration-300 ${
-                isConnected
-                  ? 'bg-green-500 animate-pulse'
-                  : connectionStatus === 'connecting'
-                    ? 'bg-yellow-500 animate-pulse'
-                    : 'bg-red-500'
-              }`}
-            />
-            <span className="text-sm text-muted-foreground capitalize flex items-center gap-1">
-              {isConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              {connectionStatus}
-            </span>
-          </div>
-
-          {/* Reconnect button */}
+          {/* Reconnect button - only show when disconnected */}
           {!isConnected && connectionStatus !== 'connecting' && (
             <Button variant="outline" size="sm" onClick={reconnect} className="gap-2">
               <RefreshCw className="h-4 w-4" />
@@ -520,6 +694,26 @@ export default function EventBusMonitor() {
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
               className="h-9"
             />
+          </div>
+
+          {/* Event limit */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Max events:</span>
+            <Select
+              value={String(maxEvents)}
+              onValueChange={(value) => setMaxEvents(Number(value))}
+            >
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MAX_EVENTS_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {option.toLocaleString()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Clear filters */}
@@ -591,26 +785,11 @@ export default function EventBusMonitor() {
         config={eventBusDashboardConfig}
         data={filteredData}
         isLoading={connectionStatus === 'connecting'}
+        onWidgetRowClick={handleEventClick}
       />
 
-      {/* Data Flow Information */}
-      <Card className="p-4 bg-muted/50">
-        <h3 className="text-sm font-semibold mb-2">Data Flow</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-          <div>
-            <span className="font-medium text-foreground">Source:</span> Kafka (
-            {isConnected ? 'Live' : 'Mock Data'})
-          </div>
-          <div>
-            <span className="font-medium text-foreground">Transport:</span> WebSocket at{' '}
-            <code className="text-xs bg-muted px-1 py-0.5 rounded">/ws</code>
-          </div>
-          <div>
-            <span className="font-medium text-foreground">Topics:</span> {MONITORED_TOPICS.length}{' '}
-            monitored
-          </div>
-        </div>
-      </Card>
+      {/* Event Detail Panel (slide-out) */}
+      <EventDetailPanel event={selectedEvent} open={isPanelOpen} onOpenChange={setIsPanelOpen} />
     </div>
   );
 }

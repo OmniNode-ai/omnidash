@@ -18,7 +18,7 @@ export const widgetTypeSchema = z.enum([
 ]);
 export const dashboardThemeSchema = z.enum(['light', 'dark', 'system']);
 export const dashboardStatusSchema = z.enum(['initializing', 'connected', 'disconnected', 'error']);
-export const chartTypeSchema = z.enum(['line', 'bar', 'area', 'pie', 'scatter']);
+export const chartTypeSchema = z.enum(['line', 'bar', 'area', 'pie', 'donut', 'scatter']);
 
 // Supporting schemas
 export const chartSeriesConfigSchema = z.object({
@@ -53,11 +53,14 @@ export const metricThresholdSchema = z.object({
 export const widgetConfigChartSchema = z.object({
   config_kind: z.literal('chart'),
   chart_type: chartTypeSchema,
+  data_key: z.string().min(1).optional(),
   series: z.array(chartSeriesConfigSchema).min(1),
   x_axis: chartAxisConfigSchema.optional(),
   y_axis: chartAxisConfigSchema.optional(),
   show_legend: z.boolean().optional(),
   stacked: z.boolean().optional(),
+  alternate_chart_type: chartTypeSchema.optional(),
+  max_items: z.number().int().min(1).optional(),
 });
 
 export const widgetConfigTableSchema = z.object({

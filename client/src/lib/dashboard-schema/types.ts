@@ -32,12 +32,27 @@ export enum DashboardStatus {
 
 export interface WidgetConfigChart {
   config_kind: 'chart';
-  chart_type: 'line' | 'bar' | 'area' | 'pie' | 'scatter';
+  chart_type: 'line' | 'bar' | 'area' | 'pie' | 'donut' | 'scatter';
+  /** Key into DashboardData for the chart data array */
+  data_key?: string;
   series: ChartSeriesConfig[];
   x_axis?: ChartAxisConfig;
   y_axis?: ChartAxisConfig;
   show_legend?: boolean;
   stacked?: boolean;
+  /**
+   * Optional alternate chart type for user toggle.
+   * When set, the chart widget shows a toggle button to switch between
+   * the primary chart_type and this alternate.
+   * Common pattern: chart_type='donut', alternate_chart_type='bar'
+   */
+  alternate_chart_type?: 'line' | 'bar' | 'area' | 'pie' | 'donut' | 'scatter';
+  /**
+   * Maximum number of items to display before aggregating the rest into "Other".
+   * Useful for pie/donut charts with many categories.
+   * @default 7
+   */
+  max_items?: number;
 }
 
 export interface WidgetConfigTable {

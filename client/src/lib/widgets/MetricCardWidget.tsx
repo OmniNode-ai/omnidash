@@ -94,15 +94,29 @@ export function MetricCardWidget({ widget, config, data, isLoading }: MetricCard
   const rawValue = data[config.metric_key];
   const value =
     typeof rawValue === 'number' ? rawValue : typeof rawValue === 'string' ? rawValue : 0;
-  const formattedValue = formatValue(value, config.value_format, config.precision);
+
+  // Handle edge case: non-zero value that rounds to 0 should show "< 0.1" (or appropriate threshold)
+  // This prevents confusing UX where "2 events" but "0 events/sec"
+  const precision = config.precision ?? 2;
+  let formattedValue: string;
+  if (typeof value === 'number' && value > 0) {
+    const threshold = Math.pow(10, -precision); // e.g., 0.1 for precision=1, 0.01 for precision=2
+    if (value < threshold) {
+      formattedValue = `< ${threshold}${config.value_format === 'percent' ? '%' : ''}`;
+    } else {
+      formattedValue = formatValue(value, config.value_format, precision);
+    }
+  } else {
+    formattedValue = formatValue(value, config.value_format, precision);
+  }
 
   // Determine status: semantic_status takes precedence over threshold calculation
   let status: 'healthy' | 'warning' | 'error' | undefined;
   if (config.semantic_status) {
     // Explicit semantic status: 'neutral' maps to undefined (no status styling)
     status = config.semantic_status === 'neutral' ? undefined : config.semantic_status;
-  } else if (config.thresholds && typeof value === 'number') {
-    // Fallback to threshold-based calculation
+  } else if (config.thresholds && config.thresholds.length > 0 && typeof value === 'number') {
+    // Threshold-based calculation only when thresholds are configured
     // Sort thresholds descending by value to find the first one exceeded
     const sortedThresholds = [...config.thresholds].sort((a, b) => b.value - a.value);
     for (const threshold of sortedThresholds) {
@@ -111,9 +125,10 @@ export function MetricCardWidget({ widget, config, data, isLoading }: MetricCard
         break;
       }
     }
-    // If no threshold exceeded, it's healthy
+    // If thresholds exist but none exceeded, it's healthy
     if (!status) status = 'healthy';
   }
+  // If no thresholds configured, status remains undefined (neutral/no color)
 
   // Extract trend if configured
   let trend: { value: number; isPositive: boolean } | undefined;

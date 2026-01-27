@@ -955,6 +955,13 @@ export class EventConsumer extends EventEmitter {
           onexTopic('node-liveness-expired'),
           onexTopic('node-heartbeat'),
           onexTopic('node-introspection'),
+          // OmniClaude hook events (prompt submissions, tool executions)
+          'dev.onex.cmd.omniintelligence.claude-hook-event.v1',
+          // OmniClaude lifecycle events (additional coverage)
+          'dev.onex.evt.omniclaude.prompt-submitted.v1',
+          'dev.onex.evt.omniclaude.session-started.v1',
+          'dev.onex.evt.omniclaude.tool-executed.v1',
+          'dev.onex.evt.omniclaude.session-ended.v1',
         ],
         fromBeginning: true, // Reprocess historical events to populate metrics
       });
@@ -1026,6 +1033,28 @@ export class EventConsumer extends EventEmitter {
                   `Processing intent query response: ${event.query_id || event.queryId}`
                 );
                 this.handleIntentQueryResponse(event);
+                break;
+              // OmniClaude hook events (prompt submissions)
+              case 'dev.onex.cmd.omniintelligence.claude-hook-event.v1':
+                console.log(
+                  `[EventConsumer] Processing claude hook event: ${event.event_type || event.eventType} - ${(event.payload?.prompt || '').slice(0, 50)}...`
+                );
+                this.handleClaudeHookEvent(event);
+                break;
+              // OmniClaude lifecycle events
+              case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
+                console.log(
+                  `[EventConsumer] Processing prompt-submitted: ${(event.payload?.prompt_preview || '').slice(0, 50)}...`
+                );
+                this.handlePromptSubmittedEvent(event);
+                break;
+              case 'dev.onex.evt.omniclaude.session-started.v1':
+              case 'dev.onex.evt.omniclaude.session-ended.v1':
+              case 'dev.onex.evt.omniclaude.tool-executed.v1':
+                console.log(
+                  `[EventConsumer] Processing omniclaude event: ${event.event_type || event.eventType}`
+                );
+                this.handleOmniclaudeLifecycleEvent(event, topic);
                 break;
 
               // Canonical ONEX topics (OMN-1279)
@@ -1290,6 +1319,151 @@ export class EventConsumer extends EventEmitter {
     }
 
     // Emit update event for WebSocket broadcast
+    this.emit('actionUpdate', action);
+  }
+
+  /**
+   * Handle OmniClaude hook events (prompt submissions, tool executions).
+   * These events are emitted by omniclaude via the UserPromptSubmit hook
+   * and represent real-time user interactions with Claude Code.
+   */
+  private handleClaudeHookEvent(event: {
+    event_type?: string;
+    eventType?: string;
+    session_id?: string;
+    sessionId?: string;
+    correlation_id?: string;
+    correlationId?: string;
+    timestamp_utc?: string;
+    timestampUtc?: string;
+    payload?: { prompt?: string; [key: string]: unknown };
+  }): void {
+    const eventType = event.event_type || event.eventType || 'unknown';
+    const prompt = event.payload?.prompt || '';
+    const truncatedPrompt = prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt;
+
+    // Convert to AgentAction format for dashboard display
+    const action: AgentAction = {
+      id: crypto.randomUUID(),
+      correlationId: event.correlation_id || event.correlationId || '',
+      agentName: 'omniclaude',
+      actionType: 'prompt',
+      actionName: eventType,
+      actionDetails: {
+        prompt: truncatedPrompt,
+        sessionId: event.session_id || event.sessionId,
+        eventType,
+      },
+      debugMode: false,
+      durationMs: 0,
+      createdAt: new Date(event.timestamp_utc || event.timestampUtc || Date.now()),
+    };
+
+    this.recentActions.unshift(action);
+    console.log(
+      `[EventConsumer] Added claude hook event: ${eventType} - "${truncatedPrompt.slice(0, 30)}...", queue size: ${this.recentActions.length}`
+    );
+
+    // Keep only last N actions
+    if (this.recentActions.length > this.maxActions) {
+      this.recentActions = this.recentActions.slice(0, this.maxActions);
+    }
+
+    // Emit update event for WebSocket broadcast
+    this.emit('actionUpdate', action);
+  }
+
+  /**
+   * Handle prompt-submitted events from omniclaude lifecycle topics.
+   * These are the canonical ONEX events emitted when user submits a prompt.
+   */
+  private handlePromptSubmittedEvent(event: {
+    event_type?: string;
+    eventType?: string;
+    payload?: {
+      session_id?: string;
+      sessionId?: string;
+      correlation_id?: string;
+      correlationId?: string;
+      prompt_preview?: string;
+      promptPreview?: string;
+      prompt_length?: number;
+      promptLength?: number;
+      emitted_at?: string;
+      emittedAt?: string;
+    };
+  }): void {
+    const payload = event.payload || {};
+    const promptPreview = payload.prompt_preview || payload.promptPreview || '';
+
+    const action: AgentAction = {
+      id: crypto.randomUUID(),
+      correlationId: payload.correlation_id || payload.correlationId || '',
+      agentName: 'omniclaude',
+      actionType: 'prompt',
+      actionName: 'UserPromptSubmit',
+      actionDetails: {
+        prompt: promptPreview,
+        promptLength: payload.prompt_length || payload.promptLength,
+        sessionId: payload.session_id || payload.sessionId,
+      },
+      debugMode: false,
+      durationMs: 0,
+      createdAt: new Date(payload.emitted_at || payload.emittedAt || Date.now()),
+    };
+
+    this.recentActions.unshift(action);
+    console.log(
+      `[EventConsumer] Added prompt-submitted: "${promptPreview.slice(0, 30)}...", queue size: ${this.recentActions.length}`
+    );
+
+    if (this.recentActions.length > this.maxActions) {
+      this.recentActions = this.recentActions.slice(0, this.maxActions);
+    }
+
+    this.emit('actionUpdate', action);
+  }
+
+  /**
+   * Handle omniclaude lifecycle events (session-started, session-ended, tool-executed).
+   */
+  private handleOmniclaudeLifecycleEvent(
+    event: {
+      event_type?: string;
+      eventType?: string;
+      payload?: Record<string, unknown>;
+    },
+    topic: string
+  ): void {
+    const eventType = event.event_type || event.eventType || topic.split('.').slice(-2, -1)[0];
+    const payload = event.payload || {};
+
+    const action: AgentAction = {
+      id: crypto.randomUUID(),
+      correlationId: (payload.correlation_id || payload.correlationId || '') as string,
+      agentName: 'omniclaude',
+      actionType: eventType.includes('tool') ? 'tool_call' : 'lifecycle',
+      actionName: eventType,
+      actionDetails: {
+        sessionId: payload.session_id || payload.sessionId,
+        ...payload,
+      },
+      debugMode: false,
+      durationMs: (payload.duration_ms || payload.durationMs || 0) as number,
+      createdAt: new Date(
+        (payload.emitted_at || payload.emittedAt || Date.now()) as string | number
+      ),
+    };
+
+    this.recentActions.unshift(action);
+    console.log(
+      `[EventConsumer] Added omniclaude lifecycle: ${eventType}, queue size: ${this.recentActions.length}`
+    );
+
+    if (this.recentActions.length > this.maxActions) {
+      this.recentActions = this.recentActions.slice(0, this.maxActions);
+    }
+
     this.emit('actionUpdate', action);
   }
 
