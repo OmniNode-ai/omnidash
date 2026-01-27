@@ -33,6 +33,10 @@ import {
   FileJson,
   ChevronDown,
   ChevronRight,
+  Wrench,
+  Bot,
+  Timer,
+  BarChart2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -640,22 +644,26 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
                     )}
                     {parsedDetails.toolName && (
                       <Badge variant="outline" className="text-xs font-mono">
-                        🔧 {parsedDetails.toolName}
+                        <Wrench className="h-3 w-3 mr-1" />
+                        {parsedDetails.toolName}
                       </Badge>
                     )}
                     {parsedDetails.agentName && (
                       <Badge variant="outline" className="text-xs">
-                        🤖 {parsedDetails.agentName}
+                        <Bot className="h-3 w-3 mr-1" />
+                        {parsedDetails.agentName}
                       </Badge>
                     )}
                     {parsedDetails.durationMs && (
                       <Badge variant="outline" className="text-xs">
-                        ⏱️ {parsedDetails.durationMs}ms
+                        <Timer className="h-3 w-3 mr-1" />
+                        {parsedDetails.durationMs}ms
                       </Badge>
                     )}
                     {parsedDetails.confidence !== undefined && (
                       <Badge variant="outline" className="text-xs">
-                        📊 {(parsedDetails.confidence * 100).toFixed(0)}%
+                        <BarChart2 className="h-3 w-3 mr-1" />
+                        {(parsedDetails.confidence * 100).toFixed(0)}%
                       </Badge>
                     )}
                     {parsedDetails.status && (

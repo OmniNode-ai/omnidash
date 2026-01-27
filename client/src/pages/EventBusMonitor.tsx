@@ -61,6 +61,46 @@ interface FilterState {
   search: string;
 }
 
+// Types for chart/breakdown data structures
+interface TopicBreakdownItem {
+  name: string;
+  topic: string;
+  eventCount: number;
+}
+
+interface EventTypeBreakdownItem {
+  name: string;
+  eventType: string;
+  eventCount: number;
+}
+
+interface TimeSeriesItem {
+  time: number;
+  timestamp: string;
+  events: number;
+}
+
+// Types for initial state data from WebSocket
+interface InitialStateEventData {
+  id?: string;
+  correlationId?: string;
+  actionType?: string;
+  agentName?: string;
+  sourceAgent?: string;
+  selectedAgent?: string;
+  createdAt?: string;
+  timestamp?: string;
+  priority?: string;
+  severity?: string;
+  headers?: { priority?: string };
+}
+
+// Type for agent metrics
+interface AgentMetric {
+  agentName: string;
+  [key: string]: unknown;
+}
+
 // Configurable limits
 const DEFAULT_MAX_EVENTS = 50; // Default maximum events
 const MAX_EVENTS_OPTIONS = [50, 100, 200, 500, 1000];
@@ -101,6 +141,9 @@ export default function EventBusMonitor() {
 
   // Sliding window for throughput calculation (event timestamps from last 60 seconds)
   const eventTimestampsRef = useRef<number[]>([]);
+  // Counter for periodic cleanup to avoid array allocation on every event
+  const eventCountSinceCleanupRef = useRef(0);
+  const CLEANUP_INTERVAL = 100; // Clean up stale timestamps every 100 events
 
   // Convert various event types to a unified format for display
   const createEventEntry = useCallback((eventType: string, data: any, topic: string) => {
@@ -134,12 +177,28 @@ export default function EventBusMonitor() {
       // Update sliding window for throughput calculation
       const now = Date.now();
       const oneMinuteAgo = now - 60000;
-      // Add new timestamp and filter to last 60 seconds
-      eventTimestampsRef.current = [...eventTimestampsRef.current, now].filter(
-        (t) => t > oneMinuteAgo
-      );
+
+      // Push new timestamp (no array allocation)
+      eventTimestampsRef.current.push(now);
+      eventCountSinceCleanupRef.current++;
+
+      // Periodic cleanup: only filter stale timestamps every CLEANUP_INTERVAL events
+      // This avoids creating a new array on every event while still maintaining accuracy
+      if (eventCountSinceCleanupRef.current >= CLEANUP_INTERVAL) {
+        eventTimestampsRef.current = eventTimestampsRef.current.filter((t) => t > oneMinuteAgo);
+        eventCountSinceCleanupRef.current = 0;
+      }
+
+      // Count recent events without creating a new array (avoids GC pressure)
+      let recentCount = 0;
+      for (let i = 0; i < eventTimestampsRef.current.length; i++) {
+        if (eventTimestampsRef.current[i] > oneMinuteAgo) {
+          recentCount++;
+        }
+      }
+
       // Calculate events per second (count / 60 seconds, rounded to 1 decimal)
-      const eventsPerSecond = Math.round((eventTimestampsRef.current.length / 60) * 10) / 10;
+      const eventsPerSecond = Math.round((recentCount / 60) * 10) / 10;
 
       setDashboardData((prev) => {
         const recentEvents = Array.isArray(prev.recentEvents) ? prev.recentEvents : [];
@@ -168,10 +227,10 @@ export default function EventBusMonitor() {
         const errorRate = totalEvents > 0 ? (errorCount / totalEvents) * 100 : 0;
 
         // Update topic breakdown data
-        const topicBreakdownData = Array.isArray(prev.topicBreakdownData)
-          ? [...(prev.topicBreakdownData as any[])]
+        const topicBreakdownData: TopicBreakdownItem[] = Array.isArray(prev.topicBreakdownData)
+          ? [...(prev.topicBreakdownData as TopicBreakdownItem[])]
           : [];
-        const topicIndex = topicBreakdownData.findIndex((t: any) => t.topic === event.topicRaw);
+        const topicIndex = topicBreakdownData.findIndex((t) => t.topic === event.topicRaw);
         if (topicIndex >= 0) {
           topicBreakdownData[topicIndex] = {
             ...topicBreakdownData[topicIndex],
@@ -187,11 +246,13 @@ export default function EventBusMonitor() {
         }
 
         // Update event type breakdown data
-        const eventTypeBreakdownData = Array.isArray(prev.eventTypeBreakdownData)
-          ? [...(prev.eventTypeBreakdownData as any[])]
+        const eventTypeBreakdownData: EventTypeBreakdownItem[] = Array.isArray(
+          prev.eventTypeBreakdownData
+        )
+          ? [...(prev.eventTypeBreakdownData as EventTypeBreakdownItem[])]
           : [];
         const eventTypeIndex = eventTypeBreakdownData.findIndex(
-          (t: any) => t.eventType === event.eventType
+          (t) => t.eventType === event.eventType
         );
         if (eventTypeIndex >= 0) {
           eventTypeBreakdownData[eventTypeIndex] = {
@@ -208,11 +269,11 @@ export default function EventBusMonitor() {
         }
 
         // Update time series data (aggregate by 10-second buckets)
-        const timeSeriesData = Array.isArray(prev.timeSeriesData)
-          ? [...(prev.timeSeriesData as any[])]
+        const timeSeriesData: TimeSeriesItem[] = Array.isArray(prev.timeSeriesData)
+          ? [...(prev.timeSeriesData as TimeSeriesItem[])]
           : [];
         const bucketTime = Math.floor(now / 10000) * 10000; // 10-second buckets
-        const bucketIndex = timeSeriesData.findIndex((t: any) => t.time === bucketTime);
+        const bucketIndex = timeSeriesData.findIndex((t) => t.time === bucketTime);
         if (bucketIndex >= 0) {
           timeSeriesData[bucketIndex] = {
             ...timeSeriesData[bucketIndex],
@@ -229,8 +290,8 @@ export default function EventBusMonitor() {
         // Keep only last 5 minutes of data
         const cutoffTime = now - TIME_SERIES_WINDOW_MS;
         const filteredTimeSeries = timeSeriesData
-          .filter((t: any) => t.time > cutoffTime)
-          .sort((a: any, b: any) => a.time - b.time);
+          .filter((t) => t.time > cutoffTime)
+          .sort((a, b) => a.time - b.time);
 
         return {
           ...prev,
@@ -274,9 +335,10 @@ export default function EventBusMonitor() {
           const state = message.data as Record<string, unknown>;
           if (state) {
             // Convert actions to dashboard format
-            const recentActions = (state.recentActions as any[]) || [];
-            const routingDecisions = (state.routingDecisions as any[]) || [];
-            const recentTransformations = (state.recentTransformations as any[]) || [];
+            const recentActions = (state.recentActions as InitialStateEventData[]) || [];
+            const routingDecisions = (state.routingDecisions as InitialStateEventData[]) || [];
+            const recentTransformations =
+              (state.recentTransformations as InitialStateEventData[]) || [];
 
             const events = [
               ...recentActions.map((a) =>
@@ -319,12 +381,12 @@ export default function EventBusMonitor() {
             setEventCount(events.length);
             setDashboardData((prev) => {
               // Merge topic breakdown: combine INITIAL_STATE data with any existing data (e.g., from heartbeats)
-              const existingTopics = Array.isArray(prev.topicBreakdownData)
-                ? (prev.topicBreakdownData as any[])
+              const existingTopics: TopicBreakdownItem[] = Array.isArray(prev.topicBreakdownData)
+                ? (prev.topicBreakdownData as TopicBreakdownItem[])
                 : [];
-              const mergedTopicBreakdown = [...topicBreakdownData];
-              existingTopics.forEach((existing: any) => {
-                const idx = mergedTopicBreakdown.findIndex((t: any) => t.topic === existing.topic);
+              const mergedTopicBreakdown: TopicBreakdownItem[] = [...topicBreakdownData];
+              existingTopics.forEach((existing) => {
+                const idx = mergedTopicBreakdown.findIndex((t) => t.topic === existing.topic);
                 if (idx >= 0) {
                   // Topic exists in both - keep the higher count (they shouldn't overlap)
                   mergedTopicBreakdown[idx].eventCount = Math.max(
@@ -338,13 +400,17 @@ export default function EventBusMonitor() {
               });
 
               // Merge event type breakdown similarly
-              const existingEventTypes = Array.isArray(prev.eventTypeBreakdownData)
-                ? (prev.eventTypeBreakdownData as any[])
+              const existingEventTypes: EventTypeBreakdownItem[] = Array.isArray(
+                prev.eventTypeBreakdownData
+              )
+                ? (prev.eventTypeBreakdownData as EventTypeBreakdownItem[])
                 : [];
-              const mergedEventTypeBreakdown = [...eventTypeBreakdownData];
-              existingEventTypes.forEach((existing: any) => {
+              const mergedEventTypeBreakdown: EventTypeBreakdownItem[] = [
+                ...eventTypeBreakdownData,
+              ];
+              existingEventTypes.forEach((existing) => {
                 const idx = mergedEventTypeBreakdown.findIndex(
-                  (t: any) => t.eventType === existing.eventType
+                  (t) => t.eventType === existing.eventType
                 );
                 if (idx >= 0) {
                   mergedEventTypeBreakdown[idx].eventCount = Math.max(
@@ -460,7 +526,7 @@ export default function EventBusMonitor() {
 
         case 'AGENT_METRIC_UPDATE': {
           // Metrics update - don't count as individual events
-          const metrics = message.data as any[];
+          const metrics = message.data as AgentMetric[];
           if (Array.isArray(metrics)) {
             setDashboardData((prev) => ({
               ...prev,
