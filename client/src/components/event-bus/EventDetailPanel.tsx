@@ -746,9 +746,17 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
 
             {/* Raw JSON Payload - Collapsible */}
             <div className="border rounded-lg">
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setShowRawJson(!showRawJson)}
-                className="w-full flex items-center justify-between p-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setShowRawJson(!showRawJson);
+                  }
+                }}
+                className="w-full flex items-center justify-between p-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
                 <span className="flex items-center gap-2">
                   <FileJson className="h-4 w-4" />
@@ -778,7 +786,7 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
                     <ChevronRight className="h-4 w-4" />
                   )}
                 </div>
-              </button>
+              </div>
               {showRawJson && (
                 <div className="border-t">
                   {event.payload ? (

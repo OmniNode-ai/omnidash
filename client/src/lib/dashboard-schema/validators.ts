@@ -112,13 +112,24 @@ export const widgetConfigEventFeedSchema = z.object({
   auto_scroll: z.boolean().optional(),
 });
 
-export const widgetConfigSchema = z.discriminatedUnion('config_kind', [
-  widgetConfigMetricCardSchema,
-  widgetConfigTableSchema,
-  widgetConfigChartSchema,
-  widgetConfigStatusGridSchema,
-  widgetConfigEventFeedSchema,
-]);
+export const widgetConfigSchema = z
+  .discriminatedUnion('config_kind', [
+    widgetConfigMetricCardSchema,
+    widgetConfigTableSchema,
+    widgetConfigChartSchema,
+    widgetConfigStatusGridSchema,
+    widgetConfigEventFeedSchema,
+  ])
+  .refine(
+    (data) => {
+      if (data.config_kind !== 'chart') return true;
+      return !data.alternate_chart_type || data.alternate_chart_type !== data.chart_type;
+    },
+    {
+      message: 'alternate_chart_type must differ from chart_type when specified',
+      path: ['alternate_chart_type'],
+    }
+  );
 
 /**
  * Widget Definition Schema

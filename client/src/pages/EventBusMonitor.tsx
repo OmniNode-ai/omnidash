@@ -578,6 +578,28 @@ export default function EventBusMonitor() {
     }));
   }, [maxEvents]);
 
+  // Cleanup timestamps array on component unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      eventTimestampsRef.current = [];
+      eventCountSinceCleanupRef.current = 0;
+    };
+  }, []);
+
+  // Periodic cleanup of stale timestamps even when no events arrive
+  // This prevents memory accumulation if event flow stops
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const oneMinuteAgo = Date.now() - 60000;
+      const currentLength = eventTimestampsRef.current.length;
+      if (currentLength > 0) {
+        eventTimestampsRef.current = eventTimestampsRef.current.filter((t) => t > oneMinuteAgo);
+      }
+    }, 30000); // Clean every 30 seconds
+
+    return () => clearInterval(cleanupInterval);
+  }, []);
+
   // Filtered data for display
   const filteredData = useMemo(() => {
     if (!filters.topic && !filters.priority && !filters.search) {
