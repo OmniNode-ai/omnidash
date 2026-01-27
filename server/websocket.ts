@@ -23,6 +23,102 @@ import {
   type IntentSessionEventPayload,
   type IntentRecentEventPayload,
 } from './intent-events';
+import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
+
+/**
+ * Transform EventBusEvent from database to client-expected format
+ * Maps event_type patterns to actionType/actionName for UI display
+ */
+interface ClientAction {
+  id: string;
+  correlationId: string;
+  agentName: string;
+  actionType: string;
+  actionName: string;
+  actionDetails?: any;
+  durationMs: number;
+  createdAt: Date;
+}
+
+function transformEventToClientAction(event: EventBusEvent): ClientAction {
+  const eventType = event.event_type || 'unknown';
+
+  // Parse event_type to derive actionType and actionName
+  // Common patterns: "UserPromptSubmit", "hook.prompt.submitted", "agent.routing.completed"
+  let actionType = 'event';
+  let actionName = eventType;
+
+  if (eventType.includes('.')) {
+    // Dot-notation format: "hook.prompt.submitted" -> type: "hook", name: "prompt.submitted"
+    const parts = eventType.split('.');
+    actionType = parts[0];
+    actionName = parts.slice(1).join('.');
+  } else if (/[A-Z]/.test(eventType)) {
+    // PascalCase format: "UserPromptSubmit" -> type: "user", name: "prompt_submit"
+    const snakeCase = eventType
+      .replace(/([A-Z])/g, '_$1')
+      .toLowerCase()
+      .replace(/^_/, '');
+    const parts = snakeCase.split('_');
+    if (parts.length >= 2) {
+      actionType = parts[0];
+      actionName = parts.slice(1).join('_');
+    }
+  }
+
+  // Extract agent name from source or payload
+  const agentName =
+    event.payload?.agent_name || event.payload?.agentName || event.source || 'system';
+
+  // Extract duration from payload if available
+  const durationMs =
+    event.payload?.duration_ms || event.payload?.durationMs || event.payload?.latency_ms || 0;
+
+  return {
+    id: event.event_id,
+    correlationId: event.correlation_id || event.event_id,
+    agentName,
+    actionType,
+    actionName,
+    actionDetails: event.payload,
+    durationMs,
+    createdAt: new Date(event.timestamp),
+  };
+}
+
+/**
+ * Fetch real events from database for initial state
+ * Returns both transformed client actions and raw events for the Event Bus Monitor
+ */
+async function fetchRealEventsForInitialState(): Promise<{
+  recentActions: ClientAction[];
+  eventBusEvents: EventBusEvent[];
+}> {
+  const dataSource = getEventBusDataSource();
+
+  if (!dataSource) {
+    console.log('[WebSocket] EventBusDataSource not available, using legacy data only');
+    return { recentActions: [], eventBusEvents: [] };
+  }
+
+  try {
+    const events = await dataSource.queryEvents({
+      limit: 100,
+      order_by: 'timestamp',
+      order_direction: 'desc',
+    });
+
+    console.log(`[WebSocket] Fetched ${events.length} real events from database for initial state`);
+
+    // Transform to client format
+    const recentActions = events.map(transformEventToClientAction);
+
+    return { recentActions, eventBusEvents: events };
+  } catch (error) {
+    console.error('[WebSocket] Error fetching real events:', error);
+    return { recentActions: [], eventBusEvents: [] };
+  }
+}
 
 // Valid subscription topics that clients can subscribe to
 const VALID_TOPICS = [
@@ -44,6 +140,8 @@ const VALID_TOPICS = [
   'registry-instances',
   // Intent classification events (OMN-1516)
   'intent',
+  // Event Bus Monitor events (real-time Kafka events)
+  'event-bus',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -289,6 +387,80 @@ export function setupWebSocket(httpServer: HTTPServer) {
     { emitter: intentEventEmitter, event: 'intentRecent', handler: intentRecentHandler },
   ];
 
+  // Event Bus data source listeners (real-time Kafka events for Event Bus Monitor)
+  // These events come from eventBusDataSource which consumes from Kafka topics
+  const eventBusDataSource = getEventBusDataSource();
+  const eventBusListeners: Array<{
+    emitter: ReturnType<typeof getEventBusDataSource>;
+    event: string;
+    handler: (...args: any[]) => void;
+  }> = [];
+
+  if (eventBusDataSource) {
+    // Handler for real-time events from Kafka
+    const eventBusEventHandler = (event: EventBusEvent) => {
+      // Transform EventBusEvent to client-expected format
+      const transformedEvent = {
+        id: event.event_id,
+        event_type: event.event_type,
+        timestamp: event.timestamp,
+        tenant_id: event.tenant_id,
+        namespace: event.namespace,
+        source: event.source,
+        correlation_id: event.correlation_id,
+        causation_id: event.causation_id,
+        schema_ref: event.schema_ref,
+        payload: event.payload,
+        topic: event.topic,
+        partition: event.partition,
+        offset: event.offset,
+        processed_at: event.processed_at.toISOString(),
+      };
+
+      broadcast('EVENT_BUS_EVENT', transformedEvent, 'event-bus');
+    };
+
+    // Handler for connection status
+    const eventBusConnectedHandler = () => {
+      console.log('[WebSocket] EventBusDataSource connected');
+      broadcast('EVENT_BUS_STATUS', { status: 'connected' }, 'event-bus');
+    };
+
+    const eventBusDisconnectedHandler = () => {
+      console.log('[WebSocket] EventBusDataSource disconnected');
+      broadcast('EVENT_BUS_STATUS', { status: 'disconnected' }, 'event-bus');
+    };
+
+    const eventBusErrorHandler = (error: Error) => {
+      console.error('[WebSocket] EventBusDataSource error:', error);
+      broadcast(
+        'EVENT_BUS_ERROR',
+        { message: error.message, timestamp: new Date().toISOString() },
+        'event-bus'
+      );
+    };
+
+    // Register listeners
+    eventBusDataSource.on('event', eventBusEventHandler);
+    eventBusDataSource.on('connected', eventBusConnectedHandler);
+    eventBusDataSource.on('disconnected', eventBusDisconnectedHandler);
+    eventBusDataSource.on('error', eventBusErrorHandler);
+
+    // Track for cleanup
+    eventBusListeners.push(
+      { emitter: eventBusDataSource, event: 'event', handler: eventBusEventHandler },
+      { emitter: eventBusDataSource, event: 'connected', handler: eventBusConnectedHandler },
+      { emitter: eventBusDataSource, event: 'disconnected', handler: eventBusDisconnectedHandler },
+      { emitter: eventBusDataSource, event: 'error', handler: eventBusErrorHandler }
+    );
+
+    console.log('[WebSocket] EventBusDataSource listeners registered for real-time events');
+  } else {
+    console.warn(
+      '[WebSocket] EventBusDataSource not available - event-bus topic will not receive real-time events'
+    );
+  }
+
   // Handle WebSocket connections
   wss.on('connection', (ws: WebSocket, request: IncomingMessage) => {
     console.log('WebSocket client connected from', request.socket.remoteAddress);
@@ -313,24 +485,71 @@ export function setupWebSocket(httpServer: HTTPServer) {
       })
     );
 
-    // Send initial state
-    ws.send(
-      JSON.stringify({
-        type: 'INITIAL_STATE',
-        data: {
-          metrics: eventConsumer.getAgentMetrics(),
-          recentActions: eventConsumer.getRecentActions(),
-          routingDecisions: eventConsumer.getRoutingDecisions(),
-          recentTransformations: eventConsumer.getRecentTransformations(),
-          performanceStats: eventConsumer.getPerformanceStats(),
-          health: eventConsumer.getHealthStatus(),
-          // Node registry data (transform to snake_case for consistency)
-          registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
-          nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-        },
-        timestamp: new Date().toISOString(),
-      })
-    );
+    // Send initial state with real events from database
+    // Use async IIFE to fetch real events without blocking connection setup
+    (async () => {
+      try {
+        // Fetch real events from database
+        const { recentActions: realActions, eventBusEvents } =
+          await fetchRealEventsForInitialState();
+
+        // Get legacy data for backward compatibility with other dashboards
+        const legacyActions = eventConsumer.getRecentActions();
+        const legacyRouting = eventConsumer.getRoutingDecisions();
+
+        // Combine real actions with legacy actions (real events take priority)
+        // Real events are more recent and accurate for Event Bus Monitor
+        const combinedActions = realActions.length > 0 ? realActions : legacyActions; // Fallback to legacy if no real events
+
+        ws.send(
+          JSON.stringify({
+            type: 'INITIAL_STATE',
+            data: {
+              metrics: eventConsumer.getAgentMetrics(),
+              // Primary actions - use real events if available
+              recentActions: combinedActions,
+              // Keep legacy routing for other dashboards
+              routingDecisions: legacyRouting,
+              recentTransformations: eventConsumer.getRecentTransformations(),
+              performanceStats: eventConsumer.getPerformanceStats(),
+              health: eventConsumer.getHealthStatus(),
+              // Node registry data (transform to snake_case for consistency)
+              registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
+              nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+              // NEW: Raw event bus events for Event Bus Monitor dashboard
+              eventBusEvents: eventBusEvents,
+            },
+            timestamp: new Date().toISOString(),
+          })
+        );
+
+        if (realActions.length > 0) {
+          console.log(
+            `[WebSocket] Sent INITIAL_STATE with ${realActions.length} real events from database`
+          );
+        }
+      } catch (error) {
+        console.error('[WebSocket] Error sending initial state with real events:', error);
+        // Fallback to legacy data if async fetch fails
+        ws.send(
+          JSON.stringify({
+            type: 'INITIAL_STATE',
+            data: {
+              metrics: eventConsumer.getAgentMetrics(),
+              recentActions: eventConsumer.getRecentActions(),
+              routingDecisions: eventConsumer.getRoutingDecisions(),
+              recentTransformations: eventConsumer.getRecentTransformations(),
+              performanceStats: eventConsumer.getPerformanceStats(),
+              health: eventConsumer.getHealthStatus(),
+              registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
+              nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+              eventBusEvents: [],
+            },
+            timestamp: new Date().toISOString(),
+          })
+        );
+      }
+    })();
 
     // Handle pong responses
     ws.on('pong', () => {
@@ -379,24 +598,58 @@ export function setupWebSocket(httpServer: HTTPServer) {
             ws.send(JSON.stringify({ type: 'PONG', timestamp: new Date().toISOString() }));
             break;
           case 'getState':
-            // Send current state on demand
-            ws.send(
-              JSON.stringify({
-                type: 'CURRENT_STATE',
-                data: {
-                  metrics: eventConsumer.getAgentMetrics(),
-                  recentActions: eventConsumer.getRecentActions(),
-                  routingDecisions: eventConsumer.getRoutingDecisions(),
-                  recentTransformations: eventConsumer.getRecentTransformations(),
-                  performanceStats: eventConsumer.getPerformanceStats(),
-                  health: eventConsumer.getHealthStatus(),
-                  // Node registry data (transform to snake_case for consistency)
-                  registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
-                  nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-                },
-                timestamp: new Date().toISOString(),
-              })
-            );
+            // Send current state on demand with real events from database
+            (async () => {
+              try {
+                const { recentActions: realActions, eventBusEvents } =
+                  await fetchRealEventsForInitialState();
+
+                const legacyActions = eventConsumer.getRecentActions();
+                const combinedActions = realActions.length > 0 ? realActions : legacyActions;
+
+                ws.send(
+                  JSON.stringify({
+                    type: 'CURRENT_STATE',
+                    data: {
+                      metrics: eventConsumer.getAgentMetrics(),
+                      recentActions: combinedActions,
+                      routingDecisions: eventConsumer.getRoutingDecisions(),
+                      recentTransformations: eventConsumer.getRecentTransformations(),
+                      performanceStats: eventConsumer.getPerformanceStats(),
+                      health: eventConsumer.getHealthStatus(),
+                      registeredNodes: transformNodesToSnakeCase(
+                        eventConsumer.getRegisteredNodes()
+                      ),
+                      nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+                      eventBusEvents: eventBusEvents,
+                    },
+                    timestamp: new Date().toISOString(),
+                  })
+                );
+              } catch (error) {
+                console.error('[WebSocket] Error fetching state:', error);
+                // Fallback to legacy data
+                ws.send(
+                  JSON.stringify({
+                    type: 'CURRENT_STATE',
+                    data: {
+                      metrics: eventConsumer.getAgentMetrics(),
+                      recentActions: eventConsumer.getRecentActions(),
+                      routingDecisions: eventConsumer.getRoutingDecisions(),
+                      recentTransformations: eventConsumer.getRecentTransformations(),
+                      performanceStats: eventConsumer.getPerformanceStats(),
+                      health: eventConsumer.getHealthStatus(),
+                      registeredNodes: transformNodesToSnakeCase(
+                        eventConsumer.getRegisteredNodes()
+                      ),
+                      nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+                      eventBusEvents: [],
+                    },
+                    timestamp: new Date().toISOString(),
+                  })
+                );
+              }
+            })();
             break;
         }
       } catch (error) {
@@ -525,6 +778,15 @@ export function setupWebSocket(httpServer: HTTPServer) {
       emitter.removeListener(event, handler);
     });
     intentListeners.length = 0;
+
+    // Remove event bus data source listeners
+    console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);
+    eventBusListeners.forEach(({ emitter, event, handler }) => {
+      if (emitter) {
+        emitter.removeListener(event, handler);
+      }
+    });
+    eventBusListeners.length = 0;
 
     // Terminate all client connections
     console.log(`Terminating ${clients.size} client connections...`);

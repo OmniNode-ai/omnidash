@@ -1,0 +1,862 @@
+/**
+ * useEventBusStream Hook
+ *
+ * Manages WebSocket connection for real-time Kafka event streaming.
+ * Provides bounded event storage, deduplication, and derived metrics.
+ *
+ * Features:
+ * - Deduplication with stable event identity
+ * - Memory-bounded storage with threshold-based cleanup
+ * - Ref buffering for backpressure handling
+ * - Derived metrics computed via useMemo
+ * - Debug logging (off by default)
+ *
+ * Part of Event Bus Monitor refactor - see plan at:
+ * ~/.claude/plans/typed-honking-nygaard.md
+ */
+
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { getTopicLabel, getEventMonitoringConfig } from '@/lib/configs/event-bus-dashboard';
+import type {
+  WireEventMessage,
+  WireEventData,
+  WireInitialState,
+  WirePerformanceMetricData,
+  ProcessedEvent,
+  EventPriority,
+  EventIngestResult,
+  TopicBreakdownItem,
+  EventTypeBreakdownItem,
+  TimeSeriesItem,
+  ProcessedStreamError,
+  UseEventBusStreamOptions,
+  UseEventBusStreamReturn,
+  EventBusStreamStats,
+  EventBusStreamMetrics,
+  EventBusConnectionStatus,
+} from './useEventBusStream.types';
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Default maximum number of events to keep in memory */
+export const DEFAULT_MAX_ITEMS = 500;
+
+/** Default interval for flushing pending events to state (ms) */
+export const DEFAULT_FLUSH_INTERVAL_MS = 100;
+
+/** Multiplier for dedupe set size relative to maxItems */
+export const DEDUPE_SET_CLEANUP_MULTIPLIER = 5;
+
+/** Maximum timestamp entries for throughput calculation */
+export const MAX_TIMESTAMP_ENTRIES = 10000;
+
+/** Maximum errors to keep in ring buffer */
+export const MAX_ERRORS = 50;
+
+/** Time series bucket size in milliseconds (10 seconds) */
+export const TIME_SERIES_BUCKET_MS = 10000;
+
+/** Topics to map from message type to raw topic string */
+const NODE_TOPIC_MAP: Record<string, string> = {
+  NODE_INTROSPECTION: 'dev.omninode_bridge.onex.evt.node-introspection.v1',
+  NODE_HEARTBEAT: 'node.heartbeat',
+  NODE_STATE_CHANGE: 'dev.onex.evt.registration-completed.v1',
+  NODE_REGISTRY_UPDATE: 'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
+};
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Simple string hash function for generating stable event IDs.
+ * Uses djb2 algorithm - fast and produces good distribution.
+ */
+function hashString(str: string): string {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 33) ^ str.charCodeAt(i);
+  }
+  // Convert to unsigned 32-bit integer and return as hex string
+  return (hash >>> 0).toString(16);
+}
+
+/**
+ * Generate a stable event ID from event data.
+ * Prefers server-assigned ID, falls back to content hash.
+ *
+ * @param event - Wire event data
+ * @param topic - Topic string
+ * @param eventType - Event type string
+ * @returns Stable event ID
+ */
+export function getEventId(event: WireEventData, topic: string, eventType: string): string {
+  // Prefer server-assigned ID if present
+  if (event.id) return event.id;
+  if (event.correlationId) return event.correlationId;
+
+  // Fallback: stable hash over normalized subset
+  const timestamp = event.createdAt || event.timestamp || '';
+  const payloadSig = JSON.stringify(event).slice(0, 100);
+
+  const normalized = JSON.stringify({
+    topic,
+    eventType,
+    timestamp,
+    sig: payloadSig,
+  });
+
+  return `h-${hashString(normalized)}`;
+}
+
+/**
+ * Extract priority from event data with fallbacks.
+ */
+function extractPriority(data: WireEventData): EventPriority {
+  const priority = data.priority ?? data.severity ?? data.headers?.priority;
+
+  if (
+    priority === 'critical' ||
+    priority === 'high' ||
+    priority === 'normal' ||
+    priority === 'low'
+  ) {
+    return priority;
+  }
+
+  // Infer from action type
+  if (data.actionType === 'error') {
+    return 'critical';
+  }
+
+  return 'normal';
+}
+
+/**
+ * Extract source from event data with fallbacks.
+ */
+function extractSource(data: WireEventData): string {
+  return data.agentName || data.sourceAgent || data.selectedAgent || 'system';
+}
+
+/**
+ * Normalize timestamp to ISO string.
+ */
+function normalizeTimestamp(timestamp: string | number | undefined): string {
+  if (!timestamp) return new Date().toISOString();
+  if (typeof timestamp === 'number') return new Date(timestamp).toISOString();
+  return timestamp;
+}
+
+/**
+ * Process raw event data into ProcessedEvent format.
+ *
+ * @param eventType - Event type string
+ * @param data - Raw event data
+ * @param topic - Raw topic string
+ * @returns EventIngestResult
+ */
+export function processEvent(
+  eventType: string,
+  data: WireEventData,
+  topic: string
+): EventIngestResult {
+  try {
+    const id = getEventId(data, topic, eventType);
+    const timestampRaw = normalizeTimestamp(data.createdAt || data.timestamp);
+
+    const event: ProcessedEvent = {
+      id,
+      topic: getTopicLabel(topic),
+      topicRaw: topic,
+      eventType,
+      priority: extractPriority(data),
+      timestamp: new Date(timestampRaw),
+      timestampRaw,
+      source: extractSource(data),
+      correlationId: data.correlationId,
+      payload: JSON.stringify(data),
+    };
+
+    return { status: 'success', event };
+  } catch (err) {
+    return {
+      status: 'error',
+      message: err instanceof Error ? err.message : 'Unknown error processing event',
+      raw: data,
+    };
+  }
+}
+
+// ============================================================================
+// Hook Implementation
+// ============================================================================
+
+/**
+ * Hook for managing WebSocket connection to Kafka event stream.
+ *
+ * @example
+ * ```tsx
+ * const {
+ *   events,
+ *   metrics,
+ *   topicBreakdown,
+ *   connectionStatus,
+ *   connect,
+ *   disconnect,
+ * } = useEventBusStream({ maxItems: 200 });
+ *
+ * return (
+ *   <div>
+ *     <span>Events/sec: {metrics.eventsPerSecond}</span>
+ *     <EventTable events={events} />
+ *   </div>
+ * );
+ * ```
+ */
+export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEventBusStreamReturn {
+  // Get config defaults
+  const eventConfig = getEventMonitoringConfig();
+
+  const {
+    maxItems = DEFAULT_MAX_ITEMS,
+    maxDedupIds = maxItems * DEDUPE_SET_CLEANUP_MULTIPLIER,
+    autoConnect = true,
+    timeSeriesWindowMs = eventConfig.time_series_window_ms,
+    throughputWindowMs = eventConfig.throughput_window_ms,
+    flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS,
+    debug = false,
+  } = options;
+
+  // ============================================================================
+  // State
+  // ============================================================================
+
+  const [events, setEvents] = useState<ProcessedEvent[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<EventBusConnectionStatus>('idle');
+  const [lastError, setLastError] = useState<ProcessedStreamError | null>(null);
+  const [errors, setErrors] = useState<ProcessedStreamError[]>([]);
+  const [stats, setStats] = useState<EventBusStreamStats>({
+    totalReceived: 0,
+    totalDeduped: 0,
+    totalDropped: 0,
+    lastEventAt: null,
+    reconnectCount: 0,
+  });
+
+  // ============================================================================
+  // Refs (for buffering and deduplication - no re-renders)
+  // ============================================================================
+
+  /** Pending events waiting to be flushed to state */
+  const pendingEventsRef = useRef<ProcessedEvent[]>([]);
+
+  /** Set of seen event IDs for deduplication */
+  const seenIdsRef = useRef<Set<string>>(new Set());
+
+  /** Timestamps for throughput calculation (sliding window) */
+  const timestampsRef = useRef<number[]>([]);
+
+  /** Flag to track if we've subscribed */
+  const hasSubscribedRef = useRef(false);
+
+  /** Current events ref for cleanup operations */
+  const eventsRef = useRef<ProcessedEvent[]>([]);
+
+  /** Stats ref to avoid stale closures */
+  const statsRef = useRef(stats);
+
+  // Keep refs in sync
+  useEffect(() => {
+    eventsRef.current = events;
+  }, [events]);
+
+  useEffect(() => {
+    statsRef.current = stats;
+  }, [stats]);
+
+  // ============================================================================
+  // Debug Logging
+  // ============================================================================
+
+  const log = useCallback(
+    (...args: unknown[]) => {
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.log('[EventBusStream]', ...args);
+      }
+    },
+    [debug]
+  );
+
+  // ============================================================================
+  // Event Ingestion
+  // ============================================================================
+
+  /**
+   * Ingest a processed event into the pending buffer.
+   * Handles deduplication and stats tracking.
+   */
+  const ingestEvent = useCallback(
+    (result: EventIngestResult): void => {
+      if (result.status === 'error') {
+        setErrors((prev) => {
+          const error: ProcessedStreamError = {
+            at: Date.now(),
+            message: result.message,
+            details: result.raw,
+          };
+          return [error, ...prev].slice(0, MAX_ERRORS);
+        });
+        setLastError({
+          at: Date.now(),
+          message: result.message,
+          details: result.raw,
+        });
+        return;
+      }
+
+      if (result.status === 'duplicate') {
+        setStats((prev) => ({
+          ...prev,
+          totalDeduped: prev.totalDeduped + 1,
+        }));
+        return;
+      }
+
+      const { event } = result;
+
+      // Dedupe check
+      if (seenIdsRef.current.has(event.id)) {
+        setStats((prev) => ({
+          ...prev,
+          totalDeduped: prev.totalDeduped + 1,
+        }));
+        return;
+      }
+
+      // Add to seen set
+      seenIdsRef.current.add(event.id);
+
+      // Add to pending buffer
+      pendingEventsRef.current.push(event);
+
+      // Update timestamps for throughput
+      const now = Date.now();
+      timestampsRef.current.push(now);
+
+      // Enforce timestamp array cap
+      if (timestampsRef.current.length > MAX_TIMESTAMP_ENTRIES) {
+        timestampsRef.current = timestampsRef.current.slice(-MAX_TIMESTAMP_ENTRIES / 2);
+      }
+
+      // Update stats
+      setStats((prev) => ({
+        ...prev,
+        totalReceived: prev.totalReceived + 1,
+        lastEventAt: now,
+      }));
+
+      // Threshold-based cleanup of seenIds
+      if (seenIdsRef.current.size > maxDedupIds) {
+        // Rebuild from current events + pending
+        const currentIds = new Set([
+          ...eventsRef.current.map((e) => e.id),
+          ...pendingEventsRef.current.map((e) => e.id),
+        ]);
+        seenIdsRef.current = currentIds;
+        log('Rebuilt seenIds set, new size:', currentIds.size);
+      }
+    },
+    [maxDedupIds, log]
+  );
+
+  /**
+   * Process and ingest a single event from WebSocket message.
+   */
+  const processAndIngest = useCallback(
+    (eventType: string, data: WireEventData, topic: string): void => {
+      const result = processEvent(eventType, data, topic);
+
+      // Check for duplicate before full processing
+      if (result.status === 'success' && seenIdsRef.current.has(result.event.id)) {
+        ingestEvent({ status: 'duplicate', id: result.event.id });
+        return;
+      }
+
+      ingestEvent(result);
+    },
+    [ingestEvent]
+  );
+
+  // ============================================================================
+  // Flush Interval (batched state updates)
+  // ============================================================================
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (pendingEventsRef.current.length === 0) return;
+
+      const pending = pendingEventsRef.current;
+      pendingEventsRef.current = [];
+
+      setEvents((prev) => {
+        // Merge pending (most recent first) with existing
+        const merged = [...pending.reverse(), ...prev];
+
+        // Enforce maxItems cap
+        if (merged.length > maxItems) {
+          const dropped = merged.length - maxItems;
+          setStats((s) => ({
+            ...s,
+            totalDropped: s.totalDropped + dropped,
+          }));
+          return merged.slice(0, maxItems);
+        }
+
+        return merged;
+      });
+    }, flushIntervalMs);
+
+    return () => clearInterval(interval);
+  }, [flushIntervalMs, maxItems]);
+
+  // ============================================================================
+  // Message Handlers
+  // ============================================================================
+
+  /**
+   * Handle INITIAL_STATE message - batch hydration.
+   *
+   * Note: We do NOT filter events by time here. Historical events from the
+   * database should be displayed regardless of age. Time-based filtering
+   * is only applied to:
+   * - Time series chart data (in timeSeries useMemo)
+   * - Throughput calculation (using throughputWindowMs)
+   */
+  const handleInitialState = useCallback(
+    (state: WireInitialState): void => {
+      const now = Date.now();
+
+      // Process all events from initial state
+      const recentActions = (state.recentActions || []).map((a) =>
+        processEvent(a.actionType || 'action', a, 'agent-actions')
+      );
+      const routingDecisions = (state.routingDecisions || []).map((d) =>
+        processEvent('routing', d, 'agent-routing-decisions')
+      );
+      const recentTransformations = (state.recentTransformations || []).map((t) =>
+        processEvent('transformation', t, 'agent-transformation-events')
+      );
+
+      // Combine and filter successful results (no time filter - show all historical data)
+      const allResults = [...recentActions, ...routingDecisions, ...recentTransformations];
+      const processed = allResults
+        .filter((r): r is { status: 'success'; event: ProcessedEvent } => r.status === 'success')
+        .map((r) => r.event)
+        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+        .slice(0, maxItems);
+
+      // Rebuild seenIds from hydrated events
+      seenIdsRef.current = new Set(processed.map((e) => e.id));
+
+      // Populate timestamps for throughput (only recent events count toward throughput)
+      const throughputCutoff = now - throughputWindowMs;
+      const recentTimestamps = processed
+        .map((e) => e.timestamp.getTime())
+        .filter((t) => t > throughputCutoff);
+      timestampsRef.current = recentTimestamps.slice(-MAX_TIMESTAMP_ENTRIES);
+
+      // Populate time series with initial data so charts show historical data
+      // The timeSeries useMemo will filter by timeSeriesWindowMs when computing
+
+      // Single state commit
+      setEvents(processed);
+      setStats((prev) => ({
+        ...prev,
+        totalReceived: prev.totalReceived + processed.length,
+        lastEventAt: processed.length > 0 ? processed[0].timestamp.getTime() : prev.lastEventAt,
+      }));
+
+      log('INITIAL_STATE hydrated', processed.length, 'events');
+    },
+    [maxItems, throughputWindowMs, log]
+  );
+
+  /**
+   * Handle incoming WebSocket messages.
+   */
+  const handleMessage = useCallback(
+    (message: { type: string; data?: unknown; timestamp?: string }): void => {
+      const wireMessage = message as WireEventMessage;
+
+      switch (wireMessage.type) {
+        // System messages - ignore
+        case 'CONNECTED':
+        case 'SUBSCRIPTION_UPDATED':
+        case 'PONG':
+        case 'CONSUMER_STATUS':
+          return;
+
+        case 'INITIAL_STATE':
+          handleInitialState(wireMessage.data as WireInitialState);
+          break;
+
+        case 'AGENT_ACTION': {
+          const action = wireMessage.data as WireEventData;
+          if (action) {
+            processAndIngest(action.actionType || 'action', action, 'agent-actions');
+          }
+          break;
+        }
+
+        case 'ROUTING_DECISION': {
+          const decision = wireMessage.data as WireEventData;
+          if (decision) {
+            processAndIngest('routing', decision, 'agent-routing-decisions');
+          }
+          break;
+        }
+
+        case 'AGENT_TRANSFORMATION': {
+          const transformation = wireMessage.data as WireEventData;
+          if (transformation) {
+            processAndIngest('transformation', transformation, 'agent-transformation-events');
+          }
+          break;
+        }
+
+        case 'PERFORMANCE_METRIC': {
+          const { metric } = (wireMessage.data as WirePerformanceMetricData) || {};
+          if (metric) {
+            processAndIngest('performance', metric, 'router-performance-metrics');
+          }
+          break;
+        }
+
+        case 'NODE_INTROSPECTION':
+        case 'NODE_HEARTBEAT':
+        case 'NODE_STATE_CHANGE':
+        case 'NODE_REGISTRY_UPDATE': {
+          const nodeData = wireMessage.data as WireEventData;
+          if (nodeData) {
+            const topic = NODE_TOPIC_MAP[wireMessage.type] || 'node.events';
+            const eventType = wireMessage.type.toLowerCase().replace('node_', '');
+            processAndIngest(eventType, nodeData, topic);
+          }
+          break;
+        }
+
+        case 'AGENT_METRIC_UPDATE':
+          // Metrics update - not a discrete event, skip
+          break;
+
+        case 'ERROR': {
+          const error = wireMessage.data as { message?: string };
+          if (error) {
+            processAndIngest('error', { message: error.message, actionType: 'error' }, 'errors');
+          }
+          break;
+        }
+
+        default:
+          if (debug) {
+            log('Unknown message type:', wireMessage.type);
+          }
+      }
+    },
+    [handleInitialState, processAndIngest, debug, log]
+  );
+
+  /**
+   * Handle WebSocket errors.
+   */
+  const handleError = useCallback(
+    (event: Event): void => {
+      const error: ProcessedStreamError = {
+        at: Date.now(),
+        message: 'WebSocket connection error',
+        details: event,
+      };
+      setLastError(error);
+      setErrors((prev) => [error, ...prev].slice(0, MAX_ERRORS));
+      setConnectionStatus('error');
+      log('WebSocket error:', event);
+    },
+    [log]
+  );
+
+  /**
+   * Handle WebSocket open.
+   */
+  const handleOpen = useCallback((): void => {
+    setConnectionStatus('connected');
+    log('Connected');
+  }, [log]);
+
+  /**
+   * Handle WebSocket close.
+   */
+  const handleClose = useCallback((): void => {
+    setConnectionStatus('idle');
+    hasSubscribedRef.current = false;
+    setStats((prev) => ({
+      ...prev,
+      reconnectCount: prev.reconnectCount + 1,
+    }));
+    log('Disconnected');
+  }, [log]);
+
+  // ============================================================================
+  // WebSocket Connection
+  // ============================================================================
+
+  const {
+    isConnected,
+    connectionStatus: wsConnectionStatus,
+    subscribe,
+    unsubscribe,
+    reconnect,
+    close: closeWebSocket,
+  } = useWebSocket({
+    onMessage: handleMessage,
+    onError: handleError,
+    onOpen: handleOpen,
+    onClose: handleClose,
+    debug,
+  });
+
+  // Map WebSocket status to our status
+  useEffect(() => {
+    if (wsConnectionStatus === 'connecting') {
+      setConnectionStatus('connecting');
+    } else if (wsConnectionStatus === 'connected') {
+      setConnectionStatus('connected');
+    } else if (wsConnectionStatus === 'error') {
+      setConnectionStatus('error');
+    } else if (wsConnectionStatus === 'disconnected') {
+      setConnectionStatus('idle');
+    }
+  }, [wsConnectionStatus]);
+
+  // Subscribe to all events when connected
+  useEffect(() => {
+    if (!autoConnect) return;
+
+    if (isConnected && !hasSubscribedRef.current) {
+      log('Subscribing to all events');
+      subscribe(['all']);
+      hasSubscribedRef.current = true;
+    }
+
+    if (!isConnected) {
+      hasSubscribedRef.current = false;
+    }
+
+    return () => {
+      if (hasSubscribedRef.current && isConnected) {
+        log('Unsubscribing from events');
+        unsubscribe(['all']);
+        hasSubscribedRef.current = false;
+      }
+    };
+  }, [isConnected, autoConnect, subscribe, unsubscribe, log]);
+
+  // ============================================================================
+  // Periodic Cleanup (throughput accuracy when idle)
+  // ============================================================================
+
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      const cutoff = now - throughputWindowMs;
+
+      // Clean stale timestamps
+      if (timestampsRef.current.length > 0) {
+        timestampsRef.current = timestampsRef.current.filter((t) => t > cutoff);
+      }
+    }, 10000); // Every 10 seconds
+
+    return () => clearInterval(cleanupInterval);
+  }, [throughputWindowMs]);
+
+  // ============================================================================
+  // Derived Data (useMemo for performance)
+  // ============================================================================
+
+  /**
+   * Calculate events per second from timestamps ref.
+   */
+  const eventsPerSecond = useMemo(() => {
+    const now = Date.now();
+    const cutoff = now - throughputWindowMs;
+    const recentCount = timestampsRef.current.filter((t) => t > cutoff).length;
+    const windowSeconds = throughputWindowMs / 1000;
+    return Math.round((recentCount / windowSeconds) * 10) / 10;
+  }, [events, throughputWindowMs]); // Re-compute when events change
+
+  /**
+   * Topic breakdown computed from current events.
+   */
+  const topicBreakdown = useMemo((): TopicBreakdownItem[] => {
+    const counts: Record<string, number> = {};
+    for (const event of events) {
+      counts[event.topicRaw] = (counts[event.topicRaw] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([topic, count]) => ({
+        name: getTopicLabel(topic),
+        topic,
+        eventCount: count,
+      }))
+      .sort((a, b) => b.eventCount - a.eventCount);
+  }, [events]);
+
+  /**
+   * Event type breakdown computed from current events.
+   */
+  const eventTypeBreakdown = useMemo((): EventTypeBreakdownItem[] => {
+    const counts: Record<string, number> = {};
+    for (const event of events) {
+      counts[event.eventType] = (counts[event.eventType] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([eventType, count]) => ({
+        name: eventType,
+        eventType,
+        eventCount: count,
+      }))
+      .sort((a, b) => b.eventCount - a.eventCount);
+  }, [events]);
+
+  /**
+   * Time series computed from current events.
+   *
+   * For initial load with historical data, we expand the window to show
+   * all events if none fall within the default time window. This ensures
+   * the chart displays useful data even when events are older than 5 minutes.
+   */
+  const timeSeries = useMemo((): TimeSeriesItem[] => {
+    if (events.length === 0) {
+      return [];
+    }
+
+    const now = Date.now();
+    const defaultCutoff = now - timeSeriesWindowMs;
+
+    // First, check if any events fall within the default time window
+    const hasRecentEvents = events.some((e) => e.timestamp.getTime() > defaultCutoff);
+
+    // If no recent events, expand window to include all events (historical data)
+    // Use the oldest event timestamp as the cutoff
+    let cutoff: number;
+    if (hasRecentEvents) {
+      cutoff = defaultCutoff;
+    } else {
+      // Find the oldest event and expand window to show all data
+      const oldestTimestamp = Math.min(...events.map((e) => e.timestamp.getTime()));
+      cutoff = oldestTimestamp - TIME_SERIES_BUCKET_MS; // Include oldest bucket
+    }
+
+    const buckets: Record<number, number> = {};
+    for (const event of events) {
+      const eventTime = event.timestamp.getTime();
+      if (eventTime > cutoff) {
+        const bucketTime = Math.floor(eventTime / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
+        buckets[bucketTime] = (buckets[bucketTime] || 0) + 1;
+      }
+    }
+
+    return Object.entries(buckets)
+      .map(([time, count]) => ({
+        time: Number(time),
+        timestamp: new Date(Number(time)).toLocaleTimeString(),
+        events: count,
+      }))
+      .sort((a, b) => a.time - b.time);
+  }, [events, timeSeriesWindowMs]);
+
+  /**
+   * Computed metrics.
+   */
+  const metrics = useMemo((): EventBusStreamMetrics => {
+    const errorCount = events.filter((e) => e.priority === 'critical').length;
+    const errorRate = events.length > 0 ? (errorCount / events.length) * 100 : 0;
+
+    return {
+      totalEvents: events.length,
+      eventsPerSecond,
+      errorRate: Math.round(errorRate * 100) / 100,
+      activeTopics: topicBreakdown.length,
+    };
+  }, [events, eventsPerSecond, topicBreakdown.length]);
+
+  // ============================================================================
+  // Controls
+  // ============================================================================
+
+  const connect = useCallback((): void => {
+    log('Manual connect requested');
+    reconnect();
+  }, [reconnect, log]);
+
+  const disconnect = useCallback((): void => {
+    log('Disconnecting');
+    if (hasSubscribedRef.current && isConnected) {
+      unsubscribe(['all']);
+    }
+    hasSubscribedRef.current = false;
+    closeWebSocket();
+  }, [isConnected, unsubscribe, closeWebSocket, log]);
+
+  const clearEvents = useCallback((): void => {
+    log('Clearing events');
+    setEvents([]);
+    pendingEventsRef.current = [];
+    seenIdsRef.current.clear();
+    timestampsRef.current = [];
+    setErrors([]);
+    setLastError(null);
+    setStats({
+      totalReceived: 0,
+      totalDeduped: 0,
+      totalDropped: 0,
+      lastEventAt: null,
+      reconnectCount: statsRef.current.reconnectCount,
+    });
+  }, [log]);
+
+  // ============================================================================
+  // Cleanup on Unmount
+  // ============================================================================
+
+  useEffect(() => {
+    return () => {
+      pendingEventsRef.current = [];
+      seenIdsRef.current.clear();
+      timestampsRef.current = [];
+    };
+  }, []);
+
+  // ============================================================================
+  // Return
+  // ============================================================================
+
+  return {
+    events,
+    metrics,
+    topicBreakdown,
+    eventTypeBreakdown,
+    timeSeries,
+    connectionStatus,
+    lastError,
+    stats,
+    errors,
+    connect,
+    disconnect,
+    clearEvents,
+  };
+}

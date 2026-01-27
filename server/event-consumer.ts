@@ -47,6 +47,8 @@ const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
  */
 const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 const SQL_PRELOAD_ACTIONS_LIMIT = 200;
+const SQL_PRELOAD_ROUTING_LIMIT = 200;
+const SQL_PRELOAD_TRANSFORMATIONS_LIMIT = 200;
 const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
@@ -1224,11 +1226,87 @@ export class EventConsumer extends EventEmitter {
         });
       }
 
+      // Load routing decisions
+      const routingResult = await getIntelligenceDb().execute(
+        sql.raw(`
+        SELECT id, correlation_id, user_request, selected_agent, confidence_score,
+               routing_strategy, alternatives, reasoning, routing_time_ms, created_at
+        FROM agent_routing_decisions
+        ORDER BY created_at DESC
+        LIMIT ${SQL_PRELOAD_ROUTING_LIMIT};
+      `)
+      );
+
+      const routingRows = Array.isArray(routingResult)
+        ? routingResult
+        : routingResult?.rows || routingResult || [];
+
+      if (Array.isArray(routingRows)) {
+        const decisions: RoutingDecision[] = routingRows.map((r: any) => ({
+          id: r.id,
+          correlationId: r.correlation_id,
+          userRequest: r.user_request || '',
+          selectedAgent: r.selected_agent || '',
+          confidenceScore: Number(r.confidence_score || 0),
+          routingStrategy: r.routing_strategy || '',
+          alternatives: r.alternatives,
+          reasoning: r.reasoning,
+          routingTimeMs: Number(r.routing_time_ms || 0),
+          createdAt: new Date(r.created_at),
+        }));
+        this.routingDecisions = decisions.slice(0, this.maxDecisions);
+      }
+
+      // Load transformation events
+      // Note: Table uses routing_confidence (not confidence_score) and started_at (not created_at)
+      const transformResult = await getIntelligenceDb().execute(
+        sql.raw(`
+        SELECT id, correlation_id, source_agent, target_agent, transformation_duration_ms,
+               success, routing_confidence, started_at
+        FROM agent_transformation_events
+        ORDER BY started_at DESC
+        LIMIT ${SQL_PRELOAD_TRANSFORMATIONS_LIMIT};
+      `)
+      );
+
+      const transformRows = Array.isArray(transformResult)
+        ? transformResult
+        : transformResult?.rows || transformResult || [];
+
+      if (Array.isArray(transformRows)) {
+        const transformations: TransformationEvent[] = transformRows.map((r: any) => ({
+          id: r.id,
+          correlationId: r.correlation_id,
+          sourceAgent: r.source_agent || '',
+          targetAgent: r.target_agent || '',
+          transformationDurationMs: Number(r.transformation_duration_ms || 0),
+          success: !!r.success,
+          confidenceScore: Number(r.routing_confidence || 0),
+          createdAt: new Date(r.started_at),
+        }));
+        this.recentTransformations = transformations.slice(0, this.maxTransformations);
+      }
+
+      // Log preload counts
+      console.log(
+        `[EventConsumer] Preloaded from database: ` +
+          `${this.recentActions.length} actions, ` +
+          `${this.routingDecisions.length} routing decisions, ` +
+          `${this.recentTransformations.length} transformations, ` +
+          `${this.agentMetrics.size} agent metrics`
+      );
+
       // Emit initial metric snapshot
       this.emit('metricUpdate', this.getAgentMetrics());
       // Emit initial actions snapshot (emit last one to trigger UI refresh)
       const last = this.recentActions[this.recentActions.length - 1];
       if (last) this.emit('actionUpdate', last);
+      // Emit initial routing decision snapshot
+      const lastRouting = this.routingDecisions[0];
+      if (lastRouting) this.emit('routingUpdate', lastRouting);
+      // Emit initial transformation snapshot
+      const lastTransform = this.recentTransformations[0];
+      if (lastTransform) this.emit('transformationUpdate', lastTransform);
     } catch (error) {
       console.error('[EventConsumer] Error during preloadFromDatabase:', error);
       // Don't throw - allow server to continue even if preload fails
