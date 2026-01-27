@@ -635,7 +635,7 @@ export default function EventBusMonitor() {
           eventsPerSecond: newEventsPerSecond,
         };
       });
-    }, 30000); // Clean every 30 seconds
+    }, 10000); // Clean every 10 seconds for responsive UX
 
     return () => clearInterval(cleanupInterval);
   }, []);
