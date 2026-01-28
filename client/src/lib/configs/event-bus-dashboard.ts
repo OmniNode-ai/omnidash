@@ -21,6 +21,64 @@
 import type { DashboardConfig } from '@/lib/dashboard-schema';
 import { DashboardTheme } from '@/lib/dashboard-schema';
 
+// ============================================================================
+// Deprecation Warning System (Development Only)
+// ============================================================================
+
+/**
+ * Tracks which deprecation warnings have already been shown.
+ * Prevents console spam by only warning once per export.
+ */
+const warnedDeprecations = new Set<string>();
+
+/**
+ * Logs a deprecation warning in development mode.
+ * Only warns once per export name to avoid console spam.
+ *
+ * @param name - The deprecated export name
+ * @param replacement - The recommended replacement API
+ */
+function warnDeprecated(name: string, replacement: string): void {
+  if (import.meta.env?.DEV && !warnedDeprecations.has(name)) {
+    warnedDeprecations.add(name);
+    console.warn(
+      `[Deprecated] "${name}" is deprecated and will be removed in a future release. ` +
+        `Use "${replacement}" instead. ` +
+        `See eventBusDashboardConfig for the canonical configuration.`
+    );
+  }
+}
+
+/**
+ * Creates a proxy that warns on first access of a deprecated export.
+ * The proxy is transparent - it behaves exactly like the original value.
+ *
+ * @param value - The original value to wrap
+ * @param name - The deprecated export name (for warning message)
+ * @param replacement - The recommended replacement API
+ */
+function createDeprecatedProxy<T extends object>(value: T, name: string, replacement: string): T {
+  let hasWarned = false;
+
+  return new Proxy(value, {
+    get(target, prop, receiver) {
+      if (!hasWarned) {
+        warnDeprecated(name, replacement);
+        hasWarned = true;
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+    // Support array iteration (for...of, spread, etc.)
+    ownKeys(target) {
+      if (!hasWarned) {
+        warnDeprecated(name, replacement);
+        hasWarned = true;
+      }
+      return Reflect.ownKeys(target);
+    },
+  });
+}
+
 /**
  * Event message schema from omnibase_infra Kafka events
  */
@@ -50,10 +108,10 @@ export interface EventHeaders {
 // ============================================================================
 
 /**
- * Agent topics - core agent functionality events
- * @deprecated Use eventBusDashboardConfig.monitored_topics instead for runtime access
+ * Agent topics - core agent functionality events (internal, unwrapped)
+ * @internal
  */
-export const AGENT_TOPICS = [
+const _AGENT_TOPICS = [
   'agent-routing-decisions',
   'agent-transformation-events',
   'router-performance-metrics',
@@ -61,10 +119,21 @@ export const AGENT_TOPICS = [
 ] as const;
 
 /**
- * Node registry topics - node lifecycle and health events
- * @deprecated Use eventBusDashboardConfig.monitored_topics instead for runtime access
+ * Agent topics - core agent functionality events
+ * @deprecated Use eventBusDashboardConfig.monitored_topics instead for runtime access.
+ *             This export triggers a console warning in development mode.
  */
-export const NODE_TOPICS = [
+export const AGENT_TOPICS = createDeprecatedProxy(
+  _AGENT_TOPICS,
+  'AGENT_TOPICS',
+  'eventBusDashboardConfig.monitored_topics'
+);
+
+/**
+ * Node registry topics - node lifecycle and health events (internal, unwrapped)
+ * @internal
+ */
+const _NODE_TOPICS = [
   'dev.omninode_bridge.onex.evt.node-introspection.v1',
   'dev.onex.evt.registration-completed.v1',
   'node.heartbeat',
@@ -72,10 +141,32 @@ export const NODE_TOPICS = [
 ] as const;
 
 /**
- * All monitored topics combined
- * @deprecated Use eventBusDashboardConfig.monitored_topics instead for runtime access
+ * Node registry topics - node lifecycle and health events
+ * @deprecated Use eventBusDashboardConfig.monitored_topics instead for runtime access.
+ *             This export triggers a console warning in development mode.
  */
-export const MONITORED_TOPICS = [...AGENT_TOPICS, ...NODE_TOPICS] as const;
+export const NODE_TOPICS = createDeprecatedProxy(
+  _NODE_TOPICS,
+  'NODE_TOPICS',
+  'eventBusDashboardConfig.monitored_topics'
+);
+
+/**
+ * All monitored topics combined (internal, unwrapped)
+ * @internal
+ */
+const _MONITORED_TOPICS = [..._AGENT_TOPICS, ..._NODE_TOPICS] as const;
+
+/**
+ * All monitored topics combined
+ * @deprecated Use eventBusDashboardConfig.monitored_topics instead for runtime access.
+ *             This export triggers a console warning in development mode.
+ */
+export const MONITORED_TOPICS = createDeprecatedProxy(
+  _MONITORED_TOPICS,
+  'MONITORED_TOPICS',
+  'eventBusDashboardConfig.monitored_topics'
+);
 
 export type AgentTopic = (typeof AGENT_TOPICS)[number];
 export type NodeTopic = (typeof NODE_TOPICS)[number];
@@ -86,13 +177,10 @@ export type MonitoredTopic = (typeof MONITORED_TOPICS)[number];
 // ============================================================================
 
 /**
- * Topic metadata for display
- * @deprecated Use eventBusDashboardConfig.topic_metadata instead for runtime access
+ * Topic metadata for display (internal, unwrapped)
+ * @internal
  */
-export const TOPIC_METADATA: Record<
-  string,
-  { label: string; description: string; category: string }
-> = {
+const _TOPIC_METADATA: Record<string, { label: string; description: string; category: string }> = {
   // Agent topics
   'agent-routing-decisions': {
     label: 'Routing Decisions',
@@ -142,6 +230,17 @@ export const TOPIC_METADATA: Record<
     category: 'error',
   },
 };
+
+/**
+ * Topic metadata for display
+ * @deprecated Use eventBusDashboardConfig.topic_metadata instead for runtime access.
+ *             This export triggers a console warning in development mode.
+ */
+export const TOPIC_METADATA = createDeprecatedProxy(
+  _TOPIC_METADATA,
+  'TOPIC_METADATA',
+  'eventBusDashboardConfig.topic_metadata'
+);
 
 /**
  * Dashboard configuration for Event Bus Monitor
@@ -435,7 +534,8 @@ export function getEventMonitoringConfig() {
 export function getTopicMetadata(
   topic: string
 ): { label: string; description: string; category: string } | undefined {
-  return eventBusDashboardConfig.topic_metadata?.[topic] ?? TOPIC_METADATA[topic];
+  // Use internal _TOPIC_METADATA to avoid triggering deprecation warning
+  return eventBusDashboardConfig.topic_metadata?.[topic] ?? _TOPIC_METADATA[topic];
 }
 
 /**
@@ -450,7 +550,8 @@ export function getTopicLabel(topic: string): string {
  * Falls back to the legacy MONITORED_TOPICS constant for backwards compatibility.
  */
 export function getMonitoredTopics(): readonly string[] {
-  return eventBusDashboardConfig.monitored_topics ?? MONITORED_TOPICS;
+  // Use internal _MONITORED_TOPICS to avoid triggering deprecation warning
+  return eventBusDashboardConfig.monitored_topics ?? _MONITORED_TOPICS;
 }
 
 // ============================================================================
@@ -477,9 +578,9 @@ export function generateEventBusMockData(): Record<string, unknown> {
     };
   });
 
-  // Generate topic breakdown data
-  const topicBreakdownData = MONITORED_TOPICS.map((topic) => ({
-    name: TOPIC_METADATA[topic]?.label || topic,
+  // Generate topic breakdown data (use internal constants to avoid deprecation warnings)
+  const topicBreakdownData = _MONITORED_TOPICS.map((topic) => ({
+    name: _TOPIC_METADATA[topic]?.label || topic,
     topic,
     eventCount:
       topic === 'node.heartbeat'
@@ -496,10 +597,10 @@ export function generateEventBusMockData(): Record<string, unknown> {
   const errorCount = Math.floor(totalEvents * 0.02); // ~2% error rate
   const errorRate = totalEvents > 0 ? (errorCount / totalEvents) * 100 : 0;
 
-  // Generate recent events for table
+  // Generate recent events for table (use internal constants to avoid deprecation warnings)
   const recentEvents = Array.from({ length: 50 }, (_, i) => {
-    const topicIndex = Math.floor(Math.random() * MONITORED_TOPICS.length);
-    const topic = MONITORED_TOPICS[topicIndex];
+    const topicIndex = Math.floor(Math.random() * _MONITORED_TOPICS.length);
+    const topic = _MONITORED_TOPICS[topicIndex];
     const eventTimestamp = new Date(now.getTime() - i * 5000);
     const priorities: Array<'low' | 'normal' | 'high' | 'critical'> = [
       'low',
@@ -513,7 +614,7 @@ export function generateEventBusMockData(): Record<string, unknown> {
 
     return {
       id: `evt-${i}-${Date.now()}`,
-      topic: TOPIC_METADATA[topic]?.label || topic,
+      topic: _TOPIC_METADATA[topic]?.label || topic,
       topicRaw: topic,
       eventType: getEventTypeForTopic(topic),
       source: getRandomSource(),
@@ -534,8 +635,8 @@ export function generateEventBusMockData(): Record<string, unknown> {
     source: event.topicRaw,
   }));
 
-  // Generate topic health status
-  const topicHealth = MONITORED_TOPICS.map((topic) => {
+  // Generate topic health status (use internal constants to avoid deprecation warnings)
+  const topicHealth = _MONITORED_TOPICS.map((topic) => {
     const eventCount = topicBreakdownData.find((t) => t.topic === topic)?.eventCount || 0;
     let status: string;
 
@@ -549,7 +650,7 @@ export function generateEventBusMockData(): Record<string, unknown> {
 
     return {
       topicId: topic,
-      topicName: TOPIC_METADATA[topic]?.label || topic,
+      topicName: _TOPIC_METADATA[topic]?.label || topic,
       status,
       eventCount,
       lastEventTime: new Date(now.getTime() - Math.random() * 60000).toISOString(),

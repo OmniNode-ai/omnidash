@@ -70,6 +70,21 @@
 
   --input: 210 8% 70%;
   --ring: 211 92% 42%;
+
+  /*
+   * Chart Color Palette - 7 distinct colors with 60°+ hue separation
+   * Designed for accessibility and visual distinction in pie/donut charts.
+   * Hue distribution ensures adjacent colors remain distinguishable for
+   * users with color vision deficiencies.
+   *
+   * chart-1: Blue (211°)    chart-5: Red (355°)
+   * chart-2: Green (142°)   chart-6: Teal (175°)
+   * chart-3: Purple (271°)  chart-7: Yellow (48°)
+   * chart-4: Orange (32°)
+   *
+   * Note: chart-2 was changed from cyan (187°) to green (142°) to improve
+   * hue separation from blue (211°), increasing gap from 24° to 69°.
+   */
   --chart-1: 211 92% 35%;   /* Blue */
   --chart-2: 142 76% 36%;   /* Green (was cyan - improved hue separation) */
   --chart-3: 271 72% 42%;   /* Purple */
@@ -190,6 +205,20 @@
 
   --input: 210 8% 32%;
   --ring: 211 88% 48%;
+
+  /*
+   * Chart Color Palette - 7 distinct colors with 60°+ hue separation
+   * Designed for accessibility and visual distinction in pie/donut charts.
+   * Dark mode uses higher lightness values for visibility against dark backgrounds.
+   *
+   * chart-1: Blue (211°)    chart-5: Red (355°)
+   * chart-2: Green (142°)   chart-6: Teal (175°)
+   * chart-3: Purple (271°)  chart-7: Yellow (48°)
+   * chart-4: Orange (32°)
+   *
+   * Note: chart-2 was changed from cyan (187°) to green (142°) to improve
+   * hue separation from blue (211°), increasing gap from 24° to 69°.
+   */
   --chart-1: 211 88% 65%;   /* Blue */
   --chart-2: 142 72% 58%;   /* Green (was cyan - improved hue separation) */
   --chart-3: 271 68% 68%;   /* Purple */

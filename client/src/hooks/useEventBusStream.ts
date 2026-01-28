@@ -47,7 +47,20 @@ export const DEFAULT_MAX_ITEMS = 500;
 /** Default interval for flushing pending events to state (ms) */
 export const DEFAULT_FLUSH_INTERVAL_MS = 100;
 
-/** Multiplier for dedupe set size relative to maxItems */
+/**
+ * Multiplier for dedupe set size relative to maxItems.
+ *
+ * The seenIds Set is used for O(1) duplicate detection. It must be larger than
+ * maxItems to provide effective deduplication across the sliding event window.
+ *
+ * With default values (maxItems=500, multiplier=5):
+ * - maxDedupIds = 2500 (Set cleanup threshold)
+ * - After cleanup, Set is rebuilt from visible events (~500-600 entries)
+ *
+ * Cleanup triggers:
+ * 1. On event ingestion when Set exceeds maxDedupIds (immediate)
+ * 2. Periodically every 10 seconds as a safeguard (when event flow stops)
+ */
 export const DEDUPE_SET_CLEANUP_MULTIPLIER = 5;
 
 /** Maximum timestamp entries for throughput calculation */
@@ -360,9 +373,23 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
         lastEventAt: now,
       }));
 
-      // Threshold-based cleanup of seenIds
+      /**
+       * Threshold-based cleanup of seenIds Set
+       *
+       * Strategy: When the deduplication Set exceeds maxDedupIds (default: 2500),
+       * rebuild it from only the currently visible events + pending buffer.
+       *
+       * This ensures:
+       * 1. Memory is bounded - Set size is capped at maxDedupIds before cleanup triggers
+       * 2. After cleanup, Set contains only IDs of events still in memory (maxItems + pending)
+       * 3. Old event IDs are naturally discarded when they're no longer in the events array
+       *
+       * The 5x multiplier (DEDUPE_SET_CLEANUP_MULTIPLIER) provides headroom:
+       * - Allows seenIds to track more IDs than visible events for better deduplication
+       * - Prevents premature cleanup that could cause duplicate events to appear
+       * - Typical cleanup reduces ~2500 entries to ~500-600 (events + pending)
+       */
       if (seenIdsRef.current.size > maxDedupIds) {
-        // Rebuild from current events + pending
         const currentIds = new Set([
           ...eventsRef.current.map((e) => e.id),
           ...pendingEventsRef.current.map((e) => e.id),
@@ -666,7 +693,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
   }, [isConnected, autoConnect, subscribe, unsubscribe, log]);
 
   // ============================================================================
-  // Periodic Cleanup (throughput accuracy when idle)
+  // Periodic Cleanup (throughput accuracy + seenIds memory management when idle)
   // ============================================================================
 
   useEffect(() => {
@@ -674,14 +701,32 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       const now = Date.now();
       const cutoff = now - throughputWindowMs;
 
-      // Clean stale timestamps
+      // Clean stale timestamps for accurate throughput calculation
       if (timestampsRef.current.length > 0) {
         timestampsRef.current = timestampsRef.current.filter((t) => t > cutoff);
+      }
+
+      /**
+       * Periodic seenIds cleanup - safeguard for when event flow stops
+       *
+       * This ensures memory remains bounded even if:
+       * - Event flow stops while seenIds is large
+       * - The threshold-based cleanup in ingestEvent never triggers
+       *
+       * Runs every 10 seconds, only triggers if Set exceeds threshold.
+       */
+      if (seenIdsRef.current.size > maxDedupIds) {
+        const currentIds = new Set([
+          ...eventsRef.current.map((e) => e.id),
+          ...pendingEventsRef.current.map((e) => e.id),
+        ]);
+        seenIdsRef.current = currentIds;
+        log('Periodic cleanup: rebuilt seenIds set, new size:', currentIds.size);
       }
     }, 10000); // Every 10 seconds
 
     return () => clearInterval(cleanupInterval);
-  }, [throughputWindowMs]);
+  }, [throughputWindowMs, maxDedupIds, log]);
 
   // ============================================================================
   // Derived Data (useMemo for performance)
