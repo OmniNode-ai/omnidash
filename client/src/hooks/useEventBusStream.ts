@@ -361,7 +361,23 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       const now = Date.now();
       timestampsRef.current.push(now);
 
-      // Enforce timestamp array cap
+      /**
+       * Enforce timestamp array cap with 50% retention strategy.
+       *
+       * When timestamps exceed MAX_TIMESTAMP_ENTRIES (10,000), we keep only
+       * the most recent 50% (5,000 entries) rather than trimming to exactly
+       * the limit. This design choice balances two concerns:
+       *
+       * 1. Memory efficiency: Prevents unbounded growth of the timestamps array
+       * 2. Throughput accuracy: Retains enough history for accurate events/sec
+       *    calculation across the throughput window (default 5 seconds)
+       *
+       * Why 50% (half) instead of another fraction:
+       * - Aggressive enough: Reduces 10K to 5K entries per cleanup
+       * - Conservative enough: At 100 events/sec, 5K entries = 50 seconds of
+       *   history, far exceeding the 5-second throughput window
+       * - Amortizes cleanup cost: Fewer cleanup operations vs trimming to exact limit
+       */
       if (timestampsRef.current.length > MAX_TIMESTAMP_ENTRIES) {
         timestampsRef.current = timestampsRef.current.slice(-MAX_TIMESTAMP_ENTRIES / 2);
       }
@@ -734,6 +750,19 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
 
   /**
    * Calculate events per second from timestamps ref.
+   *
+   * Dependency Note: The dependency array includes `events` which triggers
+   * recalculation, even though we read from `timestampsRef.current` which
+   * is not tracked in deps. This works correctly because:
+   *
+   * 1. Both `events` state and `timestampsRef.current` are updated together
+   *    in the `ingestEvent` function (timestamp pushed, then stats updated)
+   * 2. The flush interval that commits pending events to state also triggers
+   *    this recalculation via the `events` dependency
+   * 3. We intentionally avoid adding `timestampsRef` to deps because refs
+   *    don't trigger re-renders - we rely on `events` as a proxy signal
+   *
+   * This pattern ensures throughput is recalculated whenever new events arrive.
    */
   const eventsPerSecond = useMemo(() => {
     const now = Date.now();
@@ -741,7 +770,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     const recentCount = timestampsRef.current.filter((t) => t > cutoff).length;
     const windowSeconds = throughputWindowMs / 1000;
     return Math.round((recentCount / windowSeconds) * 10) / 10;
-  }, [events, throughputWindowMs]); // Re-compute when events change
+  }, [events, throughputWindowMs]);
 
   /**
    * Topic breakdown computed from current events.

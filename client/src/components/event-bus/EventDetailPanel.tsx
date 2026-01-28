@@ -411,6 +411,47 @@ function getCleanPayload(payload: string | undefined): Record<string, unknown> |
 }
 
 /**
+ * Safely stringify JSON, handling circular references and other edge cases
+ */
+function safeJsonStringify(value: unknown, indent: number = 2): string {
+  try {
+    const seen = new WeakSet();
+    return JSON.stringify(
+      value,
+      (_key, val) => {
+        if (typeof val === 'object' && val !== null) {
+          if (seen.has(val)) {
+            return '[Circular Reference]';
+          }
+          seen.add(val);
+        }
+        // Handle special values
+        if (typeof val === 'bigint') {
+          return val.toString();
+        }
+        if (val === undefined) {
+          return null;
+        }
+        return val;
+      },
+      indent
+    );
+  } catch (error) {
+    return `[Unable to stringify: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+  }
+}
+
+/**
+ * Safely convert a confidence value to a percentage string
+ */
+function safePercentage(value: unknown): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 'N/A';
+  }
+  return `${(value * 100).toFixed(0)}%`;
+}
+
+/**
  * EventDetailPanel displays comprehensive information about a selected event.
  *
  * @example
@@ -426,6 +467,7 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
   const [copied, setCopied] = useState(false);
   const [showRawJson, setShowRawJson] = useState(true);
   const [showMetadata, setShowMetadata] = useState(true);
+  const [parseError, setParseError] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
 
@@ -438,9 +480,10 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
     };
   }, []);
 
-  // Reset copied state when event changes
+  // Reset copied state and parse error when event changes
   useEffect(() => {
     setCopied(false);
+    setParseError(null);
   }, [event?.id]);
 
   // Get topic configuration based on domain
@@ -468,10 +511,30 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
     return getCleanPayload(event.payload);
   }, [event]);
 
-  // Extract parsed details from payload
+  // Extract parsed details from payload with error handling
   const parsedDetails = useMemo((): ParsedDetails | null => {
     if (!event) return null;
-    return extractParsedDetails(event.payload, event.eventType);
+    try {
+      const details = extractParsedDetails(event.payload, event.eventType);
+      // Validate that the returned details don't contain problematic values
+      if (details) {
+        // Pre-validate any values that will be used in rendering
+        if (details.confidence !== undefined && typeof details.confidence !== 'number') {
+          details.confidence = undefined;
+        }
+        if (details.promptLength !== undefined && typeof details.promptLength !== 'number') {
+          details.promptLength = undefined;
+        }
+        if (details.durationMs !== undefined && typeof details.durationMs !== 'number') {
+          details.durationMs = undefined;
+        }
+      }
+      return details;
+    } catch (error) {
+      console.error('Failed to parse event details:', error);
+      setParseError(error instanceof Error ? error.message : 'Unknown parsing error');
+      return null;
+    }
   }, [event]);
 
   // Handle copy payload
@@ -552,8 +615,23 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
 
         <ScrollArea className="flex-1 min-h-0">
           <div className="space-y-4">
+            {/* Parse error fallback */}
+            {parseError && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <h4 className="text-sm font-medium text-amber-500">
+                    Unable to parse event details
+                  </h4>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  The event payload could not be fully parsed. The raw JSON is available below.
+                </p>
+              </div>
+            )}
+
             {/* PAYLOAD CONTENT - Primary focus */}
-            {parsedDetails && (
+            {parsedDetails && !parseError && (
               <div className="space-y-4">
                 {/* Prompt content - most important */}
                 {parsedDetails.prompt && (
@@ -594,7 +672,7 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
                       <pre className="text-sm whitespace-pre-wrap break-words font-mono">
                         {typeof parsedDetails.toolInput === 'string'
                           ? parsedDetails.toolInput
-                          : JSON.stringify(parsedDetails.toolInput, null, 2)}
+                          : safeJsonStringify(parsedDetails.toolInput)}
                       </pre>
                     </div>
                   </div>
@@ -608,7 +686,7 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
                       <pre className="text-sm whitespace-pre-wrap break-words font-mono">
                         {typeof parsedDetails.result === 'string'
                           ? parsedDetails.result
-                          : JSON.stringify(parsedDetails.result, null, 2)}
+                          : safeJsonStringify(parsedDetails.result)}
                       </pre>
                     </div>
                   </div>
@@ -663,7 +741,7 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
                     {parsedDetails.confidence !== undefined && (
                       <Badge variant="outline" className="text-xs">
                         <BarChart2 className="h-3 w-3 mr-1" />
-                        {(parsedDetails.confidence * 100).toFixed(0)}%
+                        {safePercentage(parsedDetails.confidence)}
                       </Badge>
                     )}
                     {parsedDetails.status && (
@@ -679,17 +757,18 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
               </div>
             )}
 
-            {/* Clean Payload - when no parsed details or additional data */}
-            {cleanPayload && !parsedDetails?.prompt && !parsedDetails?.toolResult && (
-              <div>
-                <h4 className="text-sm font-medium mb-2">Payload Content</h4>
-                <div className="bg-background rounded-lg p-4 border">
-                  <pre className="text-sm whitespace-pre-wrap break-words font-mono">
-                    {JSON.stringify(cleanPayload, null, 2)}
-                  </pre>
+            {/* Clean Payload - when no parsed details, has parse error, or additional data */}
+            {cleanPayload &&
+              (parseError || (!parsedDetails?.prompt && !parsedDetails?.toolResult)) && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Payload Content</h4>
+                  <div className="bg-background rounded-lg p-4 border">
+                    <pre className="text-sm whitespace-pre-wrap break-words font-mono">
+                      {safeJsonStringify(cleanPayload)}
+                    </pre>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Event Metadata - Collapsible */}
             <div className="border rounded-lg">
