@@ -162,10 +162,13 @@ export default function EventBusMonitor() {
 
   // Paused snapshot - captures state when pausing
   const pausedSnapshotRef = useRef<PausedSnapshot | null>(null);
+  // Track previous pause state to detect transitions
+  const wasPausedRef = useRef(false);
 
-  // Capture snapshot when pausing
+  // Capture snapshot only on transition from unpaused -> paused
   useEffect(() => {
-    if (isPaused && !pausedSnapshotRef.current) {
+    if (isPaused && !wasPausedRef.current) {
+      // Transition: unpaused -> paused - capture snapshot once
       pausedSnapshotRef.current = {
         events,
         topicBreakdown,
@@ -176,8 +179,11 @@ export default function EventBusMonitor() {
         errorRate: metrics.errorRate,
         activeTopics: metrics.activeTopics,
       };
-    } else if (!isPaused) {
+      wasPausedRef.current = true;
+    } else if (!isPaused && wasPausedRef.current) {
+      // Transition: paused -> unpaused - clear snapshot
       pausedSnapshotRef.current = null;
+      wasPausedRef.current = false;
     }
   }, [isPaused, events, topicBreakdown, eventTypeBreakdown, timeSeries, metrics]);
 

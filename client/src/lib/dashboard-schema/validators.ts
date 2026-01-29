@@ -131,7 +131,7 @@ export const widgetConfigSchema = z
     },
     {
       message: 'alternate_chart_type must differ from chart_type when specified',
-      path: ['alternate_chart_type'],
+      path: ['config', 'alternate_chart_type'],
     }
   );
 

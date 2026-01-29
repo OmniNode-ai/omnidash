@@ -7,7 +7,7 @@
  * Part of the Event Bus monitoring infrastructure.
  */
 
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, Component, ReactNode } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -39,6 +39,62 @@ import {
   BarChart2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+/**
+ * Error boundary for catching render errors in payload content
+ */
+interface PayloadErrorBoundaryProps {
+  children: ReactNode;
+  fallback: ReactNode;
+}
+
+interface PayloadErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class PayloadErrorBoundary extends Component<PayloadErrorBoundaryProps, PayloadErrorBoundaryState> {
+  constructor(props: PayloadErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): PayloadErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    console.error('PayloadErrorBoundary caught error:', error, errorInfo);
+  }
+
+  render(): ReactNode {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+/**
+ * Fallback UI component for render errors
+ */
+function PayloadRenderErrorFallback({ error }: { error?: Error | null }) {
+  return (
+    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <AlertTriangle className="h-4 w-4 text-amber-500" />
+        <h4 className="text-sm font-medium text-amber-500">Unable to render event content</h4>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        An error occurred while rendering the event payload. The raw JSON may still be available
+        below.
+      </p>
+      {error && (
+        <p className="text-xs text-muted-foreground mt-2 font-mono">Error: {error.message}</p>
+      )}
+    </div>
+  );
+}
 
 export interface EventDetailPanelProps {
   event: {
@@ -99,6 +155,9 @@ const TOPIC_CONFIG: Record<string, { color: string; bgColor: string; borderColor
     borderColor: 'border-gray-500/30',
   },
 };
+
+// Timing constants
+const COPY_FEEDBACK_TIMEOUT_MS = 2000;
 
 // Priority configuration
 const PRIORITY_CONFIG: Record<
@@ -551,7 +610,7 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
       timeoutRef.current = setTimeout(() => {
         setCopied(false);
         timeoutRef.current = null;
-      }, 2000);
+      }, COPY_FEEDBACK_TIMEOUT_MS);
 
       toast({
         title: 'Copied to clipboard',
@@ -630,145 +689,147 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
               </div>
             )}
 
-            {/* PAYLOAD CONTENT - Primary focus */}
-            {parsedDetails && !parseError && (
-              <div className="space-y-4">
-                {/* Prompt content - most important */}
-                {parsedDetails.prompt && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                      Prompt Content
-                    </h4>
-                    <div className="bg-background rounded-lg p-4 border">
-                      <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                        {parsedDetails.prompt}
-                      </p>
+            {/* PAYLOAD CONTENT - Primary focus, wrapped in error boundary */}
+            <PayloadErrorBoundary fallback={<PayloadRenderErrorFallback />}>
+              {parsedDetails && !parseError && (
+                <div className="space-y-4">
+                  {/* Prompt content - most important */}
+                  {parsedDetails.prompt && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                        Prompt Content
+                      </h4>
+                      <div className="bg-background rounded-lg p-4 border">
+                        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                          {parsedDetails.prompt}
+                        </p>
+                      </div>
+                      {parsedDetails.promptLength && (
+                        <span className="text-xs text-muted-foreground mt-1 block">
+                          {parsedDetails.promptLength.toLocaleString()} characters
+                        </span>
+                      )}
                     </div>
-                    {parsedDetails.promptLength && (
-                      <span className="text-xs text-muted-foreground mt-1 block">
-                        {parsedDetails.promptLength.toLocaleString()} characters
-                      </span>
-                    )}
-                  </div>
-                )}
+                  )}
 
-                {/* Tool Result/Output */}
-                {parsedDetails.toolResult ? (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Tool Result</h4>
-                    <div className="bg-background rounded-lg p-4 border">
-                      <pre className="text-sm whitespace-pre-wrap break-words font-mono">
-                        {parsedDetails.toolResult}
-                      </pre>
+                  {/* Tool Result/Output */}
+                  {parsedDetails.toolResult ? (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Tool Result</h4>
+                      <div className="bg-background rounded-lg p-4 border">
+                        <pre className="text-sm whitespace-pre-wrap break-words font-mono">
+                          {parsedDetails.toolResult}
+                        </pre>
+                      </div>
                     </div>
-                  </div>
-                ) : null}
+                  ) : null}
 
-                {/* Tool Input */}
-                {parsedDetails.toolInput !== undefined ? (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Tool Input</h4>
-                    <div className="bg-background rounded-lg p-4 border">
-                      <pre className="text-sm whitespace-pre-wrap break-words font-mono">
-                        {typeof parsedDetails.toolInput === 'string'
-                          ? parsedDetails.toolInput
-                          : safeJsonStringify(parsedDetails.toolInput)}
-                      </pre>
+                  {/* Tool Input */}
+                  {parsedDetails.toolInput !== undefined ? (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Tool Input</h4>
+                      <div className="bg-background rounded-lg p-4 border">
+                        <pre className="text-sm whitespace-pre-wrap break-words font-mono">
+                          {typeof parsedDetails.toolInput === 'string'
+                            ? parsedDetails.toolInput
+                            : safeJsonStringify(parsedDetails.toolInput)}
+                        </pre>
+                      </div>
                     </div>
-                  </div>
-                ) : null}
+                  ) : null}
 
-                {/* Generic Result */}
-                {parsedDetails.result !== undefined && !parsedDetails.toolResult ? (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Result</h4>
-                    <div className="bg-background rounded-lg p-4 border">
-                      <pre className="text-sm whitespace-pre-wrap break-words font-mono">
-                        {typeof parsedDetails.result === 'string'
-                          ? parsedDetails.result
-                          : safeJsonStringify(parsedDetails.result)}
-                      </pre>
+                  {/* Generic Result */}
+                  {parsedDetails.result !== undefined && !parsedDetails.toolResult ? (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Result</h4>
+                      <div className="bg-background rounded-lg p-4 border">
+                        <pre className="text-sm whitespace-pre-wrap break-words font-mono">
+                          {typeof parsedDetails.result === 'string'
+                            ? parsedDetails.result
+                            : safeJsonStringify(parsedDetails.result)}
+                        </pre>
+                      </div>
                     </div>
-                  </div>
-                ) : null}
+                  ) : null}
 
-                {/* Error message */}
-                {parsedDetails.error && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2 text-destructive">Error</h4>
-                    <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
-                      <p className="text-sm text-destructive whitespace-pre-wrap break-words">
-                        {parsedDetails.error}
-                      </p>
+                  {/* Error message */}
+                  {parsedDetails.error && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2 text-destructive">Error</h4>
+                      <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+                        <p className="text-sm text-destructive whitespace-pre-wrap break-words">
+                          {parsedDetails.error}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Quick info badges */}
-                {(parsedDetails.actionType ||
-                  parsedDetails.actionName ||
-                  parsedDetails.toolName ||
-                  parsedDetails.agentName) && (
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {parsedDetails.actionType && (
-                      <Badge variant="secondary" className="text-xs">
-                        {parsedDetails.actionType}
-                      </Badge>
-                    )}
-                    {parsedDetails.actionName && (
-                      <Badge variant="outline" className="text-xs font-mono">
-                        {parsedDetails.actionName}
-                      </Badge>
-                    )}
-                    {parsedDetails.toolName && (
-                      <Badge variant="outline" className="text-xs font-mono">
-                        <Wrench className="h-3 w-3 mr-1" />
-                        {parsedDetails.toolName}
-                      </Badge>
-                    )}
-                    {parsedDetails.agentName && (
-                      <Badge variant="outline" className="text-xs">
-                        <Bot className="h-3 w-3 mr-1" />
-                        {parsedDetails.agentName}
-                      </Badge>
-                    )}
-                    {parsedDetails.durationMs && (
-                      <Badge variant="outline" className="text-xs">
-                        <Timer className="h-3 w-3 mr-1" />
-                        {parsedDetails.durationMs}ms
-                      </Badge>
-                    )}
-                    {parsedDetails.confidence !== undefined && (
-                      <Badge variant="outline" className="text-xs">
-                        <BarChart2 className="h-3 w-3 mr-1" />
-                        {safePercentage(parsedDetails.confidence)}
-                      </Badge>
-                    )}
-                    {parsedDetails.status && (
-                      <Badge
-                        variant={parsedDetails.status === 'error' ? 'destructive' : 'secondary'}
-                        className="text-xs"
-                      >
-                        {parsedDetails.status}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Clean Payload - when no parsed details, has parse error, or additional data */}
-            {cleanPayload &&
-              (parseError || (!parsedDetails?.prompt && !parsedDetails?.toolResult)) && (
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Payload Content</h4>
-                  <div className="bg-background rounded-lg p-4 border">
-                    <pre className="text-sm whitespace-pre-wrap break-words font-mono">
-                      {safeJsonStringify(cleanPayload)}
-                    </pre>
-                  </div>
+                  {/* Quick info badges */}
+                  {(parsedDetails.actionType ||
+                    parsedDetails.actionName ||
+                    parsedDetails.toolName ||
+                    parsedDetails.agentName) && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {parsedDetails.actionType && (
+                        <Badge variant="secondary" className="text-xs">
+                          {parsedDetails.actionType}
+                        </Badge>
+                      )}
+                      {parsedDetails.actionName && (
+                        <Badge variant="outline" className="text-xs font-mono">
+                          {parsedDetails.actionName}
+                        </Badge>
+                      )}
+                      {parsedDetails.toolName && (
+                        <Badge variant="outline" className="text-xs font-mono">
+                          <Wrench className="h-3 w-3 mr-1" />
+                          {parsedDetails.toolName}
+                        </Badge>
+                      )}
+                      {parsedDetails.agentName && (
+                        <Badge variant="outline" className="text-xs">
+                          <Bot className="h-3 w-3 mr-1" />
+                          {parsedDetails.agentName}
+                        </Badge>
+                      )}
+                      {parsedDetails.durationMs && (
+                        <Badge variant="outline" className="text-xs">
+                          <Timer className="h-3 w-3 mr-1" />
+                          {parsedDetails.durationMs}ms
+                        </Badge>
+                      )}
+                      {parsedDetails.confidence !== undefined && (
+                        <Badge variant="outline" className="text-xs">
+                          <BarChart2 className="h-3 w-3 mr-1" />
+                          {safePercentage(parsedDetails.confidence)}
+                        </Badge>
+                      )}
+                      {parsedDetails.status && (
+                        <Badge
+                          variant={parsedDetails.status === 'error' ? 'destructive' : 'secondary'}
+                          className="text-xs"
+                        >
+                          {parsedDetails.status}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Clean Payload - when no parsed details, has parse error, or additional data */}
+              {cleanPayload &&
+                (parseError || (!parsedDetails?.prompt && !parsedDetails?.toolResult)) && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Payload Content</h4>
+                    <div className="bg-background rounded-lg p-4 border">
+                      <pre className="text-sm whitespace-pre-wrap break-words font-mono">
+                        {safeJsonStringify(cleanPayload)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+            </PayloadErrorBoundary>
 
             {/* Event Metadata - Collapsible */}
             <div className="border rounded-lg">

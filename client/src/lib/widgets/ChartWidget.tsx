@@ -54,6 +54,9 @@ const PIE_INNER_RADIUS = 40;
 const PIE_OUTER_RADIUS = 80;
 const PIE_PADDING_ANGLE = 2;
 
+/** Default key for value field in chart data objects */
+const DEFAULT_VALUE_KEY = 'value';
+
 /**
  * Semantic chart colors from CSS variables.
  * These colors are designed to work in both light and dark themes.
@@ -138,7 +141,7 @@ function getSeriesColor(index: number): string {
 function aggregateToTopN(
   data: Record<string, unknown>[],
   maxItems: number,
-  valueKey: string = 'value'
+  valueKey: string = DEFAULT_VALUE_KEY
 ): Record<string, unknown>[] {
   if (data.length <= maxItems) {
     return data;
@@ -150,7 +153,7 @@ function aggregateToTopN(
       ? valueKey
       : data[0]?.['eventCount'] !== undefined
         ? 'eventCount'
-        : 'value';
+        : DEFAULT_VALUE_KEY;
 
   // Sort by value descending
   const sorted = [...data].sort((a, b) => {

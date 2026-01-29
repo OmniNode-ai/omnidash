@@ -299,7 +299,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     (...args: unknown[]) => {
       if (debug) {
         // eslint-disable-next-line no-console
-        console.log('[EventBusStream]', ...args);
+        console.debug('[EventBusStream]', ...args);
       }
     },
     [debug]
