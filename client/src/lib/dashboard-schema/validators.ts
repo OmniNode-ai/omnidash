@@ -18,7 +18,11 @@ export const widgetTypeSchema = z.enum([
 ]);
 export const dashboardThemeSchema = z.enum(['light', 'dark', 'system']);
 export const dashboardStatusSchema = z.enum(['initializing', 'connected', 'disconnected', 'error']);
-export const chartTypeSchema = z.enum(['line', 'bar', 'area', 'pie', 'scatter']);
+export const chartTypeSchema = z.enum(['line', 'bar', 'area', 'pie', 'donut', 'scatter']);
+
+// Schema defaults - exported for consumers who need to reference them
+/** Default max items before aggregating to "Other" in chart widgets */
+export const CHART_MAX_ITEMS_DEFAULT = 7;
 
 // Supporting schemas
 export const chartSeriesConfigSchema = z.object({
@@ -53,11 +57,14 @@ export const metricThresholdSchema = z.object({
 export const widgetConfigChartSchema = z.object({
   config_kind: z.literal('chart'),
   chart_type: chartTypeSchema,
+  data_key: z.string().min(1).optional(),
   series: z.array(chartSeriesConfigSchema).min(1),
   x_axis: chartAxisConfigSchema.optional(),
   y_axis: chartAxisConfigSchema.optional(),
   show_legend: z.boolean().optional(),
   stacked: z.boolean().optional(),
+  alternate_chart_type: chartTypeSchema.optional(),
+  max_items: z.number().int().min(1).default(CHART_MAX_ITEMS_DEFAULT).optional(),
 });
 
 export const widgetConfigTableSchema = z.object({
@@ -109,13 +116,24 @@ export const widgetConfigEventFeedSchema = z.object({
   auto_scroll: z.boolean().optional(),
 });
 
-export const widgetConfigSchema = z.discriminatedUnion('config_kind', [
-  widgetConfigMetricCardSchema,
-  widgetConfigTableSchema,
-  widgetConfigChartSchema,
-  widgetConfigStatusGridSchema,
-  widgetConfigEventFeedSchema,
-]);
+export const widgetConfigSchema = z
+  .discriminatedUnion('config_kind', [
+    widgetConfigMetricCardSchema,
+    widgetConfigTableSchema,
+    widgetConfigChartSchema,
+    widgetConfigStatusGridSchema,
+    widgetConfigEventFeedSchema,
+  ])
+  .refine(
+    (data) => {
+      if (data.config_kind !== 'chart') return true;
+      return !data.alternate_chart_type || data.alternate_chart_type !== data.chart_type;
+    },
+    {
+      message: 'alternate_chart_type must differ from chart_type when specified',
+      path: ['config', 'alternate_chart_type'],
+    }
+  );
 
 /**
  * Widget Definition Schema
@@ -149,6 +167,108 @@ export const dashboardLayoutSchema = z.object({
   responsive: z.boolean().optional(),
 });
 
+// ============================================================================
+// Runtime Configuration Schemas
+// ============================================================================
+
+// Defaults exported for consumers who need to reference them
+/** Default max events to retain in memory */
+export const EVENT_MONITORING_MAX_EVENTS_DEFAULT = 50;
+/** Default options for max events dropdown */
+export const EVENT_MONITORING_MAX_EVENTS_OPTIONS_DEFAULT = [50, 100, 200, 500, 1000];
+/** Default throughput cleanup interval (events between cleanups) */
+export const EVENT_MONITORING_THROUGHPUT_CLEANUP_INTERVAL_DEFAULT = 100;
+/** Default time series window in ms (5 minutes) */
+export const EVENT_MONITORING_TIME_SERIES_WINDOW_MS_DEFAULT = 300000;
+/** Default throughput calculation window in ms (1 minute) */
+export const EVENT_MONITORING_THROUGHPUT_WINDOW_MS_DEFAULT = 60000;
+/** Default max breakdown items before pruning */
+export const EVENT_MONITORING_MAX_BREAKDOWN_ITEMS_DEFAULT = 50;
+/** Default periodic cleanup interval in ms (10 seconds) */
+export const EVENT_MONITORING_PERIODIC_CLEANUP_INTERVAL_MS_DEFAULT = 10000;
+
+/**
+ * Event Monitoring Configuration Schema
+ *
+ * Validates runtime settings for the Event Bus Monitor dashboard.
+ * All fields have sensible defaults for typical usage patterns.
+ */
+export const eventMonitoringConfigSchema = z.object({
+  /** Maximum events to retain in memory (10-10000) */
+  max_events: z.number().int().min(10).max(10000).default(EVENT_MONITORING_MAX_EVENTS_DEFAULT),
+
+  /** Available options for max events dropdown */
+  max_events_options: z
+    .array(z.number().int().positive())
+    .min(1)
+    .default(EVENT_MONITORING_MAX_EVENTS_OPTIONS_DEFAULT),
+
+  /** Events between throughput cleanups (min 10) */
+  throughput_cleanup_interval: z
+    .number()
+    .int()
+    .min(10)
+    .default(EVENT_MONITORING_THROUGHPUT_CLEANUP_INTERVAL_DEFAULT),
+
+  /** Time series window in ms (min 1 minute, default 5 minutes) */
+  time_series_window_ms: z
+    .number()
+    .int()
+    .min(60000)
+    .default(EVENT_MONITORING_TIME_SERIES_WINDOW_MS_DEFAULT),
+
+  /** Throughput calculation window in ms (min 10 seconds, default 1 minute) */
+  throughput_window_ms: z
+    .number()
+    .int()
+    .min(10000)
+    .default(EVENT_MONITORING_THROUGHPUT_WINDOW_MS_DEFAULT),
+
+  /** Maximum breakdown items before pruning (min 5) */
+  max_breakdown_items: z
+    .number()
+    .int()
+    .min(5)
+    .default(EVENT_MONITORING_MAX_BREAKDOWN_ITEMS_DEFAULT),
+
+  /** Periodic cleanup interval in ms (min 1 second, default 10 seconds) */
+  periodic_cleanup_interval_ms: z
+    .number()
+    .int()
+    .min(1000)
+    .default(EVENT_MONITORING_PERIODIC_CLEANUP_INTERVAL_MS_DEFAULT),
+});
+
+/**
+ * Dashboard Runtime Configuration Schema
+ *
+ * Container schema for dashboard-specific runtime settings.
+ * All sub-configurations are optional to allow partial configuration.
+ */
+export const dashboardRuntimeConfigSchema = z.object({
+  /** Event monitoring specific settings */
+  event_monitoring: eventMonitoringConfigSchema.optional(),
+});
+
+// ============================================================================
+// Topic Metadata Schema (for Event Bus dashboards)
+// ============================================================================
+
+/**
+ * Topic Metadata Schema
+ *
+ * Validates metadata for a Kafka/event bus topic.
+ * Used to provide human-readable labels and categorization.
+ */
+export const topicMetadataSchema = z.object({
+  /** Human-readable display label for the topic */
+  label: z.string().min(1),
+  /** Description explaining what events this topic carries */
+  description: z.string().min(1),
+  /** Category for grouping topics (e.g., 'routing', 'lifecycle', 'health', 'actions') */
+  category: z.string().min(1),
+});
+
 export const dashboardConfigSchema = z
   .object({
     dashboard_id: z.string().min(1),
@@ -160,6 +280,12 @@ export const dashboardConfigSchema = z
     refresh_interval_seconds: z.number().int().min(1).optional(),
     theme: dashboardThemeSchema.optional(),
     initial_status: dashboardStatusSchema.optional(),
+    /** Optional runtime configuration for dashboard-specific settings */
+    runtime_config: dashboardRuntimeConfigSchema.optional(),
+    /** Topic metadata mapping for event bus dashboards */
+    topic_metadata: z.record(z.string(), topicMetadataSchema).optional(),
+    /** List of Kafka topics monitored by this dashboard */
+    monitored_topics: z.array(z.string().min(1)).optional(),
   })
   .strict();
 

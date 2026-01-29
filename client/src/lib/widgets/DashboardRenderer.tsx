@@ -16,6 +16,14 @@ import { WidgetErrorBoundary } from '@/components/WidgetErrorBoundary';
 import { cn } from '@/lib/utils';
 
 /**
+ * Callback type for widget row click interactions.
+ *
+ * @param widgetId - The unique identifier of the widget that was clicked
+ * @param row - The data object for the clicked row
+ */
+export type OnWidgetRowClick = (widgetId: string, row: Record<string, unknown>) => void;
+
+/**
  * Props for the DashboardRenderer component.
  *
  * @interface DashboardRendererProps
@@ -59,6 +67,15 @@ interface DashboardRendererProps {
    * @param widgetId - The unique identifier of the failing widget
    */
   onWidgetError?: (error: Error, widgetId: string) => void;
+
+  /**
+   * Callback invoked when a row is clicked in a table widget.
+   * Enables parent components to handle row selection for detail views.
+   *
+   * @param widgetId - The unique identifier of the table widget
+   * @param row - The data object for the clicked row
+   */
+  onWidgetRowClick?: OnWidgetRowClick;
 }
 
 /**
@@ -105,6 +122,7 @@ export function DashboardRenderer({
   isLoading,
   className,
   onWidgetError,
+  onWidgetRowClick,
 }: DashboardRendererProps) {
   // Validate config synchronously before first render (crash fast if invalid)
   const validationError = useMemo(() => {
@@ -155,7 +173,14 @@ export function DashboardRenderer({
               title={widget.title}
               onError={handleWidgetError}
             >
-              <WidgetRenderer widget={widget} data={data} isLoading={isLoading} />
+              <WidgetRenderer
+                widget={widget}
+                data={data}
+                isLoading={isLoading}
+                onRowClick={
+                  onWidgetRowClick ? (row) => onWidgetRowClick(widget.widget_id, row) : undefined
+                }
+              />
             </WidgetErrorBoundary>
           </div>
         );

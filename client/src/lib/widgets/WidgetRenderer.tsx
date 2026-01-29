@@ -17,9 +17,14 @@ interface WidgetRendererProps {
   widget: WidgetDefinition;
   data: DashboardData;
   isLoading?: boolean;
+  /**
+   * Optional callback fired when a row is clicked in a table widget.
+   * Passed through from DashboardRenderer to enable row selection handling.
+   */
+  onRowClick?: (row: Record<string, unknown>) => void;
 }
 
-export function WidgetRenderer({ widget, data, isLoading }: WidgetRendererProps) {
+export function WidgetRenderer({ widget, data, isLoading, onRowClick }: WidgetRendererProps) {
   const { config } = widget;
 
   switch (config.config_kind) {
@@ -30,7 +35,15 @@ export function WidgetRenderer({ widget, data, isLoading }: WidgetRendererProps)
       return <ChartWidget widget={widget} config={config} data={data} isLoading={isLoading} />;
 
     case 'table':
-      return <TableWidget widget={widget} config={config} data={data} isLoading={isLoading} />;
+      return (
+        <TableWidget
+          widget={widget}
+          config={config}
+          data={data}
+          isLoading={isLoading}
+          onRowClick={onRowClick}
+        />
+      );
 
     case 'status_grid':
       return <StatusGridWidget widget={widget} config={config} data={data} isLoading={isLoading} />;
