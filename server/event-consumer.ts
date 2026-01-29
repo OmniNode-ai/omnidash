@@ -47,6 +47,8 @@ const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
  */
 const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 const SQL_PRELOAD_ACTIONS_LIMIT = 200;
+const SQL_PRELOAD_ROUTING_LIMIT = 200;
+const SQL_PRELOAD_TRANSFORMATIONS_LIMIT = 200;
 const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
@@ -82,6 +84,31 @@ const ONEX_ENV = process.env.ONEX_ENV || 'dev';
 function onexTopic(eventName: string): string {
   return `${ONEX_ENV}.onex.evt.${eventName}.v1`;
 }
+
+/**
+ * Generate canonical ONEX topic name with namespace and message type support.
+ * Format: {env}.onex.{type}.{namespace}.{event-name}.v1
+ */
+function onexNamespacedTopic(type: 'cmd' | 'evt', namespace: string, eventName: string): string {
+  return `${ONEX_ENV}.onex.${type}.${namespace}.${eventName}.v1`;
+}
+
+/**
+ * OmniClaude topic constants - environment-aware topic names.
+ * Uses ONEX canonical naming convention with appropriate namespaces.
+ */
+const OMNICLAUDE_TOPICS = {
+  /** Command topic for Claude hook events (prompt submissions from intelligence) */
+  CLAUDE_HOOK_EVENT: onexNamespacedTopic('cmd', 'omniintelligence', 'claude-hook-event'),
+  /** Event topic for prompt submission lifecycle events */
+  PROMPT_SUBMITTED: onexNamespacedTopic('evt', 'omniclaude', 'prompt-submitted'),
+  /** Event topic for session start lifecycle events */
+  SESSION_STARTED: onexNamespacedTopic('evt', 'omniclaude', 'session-started'),
+  /** Event topic for tool execution lifecycle events */
+  TOOL_EXECUTED: onexNamespacedTopic('evt', 'omniclaude', 'tool-executed'),
+  /** Event topic for session end lifecycle events */
+  SESSION_ENDED: onexNamespacedTopic('evt', 'omniclaude', 'session-ended'),
+} as const;
 
 // Structured logging for intent handlers
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
@@ -192,6 +219,60 @@ export interface TransformationEvent {
   success: boolean;
   confidenceScore: number;
   createdAt: Date;
+}
+
+// ============================================================================
+// Database Row Types
+// These interfaces represent the raw row shapes returned by SQL queries.
+// They differ from the domain interfaces above which use camelCase and
+// transformed/normalized values.
+// ============================================================================
+
+/** Row type for agent_actions table query results */
+interface AgentActionRow {
+  id: string;
+  correlation_id?: string;
+  agent_name?: string;
+  action_type?: string;
+  action_name?: string;
+  action_details?: unknown;
+  debug_mode?: boolean;
+  duration_ms?: number | string;
+  created_at: string | Date;
+}
+
+/** Row type for metrics aggregation query results */
+interface AgentMetricsRow {
+  agent?: string;
+  total_requests?: number | string;
+  avg_routing_time?: number | string;
+  avg_confidence?: number | string;
+}
+
+/** Row type for agent_routing_decisions table query results */
+interface RoutingDecisionRow {
+  id: string;
+  correlation_id?: string;
+  user_request?: string;
+  selected_agent?: string;
+  confidence_score?: number | string;
+  routing_strategy?: string;
+  alternatives?: unknown;
+  reasoning?: string;
+  routing_time_ms?: number | string;
+  created_at: string | Date;
+}
+
+/** Row type for agent_transformation_events table query results */
+interface TransformationEventRow {
+  id: string;
+  correlation_id?: string;
+  source_agent?: string;
+  target_agent?: string;
+  transformation_duration_ms?: number | string;
+  success?: boolean;
+  routing_confidence?: number | string;
+  started_at: string | Date;
 }
 
 // Node Registry Types
@@ -831,14 +912,14 @@ export class EventConsumer extends EventEmitter {
     }
 
     try {
-      console.log(`🔍 Validating Kafka broker connection: ${brokers}`);
+      intentLogger.info(`Validating Kafka broker connection: ${brokers}`);
 
       const admin = this.kafka.admin();
       await admin.connect();
 
       // Quick health check - list topics to verify connectivity
       const topics = await admin.listTopics();
-      console.log(`✅ Kafka broker reachable: ${brokers} (${topics.length} topics available)`);
+      intentLogger.info(`Kafka broker reachable: ${brokers} (${topics.length} topics available)`);
 
       await admin.disconnect();
       return true;
@@ -863,7 +944,7 @@ export class EventConsumer extends EventEmitter {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         await this.consumer.connect();
-        console.log('✅ Kafka consumer connected successfully');
+        intentLogger.info('Kafka consumer connected successfully');
         return;
       } catch (error) {
         const delay = Math.min(RETRY_BASE_DELAY_MS * Math.pow(2, attempt), RETRY_MAX_DELAY_MS);
@@ -915,20 +996,20 @@ export class EventConsumer extends EventEmitter {
    */
   async start() {
     if (this.isRunning || !this.consumer) {
-      console.log('Event consumer already running or not initialized');
+      intentLogger.info('Event consumer already running or not initialized');
       return;
     }
 
     try {
       await this.connectWithRetry();
-      console.log('Kafka consumer connected');
+      intentLogger.info('Kafka consumer connected');
       this.emit('connected'); // Emit connected event
 
       // Preload historical data from PostgreSQL to populate dashboards on startup
       if (process.env.ENABLE_EVENT_PRELOAD !== 'false') {
         try {
           await this.preloadFromDatabase();
-          console.log('[EventConsumer] Preloaded historical data from PostgreSQL');
+          intentLogger.info('Preloaded historical data from PostgreSQL');
         } catch (e) {
           console.warn('[EventConsumer] Preload skipped due to error:', e);
         }
@@ -955,6 +1036,13 @@ export class EventConsumer extends EventEmitter {
           onexTopic('node-liveness-expired'),
           onexTopic('node-heartbeat'),
           onexTopic('node-introspection'),
+          // OmniClaude hook events (prompt submissions, tool executions)
+          onexNamespacedTopic('cmd', 'omniintelligence', 'claude-hook-event'),
+          // OmniClaude lifecycle events (additional coverage)
+          onexNamespacedTopic('evt', 'omniclaude', 'prompt-submitted'),
+          onexNamespacedTopic('evt', 'omniclaude', 'session-started'),
+          onexNamespacedTopic('evt', 'omniclaude', 'tool-executed'),
+          onexNamespacedTopic('evt', 'omniclaude', 'session-ended'),
         ],
         fromBeginning: true, // Reprocess historical events to populate metrics
       });
@@ -963,49 +1051,47 @@ export class EventConsumer extends EventEmitter {
         eachMessage: async ({ topic, message }) => {
           try {
             const event = JSON.parse(message.value?.toString() || '{}');
-            console.log(`[EventConsumer] Received event from topic: ${topic}`);
+            intentLogger.debug(`Received event from topic: ${topic}`);
 
             switch (topic) {
               case 'agent-routing-decisions':
-                console.log(
-                  `[EventConsumer] Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`
+                intentLogger.debug(
+                  `Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`
                 );
                 this.handleRoutingDecision(event);
                 break;
               case 'agent-actions':
-                console.log(
-                  `[EventConsumer] Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`
+                intentLogger.debug(
+                  `Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`
                 );
                 this.handleAgentAction(event);
                 break;
               case 'agent-transformation-events':
-                console.log(
-                  `[EventConsumer] Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`
+                intentLogger.debug(
+                  `Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`
                 );
                 this.handleTransformationEvent(event);
                 break;
               case 'router-performance-metrics':
-                console.log(
-                  `[EventConsumer] Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
+                intentLogger.debug(
+                  `Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
                 );
                 this.handlePerformanceMetric(event);
                 break;
               case 'dev.omninode_bridge.onex.evt.node-introspection.v1':
               case 'dev.omninode_bridge.onex.evt.registry-request-introspection.v1':
-                console.log(
-                  `[EventConsumer] Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
+                intentLogger.debug(
+                  `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
                 );
                 this.handleNodeIntrospection(event);
                 break;
               case 'node.heartbeat':
-                console.log(
-                  `[EventConsumer] Processing node heartbeat: ${event.node_id || event.nodeId}`
-                );
+                intentLogger.debug(`Processing node heartbeat: ${event.node_id || event.nodeId}`);
                 this.handleNodeHeartbeat(event);
                 break;
               case 'dev.onex.evt.registration-completed.v1':
-                console.log(
-                  `[EventConsumer] Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
+                intentLogger.debug(
+                  `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
                 );
                 this.handleNodeStateChange(event);
                 break;
@@ -1027,28 +1113,50 @@ export class EventConsumer extends EventEmitter {
                 );
                 this.handleIntentQueryResponse(event);
                 break;
+              // OmniClaude hook events (prompt submissions)
+              case 'dev.onex.cmd.omniintelligence.claude-hook-event.v1':
+                intentLogger.debug(
+                  `Processing claude hook event: ${event.event_type || event.eventType} - ${(event.payload?.prompt || '').slice(0, 50)}...`
+                );
+                this.handleClaudeHookEvent(event);
+                break;
+              // OmniClaude lifecycle events
+              case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
+                intentLogger.debug(
+                  `Processing prompt-submitted: ${(event.payload?.prompt_preview || '').slice(0, 50)}...`
+                );
+                this.handlePromptSubmittedEvent(event);
+                break;
+              case 'dev.onex.evt.omniclaude.session-started.v1':
+              case 'dev.onex.evt.omniclaude.session-ended.v1':
+              case 'dev.onex.evt.omniclaude.tool-executed.v1':
+                intentLogger.debug(
+                  `Processing omniclaude event: ${event.event_type || event.eventType}`
+                );
+                this.handleOmniclaudeLifecycleEvent(event, topic);
+                break;
 
               // Canonical ONEX topics (OMN-1279)
               default:
                 // Handle canonical ONEX topics using environment-aware routing
                 if (topic === onexTopic('node-became-active')) {
                   if (DEBUG_CANONICAL_EVENTS) {
-                    console.log(`[EventConsumer] Processing canonical node-became-active event`);
+                    intentLogger.debug('Processing canonical node-became-active event');
                   }
                   this.handleCanonicalNodeBecameActive(message);
                 } else if (topic === onexTopic('node-liveness-expired')) {
                   if (DEBUG_CANONICAL_EVENTS) {
-                    console.log(`[EventConsumer] Processing canonical node-liveness-expired event`);
+                    intentLogger.debug('Processing canonical node-liveness-expired event');
                   }
                   this.handleCanonicalNodeLivenessExpired(message);
                 } else if (topic === onexTopic('node-heartbeat')) {
                   if (DEBUG_CANONICAL_EVENTS) {
-                    console.log(`[EventConsumer] Processing canonical node-heartbeat event`);
+                    intentLogger.debug('Processing canonical node-heartbeat event');
                   }
                   this.handleCanonicalNodeHeartbeat(message);
                 } else if (topic === onexTopic('node-introspection')) {
                   if (DEBUG_CANONICAL_EVENTS) {
-                    console.log(`[EventConsumer] Processing canonical node-introspection event`);
+                    intentLogger.debug('Processing canonical node-introspection event');
                   }
                   this.handleCanonicalNodeIntrospection(message);
                 }
@@ -1068,7 +1176,7 @@ export class EventConsumer extends EventEmitter {
               console.warn('⚠️ Connection error detected, attempting reconnection...');
               try {
                 await this.connectWithRetry();
-                console.log('✅ Reconnection successful, resuming event processing');
+                intentLogger.info('Reconnection successful, resuming event processing');
               } catch (reconnectError) {
                 console.error('❌ Reconnection failed:', reconnectError);
                 this.emit('error', reconnectError);
@@ -1091,7 +1199,7 @@ export class EventConsumer extends EventEmitter {
         CLEANUP_INTERVAL_MS
       );
 
-      console.log('✅ Event consumer started with automatic data pruning');
+      intentLogger.info('Event consumer started with automatic data pruning');
     } catch (error) {
       console.error('Failed to start event consumer:', error);
       this.emit('error', error); // Emit error event
@@ -1118,12 +1226,12 @@ export class EventConsumer extends EventEmitter {
 
       if (Array.isArray(actionsRows)) {
         // Collect all actions first, then slice once at the end (O(n) instead of O(n²))
-        const actions: AgentAction[] = actionsRows.map((r: any) => ({
+        const actions: AgentAction[] = (actionsRows as AgentActionRow[]).map((r) => ({
           id: r.id,
-          correlationId: r.correlation_id,
-          agentName: r.agent_name,
-          actionType: r.action_type,
-          actionName: r.action_name,
+          correlationId: r.correlation_id || '',
+          agentName: r.agent_name || '',
+          actionType: r.action_type || '',
+          actionName: r.action_name || '',
           actionDetails: r.action_details,
           debugMode: !!r.debug_mode,
           durationMs: Number(r.duration_ms || 0),
@@ -1157,7 +1265,7 @@ export class EventConsumer extends EventEmitter {
         : metricsResult?.rows || metricsResult || [];
 
       if (Array.isArray(metricsRows)) {
-        metricsRows.forEach((r: any) => {
+        (metricsRows as AgentMetricsRow[]).forEach((r) => {
           const agent = r.agent || 'unknown';
           this.agentMetrics.set(agent, {
             count: Number(r.total_requests || 0),
@@ -1170,11 +1278,89 @@ export class EventConsumer extends EventEmitter {
         });
       }
 
+      // Load routing decisions
+      const routingResult = await getIntelligenceDb().execute(
+        sql.raw(`
+        SELECT id, correlation_id, user_request, selected_agent, confidence_score,
+               routing_strategy, alternatives, reasoning, routing_time_ms, created_at
+        FROM agent_routing_decisions
+        ORDER BY created_at DESC
+        LIMIT ${SQL_PRELOAD_ROUTING_LIMIT};
+      `)
+      );
+
+      const routingRows = Array.isArray(routingResult)
+        ? routingResult
+        : routingResult?.rows || routingResult || [];
+
+      if (Array.isArray(routingRows)) {
+        const decisions: RoutingDecision[] = (routingRows as RoutingDecisionRow[]).map((r) => ({
+          id: r.id,
+          correlationId: r.correlation_id || '',
+          userRequest: r.user_request || '',
+          selectedAgent: r.selected_agent || '',
+          confidenceScore: Number(r.confidence_score || 0),
+          routingStrategy: r.routing_strategy || '',
+          alternatives: r.alternatives,
+          reasoning: r.reasoning,
+          routingTimeMs: Number(r.routing_time_ms || 0),
+          createdAt: new Date(r.created_at),
+        }));
+        this.routingDecisions = decisions.slice(0, this.maxDecisions);
+      }
+
+      // Load transformation events
+      // Note: Table uses routing_confidence (not confidence_score) and started_at (not created_at)
+      const transformResult = await getIntelligenceDb().execute(
+        sql.raw(`
+        SELECT id, correlation_id, source_agent, target_agent, transformation_duration_ms,
+               success, routing_confidence, started_at
+        FROM agent_transformation_events
+        ORDER BY started_at DESC
+        LIMIT ${SQL_PRELOAD_TRANSFORMATIONS_LIMIT};
+      `)
+      );
+
+      const transformRows = Array.isArray(transformResult)
+        ? transformResult
+        : transformResult?.rows || transformResult || [];
+
+      if (Array.isArray(transformRows)) {
+        const transformations: TransformationEvent[] = (
+          transformRows as TransformationEventRow[]
+        ).map((r) => ({
+          id: r.id,
+          correlationId: r.correlation_id || '',
+          sourceAgent: r.source_agent || '',
+          targetAgent: r.target_agent || '',
+          transformationDurationMs: Number(r.transformation_duration_ms || 0),
+          success: !!r.success,
+          confidenceScore: Number(r.routing_confidence || 0),
+          createdAt: new Date(r.started_at),
+        }));
+        this.recentTransformations = transformations.slice(0, this.maxTransformations);
+      }
+
+      // Log preload counts
+      intentLogger.info(
+        `Preloaded from database: ` +
+          `${this.recentActions.length} actions, ` +
+          `${this.routingDecisions.length} routing decisions, ` +
+          `${this.recentTransformations.length} transformations, ` +
+          `${this.agentMetrics.size} agent metrics`
+      );
+
       // Emit initial metric snapshot
       this.emit('metricUpdate', this.getAgentMetrics());
       // Emit initial actions snapshot (emit last one to trigger UI refresh)
       const last = this.recentActions[this.recentActions.length - 1];
       if (last) this.emit('actionUpdate', last);
+      // Emit initial routing decision snapshot
+      const lastRouting = this.routingDecisions[0];
+      if (lastRouting) this.emit('routingUpdate', lastRouting);
+      // Emit initial transformation snapshot
+      const lastTransform = this.recentTransformations[0];
+      if (lastTransform) this.emit('transformationUpdate', lastTransform);
     } catch (error) {
       console.error('[EventConsumer] Error during preloadFromDatabase:', error);
       // Don't throw - allow server to continue even if preload fails
@@ -1203,8 +1389,8 @@ export class EventConsumer extends EventEmitter {
     existing.lastSeen = new Date();
 
     this.agentMetrics.set(agent, existing);
-    console.log(
-      `[EventConsumer] Updated metrics for ${agent}: ${existing.count} requests, avg confidence ${(existing.totalConfidence / existing.count).toFixed(2)}`
+    intentLogger.debug(
+      `Updated metrics for ${agent}: ${existing.count} requests, avg confidence ${(existing.totalConfidence / existing.count).toFixed(2)}`
     );
 
     // Cleanup old entries (older than 24h)
@@ -1252,8 +1438,8 @@ export class EventConsumer extends EventEmitter {
     };
 
     this.recentActions.unshift(action);
-    console.log(
-      `[EventConsumer] Added action to queue: ${action.actionName} (${action.agentName}), queue size: ${this.recentActions.length}`
+    intentLogger.debug(
+      `Added action to queue: ${action.actionName} (${action.agentName}), queue size: ${this.recentActions.length}`
     );
 
     // Track success/error rates per agent
@@ -1276,8 +1462,8 @@ export class EventConsumer extends EventEmitter {
       existing.lastSeen = new Date();
       this.agentMetrics.set(action.agentName, existing);
 
-      console.log(
-        `[EventConsumer] Updated ${action.agentName} success/error: ${existing.successCount}/${existing.errorCount}`
+      intentLogger.debug(
+        `Updated ${action.agentName} success/error: ${existing.successCount}/${existing.errorCount}`
       );
 
       // Emit metric update since success rate changed
@@ -1290,6 +1476,151 @@ export class EventConsumer extends EventEmitter {
     }
 
     // Emit update event for WebSocket broadcast
+    this.emit('actionUpdate', action);
+  }
+
+  /**
+   * Handle OmniClaude hook events (prompt submissions, tool executions).
+   * These events are emitted by omniclaude via the UserPromptSubmit hook
+   * and represent real-time user interactions with Claude Code.
+   */
+  private handleClaudeHookEvent(event: {
+    event_type?: string;
+    eventType?: string;
+    session_id?: string;
+    sessionId?: string;
+    correlation_id?: string;
+    correlationId?: string;
+    timestamp_utc?: string;
+    timestampUtc?: string;
+    payload?: { prompt?: string; [key: string]: unknown };
+  }): void {
+    const eventType = event.event_type || event.eventType || 'unknown';
+    const prompt = event.payload?.prompt || '';
+    const truncatedPrompt = prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt;
+
+    // Convert to AgentAction format for dashboard display
+    const action: AgentAction = {
+      id: crypto.randomUUID(),
+      correlationId: event.correlation_id || event.correlationId || '',
+      agentName: 'omniclaude',
+      actionType: 'prompt',
+      actionName: eventType,
+      actionDetails: {
+        prompt: truncatedPrompt,
+        sessionId: event.session_id || event.sessionId,
+        eventType,
+      },
+      debugMode: false,
+      durationMs: 0,
+      createdAt: new Date(event.timestamp_utc || event.timestampUtc || Date.now()),
+    };
+
+    this.recentActions.unshift(action);
+    intentLogger.debug(
+      `Added claude hook event: ${eventType} - "${truncatedPrompt.slice(0, 30)}...", queue size: ${this.recentActions.length}`
+    );
+
+    // Keep only last N actions
+    if (this.recentActions.length > this.maxActions) {
+      this.recentActions = this.recentActions.slice(0, this.maxActions);
+    }
+
+    // Emit update event for WebSocket broadcast
+    this.emit('actionUpdate', action);
+  }
+
+  /**
+   * Handle prompt-submitted events from omniclaude lifecycle topics.
+   * These are the canonical ONEX events emitted when user submits a prompt.
+   */
+  private handlePromptSubmittedEvent(event: {
+    event_type?: string;
+    eventType?: string;
+    payload?: {
+      session_id?: string;
+      sessionId?: string;
+      correlation_id?: string;
+      correlationId?: string;
+      prompt_preview?: string;
+      promptPreview?: string;
+      prompt_length?: number;
+      promptLength?: number;
+      emitted_at?: string;
+      emittedAt?: string;
+    };
+  }): void {
+    const payload = event.payload || {};
+    const promptPreview = payload.prompt_preview || payload.promptPreview || '';
+
+    const action: AgentAction = {
+      id: crypto.randomUUID(),
+      correlationId: payload.correlation_id || payload.correlationId || '',
+      agentName: 'omniclaude',
+      actionType: 'prompt',
+      actionName: 'UserPromptSubmit',
+      actionDetails: {
+        prompt: promptPreview,
+        promptLength: payload.prompt_length || payload.promptLength,
+        sessionId: payload.session_id || payload.sessionId,
+      },
+      debugMode: false,
+      durationMs: 0,
+      createdAt: new Date(payload.emitted_at || payload.emittedAt || Date.now()),
+    };
+
+    this.recentActions.unshift(action);
+    intentLogger.debug(
+      `Added prompt-submitted: "${promptPreview.slice(0, 30)}...", queue size: ${this.recentActions.length}`
+    );
+
+    if (this.recentActions.length > this.maxActions) {
+      this.recentActions = this.recentActions.slice(0, this.maxActions);
+    }
+
+    this.emit('actionUpdate', action);
+  }
+
+  /**
+   * Handle omniclaude lifecycle events (session-started, session-ended, tool-executed).
+   */
+  private handleOmniclaudeLifecycleEvent(
+    event: {
+      event_type?: string;
+      eventType?: string;
+      payload?: Record<string, unknown>;
+    },
+    topic: string
+  ): void {
+    const eventType = event.event_type || event.eventType || topic.split('.').slice(-2, -1)[0];
+    const payload = event.payload || {};
+
+    const action: AgentAction = {
+      id: crypto.randomUUID(),
+      correlationId: (payload.correlation_id || payload.correlationId || '') as string,
+      agentName: 'omniclaude',
+      actionType: eventType.includes('tool') ? 'tool_call' : 'lifecycle',
+      actionName: eventType,
+      actionDetails: {
+        sessionId: payload.session_id || payload.sessionId,
+        ...payload,
+      },
+      debugMode: false,
+      durationMs: (payload.duration_ms || payload.durationMs || 0) as number,
+      createdAt: new Date(
+        (payload.emitted_at || payload.emittedAt || Date.now()) as string | number
+      ),
+    };
+
+    this.recentActions.unshift(action);
+    intentLogger.debug(
+      `Added omniclaude lifecycle: ${eventType}, queue size: ${this.recentActions.length}`
+    );
+
+    if (this.recentActions.length > this.maxActions) {
+      this.recentActions = this.recentActions.slice(0, this.maxActions);
+    }
+
     this.emit('actionUpdate', action);
   }
 
@@ -1307,8 +1638,8 @@ export class EventConsumer extends EventEmitter {
     };
 
     this.recentTransformations.unshift(transformation);
-    console.log(
-      `[EventConsumer] Added transformation to queue: ${transformation.sourceAgent} → ${transformation.targetAgent}, queue size: ${this.recentTransformations.length}`
+    intentLogger.debug(
+      `Added transformation to queue: ${transformation.sourceAgent} -> ${transformation.targetAgent}, queue size: ${this.recentTransformations.length}`
     );
 
     // Keep only last N transformations
@@ -1355,8 +1686,8 @@ export class EventConsumer extends EventEmitter {
         stats: { ...this.performanceStats },
       });
 
-      console.log(
-        `[EventConsumer] Processed performance metric: ${metric.routingDurationMs}ms, cache hit: ${metric.cacheHit}, strategy: ${metric.triggerMatchStrategy}`
+      intentLogger.debug(
+        `Processed performance metric: ${metric.routingDurationMs}ms, cache hit: ${metric.cacheHit}, strategy: ${metric.triggerMatchStrategy}`
       );
     } catch (error) {
       console.error('[EventConsumer] Error processing performance metric:', error);
@@ -1423,9 +1754,7 @@ export class EventConsumer extends EventEmitter {
         }
         if (oldestNodeId) {
           this.registeredNodes.delete(oldestNodeId);
-          console.log(
-            `[EventConsumer] Evicted oldest node ${oldestNodeId} to make room for ${nodeId}`
-          );
+          intentLogger.debug(`Evicted oldest node ${oldestNodeId} to make room for ${nodeId}`);
         }
       }
 
@@ -1435,8 +1764,8 @@ export class EventConsumer extends EventEmitter {
       this.emit('nodeIntrospectionUpdate', introspectionEvent);
       this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
-      console.log(
-        `[EventConsumer] Processed node introspection: ${nodeId} (${introspectionEvent.nodeType}, ${introspectionEvent.reason})`
+      intentLogger.debug(
+        `Processed node introspection: ${nodeId} (${introspectionEvent.nodeType}, ${introspectionEvent.reason})`
       );
     } catch (error) {
       console.error('[EventConsumer] Error processing node introspection:', error);
@@ -1483,8 +1812,8 @@ export class EventConsumer extends EventEmitter {
       this.emit('nodeHeartbeatUpdate', heartbeatEvent);
       this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
-      console.log(
-        `[EventConsumer] Processed node heartbeat: ${nodeId} (CPU: ${heartbeatEvent.cpuUsagePercent}%, Mem: ${heartbeatEvent.memoryUsageMb}MB)`
+      intentLogger.debug(
+        `Processed node heartbeat: ${nodeId} (CPU: ${heartbeatEvent.cpuUsagePercent}%, Mem: ${heartbeatEvent.memoryUsageMb}MB)`
       );
     } catch (error) {
       console.error('[EventConsumer] Error processing node heartbeat:', error);
@@ -1531,8 +1860,8 @@ export class EventConsumer extends EventEmitter {
       this.emit('nodeStateChangeUpdate', stateChangeEvent);
       this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
-      console.log(
-        `[EventConsumer] Processed node state change: ${nodeId} (${stateChangeEvent.previousState} -> ${stateChangeEvent.newState})`
+      intentLogger.debug(
+        `Processed node state change: ${nodeId} (${stateChangeEvent.previousState} -> ${stateChangeEvent.newState})`
       );
     } catch (error) {
       console.error('[EventConsumer] Error processing node state change:', error);
@@ -1807,8 +2136,8 @@ export class EventConsumer extends EventEmitter {
     if (!envelope) return;
     if (this.isDuplicate(envelope.correlation_id)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(
-          `[EventConsumer] Duplicate node-became-active event, skipping: ${envelope.correlation_id}`
+        intentLogger.debug(
+          `Duplicate node-became-active event, skipping: ${envelope.correlation_id}`
         );
       }
       return;
@@ -1820,7 +2149,7 @@ export class EventConsumer extends EventEmitter {
     const existing = this.canonicalNodes.get(payload.node_id);
     if (existing && !this.shouldProcess(existing, emittedAtMs)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(`[EventConsumer] Stale node-became-active event, skipping: ${payload.node_id}`);
+        intentLogger.debug(`Stale node-became-active event, skipping: ${payload.node_id}`);
       }
       return;
     }
@@ -1843,7 +2172,7 @@ export class EventConsumer extends EventEmitter {
     });
 
     if (DEBUG_CANONICAL_EVENTS) {
-      console.log(`[EventConsumer] Canonical node-became-active processed: ${payload.node_id}`);
+      intentLogger.debug(`Canonical node-became-active processed: ${payload.node_id}`);
     }
   }
 
@@ -1856,8 +2185,8 @@ export class EventConsumer extends EventEmitter {
     if (!envelope) return;
     if (this.isDuplicate(envelope.correlation_id)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(
-          `[EventConsumer] Duplicate node-liveness-expired event, skipping: ${envelope.correlation_id}`
+        intentLogger.debug(
+          `Duplicate node-liveness-expired event, skipping: ${envelope.correlation_id}`
         );
       }
       return;
@@ -1872,15 +2201,13 @@ export class EventConsumer extends EventEmitter {
       // new nodes, liveness-expired only applies to nodes we're already tracking.
       // If we receive this event for an unknown node, we skip it - there's nothing to mark offline.
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(`[EventConsumer] Node not found for liveness-expired: ${payload.node_id}`);
+        intentLogger.debug(`Node not found for liveness-expired: ${payload.node_id}`);
       }
       return;
     }
     if (!this.shouldProcess(node, emittedAtMs)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(
-          `[EventConsumer] Stale node-liveness-expired event, skipping: ${payload.node_id}`
-        );
+        intentLogger.debug(`Stale node-liveness-expired event, skipping: ${payload.node_id}`);
       }
       return;
     }
@@ -1901,7 +2228,7 @@ export class EventConsumer extends EventEmitter {
     });
 
     if (DEBUG_CANONICAL_EVENTS) {
-      console.log(`[EventConsumer] Canonical node-liveness-expired processed: ${payload.node_id}`);
+      intentLogger.debug(`Canonical node-liveness-expired processed: ${payload.node_id}`);
     }
   }
 
@@ -1966,8 +2293,8 @@ export class EventConsumer extends EventEmitter {
     if (!envelope) return;
     if (this.isDuplicate(envelope.correlation_id)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(
-          `[EventConsumer] Duplicate node-introspection event, skipping: ${envelope.correlation_id}`
+        intentLogger.debug(
+          `Duplicate node-introspection event, skipping: ${envelope.correlation_id}`
         );
       }
       return;
@@ -1979,7 +2306,7 @@ export class EventConsumer extends EventEmitter {
     const existing = this.canonicalNodes.get(payload.node_id);
     if (existing && !this.shouldProcess(existing, emittedAtMs)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(`[EventConsumer] Stale node-introspection event, skipping: ${payload.node_id}`);
+        intentLogger.debug(`Stale node-introspection event, skipping: ${payload.node_id}`);
       }
       return;
     }
@@ -2008,7 +2335,7 @@ export class EventConsumer extends EventEmitter {
     });
 
     if (DEBUG_CANONICAL_EVENTS) {
-      console.log(`[EventConsumer] Canonical node-introspection processed: ${payload.node_id}`);
+      intentLogger.debug(`Canonical node-introspection processed: ${payload.node_id}`);
     }
   }
 
@@ -2139,8 +2466,8 @@ export class EventConsumer extends EventEmitter {
       intentsRemoved +
       distributionEntriesPruned;
     if (totalRemoved > 0) {
-      console.log(
-        `🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes, ${intentsRemoved} intents, ${distributionEntriesPruned} distribution entries (total: ${totalRemoved})`
+      intentLogger.info(
+        `Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes, ${intentsRemoved} intents, ${distributionEntriesPruned} distribution entries (total: ${totalRemoved})`
       );
     }
   }
@@ -2166,8 +2493,8 @@ export class EventConsumer extends EventEmitter {
     }
 
     if (removedCount > 0) {
-      console.log(
-        `🧹 Cleaned up ${removedCount} stale offline canonical nodes (TTL: ${OFFLINE_NODE_TTL_MS / 1000}s)`
+      intentLogger.info(
+        `Cleaned up ${removedCount} stale offline canonical nodes (TTL: ${OFFLINE_NODE_TTL_MS / 1000}s)`
       );
     }
   }
@@ -2632,7 +2959,7 @@ export class EventConsumer extends EventEmitter {
 
       await this.consumer.disconnect();
       this.isRunning = false;
-      console.log('✅ Event consumer stopped');
+      intentLogger.info('Event consumer stopped');
       this.emit('disconnected'); // Emit disconnected event
     } catch (error) {
       console.error('Error disconnecting Kafka consumer:', error);

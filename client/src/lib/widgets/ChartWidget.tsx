@@ -2,11 +2,17 @@
  * ChartWidget
  *
  * A contract-driven chart component that renders various chart types
- * based on the widget configuration. Supports line, bar, area, pie, and scatter charts.
+ * based on the widget configuration. Supports line, bar, area, pie, donut, and scatter charts.
+ *
+ * Features:
+ * - Toggle between chart types (e.g., donut ↔ bar)
+ * - Top N aggregation for charts with many categories
+ * - Responsive sizing
  *
  * @module lib/widgets/ChartWidget
  */
 
+import { useState, useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -29,6 +35,8 @@ import {
 import type { WidgetDefinition, WidgetConfigChart, DashboardData } from '@/lib/dashboard-schema';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 
 /**
  * Chart dimension and style constants.
@@ -46,9 +54,41 @@ const PIE_INNER_RADIUS = 40;
 const PIE_OUTER_RADIUS = 80;
 const PIE_PADDING_ANGLE = 2;
 
+/** Default key for value field in chart data objects */
+const DEFAULT_VALUE_KEY = 'value';
+
 /**
  * Semantic chart colors from CSS variables.
- * These colors are designed to work in both light and dark themes.
+ *
+ * Color Selection Strategy:
+ * - Uses 60°+ hue separation between adjacent colors in the sequence for accessibility
+ * - Ensures distinguishability for users with color vision deficiencies (deuteranopia,
+ *   protanopia, tritanopia) by maximizing perceptual distance between commonly
+ *   co-occurring colors
+ * - Colors are designed to work in both light and dark themes with adjusted
+ *   saturation and lightness values per theme
+ *
+ * Hue Distribution (approximate, from CSS variables):
+ * - chart-1: ~211° (Blue)
+ * - chart-2: ~142° (Green)
+ * - chart-3: ~271° (Purple)
+ * - chart-4: ~32° (Orange)
+ * - chart-5: ~355° (Red)
+ * - chart-6: ~175° (Teal)
+ * - chart-7: ~48° (Yellow)
+ *
+ * Adjacent hue separations in the sequence:
+ * - Blue → Green: 69°
+ * - Green → Purple: 129°
+ * - Purple → Orange: 121°
+ * - Orange → Red: 37° (closest pair, but rarely adjacent in typical datasets)
+ * - Red → Teal: 180°
+ * - Teal → Yellow: 127°
+ *
+ * The sequence is optimized so that the most commonly used colors (first 3-4)
+ * have strong separation, while later colors maintain reasonable distinction.
+ *
+ * @see client/src/index.css for actual HSL values in light/dark modes
  */
 const CHART_COLORS = [
   'hsl(var(--chart-1))',
@@ -56,6 +96,8 @@ const CHART_COLORS = [
   'hsl(var(--chart-3))',
   'hsl(var(--chart-4))',
   'hsl(var(--chart-5))',
+  'hsl(var(--chart-6))',
+  'hsl(var(--chart-7))',
 ];
 
 /**
@@ -111,6 +153,61 @@ interface ChartWidgetProps {
  */
 function getSeriesColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length];
+}
+
+/**
+ * Aggregates chart data to show top N items plus an "Other" category.
+ *
+ * This prevents pie/donut charts from becoming unreadable when there
+ * are many categories. Items are sorted by value descending, and items
+ * beyond maxItems are combined into a single "Other" entry.
+ *
+ * @param data - Array of data objects with name and value fields
+ * @param maxItems - Maximum number of individual items to show
+ * @param valueKey - The key to use for the value field (default: 'value' or 'eventCount')
+ * @returns Aggregated data array with "Other" category if needed
+ */
+function aggregateToTopN(
+  data: Record<string, unknown>[],
+  maxItems: number,
+  valueKey: string = DEFAULT_VALUE_KEY
+): Record<string, unknown>[] {
+  if (data.length <= maxItems) {
+    return data;
+  }
+
+  // Determine the actual value key (could be 'value', 'eventCount', etc.)
+  const actualValueKey =
+    data[0]?.[valueKey] !== undefined
+      ? valueKey
+      : data[0]?.['eventCount'] !== undefined
+        ? 'eventCount'
+        : DEFAULT_VALUE_KEY;
+
+  // Sort by value descending
+  const sorted = [...data].sort((a, b) => {
+    const aVal = Number(a[actualValueKey]) || 0;
+    const bVal = Number(b[actualValueKey]) || 0;
+    return bVal - aVal;
+  });
+
+  // Take top N-1 items to leave room for "Other"
+  const topItems = sorted.slice(0, maxItems - 1);
+
+  // Sum remaining items into "Other"
+  const otherItems = sorted.slice(maxItems - 1);
+  const otherTotal = otherItems.reduce((sum, item) => {
+    return sum + (Number(item[actualValueKey]) || 0);
+  }, 0);
+
+  if (otherTotal > 0) {
+    topItems.push({
+      name: `Other (${otherItems.length})`,
+      [actualValueKey]: otherTotal,
+    });
+  }
+
+  return topItems;
 }
 
 /**
@@ -376,6 +473,82 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
 }
 
 /**
+ * Renders a donut chart using Recharts PieChart component with inner radius.
+ *
+ * Donut charts are pie charts with a hollow center, making them more visually
+ * appealing and easier to read for part-to-whole comparisons. The center
+ * space can optionally display a total or label.
+ *
+ * Better than pie charts for:
+ * - Multiple small slices (easier to compare arc lengths)
+ * - Dashboards (more modern, less visually heavy)
+ * - Showing proportions without exact values
+ *
+ * @param chartData - Array of data points with name and value properties
+ * @param config - Chart configuration with legend settings
+ * @returns A PieChart component configured as a donut
+ */
+function renderDonutChart(chartData: unknown[], config: WidgetConfigChart) {
+  // Determine the value key from the data
+  const firstItem = chartData[0] as Record<string, unknown> | undefined;
+  const valueKey =
+    firstItem?.['value'] !== undefined
+      ? 'value'
+      : firstItem?.['eventCount'] !== undefined
+        ? 'eventCount'
+        : 'value';
+  const nameKey = 'name';
+
+  // Calculate total for center label
+  const total = (chartData as Record<string, unknown>[]).reduce((sum, item) => {
+    return sum + (Number(item[valueKey]) || 0);
+  }, 0);
+
+  return (
+    <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+      <Pie
+        data={chartData}
+        dataKey={valueKey}
+        nameKey={nameKey}
+        cx={config.show_legend ? '35%' : '50%'}
+        cy="50%"
+        innerRadius="55%"
+        outerRadius="85%"
+        paddingAngle={2}
+        label={({ percent }) => (percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : '')}
+        labelLine={false}
+      >
+        {(chartData as Record<string, unknown>[]).map((_, index) => (
+          <Cell key={`cell-${index}`} fill={getSeriesColor(index)} />
+        ))}
+      </Pie>
+      <Tooltip
+        contentStyle={tooltipStyle}
+        formatter={(value: number, name: string) => {
+          const safePercent = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+          return [`${value.toLocaleString()} (${safePercent}%)`, name];
+        }}
+      />
+      {config.show_legend && (
+        <Legend
+          layout="vertical"
+          align="right"
+          verticalAlign="middle"
+          wrapperStyle={{
+            paddingLeft: '8px',
+            fontSize: '11px',
+            lineHeight: '1.5',
+          }}
+          formatter={(value: string) => (
+            <span style={{ display: 'inline', whiteSpace: 'nowrap' }}>{value}</span>
+          )}
+        />
+      )}
+    </PieChart>
+  );
+}
+
+/**
  * Renders a scatter chart using Recharts ScatterChart component.
  *
  * Scatter charts display individual data points to show correlation
@@ -467,36 +640,68 @@ function renderScatterChart(chartData: unknown[], config: WidgetConfigChart) {
  * @returns A card containing the configured chart type
  */
 export function ChartWidget({ widget, config, data, isLoading }: ChartWidgetProps) {
+  // Toggle state for switching between chart types
+  const [useAlternate, setUseAlternate] = useState(false);
+
+  // Determine the active chart type
+  const activeChartType =
+    useAlternate && config.alternate_chart_type ? config.alternate_chart_type : config.chart_type;
+
+  // Check if this chart type benefits from aggregation
+  const shouldAggregate = ['pie', 'donut'].includes(activeChartType);
+  // Default from schema: CHART_MAX_ITEMS_DEFAULT (7)
+  const maxItems = config.max_items ?? 7;
+
+  // Extract chart data using explicit data_key or fallback to heuristics
+  // Must happen before any returns to maintain hooks order
+  const rawChartData = useMemo(() => {
+    let result: unknown[] = [];
+
+    // 1. Use explicit data_key if provided (preferred)
+    if (config.data_key && Array.isArray(data[config.data_key])) {
+      result = data[config.data_key] as unknown[];
+    }
+    // 2. Fallback: try the first series data_key as an array key
+    else {
+      const primaryDataKey = config.series[0]?.data_key;
+      if (primaryDataKey && Array.isArray(data[primaryDataKey])) {
+        result = data[primaryDataKey] as unknown[];
+      } else {
+        // 3. Last resort: look for any array in data
+        const arrayKeys = Object.keys(data).filter((key) => Array.isArray(data[key]));
+        if (arrayKeys.length > 0) {
+          result = data[arrayKeys[0]] as unknown[];
+        }
+      }
+    }
+
+    // If still no data, check for a 'data' key
+    if (result.length === 0 && Array.isArray(data['data'])) {
+      result = data['data'] as unknown[];
+    }
+
+    return result;
+  }, [data, config.data_key, config.series]);
+
+  // Apply Top N aggregation for pie/donut charts with many categories
+  const chartData = useMemo(() => {
+    if (shouldAggregate && rawChartData.length > maxItems) {
+      return aggregateToTopN(
+        rawChartData as Record<string, unknown>[],
+        maxItems,
+        config.series[0]?.data_key || 'value'
+      );
+    }
+    return rawChartData;
+  }, [rawChartData, shouldAggregate, maxItems, config.series]);
+
   if (isLoading) {
     return <ChartSkeleton title={widget.title} />;
   }
 
-  // Extract chart data from the first series data_key
-  // The data should be an array at this key
-  const primaryDataKey = config.series[0]?.data_key;
-  let chartData: unknown[] = [];
-
-  // Try to find data - check if there's a common data key pattern
-  // First check if data has a direct array at the series data key
-  if (primaryDataKey && Array.isArray(data[primaryDataKey])) {
-    chartData = data[primaryDataKey] as unknown[];
-  } else {
-    // Look for array data in the dashboard data
-    const arrayKeys = Object.keys(data).filter((key) => Array.isArray(data[key]));
-    if (arrayKeys.length > 0) {
-      // Use the first array found
-      chartData = data[arrayKeys[0]] as unknown[];
-    }
-  }
-
-  // If still no data, check for a 'data' key
-  if (chartData.length === 0 && Array.isArray(data['data'])) {
-    chartData = data['data'] as unknown[];
-  }
-
   // Render appropriate chart type
   const renderChart = () => {
-    switch (config.chart_type) {
+    switch (activeChartType) {
       case 'line':
         return renderLineChart(chartData, config);
       case 'bar':
@@ -505,6 +710,8 @@ export function ChartWidget({ widget, config, data, isLoading }: ChartWidgetProp
         return renderAreaChart(chartData, config);
       case 'pie':
         return renderPieChart(chartData, config);
+      case 'donut':
+        return renderDonutChart(chartData, config);
       case 'scatter':
         return renderScatterChart(chartData, config);
       default:
@@ -512,13 +719,39 @@ export function ChartWidget({ widget, config, data, isLoading }: ChartWidgetProp
     }
   };
 
+  // Determine icons for toggle button
+  const getToggleIcon = () => {
+    const targetType = useAlternate ? config.chart_type : config.alternate_chart_type;
+    if (targetType === 'bar') return <BarChart3 className="h-3.5 w-3.5" />;
+    if (targetType === 'donut' || targetType === 'pie')
+      return <PieChartIcon className="h-3.5 w-3.5" />;
+    return <BarChart3 className="h-3.5 w-3.5" />;
+  };
+
+  const hasToggle = !!config.alternate_chart_type;
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">{widget.title}</CardTitle>
-        {widget.description && (
-          <CardDescription className="text-xs">{widget.description}</CardDescription>
-        )}
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base">{widget.title}</CardTitle>
+            {widget.description && (
+              <CardDescription className="text-xs">{widget.description}</CardDescription>
+            )}
+          </div>
+          {hasToggle && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+              onClick={() => setUseAlternate(!useAlternate)}
+              title={`Switch to ${useAlternate ? config.chart_type : config.alternate_chart_type} view`}
+            >
+              {getToggleIcon()}
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="flex-1 min-h-0 pb-4">
         {chartData.length === 0 ? (

@@ -2,7 +2,7 @@
  * Event Bus Monitor Dashboard
  *
  * Real-time Kafka event stream visualization for ONEX platform.
- * Uses WebSocket connection for live event streaming and displays
+ * Uses useEventBusStream hook for live event streaming and displays
  * events through the contract-driven dashboard renderer.
  *
  * Features:
@@ -12,16 +12,22 @@
  * - Throughput and error rate metrics
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { DashboardRenderer } from '@/lib/widgets';
 import {
   eventBusDashboardConfig,
-  generateEventBusMockData,
-  MONITORED_TOPICS,
-  TOPIC_METADATA,
-  type EventHeaders,
+  getEventMonitoringConfig,
+  getTopicLabel,
+  getMonitoredTopics,
 } from '@/lib/configs/event-bus-dashboard';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useEventBusStream } from '@/hooks/useEventBusStream';
+import type {
+  ProcessedEvent,
+  TopicBreakdownItem,
+  EventTypeBreakdownItem,
+  TimeSeriesItem,
+} from '@/hooks/useEventBusStream.types';
+import { TIME_SERIES_BUCKET_MS } from '@/hooks/useEventBusStream.utils';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,23 +40,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Activity, Wifi, WifiOff, RefreshCw, Filter, X, Pause, Play } from 'lucide-react';
+import { Activity, RefreshCw, Filter, X, Pause, Play } from 'lucide-react';
+import {
+  EventDetailPanel,
+  type EventDetailPanelProps,
+} from '@/components/event-bus/EventDetailPanel';
 
-interface WebSocketEventMessage {
-  type: string;
-  data?: unknown;
-  timestamp?: string;
-}
-
-interface EventBusEvent {
-  topic: string;
-  key: string | null;
-  value: unknown;
-  headers: Partial<EventHeaders>;
-  offset: string;
-  partition: number;
-  timestamp: string;
-}
+// ============================================================================
+// Types
+// ============================================================================
 
 interface FilterState {
   topic: string | null;
@@ -58,331 +56,291 @@ interface FilterState {
   search: string;
 }
 
-export default function EventBusMonitor() {
-  // Dashboard state
-  const [dashboardData, setDashboardData] = useState<DashboardData>(() =>
-    generateEventBusMockData()
-  );
-  const [eventCount, setEventCount] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+interface PausedSnapshot {
+  events: ProcessedEvent[];
+  topicBreakdown: TopicBreakdownItem[];
+  eventTypeBreakdown: EventTypeBreakdownItem[];
+  timeSeries: TimeSeriesItem[];
+  totalEvents: number;
+  eventsPerSecond: number;
+  errorRate: number;
+  activeTopics: number;
+}
 
-  // Filter state
+// ============================================================================
+// Constants
+// ============================================================================
+
+const eventConfig = getEventMonitoringConfig();
+const monitoredTopics = getMonitoredTopics();
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Map event priority to UI type for EventFeed display.
+ */
+function mapPriorityToType(priority: string): 'info' | 'success' | 'warning' | 'error' {
+  switch (priority) {
+    case 'critical':
+      return 'error';
+    case 'high':
+      return 'warning';
+    case 'normal':
+      return 'info';
+    case 'low':
+      return 'success';
+    default:
+      return 'info';
+  }
+}
+
+/**
+ * Convert ProcessedEvent to live event format for EventFeed widget.
+ */
+function toLiveEvent(event: ProcessedEvent) {
+  return {
+    id: event.id,
+    timestamp: event.timestampRaw,
+    type: mapPriorityToType(event.priority),
+    severity: mapPriorityToType(event.priority),
+    message: `${event.eventType} from ${event.source}`,
+    source: event.topicRaw,
+    topicRaw: event.topicRaw,
+    topic: event.topic,
+    priority: event.priority,
+    eventType: event.eventType,
+  };
+}
+
+/**
+ * Convert ProcessedEvent to recent event format for table.
+ */
+function toRecentEvent(event: ProcessedEvent) {
+  return {
+    id: event.id,
+    topic: event.topic,
+    topicRaw: event.topicRaw,
+    eventType: event.eventType,
+    source: event.source,
+    timestamp: event.timestampRaw,
+    priority: event.priority,
+    correlationId: event.correlationId,
+    payload: event.payload,
+  };
+}
+
+// ============================================================================
+// Component
+// ============================================================================
+
+export default function EventBusMonitor() {
+  // Stream hook provides events, metrics, and connection management
+  const {
+    events,
+    metrics,
+    topicBreakdown,
+    eventTypeBreakdown,
+    timeSeries,
+    connectionStatus,
+    stats,
+    connect,
+  } = useEventBusStream({
+    maxItems: eventConfig.max_events,
+  });
+
+  // UI state
   const [filters, setFilters] = useState<FilterState>({
     topic: null,
     priority: null,
     search: '',
   });
+  const [selectedEvent, setSelectedEvent] = useState<EventDetailPanelProps['event']>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [maxEvents, setMaxEvents] = useState(eventConfig.max_events);
 
-  // Event buffer for real-time updates (reserved for future batching)
-  const [_eventBuffer, _setEventBuffer] = useState<EventBusEvent[]>([]);
+  // Paused snapshot - captures state when pausing
+  const pausedSnapshotRef = useRef<PausedSnapshot | null>(null);
+  // Track previous pause state to detect transitions
+  const wasPausedRef = useRef(false);
 
-  // Convert various event types to a unified format for display
-  const createEventEntry = useCallback((eventType: string, data: any, topic: string) => {
-    const id =
-      data.id || data.correlationId || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const timestamp = data.createdAt || data.timestamp || new Date().toISOString();
-
-    // Honor upstream priority when available, with fallback to error-based detection
-    const priority =
-      data.priority ??
-      data.severity ??
-      data.headers?.priority ??
-      (data.actionType === 'error' ? 'critical' : 'normal');
-
-    return {
-      id,
-      topic,
-      topicRaw: topic,
-      eventType,
-      source: data.agentName || data.sourceAgent || data.selectedAgent || 'system',
-      timestamp: typeof timestamp === 'string' ? timestamp : new Date(timestamp).toISOString(),
-      priority,
-      correlationId: data.correlationId,
-      payload: JSON.stringify(data).slice(0, 200),
-    };
-  }, []);
-
-  // Update dashboard with a new event
-  const updateDashboardWithEvent = useCallback((event: any) => {
-    setDashboardData((prev) => {
-      const recentEvents = Array.isArray(prev.recentEvents) ? prev.recentEvents : [];
-      const liveEvents = Array.isArray(prev.liveEvents) ? prev.liveEvents : [];
-
-      const newLiveEvent = {
-        id: event.id,
-        timestamp: event.timestamp,
-        type: mapPriorityToType(event.priority),
-        severity: mapPriorityToType(event.priority),
-        message: `${event.eventType} from ${event.source}`,
-        source: event.topicRaw,
-        // Include fields needed for filtering
-        topicRaw: event.topicRaw,
-        topic: event.topic,
-        priority: event.priority,
-        eventType: event.eventType,
+  // Capture snapshot only on transition from unpaused -> paused
+  useEffect(() => {
+    if (isPaused && !wasPausedRef.current) {
+      // Transition: unpaused -> paused - capture snapshot once
+      pausedSnapshotRef.current = {
+        events,
+        topicBreakdown,
+        eventTypeBreakdown,
+        timeSeries,
+        totalEvents: metrics.totalEvents,
+        eventsPerSecond: metrics.eventsPerSecond,
+        errorRate: metrics.errorRate,
+        activeTopics: metrics.activeTopics,
       };
+      wasPausedRef.current = true;
+    } else if (!isPaused && wasPausedRef.current) {
+      // Transition: paused -> unpaused - clear snapshot
+      pausedSnapshotRef.current = null;
+      wasPausedRef.current = false;
+    }
+  }, [isPaused, events, topicBreakdown, eventTypeBreakdown, timeSeries, metrics]);
 
-      // Update totals
-      const totalEvents = (typeof prev.totalEvents === 'number' ? prev.totalEvents : 0) + 1;
-      const isError = event.priority === 'critical';
-      const errorCount = isError
-        ? ((prev.dlqCount as number) || 0) + 1
-        : (prev.dlqCount as number) || 0;
-      const errorRate = totalEvents > 0 ? (errorCount / totalEvents) * 100 : 0;
+  // Use paused snapshot or live data
+  const sourceData = useMemo(() => {
+    if (isPaused && pausedSnapshotRef.current) {
+      return pausedSnapshotRef.current;
+    }
+    return {
+      events,
+      topicBreakdown,
+      eventTypeBreakdown,
+      timeSeries,
+      totalEvents: metrics.totalEvents,
+      eventsPerSecond: metrics.eventsPerSecond,
+      errorRate: metrics.errorRate,
+      activeTopics: metrics.activeTopics,
+    };
+  }, [isPaused, events, topicBreakdown, eventTypeBreakdown, timeSeries, metrics]);
+
+  // Last update time for display
+  const lastUpdate = useMemo(() => {
+    if (stats.lastEventAt) {
+      return new Date(stats.lastEventAt);
+    }
+    return new Date();
+  }, [stats.lastEventAt]);
+
+  // ============================================================================
+  // Filtered Data
+  // ============================================================================
+
+  const filteredData = useMemo((): DashboardData => {
+    const { events: srcEvents } = sourceData;
+
+    // Quick path: no filters active
+    if (!filters.topic && !filters.priority && !filters.search) {
+      const liveEvents = srcEvents.slice(0, maxEvents).map(toLiveEvent);
+      const recentEvents = srcEvents.slice(0, maxEvents).map(toRecentEvent);
 
       return {
-        ...prev,
-        totalEvents,
-        dlqCount: errorCount,
-        errorRate: Math.round(errorRate * 100) / 100,
-        recentEvents: [event, ...recentEvents].slice(0, 50),
-        liveEvents: [newLiveEvent, ...liveEvents].slice(0, 50),
+        totalEvents: sourceData.totalEvents,
+        eventsPerSecond: sourceData.eventsPerSecond,
+        errorRate: sourceData.errorRate,
+        activeTopics: sourceData.activeTopics,
+        dlqCount: srcEvents.filter((e) => e.priority === 'critical').length,
+        recentEvents,
+        liveEvents,
+        topicBreakdownData: sourceData.topicBreakdown,
+        eventTypeBreakdownData: sourceData.eventTypeBreakdown,
+        timeSeriesData: sourceData.timeSeries,
+        topicHealth: [],
       };
-    });
-  }, []);
+    }
 
-  // Process incoming WebSocket messages
-  const handleMessage = useCallback(
-    (message: WebSocketEventMessage) => {
-      if (isPaused) return;
-
-      setLastUpdate(new Date());
-
-      switch (message.type) {
-        // Connection status messages (don't count as events)
-        case 'CONNECTED':
-        case 'SUBSCRIPTION_UPDATED':
-        case 'PONG':
-          return; // These are system messages, not events
-
-        case 'CONSUMER_STATUS': {
-          // Consumer connected/disconnected status - no action needed
-          return;
-        }
-
-        case 'INITIAL_STATE': {
-          // Handle initial state from server - populate dashboard with historical data
-          const state = message.data as Record<string, unknown>;
-          if (state) {
-            // Convert actions to dashboard format
-            const recentActions = (state.recentActions as any[]) || [];
-            const routingDecisions = (state.routingDecisions as any[]) || [];
-            const recentTransformations = (state.recentTransformations as any[]) || [];
-
-            const events = [
-              ...recentActions.map((a) =>
-                createEventEntry(a.actionType || 'action', a, 'agent-actions')
-              ),
-              ...routingDecisions.map((d) =>
-                createEventEntry('routing', d, 'agent-routing-decisions')
-              ),
-              ...recentTransformations.map((t) =>
-                createEventEntry('transformation', t, 'agent-transformation-events')
-              ),
-            ]
-              .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-              .slice(0, 50);
-
-            setEventCount(events.length);
-            setDashboardData((prev) => ({
-              ...prev,
-              totalEvents: events.length,
-              eventsPerSecond: 0,
-              errorRate: 0,
-              activeTopics: 4,
-              recentEvents: events,
-              liveEvents: events.slice(0, 20).map((e) => ({
-                id: e.id,
-                timestamp: e.timestamp,
-                type: mapPriorityToType(e.priority),
-                severity: mapPriorityToType(e.priority),
-                message: `${e.eventType} from ${e.source}`,
-                source: e.topicRaw,
-              })),
-            }));
-          }
-          break;
-        }
-
-        case 'AGENT_ACTION': {
-          setEventCount((c) => c + 1);
-          const action = message.data as any;
-          if (action) {
-            const event = createEventEntry(action.actionType || 'action', action, 'agent-actions');
-            updateDashboardWithEvent(event);
-          }
-          break;
-        }
-
-        case 'ROUTING_DECISION': {
-          setEventCount((c) => c + 1);
-          const decision = message.data as any;
-          if (decision) {
-            const event = createEventEntry('routing', decision, 'agent-routing-decisions');
-            updateDashboardWithEvent(event);
-          }
-          break;
-        }
-
-        case 'AGENT_TRANSFORMATION': {
-          setEventCount((c) => c + 1);
-          const transformation = message.data as any;
-          if (transformation) {
-            const event = createEventEntry(
-              'transformation',
-              transformation,
-              'agent-transformation-events'
-            );
-            updateDashboardWithEvent(event);
-          }
-          break;
-        }
-
-        case 'PERFORMANCE_METRIC': {
-          setEventCount((c) => c + 1);
-          const { metric, stats } = (message.data as any) || {};
-          if (metric) {
-            const event = createEventEntry('performance', metric, 'router-performance-metrics');
-            updateDashboardWithEvent(event);
-            // Also update performance stats with NaN guard
-            if (stats) {
-              const totalQueries = Number(stats.totalQueries);
-              if (Number.isFinite(totalQueries)) {
-                setDashboardData((prev) => ({
-                  ...prev,
-                  eventsPerSecond: Math.round((totalQueries / 3600) * 10) / 10,
-                }));
-              }
-            }
-          }
-          break;
-        }
-
-        case 'NODE_INTROSPECTION':
-        case 'NODE_HEARTBEAT':
-        case 'NODE_STATE_CHANGE':
-        case 'NODE_REGISTRY_UPDATE': {
-          setEventCount((c) => c + 1);
-          const nodeData = message.data as any;
-          if (nodeData) {
-            const topicMap: Record<string, string> = {
-              NODE_INTROSPECTION: 'dev.omninode_bridge.onex.evt.node-introspection.v1',
-              NODE_HEARTBEAT: 'node.heartbeat',
-              NODE_STATE_CHANGE: 'dev.onex.evt.registration-completed.v1',
-              NODE_REGISTRY_UPDATE:
-                'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
-            };
-            const topic = topicMap[message.type] || 'node.events';
-            const event = createEventEntry(
-              message.type.toLowerCase().replace('node_', ''),
-              nodeData,
-              topic
-            );
-            updateDashboardWithEvent(event);
-          }
-          break;
-        }
-
-        case 'AGENT_METRIC_UPDATE': {
-          // Metrics update - don't count as individual events
-          const metrics = message.data as any[];
-          if (Array.isArray(metrics)) {
-            setDashboardData((prev) => ({
-              ...prev,
-              activeTopics: metrics.length,
-            }));
-          }
-          break;
-        }
-
-        case 'ERROR': {
-          setEventCount((c) => c + 1);
-          const error = message.data as { message: string };
-          if (error) {
-            const event = createEventEntry(
-              'error',
-              { message: error.message, actionType: 'error' },
-              'errors'
-            );
-            updateDashboardWithEvent(event);
-          }
-          break;
-        }
+    // Filter events
+    const filtered = srcEvents.filter((event) => {
+      if (filters.topic && event.topicRaw !== filters.topic) return false;
+      if (filters.priority && event.priority !== filters.priority) return false;
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesSearch =
+          event.eventType.toLowerCase().includes(searchLower) ||
+          event.source.toLowerCase().includes(searchLower) ||
+          event.topic.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
       }
-    },
-    [isPaused, createEventEntry, updateDashboardWithEvent]
-  );
+      return true;
+    });
 
-  // WebSocket connection
-  const { isConnected, connectionStatus, reconnect, subscribe, unsubscribe } = useWebSocket({
-    onMessage: handleMessage,
-    debug: false,
-  });
+    // Recalculate breakdowns from filtered events
+    const topicCounts: Record<string, number> = {};
+    const eventTypeCounts: Record<string, number> = {};
+    const timeBuckets: Record<number, number> = {};
 
-  // Subscribe to all events on connection
-  useEffect(() => {
-    if (isConnected) {
-      // Subscribe to 'all' to receive all event types
-      subscribe(['all']);
-      return () => unsubscribe(['all']);
-    }
-  }, [isConnected, subscribe, unsubscribe]);
-
-  // Refresh mock data periodically when not connected
-  useEffect(() => {
-    if (!isConnected && !isPaused) {
-      const interval = setInterval(() => {
-        setDashboardData(generateEventBusMockData());
-        setLastUpdate(new Date());
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [isConnected, isPaused]);
-
-  // Filtered data for display
-  const filteredData = useMemo(() => {
-    if (!filters.topic && !filters.priority && !filters.search) {
-      return dashboardData;
+    for (const event of filtered) {
+      topicCounts[event.topicRaw] = (topicCounts[event.topicRaw] || 0) + 1;
+      eventTypeCounts[event.eventType] = (eventTypeCounts[event.eventType] || 0) + 1;
+      const bucketTime =
+        Math.floor(event.timestamp.getTime() / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
+      timeBuckets[bucketTime] = (timeBuckets[bucketTime] || 0) + 1;
     }
 
-    const filterEvents = (events: unknown[]) => {
-      if (!Array.isArray(events)) return events;
-      return events.filter((event: unknown) => {
-        const e = event as Record<string, unknown>;
-        if (filters.topic && e.topicRaw !== filters.topic) return false;
-        if (filters.priority && e.priority !== filters.priority) return false;
-        if (filters.search) {
-          const searchLower = filters.search.toLowerCase();
-          const matchesSearch =
-            String(e.eventType || '')
-              .toLowerCase()
-              .includes(searchLower) ||
-            String(e.source || '')
-              .toLowerCase()
-              .includes(searchLower) ||
-            String(e.topic || '')
-              .toLowerCase()
-              .includes(searchLower);
-          if (!matchesSearch) return false;
-        }
-        return true;
-      });
-    };
+    const filteredTopicBreakdown = Object.entries(topicCounts).map(([topic, count]) => ({
+      name: getTopicLabel(topic),
+      topic,
+      eventCount: count,
+    }));
+
+    const filteredEventTypeBreakdown = Object.entries(eventTypeCounts).map(
+      ([eventType, count]) => ({
+        name: eventType,
+        eventType,
+        eventCount: count,
+      })
+    );
+
+    const filteredTimeSeries = Object.entries(timeBuckets)
+      .map(([time, count]) => ({
+        time: Number(time),
+        timestamp: new Date(Number(time)).toLocaleTimeString(),
+        events: count,
+      }))
+      .sort((a, b) => a.time - b.time);
 
     return {
-      ...dashboardData,
-      recentEvents: filterEvents(dashboardData.recentEvents as unknown[]),
-      liveEvents: filterEvents(dashboardData.liveEvents as unknown[]),
+      totalEvents: filtered.length,
+      eventsPerSecond: sourceData.eventsPerSecond,
+      errorRate: sourceData.errorRate,
+      activeTopics: filteredTopicBreakdown.length,
+      dlqCount: filtered.filter((e) => e.priority === 'critical').length,
+      recentEvents: filtered.slice(0, maxEvents).map(toRecentEvent),
+      liveEvents: filtered.slice(0, maxEvents).map(toLiveEvent),
+      topicBreakdownData: filteredTopicBreakdown,
+      eventTypeBreakdownData: filteredEventTypeBreakdown,
+      timeSeriesData: filteredTimeSeries,
+      topicHealth: [],
     };
-  }, [dashboardData, filters]);
+  }, [sourceData, filters, maxEvents]);
 
-  // Clear filters
-  const clearFilters = () => {
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+
+  const clearFilters = useCallback(() => {
     setFilters({ topic: null, priority: null, search: '' });
-  };
+  }, []);
+
+  const handleEventClick = useCallback((widgetId: string, row: Record<string, unknown>) => {
+    if (widgetId === 'table-recent-events') {
+      setSelectedEvent({
+        id: String(row.id || ''),
+        topic: String(row.topic || ''),
+        topicRaw: String(row.topicRaw || row.topic || ''),
+        eventType: String(row.eventType || ''),
+        source: String(row.source || ''),
+        timestamp: String(row.timestamp || ''),
+        priority: String(row.priority || 'normal'),
+        correlationId: row.correlationId ? String(row.correlationId) : undefined,
+        payload: row.payload ? String(row.payload) : undefined,
+      });
+      setIsPanelOpen(true);
+    }
+  }, []);
+
+  // ============================================================================
+  // Derived State
+  // ============================================================================
 
   const hasActiveFilters = filters.topic || filters.priority || filters.search;
+  const isConnected = connectionStatus === 'connected';
+  const eventCount = stats.totalReceived;
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <div className="space-y-6">
@@ -397,7 +355,6 @@ export default function EventBusMonitor() {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Live Data Badge */}
           {isConnected && (
             <Badge variant="default" className="bg-green-600 hover:bg-green-700 gap-1">
               <span className="relative flex h-2 w-2">
@@ -408,17 +365,14 @@ export default function EventBusMonitor() {
             </Badge>
           )}
 
-          {/* Event counter */}
           <div className="text-sm text-muted-foreground">
             <span className="font-mono">{eventCount.toLocaleString()}</span> events
           </div>
 
-          {/* Last update */}
           <div className="text-sm text-muted-foreground">
             Updated: {lastUpdate.toLocaleTimeString()}
           </div>
 
-          {/* Pause/Resume */}
           <Button
             variant="outline"
             size="sm"
@@ -438,26 +392,8 @@ export default function EventBusMonitor() {
             )}
           </Button>
 
-          {/* Connection status */}
-          <div className="flex items-center gap-2">
-            <div
-              className={`h-2 w-2 rounded-full transition-colors duration-300 ${
-                isConnected
-                  ? 'bg-green-500 animate-pulse'
-                  : connectionStatus === 'connecting'
-                    ? 'bg-yellow-500 animate-pulse'
-                    : 'bg-red-500'
-              }`}
-            />
-            <span className="text-sm text-muted-foreground capitalize flex items-center gap-1">
-              {isConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              {connectionStatus}
-            </span>
-          </div>
-
-          {/* Reconnect button */}
           {!isConnected && connectionStatus !== 'connecting' && (
-            <Button variant="outline" size="sm" onClick={reconnect} className="gap-2">
+            <Button variant="outline" size="sm" onClick={connect} className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Reconnect
             </Button>
@@ -473,7 +409,6 @@ export default function EventBusMonitor() {
             <span className="text-sm font-medium">Filters:</span>
           </div>
 
-          {/* Topic filter */}
           <Select
             value={filters.topic || 'all'}
             onValueChange={(value) =>
@@ -485,15 +420,14 @@ export default function EventBusMonitor() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Topics</SelectItem>
-              {MONITORED_TOPICS.map((topic) => (
+              {monitoredTopics.map((topic) => (
                 <SelectItem key={topic} value={topic}>
-                  {TOPIC_METADATA[topic].label}
+                  {getTopicLabel(topic)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          {/* Priority filter */}
           <Select
             value={filters.priority || 'all'}
             onValueChange={(value) =>
@@ -512,7 +446,6 @@ export default function EventBusMonitor() {
             </SelectContent>
           </Select>
 
-          {/* Search */}
           <div className="flex-1 max-w-xs">
             <Input
               placeholder="Search events..."
@@ -522,7 +455,25 @@ export default function EventBusMonitor() {
             />
           </div>
 
-          {/* Clear filters */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Max events:</span>
+            <Select
+              value={String(maxEvents)}
+              onValueChange={(value) => setMaxEvents(Number(value))}
+            >
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {eventConfig.max_events_options.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {option.toLocaleString()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
               <X className="h-4 w-4" />
@@ -530,13 +481,10 @@ export default function EventBusMonitor() {
             </Button>
           )}
 
-          {/* Active filter badges */}
           <div className="flex items-center gap-2">
             {filters.topic && (
               <Badge variant="secondary" className="gap-1">
-                Topic:{' '}
-                {TOPIC_METADATA[filters.topic as keyof typeof TOPIC_METADATA]?.label ||
-                  filters.topic}
+                Topic: {getTopicLabel(filters.topic)}
                 <X
                   className="h-3 w-3 cursor-pointer"
                   onClick={() => setFilters((prev) => ({ ...prev, topic: null }))}
@@ -559,7 +507,7 @@ export default function EventBusMonitor() {
       {/* Topic Legend */}
       <div className="flex items-center gap-6 text-sm">
         <span className="text-muted-foreground">Topics:</span>
-        {MONITORED_TOPICS.map((topic) => (
+        {monitoredTopics.map((topic) => (
           <div
             key={topic}
             className="flex items-center gap-2 cursor-pointer hover:opacity-80"
@@ -580,7 +528,7 @@ export default function EventBusMonitor() {
               }`}
             />
             <span className={filters.topic === topic ? 'font-medium' : ''}>
-              {TOPIC_METADATA[topic]?.label || topic}
+              {getTopicLabel(topic)}
             </span>
           </div>
         ))}
@@ -591,42 +539,11 @@ export default function EventBusMonitor() {
         config={eventBusDashboardConfig}
         data={filteredData}
         isLoading={connectionStatus === 'connecting'}
+        onWidgetRowClick={handleEventClick}
       />
 
-      {/* Data Flow Information */}
-      <Card className="p-4 bg-muted/50">
-        <h3 className="text-sm font-semibold mb-2">Data Flow</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-          <div>
-            <span className="font-medium text-foreground">Source:</span> Kafka (
-            {isConnected ? 'Live' : 'Mock Data'})
-          </div>
-          <div>
-            <span className="font-medium text-foreground">Transport:</span> WebSocket at{' '}
-            <code className="text-xs bg-muted px-1 py-0.5 rounded">/ws</code>
-          </div>
-          <div>
-            <span className="font-medium text-foreground">Topics:</span> {MONITORED_TOPICS.length}{' '}
-            monitored
-          </div>
-        </div>
-      </Card>
+      {/* Event Detail Panel */}
+      <EventDetailPanel event={selectedEvent} open={isPanelOpen} onOpenChange={setIsPanelOpen} />
     </div>
   );
-}
-
-// Helper function to map priority to event type
-function mapPriorityToType(priority: string): 'info' | 'success' | 'warning' | 'error' {
-  switch (priority) {
-    case 'critical':
-      return 'error';
-    case 'high':
-      return 'warning';
-    case 'normal':
-      return 'info';
-    case 'low':
-      return 'success';
-    default:
-      return 'info';
-  }
 }

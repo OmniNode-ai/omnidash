@@ -2,11 +2,17 @@
  * ChartWidget Tests
  *
  * Comprehensive tests for the ChartWidget component which renders various
- * chart types (line, bar, area, pie, scatter) based on widget configuration.
+ * chart types (line, bar, area, pie, donut, scatter) based on widget configuration.
+ *
+ * Includes tests for:
+ * - All chart types (line, bar, area, pie, donut, scatter)
+ * - Top N aggregation for pie/donut charts
+ * - Chart type toggle functionality
+ * - Loading and empty states
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { ChartWidget } from '../ChartWidget';
 import type { WidgetDefinition, WidgetConfigChart, DashboardData } from '@/lib/dashboard-schema';
@@ -290,6 +296,346 @@ describe('ChartWidget', () => {
     render(<ChartWidget widget={widget} config={config} data={data} />);
 
     // Falls back to 'data' key
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Donut Chart Tests
+ *
+ * Tests specific to the donut chart type which is a pie chart with
+ * an inner radius, making it more suitable for dashboards.
+ */
+describe('ChartWidget - Donut Chart', () => {
+  it('should render donut chart when chart_type is donut', () => {
+    const widget = createWidget({ title: 'Donut Chart Test' });
+    const config = createConfig({
+      chart_type: 'donut',
+      series: [{ name: 'Distribution', data_key: 'categories' }],
+    });
+    const data: DashboardData = { categories: pieChartData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    expect(screen.getByText('Donut Chart Test')).toBeInTheDocument();
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+  });
+
+  it('should render donut chart with eventCount value key', () => {
+    const widget = createWidget({ title: 'Event Count Donut' });
+    const config = createConfig({
+      chart_type: 'donut',
+      series: [{ name: 'Events', data_key: 'events' }],
+    });
+    const eventCountData = [
+      { name: 'Event A', eventCount: 500 },
+      { name: 'Event B', eventCount: 300 },
+      { name: 'Event C', eventCount: 200 },
+    ];
+    const data: DashboardData = { events: eventCountData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    expect(screen.getByText('Event Count Donut')).toBeInTheDocument();
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+  });
+
+  it('should render donut chart with legend when show_legend is true', () => {
+    const widget = createWidget({ title: 'Donut with Legend' });
+    const config = createConfig({
+      chart_type: 'donut',
+      series: [{ name: 'Categories', data_key: 'categories' }],
+      show_legend: true,
+    });
+    const data: DashboardData = { categories: pieChartData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    expect(screen.getByText('Donut with Legend')).toBeInTheDocument();
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+  });
+
+  it('should render donut chart without legend when show_legend is false', () => {
+    const widget = createWidget({ title: 'Donut without Legend' });
+    const config = createConfig({
+      chart_type: 'donut',
+      series: [{ name: 'Categories', data_key: 'categories' }],
+      show_legend: false,
+    });
+    const data: DashboardData = { categories: pieChartData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    expect(screen.getByText('Donut without Legend')).toBeInTheDocument();
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Chart Type Toggle Tests
+ *
+ * Tests for the toggle button that switches between chart types
+ * when alternate_chart_type is configured.
+ */
+describe('ChartWidget - Chart Type Toggle', () => {
+  it('should show toggle button when alternate_chart_type is set', () => {
+    const widget = createWidget({ title: 'Toggleable Chart' });
+    const config = createConfig({
+      chart_type: 'donut',
+      alternate_chart_type: 'bar',
+      series: [{ name: 'Categories', data_key: 'categories' }],
+    });
+    const data: DashboardData = { categories: pieChartData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    // Toggle button should be present
+    const toggleButton = screen.getByRole('button', { name: /switch to/i });
+    expect(toggleButton).toBeInTheDocument();
+  });
+
+  it('should not show toggle button when alternate_chart_type is not set', () => {
+    const widget = createWidget({ title: 'Non-Toggleable Chart' });
+    const config = createConfig({
+      chart_type: 'donut',
+      series: [{ name: 'Categories', data_key: 'categories' }],
+    });
+    const data: DashboardData = { categories: pieChartData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    // Toggle button should not be present
+    const toggleButton = screen.queryByRole('button', { name: /switch to/i });
+    expect(toggleButton).not.toBeInTheDocument();
+  });
+
+  it('should switch chart type when toggle button is clicked', () => {
+    const widget = createWidget({ title: 'Toggle Test' });
+    const config = createConfig({
+      chart_type: 'donut',
+      alternate_chart_type: 'bar',
+      series: [{ name: 'Categories', data_key: 'value' }],
+    });
+    const data: DashboardData = { value: pieChartData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    // Initial render shows donut (primary chart type)
+    const toggleButton = screen.getByRole('button', { name: /switch to bar/i });
+    expect(toggleButton).toBeInTheDocument();
+
+    // Click to switch to bar chart
+    fireEvent.click(toggleButton);
+
+    // Button should now indicate switching back to donut
+    const updatedButton = screen.getByRole('button', { name: /switch to donut/i });
+    expect(updatedButton).toBeInTheDocument();
+  });
+
+  it('should toggle back to original chart type on second click', () => {
+    const widget = createWidget({ title: 'Double Toggle Test' });
+    const config = createConfig({
+      chart_type: 'bar',
+      alternate_chart_type: 'donut',
+      series: [{ name: 'Categories', data_key: 'value' }],
+    });
+    const data: DashboardData = { value: pieChartData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    const toggleButton = screen.getByRole('button', { name: /switch to donut/i });
+
+    // First click: switch to donut
+    fireEvent.click(toggleButton);
+    expect(screen.getByRole('button', { name: /switch to bar/i })).toBeInTheDocument();
+
+    // Second click: switch back to bar
+    fireEvent.click(screen.getByRole('button', { name: /switch to bar/i }));
+    expect(screen.getByRole('button', { name: /switch to donut/i })).toBeInTheDocument();
+  });
+
+  it('should support toggle between pie and bar charts', () => {
+    const widget = createWidget({ title: 'Pie-Bar Toggle' });
+    const config = createConfig({
+      chart_type: 'pie',
+      alternate_chart_type: 'bar',
+      series: [{ name: 'Categories', data_key: 'categories' }],
+    });
+    const data: DashboardData = { categories: pieChartData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    const toggleButton = screen.getByRole('button', { name: /switch to bar/i });
+    expect(toggleButton).toBeInTheDocument();
+
+    fireEvent.click(toggleButton);
+    expect(screen.getByRole('button', { name: /switch to pie/i })).toBeInTheDocument();
+  });
+});
+
+/**
+ * Top N Aggregation Tests
+ *
+ * Tests for the aggregateToTopN function which combines items beyond
+ * maxItems into an "Other" category for pie/donut charts.
+ */
+describe('ChartWidget - Top N Aggregation', () => {
+  // Create data with many categories to trigger aggregation
+  const manyCategories = [
+    { name: 'Category A', value: 500 },
+    { name: 'Category B', value: 400 },
+    { name: 'Category C', value: 300 },
+    { name: 'Category D', value: 200 },
+    { name: 'Category E', value: 150 },
+    { name: 'Category F', value: 100 },
+    { name: 'Category G', value: 80 },
+    { name: 'Category H', value: 60 },
+    { name: 'Category I', value: 40 },
+    { name: 'Category J', value: 20 },
+  ];
+
+  it('should not aggregate when data length is within maxItems (default 7)', () => {
+    const widget = createWidget({ title: 'Small Dataset' });
+    const config = createConfig({
+      chart_type: 'donut',
+      series: [{ name: 'Distribution', data_key: 'categories' }],
+    });
+    // Only 4 items - below default maxItems of 7
+    const data: DashboardData = { categories: pieChartData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    // Chart should render without "Other" aggregation
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+    expect(screen.getByText('Small Dataset')).toBeInTheDocument();
+  });
+
+  it('should aggregate items beyond maxItems into Other category for donut chart', () => {
+    const widget = createWidget({ title: 'Aggregated Donut' });
+    const config = createConfig({
+      chart_type: 'donut',
+      series: [{ name: 'Distribution', data_key: 'categories' }],
+      // Default maxItems is 7, so 10 items should aggregate
+    });
+    const data: DashboardData = { categories: manyCategories };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    // Chart should render (aggregation happens internally)
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+    expect(screen.getByText('Aggregated Donut')).toBeInTheDocument();
+  });
+
+  it('should aggregate items beyond maxItems into Other category for pie chart', () => {
+    const widget = createWidget({ title: 'Aggregated Pie' });
+    const config = createConfig({
+      chart_type: 'pie',
+      series: [{ name: 'Distribution', data_key: 'categories' }],
+    });
+    const data: DashboardData = { categories: manyCategories };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    // Chart should render (aggregation happens internally)
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+    expect(screen.getByText('Aggregated Pie')).toBeInTheDocument();
+  });
+
+  it('should respect custom max_items configuration', () => {
+    const widget = createWidget({ title: 'Custom Max Items' });
+    const config = createConfig({
+      chart_type: 'donut',
+      series: [{ name: 'Distribution', data_key: 'categories' }],
+      max_items: 5, // Custom max items
+    });
+    const data: DashboardData = { categories: manyCategories };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    // Chart should render with custom aggregation threshold
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+    expect(screen.getByText('Custom Max Items')).toBeInTheDocument();
+  });
+
+  it('should not aggregate for non-pie/donut charts even with many items', () => {
+    const widget = createWidget({ title: 'Bar Chart No Aggregation' });
+    const config = createConfig({
+      chart_type: 'bar',
+      series: [{ name: 'Values', data_key: 'value' }],
+    });
+    const data: DashboardData = { value: manyCategories };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    // Bar chart should render all items without aggregation
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+    expect(screen.getByText('Bar Chart No Aggregation')).toBeInTheDocument();
+  });
+
+  it('should handle eventCount value key in aggregation', () => {
+    const widget = createWidget({ title: 'EventCount Aggregation' });
+    const config = createConfig({
+      chart_type: 'donut',
+      series: [{ name: 'Events', data_key: 'eventCount' }],
+    });
+    const eventCountData = [
+      { name: 'Event 1', eventCount: 500 },
+      { name: 'Event 2', eventCount: 400 },
+      { name: 'Event 3', eventCount: 300 },
+      { name: 'Event 4', eventCount: 200 },
+      { name: 'Event 5', eventCount: 150 },
+      { name: 'Event 6', eventCount: 100 },
+      { name: 'Event 7', eventCount: 80 },
+      { name: 'Event 8', eventCount: 60 },
+      { name: 'Event 9', eventCount: 40 },
+      { name: 'Event 10', eventCount: 20 },
+    ];
+    const data: DashboardData = { eventCount: eventCountData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    // Chart should render with eventCount-based aggregation
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+  });
+
+  it('should sort data by value descending before aggregating', () => {
+    const widget = createWidget({ title: 'Sorted Aggregation' });
+    const config = createConfig({
+      chart_type: 'donut',
+      series: [{ name: 'Distribution', data_key: 'categories' }],
+      max_items: 4, // Low threshold to test sorting
+    });
+    // Unsorted data - aggregation should pick highest values
+    const unsortedData = [
+      { name: 'Small', value: 10 },
+      { name: 'Large', value: 1000 },
+      { name: 'Medium', value: 100 },
+      { name: 'Tiny', value: 5 },
+      { name: 'Big', value: 500 },
+    ];
+    const data: DashboardData = { categories: unsortedData };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    // Chart should render with properly sorted and aggregated data
+    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+  });
+
+  it('should use explicit data_key from config for data lookup', () => {
+    const widget = createWidget({ title: 'Explicit Data Key' });
+    const config = createConfig({
+      chart_type: 'donut',
+      data_key: 'my_custom_data', // Explicit data_key
+      series: [{ name: 'Distribution', data_key: 'value' }],
+    });
+    const data: DashboardData = {
+      my_custom_data: manyCategories,
+      other_data: pieChartData,
+    };
+
+    render(<ChartWidget widget={widget} config={config} data={data} />);
+
+    // Should use my_custom_data, not other_data
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 });

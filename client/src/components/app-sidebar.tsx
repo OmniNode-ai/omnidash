@@ -21,25 +21,19 @@ import {
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 
-// Real dashboards - showing actual functionality from omnibase_infra
+// Dashboards ordered by data availability - working dashboards first
 const dashboards = [
-  {
-    title: 'Live Events',
-    url: '/live-events',
-    icon: Activity,
-    description: 'Real-time event stream (investor demo)',
-  },
-  {
-    title: 'Execution Graph',
-    url: '/graph',
-    icon: GitBranch,
-    description: 'Node execution visualization (investor demo)',
-  },
   {
     title: 'Event Bus',
     url: '/events',
     icon: Radio,
-    description: 'Kafka event stream visualization',
+    description: 'Real-time Kafka event stream visualization',
+  },
+  {
+    title: 'Intent Dashboard',
+    url: '/intents',
+    icon: Brain,
+    description: 'Real-time intent classification and analysis',
   },
   {
     title: 'Registry Discovery',
@@ -48,10 +42,16 @@ const dashboards = [
     description: 'Contract-driven node and service discovery',
   },
   {
-    title: 'Intent Dashboard',
-    url: '/intents',
-    icon: Brain,
-    description: 'Real-time intent classification and analysis',
+    title: 'Execution Graph',
+    url: '/graph',
+    icon: GitBranch,
+    description: 'Node execution visualization',
+  },
+  {
+    title: 'Demo Stream',
+    url: '/live-events',
+    icon: Activity,
+    description: 'Investor demo - routing & transformation events',
   },
 ];
 

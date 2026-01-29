@@ -167,6 +167,13 @@ describe('EventConsumer', () => {
           'dev.onex.evt.node-liveness-expired.v1',
           'dev.onex.evt.node-heartbeat.v1',
           'dev.onex.evt.node-introspection.v1',
+          // OmniClaude hook events (prompt submissions, tool executions)
+          'dev.onex.cmd.omniintelligence.claude-hook-event.v1',
+          // OmniClaude lifecycle events
+          'dev.onex.evt.omniclaude.prompt-submitted.v1',
+          'dev.onex.evt.omniclaude.session-started.v1',
+          'dev.onex.evt.omniclaude.tool-executed.v1',
+          'dev.onex.evt.omniclaude.session-ended.v1',
         ],
         fromBeginning: true,
       });
