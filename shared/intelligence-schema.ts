@@ -172,6 +172,39 @@ export const patternQualityMetrics = pgTable('pattern_quality_metrics', {
 export const insertPatternQualityMetricsSchema = createInsertSchema(patternQualityMetrics);
 
 /**
+ * Pattern Learning Artifacts Table
+ * Stores complete PATLEARN output objects as JSONB for dashboard consumption.
+ *
+ * Design: Projection table, not normalized. UI reads directly from stored shape.
+ */
+export const patternLearningArtifacts = pgTable('pattern_learning_artifacts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  patternId: uuid('pattern_id').notNull(),
+  patternName: varchar('pattern_name', { length: 255 }).notNull(),
+  patternType: varchar('pattern_type', { length: 100 }).notNull(),
+  language: varchar('language', { length: 50 }),
+
+  // Lifecycle (indexed for filtering)
+  lifecycleState: text('lifecycle_state').notNull().default('candidate'),
+  stateChangedAt: timestamp('state_changed_at', { withTimezone: true }),
+
+  // Composite score (indexed for sorting)
+  compositeScore: numeric('composite_score', { precision: 10, scale: 6 }).notNull(),
+
+  // JSONB fields for full evidence
+  scoringEvidence: jsonb('scoring_evidence').notNull(),
+  signature: jsonb('signature').notNull(),
+  metrics: jsonb('metrics').default({}),
+  metadata: jsonb('metadata').default({}),
+
+  // Timestamps
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+export const insertPatternLearningArtifactSchema = createInsertSchema(patternLearningArtifacts);
+
+/**
  * ONEX Compliance Stamps Table
  * Tracks ONEX architectural compliance status for files
  */
@@ -204,6 +237,8 @@ export type PatternLineageNode = typeof patternLineageNodes.$inferSelect;
 export type InsertPatternLineageNode = typeof patternLineageNodes.$inferInsert;
 export type PatternLineageEdge = typeof patternLineageEdges.$inferSelect;
 export type InsertPatternLineageEdge = typeof patternLineageEdges.$inferInsert;
+export type PatternLearningArtifact = typeof patternLearningArtifacts.$inferSelect;
+export type InsertPatternLearningArtifact = typeof patternLearningArtifacts.$inferInsert;
 export type OnexComplianceStamp = typeof onexComplianceStamps.$inferSelect;
 export type InsertOnexComplianceStamp = typeof onexComplianceStamps.$inferInsert;
 

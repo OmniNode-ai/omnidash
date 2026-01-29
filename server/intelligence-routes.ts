@@ -15,8 +15,9 @@ import {
   documentMetadata,
   nodeServiceRegistry,
   taskCompletionMetrics,
+  patternLearningArtifacts,
 } from '../shared/intelligence-schema';
-import { sql, desc, gte, eq, or, and, inArray } from 'drizzle-orm';
+import { sql, desc, asc, gte, eq, or, and, inArray } from 'drizzle-orm';
 import { checkAllServices } from './service-health';
 
 export const intelligenceRouter = Router();
@@ -3409,6 +3410,217 @@ intelligenceRouter.get('/services/:serviceName/details', async (req, res) => {
     console.error('Error fetching service details:', error);
     res.status(500).json({
       error: 'Failed to fetch service details',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// ===========================
+// PATLEARN Endpoints (OMN-1699)
+// ===========================
+
+/**
+ * Transform database row to API response format (snake_case to camelCase)
+ */
+function transformPatlearnArtifact(row: any) {
+  return {
+    id: row.id,
+    patternId: row.patternId || row.pattern_id,
+    patternName: row.patternName || row.pattern_name,
+    patternType: row.patternType || row.pattern_type,
+    language: row.language,
+    lifecycleState: row.lifecycleState || row.lifecycle_state,
+    stateChangedAt: row.stateChangedAt || row.state_changed_at,
+    compositeScore: parseFloat(row.compositeScore || row.composite_score),
+    scoringEvidence: row.scoringEvidence || row.scoring_evidence,
+    signature: row.signature,
+    metrics: row.metrics || {},
+    createdAt: row.createdAt || row.created_at,
+    updatedAt: row.updatedAt || row.updated_at,
+  };
+}
+
+/**
+ * GET /api/intelligence/patterns/patlearn
+ * List artifacts with filtering
+ *
+ * Query params:
+ *   state: candidate|provisional|validated|deprecated (optional, comma-separated)
+ *   limit: number (default 50, max 250)
+ *   offset: number (default 0)
+ *   sort: score|created|updated (default score)
+ *   order: asc|desc (default desc)
+ */
+intelligenceRouter.get('/patterns/patlearn', async (req, res) => {
+  try {
+    const { state, limit = '50', offset = '0', sort = 'score', order = 'desc' } = req.query;
+
+    const limitNum = Math.min(parseInt(limit as string) || 50, 250);
+    const offsetNum = parseInt(offset as string) || 0;
+
+    const db = getIntelligenceDb();
+
+    // Build base query
+    let baseQuery = db.select().from(patternLearningArtifacts);
+
+    // Filter by state if provided
+    if (state) {
+      const states = (state as string).split(',').map((s) => s.trim());
+      baseQuery = baseQuery.where(
+        inArray(patternLearningArtifacts.lifecycleState, states)
+      ) as typeof baseQuery;
+    }
+
+    // Determine sort column
+    const sortColumn =
+      sort === 'created'
+        ? patternLearningArtifacts.createdAt
+        : sort === 'updated'
+          ? patternLearningArtifacts.updatedAt
+          : patternLearningArtifacts.compositeScore;
+
+    // Apply sorting and pagination
+    const artifacts = await baseQuery
+      .orderBy(order === 'asc' ? asc(sortColumn) : desc(sortColumn))
+      .limit(limitNum)
+      .offset(offsetNum);
+
+    // Transform to camelCase for frontend
+    res.json(artifacts.map(transformPatlearnArtifact));
+  } catch (error) {
+    console.error('Error fetching PATLEARN artifacts:', error);
+    res.status(500).json({
+      error: 'Failed to fetch PATLEARN artifacts',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * GET /api/intelligence/patterns/patlearn/summary
+ * Aggregate metrics
+ *
+ * Query params:
+ *   window: 24h|7d|30d (default 24h)
+ */
+intelligenceRouter.get('/patterns/patlearn/summary', async (req, res) => {
+  try {
+    const { window = '24h' } = req.query;
+
+    const db = getIntelligenceDb();
+
+    // Calculate time window
+    const windowMs =
+      window === '30d'
+        ? 30 * 24 * 60 * 60 * 1000
+        : window === '7d'
+          ? 7 * 24 * 60 * 60 * 1000
+          : 24 * 60 * 60 * 1000;
+    const since = new Date(Date.now() - windowMs);
+
+    // Get counts by state
+    const stateCounts = await db
+      .select({
+        lifecycleState: patternLearningArtifacts.lifecycleState,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(patternLearningArtifacts)
+      .groupBy(patternLearningArtifacts.lifecycleState);
+
+    // Get average scores
+    const avgScores = await db
+      .select({
+        avgComposite: sql<number>`avg(${patternLearningArtifacts.compositeScore})::float`,
+      })
+      .from(patternLearningArtifacts);
+
+    // Get recent promotions (state changed to 'validated' in window)
+    const promotions = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(patternLearningArtifacts)
+      .where(
+        and(
+          eq(patternLearningArtifacts.lifecycleState, 'validated'),
+          gte(patternLearningArtifacts.stateChangedAt, since)
+        )
+      );
+
+    // Get recent deprecations
+    const deprecations = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(patternLearningArtifacts)
+      .where(
+        and(
+          eq(patternLearningArtifacts.lifecycleState, 'deprecated'),
+          gte(patternLearningArtifacts.stateChangedAt, since)
+        )
+      );
+
+    // Build response
+    const byState: Record<string, number> = {
+      candidate: 0,
+      provisional: 0,
+      validated: 0,
+      deprecated: 0,
+    };
+    stateCounts.forEach((row) => {
+      if (row.lifecycleState in byState) {
+        byState[row.lifecycleState] = row.count;
+      }
+    });
+
+    const totalPatterns = Object.values(byState).reduce((a, b) => a + b, 0);
+
+    res.json({
+      totalPatterns,
+      byState,
+      avgScores: {
+        labelAgreement: 0, // Would need JSONB extraction for real values
+        clusterCohesion: 0,
+        frequencyFactor: 0,
+        composite: avgScores[0]?.avgComposite || 0,
+      },
+      promotionsLast24h: promotions[0]?.count || 0,
+      deprecationsLast24h: deprecations[0]?.count || 0,
+    });
+  } catch (error) {
+    console.error('Error fetching PATLEARN summary:', error);
+    res.status(500).json({
+      error: 'Failed to fetch PATLEARN summary',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * GET /api/intelligence/patterns/patlearn/:id
+ * Full artifact detail for debugger
+ */
+intelligenceRouter.get('/patterns/patlearn/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const db = getIntelligenceDb();
+
+    const [artifact] = await db
+      .select()
+      .from(patternLearningArtifacts)
+      .where(eq(patternLearningArtifacts.id, id))
+      .limit(1);
+
+    if (!artifact) {
+      return res.status(404).json({ error: 'Pattern artifact not found' });
+    }
+
+    // TODO: Add similar patterns query when similarity data is available
+    res.json({
+      artifact: transformPatlearnArtifact(artifact),
+      similarPatterns: [],
+    });
+  } catch (error) {
+    console.error('Error fetching PATLEARN artifact detail:', error);
+    res.status(500).json({
+      error: 'Failed to fetch PATLEARN artifact detail',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
