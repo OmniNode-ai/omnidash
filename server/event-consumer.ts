@@ -912,14 +912,14 @@ export class EventConsumer extends EventEmitter {
     }
 
     try {
-      console.log(`🔍 Validating Kafka broker connection: ${brokers}`);
+      intentLogger.info(`Validating Kafka broker connection: ${brokers}`);
 
       const admin = this.kafka.admin();
       await admin.connect();
 
       // Quick health check - list topics to verify connectivity
       const topics = await admin.listTopics();
-      console.log(`✅ Kafka broker reachable: ${brokers} (${topics.length} topics available)`);
+      intentLogger.info(`Kafka broker reachable: ${brokers} (${topics.length} topics available)`);
 
       await admin.disconnect();
       return true;
@@ -944,7 +944,7 @@ export class EventConsumer extends EventEmitter {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         await this.consumer.connect();
-        console.log('✅ Kafka consumer connected successfully');
+        intentLogger.info('Kafka consumer connected successfully');
         return;
       } catch (error) {
         const delay = Math.min(RETRY_BASE_DELAY_MS * Math.pow(2, attempt), RETRY_MAX_DELAY_MS);
@@ -996,13 +996,13 @@ export class EventConsumer extends EventEmitter {
    */
   async start() {
     if (this.isRunning || !this.consumer) {
-      console.log('Event consumer already running or not initialized');
+      intentLogger.info('Event consumer already running or not initialized');
       return;
     }
 
     try {
       await this.connectWithRetry();
-      console.log('Kafka consumer connected');
+      intentLogger.info('Kafka consumer connected');
       this.emit('connected'); // Emit connected event
 
       // Preload historical data from PostgreSQL to populate dashboards on startup
@@ -1176,7 +1176,7 @@ export class EventConsumer extends EventEmitter {
               console.warn('⚠️ Connection error detected, attempting reconnection...');
               try {
                 await this.connectWithRetry();
-                console.log('✅ Reconnection successful, resuming event processing');
+                intentLogger.info('Reconnection successful, resuming event processing');
               } catch (reconnectError) {
                 console.error('❌ Reconnection failed:', reconnectError);
                 this.emit('error', reconnectError);
@@ -1199,7 +1199,7 @@ export class EventConsumer extends EventEmitter {
         CLEANUP_INTERVAL_MS
       );
 
-      console.log('✅ Event consumer started with automatic data pruning');
+      intentLogger.info('Event consumer started with automatic data pruning');
     } catch (error) {
       console.error('Failed to start event consumer:', error);
       this.emit('error', error); // Emit error event
@@ -1342,8 +1342,8 @@ export class EventConsumer extends EventEmitter {
       }
 
       // Log preload counts
-      console.log(
-        `[EventConsumer] Preloaded from database: ` +
+      intentLogger.info(
+        `Preloaded from database: ` +
           `${this.recentActions.length} actions, ` +
           `${this.routingDecisions.length} routing decisions, ` +
           `${this.recentTransformations.length} transformations, ` +
@@ -1638,8 +1638,8 @@ export class EventConsumer extends EventEmitter {
     };
 
     this.recentTransformations.unshift(transformation);
-    console.log(
-      `[EventConsumer] Added transformation to queue: ${transformation.sourceAgent} → ${transformation.targetAgent}, queue size: ${this.recentTransformations.length}`
+    intentLogger.debug(
+      `Added transformation to queue: ${transformation.sourceAgent} -> ${transformation.targetAgent}, queue size: ${this.recentTransformations.length}`
     );
 
     // Keep only last N transformations
@@ -1686,8 +1686,8 @@ export class EventConsumer extends EventEmitter {
         stats: { ...this.performanceStats },
       });
 
-      console.log(
-        `[EventConsumer] Processed performance metric: ${metric.routingDurationMs}ms, cache hit: ${metric.cacheHit}, strategy: ${metric.triggerMatchStrategy}`
+      intentLogger.debug(
+        `Processed performance metric: ${metric.routingDurationMs}ms, cache hit: ${metric.cacheHit}, strategy: ${metric.triggerMatchStrategy}`
       );
     } catch (error) {
       console.error('[EventConsumer] Error processing performance metric:', error);
@@ -1754,9 +1754,7 @@ export class EventConsumer extends EventEmitter {
         }
         if (oldestNodeId) {
           this.registeredNodes.delete(oldestNodeId);
-          console.log(
-            `[EventConsumer] Evicted oldest node ${oldestNodeId} to make room for ${nodeId}`
-          );
+          intentLogger.debug(`Evicted oldest node ${oldestNodeId} to make room for ${nodeId}`);
         }
       }
 
@@ -1766,8 +1764,8 @@ export class EventConsumer extends EventEmitter {
       this.emit('nodeIntrospectionUpdate', introspectionEvent);
       this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
-      console.log(
-        `[EventConsumer] Processed node introspection: ${nodeId} (${introspectionEvent.nodeType}, ${introspectionEvent.reason})`
+      intentLogger.debug(
+        `Processed node introspection: ${nodeId} (${introspectionEvent.nodeType}, ${introspectionEvent.reason})`
       );
     } catch (error) {
       console.error('[EventConsumer] Error processing node introspection:', error);
@@ -1814,8 +1812,8 @@ export class EventConsumer extends EventEmitter {
       this.emit('nodeHeartbeatUpdate', heartbeatEvent);
       this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
-      console.log(
-        `[EventConsumer] Processed node heartbeat: ${nodeId} (CPU: ${heartbeatEvent.cpuUsagePercent}%, Mem: ${heartbeatEvent.memoryUsageMb}MB)`
+      intentLogger.debug(
+        `Processed node heartbeat: ${nodeId} (CPU: ${heartbeatEvent.cpuUsagePercent}%, Mem: ${heartbeatEvent.memoryUsageMb}MB)`
       );
     } catch (error) {
       console.error('[EventConsumer] Error processing node heartbeat:', error);
@@ -1862,8 +1860,8 @@ export class EventConsumer extends EventEmitter {
       this.emit('nodeStateChangeUpdate', stateChangeEvent);
       this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
-      console.log(
-        `[EventConsumer] Processed node state change: ${nodeId} (${stateChangeEvent.previousState} -> ${stateChangeEvent.newState})`
+      intentLogger.debug(
+        `Processed node state change: ${nodeId} (${stateChangeEvent.previousState} -> ${stateChangeEvent.newState})`
       );
     } catch (error) {
       console.error('[EventConsumer] Error processing node state change:', error);
@@ -2138,8 +2136,8 @@ export class EventConsumer extends EventEmitter {
     if (!envelope) return;
     if (this.isDuplicate(envelope.correlation_id)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(
-          `[EventConsumer] Duplicate node-became-active event, skipping: ${envelope.correlation_id}`
+        intentLogger.debug(
+          `Duplicate node-became-active event, skipping: ${envelope.correlation_id}`
         );
       }
       return;
@@ -2468,8 +2466,8 @@ export class EventConsumer extends EventEmitter {
       intentsRemoved +
       distributionEntriesPruned;
     if (totalRemoved > 0) {
-      console.log(
-        `🧹 Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes, ${intentsRemoved} intents, ${distributionEntriesPruned} distribution entries (total: ${totalRemoved})`
+      intentLogger.info(
+        `Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes, ${intentsRemoved} intents, ${distributionEntriesPruned} distribution entries (total: ${totalRemoved})`
       );
     }
   }
@@ -2495,8 +2493,8 @@ export class EventConsumer extends EventEmitter {
     }
 
     if (removedCount > 0) {
-      console.log(
-        `🧹 Cleaned up ${removedCount} stale offline canonical nodes (TTL: ${OFFLINE_NODE_TTL_MS / 1000}s)`
+      intentLogger.info(
+        `Cleaned up ${removedCount} stale offline canonical nodes (TTL: ${OFFLINE_NODE_TTL_MS / 1000}s)`
       );
     }
   }
@@ -2961,7 +2959,7 @@ export class EventConsumer extends EventEmitter {
 
       await this.consumer.disconnect();
       this.isRunning = false;
-      console.log('✅ Event consumer stopped');
+      intentLogger.info('Event consumer stopped');
       this.emit('disconnected'); // Emit disconnected event
     } catch (error) {
       console.error('Error disconnecting Kafka consumer:', error);

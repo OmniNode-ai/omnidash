@@ -66,13 +66,22 @@ function transformEventToClientAction(event: EventBusEvent): ClientAction {
     }
   }
 
+  // Type guard: ensure payload is an object before accessing properties
+  // This handles cases where payload might be a string (malformed JSON) or other non-object type
+  const payloadIsObject =
+    event.payload && typeof event.payload === 'object' && !Array.isArray(event.payload);
+  const payload = payloadIsObject ? (event.payload as Record<string, unknown>) : {};
+
   // Extract agent name from source or payload
   const agentName =
-    event.payload?.agent_name || event.payload?.agentName || event.source || 'system';
+    (payload.agent_name as string) || (payload.agentName as string) || event.source || 'system';
 
   // Extract duration from payload if available
   const durationMs =
-    event.payload?.duration_ms || event.payload?.durationMs || event.payload?.latency_ms || 0;
+    (payload.duration_ms as number) ||
+    (payload.durationMs as number) ||
+    (payload.latency_ms as number) ||
+    0;
 
   return {
     id: event.event_id,
@@ -501,53 +510,59 @@ export function setupWebSocket(httpServer: HTTPServer) {
         // Real events are more recent and accurate for Event Bus Monitor
         const combinedActions = realActions.length > 0 ? realActions : legacyActions; // Fallback to legacy if no real events
 
-        ws.send(
-          JSON.stringify({
-            type: 'INITIAL_STATE',
-            data: {
-              metrics: eventConsumer.getAgentMetrics(),
-              // Primary actions - use real events if available
-              recentActions: combinedActions,
-              // Keep legacy routing for other dashboards
-              routingDecisions: legacyRouting,
-              recentTransformations: eventConsumer.getRecentTransformations(),
-              performanceStats: eventConsumer.getPerformanceStats(),
-              health: eventConsumer.getHealthStatus(),
-              // Node registry data (transform to snake_case for consistency)
-              registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
-              nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-              // NEW: Raw event bus events for Event Bus Monitor dashboard
-              eventBusEvents: eventBusEvents,
-            },
-            timestamp: new Date().toISOString(),
-          })
-        );
-
-        if (realActions.length > 0) {
-          console.log(
-            `[WebSocket] Sent INITIAL_STATE with ${realActions.length} real events from database`
+        // Check connection is still open before sending (async IIFE may complete after disconnect)
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({
+              type: 'INITIAL_STATE',
+              data: {
+                metrics: eventConsumer.getAgentMetrics(),
+                // Primary actions - use real events if available
+                recentActions: combinedActions,
+                // Keep legacy routing for other dashboards
+                routingDecisions: legacyRouting,
+                recentTransformations: eventConsumer.getRecentTransformations(),
+                performanceStats: eventConsumer.getPerformanceStats(),
+                health: eventConsumer.getHealthStatus(),
+                // Node registry data (transform to snake_case for consistency)
+                registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
+                nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+                // NEW: Raw event bus events for Event Bus Monitor dashboard
+                eventBusEvents: eventBusEvents,
+              },
+              timestamp: new Date().toISOString(),
+            })
           );
+
+          if (realActions.length > 0) {
+            console.log(
+              `[WebSocket] Sent INITIAL_STATE with ${realActions.length} real events from database`
+            );
+          }
         }
       } catch (error) {
         console.error('[WebSocket] Error sending initial state with real events:', error);
         // Fallback to legacy data if async fetch fails
-        ws.send(
-          JSON.stringify({
-            type: 'INITIAL_STATE',
-            data: {
-              metrics: eventConsumer.getAgentMetrics(),
-              recentActions: eventConsumer.getRecentActions(),
-              routingDecisions: eventConsumer.getRoutingDecisions(),
-              recentTransformations: eventConsumer.getRecentTransformations(),
-              performanceStats: eventConsumer.getPerformanceStats(),
-              health: eventConsumer.getHealthStatus(),
-              registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
-              nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-              eventBusEvents: [],
-            },
-            timestamp: new Date().toISOString(),
-          })
-        );
+        // Check connection is still open before sending (async IIFE may complete after disconnect)
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({
+              type: 'INITIAL_STATE',
+              data: {
+                metrics: eventConsumer.getAgentMetrics(),
+                recentActions: eventConsumer.getRecentActions(),
+                routingDecisions: eventConsumer.getRoutingDecisions(),
+                recentTransformations: eventConsumer.getRecentTransformations(),
+                performanceStats: eventConsumer.getPerformanceStats(),
+                health: eventConsumer.getHealthStatus(),
+                registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
+                nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+                eventBusEvents: [],
+              },
+              timestamp: new Date().toISOString(),
+            })
+          );
+        }
       }
     })();
 
@@ -607,47 +622,53 @@ export function setupWebSocket(httpServer: HTTPServer) {
                 const legacyActions = eventConsumer.getRecentActions();
                 const combinedActions = realActions.length > 0 ? realActions : legacyActions;
 
-                ws.send(
-                  JSON.stringify({
-                    type: 'CURRENT_STATE',
-                    data: {
-                      metrics: eventConsumer.getAgentMetrics(),
-                      recentActions: combinedActions,
-                      routingDecisions: eventConsumer.getRoutingDecisions(),
-                      recentTransformations: eventConsumer.getRecentTransformations(),
-                      performanceStats: eventConsumer.getPerformanceStats(),
-                      health: eventConsumer.getHealthStatus(),
-                      registeredNodes: transformNodesToSnakeCase(
-                        eventConsumer.getRegisteredNodes()
-                      ),
-                      nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-                      eventBusEvents: eventBusEvents,
-                    },
-                    timestamp: new Date().toISOString(),
-                  })
-                );
+                // Check connection is still open before sending (async IIFE may complete after disconnect)
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(
+                    JSON.stringify({
+                      type: 'CURRENT_STATE',
+                      data: {
+                        metrics: eventConsumer.getAgentMetrics(),
+                        recentActions: combinedActions,
+                        routingDecisions: eventConsumer.getRoutingDecisions(),
+                        recentTransformations: eventConsumer.getRecentTransformations(),
+                        performanceStats: eventConsumer.getPerformanceStats(),
+                        health: eventConsumer.getHealthStatus(),
+                        registeredNodes: transformNodesToSnakeCase(
+                          eventConsumer.getRegisteredNodes()
+                        ),
+                        nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+                        eventBusEvents: eventBusEvents,
+                      },
+                      timestamp: new Date().toISOString(),
+                    })
+                  );
+                }
               } catch (error) {
                 console.error('[WebSocket] Error fetching state:', error);
                 // Fallback to legacy data
-                ws.send(
-                  JSON.stringify({
-                    type: 'CURRENT_STATE',
-                    data: {
-                      metrics: eventConsumer.getAgentMetrics(),
-                      recentActions: eventConsumer.getRecentActions(),
-                      routingDecisions: eventConsumer.getRoutingDecisions(),
-                      recentTransformations: eventConsumer.getRecentTransformations(),
-                      performanceStats: eventConsumer.getPerformanceStats(),
-                      health: eventConsumer.getHealthStatus(),
-                      registeredNodes: transformNodesToSnakeCase(
-                        eventConsumer.getRegisteredNodes()
-                      ),
-                      nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-                      eventBusEvents: [],
-                    },
-                    timestamp: new Date().toISOString(),
-                  })
-                );
+                // Check connection is still open before sending (async IIFE may complete after disconnect)
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(
+                    JSON.stringify({
+                      type: 'CURRENT_STATE',
+                      data: {
+                        metrics: eventConsumer.getAgentMetrics(),
+                        recentActions: eventConsumer.getRecentActions(),
+                        routingDecisions: eventConsumer.getRoutingDecisions(),
+                        recentTransformations: eventConsumer.getRecentTransformations(),
+                        performanceStats: eventConsumer.getPerformanceStats(),
+                        health: eventConsumer.getHealthStatus(),
+                        registeredNodes: transformNodesToSnakeCase(
+                          eventConsumer.getRegisteredNodes()
+                        ),
+                        nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+                        eventBusEvents: [],
+                      },
+                      timestamp: new Date().toISOString(),
+                    })
+                  );
+                }
               }
             })();
             break;

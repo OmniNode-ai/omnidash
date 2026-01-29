@@ -606,10 +606,10 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
         seenIdsRef.current = currentIds;
         log('Periodic cleanup: rebuilt seenIds set, new size:', currentIds.size);
       }
-    }, 10000); // Every 10 seconds
+    }, eventConfig.periodic_cleanup_interval_ms); // From config
 
     return () => clearInterval(cleanupInterval);
-  }, [throughputWindowMs, maxDedupIds, log]);
+  }, [throughputWindowMs, maxDedupIds, log, eventConfig.periodic_cleanup_interval_ms]);
 
   // ============================================================================
   // Derived Data (useMemo for performance)
