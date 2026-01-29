@@ -48,6 +48,14 @@ export const MAX_ERRORS = 50;
 /** Time series bucket size in milliseconds (10 seconds) */
 export const TIME_SERIES_BUCKET_MS = 10000;
 
+/**
+ * Maximum characters to hash for performance.
+ * For very long strings, we sample first + last chars and include length.
+ * This provides sufficient uniqueness while maintaining O(1) time complexity
+ * for very long inputs (e.g., large event payloads).
+ */
+export const MAX_HASH_INPUT_LENGTH = 500;
+
 /** Topics to map from message type to raw topic string */
 export const NODE_TOPIC_MAP: Record<string, string> = {
   NODE_INTROSPECTION: 'dev.omninode_bridge.onex.evt.node-introspection.v1',
@@ -63,11 +71,21 @@ export const NODE_TOPIC_MAP: Record<string, string> = {
 /**
  * Simple string hash function for generating stable event IDs.
  * Uses djb2 algorithm - fast and produces good distribution.
+ *
+ * For very long strings, samples first + last characters and includes length
+ * to maintain O(1) time complexity while preserving good uniqueness.
  */
 export function hashString(str: string): string {
+  // For very long strings, sample first + last chars and include length for uniqueness
+  let input = str;
+  if (str.length > MAX_HASH_INPUT_LENGTH) {
+    const half = MAX_HASH_INPUT_LENGTH / 2;
+    input = `${str.slice(0, half)}${str.slice(-half)}:${str.length}`;
+  }
+
   let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 33) ^ str.charCodeAt(i);
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 33) ^ input.charCodeAt(i);
   }
   // Convert to unsigned 32-bit integer and return as hex string
   return (hash >>> 0).toString(16);

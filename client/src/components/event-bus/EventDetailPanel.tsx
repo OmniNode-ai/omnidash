@@ -79,7 +79,10 @@ class PayloadErrorBoundary extends Component<PayloadErrorBoundaryProps, PayloadE
     // Note: Using console.error directly is the appropriate pattern for React error boundaries.
     // Error boundaries are specifically designed to catch and log rendering errors.
     // The server-side intentLogger is not available in client-side code.
-    console.error('PayloadErrorBoundary caught error:', error, errorInfo);
+    // Suppressed in production to avoid console noise.
+    if (import.meta.env.DEV) {
+      console.error('PayloadErrorBoundary caught error:', error, errorInfo);
+    }
   }
 
   render(): ReactNode {
@@ -209,7 +212,10 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
     } catch (error) {
       // Note: console.error is appropriate here for runtime error logging in catch blocks.
       // Server-side intentLogger is not available in client-side code.
-      console.error('Failed to parse event details:', error);
+      // Suppressed in production to avoid console noise.
+      if (import.meta.env.DEV) {
+        console.error('Failed to parse event details:', error);
+      }
       setParseError(error instanceof Error ? error.message : 'Unknown parsing error');
       return null;
     }
@@ -238,7 +244,10 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
     } catch (error) {
       // Note: console.error is appropriate here for runtime error logging in catch blocks.
       // Server-side intentLogger is not available in client-side code.
-      console.error('Failed to copy:', error);
+      // Suppressed in production to avoid console noise.
+      if (import.meta.env.DEV) {
+        console.error('Failed to copy:', error);
+      }
       toast({
         variant: 'destructive',
         title: 'Copy failed',

@@ -14,6 +14,9 @@ import type {
 } from '@/lib/dashboard-schema';
 import { MetricCard } from '@/components/MetricCard';
 
+/** Default decimal precision for metric value formatting */
+const DEFAULT_PRECISION = 2;
+
 /**
  * Props for the MetricCardWidget component.
  *
@@ -97,7 +100,7 @@ export function MetricCardWidget({ widget, config, data, isLoading }: MetricCard
 
   // Handle edge case: non-zero value that rounds to 0 should show "< 0.1" (or appropriate threshold)
   // This prevents confusing UX where "2 events" but "0 events/sec"
-  const precision = config.precision ?? 2;
+  const precision = config.precision ?? DEFAULT_PRECISION;
   let formattedValue: string;
   if (typeof value === 'number' && value > 0) {
     const threshold = Math.pow(10, -precision); // e.g., 0.1 for precision=1, 0.01 for precision=2
@@ -176,7 +179,7 @@ export function MetricCardWidget({ widget, config, data, isLoading }: MetricCard
 function formatValue(
   value: unknown,
   format?: 'number' | 'currency' | 'percent' | 'duration',
-  precision = 2
+  precision = DEFAULT_PRECISION
 ): string {
   if (typeof value === 'string') return value;
   if (typeof value !== 'number') return String(value);
