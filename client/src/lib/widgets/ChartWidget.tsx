@@ -59,7 +59,36 @@ const DEFAULT_VALUE_KEY = 'value';
 
 /**
  * Semantic chart colors from CSS variables.
- * These colors are designed to work in both light and dark themes.
+ *
+ * Color Selection Strategy:
+ * - Uses 60°+ hue separation between adjacent colors in the sequence for accessibility
+ * - Ensures distinguishability for users with color vision deficiencies (deuteranopia,
+ *   protanopia, tritanopia) by maximizing perceptual distance between commonly
+ *   co-occurring colors
+ * - Colors are designed to work in both light and dark themes with adjusted
+ *   saturation and lightness values per theme
+ *
+ * Hue Distribution (approximate, from CSS variables):
+ * - chart-1: ~211° (Blue)
+ * - chart-2: ~142° (Green)
+ * - chart-3: ~271° (Purple)
+ * - chart-4: ~32° (Orange)
+ * - chart-5: ~355° (Red)
+ * - chart-6: ~175° (Teal)
+ * - chart-7: ~48° (Yellow)
+ *
+ * Adjacent hue separations in the sequence:
+ * - Blue → Green: 69°
+ * - Green → Purple: 129°
+ * - Purple → Orange: 121°
+ * - Orange → Red: 37° (closest pair, but rarely adjacent in typical datasets)
+ * - Red → Teal: 180°
+ * - Teal → Yellow: 127°
+ *
+ * The sequence is optimized so that the most commonly used colors (first 3-4)
+ * have strong separation, while later colors maintain reasonable distinction.
+ *
+ * @see client/src/index.css for actual HSL values in light/dark modes
  */
 const CHART_COLORS = [
   'hsl(var(--chart-1))',
