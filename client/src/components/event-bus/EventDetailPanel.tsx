@@ -320,7 +320,7 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
             )}
 
             {/* PAYLOAD CONTENT - Primary focus, wrapped in error boundary */}
-            <PayloadErrorBoundary fallback={<PayloadRenderErrorFallback />}>
+            <PayloadErrorBoundary key={event?.id} fallback={<PayloadRenderErrorFallback />}>
               {parsedDetails && !parseError && (
                 <div className="space-y-4">
                   {/* Prompt content - most important */}

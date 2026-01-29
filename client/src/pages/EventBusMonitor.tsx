@@ -27,6 +27,7 @@ import type {
   EventTypeBreakdownItem,
   TimeSeriesItem,
 } from '@/hooks/useEventBusStream.types';
+import { TIME_SERIES_BUCKET_MS } from '@/hooks/useEventBusStream.utils';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -262,7 +263,8 @@ export default function EventBusMonitor() {
     for (const event of filtered) {
       topicCounts[event.topicRaw] = (topicCounts[event.topicRaw] || 0) + 1;
       eventTypeCounts[event.eventType] = (eventTypeCounts[event.eventType] || 0) + 1;
-      const bucketTime = Math.floor(event.timestamp.getTime() / 10000) * 10000;
+      const bucketTime =
+        Math.floor(event.timestamp.getTime() / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
       timeBuckets[bucketTime] = (timeBuckets[bucketTime] || 0) + 1;
     }
 
