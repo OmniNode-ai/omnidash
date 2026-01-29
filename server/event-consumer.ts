@@ -221,6 +221,60 @@ export interface TransformationEvent {
   createdAt: Date;
 }
 
+// ============================================================================
+// Database Row Types
+// These interfaces represent the raw row shapes returned by SQL queries.
+// They differ from the domain interfaces above which use camelCase and
+// transformed/normalized values.
+// ============================================================================
+
+/** Row type for agent_actions table query results */
+interface AgentActionRow {
+  id: string;
+  correlation_id?: string;
+  agent_name?: string;
+  action_type?: string;
+  action_name?: string;
+  action_details?: unknown;
+  debug_mode?: boolean;
+  duration_ms?: number | string;
+  created_at: string | Date;
+}
+
+/** Row type for metrics aggregation query results */
+interface AgentMetricsRow {
+  agent?: string;
+  total_requests?: number | string;
+  avg_routing_time?: number | string;
+  avg_confidence?: number | string;
+}
+
+/** Row type for agent_routing_decisions table query results */
+interface RoutingDecisionRow {
+  id: string;
+  correlation_id?: string;
+  user_request?: string;
+  selected_agent?: string;
+  confidence_score?: number | string;
+  routing_strategy?: string;
+  alternatives?: unknown;
+  reasoning?: string;
+  routing_time_ms?: number | string;
+  created_at: string | Date;
+}
+
+/** Row type for agent_transformation_events table query results */
+interface TransformationEventRow {
+  id: string;
+  correlation_id?: string;
+  source_agent?: string;
+  target_agent?: string;
+  transformation_duration_ms?: number | string;
+  success?: boolean;
+  routing_confidence?: number | string;
+  started_at: string | Date;
+}
+
 // Node Registry Types
 export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
 
@@ -955,7 +1009,7 @@ export class EventConsumer extends EventEmitter {
       if (process.env.ENABLE_EVENT_PRELOAD !== 'false') {
         try {
           await this.preloadFromDatabase();
-          console.log('[EventConsumer] Preloaded historical data from PostgreSQL');
+          intentLogger.info('Preloaded historical data from PostgreSQL');
         } catch (e) {
           console.warn('[EventConsumer] Preload skipped due to error:', e);
         }
@@ -997,49 +1051,47 @@ export class EventConsumer extends EventEmitter {
         eachMessage: async ({ topic, message }) => {
           try {
             const event = JSON.parse(message.value?.toString() || '{}');
-            console.log(`[EventConsumer] Received event from topic: ${topic}`);
+            intentLogger.debug(`Received event from topic: ${topic}`);
 
             switch (topic) {
               case 'agent-routing-decisions':
-                console.log(
-                  `[EventConsumer] Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`
+                intentLogger.debug(
+                  `Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`
                 );
                 this.handleRoutingDecision(event);
                 break;
               case 'agent-actions':
-                console.log(
-                  `[EventConsumer] Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`
+                intentLogger.debug(
+                  `Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`
                 );
                 this.handleAgentAction(event);
                 break;
               case 'agent-transformation-events':
-                console.log(
-                  `[EventConsumer] Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`
+                intentLogger.debug(
+                  `Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`
                 );
                 this.handleTransformationEvent(event);
                 break;
               case 'router-performance-metrics':
-                console.log(
-                  `[EventConsumer] Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
+                intentLogger.debug(
+                  `Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
                 );
                 this.handlePerformanceMetric(event);
                 break;
               case 'dev.omninode_bridge.onex.evt.node-introspection.v1':
               case 'dev.omninode_bridge.onex.evt.registry-request-introspection.v1':
-                console.log(
-                  `[EventConsumer] Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
+                intentLogger.debug(
+                  `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
                 );
                 this.handleNodeIntrospection(event);
                 break;
               case 'node.heartbeat':
-                console.log(
-                  `[EventConsumer] Processing node heartbeat: ${event.node_id || event.nodeId}`
-                );
+                intentLogger.debug(`Processing node heartbeat: ${event.node_id || event.nodeId}`);
                 this.handleNodeHeartbeat(event);
                 break;
               case 'dev.onex.evt.registration-completed.v1':
-                console.log(
-                  `[EventConsumer] Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
+                intentLogger.debug(
+                  `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
                 );
                 this.handleNodeStateChange(event);
                 break;
@@ -1089,22 +1141,22 @@ export class EventConsumer extends EventEmitter {
                 // Handle canonical ONEX topics using environment-aware routing
                 if (topic === onexTopic('node-became-active')) {
                   if (DEBUG_CANONICAL_EVENTS) {
-                    console.log(`[EventConsumer] Processing canonical node-became-active event`);
+                    intentLogger.debug('Processing canonical node-became-active event');
                   }
                   this.handleCanonicalNodeBecameActive(message);
                 } else if (topic === onexTopic('node-liveness-expired')) {
                   if (DEBUG_CANONICAL_EVENTS) {
-                    console.log(`[EventConsumer] Processing canonical node-liveness-expired event`);
+                    intentLogger.debug('Processing canonical node-liveness-expired event');
                   }
                   this.handleCanonicalNodeLivenessExpired(message);
                 } else if (topic === onexTopic('node-heartbeat')) {
                   if (DEBUG_CANONICAL_EVENTS) {
-                    console.log(`[EventConsumer] Processing canonical node-heartbeat event`);
+                    intentLogger.debug('Processing canonical node-heartbeat event');
                   }
                   this.handleCanonicalNodeHeartbeat(message);
                 } else if (topic === onexTopic('node-introspection')) {
                   if (DEBUG_CANONICAL_EVENTS) {
-                    console.log(`[EventConsumer] Processing canonical node-introspection event`);
+                    intentLogger.debug('Processing canonical node-introspection event');
                   }
                   this.handleCanonicalNodeIntrospection(message);
                 }
@@ -1174,12 +1226,12 @@ export class EventConsumer extends EventEmitter {
 
       if (Array.isArray(actionsRows)) {
         // Collect all actions first, then slice once at the end (O(n) instead of O(n²))
-        const actions: AgentAction[] = actionsRows.map((r: any) => ({
+        const actions: AgentAction[] = (actionsRows as AgentActionRow[]).map((r) => ({
           id: r.id,
-          correlationId: r.correlation_id,
-          agentName: r.agent_name,
-          actionType: r.action_type,
-          actionName: r.action_name,
+          correlationId: r.correlation_id || '',
+          agentName: r.agent_name || '',
+          actionType: r.action_type || '',
+          actionName: r.action_name || '',
           actionDetails: r.action_details,
           debugMode: !!r.debug_mode,
           durationMs: Number(r.duration_ms || 0),
@@ -1213,7 +1265,7 @@ export class EventConsumer extends EventEmitter {
         : metricsResult?.rows || metricsResult || [];
 
       if (Array.isArray(metricsRows)) {
-        metricsRows.forEach((r: any) => {
+        (metricsRows as AgentMetricsRow[]).forEach((r) => {
           const agent = r.agent || 'unknown';
           this.agentMetrics.set(agent, {
             count: Number(r.total_requests || 0),
@@ -1242,9 +1294,9 @@ export class EventConsumer extends EventEmitter {
         : routingResult?.rows || routingResult || [];
 
       if (Array.isArray(routingRows)) {
-        const decisions: RoutingDecision[] = routingRows.map((r: any) => ({
+        const decisions: RoutingDecision[] = (routingRows as RoutingDecisionRow[]).map((r) => ({
           id: r.id,
-          correlationId: r.correlation_id,
+          correlationId: r.correlation_id || '',
           userRequest: r.user_request || '',
           selectedAgent: r.selected_agent || '',
           confidenceScore: Number(r.confidence_score || 0),
@@ -1274,9 +1326,11 @@ export class EventConsumer extends EventEmitter {
         : transformResult?.rows || transformResult || [];
 
       if (Array.isArray(transformRows)) {
-        const transformations: TransformationEvent[] = transformRows.map((r: any) => ({
+        const transformations: TransformationEvent[] = (
+          transformRows as TransformationEventRow[]
+        ).map((r) => ({
           id: r.id,
-          correlationId: r.correlation_id,
+          correlationId: r.correlation_id || '',
           sourceAgent: r.source_agent || '',
           targetAgent: r.target_agent || '',
           transformationDurationMs: Number(r.transformation_duration_ms || 0),
@@ -2097,7 +2151,7 @@ export class EventConsumer extends EventEmitter {
     const existing = this.canonicalNodes.get(payload.node_id);
     if (existing && !this.shouldProcess(existing, emittedAtMs)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(`[EventConsumer] Stale node-became-active event, skipping: ${payload.node_id}`);
+        intentLogger.debug(`Stale node-became-active event, skipping: ${payload.node_id}`);
       }
       return;
     }
@@ -2120,7 +2174,7 @@ export class EventConsumer extends EventEmitter {
     });
 
     if (DEBUG_CANONICAL_EVENTS) {
-      console.log(`[EventConsumer] Canonical node-became-active processed: ${payload.node_id}`);
+      intentLogger.debug(`Canonical node-became-active processed: ${payload.node_id}`);
     }
   }
 
@@ -2133,8 +2187,8 @@ export class EventConsumer extends EventEmitter {
     if (!envelope) return;
     if (this.isDuplicate(envelope.correlation_id)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(
-          `[EventConsumer] Duplicate node-liveness-expired event, skipping: ${envelope.correlation_id}`
+        intentLogger.debug(
+          `Duplicate node-liveness-expired event, skipping: ${envelope.correlation_id}`
         );
       }
       return;
@@ -2149,15 +2203,13 @@ export class EventConsumer extends EventEmitter {
       // new nodes, liveness-expired only applies to nodes we're already tracking.
       // If we receive this event for an unknown node, we skip it - there's nothing to mark offline.
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(`[EventConsumer] Node not found for liveness-expired: ${payload.node_id}`);
+        intentLogger.debug(`Node not found for liveness-expired: ${payload.node_id}`);
       }
       return;
     }
     if (!this.shouldProcess(node, emittedAtMs)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(
-          `[EventConsumer] Stale node-liveness-expired event, skipping: ${payload.node_id}`
-        );
+        intentLogger.debug(`Stale node-liveness-expired event, skipping: ${payload.node_id}`);
       }
       return;
     }
@@ -2178,7 +2230,7 @@ export class EventConsumer extends EventEmitter {
     });
 
     if (DEBUG_CANONICAL_EVENTS) {
-      console.log(`[EventConsumer] Canonical node-liveness-expired processed: ${payload.node_id}`);
+      intentLogger.debug(`Canonical node-liveness-expired processed: ${payload.node_id}`);
     }
   }
 
@@ -2243,8 +2295,8 @@ export class EventConsumer extends EventEmitter {
     if (!envelope) return;
     if (this.isDuplicate(envelope.correlation_id)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(
-          `[EventConsumer] Duplicate node-introspection event, skipping: ${envelope.correlation_id}`
+        intentLogger.debug(
+          `Duplicate node-introspection event, skipping: ${envelope.correlation_id}`
         );
       }
       return;
@@ -2256,7 +2308,7 @@ export class EventConsumer extends EventEmitter {
     const existing = this.canonicalNodes.get(payload.node_id);
     if (existing && !this.shouldProcess(existing, emittedAtMs)) {
       if (DEBUG_CANONICAL_EVENTS) {
-        console.log(`[EventConsumer] Stale node-introspection event, skipping: ${payload.node_id}`);
+        intentLogger.debug(`Stale node-introspection event, skipping: ${payload.node_id}`);
       }
       return;
     }
@@ -2285,7 +2337,7 @@ export class EventConsumer extends EventEmitter {
     });
 
     if (DEBUG_CANONICAL_EVENTS) {
-      console.log(`[EventConsumer] Canonical node-introspection processed: ${payload.node_id}`);
+      intentLogger.debug(`Canonical node-introspection processed: ${payload.node_id}`);
     }
   }
 
