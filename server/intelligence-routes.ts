@@ -3472,19 +3472,15 @@ intelligenceRouter.get('/patterns/patlearn', async (req, res) => {
 
     const db = getIntelligenceDb();
 
-    // Build base query
-    let baseQuery = db.select().from(patternLearningArtifacts);
-
-    // Filter by state if provided (validate against allowed values)
+    // Build where condition based on state filter
+    let whereCondition: ReturnType<typeof inArray> | undefined;
     if (state) {
       const parsedStates = (state as string).split(',').map((s) => s.trim());
       const validStates = parsedStates.filter((s): s is (typeof VALID_PATLEARN_STATES)[number] =>
         VALID_PATLEARN_STATES.includes(s as (typeof VALID_PATLEARN_STATES)[number])
       );
       if (validStates.length > 0) {
-        baseQuery = baseQuery.where(
-          inArray(patternLearningArtifacts.lifecycleState, validStates)
-        ) as typeof baseQuery;
+        whereCondition = inArray(patternLearningArtifacts.lifecycleState, validStates);
       }
     }
 
@@ -3496,11 +3492,21 @@ intelligenceRouter.get('/patterns/patlearn', async (req, res) => {
           ? patternLearningArtifacts.updatedAt
           : patternLearningArtifacts.compositeScore;
 
-    // Apply sorting and pagination
-    const artifacts = await baseQuery
-      .orderBy(order === 'asc' ? asc(sortColumn) : desc(sortColumn))
-      .limit(limitNum)
-      .offset(offsetNum);
+    // Build and execute query - conditionally apply where clause
+    const artifacts = whereCondition
+      ? await db
+          .select()
+          .from(patternLearningArtifacts)
+          .where(whereCondition)
+          .orderBy(order === 'asc' ? asc(sortColumn) : desc(sortColumn))
+          .limit(limitNum)
+          .offset(offsetNum)
+      : await db
+          .select()
+          .from(patternLearningArtifacts)
+          .orderBy(order === 'asc' ? asc(sortColumn) : desc(sortColumn))
+          .limit(limitNum)
+          .offset(offsetNum);
 
     // Transform to camelCase for frontend
     res.json(artifacts.map(transformPatlearnArtifact));
@@ -3620,6 +3626,15 @@ intelligenceRouter.get('/patterns/patlearn/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Validate UUID format to prevent injection and improve error messages
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({
+        error: 'Invalid pattern ID format',
+        message: 'ID must be a valid UUID',
+      });
+    }
+
     const db = getIntelligenceDb();
 
     const [artifact] = await db
@@ -3629,7 +3644,10 @@ intelligenceRouter.get('/patterns/patlearn/:id', async (req, res) => {
       .limit(1);
 
     if (!artifact) {
-      return res.status(404).json({ error: 'Pattern artifact not found' });
+      return res.status(404).json({
+        error: 'Pattern artifact not found',
+        message: `No pattern artifact exists with ID: ${id}`,
+      });
     }
 
     // TODO: Add similar patterns query when similarity data is available

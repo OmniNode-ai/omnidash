@@ -6,11 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-
-/** Score threshold for "good" (green) - 70% and above */
-const SCORE_THRESHOLD_GOOD = 0.7;
-/** Score threshold for "moderate" (yellow) - 40% to 70% */
-const SCORE_THRESHOLD_MODERATE = 0.4;
+import { SCORE_THRESHOLD_GOOD, SCORE_THRESHOLD_MODERATE } from '@/lib/constants/pattern-constants';
 
 interface ScoringEvidenceCardProps {
   title: string;

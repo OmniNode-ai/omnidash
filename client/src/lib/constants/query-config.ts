@@ -159,13 +159,3 @@ export function getPollingInterval(interval: number): number | false {
   }
   return interval;
 }
-
-// ============================================================================
-// Query Keys
-// ============================================================================
-
-/**
- * Re-export query keys for convenience
- * @see {@link ../query-keys.ts} for the full query key factory
- */
-export { queryKeys } from '../query-keys';
