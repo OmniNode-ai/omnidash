@@ -424,6 +424,53 @@ describe('PatternLearningSource', () => {
       expect(result?.similarPatterns).toEqual([]);
     });
 
+    it('filters out malformed similarPatterns entries', async () => {
+      const artifact = createValidArtifact({ id: 'filter-test' });
+      const validSimilarPattern = {
+        patternId: 'valid-001',
+        evidence: {
+          keyword: { score: 0.8, intersection: ['error'], unionCount: 3 },
+          pattern: { score: 0.7, matchedIndicators: ['try-catch'], totalIndicators: 2 },
+          structural: { score: 0.6, astDepthDelta: 1, nodeCountDelta: 2, complexityDelta: 0.1 },
+          label: { score: 0.9, matchedLabels: ['error'], totalLabels: 1 },
+          context: { score: 0.5, sharedTokens: ['async'], jaccard: 0.4 },
+          composite: 0.7,
+          weights: { keyword: 0.3, pattern: 0.25, structural: 0.2, label: 0.15, context: 0.1 },
+        },
+      };
+      const malformedSimilarPattern = {
+        patternId: 'malformed-001',
+        evidence: { invalid: 'structure' }, // Missing required fields
+      };
+      const nullEntry = null;
+      const mockResponse = {
+        artifact,
+        similarPatterns: [
+          validSimilarPattern,
+          malformedSimilarPattern,
+          nullEntry,
+          validSimilarPattern,
+        ],
+      };
+      setupFetchMock(
+        new Map([
+          ['/api/intelligence/patterns/patlearn/filter-test', createMockResponse(mockResponse)],
+        ])
+      );
+
+      const result = await patlearnSource.detail('filter-test');
+
+      expect(result).not.toBeNull();
+      // Only valid entries should pass through (2 valid ones)
+      expect(result?.similarPatterns).toHaveLength(2);
+      expect(result?.similarPatterns[0].patternId).toBe('valid-001');
+      expect(result?.similarPatterns[1].patternId).toBe('valid-001');
+      // Verify validation warnings were logged
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[patlearn-detail-similar]')
+      );
+    });
+
     it('throws PatlearnFetchError for invalid artifact data', async () => {
       setupFetchMock(
         new Map([

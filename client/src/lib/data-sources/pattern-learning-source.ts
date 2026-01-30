@@ -8,10 +8,12 @@
 import {
   patlearnArtifactSchema,
   patlearnSummarySchema,
+  similarPatternEntrySchema,
   type PatlearnArtifact,
   type PatlearnSummary,
   type LifecycleState,
   type SimilarityEvidence,
+  type SimilarPatternEntry,
 } from '../schemas/api-response-schemas';
 
 // ===========================
@@ -28,7 +30,7 @@ export interface PatlearnListParams {
 
 export interface PatlearnDetailResponse {
   artifact: PatlearnArtifact;
-  similarPatterns: Array<{ patternId: string; evidence: SimilarityEvidence }>;
+  similarPatterns: SimilarPatternEntry[];
 }
 
 // ===========================
@@ -173,9 +175,16 @@ class PatternLearningSource {
         throw new PatlearnFetchError('detail', undefined, new Error('Invalid artifact data'));
       }
 
+      // Validate similarPatterns - filter out malformed entries
+      const similarPatterns = safeParseArray(
+        similarPatternEntrySchema,
+        data.similarPatterns || [],
+        'patlearn-detail-similar'
+      );
+
       return {
         artifact,
-        similarPatterns: data.similarPatterns || [],
+        similarPatterns,
       };
     } catch (error) {
       if (error instanceof PatlearnFetchError) {
@@ -250,4 +259,5 @@ export type {
   PatlearnSummary,
   LifecycleState,
   SimilarityEvidence,
+  SimilarPatternEntry,
 } from '../schemas/api-response-schemas';

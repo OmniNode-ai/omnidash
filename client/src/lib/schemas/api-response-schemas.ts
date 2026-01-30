@@ -215,6 +215,15 @@ export const similarityEvidenceSchema = z.object({
 });
 
 // ===========================
+// PATLEARN Similar Pattern Entry
+// ===========================
+
+export const similarPatternEntrySchema = z.object({
+  patternId: z.string(),
+  evidence: similarityEvidenceSchema,
+});
+
+// ===========================
 // PATLEARN Pattern Signature
 // ===========================
 
@@ -518,6 +527,7 @@ export type LanguageBreakdownApi = z.infer<typeof languageBreakdownApiSchema>;
 export type LifecycleState = z.infer<typeof lifecycleStateSchema>;
 export type ScoringEvidence = z.infer<typeof scoringEvidenceSchema>;
 export type SimilarityEvidence = z.infer<typeof similarityEvidenceSchema>;
+export type SimilarPatternEntry = z.infer<typeof similarPatternEntrySchema>;
 export type PatternSignature = z.infer<typeof patternSignatureSchema>;
 export type PatlearnArtifact = z.infer<typeof patlearnArtifactSchema>;
 export type PatlearnSummary = z.infer<typeof patlearnSummarySchema>;
