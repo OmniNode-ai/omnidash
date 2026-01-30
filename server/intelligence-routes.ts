@@ -3436,7 +3436,7 @@ function transformPatlearnArtifact(row: PatternLearningArtifact) {
     language: row.language,
     lifecycleState: row.lifecycleState,
     stateChangedAt: row.stateChangedAt,
-    compositeScore: parseFloat(row.compositeScore),
+    compositeScore: parseFloat(row.compositeScore) || 0,
     scoringEvidence: row.scoringEvidence,
     signature: row.signature,
     metrics: row.metrics || {},

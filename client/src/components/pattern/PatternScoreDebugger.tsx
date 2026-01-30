@@ -13,7 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { LifecycleStateBadge } from './LifecycleStateBadge';
 import { ScoringEvidenceCard } from './ScoringEvidenceCard';
-import type { PatlearnArtifact } from '@/lib/schemas/api-response-schemas';
+import type {
+  PatlearnArtifact,
+  ScoringEvidence,
+  PatternSignature,
+} from '@/lib/schemas/api-response-schemas';
 
 interface PatternScoreDebuggerProps {
   artifact: PatlearnArtifact | null;
@@ -21,10 +25,71 @@ interface PatternScoreDebuggerProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/**
+ * Validates that scoringEvidence has the expected nested structure.
+ * Returns true if all required nested objects exist with their score properties.
+ */
+function isValidScoringEvidence(evidence: unknown): evidence is ScoringEvidence {
+  if (!evidence || typeof evidence !== 'object') return false;
+  const e = evidence as Record<string, unknown>;
+
+  // Check labelAgreement
+  if (!e.labelAgreement || typeof e.labelAgreement !== 'object') return false;
+  const la = e.labelAgreement as Record<string, unknown>;
+  if (typeof la.score !== 'number') return false;
+
+  // Check clusterCohesion
+  if (!e.clusterCohesion || typeof e.clusterCohesion !== 'object') return false;
+  const cc = e.clusterCohesion as Record<string, unknown>;
+  if (typeof cc.score !== 'number') return false;
+
+  // Check frequencyFactor
+  if (!e.frequencyFactor || typeof e.frequencyFactor !== 'object') return false;
+  const ff = e.frequencyFactor as Record<string, unknown>;
+  if (typeof ff.score !== 'number') return false;
+
+  return true;
+}
+
+/**
+ * Validates that signature has the expected structure.
+ */
+function isValidSignature(sig: unknown): sig is PatternSignature {
+  if (!sig || typeof sig !== 'object') return false;
+  const s = sig as Record<string, unknown>;
+  return typeof s.hash === 'string' && Array.isArray(s.inputs);
+}
+
+/**
+ * Validates that metrics has the expected structure.
+ */
+function isValidMetrics(m: unknown): m is PatlearnArtifact['metrics'] {
+  if (!m || typeof m !== 'object') return false;
+  const metrics = m as Record<string, unknown>;
+  return typeof metrics.processingTimeMs === 'number';
+}
+
+/**
+ * Fallback component for unavailable data sections
+ */
+function DataUnavailable({ section }: { section: string }) {
+  return (
+    <div className="py-8 text-center text-muted-foreground">
+      <p className="text-sm">{section} data unavailable</p>
+      <p className="text-xs mt-1">The data may be incomplete or malformed</p>
+    </div>
+  );
+}
+
 export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternScoreDebuggerProps) {
   if (!artifact) return null;
 
   const { scoringEvidence, signature, metrics } = artifact;
+
+  // Validate nested data structures
+  const hasScoringEvidence = isValidScoringEvidence(scoringEvidence);
+  const hasSignature = isValidSignature(signature);
+  const hasMetrics = isValidMetrics(metrics);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -51,118 +116,143 @@ export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternSc
           </TabsList>
 
           <TabsContent value="scoring" className="space-y-3 mt-4">
-            <ScoringEvidenceCard
-              title="Label Agreement"
-              score={scoringEvidence.labelAgreement.score}
-              defaultExpanded
-            >
-              <div className="space-y-2">
-                <div>
-                  <strong>Matched:</strong>{' '}
-                  {scoringEvidence.labelAgreement.matchedLabels.join(', ') || 'None'}
-                </div>
-                <div>
-                  <strong>Total Labels:</strong> {scoringEvidence.labelAgreement.totalLabels}
-                </div>
-                {scoringEvidence.labelAgreement.disagreements &&
-                  scoringEvidence.labelAgreement.disagreements.length > 0 && (
-                    <div className="text-red-600">
-                      <strong>Disagreements:</strong>{' '}
-                      {scoringEvidence.labelAgreement.disagreements.join(', ')}
+            {!hasScoringEvidence ? (
+              <DataUnavailable section="Scoring evidence" />
+            ) : (
+              <>
+                <ScoringEvidenceCard
+                  title="Label Agreement"
+                  score={scoringEvidence.labelAgreement.score}
+                  defaultExpanded
+                >
+                  <div className="space-y-2">
+                    <div>
+                      <strong>Matched:</strong>{' '}
+                      {scoringEvidence.labelAgreement.matchedLabels?.join(', ') || 'None'}
                     </div>
-                  )}
-              </div>
-            </ScoringEvidenceCard>
-
-            <ScoringEvidenceCard
-              title="Cluster Cohesion"
-              score={scoringEvidence.clusterCohesion.score}
-            >
-              <div className="space-y-2">
-                <div>
-                  <strong>Cluster ID:</strong>{' '}
-                  <code>{scoringEvidence.clusterCohesion.clusterId}</code>
-                </div>
-                <div>
-                  <strong>Member Count:</strong> {scoringEvidence.clusterCohesion.memberCount}
-                </div>
-                <div>
-                  <strong>Avg Pairwise Similarity:</strong>{' '}
-                  {(scoringEvidence.clusterCohesion.avgPairwiseSimilarity * 100).toFixed(1)}%
-                </div>
-                {scoringEvidence.clusterCohesion.medoidId && (
-                  <div>
-                    <strong>Medoid:</strong> <code>{scoringEvidence.clusterCohesion.medoidId}</code>
+                    <div>
+                      <strong>Total Labels:</strong>{' '}
+                      {scoringEvidence.labelAgreement.totalLabels ?? 'N/A'}
+                    </div>
+                    {scoringEvidence.labelAgreement.disagreements &&
+                      scoringEvidence.labelAgreement.disagreements.length > 0 && (
+                        <div className="text-red-600">
+                          <strong>Disagreements:</strong>{' '}
+                          {scoringEvidence.labelAgreement.disagreements.join(', ')}
+                        </div>
+                      )}
                   </div>
-                )}
-              </div>
-            </ScoringEvidenceCard>
+                </ScoringEvidenceCard>
 
-            <ScoringEvidenceCard
-              title="Frequency Factor"
-              score={scoringEvidence.frequencyFactor.score}
-            >
-              <div className="space-y-2">
-                <div>
-                  <strong>Observed:</strong> {scoringEvidence.frequencyFactor.observedCount}{' '}
-                  occurrences
-                </div>
-                <div>
-                  <strong>Min Required:</strong> {scoringEvidence.frequencyFactor.minRequired}
-                </div>
-                <div>
-                  <strong>Window:</strong> {scoringEvidence.frequencyFactor.windowDays} days
-                </div>
-              </div>
-            </ScoringEvidenceCard>
+                <ScoringEvidenceCard
+                  title="Cluster Cohesion"
+                  score={scoringEvidence.clusterCohesion.score}
+                >
+                  <div className="space-y-2">
+                    <div>
+                      <strong>Cluster ID:</strong>{' '}
+                      <code>{scoringEvidence.clusterCohesion.clusterId ?? 'Unknown'}</code>
+                    </div>
+                    <div>
+                      <strong>Member Count:</strong>{' '}
+                      {scoringEvidence.clusterCohesion.memberCount ?? 'N/A'}
+                    </div>
+                    <div>
+                      <strong>Avg Pairwise Similarity:</strong>{' '}
+                      {typeof scoringEvidence.clusterCohesion.avgPairwiseSimilarity === 'number'
+                        ? `${(scoringEvidence.clusterCohesion.avgPairwiseSimilarity * 100).toFixed(1)}%`
+                        : 'N/A'}
+                    </div>
+                    {scoringEvidence.clusterCohesion.medoidId && (
+                      <div>
+                        <strong>Medoid:</strong>{' '}
+                        <code>{scoringEvidence.clusterCohesion.medoidId}</code>
+                      </div>
+                    )}
+                  </div>
+                </ScoringEvidenceCard>
+
+                <ScoringEvidenceCard
+                  title="Frequency Factor"
+                  score={scoringEvidence.frequencyFactor.score}
+                >
+                  <div className="space-y-2">
+                    <div>
+                      <strong>Observed:</strong>{' '}
+                      {scoringEvidence.frequencyFactor.observedCount ?? 'N/A'} occurrences
+                    </div>
+                    <div>
+                      <strong>Min Required:</strong>{' '}
+                      {scoringEvidence.frequencyFactor.minRequired ?? 'N/A'}
+                    </div>
+                    <div>
+                      <strong>Window:</strong> {scoringEvidence.frequencyFactor.windowDays ?? 'N/A'}{' '}
+                      days
+                    </div>
+                  </div>
+                </ScoringEvidenceCard>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="signature" className="mt-4">
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-muted-foreground">Hash:</div>
-                <div className="font-mono text-xs break-all">{signature.hash}</div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-muted-foreground">Version:</div>
-                <div>{signature.version}</div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-muted-foreground">Algorithm:</div>
-                <div>{signature.algorithm}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground mb-1">Inputs:</div>
-                <div className="flex flex-wrap gap-1">
-                  {signature.inputs.map((input, i) => (
-                    <Badge key={i} variant="outline" className="text-xs">
-                      {input}
-                    </Badge>
-                  ))}
+            {!hasSignature ? (
+              <DataUnavailable section="Signature" />
+            ) : (
+              <div className="space-y-4 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-muted-foreground">Hash:</div>
+                  <div className="font-mono text-xs break-all">{signature.hash}</div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-muted-foreground">Version:</div>
+                  <div>{signature.version ?? 'Unknown'}</div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-muted-foreground">Algorithm:</div>
+                  <div>{signature.algorithm ?? 'sha256'}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground mb-1">Inputs:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {signature.inputs.length > 0 ? (
+                      signature.inputs.map((input, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {input}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-muted-foreground text-xs">No inputs recorded</span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </TabsContent>
 
           <TabsContent value="metrics" className="mt-4">
-            <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-muted-foreground">Processing Time:</div>
-                <div>{metrics.processingTimeMs}ms</div>
+            {!hasMetrics ? (
+              <DataUnavailable section="Metrics" />
+            ) : (
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-muted-foreground">Processing Time:</div>
+                  <div>{metrics.processingTimeMs}ms</div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-muted-foreground">Input Count:</div>
+                  <div>{metrics.inputCount ?? 'N/A'}</div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-muted-foreground">Cluster Count:</div>
+                  <div>{metrics.clusterCount ?? 'N/A'}</div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-muted-foreground">Dedup Merges:</div>
+                  <div>{metrics.dedupMergeCount ?? 'N/A'}</div>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-muted-foreground">Input Count:</div>
-                <div>{metrics.inputCount}</div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-muted-foreground">Cluster Count:</div>
-                <div>{metrics.clusterCount}</div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-muted-foreground">Dedup Merges:</div>
-                <div>{metrics.dedupMergeCount}</div>
-              </div>
-            </div>
+            )}
           </TabsContent>
         </Tabs>
 
