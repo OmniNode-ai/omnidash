@@ -26,6 +26,9 @@ import { LifecycleStateBadge, PatternScoreDebugger } from '@/components/pattern'
 import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
 import { queryKeys } from '@/lib/query-keys';
 
+/** Default limit for pattern list queries */
+const PATTERN_LIST_LIMIT = 100;
+
 // ===========================
 // Error Boundary
 // ===========================
@@ -134,12 +137,17 @@ function PatternLearningContent() {
     error: patternsErrorData,
     refetch: refetchPatterns,
   } = useQuery({
-    queryKey: queryKeys.patlearn.list(filter),
+    queryKey: queryKeys.patlearn.list(`${filter}-limit${PATTERN_LIST_LIMIT}`),
     queryFn: () => {
       if (filter === 'all') {
-        return patlearnSource.list({ limit: 100, sort: 'score', order: 'desc' });
+        return patlearnSource.list({ limit: PATTERN_LIST_LIMIT, sort: 'score', order: 'desc' });
       }
-      return patlearnSource.list({ state: filter, limit: 100, sort: 'score', order: 'desc' });
+      return patlearnSource.list({
+        state: filter,
+        limit: PATTERN_LIST_LIMIT,
+        sort: 'score',
+        order: 'desc',
+      });
     },
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });

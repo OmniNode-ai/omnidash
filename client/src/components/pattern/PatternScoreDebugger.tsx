@@ -216,8 +216,8 @@ export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternSc
                   <div className="text-muted-foreground mb-1">Inputs:</div>
                   <div className="flex flex-wrap gap-1">
                     {signature.inputs.length > 0 ? (
-                      signature.inputs.map((input, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">
+                      signature.inputs.map((input) => (
+                        <Badge key={input} variant="outline" className="text-xs">
                           {input}
                         </Badge>
                       ))

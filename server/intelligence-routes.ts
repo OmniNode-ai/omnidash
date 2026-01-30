@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { intelligenceEvents } from './intelligence-event-adapter';
 import { eventConsumer } from './event-consumer';
 import { getIntelligenceDb } from './storage';
@@ -3601,10 +3602,10 @@ intelligenceRouter.get('/patterns/patlearn/summary', async (req, res) => {
       totalPatterns,
       byState,
       avgScores: {
-        labelAgreement: avgScores[0]?.avgLabelAgreement || 0,
-        clusterCohesion: avgScores[0]?.avgClusterCohesion || 0,
-        frequencyFactor: avgScores[0]?.avgFrequencyFactor || 0,
-        composite: avgScores[0]?.avgComposite || 0,
+        labelAgreement: avgScores[0]?.avgLabelAgreement ?? 0,
+        clusterCohesion: avgScores[0]?.avgClusterCohesion ?? 0,
+        frequencyFactor: avgScores[0]?.avgFrequencyFactor ?? 0,
+        composite: avgScores[0]?.avgComposite ?? 0,
       },
       window,
       promotionsInWindow: promotions[0]?.count || 0,
@@ -3623,7 +3624,7 @@ intelligenceRouter.get('/patterns/patlearn/summary', async (req, res) => {
  * GET /api/intelligence/patterns/patlearn/:id
  * Full artifact detail for debugger
  */
-intelligenceRouter.get('/patterns/patlearn/:id', async (req, res) => {
+intelligenceRouter.get('/patterns/patlearn/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
