@@ -20,13 +20,6 @@ import type {
   PatternSignature,
 } from '@/lib/schemas/api-response-schemas';
 
-/** Extended metadata type for demo patterns */
-interface PatternMetadata {
-  description?: string;
-  codeExample?: string;
-  __demo?: boolean;
-}
-
 interface PatternScoreDebuggerProps {
   artifact: PatlearnArtifact | null;
   open: boolean;
@@ -95,8 +88,11 @@ export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternSc
   const { scoringEvidence, signature, metrics } = artifact;
 
   // Extract metadata (includes description and codeExample for demo patterns)
-  const metadata = (artifact as { metadata?: PatternMetadata }).metadata || {};
-  const { description, codeExample } = metadata;
+  const { description, codeExample } = artifact.metadata ?? {};
+
+  // Default to "overview" tab only if there's meaningful content, otherwise "scoring"
+  const hasOverviewContent = Boolean(description || codeExample);
+  const defaultTab = hasOverviewContent ? 'overview' : 'scoring';
 
   // Validate nested data structures
   const hasScoringEvidence = isValidScoringEvidence(scoringEvidence);
@@ -120,7 +116,7 @@ export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternSc
           </SheetDescription>
         </SheetHeader>
 
-        <Tabs defaultValue="overview" className="mt-6">
+        <Tabs defaultValue={defaultTab} className="mt-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="scoring">Scoring</TabsTrigger>

@@ -5,7 +5,15 @@
  * Part of OMN-1699: Pattern Dashboard with Evidence-Based Score Debugging
  */
 
-import { useState, useMemo, useCallback, Component, type ReactNode, type ErrorInfo } from 'react';
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useDeferredValue,
+  Component,
+  type ReactNode,
+  type ErrorInfo,
+} from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -140,6 +148,11 @@ function PatternLearningContent() {
     search: '',
     limit: 50,
   });
+
+  // Defer the search value to avoid excessive re-renders during rapid typing
+  // The input shows typed characters immediately, but filtering uses the deferred value
+  const deferredSearch = useDeferredValue(filters.search);
+
   const [selectedArtifact, setSelectedArtifact] = useState<PatlearnArtifact | null>(null);
   const [debuggerOpen, setDebuggerOpen] = useState(false);
 
@@ -179,6 +192,7 @@ function PatternLearningContent() {
   }, [patterns]);
 
   // Client-side filtering with useMemo
+  // Uses deferredSearch to avoid re-filtering on every keystroke
   const filteredPatterns = useMemo(() => {
     if (!patterns) return [];
 
@@ -194,9 +208,9 @@ function PatternLearningContent() {
       result = result.filter((p) => p.patternType === filters.patternType);
     }
 
-    // Filter by search term (matches pattern name)
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
+    // Filter by search term (uses deferred value for smoother typing)
+    if (deferredSearch) {
+      const searchLower = deferredSearch.toLowerCase();
       result = result.filter(
         (p) =>
           p.patternName.toLowerCase().includes(searchLower) ||
@@ -207,7 +221,7 @@ function PatternLearningContent() {
 
     // Apply limit
     return result.slice(0, filters.limit);
-  }, [patterns, filters]);
+  }, [patterns, filters.state, filters.patternType, filters.limit, deferredSearch]);
 
   // Check if any filters are active
   const hasActiveFilters = filters.state || filters.patternType || filters.search;
