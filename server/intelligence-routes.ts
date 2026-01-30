@@ -3428,6 +3428,10 @@ const VALID_PATLEARN_STATES = ['candidate', 'provisional', 'validated', 'depreca
  * Drizzle ORM returns camelCase properties as defined in the schema
  */
 function transformPatlearnArtifact(row: PatternLearningArtifact) {
+  // Explicit NaN check to avoid silently masking invalid data
+  const parsedScore = parseFloat(row.compositeScore);
+  const compositeScore = Number.isNaN(parsedScore) ? 0 : parsedScore;
+
   return {
     id: row.id,
     patternId: row.patternId,
@@ -3436,7 +3440,7 @@ function transformPatlearnArtifact(row: PatternLearningArtifact) {
     language: row.language,
     lifecycleState: row.lifecycleState,
     stateChangedAt: row.stateChangedAt,
-    compositeScore: parseFloat(row.compositeScore) || 0,
+    compositeScore,
     scoringEvidence: row.scoringEvidence,
     signature: row.signature,
     metrics: row.metrics || {},

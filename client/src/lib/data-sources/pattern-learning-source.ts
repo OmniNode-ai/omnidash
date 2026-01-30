@@ -32,6 +32,24 @@ export interface PatlearnDetailResponse {
 }
 
 // ===========================
+// Custom Error Class
+// ===========================
+
+export class PatlearnFetchError extends Error {
+  constructor(
+    public readonly method: string,
+    public readonly statusCode?: number,
+    public readonly cause?: unknown
+  ) {
+    const message = statusCode
+      ? `Failed to fetch PATLEARN ${method}: HTTP ${statusCode}`
+      : `Failed to fetch PATLEARN ${method}: ${cause instanceof Error ? cause.message : 'Network error'}`;
+    super(message);
+    this.name = 'PatlearnFetchError';
+  }
+}
+
+// ===========================
 // Helper Functions
 // ===========================
 
@@ -97,15 +115,16 @@ class PatternLearningSource {
       const response = await fetch(url);
 
       if (!response.ok) {
-        console.error(`[patlearn-list] HTTP ${response.status}`);
-        return [];
+        throw new PatlearnFetchError('patterns', response.status);
       }
 
       const data = await response.json();
       return safeParseArray(patlearnArtifactSchema, data, 'patlearn-list');
     } catch (error) {
-      console.error('[patlearn-list] Fetch error:', error);
-      return [];
+      if (error instanceof PatlearnFetchError) {
+        throw error;
+      }
+      throw new PatlearnFetchError('patterns', undefined, error);
     }
   }
 
@@ -117,15 +136,16 @@ class PatternLearningSource {
       const response = await fetch(`${this.baseUrl}/summary?window=${window}`);
 
       if (!response.ok) {
-        console.error(`[patlearn-summary] HTTP ${response.status}`);
-        return null;
+        throw new PatlearnFetchError('summary', response.status);
       }
 
       const data = await response.json();
       return safeParseOne(patlearnSummarySchema, data, 'patlearn-summary');
     } catch (error) {
-      console.error('[patlearn-summary] Fetch error:', error);
-      return null;
+      if (error instanceof PatlearnFetchError) {
+        throw error;
+      }
+      throw new PatlearnFetchError('summary', undefined, error);
     }
   }
 
@@ -137,23 +157,26 @@ class PatternLearningSource {
       const response = await fetch(`${this.baseUrl}/${id}`);
 
       if (!response.ok) {
-        console.error(`[patlearn-detail] HTTP ${response.status}`);
-        return null;
+        throw new PatlearnFetchError('detail', response.status);
       }
 
       const data = await response.json();
 
       // Validate the artifact part
       const artifact = safeParseOne(patlearnArtifactSchema, data.artifact, 'patlearn-detail');
-      if (!artifact) return null;
+      if (!artifact) {
+        throw new PatlearnFetchError('detail', undefined, new Error('Invalid artifact data'));
+      }
 
       return {
         artifact,
         similarPatterns: data.similarPatterns || [],
       };
     } catch (error) {
-      console.error('[patlearn-detail] Fetch error:', error);
-      return null;
+      if (error instanceof PatlearnFetchError) {
+        throw error;
+      }
+      throw new PatlearnFetchError('detail', undefined, error);
     }
   }
 
