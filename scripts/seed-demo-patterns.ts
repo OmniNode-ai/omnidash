@@ -50,7 +50,9 @@ function getConnectionString(): string {
     process.exit(1);
   }
 
-  return `postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}`;
+  const encodedUser = encodeURIComponent(POSTGRES_USER);
+  const encodedPassword = encodeURIComponent(POSTGRES_PASSWORD);
+  return `postgresql://${encodedUser}:${encodedPassword}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}`;
 }
 
 const connectionString = getConnectionString();

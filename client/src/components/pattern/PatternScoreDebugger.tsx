@@ -2,6 +2,7 @@
  * PatternScoreDebugger
  * Sheet showing detailed evidence for pattern scoring
  */
+import { useState, useEffect } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -83,16 +84,25 @@ function DataUnavailable({ section }: { section: string }) {
 }
 
 export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternScoreDebuggerProps) {
-  if (!artifact) return null;
-
-  const { scoringEvidence, signature, metrics } = artifact;
-
   // Extract metadata (includes description and codeExample for demo patterns)
-  const { description, codeExample } = artifact.metadata ?? {};
+  const metadata = artifact?.metadata ?? {};
+  const { description, codeExample } = metadata;
 
   // Default to "overview" tab only if there's meaningful content, otherwise "scoring"
   const hasOverviewContent = Boolean(description || codeExample);
-  const defaultTab = hasOverviewContent ? 'overview' : 'scoring';
+
+  // Controlled tab state - resets when artifact changes
+  // Hooks must be called before any early returns
+  const [activeTab, setActiveTab] = useState<string>('scoring');
+
+  // Reset tab when artifact changes
+  useEffect(() => {
+    setActiveTab(hasOverviewContent ? 'overview' : 'scoring');
+  }, [artifact?.id, hasOverviewContent]);
+
+  if (!artifact) return null;
+
+  const { scoringEvidence, signature, metrics } = artifact;
 
   // Validate nested data structures
   const hasScoringEvidence = isValidScoringEvidence(scoringEvidence);
@@ -116,7 +126,7 @@ export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternSc
           </SheetDescription>
         </SheetHeader>
 
-        <Tabs defaultValue={defaultTab} className="mt-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="scoring">Scoring</TabsTrigger>
