@@ -8,6 +8,7 @@ import {
   boolean,
   jsonb,
   timestamp,
+  index,
 } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 
@@ -172,6 +173,56 @@ export const patternQualityMetrics = pgTable('pattern_quality_metrics', {
 export const insertPatternQualityMetricsSchema = createInsertSchema(patternQualityMetrics);
 
 /**
+ * Pattern Learning Artifacts Table
+ * Stores complete PATLEARN output objects as JSONB for dashboard consumption.
+ *
+ * Design: Projection table, not normalized. UI reads directly from stored shape.
+ */
+export const patternLearningArtifacts = pgTable(
+  'pattern_learning_artifacts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    patternId: uuid('pattern_id').notNull(),
+    patternName: varchar('pattern_name', { length: 255 }).notNull(),
+    patternType: varchar('pattern_type', { length: 100 }).notNull(),
+    language: varchar('language', { length: 50 }),
+
+    // Lifecycle (indexed for filtering)
+    lifecycleState: text('lifecycle_state').notNull().default('candidate'),
+    stateChangedAt: timestamp('state_changed_at', { withTimezone: true }),
+
+    // Composite score (indexed for sorting)
+    compositeScore: numeric('composite_score', { precision: 10, scale: 6 }).notNull(),
+
+    // JSONB fields for full evidence
+    scoringEvidence: jsonb('scoring_evidence').notNull(),
+    signature: jsonb('signature').notNull(),
+    metrics: jsonb('metrics').default({}),
+    metadata: jsonb('metadata').default({}),
+
+    // Timestamps
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    // Index for lifecycle state filtering (WHERE lifecycle_state = ?)
+    index('idx_patlearn_lifecycle_state').on(table.lifecycleState),
+    // Index for composite score sorting (ORDER BY composite_score DESC)
+    index('idx_patlearn_composite_score').on(table.compositeScore),
+    // Index for state change time filtering (promotions/deprecations)
+    index('idx_patlearn_state_changed_at').on(table.stateChangedAt),
+    // Index for created_at sorting
+    index('idx_patlearn_created_at').on(table.createdAt),
+    // Index for updated_at sorting
+    index('idx_patlearn_updated_at').on(table.updatedAt),
+    // Compound index for filtered sorts (WHERE lifecycle_state = ? ORDER BY composite_score)
+    index('idx_patlearn_lifecycle_score').on(table.lifecycleState, table.compositeScore),
+  ]
+);
+
+export const insertPatternLearningArtifactSchema = createInsertSchema(patternLearningArtifacts);
+
+/**
  * ONEX Compliance Stamps Table
  * Tracks ONEX architectural compliance status for files
  */
@@ -204,6 +255,8 @@ export type PatternLineageNode = typeof patternLineageNodes.$inferSelect;
 export type InsertPatternLineageNode = typeof patternLineageNodes.$inferInsert;
 export type PatternLineageEdge = typeof patternLineageEdges.$inferSelect;
 export type InsertPatternLineageEdge = typeof patternLineageEdges.$inferInsert;
+export type PatternLearningArtifact = typeof patternLearningArtifacts.$inferSelect;
+export type InsertPatternLearningArtifact = typeof patternLearningArtifacts.$inferInsert;
 export type OnexComplianceStamp = typeof onexComplianceStamps.$inferSelect;
 export type InsertOnexComplianceStamp = typeof onexComplianceStamps.$inferInsert;
 

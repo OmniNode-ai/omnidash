@@ -13,7 +13,6 @@ import { DemoModeToggle } from '@/components/DemoModeToggle';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
 // Archived legacy pages (OMN-1377)
-import PatternLearning from '@/_archive/pages/PatternLearning';
 import IntelligenceOperations from '@/_archive/pages/IntelligenceOperations';
 import CodeIntelligence from '@/_archive/pages/CodeIntelligence';
 import EventFlow from '@/_archive/pages/EventFlow';
@@ -23,6 +22,7 @@ import PlatformHealth from '@/_archive/pages/PlatformHealth';
 import DeveloperExperience from '@/_archive/pages/DeveloperExperience';
 
 // Active pages
+import PatternLearning from '@/pages/PatternLearning';
 import EventBusMonitor from '@/pages/EventBusMonitor';
 import Chat from '@/pages/Chat';
 import CorrelationTrace from '@/pages/CorrelationTrace';

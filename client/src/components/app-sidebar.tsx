@@ -7,6 +7,7 @@ import {
   GitBranch,
   Globe,
   Brain,
+  Sparkles,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -34,6 +35,12 @@ const dashboards = [
     url: '/intents',
     icon: Brain,
     description: 'Real-time intent classification and analysis',
+  },
+  {
+    title: 'Pattern Learning',
+    url: '/patterns',
+    icon: Sparkles,
+    description: 'Code pattern discovery and learning analytics',
   },
   {
     title: 'Registry Discovery',
