@@ -13,11 +13,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { LifecycleStateBadge } from './LifecycleStateBadge';
 import { ScoringEvidenceCard } from './ScoringEvidenceCard';
+import { Code2 } from 'lucide-react';
 import type {
   PatlearnArtifact,
   ScoringEvidence,
   PatternSignature,
 } from '@/lib/schemas/api-response-schemas';
+
+/** Extended metadata type for demo patterns */
+interface PatternMetadata {
+  description?: string;
+  codeExample?: string;
+  __demo?: boolean;
+}
 
 interface PatternScoreDebuggerProps {
   artifact: PatlearnArtifact | null;
@@ -86,6 +94,10 @@ export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternSc
 
   const { scoringEvidence, signature, metrics } = artifact;
 
+  // Extract metadata (includes description and codeExample for demo patterns)
+  const metadata = (artifact as { metadata?: PatternMetadata }).metadata || {};
+  const { description, codeExample } = metadata;
+
   // Validate nested data structures
   const hasScoringEvidence = isValidScoringEvidence(scoringEvidence);
   const hasSignature = isValidSignature(signature);
@@ -108,12 +120,36 @@ export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternSc
           </SheetDescription>
         </SheetHeader>
 
-        <Tabs defaultValue="scoring" className="mt-6">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="overview" className="mt-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="scoring">Scoring</TabsTrigger>
             <TabsTrigger value="signature">Signature</TabsTrigger>
             <TabsTrigger value="metrics">Metrics</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="overview" className="mt-4 space-y-4">
+            {description ? (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Description</h4>
+                <p className="text-sm leading-relaxed">{description}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No description available</p>
+            )}
+
+            {codeExample && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <Code2 className="h-4 w-4" />
+                  Code Example
+                </h4>
+                <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto font-mono">
+                  <code>{codeExample}</code>
+                </pre>
+              </div>
+            )}
+          </TabsContent>
 
           <TabsContent value="scoring" className="space-y-3 mt-4">
             {!hasScoringEvidence ? (

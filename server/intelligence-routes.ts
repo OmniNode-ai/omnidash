@@ -3448,6 +3448,7 @@ function transformPatlearnArtifact(row: PatternLearningArtifact) {
     scoringEvidence: row.scoringEvidence,
     signature: row.signature,
     metrics: row.metrics || {},
+    metadata: row.metadata || {},
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

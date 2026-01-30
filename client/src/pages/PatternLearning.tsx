@@ -5,11 +5,18 @@
  * Part of OMN-1699: Pattern Dashboard with Evidence-Based Score Debugging
  */
 
-import { useState, Component, type ReactNode, type ErrorInfo } from 'react';
+import { useState, useMemo, useCallback, Component, type ReactNode, type ErrorInfo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -20,14 +27,24 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCw, Database, CheckCircle, Clock, Archive } from 'lucide-react';
+import { RefreshCw, Database, CheckCircle, Clock, Archive, Filter, X, Search } from 'lucide-react';
 import { patlearnSource, type PatlearnArtifact, type LifecycleState } from '@/lib/data-sources';
 import { LifecycleStateBadge, PatternScoreDebugger } from '@/components/pattern';
 import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
 import { queryKeys } from '@/lib/query-keys';
 
-/** Default limit for pattern list queries */
-const PATTERN_LIST_LIMIT = 100;
+// ===========================
+// Constants
+// ===========================
+
+/** Maximum patterns to fetch from API */
+const MAX_PATTERN_FETCH = 500;
+
+/** Limit options for pagination */
+const LIMIT_OPTIONS = [25, 50, 100, 250] as const;
+
+/** Available lifecycle states for filtering */
+const LIFECYCLE_STATES: LifecycleState[] = ['candidate', 'provisional', 'validated', 'deprecated'];
 
 // ===========================
 // Error Boundary
@@ -76,7 +93,12 @@ class PatternLearningErrorBoundary extends Component<
 // Types
 // ===========================
 
-type FilterState = 'all' | LifecycleState;
+interface FilterState {
+  state: LifecycleState | null;
+  patternType: string | null;
+  search: string;
+  limit: number;
+}
 
 // ===========================
 // Stats Card Component
@@ -112,7 +134,12 @@ function StatsCard({
 // ===========================
 
 function PatternLearningContent() {
-  const [filter, setFilter] = useState<FilterState>('all');
+  const [filters, setFilters] = useState<FilterState>({
+    state: null,
+    patternType: null,
+    search: '',
+    limit: 50,
+  });
   const [selectedArtifact, setSelectedArtifact] = useState<PatlearnArtifact | null>(null);
   const [debuggerOpen, setDebuggerOpen] = useState(false);
 
@@ -130,7 +157,7 @@ function PatternLearningContent() {
     staleTime: 30_000, // 30 seconds - prevents unnecessary refetches on remount
   });
 
-  // Fetch patterns list based on filter
+  // Fetch all patterns (we filter client-side for better UX)
   const {
     data: patterns,
     isLoading: patternsLoading,
@@ -138,21 +165,62 @@ function PatternLearningContent() {
     error: patternsErrorData,
     refetch: refetchPatterns,
   } = useQuery({
-    queryKey: queryKeys.patlearn.list(`${filter}-limit${PATTERN_LIST_LIMIT}`),
-    queryFn: () => {
-      if (filter === 'all') {
-        return patlearnSource.list({ limit: PATTERN_LIST_LIMIT, sort: 'score', order: 'desc' });
-      }
-      return patlearnSource.list({
-        state: filter,
-        limit: PATTERN_LIST_LIMIT,
-        sort: 'score',
-        order: 'desc',
-      });
-    },
+    queryKey: queryKeys.patlearn.list(`all-limit${MAX_PATTERN_FETCH}`),
+    queryFn: () => patlearnSource.list({ limit: MAX_PATTERN_FETCH, sort: 'score', order: 'desc' }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000, // 30 seconds - prevents unnecessary refetches on remount
   });
+
+  // Derive unique pattern types from the data
+  const availablePatternTypes = useMemo(() => {
+    if (!patterns) return [];
+    const types = new Set(patterns.map((p) => p.patternType));
+    return Array.from(types).sort();
+  }, [patterns]);
+
+  // Client-side filtering with useMemo
+  const filteredPatterns = useMemo(() => {
+    if (!patterns) return [];
+
+    let result = patterns;
+
+    // Filter by lifecycle state
+    if (filters.state) {
+      result = result.filter((p) => p.lifecycleState === filters.state);
+    }
+
+    // Filter by pattern type
+    if (filters.patternType) {
+      result = result.filter((p) => p.patternType === filters.patternType);
+    }
+
+    // Filter by search term (matches pattern name)
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.patternName.toLowerCase().includes(searchLower) ||
+          p.patternType.toLowerCase().includes(searchLower) ||
+          (p.language && p.language.toLowerCase().includes(searchLower))
+      );
+    }
+
+    // Apply limit
+    return result.slice(0, filters.limit);
+  }, [patterns, filters]);
+
+  // Check if any filters are active
+  const hasActiveFilters = filters.state || filters.patternType || filters.search;
+
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    setFilters((prev) => ({
+      ...prev,
+      state: null,
+      patternType: null,
+      search: '',
+    }));
+  }, []);
 
   const handleRowClick = (artifact: PatlearnArtifact) => {
     setSelectedArtifact(artifact);
@@ -238,22 +306,147 @@ function PatternLearningContent() {
         )}
       </div>
 
-      {/* Filter Tabs */}
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterState)}>
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="candidate">Candidates</TabsTrigger>
-          <TabsTrigger value="provisional">Provisional</TabsTrigger>
-          <TabsTrigger value="validated">Validated</TabsTrigger>
-          <TabsTrigger value="deprecated">Deprecated</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* Filter Bar */}
+      <Card className="p-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Filters:</span>
+          </div>
+
+          {/* State Filter */}
+          <Select
+            value={filters.state || 'all'}
+            onValueChange={(value) =>
+              setFilters((prev) => ({
+                ...prev,
+                state: value === 'all' ? null : (value as LifecycleState),
+              }))
+            }
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="All States" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All States</SelectItem>
+              {LIFECYCLE_STATES.map((state) => (
+                <SelectItem key={state} value={state}>
+                  {state.charAt(0).toUpperCase() + state.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Pattern Type Filter */}
+          <Select
+            value={filters.patternType || 'all'}
+            onValueChange={(value) =>
+              setFilters((prev) => ({ ...prev, patternType: value === 'all' ? null : value }))
+            }
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {availablePatternTypes.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Search Input */}
+          <div className="flex-1 max-w-xs relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search patterns..."
+              value={filters.search}
+              onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+              className="h-9 pl-9"
+            />
+          </div>
+
+          {/* Limit Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Show:</span>
+            <Select
+              value={String(filters.limit)}
+              onValueChange={(value) => setFilters((prev) => ({ ...prev, limit: Number(value) }))}
+            >
+              <SelectTrigger className="w-[90px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LIMIT_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+              <X className="h-4 w-4" />
+              Clear
+            </Button>
+          )}
+
+          {/* Active Filter Badges */}
+          <div className="flex items-center gap-2">
+            {filters.state && (
+              <Badge variant="secondary" className="gap-1">
+                State: {filters.state}
+                <X
+                  className="h-3 w-3 cursor-pointer hover:text-destructive"
+                  onClick={() => setFilters((prev) => ({ ...prev, state: null }))}
+                />
+              </Badge>
+            )}
+            {filters.patternType && (
+              <Badge variant="secondary" className="gap-1">
+                Type: {filters.patternType}
+                <X
+                  className="h-3 w-3 cursor-pointer hover:text-destructive"
+                  onClick={() => setFilters((prev) => ({ ...prev, patternType: null }))}
+                />
+              </Badge>
+            )}
+            {filters.search && (
+              <Badge variant="secondary" className="gap-1">
+                Search: "{filters.search}"
+                <X
+                  className="h-3 w-3 cursor-pointer hover:text-destructive"
+                  onClick={() => setFilters((prev) => ({ ...prev, search: '' }))}
+                />
+              </Badge>
+            )}
+          </div>
+        </div>
+      </Card>
 
       {/* Patterns Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Patterns</CardTitle>
-          <CardDescription>Click a row to view scoring evidence and debug details</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Patterns</CardTitle>
+              <CardDescription>
+                {patternsLoading
+                  ? 'Loading patterns...'
+                  : `Showing ${filteredPatterns.length}${patterns && filteredPatterns.length < patterns.length ? ` of ${patterns.length}` : ''} patterns. Click a row to view scoring evidence.`}
+              </CardDescription>
+            </div>
+            {hasActiveFilters && patterns && filteredPatterns.length < patterns.length && (
+              <Badge variant="outline" className="text-muted-foreground">
+                {patterns.length - filteredPatterns.length} hidden by filters
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {patternsError ? (
@@ -280,7 +473,7 @@ function PatternLearningContent() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
-          ) : patterns && patterns.length > 0 ? (
+          ) : filteredPatterns.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -292,7 +485,7 @@ function PatternLearningContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {patterns.map((artifact) => (
+                {filteredPatterns.map((artifact) => (
                   <TableRow
                     key={artifact.id}
                     className="cursor-pointer hover:bg-muted/50"
@@ -315,7 +508,9 @@ function PatternLearningContent() {
             </Table>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No patterns found for the selected filter.
+              {patterns && patterns.length > 0
+                ? 'No patterns match the current filters.'
+                : 'No patterns found.'}
             </div>
           )}
         </CardContent>
