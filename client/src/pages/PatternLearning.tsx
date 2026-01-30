@@ -35,7 +35,17 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCw, Database, CheckCircle, Clock, Archive, Filter, X, Search } from 'lucide-react';
+import {
+  RefreshCw,
+  Database,
+  CheckCircle,
+  Clock,
+  Archive,
+  Filter,
+  X,
+  Search,
+  Loader2,
+} from 'lucide-react';
 import { patlearnSource, type PatlearnArtifact, type LifecycleState } from '@/lib/data-sources';
 import { LifecycleStateBadge, PatternScoreDebugger } from '@/components/pattern';
 import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
@@ -152,6 +162,9 @@ function PatternLearningContent() {
   // Defer the search value to avoid excessive re-renders during rapid typing
   // The input shows typed characters immediately, but filtering uses the deferred value
   const deferredSearch = useDeferredValue(filters.search);
+
+  // Detect when search filtering is pending (input value differs from deferred value)
+  const isSearchPending = filters.search !== deferredSearch;
 
   const [selectedArtifact, setSelectedArtifact] = useState<PatlearnArtifact | null>(null);
   const [debuggerOpen, setDebuggerOpen] = useState(false);
@@ -378,8 +391,11 @@ function PatternLearningContent() {
               placeholder="Search patterns..."
               value={filters.search}
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-              className="h-9 pl-9"
+              className="h-9 pl-9 pr-8"
             />
+            {isSearchPending && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+            )}
           </div>
 
           {/* Limit Selector */}
@@ -415,28 +431,40 @@ function PatternLearningContent() {
             {filters.state && (
               <Badge variant="secondary" className="gap-1">
                 State: {filters.state}
-                <X
-                  className="h-3 w-3 cursor-pointer hover:text-destructive"
+                <button
+                  type="button"
+                  aria-label={`Remove ${filters.state} state filter`}
+                  className="ml-0.5 rounded-sm hover:text-destructive focus:outline-none focus:ring-1 focus:ring-ring"
                   onClick={() => setFilters((prev) => ({ ...prev, state: null }))}
-                />
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </Badge>
             )}
             {filters.patternType && (
               <Badge variant="secondary" className="gap-1">
                 Type: {filters.patternType}
-                <X
-                  className="h-3 w-3 cursor-pointer hover:text-destructive"
+                <button
+                  type="button"
+                  aria-label={`Remove ${filters.patternType} pattern type filter`}
+                  className="ml-0.5 rounded-sm hover:text-destructive focus:outline-none focus:ring-1 focus:ring-ring"
                   onClick={() => setFilters((prev) => ({ ...prev, patternType: null }))}
-                />
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </Badge>
             )}
             {filters.search && (
               <Badge variant="secondary" className="gap-1">
                 Search: "{filters.search}"
-                <X
-                  className="h-3 w-3 cursor-pointer hover:text-destructive"
+                <button
+                  type="button"
+                  aria-label={`Remove "${filters.search}" search filter`}
+                  className="ml-0.5 rounded-sm hover:text-destructive focus:outline-none focus:ring-1 focus:ring-ring"
                   onClick={() => setFilters((prev) => ({ ...prev, search: '' }))}
-                />
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </Badge>
             )}
           </div>

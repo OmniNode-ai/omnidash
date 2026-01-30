@@ -1,29 +1,40 @@
+/**
+ * PatternLearning Page Tests
+ *
+ * Tests for client-side filtering logic in the PATLEARN dashboard.
+ * Covers: state filters, pattern type filters, search filters, combined filters,
+ * limit/pagination, and filter clearing.
+ *
+ * Part of OMN-1699: Pattern Dashboard with Evidence-Based Score Debugging
+ */
+
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
-import PatternLearning from '@/_archive/pages/PatternLearning';
-import { patternLearningSource } from '@/lib/data-sources';
+import PatternLearning from '@/pages/PatternLearning';
+import { patlearnSource, type PatlearnArtifact, type PatlearnSummary } from '@/lib/data-sources';
 
-type LocalStorageMock = {
-  getItem: ReturnType<typeof vi.fn>;
-  setItem: ReturnType<typeof vi.fn>;
-};
+// ===========================
+// Mocks
+// ===========================
 
 vi.mock('@/lib/data-sources', async () => {
   const actual = await vi.importActual<typeof import('@/lib/data-sources')>('@/lib/data-sources');
   return {
     ...actual,
-    patternLearningSource: {
-      fetchSummary: vi.fn(),
-      fetchTrends: vi.fn(),
-      fetchQualityTrends: vi.fn(),
-      fetchPatternList: vi.fn(),
-      fetchDiscovery: vi.fn(),
-      fetchLanguageBreakdown: vi.fn(),
+    patlearnSource: {
+      list: vi.fn(),
+      summary: vi.fn(),
+      detail: vi.fn(),
     },
   };
 });
+
+// ===========================
+// Test Helpers
+// ===========================
 
 let queryClient: QueryClient | null = null;
 
@@ -45,13 +56,90 @@ function renderWithClient(ui: ReactNode) {
   return { queryClient, ...result };
 }
 
-describe('PatternLearning page', () => {
-  const localStorageMocks = window.localStorage as unknown as LocalStorageMock;
+/**
+ * Create a mock PatlearnArtifact with sensible defaults
+ * All required fields are provided; override specific fields as needed
+ */
+function createMockPattern(overrides: Partial<PatlearnArtifact> = {}): PatlearnArtifact {
+  const id = overrides.id ?? crypto.randomUUID();
+  return {
+    id,
+    patternId: overrides.patternId ?? crypto.randomUUID(),
+    patternName: overrides.patternName ?? 'Test Pattern',
+    patternType: overrides.patternType ?? 'behavioral',
+    language: overrides.language ?? 'TypeScript',
+    lifecycleState: overrides.lifecycleState ?? 'validated',
+    stateChangedAt: overrides.stateChangedAt,
+    compositeScore: overrides.compositeScore ?? 0.85,
+    scoringEvidence: overrides.scoringEvidence ?? {
+      labelAgreement: {
+        score: 0.9,
+        matchedLabels: ['async', 'error-handling'],
+        totalLabels: 3,
+      },
+      clusterCohesion: {
+        score: 0.85,
+        clusterId: 'cluster-1',
+        memberCount: 5,
+        avgPairwiseSimilarity: 0.82,
+      },
+      frequencyFactor: {
+        score: 0.8,
+        observedCount: 12,
+        minRequired: 5,
+        windowDays: 7,
+      },
+    },
+    signature: overrides.signature ?? {
+      hash: 'abc123',
+      version: '1.0.0',
+      algorithm: 'sha256',
+      inputs: ['pattern-data'],
+    },
+    metrics: overrides.metrics ?? {
+      processingTimeMs: 120,
+      inputCount: 10,
+      clusterCount: 3,
+      dedupMergeCount: 2,
+    },
+    createdAt: overrides.createdAt ?? new Date().toISOString(),
+    updatedAt: overrides.updatedAt,
+    metadata: overrides.metadata,
+  };
+}
 
+/**
+ * Create a mock PatlearnSummary
+ */
+function createMockSummary(overrides: Partial<PatlearnSummary> = {}): PatlearnSummary {
+  return {
+    totalPatterns: overrides.totalPatterns ?? 100,
+    byState: overrides.byState ?? {
+      candidate: 20,
+      provisional: 15,
+      validated: 55,
+      deprecated: 10,
+    },
+    avgScores: overrides.avgScores ?? {
+      labelAgreement: 0.85,
+      clusterCohesion: 0.8,
+      frequencyFactor: 0.75,
+      composite: 0.82,
+    },
+    window: overrides.window ?? '24h',
+    promotionsInWindow: overrides.promotionsInWindow ?? 5,
+    deprecationsInWindow: overrides.deprecationsInWindow ?? 2,
+  };
+}
+
+// ===========================
+// Test Suite
+// ===========================
+
+describe('PatternLearning page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
-    localStorageMocks.getItem.mockReturnValue('24h');
   });
 
   afterEach(async () => {
@@ -64,101 +152,908 @@ describe('PatternLearning page', () => {
     vi.useRealTimers();
   });
 
-  it('renders pattern metrics, charts, and lists when data loads', async () => {
-    const now = new Date().toISOString();
-    vi.mocked(patternLearningSource.fetchSummary).mockResolvedValue({
-      totalPatterns: 320,
-      newPatternsToday: 12,
-      avgQualityScore: 0.87,
-      activeLearningCount: 18,
-    });
-    vi.mocked(patternLearningSource.fetchTrends).mockResolvedValue([
-      { period: now, manifestsGenerated: 8, avgPatternsPerManifest: 4.2, avgQueryTimeMs: 120 },
-    ]);
-    vi.mocked(patternLearningSource.fetchQualityTrends).mockResolvedValue([
-      { period: now, avgQuality: 0.9, manifestCount: 5 },
-    ]);
-    vi.mocked(patternLearningSource.fetchPatternList).mockResolvedValue([
-      {
-        id: 'pattern-1',
-        name: 'Auth Gateway Handler',
-        description: 'Ensures secure routing for auth requests',
-        quality: 0.9,
-        usage: 25,
-        trend: 'up',
-        trendPercentage: 12,
-        category: 'security',
-        language: 'typescript',
-      },
-    ]);
-    vi.mocked(patternLearningSource.fetchDiscovery).mockResolvedValue({
-      data: [
-        {
-          name: 'Async Retry Wrapper',
-          file_path: '/src/utils/retry.ts',
-          createdAt: now,
-        },
-      ],
-      isMock: false,
-    });
-    vi.mocked(patternLearningSource.fetchLanguageBreakdown).mockResolvedValue([
-      { language: 'typescript', count: 12, percentage: 60 },
-      { language: 'python', count: 8, percentage: 40 },
-    ]);
+  // ===========================
+  // Basic Rendering Tests
+  // ===========================
 
-    const result = renderWithClient(<PatternLearning />);
-    queryClient = result.queryClient;
+  describe('Basic Rendering', () => {
+    it('renders the page with title and filter bar', async () => {
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([createMockPattern()]);
 
-    await waitFor(() => {
-      expect(screen.getByText('Pattern Learning Metrics')).toBeInTheDocument();
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Pattern Learning')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Filters:')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Search patterns...')).toBeInTheDocument();
+
+      result.unmount();
     });
 
-    expect(screen.getByText('Total Patterns')).toBeInTheDocument();
-    expect(screen.getByText('Pattern Language Distribution')).toBeInTheDocument();
-    expect(screen.getByText('Live Pattern Discovery')).toBeInTheDocument();
-    expect(screen.getByText('Filter Patterns')).toBeInTheDocument();
-    expect(screen.getByText('Auth Gateway Handler')).toBeInTheDocument();
-    expect(screen.getByText('Async Retry Wrapper')).toBeInTheDocument();
+    it('shows loading skeletons while data is loading', async () => {
+      vi.mocked(patlearnSource.summary).mockImplementation(() => new Promise(() => {}));
+      vi.mocked(patlearnSource.list).mockImplementation(() => new Promise(() => {}));
 
-    result.unmount();
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      // Check for skeleton elements (loading state) - they have animate-pulse class
+      const skeletons = document.querySelectorAll('.animate-pulse');
+      expect(skeletons.length).toBeGreaterThan(0);
+
+      result.unmount();
+    });
+
+    it('displays patterns in the table when loaded', async () => {
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Auth Handler Pattern', patternType: 'security' }),
+        createMockPattern({ patternName: 'Retry Logic Pattern', patternType: 'resilience' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Auth Handler Pattern')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Retry Logic Pattern')).toBeInTheDocument();
+
+      result.unmount();
+    });
   });
 
-  it('shows loading screen when summary or pattern list queries are pending', () => {
-    vi.mocked(patternLearningSource.fetchSummary).mockImplementation(() => new Promise(() => {}));
-    vi.mocked(patternLearningSource.fetchPatternList).mockImplementation(
-      () => new Promise(() => {})
-    );
-    vi.mocked(patternLearningSource.fetchTrends).mockResolvedValue([]);
-    vi.mocked(patternLearningSource.fetchQualityTrends).mockResolvedValue([]);
-    vi.mocked(patternLearningSource.fetchDiscovery).mockResolvedValue({ data: [], isMock: false });
-    vi.mocked(patternLearningSource.fetchLanguageBreakdown).mockResolvedValue([]);
+  // ===========================
+  // State Filter Tests
+  // ===========================
 
-    const result = renderWithClient(<PatternLearning />);
-    queryClient = result.queryClient;
+  describe('State Filter', () => {
+    it('filters patterns by lifecycle state (validated)', async () => {
+      const user = userEvent.setup();
 
-    expect(screen.getByText('Loading pattern data...')).toBeInTheDocument();
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Validated Pattern', lifecycleState: 'validated' }),
+        createMockPattern({ patternName: 'Candidate Pattern', lifecycleState: 'candidate' }),
+        createMockPattern({ patternName: 'Provisional Pattern', lifecycleState: 'provisional' }),
+      ]);
 
-    result.unmount();
-  });
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
 
-  it('renders error state when summary query fails', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.mocked(patternLearningSource.fetchSummary).mockRejectedValue(new Error('summary failed'));
-    vi.mocked(patternLearningSource.fetchPatternList).mockResolvedValue([]);
-    vi.mocked(patternLearningSource.fetchTrends).mockResolvedValue([]);
-    vi.mocked(patternLearningSource.fetchQualityTrends).mockResolvedValue([]);
-    vi.mocked(patternLearningSource.fetchDiscovery).mockResolvedValue({ data: [], isMock: false });
-    vi.mocked(patternLearningSource.fetchLanguageBreakdown).mockResolvedValue([]);
+      // Wait for initial load
+      await waitFor(() => {
+        expect(screen.getByText('Validated Pattern')).toBeInTheDocument();
+      });
 
-    const result = renderWithClient(<PatternLearning />);
-    queryClient = result.queryClient;
+      // All patterns should be visible initially
+      expect(screen.getByText('Candidate Pattern')).toBeInTheDocument();
+      expect(screen.getByText('Provisional Pattern')).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByText('Failed to load pattern data')).toBeInTheDocument();
+      // Find and click the state filter dropdown (first combobox)
+      const comboboxes = screen.getAllByRole('combobox');
+      const stateSelect = comboboxes[0]; // State is first
+      await user.click(stateSelect);
+
+      // Select 'Validated' option
+      const validatedOption = screen.getByRole('option', { name: /validated/i });
+      await user.click(validatedOption);
+
+      // Now only validated patterns should be visible
+      await waitFor(() => {
+        expect(screen.getByText('Validated Pattern')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Candidate Pattern')).not.toBeInTheDocument();
+      expect(screen.queryByText('Provisional Pattern')).not.toBeInTheDocument();
+
+      // State filter badge should appear
+      expect(screen.getByText('State: validated')).toBeInTheDocument();
+
+      result.unmount();
     });
 
-    consoleError.mockRestore();
+    it('filters patterns by candidate state', async () => {
+      const user = userEvent.setup();
 
-    result.unmount();
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Validated Pattern', lifecycleState: 'validated' }),
+        createMockPattern({ patternName: 'Candidate Pattern', lifecycleState: 'candidate' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Validated Pattern')).toBeInTheDocument();
+      });
+
+      const comboboxes = screen.getAllByRole('combobox');
+      const stateSelect = comboboxes[0];
+      await user.click(stateSelect);
+
+      const candidateOption = screen.getByRole('option', { name: /candidate/i });
+      await user.click(candidateOption);
+
+      await waitFor(() => {
+        expect(screen.getByText('Candidate Pattern')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Validated Pattern')).not.toBeInTheDocument();
+
+      result.unmount();
+    });
+
+    it('filters patterns by deprecated state', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Active Pattern', lifecycleState: 'validated' }),
+        createMockPattern({ patternName: 'Old Pattern', lifecycleState: 'deprecated' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Active Pattern')).toBeInTheDocument();
+      });
+
+      const comboboxes = screen.getAllByRole('combobox');
+      const stateSelect = comboboxes[0];
+      await user.click(stateSelect);
+
+      const deprecatedOption = screen.getByRole('option', { name: /deprecated/i });
+      await user.click(deprecatedOption);
+
+      await waitFor(() => {
+        expect(screen.getByText('Old Pattern')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Active Pattern')).not.toBeInTheDocument();
+
+      result.unmount();
+    });
+  });
+
+  // ===========================
+  // Pattern Type Filter Tests
+  // ===========================
+
+  describe('Pattern Type Filter', () => {
+    it('filters patterns by pattern type', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Security Handler', patternType: 'security' }),
+        createMockPattern({ patternName: 'Behavioral Pattern', patternType: 'behavioral' }),
+        createMockPattern({ patternName: 'Auth Guard', patternType: 'security' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Security Handler')).toBeInTheDocument();
+      });
+
+      // All patterns visible initially
+      expect(screen.getByText('Behavioral Pattern')).toBeInTheDocument();
+      expect(screen.getByText('Auth Guard')).toBeInTheDocument();
+
+      // Find and click the pattern type filter dropdown (second combobox)
+      const comboboxes = screen.getAllByRole('combobox');
+      const typeSelect = comboboxes[1]; // Type is second
+      await user.click(typeSelect);
+
+      // Select 'security' option
+      const securityOption = screen.getByRole('option', { name: /security/i });
+      await user.click(securityOption);
+
+      // Only security patterns should be visible
+      await waitFor(() => {
+        expect(screen.getByText('Security Handler')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Auth Guard')).toBeInTheDocument();
+      expect(screen.queryByText('Behavioral Pattern')).not.toBeInTheDocument();
+
+      // Type filter badge should appear
+      expect(screen.getByText('Type: security')).toBeInTheDocument();
+
+      result.unmount();
+    });
+
+    it('dynamically populates pattern type options from data', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternType: 'structural' }),
+        createMockPattern({ patternType: 'behavioral' }),
+        createMockPattern({ patternType: 'creational' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByTestId('page-pattern-learning')).toBeInTheDocument();
+      });
+
+      // Open the type dropdown (second combobox)
+      const comboboxes = screen.getAllByRole('combobox');
+      const typeSelect = comboboxes[1];
+      await user.click(typeSelect);
+
+      // All unique types should be available (sorted alphabetically)
+      expect(screen.getByRole('option', { name: /behavioral/i })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /creational/i })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /structural/i })).toBeInTheDocument();
+
+      result.unmount();
+    });
+  });
+
+  // ===========================
+  // Search Filter Tests
+  // ===========================
+
+  describe('Search Filter', () => {
+    it('filters patterns by name search', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Authentication Handler' }),
+        createMockPattern({ patternName: 'Retry Logic' }),
+        createMockPattern({ patternName: 'Auth Token Validator' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Authentication Handler')).toBeInTheDocument();
+      });
+
+      // Type in search box
+      const searchInput = screen.getByPlaceholderText('Search patterns...');
+      await user.type(searchInput, 'Auth');
+
+      // Should match patterns containing 'Auth'
+      await waitFor(() => {
+        expect(screen.getByText('Authentication Handler')).toBeInTheDocument();
+        expect(screen.getByText('Auth Token Validator')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Retry Logic')).not.toBeInTheDocument();
+
+      // Search badge should appear
+      expect(screen.getByText('Search: "Auth"')).toBeInTheDocument();
+
+      result.unmount();
+    });
+
+    it('filters patterns by language search', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'TS Pattern', language: 'TypeScript' }),
+        createMockPattern({ patternName: 'Python Pattern', language: 'Python' }),
+        createMockPattern({ patternName: 'JS Pattern', language: 'JavaScript' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('TS Pattern')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByPlaceholderText('Search patterns...');
+      await user.type(searchInput, 'Python');
+
+      await waitFor(() => {
+        expect(screen.getByText('Python Pattern')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('TS Pattern')).not.toBeInTheDocument();
+      expect(screen.queryByText('JS Pattern')).not.toBeInTheDocument();
+
+      result.unmount();
+    });
+
+    it('filters patterns by pattern type via search', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Pattern A', patternType: 'security' }),
+        createMockPattern({ patternName: 'Pattern B', patternType: 'behavioral' }),
+        createMockPattern({ patternName: 'Pattern C', patternType: 'security-audit' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Pattern A')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByPlaceholderText('Search patterns...');
+      await user.type(searchInput, 'security');
+
+      await waitFor(() => {
+        expect(screen.getByText('Pattern A')).toBeInTheDocument();
+        expect(screen.getByText('Pattern C')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Pattern B')).not.toBeInTheDocument();
+
+      result.unmount();
+    });
+
+    it('search is case-insensitive', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'AUTHENTICATION Handler' }),
+        createMockPattern({ patternName: 'other pattern' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('AUTHENTICATION Handler')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByPlaceholderText('Search patterns...');
+      await user.type(searchInput, 'authentication');
+
+      await waitFor(() => {
+        expect(screen.getByText('AUTHENTICATION Handler')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('other pattern')).not.toBeInTheDocument();
+
+      result.unmount();
+    });
+  });
+
+  // ===========================
+  // Combined Filters Tests
+  // ===========================
+
+  describe('Combined Filters', () => {
+    it('applies multiple filters simultaneously', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({
+          patternName: 'Validated Security Pattern',
+          lifecycleState: 'validated',
+          patternType: 'security',
+        }),
+        createMockPattern({
+          patternName: 'Candidate Security Pattern',
+          lifecycleState: 'candidate',
+          patternType: 'security',
+        }),
+        createMockPattern({
+          patternName: 'Validated Behavioral Pattern',
+          lifecycleState: 'validated',
+          patternType: 'behavioral',
+        }),
+        createMockPattern({
+          patternName: 'Candidate Behavioral Pattern',
+          lifecycleState: 'candidate',
+          patternType: 'behavioral',
+        }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Validated Security Pattern')).toBeInTheDocument();
+      });
+
+      // Apply state filter: validated
+      let comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[0]); // State
+      await user.click(screen.getByRole('option', { name: /validated/i }));
+
+      // Apply type filter: security
+      comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[1]); // Type
+      await user.click(screen.getByRole('option', { name: /security/i }));
+
+      // Only patterns matching BOTH filters should be visible
+      await waitFor(() => {
+        expect(screen.getByText('Validated Security Pattern')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Candidate Security Pattern')).not.toBeInTheDocument();
+      expect(screen.queryByText('Validated Behavioral Pattern')).not.toBeInTheDocument();
+      expect(screen.queryByText('Candidate Behavioral Pattern')).not.toBeInTheDocument();
+
+      // Both filter badges should be visible
+      expect(screen.getByText('State: validated')).toBeInTheDocument();
+      expect(screen.getByText('Type: security')).toBeInTheDocument();
+
+      result.unmount();
+    });
+
+    it('combines state filter with search', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({
+          patternName: 'Auth Handler',
+          lifecycleState: 'validated',
+        }),
+        createMockPattern({
+          patternName: 'Auth Validator',
+          lifecycleState: 'candidate',
+        }),
+        createMockPattern({
+          patternName: 'Retry Logic',
+          lifecycleState: 'validated',
+        }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Auth Handler')).toBeInTheDocument();
+      });
+
+      // Apply state filter: validated
+      const comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[0]);
+      await user.click(screen.getByRole('option', { name: /validated/i }));
+
+      // Apply search: Auth
+      const searchInput = screen.getByPlaceholderText('Search patterns...');
+      await user.type(searchInput, 'Auth');
+
+      // Only validated + Auth patterns should be visible
+      await waitFor(() => {
+        expect(screen.getByText('Auth Handler')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Auth Validator')).not.toBeInTheDocument();
+      expect(screen.queryByText('Retry Logic')).not.toBeInTheDocument();
+
+      result.unmount();
+    });
+
+    it('combines all three filter types', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({
+          patternName: 'Auth Security Handler',
+          lifecycleState: 'validated',
+          patternType: 'security',
+        }),
+        createMockPattern({
+          patternName: 'Auth Behavioral Handler',
+          lifecycleState: 'validated',
+          patternType: 'behavioral',
+        }),
+        createMockPattern({
+          patternName: 'Retry Security Handler',
+          lifecycleState: 'validated',
+          patternType: 'security',
+        }),
+        createMockPattern({
+          patternName: 'Auth Security Candidate',
+          lifecycleState: 'candidate',
+          patternType: 'security',
+        }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Auth Security Handler')).toBeInTheDocument();
+      });
+
+      // State: validated
+      let comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[0]);
+      await user.click(screen.getByRole('option', { name: /validated/i }));
+
+      // Type: security
+      comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[1]);
+      await user.click(screen.getByRole('option', { name: /security/i }));
+
+      // Search: Auth
+      const searchInput = screen.getByPlaceholderText('Search patterns...');
+      await user.type(searchInput, 'Auth');
+
+      // Only the pattern matching all three should be visible
+      await waitFor(() => {
+        expect(screen.getByText('Auth Security Handler')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Auth Behavioral Handler')).not.toBeInTheDocument();
+      expect(screen.queryByText('Retry Security Handler')).not.toBeInTheDocument();
+      expect(screen.queryByText('Auth Security Candidate')).not.toBeInTheDocument();
+
+      result.unmount();
+    });
+  });
+
+  // ===========================
+  // Limit Filter Tests
+  // ===========================
+
+  describe('Limit Filter', () => {
+    it('limits displayed patterns based on limit selection', async () => {
+      const user = userEvent.setup();
+
+      // Create 30 patterns
+      const patterns = Array.from({ length: 30 }, (_, i) =>
+        createMockPattern({ patternName: `Pattern ${i + 1}` })
+      );
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue(patterns);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Pattern 1')).toBeInTheDocument();
+      });
+
+      // Default limit is 50, so all 30 should be visible
+      expect(screen.getByText('Pattern 30')).toBeInTheDocument();
+
+      // Change limit to 25 (third combobox)
+      const comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[2]); // Limit is third
+      await user.click(screen.getByRole('option', { name: '25' }));
+
+      // Now only 25 patterns should be visible
+      await waitFor(() => {
+        expect(screen.getByText('Pattern 25')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Pattern 26')).not.toBeInTheDocument();
+
+      result.unmount();
+    });
+
+    it('shows hidden count when limit is applied', async () => {
+      const user = userEvent.setup();
+
+      // Create 100 patterns
+      const patterns = Array.from({ length: 100 }, (_, i) =>
+        createMockPattern({ patternName: `Pattern ${i + 1}` })
+      );
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue(patterns);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Pattern 1')).toBeInTheDocument();
+      });
+
+      // Change limit to 25 (third combobox)
+      const comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[2]);
+      await user.click(screen.getByRole('option', { name: '25' }));
+
+      // Description should show count
+      await waitFor(() => {
+        const description = screen.getByText(/Showing 25 of 100 patterns/);
+        expect(description).toBeInTheDocument();
+      });
+
+      result.unmount();
+    });
+  });
+
+  // ===========================
+  // Clear Filters Tests
+  // ===========================
+
+  describe('Clear Filters', () => {
+    it('clears all filters when Clear button is clicked', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Pattern A', lifecycleState: 'validated' }),
+        createMockPattern({ patternName: 'Pattern B', lifecycleState: 'candidate' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Pattern A')).toBeInTheDocument();
+      });
+
+      // Apply state filter
+      const comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[0]);
+      await user.click(screen.getByRole('option', { name: /validated/i }));
+
+      // Apply search
+      const searchInput = screen.getByPlaceholderText('Search patterns...');
+      await user.type(searchInput, 'Pattern A');
+
+      // Verify filters are applied
+      await waitFor(() => {
+        expect(screen.queryByText('Pattern B')).not.toBeInTheDocument();
+      });
+
+      // Click Clear button
+      const clearButton = screen.getByRole('button', { name: /clear/i });
+      await user.click(clearButton);
+
+      // All patterns should be visible again
+      await waitFor(() => {
+        expect(screen.getByText('Pattern A')).toBeInTheDocument();
+        expect(screen.getByText('Pattern B')).toBeInTheDocument();
+      });
+
+      // Filter badges should be gone
+      expect(screen.queryByText('State: validated')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Search:/)).not.toBeInTheDocument();
+
+      result.unmount();
+    });
+
+    it('shows filter badges when filters are applied', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({
+          patternName: 'Validated Security',
+          lifecycleState: 'validated',
+          patternType: 'security',
+        }),
+        createMockPattern({
+          patternName: 'Validated Behavioral',
+          lifecycleState: 'validated',
+          patternType: 'behavioral',
+        }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Validated Security')).toBeInTheDocument();
+      });
+
+      // No filter badges initially
+      expect(screen.queryByText('State: validated')).not.toBeInTheDocument();
+      expect(screen.queryByText('Type: security')).not.toBeInTheDocument();
+
+      // Apply state filter
+      let comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[0]);
+      await user.click(screen.getByRole('option', { name: /validated/i }));
+
+      // State badge appears
+      await waitFor(() => {
+        expect(screen.getByText('State: validated')).toBeInTheDocument();
+      });
+
+      // Apply type filter
+      comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[1]);
+      await user.click(screen.getByRole('option', { name: /security/i }));
+
+      // Both badges visible
+      await waitFor(() => {
+        expect(screen.getByText('Type: security')).toBeInTheDocument();
+      });
+      expect(screen.getByText('State: validated')).toBeInTheDocument();
+
+      // Only matching pattern visible
+      expect(screen.getByText('Validated Security')).toBeInTheDocument();
+      expect(screen.queryByText('Validated Behavioral')).not.toBeInTheDocument();
+
+      result.unmount();
+    });
+
+    it('Clear button is only visible when filters are active', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([createMockPattern()]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByTestId('page-pattern-learning')).toBeInTheDocument();
+      });
+
+      // Clear button should not be visible initially
+      expect(screen.queryByRole('button', { name: /clear/i })).not.toBeInTheDocument();
+
+      // Apply a filter
+      const searchInput = screen.getByPlaceholderText('Search patterns...');
+      await user.type(searchInput, 'test');
+
+      // Clear button should now be visible
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument();
+      });
+
+      result.unmount();
+    });
+  });
+
+  // ===========================
+  // Hidden Count Badge Tests
+  // ===========================
+
+  describe('Hidden Count Badge', () => {
+    it('shows correct count of hidden patterns', async () => {
+      const user = userEvent.setup();
+
+      // Create 10 patterns, 3 validated
+      const patterns = [
+        createMockPattern({ patternName: 'Validated 1', lifecycleState: 'validated' }),
+        createMockPattern({ patternName: 'Validated 2', lifecycleState: 'validated' }),
+        createMockPattern({ patternName: 'Validated 3', lifecycleState: 'validated' }),
+        createMockPattern({ patternName: 'Candidate 1', lifecycleState: 'candidate' }),
+        createMockPattern({ patternName: 'Candidate 2', lifecycleState: 'candidate' }),
+        createMockPattern({ patternName: 'Provisional 1', lifecycleState: 'provisional' }),
+        createMockPattern({ patternName: 'Provisional 2', lifecycleState: 'provisional' }),
+        createMockPattern({ patternName: 'Deprecated 1', lifecycleState: 'deprecated' }),
+        createMockPattern({ patternName: 'Deprecated 2', lifecycleState: 'deprecated' }),
+        createMockPattern({ patternName: 'Deprecated 3', lifecycleState: 'deprecated' }),
+      ];
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue(patterns);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Validated 1')).toBeInTheDocument();
+      });
+
+      // Apply state filter: validated
+      const comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[0]);
+      await user.click(screen.getByRole('option', { name: /validated/i }));
+
+      // 7 patterns should be hidden (10 total - 3 validated)
+      await waitFor(() => {
+        expect(screen.getByText('7 hidden by filters')).toBeInTheDocument();
+      });
+
+      result.unmount();
+    });
+
+    it('hides the badge when no filters are active', async () => {
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Pattern 1' }),
+        createMockPattern({ patternName: 'Pattern 2' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Pattern 1')).toBeInTheDocument();
+      });
+
+      // No hidden badge should be present
+      expect(screen.queryByText(/hidden by filters/)).not.toBeInTheDocument();
+
+      result.unmount();
+    });
+  });
+
+  // ===========================
+  // Empty State Tests
+  // ===========================
+
+  describe('Empty States', () => {
+    it('shows empty message when no patterns match filters', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Pattern A', lifecycleState: 'validated' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Pattern A')).toBeInTheDocument();
+      });
+
+      // Apply filter that matches nothing
+      const comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[0]);
+      await user.click(screen.getByRole('option', { name: /deprecated/i }));
+
+      // Should show empty message
+      await waitFor(() => {
+        expect(screen.getByText('No patterns match the current filters.')).toBeInTheDocument();
+      });
+
+      result.unmount();
+    });
+
+    it('shows different message when no patterns exist at all', async () => {
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('No patterns found.')).toBeInTheDocument();
+      });
+
+      result.unmount();
+    });
+  });
+
+  // ===========================
+  // Error State Tests
+  // ===========================
+
+  describe('Error States', () => {
+    it('shows error message when pattern list fails to load', async () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockRejectedValue(new Error('Network error'));
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to load patterns')).toBeInTheDocument();
+      });
+
+      consoleError.mockRestore();
+      result.unmount();
+    });
+
+    it('shows error message when summary fails to load', async () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      vi.mocked(patlearnSource.summary).mockRejectedValue(new Error('API error'));
+      vi.mocked(patlearnSource.list).mockResolvedValue([createMockPattern()]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to load summary data')).toBeInTheDocument();
+      });
+
+      consoleError.mockRestore();
+      result.unmount();
+    });
   });
 });
