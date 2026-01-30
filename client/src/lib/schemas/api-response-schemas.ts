@@ -277,8 +277,9 @@ export const patlearnSummarySchema = z.object({
     frequencyFactor: z.number().min(0).max(1),
     composite: z.number().min(0).max(1),
   }),
-  promotionsLast24h: z.number().min(0),
-  deprecationsLast24h: z.number().min(0),
+  window: z.string(),
+  promotionsInWindow: z.number().min(0),
+  deprecationsInWindow: z.number().min(0),
 });
 
 // ===========================

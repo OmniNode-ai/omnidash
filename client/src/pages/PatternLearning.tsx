@@ -220,7 +220,7 @@ function PatternLearningContent() {
             />
             <StatsCard
               title="Promotions (24h)"
-              value={summary?.promotionsLast24h ?? 0}
+              value={summary?.promotionsInWindow ?? 0}
               icon={Archive}
               description="Patterns promoted to validated"
             />

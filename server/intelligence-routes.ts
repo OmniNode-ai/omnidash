@@ -3606,8 +3606,9 @@ intelligenceRouter.get('/patterns/patlearn/summary', async (req, res) => {
         frequencyFactor: avgScores[0]?.avgFrequencyFactor || 0,
         composite: avgScores[0]?.avgComposite || 0,
       },
-      promotionsLast24h: promotions[0]?.count || 0,
-      deprecationsLast24h: deprecations[0]?.count || 0,
+      window,
+      promotionsInWindow: promotions[0]?.count || 0,
+      deprecationsInWindow: deprecations[0]?.count || 0,
     });
   } catch (error) {
     console.error('Error fetching PATLEARN summary:', error);

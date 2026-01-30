@@ -30,6 +30,43 @@ export const queryKeys = {
   // PATLEARN Patterns
   // ============================================================================
 
+  /**
+   * PATLEARN Pattern query keys for code pattern learning dashboard
+   *
+   * Hierarchical key structure enables targeted cache invalidation:
+   * - `all` invalidates everything (patterns, summaries, evidence)
+   * - `lists()` invalidates only list queries
+   * - `summaries()` invalidates only summary queries
+   * - `details()` invalidates only detail queries
+   *
+   * @example Invalidate all PATLEARN queries after mutation
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.patlearn.all });
+   * ```
+   *
+   * @example Invalidate only list queries (keeps summary/detail cached)
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.patlearn.lists() });
+   * ```
+   *
+   * @example Invalidate a specific pattern's detail
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.patlearn.detail(patternId) });
+   * ```
+   *
+   * @example Invalidate all summaries when time window changes
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.patlearn.summaries() });
+   * ```
+   *
+   * @example Prefetch pattern evidence before navigation
+   * ```ts
+   * queryClient.prefetchQuery({
+   *   queryKey: queryKeys.patlearn.evidence(patternId),
+   *   queryFn: () => patlearnSource.evidence(patternId),
+   * });
+   * ```
+   */
   patlearn: {
     /** Base key for all PATLEARN queries - use for broad invalidation */
     all: ['patlearn'] as const,
@@ -60,6 +97,40 @@ export const queryKeys = {
   // Agent Operations
   // ============================================================================
 
+  /**
+   * Agent operation query keys for monitoring AI agents
+   *
+   * Supports 52+ AI agents with hierarchical invalidation:
+   * - `all` invalidates all agent data
+   * - `lists()` invalidates agent lists only
+   * - `summaries()` invalidates summary metrics
+   * - `actions(agentId?)` invalidates action logs (all or specific agent)
+   *
+   * @example Invalidate all agent data after configuration change
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.agents.all });
+   * ```
+   *
+   * @example Refetch a single agent's actions after it completes work
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.agents.actions(agentId) });
+   * ```
+   *
+   * @example Invalidate all action logs across all agents
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.agents.actions() });
+   * ```
+   *
+   * @example Update only agent summaries (keep detail views cached)
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.agents.summaries() });
+   * ```
+   *
+   * @example Force refetch a specific agent's detail
+   * ```ts
+   * queryClient.refetchQueries({ queryKey: queryKeys.agents.detail(agentId) });
+   * ```
+   */
   agents: {
     /** Base key for all agent queries */
     all: ['agents'] as const,
@@ -90,6 +161,38 @@ export const queryKeys = {
   // Events
   // ============================================================================
 
+  /**
+   * Event query keys for Kafka/Redpanda event flow monitoring
+   *
+   * Keys support real-time event streaming and historical queries:
+   * - `all` invalidates all event data
+   * - `recent(limit?)` for paginated recent events
+   * - `byType(type)` for filtered event queries
+   * - `stream()` for WebSocket subscription state
+   *
+   * @example Invalidate all event data
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+   * ```
+   *
+   * @example Clear recent events cache when switching time windows
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.events.recent() });
+   * // This invalidates recent(50), recent(100), etc.
+   * ```
+   *
+   * @example Invalidate events of a specific type
+   * ```ts
+   * queryClient.invalidateQueries({
+   *   queryKey: queryKeys.events.byType('agent-routing-decisions'),
+   * });
+   * ```
+   *
+   * @example Reset stream subscription state on reconnect
+   * ```ts
+   * queryClient.resetQueries({ queryKey: queryKeys.events.stream() });
+   * ```
+   */
   events: {
     /** Base key for all event queries */
     all: ['events'] as const,
@@ -108,6 +211,35 @@ export const queryKeys = {
   // Intelligence
   // ============================================================================
 
+  /**
+   * Intelligence operation query keys for AI/ML metrics
+   *
+   * Covers 168+ AI operations with summary, quality, and routing metrics:
+   * - `all` invalidates all intelligence data
+   * - `summary()` for high-level operation metrics
+   * - `quality()` for code quality gate results
+   * - `routing()` for agent routing decision metrics
+   *
+   * @example Invalidate all intelligence data after bulk operation
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.intelligence.all });
+   * ```
+   *
+   * @example Refresh only quality metrics after code analysis
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.intelligence.quality() });
+   * ```
+   *
+   * @example Update routing metrics after agent configuration change
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.intelligence.routing() });
+   * ```
+   *
+   * @example Refetch summary without affecting other intelligence queries
+   * ```ts
+   * queryClient.refetchQueries({ queryKey: queryKeys.intelligence.summary() });
+   * ```
+   */
   intelligence: {
     /** Base key for all intelligence queries */
     all: ['intelligence'] as const,
@@ -126,6 +258,45 @@ export const queryKeys = {
   // Health Monitoring
   // ============================================================================
 
+  /**
+   * Health monitoring query keys for platform observability
+   *
+   * Supports system-wide and service-specific health checks:
+   * - `all` invalidates all health data (use sparingly)
+   * - `system()` for overall platform health
+   * - `service(name)` for individual service health
+   * - `database()` for PostgreSQL connection health
+   * - `eventBus()` for Kafka/Redpanda health
+   *
+   * @example Invalidate all health data after infrastructure change
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.health.all });
+   * ```
+   *
+   * @example Refresh a specific service's health status
+   * ```ts
+   * queryClient.invalidateQueries({
+   *   queryKey: queryKeys.health.service('archon-intelligence'),
+   * });
+   * ```
+   *
+   * @example Force recheck database connectivity
+   * ```ts
+   * queryClient.refetchQueries({ queryKey: queryKeys.health.database() });
+   * ```
+   *
+   * @example Invalidate event bus health after Kafka reconnect
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.health.eventBus() });
+   * ```
+   *
+   * @example Poll system health more frequently during incident
+   * ```ts
+   * queryClient.setQueryDefaults(queryKeys.health.system(), {
+   *   refetchInterval: 5000, // 5 seconds during incident
+   * });
+   * ```
+   */
   health: {
     /** Base key for all health queries */
     all: ['health'] as const,
@@ -147,6 +318,42 @@ export const queryKeys = {
   // Registry & Discovery
   // ============================================================================
 
+  /**
+   * Registry and service discovery query keys
+   *
+   * Covers ONEX node registry and service discovery:
+   * - `all` invalidates all registry data
+   * - `nodes()` for node listing queries
+   * - `node(id)` for individual node details
+   * - `services()` for service discovery data
+   *
+   * @example Invalidate all registry data after deployment
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.registry.all });
+   * ```
+   *
+   * @example Refresh node list after new node registration
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.registry.nodes() });
+   * ```
+   *
+   * @example Invalidate a specific node's cached data
+   * ```ts
+   * queryClient.invalidateQueries({
+   *   queryKey: queryKeys.registry.node(nodeId),
+   * });
+   * ```
+   *
+   * @example Update services after Consul sync
+   * ```ts
+   * queryClient.invalidateQueries({ queryKey: queryKeys.registry.services() });
+   * ```
+   *
+   * @example Remove stale node from cache
+   * ```ts
+   * queryClient.removeQueries({ queryKey: queryKeys.registry.node(staleNodeId) });
+   * ```
+   */
   registry: {
     /** Base key for all registry queries */
     all: ['registry'] as const,
