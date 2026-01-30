@@ -2,6 +2,7 @@
  * PatternScoreDebugger
  * Sheet showing detailed evidence for pattern scoring
  */
+import { useState, useEffect, useRef } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -13,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { LifecycleStateBadge } from './LifecycleStateBadge';
 import { ScoringEvidenceCard } from './ScoringEvidenceCard';
+import { Code2 } from 'lucide-react';
 import type {
   PatlearnArtifact,
   ScoringEvidence,
@@ -82,6 +84,30 @@ function DataUnavailable({ section }: { section: string }) {
 }
 
 export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternScoreDebuggerProps) {
+  // Extract metadata (includes description and codeExample for demo patterns)
+  const metadata = artifact?.metadata ?? {};
+  const { description, codeExample } = metadata;
+
+  // Default to "overview" tab only if there's meaningful content, otherwise "scoring"
+  const hasOverviewContent = Boolean(description || codeExample);
+
+  // Controlled tab state - resets when artifact changes
+  // Initialize with correct value to avoid unnecessary render on mount
+  const [activeTab, setActiveTab] = useState<string>(() =>
+    hasOverviewContent ? 'overview' : 'scoring'
+  );
+
+  // Track previous artifact ID to detect actual changes (not initial mount)
+  const prevArtifactIdRef = useRef<string | undefined>(artifact?.id);
+
+  // Reset tab only when artifact ID actually changes
+  useEffect(() => {
+    if (prevArtifactIdRef.current !== artifact?.id) {
+      prevArtifactIdRef.current = artifact?.id;
+      setActiveTab(hasOverviewContent ? 'overview' : 'scoring');
+    }
+  }, [artifact?.id, hasOverviewContent]);
+
   if (!artifact) return null;
 
   const { scoringEvidence, signature, metrics } = artifact;
@@ -108,12 +134,36 @@ export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternSc
           </SheetDescription>
         </SheetHeader>
 
-        <Tabs defaultValue="scoring" className="mt-6">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="scoring">Scoring</TabsTrigger>
             <TabsTrigger value="signature">Signature</TabsTrigger>
             <TabsTrigger value="metrics">Metrics</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="overview" className="mt-4 space-y-4">
+            {description ? (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Description</h4>
+                <p className="text-sm leading-relaxed">{description}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No description available</p>
+            )}
+
+            {codeExample && (
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <Code2 className="h-4 w-4" />
+                  Code Example
+                </h4>
+                <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto font-mono">
+                  <code>{codeExample}</code>
+                </pre>
+              </div>
+            )}
+          </TabsContent>
 
           <TabsContent value="scoring" className="space-y-3 mt-4">
             {!hasScoringEvidence ? (
