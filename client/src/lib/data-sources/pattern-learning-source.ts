@@ -85,7 +85,8 @@ function safeParseOne<T>(
     console.warn(`[${context}] Validation failed`);
     return null;
   }
-  return result.data ?? null;
+  // After success check, Zod guarantees data is defined
+  return result.data!;
 }
 
 // ===========================

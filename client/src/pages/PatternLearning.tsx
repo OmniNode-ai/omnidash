@@ -127,6 +127,7 @@ function PatternLearningContent() {
     queryKey: queryKeys.patlearn.summary('24h'),
     queryFn: () => patlearnSource.summary('24h'),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
+    staleTime: 30_000, // 30 seconds - prevents unnecessary refetches on remount
   });
 
   // Fetch patterns list based on filter
@@ -150,6 +151,7 @@ function PatternLearningContent() {
       });
     },
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
+    staleTime: 30_000, // 30 seconds - prevents unnecessary refetches on remount
   });
 
   const handleRowClick = (artifact: PatlearnArtifact) => {
