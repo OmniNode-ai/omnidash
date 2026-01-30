@@ -3436,6 +3436,12 @@ function transformPatlearnArtifact(row: PatternLearningArtifact) {
   }
   const compositeScore = Number.isNaN(parsedScore) ? 0 : parsedScore;
 
+  // Type guard: ensure metadata is always an object (not string/number/null)
+  const metadata =
+    row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+      ? row.metadata
+      : {};
+
   return {
     id: row.id,
     patternId: row.patternId,
@@ -3448,6 +3454,7 @@ function transformPatlearnArtifact(row: PatternLearningArtifact) {
     scoringEvidence: row.scoringEvidence,
     signature: row.signature,
     metrics: row.metrics || {},
+    metadata,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

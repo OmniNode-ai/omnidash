@@ -264,6 +264,15 @@ export const patlearnArtifactSchema = z.object({
       )
       .optional(),
   }),
+  // Optional metadata for pattern descriptions and code examples (demo patterns)
+  metadata: z
+    .object({
+      description: z.string().optional(),
+      codeExample: z.string().optional(),
+      __demo: z.boolean().optional(),
+      __demoCreatedAt: z.string().optional(),
+    })
+    .optional(),
   createdAt: z.string(),
   updatedAt: z.string().optional(),
 });
