@@ -3430,6 +3430,9 @@ const VALID_PATLEARN_STATES = ['candidate', 'provisional', 'validated', 'depreca
 function transformPatlearnArtifact(row: PatternLearningArtifact) {
   // Explicit NaN check to avoid silently masking invalid data
   const parsedScore = parseFloat(row.compositeScore);
+  if (Number.isNaN(parsedScore)) {
+    console.warn(`[PATLEARN] Invalid compositeScore for pattern ${row.id}, using fallback 0`);
+  }
   const compositeScore = Number.isNaN(parsedScore) ? 0 : parsedScore;
 
   return {
@@ -3465,7 +3468,7 @@ intelligenceRouter.get('/patterns/patlearn', async (req, res) => {
     const { state, limit = '50', offset = '0', sort = 'score', order = 'desc' } = req.query;
 
     const limitNum = Math.min(parseInt(limit as string) || 50, 250);
-    const offsetNum = parseInt(offset as string) || 0;
+    const offsetNum = Math.min(Math.max(parseInt(offset as string) || 0, 0), 10000);
 
     const db = getIntelligenceDb();
 

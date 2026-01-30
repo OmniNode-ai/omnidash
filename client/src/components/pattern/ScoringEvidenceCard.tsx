@@ -7,6 +7,11 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
+/** Score threshold for "good" (green) - 70% and above */
+const SCORE_THRESHOLD_GOOD = 0.7;
+/** Score threshold for "moderate" (yellow) - 40% to 70% */
+const SCORE_THRESHOLD_MODERATE = 0.4;
+
 interface ScoringEvidenceCardProps {
   title: string;
   score: number;
@@ -23,9 +28,17 @@ export function ScoringEvidenceCard({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   const scoreColor =
-    score >= 0.7 ? 'text-green-600' : score >= 0.4 ? 'text-yellow-600' : 'text-red-600';
+    score >= SCORE_THRESHOLD_GOOD
+      ? 'text-green-600'
+      : score >= SCORE_THRESHOLD_MODERATE
+        ? 'text-yellow-600'
+        : 'text-red-600';
   const progressColor =
-    score >= 0.7 ? 'bg-green-600' : score >= 0.4 ? 'bg-yellow-600' : 'bg-red-600';
+    score >= SCORE_THRESHOLD_GOOD
+      ? 'bg-green-600'
+      : score >= SCORE_THRESHOLD_MODERATE
+        ? 'bg-yellow-600'
+        : 'bg-red-600';
 
   return (
     <Card className="overflow-hidden">

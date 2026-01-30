@@ -5,7 +5,7 @@
  * Part of OMN-1699: Pattern Dashboard with Evidence-Based Score Debugging
  */
 
-import { useState } from 'react';
+import { useState, Component, type ReactNode, type ErrorInfo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,6 +25,49 @@ import { patlearnSource, type PatlearnArtifact, type LifecycleState } from '@/li
 import { LifecycleStateBadge, PatternScoreDebugger } from '@/components/pattern';
 import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
 import { queryKeys } from '@/lib/query-keys';
+
+// ===========================
+// Error Boundary
+// ===========================
+
+/**
+ * Error boundary for PatternLearning dashboard
+ * Catches rendering errors and displays a fallback UI
+ */
+class PatternLearningErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[PatternLearning] Render error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 text-center" data-testid="page-pattern-learning-error">
+          <h2 className="text-xl font-semibold text-destructive mb-2">Something went wrong</h2>
+          <p className="text-muted-foreground mb-4">
+            {this.state.error?.message || 'An unexpected error occurred'}
+          </p>
+          <Button variant="outline" onClick={() => this.setState({ hasError: false, error: null })}>
+            Try again
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ===========================
 // Types
@@ -65,7 +108,7 @@ function StatsCard({
 // Main Dashboard Component
 // ===========================
 
-export default function PatternLearning() {
+function PatternLearningContent() {
   const [filter, setFilter] = useState<FilterState>('all');
   const [selectedArtifact, setSelectedArtifact] = useState<PatlearnArtifact | null>(null);
   const [debuggerOpen, setDebuggerOpen] = useState(false);
@@ -275,5 +318,17 @@ export default function PatternLearning() {
         onOpenChange={setDebuggerOpen}
       />
     </div>
+  );
+}
+
+// ===========================
+// Default Export with Error Boundary
+// ===========================
+
+export default function PatternLearning() {
+  return (
+    <PatternLearningErrorBoundary>
+      <PatternLearningContent />
+    </PatternLearningErrorBoundary>
   );
 }
