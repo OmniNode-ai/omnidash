@@ -16,6 +16,7 @@ import {
   nodeServiceRegistry,
   taskCompletionMetrics,
   patternLearningArtifacts,
+  type PatternLearningArtifact,
 } from '../shared/intelligence-schema';
 import { sql, desc, asc, gte, eq, or, and, inArray } from 'drizzle-orm';
 import { checkAllServices } from './service-health';
@@ -3419,24 +3420,28 @@ intelligenceRouter.get('/services/:serviceName/details', async (req, res) => {
 // PATLEARN Endpoints (OMN-1699)
 // ===========================
 
+/** Valid lifecycle states for PATLEARN artifacts */
+const VALID_PATLEARN_STATES = ['candidate', 'provisional', 'validated', 'deprecated'] as const;
+
 /**
- * Transform database row to API response format (snake_case to camelCase)
+ * Transform database row to API response format
+ * Drizzle ORM returns camelCase properties as defined in the schema
  */
-function transformPatlearnArtifact(row: any) {
+function transformPatlearnArtifact(row: PatternLearningArtifact) {
   return {
     id: row.id,
-    patternId: row.patternId || row.pattern_id,
-    patternName: row.patternName || row.pattern_name,
-    patternType: row.patternType || row.pattern_type,
+    patternId: row.patternId,
+    patternName: row.patternName,
+    patternType: row.patternType,
     language: row.language,
-    lifecycleState: row.lifecycleState || row.lifecycle_state,
-    stateChangedAt: row.stateChangedAt || row.state_changed_at,
-    compositeScore: parseFloat(row.compositeScore || row.composite_score),
-    scoringEvidence: row.scoringEvidence || row.scoring_evidence,
+    lifecycleState: row.lifecycleState,
+    stateChangedAt: row.stateChangedAt,
+    compositeScore: parseFloat(row.compositeScore),
+    scoringEvidence: row.scoringEvidence,
     signature: row.signature,
     metrics: row.metrics || {},
-    createdAt: row.createdAt || row.created_at,
-    updatedAt: row.updatedAt || row.updated_at,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 
@@ -3463,12 +3468,17 @@ intelligenceRouter.get('/patterns/patlearn', async (req, res) => {
     // Build base query
     let baseQuery = db.select().from(patternLearningArtifacts);
 
-    // Filter by state if provided
+    // Filter by state if provided (validate against allowed values)
     if (state) {
-      const states = (state as string).split(',').map((s) => s.trim());
-      baseQuery = baseQuery.where(
-        inArray(patternLearningArtifacts.lifecycleState, states)
-      ) as typeof baseQuery;
+      const parsedStates = (state as string).split(',').map((s) => s.trim());
+      const validStates = parsedStates.filter((s): s is (typeof VALID_PATLEARN_STATES)[number] =>
+        VALID_PATLEARN_STATES.includes(s as (typeof VALID_PATLEARN_STATES)[number])
+      );
+      if (validStates.length > 0) {
+        baseQuery = baseQuery.where(
+          inArray(patternLearningArtifacts.lifecycleState, validStates)
+        ) as typeof baseQuery;
+      }
     }
 
     // Determine sort column
@@ -3527,10 +3537,13 @@ intelligenceRouter.get('/patterns/patlearn/summary', async (req, res) => {
       .from(patternLearningArtifacts)
       .groupBy(patternLearningArtifacts.lifecycleState);
 
-    // Get average scores
+    // Get average scores (including JSONB extraction for component scores)
     const avgScores = await db
       .select({
         avgComposite: sql<number>`avg(${patternLearningArtifacts.compositeScore})::float`,
+        avgLabelAgreement: sql<number>`avg((${patternLearningArtifacts.scoringEvidence}->'labelAgreement'->>'score')::float)`,
+        avgClusterCohesion: sql<number>`avg((${patternLearningArtifacts.scoringEvidence}->'clusterCohesion'->>'score')::float)`,
+        avgFrequencyFactor: sql<number>`avg((${patternLearningArtifacts.scoringEvidence}->'frequencyFactor'->>'score')::float)`,
       })
       .from(patternLearningArtifacts);
 
@@ -3575,9 +3588,9 @@ intelligenceRouter.get('/patterns/patlearn/summary', async (req, res) => {
       totalPatterns,
       byState,
       avgScores: {
-        labelAgreement: 0, // Would need JSONB extraction for real values
-        clusterCohesion: 0,
-        frequencyFactor: 0,
+        labelAgreement: avgScores[0]?.avgLabelAgreement || 0,
+        clusterCohesion: avgScores[0]?.avgClusterCohesion || 0,
+        frequencyFactor: avgScores[0]?.avgFrequencyFactor || 0,
         composite: avgScores[0]?.avgComposite || 0,
       },
       promotionsLast24h: promotions[0]?.count || 0,

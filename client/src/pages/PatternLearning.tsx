@@ -24,6 +24,7 @@ import { RefreshCw, Database, CheckCircle, Clock, Archive } from 'lucide-react';
 import { patlearnSource, type PatlearnArtifact, type LifecycleState } from '@/lib/data-sources';
 import { LifecycleStateBadge, PatternScoreDebugger } from '@/components/pattern';
 import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
+import { queryKeys } from '@/lib/query-keys';
 
 // ===========================
 // Types
@@ -73,9 +74,11 @@ export default function PatternLearning() {
   const {
     data: summary,
     isLoading: summaryLoading,
+    isError: summaryError,
+    error: summaryErrorData,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: ['patlearn', 'summary'],
+    queryKey: queryKeys.patlearn.summary('24h'),
     queryFn: () => patlearnSource.summary('24h'),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
@@ -84,9 +87,11 @@ export default function PatternLearning() {
   const {
     data: patterns,
     isLoading: patternsLoading,
+    isError: patternsError,
+    error: patternsErrorData,
     refetch: refetchPatterns,
   } = useQuery({
-    queryKey: ['patlearn', 'list', filter],
+    queryKey: queryKeys.patlearn.list(filter),
     queryFn: () => {
       if (filter === 'all') {
         return patlearnSource.list({ limit: 100, sort: 'score', order: 'desc' });
@@ -124,7 +129,20 @@ export default function PatternLearning() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {summaryLoading ? (
+        {summaryError ? (
+          <div className="col-span-full text-center py-8">
+            <p className="text-destructive font-medium">Failed to load summary data</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {summaryErrorData instanceof Error
+                ? summaryErrorData.message
+                : 'Please try refreshing the page.'}
+            </p>
+            <Button variant="outline" size="sm" className="mt-4" onClick={() => refetchSummary()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        ) : summaryLoading ? (
           <>
             {[...Array(4)].map((_, i) => (
               <Card key={i}>
@@ -185,7 +203,25 @@ export default function PatternLearning() {
           <CardDescription>Click a row to view scoring evidence and debug details</CardDescription>
         </CardHeader>
         <CardContent>
-          {patternsLoading ? (
+          {patternsError ? (
+            <div className="text-center py-8">
+              <p className="text-destructive font-medium">Failed to load patterns</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {patternsErrorData instanceof Error
+                  ? patternsErrorData.message
+                  : 'Please try refreshing the page.'}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => refetchPatterns()}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          ) : patternsLoading ? (
             <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
