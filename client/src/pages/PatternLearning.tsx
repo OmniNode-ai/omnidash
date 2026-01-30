@@ -10,11 +10,14 @@ import {
   useMemo,
   useCallback,
   useDeferredValue,
+  useEffect,
+  useRef,
   Component,
   type ReactNode,
   type ErrorInfo,
 } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useSearch } from 'wouter';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,14 +58,96 @@ import { queryKeys } from '@/lib/query-keys';
 // Constants
 // ===========================
 
-/** Maximum patterns to fetch from API */
-const MAX_PATTERN_FETCH = 500;
+/** Page size for infinite query pagination */
+const PAGE_SIZE = 100;
 
-/** Limit options for pagination */
+/** Limit options for display filtering (client-side) */
 const LIMIT_OPTIONS = [25, 50, 100, 250] as const;
 
 /** Available lifecycle states for filtering */
 const LIFECYCLE_STATES: LifecycleState[] = ['candidate', 'provisional', 'validated', 'deprecated'];
+
+/** Valid limit options as a Set for O(1) lookup */
+const VALID_LIMITS = new Set(LIMIT_OPTIONS);
+
+/** Default limit value */
+const DEFAULT_LIMIT = 50;
+
+// ===========================
+// URL Param Helpers
+// ===========================
+
+/**
+ * Validates that a string is a valid LifecycleState
+ */
+function isValidLifecycleState(value: string | null): value is LifecycleState {
+  return value !== null && LIFECYCLE_STATES.includes(value as LifecycleState);
+}
+
+/**
+ * Validates and parses a limit value from URL
+ * Returns DEFAULT_LIMIT if invalid
+ */
+function parseLimit(value: string | null): number {
+  if (!value) return DEFAULT_LIMIT;
+  const parsed = parseInt(value, 10);
+  return VALID_LIMITS.has(parsed as (typeof LIMIT_OPTIONS)[number]) ? parsed : DEFAULT_LIMIT;
+}
+
+/**
+ * Sanitizes search input to prevent XSS
+ * Removes HTML tags and trims whitespace
+ */
+function sanitizeSearch(value: string | null): string {
+  if (!value) return '';
+  // Remove HTML tags and trim - basic XSS prevention
+  return value
+    .replace(/<[^>]*>/g, '')
+    .trim()
+    .slice(0, 200);
+}
+
+/**
+ * Parses URL search params into FilterState
+ */
+function parseFiltersFromURL(searchString: string): FilterState {
+  const params = new URLSearchParams(searchString);
+
+  const stateParam = params.get('state');
+  const typeParam = params.get('type');
+  const searchParam = params.get('search');
+  const limitParam = params.get('limit');
+
+  return {
+    state: isValidLifecycleState(stateParam) ? stateParam : null,
+    patternType: typeParam || null,
+    search: sanitizeSearch(searchParam),
+    limit: parseLimit(limitParam),
+  };
+}
+
+/**
+ * Serializes FilterState to URL search params string
+ * Omits default values to keep URLs clean
+ */
+function serializeFiltersToURL(filters: FilterState): string {
+  const params = new URLSearchParams();
+
+  if (filters.state) {
+    params.set('state', filters.state);
+  }
+  if (filters.patternType) {
+    params.set('type', filters.patternType);
+  }
+  if (filters.search) {
+    params.set('search', filters.search);
+  }
+  if (filters.limit !== DEFAULT_LIMIT) {
+    params.set('limit', String(filters.limit));
+  }
+
+  return params.toString();
+}
 
 // ===========================
 // Error Boundary
@@ -152,12 +237,30 @@ function StatsCard({
 // ===========================
 
 function PatternLearningContent() {
-  const [filters, setFilters] = useState<FilterState>({
-    state: null,
-    patternType: null,
-    search: '',
-    limit: 50,
-  });
+  // Get URL search string for initial filter state
+  const searchString = useSearch();
+
+  // Track if this is the initial mount to avoid URL update on first render
+  const isInitialMount = useRef(true);
+
+  // Initialize filter state from URL params
+  const [filters, setFilters] = useState<FilterState>(() => parseFiltersFromURL(searchString));
+
+  // Sync filter state to URL when it changes (but not on initial mount)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    const newSearchString = serializeFiltersToURL(filters);
+    const newUrl = newSearchString
+      ? `${window.location.pathname}?${newSearchString}`
+      : window.location.pathname;
+
+    // Use replaceState to avoid polluting browser history
+    window.history.replaceState({}, '', newUrl);
+  }, [filters]);
 
   // Defer the search value to avoid excessive re-renders during rapid typing
   // The input shows typed characters immediately, but filtering uses the deferred value
@@ -183,23 +286,43 @@ function PatternLearningContent() {
     staleTime: 30_000, // 30 seconds - prevents unnecessary refetches on remount
   });
 
-  // Fetch all patterns (we filter client-side for better UX)
+  // Fetch patterns with infinite query for paginated loading
   const {
-    data: patterns,
+    data: patternsData,
     isLoading: patternsLoading,
     isError: patternsError,
     error: patternsErrorData,
     refetch: refetchPatterns,
-  } = useQuery({
-    queryKey: queryKeys.patlearn.list(`all-limit${MAX_PATTERN_FETCH}`),
-    queryFn: () => patlearnSource.list({ limit: MAX_PATTERN_FETCH, sort: 'score', order: 'desc' }),
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: queryKeys.patlearn.list('infinite'),
+    queryFn: ({ pageParam = 0 }) =>
+      patlearnSource.list({
+        limit: PAGE_SIZE,
+        offset: pageParam,
+        sort: 'score',
+        order: 'desc',
+      }),
+    getNextPageParam: (lastPage, allPages) => {
+      // If we got a full page, there might be more
+      if (lastPage.length === PAGE_SIZE) {
+        return allPages.length * PAGE_SIZE;
+      }
+      return undefined; // No more pages
+    },
+    initialPageParam: 0,
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000, // 30 seconds - prevents unnecessary refetches on remount
   });
 
+  // Flatten pages into single array for filtering
+  const patterns = useMemo(() => patternsData?.pages.flat() ?? [], [patternsData]);
+
   // Derive unique pattern types from the data
   const availablePatternTypes = useMemo(() => {
-    if (!patterns) return [];
+    if (!patterns.length) return [];
     const types = new Set(patterns.map((p) => p.patternType));
     return Array.from(types).sort();
   }, [patterns]);
@@ -207,7 +330,7 @@ function PatternLearningContent() {
   // Client-side filtering with useMemo
   // Uses deferredSearch to avoid re-filtering on every keystroke
   const filteredPatterns = useMemo(() => {
-    if (!patterns) return [];
+    if (!patterns.length) return [];
 
     let result = patterns;
 
@@ -389,6 +512,7 @@ function PatternLearningContent() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search patterns..."
+              aria-label="Search patterns by name, type, or language"
               value={filters.search}
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
               className="h-9 pl-9 pr-8"
@@ -480,14 +604,16 @@ function PatternLearningContent() {
               <CardDescription>
                 {patternsLoading
                   ? 'Loading patterns...'
-                  : `Showing ${filteredPatterns.length}${patterns && filteredPatterns.length < patterns.length ? ` of ${patterns.length}` : ''} patterns. Click a row to view scoring evidence.`}
+                  : `Showing ${filteredPatterns.length}${patterns.length > 0 && filteredPatterns.length < patterns.length ? ` of ${patterns.length} loaded` : ''} patterns. Click a row to view scoring evidence.`}
               </CardDescription>
             </div>
-            {hasActiveFilters && patterns && filteredPatterns.length < patterns.length && (
-              <Badge variant="outline" className="text-muted-foreground">
-                {patterns.length - filteredPatterns.length} hidden by filters
-              </Badge>
-            )}
+            {hasActiveFilters &&
+              patterns.length > 0 &&
+              filteredPatterns.length < patterns.length && (
+                <Badge variant="outline" className="text-muted-foreground">
+                  {patterns.length - filteredPatterns.length} hidden by filters
+                </Badge>
+              )}
           </div>
         </CardHeader>
         <CardContent>
@@ -550,9 +676,30 @@ function PatternLearningContent() {
             </Table>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              {patterns && patterns.length > 0
+              {patterns.length > 0
                 ? 'No patterns match the current filters.'
                 : 'No patterns found.'}
+            </div>
+          )}
+
+          {/* Load More Button */}
+          {hasNextPage && !patternsError && (
+            <div className="flex justify-center py-4 mt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                data-testid="load-more-button"
+              >
+                {isFetchingNextPage ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading more...
+                  </>
+                ) : (
+                  `Load More (${patterns.length} loaded)`
+                )}
+              </Button>
             </div>
           )}
         </CardContent>

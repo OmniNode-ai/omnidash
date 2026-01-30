@@ -20,6 +20,32 @@ import { patlearnSource, type PatlearnArtifact, type PatlearnSummary } from '@/l
 // Mocks
 // ===========================
 
+// Mock wouter's useSearch hook to return empty search params by default
+// This can be overridden per-test using mockSearchParams
+// Using an object to avoid hoisting issues with vi.mock
+const mockState = { searchString: '' };
+
+vi.mock('wouter', () => ({
+  useSearch: () => mockState.searchString,
+}));
+
+/**
+ * Set mock URL search params for the next test
+ * Call before rendering the component
+ */
+function mockSearchParams(params: Record<string, string>) {
+  const searchParams = new URLSearchParams(params);
+  mockState.searchString = searchParams.toString();
+}
+
+/**
+ * Reset search params to empty string
+ * Should be called in afterEach
+ */
+function resetSearchParams() {
+  mockState.searchString = '';
+}
+
 vi.mock('@/lib/data-sources', async () => {
   const actual = await vi.importActual<typeof import('@/lib/data-sources')>('@/lib/data-sources');
   return {
@@ -150,6 +176,7 @@ describe('PatternLearning page', () => {
     }
     vi.clearAllTimers();
     vi.useRealTimers();
+    resetSearchParams();
   });
 
   // ===========================
@@ -756,9 +783,9 @@ describe('PatternLearning page', () => {
       await user.click(comboboxes[2]);
       await user.click(screen.getByRole('option', { name: '25' }));
 
-      // Description should show count
+      // Description should show count (text format: "of X loaded")
       await waitFor(() => {
-        const description = screen.getByText(/Showing 25 of 100 patterns/);
+        const description = screen.getByText(/Showing 25 of 100 loaded/);
         expect(description).toBeInTheDocument();
       });
 
@@ -1053,6 +1080,172 @@ describe('PatternLearning page', () => {
       });
 
       consoleError.mockRestore();
+      result.unmount();
+    });
+  });
+
+  // ===========================
+  // URL Parameter Sync Tests
+  // ===========================
+
+  describe('URL Parameter Sync', () => {
+    it('initializes filter state from URL params', async () => {
+      // Set up URL params before render
+      mockSearchParams({ state: 'validated', type: 'security', search: 'auth' });
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({
+          patternName: 'Auth Handler',
+          patternType: 'security',
+          lifecycleState: 'validated',
+        }),
+        createMockPattern({
+          patternName: 'Other Pattern',
+          patternType: 'behavioral',
+          lifecycleState: 'candidate',
+        }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      // Wait for render and verify filter badges are shown
+      await waitFor(() => {
+        expect(screen.getByText('State: validated')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Type: security')).toBeInTheDocument();
+      expect(screen.getByText('Search: "auth"')).toBeInTheDocument();
+
+      result.unmount();
+    });
+
+    it('initializes limit from URL params', async () => {
+      mockSearchParams({ limit: '100' });
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([createMockPattern()]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        // The limit dropdown should show 100
+        const limitSelect = screen.getAllByRole('combobox')[2]; // 3rd combobox is limit
+        expect(limitSelect).toHaveTextContent('100');
+      });
+
+      result.unmount();
+    });
+
+    it('falls back to defaults for invalid URL params', async () => {
+      // Invalid state and limit values
+      mockSearchParams({ state: 'invalid_state', limit: '999' });
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([createMockPattern()]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        // No state filter badge should be shown (invalid state ignored)
+        expect(screen.queryByText(/State:/)).not.toBeInTheDocument();
+      });
+
+      // Limit should default to 50
+      const limitSelect = screen.getAllByRole('combobox')[2];
+      expect(limitSelect).toHaveTextContent('50');
+
+      result.unmount();
+    });
+
+    it('sanitizes search param to prevent XSS', async () => {
+      // Try to inject HTML tags - they should be stripped
+      mockSearchParams({ search: '<b>bold</b>' });
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([createMockPattern()]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        // The HTML tags should be stripped, keeping only the text content
+        expect(screen.getByText('Search: "bold"')).toBeInTheDocument();
+      });
+
+      // Verify no HTML tags rendered in the search badge
+      const searchBadge = screen.getByText('Search: "bold"');
+      expect(searchBadge.innerHTML).not.toContain('<b>');
+      expect(searchBadge.innerHTML).not.toContain('</b>');
+
+      result.unmount();
+    });
+
+    it('syncs filter changes to URL', async () => {
+      const user = userEvent.setup();
+      const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Test Pattern', lifecycleState: 'validated' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Pattern')).toBeInTheDocument();
+      });
+
+      // Apply state filter
+      const comboboxes = screen.getAllByRole('combobox');
+      await user.click(comboboxes[0]);
+      await user.click(screen.getByRole('option', { name: /validated/i }));
+
+      // Verify replaceState was called with the filter params
+      await waitFor(() => {
+        expect(replaceStateSpy).toHaveBeenCalledWith(
+          {},
+          '',
+          expect.stringContaining('state=validated')
+        );
+      });
+
+      replaceStateSpy.mockRestore();
+      result.unmount();
+    });
+
+    it('clears URL params when filters are cleared', async () => {
+      const user = userEvent.setup();
+      const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+      // Start with a filter applied
+      mockSearchParams({ state: 'validated' });
+
+      vi.mocked(patlearnSource.summary).mockResolvedValue(createMockSummary());
+      vi.mocked(patlearnSource.list).mockResolvedValue([
+        createMockPattern({ patternName: 'Test Pattern', lifecycleState: 'validated' }),
+      ]);
+
+      const result = renderWithClient(<PatternLearning />);
+      queryClient = result.queryClient;
+
+      await waitFor(() => {
+        expect(screen.getByText('State: validated')).toBeInTheDocument();
+      });
+
+      // Click the Clear button
+      const clearButton = screen.getByRole('button', { name: /clear/i });
+      await user.click(clearButton);
+
+      // Verify URL is cleared (pathname only, no query string)
+      await waitFor(() => {
+        expect(replaceStateSpy).toHaveBeenCalledWith({}, '', expect.not.stringContaining('?'));
+      });
+
+      replaceStateSpy.mockRestore();
       result.unmount();
     });
   });
