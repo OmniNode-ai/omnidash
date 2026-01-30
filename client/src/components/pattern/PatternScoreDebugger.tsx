@@ -2,7 +2,7 @@
  * PatternScoreDebugger
  * Sheet showing detailed evidence for pattern scoring
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -92,12 +92,20 @@ export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternSc
   const hasOverviewContent = Boolean(description || codeExample);
 
   // Controlled tab state - resets when artifact changes
-  // Hooks must be called before any early returns
-  const [activeTab, setActiveTab] = useState<string>('scoring');
+  // Initialize with correct value to avoid unnecessary render on mount
+  const [activeTab, setActiveTab] = useState<string>(() =>
+    hasOverviewContent ? 'overview' : 'scoring'
+  );
 
-  // Reset tab when artifact changes
+  // Track previous artifact ID to detect actual changes (not initial mount)
+  const prevArtifactIdRef = useRef<string | undefined>(artifact?.id);
+
+  // Reset tab only when artifact ID actually changes
   useEffect(() => {
-    setActiveTab(hasOverviewContent ? 'overview' : 'scoring');
+    if (prevArtifactIdRef.current !== artifact?.id) {
+      prevArtifactIdRef.current = artifact?.id;
+      setActiveTab(hasOverviewContent ? 'overview' : 'scoring');
+    }
   }, [artifact?.id, hasOverviewContent]);
 
   if (!artifact) return null;

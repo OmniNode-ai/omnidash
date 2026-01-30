@@ -108,6 +108,24 @@ function sanitizeSearch(value: string | null): string {
 }
 
 /**
+ * Sanitizes pattern type input to prevent XSS
+ * Only allows alphanumeric characters, hyphens, and underscores
+ * Returns null if value is empty after sanitization
+ */
+function sanitizePatternType(value: string | null): string | null {
+  if (!value) return null;
+  // Remove HTML tags first (XSS prevention)
+  const noHtml = value.replace(/<[^>]*>/g, '');
+  // Keep only alphanumeric, hyphens, and underscores
+  const sanitized = noHtml
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .trim()
+    .slice(0, 100);
+  // Return null if empty after sanitization
+  return sanitized || null;
+}
+
+/**
  * Parses URL search params into FilterState
  */
 function parseFiltersFromURL(searchString: string): FilterState {
@@ -120,7 +138,7 @@ function parseFiltersFromURL(searchString: string): FilterState {
 
   return {
     state: isValidLifecycleState(stateParam) ? stateParam : null,
-    patternType: typeParam || null,
+    patternType: sanitizePatternType(typeParam),
     search: sanitizeSearch(searchParam),
     limit: parseLimit(limitParam),
   };
