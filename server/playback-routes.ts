@@ -17,6 +17,10 @@ const playback = getPlaybackService();
 // (avoids removing other listeners with removeAllListeners)
 let currentEventHandler: ((event: unknown) => void) | null = null;
 
+// Mutex flag to prevent race condition when concurrent /start requests arrive
+// Without this, two simultaneous requests could both create event handlers
+let isStartingPlayback = false;
+
 /**
  * GET /api/demo/recordings
  * List available recording files
@@ -57,6 +61,16 @@ router.get('/status', (_req: Request, res: Response) => {
  *   - loop?: boolean (loop continuously, default false)
  */
 router.post('/start', async (req: Request, res: Response) => {
+  // Prevent race condition: block concurrent /start requests
+  // Without this mutex, two simultaneous requests could both create event handlers
+  if (isStartingPlayback) {
+    return res.status(409).json({
+      success: false,
+      error: 'Playback start already in progress. Please wait and try again.',
+    });
+  }
+
+  isStartingPlayback = true;
   try {
     const { file, speed = 1, loop = false } = req.body;
 
@@ -137,6 +151,8 @@ router.post('/start', async (req: Request, res: Response) => {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     });
+  } finally {
+    isStartingPlayback = false;
   }
 });
 

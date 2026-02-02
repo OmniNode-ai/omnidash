@@ -1082,6 +1082,273 @@ describe('usePlayback', () => {
   });
 
   // ============================================================================
+  // Set Loop Mutation
+  // ============================================================================
+
+  describe('setLoop mutation', () => {
+    it('should enable loop mode', async () => {
+      mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+        if (url === '/api/demo/recordings') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ recordings: mockRecordings }),
+          });
+        }
+        if (url === '/api/demo/status') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockPlayingStatus),
+          });
+        }
+        if (url === '/api/demo/loop' && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockPlayingStatus),
+          });
+        }
+        return Promise.reject(new Error(`Unexpected fetch to ${url}`));
+      });
+
+      const wrapper = createWrapper(queryClient);
+      const { result } = renderHook(() => usePlayback(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoadingStatus).toBe(false);
+      });
+
+      await act(async () => {
+        result.current.setLoop(true);
+      });
+
+      // Verify POST request with loop: true
+      const loopCall = mockFetch.mock.calls.find((call) => call[0] === '/api/demo/loop');
+      expect(loopCall).toBeDefined();
+      expect(loopCall?.[1]).toEqual({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loop: true }),
+      });
+    });
+
+    it('should disable loop mode', async () => {
+      mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+        if (url === '/api/demo/recordings') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ recordings: mockRecordings }),
+          });
+        }
+        if (url === '/api/demo/status') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockPlayingStatus),
+          });
+        }
+        if (url === '/api/demo/loop' && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockPlayingStatus),
+          });
+        }
+        return Promise.reject(new Error(`Unexpected fetch to ${url}`));
+      });
+
+      const wrapper = createWrapper(queryClient);
+      const { result } = renderHook(() => usePlayback(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoadingStatus).toBe(false);
+      });
+
+      await act(async () => {
+        result.current.setLoop(false);
+      });
+
+      // Verify POST request with loop: false
+      const loopCall = mockFetch.mock.calls.find((call) => call[0] === '/api/demo/loop');
+      expect(loopCall).toBeDefined();
+      expect(loopCall?.[1]).toEqual({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loop: false }),
+      });
+    });
+
+    it('should handle setLoop error', async () => {
+      mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+        if (url === '/api/demo/recordings') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ recordings: mockRecordings }),
+          });
+        }
+        if (url === '/api/demo/status') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockPlayingStatus),
+          });
+        }
+        if (url === '/api/demo/loop' && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: false,
+            status: 400,
+            statusText: 'Bad Request',
+          });
+        }
+        return Promise.reject(new Error(`Unexpected fetch to ${url}`));
+      });
+
+      const wrapper = createWrapper(queryClient);
+      const { result } = renderHook(() => usePlayback(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoadingStatus).toBe(false);
+      });
+
+      await act(async () => {
+        result.current.setLoop(true);
+      });
+
+      await waitFor(() => {
+        expect(result.current.error).toBe('Failed to set loop mode: 400 Bad Request');
+      });
+    });
+
+    it('should use setLoopAsync for awaitable mutation', async () => {
+      mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+        if (url === '/api/demo/recordings') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ recordings: mockRecordings }),
+          });
+        }
+        if (url === '/api/demo/status') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockPlayingStatus),
+          });
+        }
+        if (url === '/api/demo/loop' && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockPlayingStatus),
+          });
+        }
+        return Promise.reject(new Error(`Unexpected fetch to ${url}`));
+      });
+
+      const wrapper = createWrapper(queryClient);
+      const { result } = renderHook(() => usePlayback(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoadingStatus).toBe(false);
+      });
+
+      let returnedStatus: PlaybackStatus | undefined;
+      await act(async () => {
+        returnedStatus = await result.current.setLoopAsync(true);
+      });
+
+      expect(returnedStatus).toEqual(mockPlayingStatus);
+    });
+
+    it('should set isSettingLoop to true while mutation is pending', async () => {
+      let resolveLoop: ((value: Response) => void) | undefined;
+      const loopPromise = new Promise<Response>((resolve) => {
+        resolveLoop = resolve;
+      });
+
+      mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+        if (url === '/api/demo/recordings') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ recordings: mockRecordings }),
+          });
+        }
+        if (url === '/api/demo/status') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockPlaybackStatus),
+          });
+        }
+        if (url === '/api/demo/loop' && options?.method === 'POST') {
+          return loopPromise;
+        }
+        return Promise.reject(new Error(`Unexpected fetch to ${url}`));
+      });
+
+      const wrapper = createWrapper(queryClient);
+      const { result } = renderHook(() => usePlayback(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoadingStatus).toBe(false);
+      });
+
+      // Start the mutation (don't await)
+      act(() => {
+        result.current.setLoop(true);
+      });
+
+      // Wait for the mutation to be in pending state
+      await waitFor(() => {
+        expect(result.current.isSettingLoop).toBe(true);
+      });
+
+      // Resolve the promise
+      await act(async () => {
+        resolveLoop?.({
+          ok: true,
+          json: () => Promise.resolve(mockPlayingStatus),
+        } as Response);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isSettingLoop).toBe(false);
+      });
+    });
+
+    it('should handle server error (500)', async () => {
+      mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+        if (url === '/api/demo/recordings') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ recordings: mockRecordings }),
+          });
+        }
+        if (url === '/api/demo/status') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockPlayingStatus),
+          });
+        }
+        if (url === '/api/demo/loop' && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error',
+          });
+        }
+        return Promise.reject(new Error(`Unexpected fetch to ${url}`));
+      });
+
+      const wrapper = createWrapper(queryClient);
+      const { result } = renderHook(() => usePlayback(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoadingStatus).toBe(false);
+      });
+
+      await act(async () => {
+        result.current.setLoop(false);
+      });
+
+      await waitFor(() => {
+        expect(result.current.error).toBe('Failed to set loop mode: 500 Internal Server Error');
+      });
+    });
+  });
+
+  // ============================================================================
   // Error Handling
   // ============================================================================
 

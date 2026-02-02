@@ -69,9 +69,11 @@ export type Recording = z.infer<typeof RecordingSchema>;
  * - 0: Instant mode (process all events immediately)
  * - 0.1-100: Speed multiplier (0.5x, 1x, 2x, etc.)
  *
- * Note: The INSTANT_SPEED check (speed === 0) is technically redundant since
- * MIN_SPEED is also 0, but it's kept explicit for code clarity - the intent
- * is that 0 is a special "instant" mode, not just the minimum of the range.
+ * The explicit INSTANT_SPEED check (speed === 0) is semantically important:
+ * - Speed of 0 triggers "instant mode" which bypasses delay calculations entirely
+ * - Playback timing uses `delay / speed`, so speed=0 requires special handling
+ *   to avoid division issues and achieve the "process all at once" behavior
+ * - This distinguishes 0 as a special mode, not just the minimum of a range
  *
  * @param speed - The playback speed value to validate
  * @returns true if speed is valid, false otherwise
