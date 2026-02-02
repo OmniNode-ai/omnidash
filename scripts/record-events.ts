@@ -30,18 +30,33 @@ const DEFAULT_DURATION_SECONDS = 60;
 
 // Topics to record - same as event-consumer.ts
 const DEFAULT_TOPICS = [
+  // Agent topics
   'agent-routing-decisions',
   'agent-transformation-events',
   'router-performance-metrics',
   'agent-actions',
-  'dev.onex.evt.omniclaude.prompt-submitted.v1',
-  'dev.onex.evt.omniclaude.session-started.v1',
-  'dev.onex.evt.omniclaude.session-ended.v1',
-  'dev.onex.evt.omniclaude.tool-executed.v1',
+  // Pattern learning topics
+  'agent-manifest-injections',
+  // Node registry topics (legacy)
+  'dev.omninode_bridge.onex.evt.node-introspection.v1',
+  'dev.onex.evt.registration-completed.v1',
+  'node.heartbeat',
+  'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
+  // Intent topics
   'dev.onex.evt.omniintelligence.intent-classified.v1',
   'dev.onex.evt.omnimemory.intent-stored.v1',
-  'dev.onex.evt.node-heartbeat.v1',
+  'dev.onex.evt.omnimemory.intent-query-response.v1',
+  // Canonical ONEX topics
   'dev.onex.evt.node-became-active.v1',
+  'dev.onex.evt.node-liveness-expired.v1',
+  'dev.onex.evt.node-heartbeat.v1',
+  'dev.onex.evt.node-introspection.v1',
+  // OmniClaude hook events
+  'dev.onex.cmd.omniintelligence.claude-hook-event.v1',
+  'dev.onex.evt.omniclaude.prompt-submitted.v1',
+  'dev.onex.evt.omniclaude.session-started.v1',
+  'dev.onex.evt.omniclaude.tool-executed.v1',
+  'dev.onex.evt.omniclaude.session-ended.v1',
 ];
 
 interface RecordedEvent {

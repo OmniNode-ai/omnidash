@@ -4,12 +4,17 @@
  * REST API for controlling event playback from the dashboard.
  */
 
+import path from 'path';
 import { Router, Request, Response } from 'express';
 import { getPlaybackService } from './event-playback';
 import { getEventConsumer } from './event-consumer';
 
 const router = Router();
 const playback = getPlaybackService();
+
+// Track current playback event handler to enable targeted cleanup
+// (avoids removing other listeners with removeAllListeners)
+let currentEventHandler: ((event: unknown) => void) | null = null;
 
 /**
  * GET /api/demo/recordings
@@ -65,22 +70,36 @@ router.post('/start', async (req: Request, res: Response) => {
     const filePath =
       file.startsWith('/') || file.startsWith('.') ? file : `demo/recordings/${file}`;
 
+    // Path traversal protection: ensure file is within allowed directory
+    const recordingsDir = path.resolve('demo/recordings');
+    const resolvedPath = path.resolve(filePath);
+
+    if (!resolvedPath.startsWith(recordingsDir + path.sep) && resolvedPath !== recordingsDir) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid file path: must be within demo/recordings directory',
+      });
+    }
+
     // Wire up playback events to the EventConsumer
     const eventConsumer = getEventConsumer();
 
-    // Remove any previous listeners to avoid duplicates
-    playback.removeAllListeners('event');
+    // Remove only our previous handler to avoid duplicates
+    // (using targeted removal instead of removeAllListeners to preserve other listeners)
+    if (currentEventHandler) {
+      playback.off('event', currentEventHandler);
+      currentEventHandler = null;
+    }
 
     // Forward ALL playback events through EventConsumer's injection method
     // This ensures events flow through the same handlers as live Kafka events
     if (eventConsumer) {
-      playback.on('event', (recordedEvent) => {
+      currentEventHandler = (recordedEvent) => {
         // Inject into EventConsumer using the same pipeline as live events
-        eventConsumer.injectPlaybackEvent(
-          recordedEvent.topic,
-          recordedEvent.value as Record<string, unknown>
-        );
-      });
+        const event = recordedEvent as { topic: string; value: unknown };
+        eventConsumer.injectPlaybackEvent(event.topic, event.value as Record<string, unknown>);
+      };
+      playback.on('event', currentEventHandler);
     }
 
     await playback.startPlayback(filePath, {

@@ -5,6 +5,7 @@
  * Wraps the /api/demo/* endpoints with React Query for state management.
  */
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export interface Recording {
@@ -77,6 +78,10 @@ async function setSpeed(speed: number): Promise<PlaybackStatus> {
 export function usePlayback() {
   const queryClient = useQueryClient();
 
+  // Error state for tracking mutation failures
+  const [error, setError] = useState<string | null>(null);
+  const clearError = () => setError(null);
+
   // Fetch available recordings
   const recordings = useQuery({
     queryKey: ['playback', 'recordings'],
@@ -99,30 +104,60 @@ export function usePlayback() {
     queryClient.invalidateQueries({ queryKey: ['playback', 'status'] });
   };
 
-  // Mutations
+  // Mutations with error handling
   const startMutation = useMutation({
     mutationFn: startPlayback,
-    onSuccess: invalidateStatus,
+    onSuccess: () => {
+      setError(null);
+      invalidateStatus();
+    },
+    onError: (err: Error) => {
+      setError(err.message || 'Failed to start playback');
+    },
   });
 
   const pauseMutation = useMutation({
     mutationFn: pausePlayback,
-    onSuccess: invalidateStatus,
+    onSuccess: () => {
+      setError(null);
+      invalidateStatus();
+    },
+    onError: (err: Error) => {
+      setError(err.message || 'Failed to pause playback');
+    },
   });
 
   const resumeMutation = useMutation({
     mutationFn: resumePlayback,
-    onSuccess: invalidateStatus,
+    onSuccess: () => {
+      setError(null);
+      invalidateStatus();
+    },
+    onError: (err: Error) => {
+      setError(err.message || 'Failed to resume playback');
+    },
   });
 
   const stopMutation = useMutation({
     mutationFn: stopPlayback,
-    onSuccess: invalidateStatus,
+    onSuccess: () => {
+      setError(null);
+      invalidateStatus();
+    },
+    onError: (err: Error) => {
+      setError(err.message || 'Failed to stop playback');
+    },
   });
 
   const speedMutation = useMutation({
     mutationFn: setSpeed,
-    onSuccess: invalidateStatus,
+    onSuccess: () => {
+      setError(null);
+      invalidateStatus();
+    },
+    onError: (err: Error) => {
+      setError(err.message || 'Failed to set playback speed');
+    },
   });
 
   return {
@@ -156,5 +191,9 @@ export function usePlayback() {
     // Refresh
     refreshRecordings: () => recordings.refetch(),
     refreshStatus: () => status.refetch(),
+
+    // Error handling
+    error,
+    clearError,
   };
 }
