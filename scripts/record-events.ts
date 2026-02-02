@@ -254,7 +254,7 @@ async function recordEvents(): Promise<void> {
   } finally {
     // Ensure stream is properly closed
     await new Promise<void>((resolve, reject) => {
-      writeStream.end((err: Error | null | undefined) => {
+      writeStream.end((err: Error | null) => {
         if (err) reject(err);
         else resolve();
       });

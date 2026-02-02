@@ -52,7 +52,10 @@ export function DemoControlPanel() {
   const [loopEnabled, setLoopEnabled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Use ref to track current playing state for cleanup (avoids stale closure)
+  // Refs track current values for unmount cleanup.
+  // The cleanup effect has [] deps (runs only on unmount), so using
+  // isPlaying/stop directly would capture stale initial values.
+  // Refs provide access to current values when the cleanup runs.
   const isPlayingRef = useRef(isPlaying);
   const stopRef = useRef(stop);
 
