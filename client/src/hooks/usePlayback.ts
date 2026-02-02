@@ -33,12 +33,18 @@ export interface PlaybackOptions {
 
 async function fetchRecordings(): Promise<Recording[]> {
   const res = await fetch('/api/demo/recordings');
+  if (!res.ok) {
+    throw new Error(`Failed to fetch recordings: ${res.status} ${res.statusText}`);
+  }
   const data = await res.json();
   return data.recordings || [];
 }
 
 async function fetchStatus(): Promise<PlaybackStatus> {
   const res = await fetch('/api/demo/status');
+  if (!res.ok) {
+    throw new Error(`Failed to fetch playback status: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 }
 
@@ -48,21 +54,33 @@ async function startPlayback(options: PlaybackOptions): Promise<PlaybackStatus> 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(options),
   });
+  if (!res.ok) {
+    throw new Error(`Failed to start playback: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 }
 
 async function pausePlayback(): Promise<PlaybackStatus> {
   const res = await fetch('/api/demo/pause', { method: 'POST' });
+  if (!res.ok) {
+    throw new Error(`Failed to pause playback: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 }
 
 async function resumePlayback(): Promise<PlaybackStatus> {
   const res = await fetch('/api/demo/resume', { method: 'POST' });
+  if (!res.ok) {
+    throw new Error(`Failed to resume playback: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 }
 
 async function stopPlayback(): Promise<PlaybackStatus> {
   const res = await fetch('/api/demo/stop', { method: 'POST' });
+  if (!res.ok) {
+    throw new Error(`Failed to stop playback: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 }
 
@@ -72,6 +90,9 @@ async function setSpeed(speed: number): Promise<PlaybackStatus> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ speed }),
   });
+  if (!res.ok) {
+    throw new Error(`Failed to set playback speed: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 }
 

@@ -185,7 +185,7 @@ async function recordEvents(): Promise<void> {
       const timer = setTimeout(resolve, duration * 1000);
 
       // Handle Ctrl+C gracefully
-      process.on('SIGINT', () => {
+      process.once('SIGINT', () => {
         console.log('\n\nReceived SIGINT, stopping...');
         clearTimeout(timer);
         resolve();

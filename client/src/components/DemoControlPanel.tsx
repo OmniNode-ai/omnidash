@@ -20,7 +20,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Square, Film, RefreshCw, Repeat, Zap } from 'lucide-react';
+import { Play, Pause, Square, Film, RefreshCw, Repeat, Zap, AlertCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const SPEED_OPTIONS = [
@@ -49,6 +49,8 @@ export function DemoControlPanel() {
     setSpeed,
     isStarting,
     refreshRecordings,
+    error,
+    clearError,
   } = usePlayback();
 
   const [selectedFile, setSelectedFile] = useState<string>('');
@@ -103,6 +105,19 @@ export function DemoControlPanel() {
               <RefreshCw className="h-3 w-3" />
             </Button>
           </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="flex items-center justify-between text-xs text-destructive bg-destructive/10 p-2 rounded">
+              <div className="flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                <span>{error}</span>
+              </div>
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={clearError}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
 
           {/* Recording Selector */}
           <div className="space-y-2">
