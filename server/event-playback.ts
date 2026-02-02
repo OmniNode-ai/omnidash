@@ -174,7 +174,12 @@ export class EventPlaybackService extends EventEmitter {
       this.currentTimeout = setTimeout(() => this.playNextEvent(), Math.max(0, delay));
     } else {
       // Instant mode or last event
-      setImmediate(() => this.playNextEvent());
+      // Yield to event loop every 50 events to prevent CPU blocking
+      if (this.options.speed === 0 && this.currentIndex % 50 === 0) {
+        this.currentTimeout = setTimeout(() => this.playNextEvent(), 0);
+      } else {
+        setImmediate(() => this.playNextEvent());
+      }
     }
   }
 

@@ -110,6 +110,13 @@ router.post('/start', async (req: Request, res: Response) => {
     await playback.startPlayback(filePath, {
       speed,
       loop,
+      onComplete: () => {
+        // Clean up handler when playback finishes naturally
+        if (currentEventHandler) {
+          playback.off('event', currentEventHandler);
+          currentEventHandler = null;
+        }
+      },
       onEvent: (_event) => {
         // Log progress every 10 events
         const status = playback.getStatus();
@@ -187,10 +194,11 @@ router.post('/stop', (_req: Request, res: Response) => {
 router.post('/speed', (req: Request, res: Response) => {
   const { speed } = req.body;
 
-  if (typeof speed !== 'number' || speed < 0) {
+  const MAX_SPEED = 100; // Reasonable upper limit
+  if (typeof speed !== 'number' || speed < 0 || (speed > MAX_SPEED && speed !== 0)) {
     return res.status(400).json({
       success: false,
-      error: 'Invalid speed value',
+      error: `Invalid speed value. Must be 0 (instant) or between 0 and ${MAX_SPEED}`,
     });
   }
 
