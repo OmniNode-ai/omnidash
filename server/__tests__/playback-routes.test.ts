@@ -11,6 +11,7 @@ interface MockPlaybackService {
   resumePlayback: Mock;
   stopPlayback: Mock;
   setSpeed: Mock;
+  setLoop: Mock;
   on: Mock;
   off: Mock;
 }
@@ -33,6 +34,7 @@ const { mockPlaybackService, mockEventConsumer } = vi.hoisted(() => {
     resumePlayback: vi.fn(),
     stopPlayback: vi.fn(),
     setSpeed: vi.fn(),
+    setLoop: vi.fn(),
     on: vi.fn(),
     off: vi.fn(),
   };
@@ -687,6 +689,129 @@ describe('Playback Routes', () => {
 
       expect(response.body.success).toBe(false);
       expect(mockPlaybackService.setSpeed).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('POST /api/demo/loop', () => {
+    it('should set loop enabled and return status', async () => {
+      const mockStatus = {
+        isPlaying: true,
+        isPaused: false,
+        currentIndex: 25,
+        totalEvents: 100,
+        progress: 25,
+        recordingFile: '/demo/recordings/test.jsonl',
+      };
+      mockPlaybackService.getStatus.mockReturnValue(mockStatus);
+
+      const response = await request(app).post('/api/demo/loop').send({ loop: true }).expect(200);
+
+      expect(response.body).toEqual({
+        success: true,
+        message: 'Loop enabled',
+        ...mockStatus,
+      });
+      expect(mockPlaybackService.setLoop).toHaveBeenCalledWith(true);
+    });
+
+    it('should set loop disabled and return status', async () => {
+      const mockStatus = {
+        isPlaying: true,
+        isPaused: false,
+        currentIndex: 50,
+        totalEvents: 100,
+        progress: 50,
+        recordingFile: '/demo/recordings/test.jsonl',
+      };
+      mockPlaybackService.getStatus.mockReturnValue(mockStatus);
+
+      const response = await request(app).post('/api/demo/loop').send({ loop: false }).expect(200);
+
+      expect(response.body).toEqual({
+        success: true,
+        message: 'Loop disabled',
+        ...mockStatus,
+      });
+      expect(mockPlaybackService.setLoop).toHaveBeenCalledWith(false);
+    });
+
+    it('should reject string loop value', async () => {
+      const response = await request(app).post('/api/demo/loop').send({ loop: 'true' }).expect(400);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Invalid loop value. Must be a boolean',
+      });
+      expect(mockPlaybackService.setLoop).not.toHaveBeenCalled();
+    });
+
+    it('should reject numeric loop value', async () => {
+      const response = await request(app).post('/api/demo/loop').send({ loop: 1 }).expect(400);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Invalid loop value. Must be a boolean',
+      });
+      expect(mockPlaybackService.setLoop).not.toHaveBeenCalled();
+    });
+
+    it('should reject null loop value', async () => {
+      const response = await request(app).post('/api/demo/loop').send({ loop: null }).expect(400);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Invalid loop value. Must be a boolean',
+      });
+      expect(mockPlaybackService.setLoop).not.toHaveBeenCalled();
+    });
+
+    it('should reject missing loop parameter', async () => {
+      const response = await request(app).post('/api/demo/loop').send({}).expect(400);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Invalid loop value. Must be a boolean',
+      });
+      expect(mockPlaybackService.setLoop).not.toHaveBeenCalled();
+    });
+
+    it('should reject undefined loop value', async () => {
+      const response = await request(app)
+        .post('/api/demo/loop')
+        .send({ loop: undefined })
+        .expect(400);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Invalid loop value. Must be a boolean',
+      });
+      expect(mockPlaybackService.setLoop).not.toHaveBeenCalled();
+    });
+
+    it('should reject object loop value', async () => {
+      const response = await request(app)
+        .post('/api/demo/loop')
+        .send({ loop: { enabled: true } })
+        .expect(400);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Invalid loop value. Must be a boolean',
+      });
+      expect(mockPlaybackService.setLoop).not.toHaveBeenCalled();
+    });
+
+    it('should reject array loop value', async () => {
+      const response = await request(app)
+        .post('/api/demo/loop')
+        .send({ loop: [true] })
+        .expect(400);
+
+      expect(response.body).toEqual({
+        success: false,
+        error: 'Invalid loop value. Must be a boolean',
+      });
+      expect(mockPlaybackService.setLoop).not.toHaveBeenCalled();
     });
   });
 
