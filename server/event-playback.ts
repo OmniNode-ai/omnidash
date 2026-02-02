@@ -110,8 +110,10 @@ export class EventPlaybackService extends EventEmitter {
 
   /**
    * List available recordings in the demo/recordings directory
+   * Note: Only returns filename (name) - clients should use name to reference recordings
+   * to avoid exposing server filesystem paths
    */
-  listRecordings(): { name: string; path: string; size: number; eventCount?: number }[] {
+  listRecordings(): { name: string; size: number; eventCount?: number }[] {
     const recordingsDir = path.resolve('demo/recordings');
 
     if (!fs.existsSync(recordingsDir)) {
@@ -129,7 +131,7 @@ export class EventPlaybackService extends EventEmitter {
 
         return {
           name: f,
-          path: fullPath,
+          // path intentionally omitted to avoid exposing server filesystem paths
           size: stats.size,
           eventCount,
         };
@@ -332,6 +334,11 @@ export class EventPlaybackService extends EventEmitter {
    * If currently playing, reschedules the next event with the new speed
    */
   setSpeed(speed: number): void {
+    // Validate speed is a finite non-negative number
+    if (!Number.isFinite(speed) || speed < 0) {
+      playbackLogger.warn(`Invalid speed value: ${speed}, ignoring`);
+      return;
+    }
     this.options.speed = speed;
     playbackLogger.info(`Speed set to ${speed}x`);
     this.emit('speedChange', speed);

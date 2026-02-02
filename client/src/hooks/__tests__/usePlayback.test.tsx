@@ -49,13 +49,11 @@ function createWrapper(queryClient: QueryClient) {
 const mockRecordings: Recording[] = [
   {
     name: 'demo-recording-1.json',
-    path: '/recordings/demo-recording-1.json',
     size: 1024,
     eventCount: 50,
   },
   {
     name: 'demo-recording-2.json',
-    path: '/recordings/demo-recording-2.json',
     size: 2048,
     eventCount: 100,
   },

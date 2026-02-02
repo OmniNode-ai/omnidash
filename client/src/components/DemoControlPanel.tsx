@@ -117,6 +117,7 @@ export function DemoControlPanel() {
               size="icon"
               className="h-6 w-6"
               onClick={() => refreshRecordings()}
+              aria-label="Refresh recordings"
             >
               <RefreshCw className="h-3 w-3" />
             </Button>
@@ -129,7 +130,13 @@ export function DemoControlPanel() {
                 <AlertCircle className="h-3 w-3" />
                 <span>{error}</span>
               </div>
-              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={clearError}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5"
+                onClick={clearError}
+                aria-label="Dismiss error"
+              >
                 <X className="h-3 w-3" />
               </Button>
             </div>

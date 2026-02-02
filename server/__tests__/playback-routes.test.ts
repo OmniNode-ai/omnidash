@@ -99,7 +99,6 @@ describe('Playback Routes', () => {
         },
         {
           name: 'demo-events.jsonl',
-          path: '/demo/recordings/demo-events.jsonl',
           size: 2048,
           eventCount: 100,
         },
@@ -795,7 +794,7 @@ describe('Playback Routes', () => {
   describe('Response structure validation', () => {
     it('recordings response should have correct structure', async () => {
       mockPlaybackService.listRecordings.mockReturnValue([
-        { name: 'test.jsonl', path: '/demo/recordings/test.jsonl', size: 1024, eventCount: 100 },
+        { name: 'test.jsonl', size: 1024, eventCount: 100 },
       ]);
 
       const response = await request(app).get('/api/demo/recordings').expect(200);
@@ -806,9 +805,9 @@ describe('Playback Routes', () => {
       if (response.body.recordings.length > 0) {
         const recording = response.body.recordings[0];
         expect(recording).toHaveProperty('name');
-        expect(recording).toHaveProperty('path');
         expect(recording).toHaveProperty('size');
         expect(recording).toHaveProperty('eventCount');
+        // Note: 'path' intentionally not included to avoid exposing server filesystem paths
       }
     });
 

@@ -69,11 +69,25 @@ interface RecordedEvent {
   value: unknown;
 }
 
-async function parseArgs(): Promise<{
+function getArgValue(args: string[], index: number, flagName: string): string {
+  const nextIndex = index + 1;
+  if (nextIndex >= args.length) {
+    console.error(`Error: ${flagName} requires a value`);
+    process.exit(1);
+  }
+  const value = args[nextIndex];
+  if (value.startsWith('--')) {
+    console.error(`Error: ${flagName} requires a value, got another flag: ${value}`);
+    process.exit(1);
+  }
+  return value;
+}
+
+function parseArgs(): {
   duration: number;
   output: string;
   topics: string[];
-}> {
+} {
   const args = process.argv.slice(2);
   let duration = DEFAULT_DURATION_SECONDS;
   let output = '';
@@ -81,15 +95,50 @@ async function parseArgs(): Promise<{
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
-      case '--duration':
-        duration = parseInt(args[++i], 10);
+      case '--duration': {
+        const durationStr = getArgValue(args, i, '--duration');
+        i++; // Skip the value we just consumed
+        const parsed = parseInt(durationStr, 10);
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+          console.error(`Error: --duration must be a positive number, got: ${durationStr}`);
+          process.exit(1);
+        }
+        duration = parsed;
         break;
-      case '--output':
-        output = args[++i];
+      }
+      case '--output': {
+        const outputStr = getArgValue(args, i, '--output');
+        i++; // Skip the value we just consumed
+        if (outputStr.trim() === '') {
+          console.error('Error: --output cannot be empty');
+          process.exit(1);
+        }
+        output = outputStr;
         break;
-      case '--topics':
-        topics = args[++i].split(',').map((t) => t.trim());
+      }
+      case '--topics': {
+        const topicsStr = getArgValue(args, i, '--topics');
+        i++; // Skip the value we just consumed
+        if (topicsStr.trim() === '') {
+          console.error('Error: --topics cannot be empty');
+          process.exit(1);
+        }
+        topics = topicsStr
+          .split(',')
+          .map((t) => t.trim())
+          .filter((t) => t !== '');
+        if (topics.length === 0) {
+          console.error('Error: --topics must contain at least one valid topic');
+          process.exit(1);
+        }
         break;
+      }
+      default:
+        if (args[i].startsWith('--')) {
+          console.error(`Error: Unknown option: ${args[i]}`);
+          console.error('Valid options: --duration <seconds>, --output <file>, --topics <list>');
+          process.exit(1);
+        }
     }
   }
 
@@ -103,7 +152,7 @@ async function parseArgs(): Promise<{
 }
 
 async function recordEvents(): Promise<void> {
-  const { duration, output, topics } = await parseArgs();
+  const { duration, output, topics } = parseArgs();
 
   console.log('='.repeat(60));
   console.log('Event Recording');
@@ -131,8 +180,14 @@ async function recordEvents(): Promise<void> {
     groupId: `omnidash-recorder-${Date.now()}`, // Unique group to read from beginning
   });
 
-  const events: RecordedEvent[] = [];
+  // Use counters instead of accumulating full events in memory
+  let eventCount = 0;
+  const topicCounts: Record<string, number> = {};
   const startTime = Date.now();
+  const outputPath = path.resolve(output);
+
+  // Create write stream for streaming events to disk
+  const writeStream = fs.createWriteStream(outputPath, { flags: 'w', encoding: 'utf8' });
 
   try {
     await consumer.connect();
@@ -170,12 +225,17 @@ async function recordEvents(): Promise<void> {
           value,
         };
 
-        events.push(event);
+        // Stream event to disk instead of accumulating in memory
+        writeStream.write(JSON.stringify(event) + '\n');
+
+        // Update counters for stats
+        eventCount++;
+        topicCounts[topic] = (topicCounts[topic] || 0) + 1;
 
         // Progress indicator
         const elapsed = Math.floor(relativeMs / 1000);
         process.stdout.write(
-          `\rRecorded: ${events.length} events | Elapsed: ${elapsed}s / ${duration}s`
+          `\rRecorded: ${eventCount} events | Elapsed: ${elapsed}s / ${duration}s`
         );
       },
     });
@@ -192,34 +252,34 @@ async function recordEvents(): Promise<void> {
       });
     });
   } finally {
+    // Ensure stream is properly closed
+    await new Promise<void>((resolve, reject) => {
+      writeStream.end((err: Error | null | undefined) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
     await consumer.disconnect();
     console.log('\n\nDisconnected from Kafka');
   }
 
-  // Write events to file
-  if (events.length > 0) {
-    const outputPath = path.resolve(output);
-    const content = events.map((e) => JSON.stringify(e)).join('\n') + '\n';
-    fs.writeFileSync(outputPath, content);
+  // Print summary
+  if (eventCount > 0) {
+    // Get actual file size from disk
+    const fileStats = fs.statSync(outputPath);
+    const fileSizeKB = (fileStats.size / 1024).toFixed(2);
 
     console.log('\n' + '='.repeat(60));
     console.log('Recording Complete');
     console.log('='.repeat(60));
-    console.log(`Events recorded: ${events.length}`);
+    console.log(`Events recorded: ${eventCount}`);
     console.log(`Duration:        ${Math.floor((Date.now() - startTime) / 1000)} seconds`);
-    console.log(`File size:       ${(content.length / 1024).toFixed(2)} KB`);
+    console.log(`File size:       ${fileSizeKB} KB`);
     console.log(`Output file:     ${outputPath}`);
     console.log('='.repeat(60));
 
-    // Print topic breakdown
-    const topicCounts = events.reduce(
-      (acc, e) => {
-        acc[e.topic] = (acc[e.topic] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-
+    // Print topic breakdown from counters
     console.log('\nEvents by topic:');
     Object.entries(topicCounts)
       .sort((a, b) => b[1] - a[1])

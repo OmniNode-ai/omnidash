@@ -54,9 +54,9 @@ export const PlaybackStatusSchema = z.object({
 export type PlaybackStatus = z.infer<typeof PlaybackStatusSchema>;
 
 // Recording info schema
+// Note: path is intentionally omitted to avoid leaking server filesystem paths to clients
 export const RecordingSchema = z.object({
   name: z.string(),
-  path: z.string(),
   size: z.number(),
   eventCount: z.number(),
 });

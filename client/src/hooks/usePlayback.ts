@@ -23,7 +23,10 @@ export type { Recording, PlaybackStatus, PlaybackOptions };
 async function fetchRecordings(): Promise<Recording[]> {
   const res = await fetch('/api/demo/recordings');
   if (!res.ok) {
-    throw new Error(`Failed to fetch recordings: ${res.status} ${res.statusText}`);
+    const errorBody = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to fetch recordings: ${res.status} ${res.statusText}${errorBody ? ` - ${errorBody}` : ''}`
+    );
   }
   const data = await res.json();
   return data.recordings || [];
@@ -32,7 +35,10 @@ async function fetchRecordings(): Promise<Recording[]> {
 async function fetchStatus(): Promise<PlaybackStatus> {
   const res = await fetch('/api/demo/status');
   if (!res.ok) {
-    throw new Error(`Failed to fetch playback status: ${res.status} ${res.statusText}`);
+    const errorBody = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to fetch playback status: ${res.status} ${res.statusText}${errorBody ? ` - ${errorBody}` : ''}`
+    );
   }
   return res.json();
 }
@@ -44,7 +50,10 @@ async function startPlayback(options: PlaybackOptions): Promise<PlaybackStatus> 
     body: JSON.stringify(options),
   });
   if (!res.ok) {
-    throw new Error(`Failed to start playback: ${res.status} ${res.statusText}`);
+    const errorBody = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to start playback: ${res.status} ${res.statusText}${errorBody ? ` - ${errorBody}` : ''}`
+    );
   }
   return res.json();
 }
@@ -52,7 +61,10 @@ async function startPlayback(options: PlaybackOptions): Promise<PlaybackStatus> 
 async function pausePlayback(): Promise<PlaybackStatus> {
   const res = await fetch('/api/demo/pause', { method: 'POST' });
   if (!res.ok) {
-    throw new Error(`Failed to pause playback: ${res.status} ${res.statusText}`);
+    const errorBody = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to pause playback: ${res.status} ${res.statusText}${errorBody ? ` - ${errorBody}` : ''}`
+    );
   }
   return res.json();
 }
@@ -60,7 +72,10 @@ async function pausePlayback(): Promise<PlaybackStatus> {
 async function resumePlayback(): Promise<PlaybackStatus> {
   const res = await fetch('/api/demo/resume', { method: 'POST' });
   if (!res.ok) {
-    throw new Error(`Failed to resume playback: ${res.status} ${res.statusText}`);
+    const errorBody = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to resume playback: ${res.status} ${res.statusText}${errorBody ? ` - ${errorBody}` : ''}`
+    );
   }
   return res.json();
 }
@@ -68,7 +83,10 @@ async function resumePlayback(): Promise<PlaybackStatus> {
 async function stopPlayback(): Promise<PlaybackStatus> {
   const res = await fetch('/api/demo/stop', { method: 'POST' });
   if (!res.ok) {
-    throw new Error(`Failed to stop playback: ${res.status} ${res.statusText}`);
+    const errorBody = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to stop playback: ${res.status} ${res.statusText}${errorBody ? ` - ${errorBody}` : ''}`
+    );
   }
   return res.json();
 }
@@ -80,7 +98,10 @@ async function setSpeed(speed: number): Promise<PlaybackStatus> {
     body: JSON.stringify({ speed }),
   });
   if (!res.ok) {
-    throw new Error(`Failed to set playback speed: ${res.status} ${res.statusText}`);
+    const errorBody = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to set playback speed: ${res.status} ${res.statusText}${errorBody ? ` - ${errorBody}` : ''}`
+    );
   }
   return res.json();
 }
@@ -92,7 +113,10 @@ async function setLoop(loop: boolean): Promise<PlaybackStatus> {
     body: JSON.stringify({ loop }),
   });
   if (!res.ok) {
-    throw new Error(`Failed to set loop mode: ${res.status} ${res.statusText}`);
+    const errorBody = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to set loop mode: ${res.status} ${res.statusText}${errorBody ? ` - ${errorBody}` : ''}`
+    );
   }
   return res.json();
 }
@@ -297,6 +321,16 @@ export function usePlayback() {
     isResuming: resumeMutation.isPending,
     isStopping: stopMutation.isPending,
     isSettingLoop: loopMutation.isPending,
+
+    // Individual error states for granular error handling
+    startError: startMutation.error,
+    pauseError: pauseMutation.error,
+    resumeError: resumeMutation.error,
+    stopError: stopMutation.error,
+    speedError: speedMutation.error,
+    loopError: loopMutation.error,
+    recordingsError: recordings.error,
+    statusError: status.error,
 
     // Refresh
     refreshRecordings: () => recordings.refetch(),

@@ -1587,7 +1587,7 @@ export class EventConsumer extends EventEmitter {
     const sessionId =
       payload.session_id || payload.sessionId || event.session_id || event.sessionId || '';
     const promptLength =
-      payload.prompt_length || payload.promptLength || event.prompt_length || event.promptLength;
+      payload.prompt_length ?? payload.promptLength ?? event.prompt_length ?? event.promptLength;
     const emittedAt =
       payload.emitted_at || payload.emittedAt || event.emitted_at || event.emittedAt;
 
