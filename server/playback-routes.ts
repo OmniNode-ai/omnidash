@@ -8,6 +8,7 @@ import path from 'path';
 import { Router, Request, Response } from 'express';
 import { getPlaybackService } from './event-playback';
 import { getEventConsumer } from './event-consumer';
+import { PLAYBACK_CONFIG, isValidSpeed } from '@shared/schemas/playback-config';
 
 const router = Router();
 const playback = getPlaybackService();
@@ -74,7 +75,7 @@ router.post('/start', async (req: Request, res: Response) => {
     const recordingsDir = path.resolve('demo/recordings');
     const resolvedPath = path.resolve(filePath);
 
-    if (!resolvedPath.startsWith(recordingsDir + path.sep) && resolvedPath !== recordingsDir) {
+    if (!resolvedPath.startsWith(recordingsDir + path.sep)) {
       return res.status(400).json({
         success: false,
         error: 'Invalid file path: must be within demo/recordings directory',
@@ -194,11 +195,10 @@ router.post('/stop', (_req: Request, res: Response) => {
 router.post('/speed', (req: Request, res: Response) => {
   const { speed } = req.body;
 
-  const MAX_SPEED = 100; // Reasonable upper limit
-  if (typeof speed !== 'number' || speed < 0 || (speed > MAX_SPEED && speed !== 0)) {
+  if (typeof speed !== 'number' || !isValidSpeed(speed)) {
     return res.status(400).json({
       success: false,
-      error: `Invalid speed value. Must be 0 (instant) or between 0 and ${MAX_SPEED}`,
+      error: `Invalid speed value. Must be ${PLAYBACK_CONFIG.INSTANT_SPEED} (instant) or between ${PLAYBACK_CONFIG.MIN_SPEED} and ${PLAYBACK_CONFIG.MAX_SPEED}`,
     });
   }
 

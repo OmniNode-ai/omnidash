@@ -5,8 +5,9 @@
  * Displays as a collapsible panel in the header area.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePlayback } from '@/hooks/usePlayback';
+import { SPEED_OPTIONS, PLAYBACK_CONFIG } from '@shared/schemas/playback-config';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -22,15 +23,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Play, Pause, Square, Film, RefreshCw, Repeat, Zap, AlertCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const SPEED_OPTIONS = [
-  { value: 0.5, label: '0.5x' },
-  { value: 1, label: '1x' },
-  { value: 2, label: '2x' },
-  { value: 5, label: '5x' },
-  { value: 10, label: '10x' },
-  { value: 0, label: 'Instant' },
-];
 
 export function DemoControlPanel() {
   const {
@@ -54,9 +46,18 @@ export function DemoControlPanel() {
   } = usePlayback();
 
   const [selectedFile, setSelectedFile] = useState<string>('');
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(PLAYBACK_CONFIG.DEFAULT_SPEED);
   const [loopEnabled, setLoopEnabled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+
+  // Cleanup: stop playback when component unmounts
+  useEffect(() => {
+    return () => {
+      if (isPlaying) {
+        stop();
+      }
+    };
+  }, [isPlaying, stop]);
 
   const handleStart = () => {
     if (!selectedFile) return;
@@ -173,7 +174,7 @@ export function DemoControlPanel() {
                 Speed
               </Label>
               <span className="text-xs font-mono">
-                {playbackSpeed === 0 ? 'Instant' : `${playbackSpeed}x`}
+                {playbackSpeed === PLAYBACK_CONFIG.INSTANT_SPEED ? 'Instant' : `${playbackSpeed}x`}
               </span>
             </div>
             <div className="flex gap-1">

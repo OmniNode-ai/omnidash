@@ -7,29 +7,10 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { Recording, PlaybackStatus, PlaybackOptions } from '@shared/schemas/playback-config';
 
-export interface Recording {
-  name: string;
-  path: string;
-  size: number;
-  eventCount: number;
-}
-
-export interface PlaybackStatus {
-  success: boolean;
-  isPlaying: boolean;
-  isPaused: boolean;
-  currentIndex: number;
-  totalEvents: number;
-  progress: number;
-  recordingFile: string;
-}
-
-export interface PlaybackOptions {
-  file: string;
-  speed?: number;
-  loop?: boolean;
-}
+// Re-export types for backward compatibility
+export type { Recording, PlaybackStatus, PlaybackOptions };
 
 async function fetchRecordings(): Promise<Recording[]> {
   const res = await fetch('/api/demo/recordings');
@@ -204,6 +185,13 @@ export function usePlayback() {
     resume: () => resumeMutation.mutate(),
     stop: () => stopMutation.mutate(),
     setSpeed: (speed: number) => speedMutation.mutate(speed),
+
+    // Async actions (for awaiting completion)
+    startAsync: (options: PlaybackOptions) => startMutation.mutateAsync(options),
+    pauseAsync: () => pauseMutation.mutateAsync(),
+    resumeAsync: () => resumeMutation.mutateAsync(),
+    stopAsync: () => stopMutation.mutateAsync(),
+    setSpeedAsync: (speed: number) => speedMutation.mutateAsync(speed),
 
     // Loading states
     isStarting: startMutation.isPending,
