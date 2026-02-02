@@ -10,6 +10,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { AlertBanner } from '@/components/AlertBanner';
 import { DemoModeProvider } from '@/contexts/DemoModeContext';
 import { DemoModeToggle } from '@/components/DemoModeToggle';
+import { DemoControlPanel } from '@/components/DemoControlPanel';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
 // Archived legacy pages (OMN-1377)
@@ -155,6 +156,7 @@ function App() {
                               : 'Disconnected'}
                         </span>
                       </div>
+                      <DemoControlPanel />
                       <ThemeToggle />
                     </div>
                   </header>

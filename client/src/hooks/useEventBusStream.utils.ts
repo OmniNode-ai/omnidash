@@ -45,8 +45,8 @@ export const MAX_TIMESTAMP_ENTRIES = 10000;
 /** Maximum errors to keep in ring buffer */
 export const MAX_ERRORS = 50;
 
-/** Time series bucket size in milliseconds (10 seconds) */
-export const TIME_SERIES_BUCKET_MS = 10000;
+/** Time series bucket size in milliseconds (15 seconds) */
+export const TIME_SERIES_BUCKET_MS = 15000;
 
 /**
  * Maximum characters to hash for performance.

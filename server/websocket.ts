@@ -24,6 +24,7 @@ import {
   type IntentRecentEventPayload,
 } from './intent-events';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
+import { playbackEventEmitter, type PlaybackWSMessage } from './playback-events';
 
 /**
  * Transform EventBusEvent from database to client-expected format
@@ -112,7 +113,7 @@ async function fetchRealEventsForInitialState(): Promise<{
 
   try {
     const events = await dataSource.queryEvents({
-      limit: 100,
+      limit: 1000,
       order_by: 'timestamp',
       order_direction: 'desc',
     });
@@ -151,6 +152,8 @@ const VALID_TOPICS = [
   'intent',
   // Event Bus Monitor events (real-time Kafka events)
   'event-bus',
+  // Demo playback events (OMN-1843)
+  'playback',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -302,6 +305,38 @@ export function setupWebSocket(httpServer: HTTPServer) {
     broadcast('CONSUMER_STATUS', { status: 'disconnected' }, 'system');
   });
 
+  // Demo mode state events - signal clients to clear/restore their local state
+  registerEventListener('stateReset', () => {
+    console.log('[WebSocket] Demo mode: state reset - broadcasting DEMO_STATE_RESET');
+    broadcast('DEMO_STATE_RESET', { timestamp: Date.now() }, 'all');
+  });
+
+  registerEventListener('stateRestored', () => {
+    console.log('[WebSocket] Demo mode: state restored - broadcasting DEMO_STATE_RESTORED');
+    broadcast('DEMO_STATE_RESTORED', { timestamp: Date.now() }, 'all');
+
+    // After notifying clients to clear their state, send fresh initial state with restored data
+    // This allows the UI to immediately show the live data that was snapshotted before demo
+    setTimeout(() => {
+      console.log('[WebSocket] Demo mode: broadcasting restored INITIAL_STATE');
+      broadcast(
+        'INITIAL_STATE',
+        {
+          metrics: eventConsumer.getAgentMetrics(),
+          recentActions: eventConsumer.getRecentActions(),
+          routingDecisions: eventConsumer.getRoutingDecisions(),
+          recentTransformations: eventConsumer.getRecentTransformations(),
+        },
+        'all'
+      );
+    }, 100); // Small delay to ensure DEMO_STATE_RESTORED is processed first
+  });
+
+  registerEventListener('stateSnapshotted', () => {
+    console.log('[WebSocket] Demo mode: state snapshotted');
+    // No broadcast needed - just logging for debugging
+  });
+
   // Node Registry event listeners
   registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {
     // Transform to client-expected format (snake_case for consistency with Kafka events)
@@ -350,6 +385,21 @@ export function setupWebSocket(httpServer: HTTPServer) {
   intentEventEmitter.on('intentDistribution', intentDistributionHandler);
   intentEventEmitter.on('intentSession', intentSessionHandler);
   intentEventEmitter.on('intentRecent', intentRecentHandler);
+
+  // Playback event listener (OMN-1843)
+  // Broadcasts playback lifecycle and progress events to clients subscribed to 'playback' topic
+  const playbackHandler = (message: PlaybackWSMessage) => {
+    // Broadcast with the message type (e.g., 'playback:start', 'playback:progress')
+    // The full message includes status, and optionally speed/loop for change events
+    broadcast(message.type, message, 'playback');
+  };
+
+  playbackEventEmitter.on('playback', playbackHandler);
+
+  // Track playback listener for cleanup
+  const playbackListeners = [
+    { emitter: playbackEventEmitter, event: 'playback', handler: playbackHandler },
+  ];
 
   // Registry Discovery event listeners (OMN-1278 Phase 4)
   // These provide granular registry events for the registry discovery dashboard
@@ -799,6 +849,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
       emitter.removeListener(event, handler);
     });
     intentListeners.length = 0;
+
+    // Remove playback event listeners (OMN-1843)
+    console.log(`Removing ${playbackListeners.length} playback event listeners...`);
+    playbackListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    playbackListeners.length = 0;
 
     // Remove event bus data source listeners
     console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);
