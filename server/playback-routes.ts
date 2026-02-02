@@ -2,13 +2,19 @@
  * Playback API Routes
  *
  * REST API for controlling event playback from the dashboard.
+ * Broadcasts playback lifecycle events to WebSocket clients via playbackEventEmitter.
  */
 
 import path from 'path';
 import { Router, Request, Response } from 'express';
 import { getPlaybackService, playbackLogger } from './event-playback';
 import { getEventConsumer } from './event-consumer';
-import { PLAYBACK_CONFIG, isValidSpeed } from '@shared/schemas/playback-config';
+import {
+  PLAYBACK_CONFIG,
+  isValidSpeed,
+  type PlaybackStatus,
+} from '@shared/schemas/playback-config';
+import { emitPlaybackEvent } from './playback-events';
 
 const router = Router();
 const playback = getPlaybackService();
@@ -17,9 +23,129 @@ const playback = getPlaybackService();
 // (avoids removing other listeners with removeAllListeners)
 let currentEventHandler: ((event: unknown) => void) | null = null;
 
+// Track current lifecycle handlers for cleanup
+let lifecycleHandlersRegistered = false;
+
 // Mutex flag to prevent race condition when concurrent /start requests arrive
 // Without this, two simultaneous requests could both create event handlers
 let isStartingPlayback = false;
+
+// Progress throttling state
+let lastProgressBroadcast = 0;
+let eventsSinceLastBroadcast = 0;
+const PROGRESS_THROTTLE_MS = 100;
+const PROGRESS_THROTTLE_EVENTS = 10;
+
+/**
+ * Get current playback status in the WebSocket message format.
+ * Adds the required 'success' field to the base status.
+ */
+function getPlaybackStatusForWS(): PlaybackStatus {
+  return {
+    success: true,
+    ...playback.getStatus(),
+  };
+}
+
+/**
+ * Broadcast a progress update, respecting throttle limits.
+ * Only broadcasts if: >= PROGRESS_THROTTLE_EVENTS since last broadcast
+ * OR >= PROGRESS_THROTTLE_MS milliseconds since last broadcast.
+ *
+ * @param force - If true, bypass throttling and always broadcast
+ */
+function broadcastProgress(force = false): void {
+  const now = Date.now();
+  eventsSinceLastBroadcast++;
+
+  const shouldBroadcast =
+    force ||
+    eventsSinceLastBroadcast >= PROGRESS_THROTTLE_EVENTS ||
+    now - lastProgressBroadcast >= PROGRESS_THROTTLE_MS;
+
+  if (shouldBroadcast) {
+    emitPlaybackEvent({
+      type: 'playback:progress',
+      status: getPlaybackStatusForWS(),
+    });
+    lastProgressBroadcast = now;
+    eventsSinceLastBroadcast = 0;
+  }
+}
+
+/**
+ * Register lifecycle event handlers on the playback service.
+ * These handlers broadcast state changes to WebSocket clients.
+ * Only registers once - handlers persist for server lifetime.
+ */
+function registerLifecycleHandlers(): void {
+  if (lifecycleHandlersRegistered) return;
+
+  playback.on('playbackStart', () => {
+    // Reset throttle state on new playback
+    lastProgressBroadcast = Date.now();
+    eventsSinceLastBroadcast = 0;
+
+    emitPlaybackEvent({
+      type: 'playback:start',
+      status: getPlaybackStatusForWS(),
+    });
+  });
+
+  playback.on('playbackPause', () => {
+    emitPlaybackEvent({
+      type: 'playback:pause',
+      status: getPlaybackStatusForWS(),
+    });
+  });
+
+  playback.on('playbackResume', () => {
+    emitPlaybackEvent({
+      type: 'playback:resume',
+      status: getPlaybackStatusForWS(),
+    });
+  });
+
+  playback.on('playbackStop', () => {
+    emitPlaybackEvent({
+      type: 'playback:stop',
+      status: getPlaybackStatusForWS(),
+    });
+  });
+
+  playback.on('playbackLoop', () => {
+    // Reset throttle state when looping restarts
+    lastProgressBroadcast = Date.now();
+    eventsSinceLastBroadcast = 0;
+
+    emitPlaybackEvent({
+      type: 'playback:loop',
+      status: getPlaybackStatusForWS(),
+    });
+  });
+
+  playback.on('speedChange', (speed: number) => {
+    emitPlaybackEvent({
+      type: 'playback:speedChange',
+      speed,
+      status: getPlaybackStatusForWS(),
+    });
+  });
+
+  playback.on('loopChange', (loop: boolean) => {
+    emitPlaybackEvent({
+      type: 'playback:loopChange',
+      loop,
+      status: getPlaybackStatusForWS(),
+    });
+  });
+
+  lifecycleHandlersRegistered = true;
+  playbackLogger.info('Playback lifecycle handlers registered for WebSocket broadcasting');
+}
+
+// Register lifecycle handlers on module load
+registerLifecycleHandlers();
 
 /**
  * GET /api/demo/recordings
@@ -118,6 +244,9 @@ router.post('/start', async (req: Request, res: Response) => {
         // Inject into EventConsumer using the same pipeline as live events
         const event = recordedEvent as { topic: string; value: unknown };
         eventConsumer.injectPlaybackEvent(event.topic, event.value as Record<string, unknown>);
+
+        // Broadcast throttled progress updates via WebSocket
+        broadcastProgress();
       };
       playback.on('event', currentEventHandler);
     }
@@ -131,9 +260,11 @@ router.post('/start', async (req: Request, res: Response) => {
           playback.off('event', currentEventHandler);
           currentEventHandler = null;
         }
+        // Force a final progress broadcast to ensure 100% is reported
+        broadcastProgress(true);
       },
       onEvent: (_event) => {
-        // Log progress every 10 events
+        // Log progress every 10 events (for server-side debugging)
         const status = playback.getStatus();
         if (status.currentIndex % 10 === 0) {
           playbackLogger.debug(`Progress: ${status.currentIndex}/${status.totalEvents}`);

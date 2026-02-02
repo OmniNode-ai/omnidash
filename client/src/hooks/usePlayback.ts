@@ -3,11 +3,19 @@
  *
  * React hook for controlling event playback from the dashboard.
  * Wraps the /api/demo/* endpoints with React Query for state management.
+ *
+ * Features:
+ * - Real-time status updates via WebSocket (when connected)
+ * - Automatic fallback to HTTP polling when WebSocket disconnects
+ * - Type-safe message handling with Zod validation
+ * - All mutations still use REST API for reliability
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Recording, PlaybackStatus, PlaybackOptions } from '@shared/schemas/playback-config';
+import { parsePlaybackWSMessage } from '@shared/schemas/playback-config';
+import { useWebSocket } from './useWebSocket';
 
 // Re-export types for backward compatibility
 export type { Recording, PlaybackStatus, PlaybackOptions };
@@ -96,6 +104,65 @@ export function usePlayback() {
   const [error, setError] = useState<string | null>(null);
   const clearError = () => setError(null);
 
+  // Track if we've subscribed to playback topics
+  const hasSubscribedRef = useRef(false);
+
+  // Handle incoming WebSocket messages
+  const handleWebSocketMessage = useCallback(
+    (message: { type: string; data?: unknown }) => {
+      // Check if this is a playback message by looking at the type prefix
+      if (!message.type?.startsWith('playback:')) {
+        return;
+      }
+
+      // Parse and validate the playback message
+      const playbackMessage = parsePlaybackWSMessage(message);
+      if (!playbackMessage) {
+        // Not a valid playback message, ignore
+        return;
+      }
+
+      // Update the React Query cache with the new status
+      // All playback messages include the full status
+      queryClient.setQueryData(['playback', 'status'], playbackMessage.status);
+
+      // Log message type for debugging (can be removed in production)
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.log('[usePlayback] WebSocket update:', playbackMessage.type);
+      }
+    },
+    [queryClient]
+  );
+
+  // WebSocket connection for real-time updates
+  const {
+    isConnected: wsConnected,
+    connectionStatus: wsConnectionStatus,
+    subscribe,
+  } = useWebSocket({
+    onMessage: handleWebSocketMessage,
+    onOpen: () => {
+      // Subscribe to playback events when connected
+      if (!hasSubscribedRef.current) {
+        subscribe(['playback']);
+        hasSubscribedRef.current = true;
+      }
+    },
+    onClose: () => {
+      // Reset subscription flag on disconnect so we resubscribe on reconnect
+      hasSubscribedRef.current = false;
+    },
+  });
+
+  // Re-subscribe when reconnected
+  useEffect(() => {
+    if (wsConnected && !hasSubscribedRef.current) {
+      subscribe(['playback']);
+      hasSubscribedRef.current = true;
+    }
+  }, [wsConnected, subscribe]);
+
   // Fetch available recordings
   const recordings = useQuery({
     queryKey: ['playback', 'recordings'],
@@ -103,12 +170,18 @@ export function usePlayback() {
     staleTime: 30000, // 30 seconds
   });
 
-  // Poll playback status when playing
+  // Fetch and poll playback status
+  // When WebSocket is connected, we get real-time updates and don't need to poll
+  // When WebSocket is disconnected, fall back to polling every 500ms when playing
   const status = useQuery({
     queryKey: ['playback', 'status'],
     queryFn: fetchStatus,
     refetchInterval: (query) => {
-      // Poll every 500ms when playing, otherwise don't poll
+      // If WebSocket is connected, don't poll - we get real-time updates
+      if (wsConnected) {
+        return false;
+      }
+      // Fall back to polling every 500ms when playing and WebSocket is disconnected
       const data = query.state.data;
       return data?.isPlaying && !data?.isPaused ? 500 : false;
     },
@@ -232,5 +305,10 @@ export function usePlayback() {
     // Error handling
     error,
     clearError,
+
+    // WebSocket connection status
+    // Use this to show connection indicator in UI
+    wsConnected,
+    wsConnectionStatus,
   };
 }

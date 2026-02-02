@@ -45,6 +45,12 @@ const { mockPlaybackService, mockEventConsumer } = vi.hoisted(() => {
 // Mock event-playback module
 vi.mock('../event-playback', () => ({
   getPlaybackService: () => mockPlaybackService,
+  playbackLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
 }));
 
 // Mock event-consumer module

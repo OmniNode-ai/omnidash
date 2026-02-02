@@ -84,3 +84,138 @@ export function isValidSpeed(speed: number): boolean {
     (speed >= PLAYBACK_CONFIG.MIN_SPEED && speed <= PLAYBACK_CONFIG.MAX_SPEED)
   );
 }
+
+// ============================================================================
+// WebSocket Message Types for Playback Status Updates
+// ============================================================================
+
+/**
+ * WebSocket message types for playback events.
+ * Each message includes the full PlaybackStatus for consistency,
+ * allowing clients to update their state from any message.
+ */
+
+// Base message with status (all messages include this)
+const PlaybackWSBaseSchema = z.object({
+  status: PlaybackStatusSchema,
+});
+
+// Playback started
+export const PlaybackWSStartSchema = PlaybackWSBaseSchema.extend({
+  type: z.literal('playback:start'),
+});
+export type PlaybackWSStart = z.infer<typeof PlaybackWSStartSchema>;
+
+// Progress update (emitted for each event processed)
+export const PlaybackWSProgressSchema = PlaybackWSBaseSchema.extend({
+  type: z.literal('playback:progress'),
+});
+export type PlaybackWSProgress = z.infer<typeof PlaybackWSProgressSchema>;
+
+// Playback paused
+export const PlaybackWSPauseSchema = PlaybackWSBaseSchema.extend({
+  type: z.literal('playback:pause'),
+});
+export type PlaybackWSPause = z.infer<typeof PlaybackWSPauseSchema>;
+
+// Playback resumed
+export const PlaybackWSResumeSchema = PlaybackWSBaseSchema.extend({
+  type: z.literal('playback:resume'),
+});
+export type PlaybackWSResume = z.infer<typeof PlaybackWSResumeSchema>;
+
+// Playback stopped
+export const PlaybackWSStopSchema = PlaybackWSBaseSchema.extend({
+  type: z.literal('playback:stop'),
+});
+export type PlaybackWSStop = z.infer<typeof PlaybackWSStopSchema>;
+
+// Loop restarted (playback looped back to beginning)
+export const PlaybackWSLoopSchema = PlaybackWSBaseSchema.extend({
+  type: z.literal('playback:loop'),
+});
+export type PlaybackWSLoop = z.infer<typeof PlaybackWSLoopSchema>;
+
+// Speed changed (includes the new speed value)
+export const PlaybackWSSpeedChangeSchema = PlaybackWSBaseSchema.extend({
+  type: z.literal('playback:speedChange'),
+  speed: z.number().min(PLAYBACK_CONFIG.MIN_SPEED).max(PLAYBACK_CONFIG.MAX_SPEED),
+});
+export type PlaybackWSSpeedChange = z.infer<typeof PlaybackWSSpeedChangeSchema>;
+
+// Loop mode changed (includes the new loop setting)
+export const PlaybackWSLoopChangeSchema = PlaybackWSBaseSchema.extend({
+  type: z.literal('playback:loopChange'),
+  loop: z.boolean(),
+});
+export type PlaybackWSLoopChange = z.infer<typeof PlaybackWSLoopChangeSchema>;
+
+/**
+ * Discriminated union of all playback WebSocket message types.
+ * Use this for type-safe message handling:
+ *
+ * @example
+ * ```typescript
+ * function handleMessage(msg: PlaybackWSMessage) {
+ *   switch (msg.type) {
+ *     case 'playback:start':
+ *       console.log('Started:', msg.status.recordingFile);
+ *       break;
+ *     case 'playback:speedChange':
+ *       console.log('Speed changed to:', msg.speed);
+ *       break;
+ *     // ... handle other message types
+ *   }
+ * }
+ * ```
+ */
+export const PlaybackWSMessageSchema = z.discriminatedUnion('type', [
+  PlaybackWSStartSchema,
+  PlaybackWSProgressSchema,
+  PlaybackWSPauseSchema,
+  PlaybackWSResumeSchema,
+  PlaybackWSStopSchema,
+  PlaybackWSLoopSchema,
+  PlaybackWSSpeedChangeSchema,
+  PlaybackWSLoopChangeSchema,
+]);
+export type PlaybackWSMessage = z.infer<typeof PlaybackWSMessageSchema>;
+
+/**
+ * All possible playback WebSocket message type strings.
+ * Useful for subscription filtering or logging.
+ */
+export const PLAYBACK_WS_MESSAGE_TYPES = [
+  'playback:start',
+  'playback:progress',
+  'playback:pause',
+  'playback:resume',
+  'playback:stop',
+  'playback:loop',
+  'playback:speedChange',
+  'playback:loopChange',
+] as const;
+export type PlaybackWSMessageType = (typeof PLAYBACK_WS_MESSAGE_TYPES)[number];
+
+/**
+ * Type guard to check if a value is a valid PlaybackWSMessage.
+ * Uses Zod's safeParse for runtime validation.
+ *
+ * @param value - The value to check
+ * @returns true if the value is a valid PlaybackWSMessage
+ */
+export function isPlaybackWSMessage(value: unknown): value is PlaybackWSMessage {
+  return PlaybackWSMessageSchema.safeParse(value).success;
+}
+
+/**
+ * Parse and validate a WebSocket message.
+ * Returns the parsed message or null if invalid.
+ *
+ * @param value - The value to parse (typically from JSON.parse)
+ * @returns The validated PlaybackWSMessage or null
+ */
+export function parsePlaybackWSMessage(value: unknown): PlaybackWSMessage | null {
+  const result = PlaybackWSMessageSchema.safeParse(value);
+  return result.success ? result.data : null;
+}

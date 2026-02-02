@@ -24,6 +24,7 @@ import {
   type IntentRecentEventPayload,
 } from './intent-events';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
+import { playbackEventEmitter, type PlaybackWSMessage } from './playback-events';
 
 /**
  * Transform EventBusEvent from database to client-expected format
@@ -151,6 +152,8 @@ const VALID_TOPICS = [
   'intent',
   // Event Bus Monitor events (real-time Kafka events)
   'event-bus',
+  // Demo playback events (OMN-1843)
+  'playback',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -350,6 +353,21 @@ export function setupWebSocket(httpServer: HTTPServer) {
   intentEventEmitter.on('intentDistribution', intentDistributionHandler);
   intentEventEmitter.on('intentSession', intentSessionHandler);
   intentEventEmitter.on('intentRecent', intentRecentHandler);
+
+  // Playback event listener (OMN-1843)
+  // Broadcasts playback lifecycle and progress events to clients subscribed to 'playback' topic
+  const playbackHandler = (message: PlaybackWSMessage) => {
+    // Broadcast with the message type (e.g., 'playback:start', 'playback:progress')
+    // The full message includes status, and optionally speed/loop for change events
+    broadcast(message.type, message, 'playback');
+  };
+
+  playbackEventEmitter.on('playback', playbackHandler);
+
+  // Track playback listener for cleanup
+  const playbackListeners = [
+    { emitter: playbackEventEmitter, event: 'playback', handler: playbackHandler },
+  ];
 
   // Registry Discovery event listeners (OMN-1278 Phase 4)
   // These provide granular registry events for the registry discovery dashboard
@@ -799,6 +817,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
       emitter.removeListener(event, handler);
     });
     intentListeners.length = 0;
+
+    // Remove playback event listeners (OMN-1843)
+    console.log(`Removing ${playbackListeners.length} playback event listeners...`);
+    playbackListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    playbackListeners.length = 0;
 
     // Remove event bus data source listeners
     console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);
