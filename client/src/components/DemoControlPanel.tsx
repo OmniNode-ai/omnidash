@@ -5,7 +5,7 @@
  * Displays as a collapsible panel in the header area.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePlayback } from '@/hooks/usePlayback';
 import { SPEED_OPTIONS, PLAYBACK_CONFIG } from '@shared/schemas/playback-config';
 import { Button } from '@/components/ui/button';
@@ -39,7 +39,9 @@ export function DemoControlPanel() {
     resume,
     stop,
     setSpeed,
+    setLoop,
     isStarting,
+    isSettingLoop,
     refreshRecordings,
     error,
     clearError,
@@ -50,14 +52,27 @@ export function DemoControlPanel() {
   const [loopEnabled, setLoopEnabled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
+  // Use ref to track current playing state for cleanup (avoids stale closure)
+  const isPlayingRef = useRef(isPlaying);
+  const stopRef = useRef(stop);
+
+  // Keep refs in sync with current values
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
+    stopRef.current = stop;
+  }, [stop]);
+
   // Cleanup: stop playback when component unmounts
   useEffect(() => {
     return () => {
-      if (isPlaying) {
-        stop();
+      if (isPlayingRef.current) {
+        stopRef.current();
       }
     };
-  }, [isPlaying, stop]);
+  }, []);
 
   const handleStart = () => {
     if (!selectedFile) return;
@@ -198,7 +213,17 @@ export function DemoControlPanel() {
               <Repeat className="h-3 w-3" />
               Loop Playback
             </Label>
-            <Switch checked={loopEnabled} onCheckedChange={setLoopEnabled} disabled={isPlaying} />
+            <Switch
+              checked={loopEnabled}
+              onCheckedChange={(checked) => {
+                setLoopEnabled(checked);
+                // Update server-side loop setting during playback
+                if (isPlaying) {
+                  setLoop(checked);
+                }
+              }}
+              disabled={isSettingLoop}
+            />
           </div>
 
           {/* Playback Controls */}

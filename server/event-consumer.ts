@@ -809,6 +809,10 @@ export class EventConsumer extends EventEmitter {
     totalRoutingDuration: 0,
   };
 
+  // Playback event injection counters for observability
+  private playbackEventsInjected: number = 0;
+  private playbackEventsFailed: number = 0;
+
   constructor() {
     super(); // Initialize EventEmitter
 
@@ -2590,6 +2594,34 @@ export class EventConsumer extends EventEmitter {
   }
 
   /**
+   * Get playback event injection statistics for observability.
+   *
+   * Tracks the number of events successfully injected via playback
+   * and the number that failed during processing. These counters
+   * are reset when `resetState()` is called (e.g., on demo restart).
+   *
+   * @returns Object containing playback injection statistics
+   *
+   * @example
+   * ```typescript
+   * const stats = consumer.getPlaybackStats();
+   * console.log(`Injected: ${stats.injected}, Failed: ${stats.failed}, Success Rate: ${stats.successRate}%`);
+   * ```
+   */
+  getPlaybackStats(): { injected: number; failed: number; successRate: number } {
+    const total = this.playbackEventsInjected;
+    const failed = this.playbackEventsFailed;
+    // Success rate as percentage (0-100), handle division by zero
+    const successRate = total > 0 ? ((total - failed) / total) * 100 : 100;
+
+    return {
+      injected: total,
+      failed: failed,
+      successRate: Math.round(successRate * 100) / 100, // Round to 2 decimal places
+    };
+  }
+
+  /**
    * Get recent agent actions from the in-memory buffer.
    *
    * Actions are stored in reverse chronological order (newest first).
@@ -2928,6 +2960,8 @@ export class EventConsumer extends EventEmitter {
       decisions: this.routingDecisions.length,
       transformations: this.recentTransformations.length,
       intents: this.recentIntents.length,
+      playbackInjected: this.playbackEventsInjected,
+      playbackFailed: this.playbackEventsFailed,
     };
 
     this.recentActions = [];
@@ -2935,12 +2969,17 @@ export class EventConsumer extends EventEmitter {
     this.recentTransformations = [];
     this.recentIntents = [];
 
+    // Reset playback counters for fresh demo state
+    this.playbackEventsInjected = 0;
+    this.playbackEventsFailed = 0;
+
     intentLogger.info(
       `State reset for demo mode. Cleared: ` +
         `${previousCounts.actions} actions, ` +
         `${previousCounts.decisions} routing decisions, ` +
         `${previousCounts.transformations} transformations, ` +
-        `${previousCounts.intents} intents`
+        `${previousCounts.intents} intents, ` +
+        `${previousCounts.playbackInjected} playback events (${previousCounts.playbackFailed} failed)`
     );
 
     this.emit('stateReset');
@@ -3042,6 +3081,9 @@ export class EventConsumer extends EventEmitter {
     intentLogger.debug(`[Playback] Injecting event for topic: ${topic}`);
 
     try {
+      // Track successful injection attempts for observability
+      this.playbackEventsInjected++;
+
       switch (topic) {
         case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
         case 'prompt-submitted':
@@ -3107,6 +3149,9 @@ export class EventConsumer extends EventEmitter {
           this.emit('playbackEvent', { topic, event });
       }
     } catch (error) {
+      // Track failed injection attempts for observability
+      this.playbackEventsFailed++;
+
       // Log errors gracefully but continue playback - don't crash on malformed events
       const errorMessage = error instanceof Error ? error.message : String(error);
       intentLogger.warn(`[Playback] Failed to process event for topic ${topic}: ${errorMessage}`);
