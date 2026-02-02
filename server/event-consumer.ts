@@ -1537,6 +1537,19 @@ export class EventConsumer extends EventEmitter {
   private handlePromptSubmittedEvent(event: {
     event_type?: string;
     eventType?: string;
+    // Top-level fields (new flat format)
+    session_id?: string;
+    sessionId?: string;
+    correlation_id?: string;
+    correlationId?: string;
+    prompt_preview?: string;
+    promptPreview?: string;
+    prompt?: string;
+    prompt_length?: number;
+    promptLength?: number;
+    emitted_at?: string;
+    emittedAt?: string;
+    // Nested payload (old format)
     payload?: {
       session_id?: string;
       sessionId?: string;
@@ -1550,23 +1563,44 @@ export class EventConsumer extends EventEmitter {
       emittedAt?: string;
     };
   }): void {
+    // Support both nested payload (old format) and flat structure (new format)
     const payload = event.payload || {};
-    const promptPreview = payload.prompt_preview || payload.promptPreview || '';
+    const promptPreview =
+      payload.prompt_preview ||
+      payload.promptPreview ||
+      event.prompt_preview ||
+      event.promptPreview ||
+      event.prompt ||
+      '';
+
+    // Extract fields from either payload (old) or top-level (new)
+    const correlationId =
+      payload.correlation_id ||
+      payload.correlationId ||
+      event.correlation_id ||
+      event.correlationId ||
+      '';
+    const sessionId =
+      payload.session_id || payload.sessionId || event.session_id || event.sessionId || '';
+    const promptLength =
+      payload.prompt_length || payload.promptLength || event.prompt_length || event.promptLength;
+    const emittedAt =
+      payload.emitted_at || payload.emittedAt || event.emitted_at || event.emittedAt;
 
     const action: AgentAction = {
       id: crypto.randomUUID(),
-      correlationId: payload.correlation_id || payload.correlationId || '',
+      correlationId,
       agentName: 'omniclaude',
       actionType: 'prompt',
       actionName: 'UserPromptSubmit',
       actionDetails: {
         prompt: promptPreview,
-        promptLength: payload.prompt_length || payload.promptLength,
-        sessionId: payload.session_id || payload.sessionId,
+        promptLength,
+        sessionId,
       },
       debugMode: false,
       durationMs: 0,
-      createdAt: new Date(payload.emitted_at || payload.emittedAt || Date.now()),
+      createdAt: new Date(emittedAt || Date.now()),
     };
 
     this.recentActions.unshift(action);
@@ -2964,6 +2998,80 @@ export class EventConsumer extends EventEmitter {
     } catch (error) {
       console.error('Error disconnecting Kafka consumer:', error);
       this.emit('error', error); // Emit error event
+    }
+  }
+
+  /**
+   * Inject a playback event into the consumer pipeline.
+   * This allows recorded events to flow through the same handlers as live Kafka events,
+   * ensuring the dashboard sees playback events identically to live events.
+   */
+  public injectPlaybackEvent(topic: string, event: Record<string, unknown>): void {
+    intentLogger.debug(`[Playback] Injecting event for topic: ${topic}`);
+
+    switch (topic) {
+      case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
+      case 'prompt-submitted':
+        this.handlePromptSubmittedEvent(
+          event as Parameters<typeof this.handlePromptSubmittedEvent>[0]
+        );
+        break;
+
+      case 'agent-routing-decisions':
+      case 'routing-decision':
+        this.handleRoutingDecision(event as RawRoutingDecisionEvent);
+        break;
+
+      case 'agent-actions':
+      case 'action':
+        this.handleAgentAction(event as RawAgentActionEvent);
+        break;
+
+      case 'agent-transformation-events':
+      case 'transformation':
+        this.handleTransformationEvent(event as RawTransformationEvent);
+        break;
+
+      case 'dev.onex.evt.omniclaude.tool-executed.v1':
+      case 'tool-executed':
+        this.handleOmniclaudeLifecycleEvent(
+          event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
+          'dev.onex.evt.omniclaude.tool-executed.v1'
+        );
+        break;
+
+      case 'dev.onex.evt.omniclaude.session-started.v1':
+      case 'session-started':
+        this.handleOmniclaudeLifecycleEvent(
+          event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
+          'dev.onex.evt.omniclaude.session-started.v1'
+        );
+        break;
+
+      case 'dev.onex.evt.omniclaude.session-ended.v1':
+      case 'session-ended':
+        this.handleOmniclaudeLifecycleEvent(
+          event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
+          'dev.onex.evt.omniclaude.session-ended.v1'
+        );
+        break;
+
+      case 'dev.onex.evt.omniintelligence.intent-classified.v1':
+      case 'intent-classified':
+        // Intent classification events go through the intent emitter
+        const intentEmitter = getIntentEventEmitter();
+        intentEmitter.emit('intentClassified', event);
+        break;
+
+      case 'router-performance-metrics':
+      case 'performance-metric':
+        // Performance metrics can be emitted directly
+        this.emit('performanceMetric', event);
+        break;
+
+      default:
+        intentLogger.debug(`Unknown playback topic: ${topic}, emitting as generic event`);
+        this.emit('playbackEvent', { topic, event });
     }
   }
 }

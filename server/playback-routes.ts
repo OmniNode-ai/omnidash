@@ -1,0 +1,175 @@
+/**
+ * Playback API Routes
+ *
+ * REST API for controlling event playback from the dashboard.
+ */
+
+import { Router, Request, Response } from 'express';
+import { getPlaybackService } from './event-playback';
+import { getEventConsumer } from './event-consumer';
+
+const router = Router();
+const playback = getPlaybackService();
+
+/**
+ * GET /api/demo/recordings
+ * List available recording files
+ */
+router.get('/recordings', (_req: Request, res: Response) => {
+  try {
+    const recordings = playback.listRecordings();
+    res.json({
+      success: true,
+      recordings,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * GET /api/demo/status
+ * Get current playback status
+ */
+router.get('/status', (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    ...playback.getStatus(),
+  });
+});
+
+/**
+ * POST /api/demo/start
+ * Start playback of a recording
+ *
+ * Body:
+ *   - file: string (recording file name or path)
+ *   - speed?: number (playback speed multiplier, default 1)
+ *   - loop?: boolean (loop continuously, default false)
+ */
+router.post('/start', async (req: Request, res: Response) => {
+  try {
+    const { file, speed = 1, loop = false } = req.body;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field: file',
+      });
+    }
+
+    // Resolve file path
+    const filePath =
+      file.startsWith('/') || file.startsWith('.') ? file : `demo/recordings/${file}`;
+
+    // Wire up playback events to the EventConsumer
+    const eventConsumer = getEventConsumer();
+
+    // Remove any previous listeners to avoid duplicates
+    playback.removeAllListeners('event');
+
+    // Forward ALL playback events through EventConsumer's injection method
+    // This ensures events flow through the same handlers as live Kafka events
+    if (eventConsumer) {
+      playback.on('event', (recordedEvent) => {
+        // Inject into EventConsumer using the same pipeline as live events
+        eventConsumer.injectPlaybackEvent(
+          recordedEvent.topic,
+          recordedEvent.value as Record<string, unknown>
+        );
+      });
+    }
+
+    await playback.startPlayback(filePath, {
+      speed,
+      loop,
+      onEvent: (_event) => {
+        // Log progress every 10 events
+        const status = playback.getStatus();
+        if (status.currentIndex % 10 === 0) {
+          console.log(`[Playback] Progress: ${status.currentIndex}/${status.totalEvents}`);
+        }
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Playback started',
+      ...playback.getStatus(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/demo/pause
+ * Pause current playback
+ */
+router.post('/pause', (_req: Request, res: Response) => {
+  playback.pausePlayback();
+  res.json({
+    success: true,
+    message: 'Playback paused',
+    ...playback.getStatus(),
+  });
+});
+
+/**
+ * POST /api/demo/resume
+ * Resume paused playback
+ */
+router.post('/resume', (_req: Request, res: Response) => {
+  playback.resumePlayback();
+  res.json({
+    success: true,
+    message: 'Playback resumed',
+    ...playback.getStatus(),
+  });
+});
+
+/**
+ * POST /api/demo/stop
+ * Stop playback
+ */
+router.post('/stop', (_req: Request, res: Response) => {
+  playback.stopPlayback();
+  res.json({
+    success: true,
+    message: 'Playback stopped',
+    ...playback.getStatus(),
+  });
+});
+
+/**
+ * POST /api/demo/speed
+ * Change playback speed
+ *
+ * Body:
+ *   - speed: number (multiplier, e.g., 0.5, 1, 2, 5)
+ */
+router.post('/speed', (req: Request, res: Response) => {
+  const { speed } = req.body;
+
+  if (typeof speed !== 'number' || speed < 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid speed value',
+    });
+  }
+
+  playback.setSpeed(speed);
+  res.json({
+    success: true,
+    message: `Speed set to ${speed}x`,
+    ...playback.getStatus(),
+  });
+});
+
+export default router;
