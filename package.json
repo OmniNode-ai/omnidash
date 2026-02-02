@@ -29,6 +29,8 @@
     "cleanup-demo-patterns": "tsx scripts/seed-demo-patterns.ts cleanup",
     "status-demo-patterns": "tsx scripts/seed-demo-patterns.ts status",
     "check-topics": "tsx scripts/check-kafka-topics.ts",
+    "record-events": "tsx scripts/record-events.ts",
+    "record-events:5min": "tsx scripts/record-events.ts --duration 300",
     "clean:screenshots": "bash scripts/clean-screenshots.sh",
     "postinstall": "patch-package",
     "prepare": "husky"

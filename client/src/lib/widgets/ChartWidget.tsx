@@ -298,6 +298,7 @@ function renderLineChart(chartData: unknown[], config: WidgetConfigChart) {
           strokeWidth={LINE_STROKE_WIDTH}
           dot={false}
           activeDot={{ r: ACTIVE_DOT_RADIUS }}
+          isAnimationActive={false}
         />
       ))}
     </LineChart>
@@ -350,6 +351,7 @@ function renderBarChart(chartData: unknown[], config: WidgetConfigChart) {
           fill={getSeriesColor(index)}
           radius={BAR_CORNER_RADIUS}
           stackId={config.stacked ? 'stack' : undefined}
+          isAnimationActive={false}
         />
       ))}
     </BarChart>
@@ -378,6 +380,11 @@ function renderAreaChart(chartData: unknown[], config: WidgetConfigChart) {
         stroke="hsl(var(--muted-foreground))"
         fontSize={AXIS_FONT_SIZE}
         tickLine={false}
+        label={
+          config.x_axis?.label
+            ? { value: config.x_axis.label, position: 'bottom', offset: -5 }
+            : undefined
+        }
       />
       <YAxis
         stroke="hsl(var(--muted-foreground))"
@@ -402,6 +409,7 @@ function renderAreaChart(chartData: unknown[], config: WidgetConfigChart) {
           fill={getSeriesColor(index)}
           fillOpacity={AREA_FILL_OPACITY}
           stackId={config.stacked ? 'stack' : undefined}
+          isAnimationActive={false}
         />
       ))}
     </AreaChart>
@@ -447,6 +455,7 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
         paddingAngle={PIE_PADDING_ANGLE}
         label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
         labelLine={false}
+        isAnimationActive={false}
       >
         {(chartData as Record<string, unknown>[]).map((_, index) => (
           <Cell key={`cell-${index}`} fill={getSeriesColor(index)} />
@@ -517,6 +526,7 @@ function renderDonutChart(chartData: unknown[], config: WidgetConfigChart) {
         paddingAngle={2}
         label={({ percent }) => (percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : '')}
         labelLine={false}
+        isAnimationActive={false}
       >
         {(chartData as Record<string, unknown>[]).map((_, index) => (
           <Cell key={`cell-${index}`} fill={getSeriesColor(index)} />

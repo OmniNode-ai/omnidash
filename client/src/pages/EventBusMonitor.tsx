@@ -136,6 +136,9 @@ function toRecentEvent(event: ProcessedEvent) {
 // ============================================================================
 
 export default function EventBusMonitor() {
+  // Max events state - controls how many events the hook retains
+  const [maxEvents, setMaxEvents] = useState(eventConfig.max_events);
+
   // Stream hook provides events, metrics, and connection management
   const {
     events,
@@ -147,7 +150,7 @@ export default function EventBusMonitor() {
     stats,
     connect,
   } = useEventBusStream({
-    maxItems: eventConfig.max_events,
+    maxItems: maxEvents,
   });
 
   // UI state
@@ -159,7 +162,6 @@ export default function EventBusMonitor() {
   const [selectedEvent, setSelectedEvent] = useState<EventDetailPanelProps['event']>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [maxEvents, setMaxEvents] = useState(eventConfig.max_events);
 
   // Paused snapshot - captures state when pausing
   const pausedSnapshotRef = useRef<PausedSnapshot | null>(null);
@@ -220,22 +222,61 @@ export default function EventBusMonitor() {
   const filteredData = useMemo((): DashboardData => {
     const { events: srcEvents } = sourceData;
 
-    // Quick path: no filters active
+    // Quick path: no filters active - but still compute charts from displayed events
     if (!filters.topic && !filters.priority && !filters.search) {
-      const liveEvents = srcEvents.slice(0, maxEvents).map(toLiveEvent);
-      const recentEvents = srcEvents.slice(0, maxEvents).map(toRecentEvent);
+      const displayedEvents = srcEvents.slice(0, maxEvents);
+      const liveEvents = displayedEvents.map(toLiveEvent);
+      const recentEvents = displayedEvents.map(toRecentEvent);
+
+      // Compute chart data from displayed events (respects maxEvents)
+      const topicCounts: Record<string, number> = {};
+      const eventTypeCounts: Record<string, number> = {};
+      const timeBuckets: Record<number, number> = {};
+
+      for (const event of displayedEvents) {
+        topicCounts[event.topicRaw] = (topicCounts[event.topicRaw] || 0) + 1;
+        eventTypeCounts[event.eventType] = (eventTypeCounts[event.eventType] || 0) + 1;
+        const bucketTime =
+          Math.floor(event.timestamp.getTime() / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
+        timeBuckets[bucketTime] = (timeBuckets[bucketTime] || 0) + 1;
+      }
+
+      const topicBreakdownData = Object.entries(topicCounts).map(([topic, count]) => ({
+        name: getTopicLabel(topic),
+        topic,
+        eventCount: count,
+      }));
+
+      const eventTypeBreakdownData = Object.entries(eventTypeCounts).map(([eventType, count]) => ({
+        name: eventType,
+        eventType,
+        eventCount: count,
+      }));
+
+      const timeSeriesData = Object.entries(timeBuckets)
+        .map(([time, count]) => {
+          const date = new Date(Number(time));
+          const formattedTime = `${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+          return {
+            time: Number(time),
+            timestamp: formattedTime,
+            name: formattedTime,
+            events: count,
+          };
+        })
+        .sort((a, b) => a.time - b.time);
 
       return {
-        totalEvents: sourceData.totalEvents,
+        totalEvents: displayedEvents.length,
         eventsPerSecond: sourceData.eventsPerSecond,
         errorRate: sourceData.errorRate,
-        activeTopics: sourceData.activeTopics,
-        dlqCount: srcEvents.filter((e) => e.priority === 'critical').length,
+        activeTopics: topicBreakdownData.length,
+        dlqCount: displayedEvents.filter((e) => e.priority === 'critical').length,
         recentEvents,
         liveEvents,
-        topicBreakdownData: sourceData.topicBreakdown,
-        eventTypeBreakdownData: sourceData.eventTypeBreakdown,
-        timeSeriesData: sourceData.timeSeries,
+        topicBreakdownData,
+        eventTypeBreakdownData,
+        timeSeriesData,
         topicHealth: [],
       };
     }
@@ -283,11 +324,16 @@ export default function EventBusMonitor() {
     );
 
     const filteredTimeSeries = Object.entries(timeBuckets)
-      .map(([time, count]) => ({
-        time: Number(time),
-        timestamp: new Date(Number(time)).toLocaleTimeString(),
-        events: count,
-      }))
+      .map(([time, count]) => {
+        const date = new Date(Number(time));
+        const formattedTime = `${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+        return {
+          time: Number(time),
+          timestamp: formattedTime,
+          name: formattedTime,
+          events: count,
+        };
+      })
       .sort((a, b) => a.time - b.time);
 
     return {

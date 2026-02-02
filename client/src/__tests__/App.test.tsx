@@ -164,8 +164,13 @@ describe('App', () => {
     useWebSocketMock.mockReturnValue({
       isConnected: true,
       connectionStatus: 'connected',
-      sendMessage: vi.fn(),
-    } as any);
+      error: null,
+      send: vi.fn(),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+      reconnect: vi.fn(),
+      close: vi.fn(),
+    });
   });
   it('renders layout with sidebar and connection indicator', () => {
     render(<App />);
@@ -201,8 +206,13 @@ describe('App', () => {
     useWebSocketMock.mockReturnValueOnce({
       isConnected: false,
       connectionStatus: 'connecting',
-      sendMessage: vi.fn(),
-    } as any);
+      error: null,
+      send: vi.fn(),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+      reconnect: vi.fn(),
+      close: vi.fn(),
+    });
 
     render(<App />);
 

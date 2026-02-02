@@ -45,7 +45,6 @@ import {
   MAX_ERRORS,
   TIME_SERIES_BUCKET_MS,
   NODE_TOPIC_MAP,
-  getEventId,
   processEvent,
 } from './useEventBusStream.utils';
 
@@ -335,6 +334,21 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
   }, [flushIntervalMs, maxItems]);
 
   // ============================================================================
+  // Trim events when maxItems decreases
+  // ============================================================================
+
+  useEffect(() => {
+    // Immediately trim events if current count exceeds new maxItems
+    setEvents((prev) => {
+      if (prev.length > maxItems) {
+        log('Trimming events from', prev.length, 'to', maxItems);
+        return prev.slice(0, maxItems);
+      }
+      return prev;
+    });
+  }, [maxItems, log]);
+
+  // ============================================================================
   // Message Handlers
   // ============================================================================
 
@@ -363,12 +377,12 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       );
 
       // Combine and filter successful results (no time filter - show all historical data)
+      // Note: We don't slice here - maxItems is enforced by the trim effect when it changes
       const allResults = [...recentActions, ...routingDecisions, ...recentTransformations];
       const processed = allResults
         .filter((r): r is { status: 'success'; event: ProcessedEvent } => r.status === 'success')
         .map((r) => r.event)
-        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-        .slice(0, maxItems);
+        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
       // Rebuild seenIds from hydrated events
       seenIdsRef.current = new Set(processed.map((e) => e.id));
@@ -393,7 +407,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
 
       log('INITIAL_STATE hydrated', processed.length, 'events');
     },
-    [maxItems, throughputWindowMs, log]
+    [throughputWindowMs, log]
   );
 
   /**
@@ -471,6 +485,41 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
           }
           break;
         }
+
+        // Demo mode state management - clear/restore UI state
+        case 'DEMO_STATE_RESET':
+          // Demo mode started - clear all events for clean playback
+          log('Demo mode: clearing events for playback');
+          setEvents([]);
+          pendingEventsRef.current = [];
+          seenIdsRef.current.clear();
+          timestampsRef.current = [];
+          setStats((prev) => ({
+            ...prev,
+            totalReceived: 0,
+            totalDeduped: 0,
+            totalDropped: 0,
+            lastEventAt: null,
+          }));
+          break;
+
+        case 'DEMO_STATE_RESTORED':
+          // Demo mode ended - trigger re-fetch of live state
+          // Clear current state and request fresh initial state from server
+          log('Demo mode: restoring live data');
+          setEvents([]);
+          pendingEventsRef.current = [];
+          seenIdsRef.current.clear();
+          timestampsRef.current = [];
+          setStats((prev) => ({
+            ...prev,
+            totalReceived: 0,
+            totalDeduped: 0,
+            totalDropped: 0,
+            lastEventAt: null,
+          }));
+          // The server will send INITIAL_STATE with restored data
+          break;
 
         default:
           if (debug) {
@@ -637,6 +686,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     const recentCount = timestampsRef.current.filter((t) => t > cutoff).length;
     const windowSeconds = throughputWindowMs / 1000;
     return Math.round((recentCount / windowSeconds) * 10) / 10;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- events triggers recalc (see comment above)
   }, [events, throughputWindowMs]);
 
   /**
@@ -712,11 +762,17 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     }
 
     return Object.entries(buckets)
-      .map(([time, count]) => ({
-        time: Number(time),
-        timestamp: new Date(Number(time)).toLocaleTimeString(),
-        events: count,
-      }))
+      .map(([time, count]) => {
+        // Use minute:second format for 15-second buckets (e.g., "14:30")
+        const date = new Date(Number(time));
+        const formattedTime = `${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+        return {
+          time: Number(time),
+          timestamp: formattedTime,
+          name: formattedTime, // ChartWidget uses 'name' as XAxis dataKey
+          events: count,
+        };
+      })
       .sort((a, b) => a.time - b.time);
   }, [events, timeSeriesWindowMs]);
 

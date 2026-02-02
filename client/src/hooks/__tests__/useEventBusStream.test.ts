@@ -437,7 +437,7 @@ describe('useEventBusStream', () => {
     it('TIME_SERIES_BUCKET_MS is appropriate for charting', () => {
       expect(TIME_SERIES_BUCKET_MS).toBeGreaterThanOrEqual(1000); // At least 1 second
       expect(TIME_SERIES_BUCKET_MS).toBeLessThanOrEqual(60000); // At most 1 minute
-      expect(TIME_SERIES_BUCKET_MS).toBe(10000); // Current value (10 seconds)
+      expect(TIME_SERIES_BUCKET_MS).toBe(15000); // Current value (15 seconds)
     });
 
     it('dedupe set size is calculated correctly', () => {
