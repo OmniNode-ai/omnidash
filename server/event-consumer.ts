@@ -3041,69 +3041,82 @@ export class EventConsumer extends EventEmitter {
   public injectPlaybackEvent(topic: string, event: Record<string, unknown>): void {
     intentLogger.debug(`[Playback] Injecting event for topic: ${topic}`);
 
-    switch (topic) {
-      case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
-      case 'prompt-submitted':
-        this.handlePromptSubmittedEvent(
-          event as Parameters<typeof this.handlePromptSubmittedEvent>[0]
-        );
-        break;
+    try {
+      switch (topic) {
+        case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
+        case 'prompt-submitted':
+          this.handlePromptSubmittedEvent(
+            event as Parameters<typeof this.handlePromptSubmittedEvent>[0]
+          );
+          break;
 
-      case 'agent-routing-decisions':
-      case 'routing-decision':
-        this.handleRoutingDecision(event as RawRoutingDecisionEvent);
-        break;
+        case 'agent-routing-decisions':
+        case 'routing-decision':
+          this.handleRoutingDecision(event as RawRoutingDecisionEvent);
+          break;
 
-      case 'agent-actions':
-      case 'action':
-        this.handleAgentAction(event as RawAgentActionEvent);
-        break;
+        case 'agent-actions':
+        case 'action':
+          this.handleAgentAction(event as RawAgentActionEvent);
+          break;
 
-      case 'agent-transformation-events':
-      case 'transformation':
-        this.handleTransformationEvent(event as RawTransformationEvent);
-        break;
+        case 'agent-transformation-events':
+        case 'transformation':
+          this.handleTransformationEvent(event as RawTransformationEvent);
+          break;
 
-      case 'dev.onex.evt.omniclaude.tool-executed.v1':
-      case 'tool-executed':
-        this.handleOmniclaudeLifecycleEvent(
-          event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
-          'dev.onex.evt.omniclaude.tool-executed.v1'
-        );
-        break;
+        case 'dev.onex.evt.omniclaude.tool-executed.v1':
+        case 'tool-executed':
+          this.handleOmniclaudeLifecycleEvent(
+            event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
+            'dev.onex.evt.omniclaude.tool-executed.v1'
+          );
+          break;
 
-      case 'dev.onex.evt.omniclaude.session-started.v1':
-      case 'session-started':
-        this.handleOmniclaudeLifecycleEvent(
-          event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
-          'dev.onex.evt.omniclaude.session-started.v1'
-        );
-        break;
+        case 'dev.onex.evt.omniclaude.session-started.v1':
+        case 'session-started':
+          this.handleOmniclaudeLifecycleEvent(
+            event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
+            'dev.onex.evt.omniclaude.session-started.v1'
+          );
+          break;
 
-      case 'dev.onex.evt.omniclaude.session-ended.v1':
-      case 'session-ended':
-        this.handleOmniclaudeLifecycleEvent(
-          event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
-          'dev.onex.evt.omniclaude.session-ended.v1'
-        );
-        break;
+        case 'dev.onex.evt.omniclaude.session-ended.v1':
+        case 'session-ended':
+          this.handleOmniclaudeLifecycleEvent(
+            event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
+            'dev.onex.evt.omniclaude.session-ended.v1'
+          );
+          break;
 
-      case 'dev.onex.evt.omniintelligence.intent-classified.v1':
-      case 'intent-classified':
-        // Intent classification events go through the intent emitter
-        const intentEmitter = getIntentEventEmitter();
-        intentEmitter.emit('intentClassified', event);
-        break;
+        case 'dev.onex.evt.omniintelligence.intent-classified.v1':
+        case 'intent-classified':
+          // Intent classification events go through the intent emitter
+          const intentEmitter = getIntentEventEmitter();
+          intentEmitter.emit('intentClassified', event);
+          break;
 
-      case 'router-performance-metrics':
-      case 'performance-metric':
-        // Performance metrics can be emitted directly
-        this.emit('performanceMetric', event);
-        break;
+        case 'router-performance-metrics':
+        case 'performance-metric':
+          // Performance metrics can be emitted directly
+          this.emit('performanceMetric', event);
+          break;
 
-      default:
-        intentLogger.debug(`Unknown playback topic: ${topic}, emitting as generic event`);
-        this.emit('playbackEvent', { topic, event });
+        default:
+          intentLogger.debug(`Unknown playback topic: ${topic}, emitting as generic event`);
+          this.emit('playbackEvent', { topic, event });
+      }
+    } catch (error) {
+      // Log errors gracefully but continue playback - don't crash on malformed events
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      intentLogger.warn(`[Playback] Failed to process event for topic ${topic}: ${errorMessage}`);
+      // Emit error event for observability but don't re-throw
+      this.emit('playbackError', {
+        topic,
+        event,
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 }

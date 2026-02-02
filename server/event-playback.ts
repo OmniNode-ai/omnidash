@@ -14,6 +14,33 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
 
+// Logger for playback module - matches EventConsumer pattern
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
+const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 } as const;
+const currentLogLevel = LOG_LEVELS[LOG_LEVEL as keyof typeof LOG_LEVELS] ?? LOG_LEVELS.info;
+
+export const playbackLogger = {
+  debug: (message: string) => {
+    if (currentLogLevel <= LOG_LEVELS.debug) {
+      console.log(`[Playback:debug] ${message}`);
+    }
+  },
+  info: (message: string) => {
+    if (currentLogLevel <= LOG_LEVELS.info) {
+      console.log(`[Playback] ${message}`);
+    }
+  },
+  warn: (message: string) => {
+    if (currentLogLevel <= LOG_LEVELS.warn) {
+      console.warn(`[Playback:warn] ${message}`);
+    }
+  },
+  error: (message: string, error?: unknown) => {
+    // Errors always log regardless of level
+    console.error(`[Playback:error] ${message}`, error ?? '');
+  },
+};
+
 export interface RecordedEvent {
   timestamp: string;
   relativeMs: number;
@@ -68,14 +95,14 @@ export class EventPlaybackService extends EventEmitter {
         try {
           return JSON.parse(line) as RecordedEvent;
         } catch (e) {
-          console.warn(`Failed to parse line ${index + 1}:`, e);
+          playbackLogger.warn(`Failed to parse line ${index + 1}: ${e}`);
           return null;
         }
       })
       .filter((e): e is RecordedEvent => e !== null);
 
     this.recordingFile = absolutePath;
-    console.log(`[Playback] Loaded ${this.events.length} events from ${path.basename(filePath)}`);
+    playbackLogger.info(`Loaded ${this.events.length} events from ${path.basename(filePath)}`);
 
     return this.events;
   }
@@ -114,7 +141,7 @@ export class EventPlaybackService extends EventEmitter {
    */
   async startPlayback(filePath: string, options: PlaybackOptions = {}): Promise<void> {
     if (this.isPlaying) {
-      console.log('[Playback] Already playing, stopping current playback...');
+      playbackLogger.info('Already playing, stopping current playback...');
       this.stopPlayback();
     }
 
@@ -128,7 +155,7 @@ export class EventPlaybackService extends EventEmitter {
     this.isPlaying = true;
     this.isPaused = false;
 
-    console.log(`[Playback] Starting playback at ${this.options.speed}x speed`);
+    playbackLogger.info(`Starting playback at ${this.options.speed}x speed`);
     this.emit('playbackStart', { file: this.recordingFile, eventCount: this.events.length });
 
     await this.playNextEvent();
@@ -142,7 +169,7 @@ export class EventPlaybackService extends EventEmitter {
 
     if (this.currentIndex >= this.events.length) {
       if (this.options.loop) {
-        console.log('[Playback] Looping...');
+        playbackLogger.info('Looping...');
         this.currentIndex = 0;
         this.emit('playbackLoop');
       } else {
@@ -238,7 +265,7 @@ export class EventPlaybackService extends EventEmitter {
       this.currentTimeout = null;
     }
 
-    console.log(`[Playback] Paused at event ${this.currentIndex}/${this.events.length}`);
+    playbackLogger.info(`Paused at event ${this.currentIndex}/${this.events.length}`);
     this.emit('playbackPause');
   }
 
@@ -249,7 +276,7 @@ export class EventPlaybackService extends EventEmitter {
     if (!this.isPlaying || !this.isPaused) return;
 
     this.isPaused = false;
-    console.log('[Playback] Resumed');
+    playbackLogger.info('Resumed');
     this.emit('playbackResume');
     this.playNextEvent();
   }
@@ -266,7 +293,7 @@ export class EventPlaybackService extends EventEmitter {
       this.currentTimeout = null;
     }
 
-    console.log('[Playback] Stopped');
+    playbackLogger.info('Stopped');
     this.emit('playbackStop');
   }
 
@@ -297,7 +324,7 @@ export class EventPlaybackService extends EventEmitter {
    */
   setSpeed(speed: number): void {
     this.options.speed = speed;
-    console.log(`[Playback] Speed set to ${speed}x`);
+    playbackLogger.info(`Speed set to ${speed}x`);
     this.emit('speedChange', speed);
 
     // If actively playing (not paused), reschedule with new speed

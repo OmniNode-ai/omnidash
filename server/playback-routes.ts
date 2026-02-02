@@ -6,7 +6,7 @@
 
 import path from 'path';
 import { Router, Request, Response } from 'express';
-import { getPlaybackService } from './event-playback';
+import { getPlaybackService, playbackLogger } from './event-playback';
 import { getEventConsumer } from './event-consumer';
 import { PLAYBACK_CONFIG, isValidSpeed } from '@shared/schemas/playback-config';
 
@@ -122,7 +122,7 @@ router.post('/start', async (req: Request, res: Response) => {
         // Log progress every 10 events
         const status = playback.getStatus();
         if (status.currentIndex % 10 === 0) {
-          console.log(`[Playback] Progress: ${status.currentIndex}/${status.totalEvents}`);
+          playbackLogger.debug(`Progress: ${status.currentIndex}/${status.totalEvents}`);
         }
       },
     });
