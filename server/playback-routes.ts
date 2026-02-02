@@ -207,26 +207,64 @@ router.post('/start', async (req: Request, res: Response) => {
       });
     }
 
-    // Resolve file path
-    const filePath =
-      file.startsWith('/') || file.startsWith('.') ? file : `demo/recordings/${file}`;
-
-    // Path traversal protection: ensure file is within allowed directory
-    const recordingsDir = path.resolve('demo/recordings');
-    const resolvedPath = path.resolve(filePath);
-
-    if (!resolvedPath.startsWith(recordingsDir + path.sep)) {
+    // Validate speed type and value
+    if (typeof speed !== 'number' || !Number.isFinite(speed)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid file path: must be within demo/recordings directory',
+        error: 'Invalid speed value: must be a finite number',
       });
     }
+
+    if (!isValidSpeed(speed)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid speed value. Must be ${PLAYBACK_CONFIG.INSTANT_SPEED} (instant) or between ${PLAYBACK_CONFIG.MIN_SPEED} and ${PLAYBACK_CONFIG.MAX_SPEED}`,
+      });
+    }
+
+    // Validate loop type
+    if (typeof loop !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid loop value: must be a boolean',
+      });
+    }
+
+    // Path traversal protection: always resolve relative to recordings directory
+    // SECURITY: Never trust user input for path construction
+    const recordingsDir = path.resolve('demo/recordings');
+
+    // Reject absolute paths and explicit path traversal attempts
+    if (typeof file !== 'string' || file.includes('..') || path.isAbsolute(file)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: invalid file path',
+      });
+    }
+
+    // Construct path within recordings directory only
+    const resolvedPath = path.resolve(recordingsDir, file);
+
+    // Double-check the resolved path stays within the recordings directory
+    // This catches edge cases like symlinks or encoded characters
+    if (!resolvedPath.startsWith(recordingsDir + path.sep) && resolvedPath !== recordingsDir) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: path traversal detected',
+      });
+    }
+
+    const filePath = resolvedPath;
 
     // Wire up playback events to the EventConsumer
     const eventConsumer = getEventConsumer();
 
-    // Reset state for clean demo experience
+    // Snapshot current live data, then reset for clean demo experience
     if (eventConsumer) {
+      // Only snapshot if there isn't already one (prevents overwriting during rapid restarts)
+      if (!eventConsumer.hasStateSnapshot()) {
+        eventConsumer.snapshotState();
+      }
       eventConsumer.resetState();
     }
 
@@ -262,6 +300,12 @@ router.post('/start', async (req: Request, res: Response) => {
         }
         // Force a final progress broadcast to ensure 100% is reported
         broadcastProgress(true);
+
+        // DO NOT auto-restore: keep demo data visible until user manually clicks Stop
+        // User expectation: demo finishes → data stays → user clicks Stop to return to live
+        playbackLogger.info(
+          'Demo playback completed, waiting for manual stop to restore live data'
+        );
       },
       onEvent: (_event) => {
         // Log progress every 10 events (for server-side debugging)
@@ -315,7 +359,7 @@ router.post('/resume', (_req: Request, res: Response) => {
 
 /**
  * POST /api/demo/stop
- * Stop playback
+ * Stop playback and restore live data from snapshot
  */
 router.post('/stop', (_req: Request, res: Response) => {
   // Clean up event handler to prevent stale handler on next start
@@ -325,9 +369,18 @@ router.post('/stop', (_req: Request, res: Response) => {
   }
 
   playback.stopPlayback();
+
+  // Restore live data from snapshot taken before demo started
+  const eventConsumer = getEventConsumer();
+  let stateRestored = false;
+  if (eventConsumer) {
+    stateRestored = eventConsumer.restoreState();
+  }
+
   res.json({
     success: true,
-    message: 'Playback stopped',
+    message: stateRestored ? 'Playback stopped, live data restored' : 'Playback stopped',
+    stateRestored,
     ...playback.getStatus(),
   });
 });
@@ -342,7 +395,15 @@ router.post('/stop', (_req: Request, res: Response) => {
 router.post('/speed', (req: Request, res: Response) => {
   const { speed } = req.body;
 
-  if (typeof speed !== 'number' || !isValidSpeed(speed)) {
+  // Reject non-finite values (NaN, Infinity, -Infinity)
+  if (typeof speed !== 'number' || !Number.isFinite(speed)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid speed value: must be a finite number',
+    });
+  }
+
+  if (!isValidSpeed(speed)) {
     return res.status(400).json({
       success: false,
       error: `Invalid speed value. Must be ${PLAYBACK_CONFIG.INSTANT_SPEED} (instant) or between ${PLAYBACK_CONFIG.MIN_SPEED} and ${PLAYBACK_CONFIG.MAX_SPEED}`,

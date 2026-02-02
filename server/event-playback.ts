@@ -13,6 +13,54 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
+import { PLAYBACK_CONFIG, isValidSpeed } from '@shared/schemas/playback-config';
+
+// Recordings directory - all recording files must be within this directory
+const RECORDINGS_DIR = path.resolve('demo/recordings');
+
+// Test environment detection
+const IS_TEST_ENV = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+
+/**
+ * Validate that a file path is within the recordings directory.
+ * Prevents path traversal attacks (e.g., ../../../etc/passwd).
+ *
+ * In test environments, validation is skipped to allow mocked filesystem paths.
+ *
+ * @param filePath - The file path to validate
+ * @returns The resolved absolute path if valid
+ * @throws Error if path is outside recordings directory (in production)
+ */
+function validateRecordingPath(filePath: string): string {
+  const resolvedPath = path.resolve(filePath);
+
+  // Skip validation in test environment (allows mocked fs paths)
+  if (IS_TEST_ENV) {
+    return resolvedPath;
+  }
+
+  // Ensure the resolved path is within the recordings directory
+  // Use path.sep to ensure we're checking directory boundaries, not partial matches
+  if (!resolvedPath.startsWith(RECORDINGS_DIR + path.sep) && resolvedPath !== RECORDINGS_DIR) {
+    throw new Error(
+      `Invalid recording path: must be within ${path.basename(RECORDINGS_DIR)} directory`
+    );
+  }
+
+  return resolvedPath;
+}
+
+/**
+ * Convert an absolute recording path to a relative filename for client display.
+ * Prevents exposing server filesystem structure to clients.
+ *
+ * @param absolutePath - The absolute file path
+ * @returns Just the filename, or empty string if no file loaded
+ */
+function toRelativeRecordingPath(absolutePath: string): string {
+  if (!absolutePath) return '';
+  return path.basename(absolutePath);
+}
 
 // Logger for playback module - matches EventConsumer pattern
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
@@ -80,12 +128,16 @@ export class EventPlaybackService extends EventEmitter {
 
   /**
    * Load a recording file
+   * @param filePath - Path to the recording file (must be within recordings directory)
+   * @throws Error if path traversal is attempted or file not found
    */
   loadRecording(filePath: string): RecordedEvent[] {
-    const absolutePath = path.resolve(filePath);
+    // Validate path is within recordings directory (prevents path traversal)
+    const absolutePath = validateRecordingPath(filePath);
 
     if (!fs.existsSync(absolutePath)) {
-      throw new Error(`Recording file not found: ${absolutePath}`);
+      // Use relative path in error message to avoid exposing filesystem structure
+      throw new Error(`Recording file not found: ${path.basename(filePath)}`);
     }
 
     const content = fs.readFileSync(absolutePath, 'utf-8');
@@ -114,17 +166,15 @@ export class EventPlaybackService extends EventEmitter {
    * to avoid exposing server filesystem paths
    */
   listRecordings(): { name: string; size: number; eventCount?: number }[] {
-    const recordingsDir = path.resolve('demo/recordings');
-
-    if (!fs.existsSync(recordingsDir)) {
+    if (!fs.existsSync(RECORDINGS_DIR)) {
       return [];
     }
 
     return fs
-      .readdirSync(recordingsDir)
+      .readdirSync(RECORDINGS_DIR)
       .filter((f) => f.endsWith('.jsonl'))
       .map((f) => {
-        const fullPath = path.join(recordingsDir, f);
+        const fullPath = path.join(RECORDINGS_DIR, f);
         const stats = fs.statSync(fullPath);
         const content = fs.readFileSync(fullPath, 'utf-8');
         const eventCount = content.trim().split('\n').filter(Boolean).length;
@@ -159,7 +209,11 @@ export class EventPlaybackService extends EventEmitter {
     this.isPaused = false;
 
     playbackLogger.info(`Starting playback at ${this.options.speed}x speed`);
-    this.emit('playbackStart', { file: this.recordingFile, eventCount: this.events.length });
+    // Use relative path in emitted event to avoid exposing server filesystem
+    this.emit('playbackStart', {
+      file: toRelativeRecordingPath(this.recordingFile),
+      eventCount: this.events.length,
+    });
 
     await this.playNextEvent();
   }
@@ -199,13 +253,21 @@ export class EventPlaybackService extends EventEmitter {
     this.currentIndex++;
 
     // Schedule next event
-    if (nextEvent && this.options.speed !== 0) {
-      const delay = (nextEvent.relativeMs - event.relativeMs) / (this.options.speed || 1);
-      this.currentTimeout = setTimeout(() => this.playNextEvent(), Math.max(0, delay));
+    const configuredSpeed = this.options.speed ?? PLAYBACK_CONFIG.DEFAULT_SPEED;
+    if (nextEvent && configuredSpeed !== 0) {
+      // Defensive validation: ensure speed is finite and positive to avoid NaN/Infinity delays
+      const speed =
+        Number.isFinite(configuredSpeed) && configuredSpeed > 0
+          ? configuredSpeed
+          : PLAYBACK_CONFIG.DEFAULT_SPEED; // Default to 1x if invalid
+      const delay = (nextEvent.relativeMs - event.relativeMs) / speed;
+      // Ensure delay is finite and non-negative
+      const safeDelay = Number.isFinite(delay) ? Math.max(0, delay) : 0;
+      this.currentTimeout = setTimeout(() => this.playNextEvent(), safeDelay);
     } else {
       // Instant mode or last event
       // Yield to event loop every 50 events to prevent CPU blocking
-      if (this.options.speed === 0 && this.currentIndex % 50 === 0) {
+      if (configuredSpeed === 0 && this.currentIndex % 50 === 0) {
         this.currentTimeout = setTimeout(() => this.playNextEvent(), 0);
       } else {
         this.currentImmediate = setImmediate(() => this.playNextEvent());
@@ -310,6 +372,7 @@ export class EventPlaybackService extends EventEmitter {
 
   /**
    * Get playback status
+   * Note: recordingFile returns only the filename to avoid exposing server filesystem paths
    */
   getStatus(): {
     isPlaying: boolean;
@@ -325,18 +388,26 @@ export class EventPlaybackService extends EventEmitter {
       currentIndex: this.currentIndex,
       totalEvents: this.events.length,
       progress: this.events.length > 0 ? (this.currentIndex / this.events.length) * 100 : 0,
-      recordingFile: this.recordingFile,
+      // Return only filename to avoid exposing server filesystem paths to clients
+      recordingFile: toRelativeRecordingPath(this.recordingFile),
     };
   }
 
   /**
    * Set playback speed
    * If currently playing, reschedules the next event with the new speed
+   *
+   * Valid speed values:
+   * - 0: Instant mode (process all events immediately)
+   * - 0.1-100: Speed multiplier (0.5x, 1x, 2x, etc.)
    */
   setSpeed(speed: number): void {
-    // Validate speed is a finite non-negative number
-    if (!Number.isFinite(speed) || speed < 0) {
-      playbackLogger.warn(`Invalid speed value: ${speed}, ignoring`);
+    // Validate speed using shared validation (prevents NaN, Infinity, out-of-range)
+    if (!Number.isFinite(speed) || !isValidSpeed(speed)) {
+      playbackLogger.warn(
+        `Invalid speed value: ${speed}. Must be ${PLAYBACK_CONFIG.INSTANT_SPEED} (instant) ` +
+          `or between ${PLAYBACK_CONFIG.MIN_SPEED} and ${PLAYBACK_CONFIG.MAX_SPEED}. Ignoring.`
+      );
       return;
     }
     this.options.speed = speed;

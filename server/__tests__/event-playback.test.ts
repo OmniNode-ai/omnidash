@@ -190,7 +190,8 @@ describe('EventPlaybackService', () => {
       service.loadRecording(filePath);
 
       const status = service.getStatus();
-      expect(status.recordingFile).toBe(path.resolve(filePath));
+      // getStatus returns only the filename to avoid exposing filesystem paths
+      expect(status.recordingFile).toBe('recording.jsonl');
       expect(status.totalEvents).toBe(5);
     });
   });

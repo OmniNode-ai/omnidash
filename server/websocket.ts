@@ -113,7 +113,7 @@ async function fetchRealEventsForInitialState(): Promise<{
 
   try {
     const events = await dataSource.queryEvents({
-      limit: 100,
+      limit: 1000,
       order_by: 'timestamp',
       order_direction: 'desc',
     });
@@ -303,6 +303,38 @@ export function setupWebSocket(httpServer: HTTPServer) {
   registerEventListener('disconnected', () => {
     console.log('EventConsumer disconnected');
     broadcast('CONSUMER_STATUS', { status: 'disconnected' }, 'system');
+  });
+
+  // Demo mode state events - signal clients to clear/restore their local state
+  registerEventListener('stateReset', () => {
+    console.log('[WebSocket] Demo mode: state reset - broadcasting DEMO_STATE_RESET');
+    broadcast('DEMO_STATE_RESET', { timestamp: Date.now() }, 'all');
+  });
+
+  registerEventListener('stateRestored', () => {
+    console.log('[WebSocket] Demo mode: state restored - broadcasting DEMO_STATE_RESTORED');
+    broadcast('DEMO_STATE_RESTORED', { timestamp: Date.now() }, 'all');
+
+    // After notifying clients to clear their state, send fresh initial state with restored data
+    // This allows the UI to immediately show the live data that was snapshotted before demo
+    setTimeout(() => {
+      console.log('[WebSocket] Demo mode: broadcasting restored INITIAL_STATE');
+      broadcast(
+        'INITIAL_STATE',
+        {
+          metrics: eventConsumer.getAgentMetrics(),
+          recentActions: eventConsumer.getRecentActions(),
+          routingDecisions: eventConsumer.getRoutingDecisions(),
+          recentTransformations: eventConsumer.getRecentTransformations(),
+        },
+        'all'
+      );
+    }, 100); // Small delay to ensure DEMO_STATE_RESTORED is processed first
+  });
+
+  registerEventListener('stateSnapshotted', () => {
+    console.log('[WebSocket] Demo mode: state snapshotted');
+    // No broadcast needed - just logging for debugging
   });
 
   // Node Registry event listeners

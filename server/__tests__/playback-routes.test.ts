@@ -18,6 +18,9 @@ interface MockPlaybackService {
 interface MockEventConsumer {
   resetState: Mock;
   injectPlaybackEvent: Mock;
+  snapshotState: Mock;
+  restoreState: Mock;
+  hasStateSnapshot: Mock;
 }
 
 // Use vi.hoisted to define mocks that will be available during module mocking
@@ -37,6 +40,9 @@ const { mockPlaybackService, mockEventConsumer } = vi.hoisted(() => {
   const mockEventConsumer: MockEventConsumer = {
     resetState: vi.fn(),
     injectPlaybackEvent: vi.fn(),
+    snapshotState: vi.fn(),
+    restoreState: vi.fn().mockReturnValue(true),
+    hasStateSnapshot: vi.fn().mockReturnValue(false),
   };
 
   return { mockPlaybackService, mockEventConsumer };
@@ -255,7 +261,7 @@ describe('Playback Routes', () => {
 
       expect(response.body.success).toBe(true);
       expect(mockPlaybackService.startPlayback).toHaveBeenCalledWith(
-        'demo/recordings/test.jsonl',
+        expect.stringContaining('demo/recordings/test.jsonl'),
         expect.objectContaining({ speed: 2 })
       );
     });
@@ -278,7 +284,7 @@ describe('Playback Routes', () => {
 
       expect(response.body.success).toBe(true);
       expect(mockPlaybackService.startPlayback).toHaveBeenCalledWith(
-        'demo/recordings/test.jsonl',
+        expect.stringContaining('demo/recordings/test.jsonl'),
         expect.objectContaining({ loop: true })
       );
     });
@@ -307,11 +313,11 @@ describe('Playback Routes', () => {
       const response = await request(app)
         .post('/api/demo/start')
         .send({ file: '../../../etc/passwd' })
-        .expect(400);
+        .expect(403);
 
       expect(response.body).toEqual({
         success: false,
-        error: 'Invalid file path: must be within demo/recordings directory',
+        error: 'Access denied: invalid file path',
       });
       expect(mockPlaybackService.startPlayback).not.toHaveBeenCalled();
     });
@@ -320,11 +326,11 @@ describe('Playback Routes', () => {
       const response = await request(app)
         .post('/api/demo/start')
         .send({ file: '/etc/passwd' })
-        .expect(400);
+        .expect(403);
 
       expect(response.body).toEqual({
         success: false,
-        error: 'Invalid file path: must be within demo/recordings directory',
+        error: 'Access denied: invalid file path',
       });
       expect(mockPlaybackService.startPlayback).not.toHaveBeenCalled();
     });
@@ -333,11 +339,11 @@ describe('Playback Routes', () => {
       const response = await request(app)
         .post('/api/demo/start')
         .send({ file: '..%2F..%2Fetc%2Fpasswd' })
-        .expect(400);
+        .expect(403);
 
       expect(response.body).toEqual({
         success: false,
-        error: 'Invalid file path: must be within demo/recordings directory',
+        error: 'Access denied: invalid file path',
       });
     });
 
@@ -345,11 +351,11 @@ describe('Playback Routes', () => {
       const response = await request(app)
         .post('/api/demo/start')
         .send({ file: './../../etc/passwd' })
-        .expect(400);
+        .expect(403);
 
       expect(response.body).toEqual({
         success: false,
-        error: 'Invalid file path: must be within demo/recordings directory',
+        error: 'Access denied: invalid file path',
       });
     });
 
@@ -357,11 +363,11 @@ describe('Playback Routes', () => {
       const response = await request(app)
         .post('/api/demo/start')
         .send({ file: '/tmp/malicious.jsonl' })
-        .expect(400);
+        .expect(403);
 
       expect(response.body).toEqual({
         success: false,
-        error: 'Invalid file path: must be within demo/recordings directory',
+        error: 'Access denied: invalid file path',
       });
     });
 
@@ -423,7 +429,7 @@ describe('Playback Routes', () => {
       await request(app).post('/api/demo/start').send({ file: 'test.jsonl' }).expect(200);
 
       expect(mockPlaybackService.startPlayback).toHaveBeenCalledWith(
-        'demo/recordings/test.jsonl',
+        expect.stringContaining('demo/recordings/test.jsonl'),
         expect.objectContaining({ speed: 1, loop: false })
       );
     });

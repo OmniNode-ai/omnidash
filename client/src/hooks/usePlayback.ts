@@ -15,7 +15,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Recording, PlaybackStatus, PlaybackOptions } from '@shared/schemas/playback-config';
 import { parsePlaybackWSMessage } from '@shared/schemas/playback-config';
-import { useWebSocket } from './useWebSocket';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 // Re-export types for backward compatibility
 export type { Recording, PlaybackStatus, PlaybackOptions };
@@ -139,8 +139,13 @@ export function usePlayback() {
         return;
       }
 
+      // WebSocket messages may come in an envelope with the actual data in the `data` field.
+      // Try to parse from `message.data` first (envelope format), then fall back to `message` directly.
+      const messagePayload =
+        message.data && typeof message.data === 'object' ? message.data : message;
+
       // Parse and validate the playback message
-      const playbackMessage = parsePlaybackWSMessage(message);
+      const playbackMessage = parsePlaybackWSMessage(messagePayload);
       if (!playbackMessage) {
         // Not a valid playback message, ignore
         return;
@@ -297,7 +302,8 @@ export function usePlayback() {
     progress: status.data?.progress || 0,
     currentEvent: status.data?.currentIndex || 0,
     totalEvents: status.data?.totalEvents || 0,
-    currentFile: status.data?.recordingFile?.split('/').pop() || '',
+    // Normalize path separators (handle both / and \) for cross-platform compatibility
+    currentFile: status.data?.recordingFile?.replace(/\\/g, '/').split('/').pop() || '',
 
     // Actions
     start: (options: PlaybackOptions) => startMutation.mutate(options),

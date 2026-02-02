@@ -30,7 +30,9 @@ export type WireMessageType =
   | 'SUBSCRIPTION_UPDATED'
   | 'PONG'
   | 'CONSUMER_STATUS'
-  | 'AGENT_METRIC_UPDATE';
+  | 'AGENT_METRIC_UPDATE'
+  | 'DEMO_STATE_RESET'
+  | 'DEMO_STATE_RESTORED';
 
 /**
  * Raw WebSocket event message from server.
@@ -164,6 +166,8 @@ export interface TimeSeriesItem {
   time: number;
   /** Human-readable timestamp string */
   timestamp: string;
+  /** Display name for chart X-axis (same as timestamp, required by ChartWidget) */
+  name: string;
   /** Number of events in this bucket */
   events: number;
 }

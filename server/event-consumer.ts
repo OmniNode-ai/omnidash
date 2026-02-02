@@ -46,9 +46,9 @@ const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
  * Extracted for maintainability and easy tuning.
  */
 const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
-const SQL_PRELOAD_ACTIONS_LIMIT = 200;
-const SQL_PRELOAD_ROUTING_LIMIT = 200;
-const SQL_PRELOAD_TRANSFORMATIONS_LIMIT = 200;
+const SQL_PRELOAD_ACTIONS_LIMIT = 1000;
+const SQL_PRELOAD_ROUTING_LIMIT = 1000;
+const SQL_PRELOAD_TRANSFORMATIONS_LIMIT = 500;
 const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
@@ -759,10 +759,10 @@ export class EventConsumer extends EventEmitter {
   >();
 
   private recentActions: AgentAction[] = [];
-  private maxActions = 100;
+  private maxActions = 1000;
 
   private routingDecisions: RoutingDecision[] = [];
-  private maxDecisions = 100;
+  private maxDecisions = 1000;
 
   private recentTransformations: TransformationEvent[] = [];
   private maxTransformations = 100;
@@ -812,6 +812,42 @@ export class EventConsumer extends EventEmitter {
   // Playback event injection counters for observability
   private playbackEventsInjected: number = 0;
   private playbackEventsFailed: number = 0;
+
+  // State snapshot for demo mode - stores live data while playback is active
+  private stateSnapshot: {
+    recentActions: AgentAction[];
+    routingDecisions: RoutingDecision[];
+    recentTransformations: TransformationEvent[];
+    recentIntents: InternalIntentClassifiedEvent[];
+    agentMetrics: Map<
+      string,
+      {
+        count: number;
+        totalRoutingTime: number;
+        totalConfidence: number;
+        successCount: number;
+        errorCount: number;
+        lastSeen: Date;
+      }
+    >;
+    performanceMetrics: Array<{
+      id: string;
+      correlationId: string;
+      queryText: string;
+      routingDurationMs: number;
+      cacheHit: boolean;
+      candidatesEvaluated: number;
+      triggerMatchStrategy: string;
+      createdAt: Date;
+    }>;
+    performanceStats: {
+      totalQueries: number;
+      cacheHitCount: number;
+      avgRoutingDuration: number;
+      totalRoutingDuration: number;
+    };
+    intentDistributionWithTimestamps: Map<string, { count: number; timestamps: number[] }>;
+  } | null = null;
 
   constructor() {
     super(); // Initialize EventEmitter
@@ -1586,8 +1622,11 @@ export class EventConsumer extends EventEmitter {
       '';
     const sessionId =
       payload.session_id || payload.sessionId || event.session_id || event.sessionId || '';
-    const promptLength =
+    // Preserve zero-length prompts: use explicit promptLength if provided (including 0),
+    // otherwise compute from promptPreview. This ensures promptLength: 0 is valid.
+    const explicitPromptLength =
       payload.prompt_length ?? payload.promptLength ?? event.prompt_length ?? event.promptLength;
+    const promptLength = explicitPromptLength ?? promptPreview.length;
     const emittedAt =
       payload.emitted_at || payload.emittedAt || event.emitted_at || event.emittedAt;
 
@@ -2611,8 +2650,9 @@ export class EventConsumer extends EventEmitter {
   getPlaybackStats(): { injected: number; failed: number; successRate: number } {
     const total = this.playbackEventsInjected;
     const failed = this.playbackEventsFailed;
-    // Success rate as percentage (0-100), handle division by zero
-    const successRate = total > 0 ? ((total - failed) / total) * 100 : 100;
+    // Success rate as percentage (0-100), return 0 when no events (not 100%)
+    // because there's no data to compute a success rate from
+    const successRate = total > 0 ? ((total - failed) / total) * 100 : 0;
 
     return {
       injected: total,
@@ -2960,14 +3000,29 @@ export class EventConsumer extends EventEmitter {
       decisions: this.routingDecisions.length,
       transformations: this.recentTransformations.length,
       intents: this.recentIntents.length,
+      agentMetrics: this.agentMetrics.size,
+      performanceMetrics: this.performanceMetrics.length,
+      intentDistribution: this.intentDistributionWithTimestamps.size,
       playbackInjected: this.playbackEventsInjected,
       playbackFailed: this.playbackEventsFailed,
     };
 
+    // Clear primary event arrays
     this.recentActions = [];
     this.routingDecisions = [];
     this.recentTransformations = [];
     this.recentIntents = [];
+
+    // Clear all demo-visible caches (aggregated metrics and distributions)
+    this.agentMetrics.clear();
+    this.performanceMetrics = [];
+    this.performanceStats = {
+      totalQueries: 0,
+      cacheHitCount: 0,
+      avgRoutingDuration: 0,
+      totalRoutingDuration: 0,
+    };
+    this.intentDistributionWithTimestamps.clear();
 
     // Reset playback counters for fresh demo state
     this.playbackEventsInjected = 0;
@@ -2979,10 +3034,95 @@ export class EventConsumer extends EventEmitter {
         `${previousCounts.decisions} routing decisions, ` +
         `${previousCounts.transformations} transformations, ` +
         `${previousCounts.intents} intents, ` +
+        `${previousCounts.agentMetrics} agent metrics, ` +
+        `${previousCounts.performanceMetrics} performance metrics, ` +
+        `${previousCounts.intentDistribution} intent distribution entries, ` +
         `${previousCounts.playbackInjected} playback events (${previousCounts.playbackFailed} failed)`
     );
 
     this.emit('stateReset');
+  }
+
+  /**
+   * Snapshot current state before demo playback.
+   * Captures all in-memory data so it can be restored when playback stops.
+   * Call this BEFORE resetState() when starting demo mode.
+   */
+  snapshotState(): void {
+    // Deep clone arrays (they contain objects, so we need proper copies)
+    this.stateSnapshot = {
+      recentActions: [...this.recentActions],
+      routingDecisions: [...this.routingDecisions],
+      recentTransformations: [...this.recentTransformations],
+      recentIntents: [...this.recentIntents],
+      agentMetrics: new Map(this.agentMetrics),
+      performanceMetrics: [...this.performanceMetrics],
+      performanceStats: { ...this.performanceStats },
+      intentDistributionWithTimestamps: new Map(
+        Array.from(this.intentDistributionWithTimestamps.entries()).map(([k, v]) => [
+          k,
+          { count: v.count, timestamps: [...v.timestamps] },
+        ])
+      ),
+    };
+
+    intentLogger.info(
+      `State snapshot created for demo mode. Captured: ` +
+        `${this.stateSnapshot.recentActions.length} actions, ` +
+        `${this.stateSnapshot.routingDecisions.length} routing decisions, ` +
+        `${this.stateSnapshot.recentTransformations.length} transformations, ` +
+        `${this.stateSnapshot.recentIntents.length} intents`
+    );
+
+    this.emit('stateSnapshotted');
+  }
+
+  /**
+   * Restore state from snapshot after demo playback ends.
+   * Call this when stopping demo mode to bring back live data.
+   * @returns true if state was restored, false if no snapshot exists
+   */
+  restoreState(): boolean {
+    if (!this.stateSnapshot) {
+      intentLogger.warn('No state snapshot to restore - live data may have been lost');
+      return false;
+    }
+
+    // Restore all state from snapshot
+    this.recentActions = this.stateSnapshot.recentActions;
+    this.routingDecisions = this.stateSnapshot.routingDecisions;
+    this.recentTransformations = this.stateSnapshot.recentTransformations;
+    this.recentIntents = this.stateSnapshot.recentIntents;
+    this.agentMetrics = this.stateSnapshot.agentMetrics;
+    this.performanceMetrics = this.stateSnapshot.performanceMetrics;
+    this.performanceStats = this.stateSnapshot.performanceStats;
+    this.intentDistributionWithTimestamps = this.stateSnapshot.intentDistributionWithTimestamps;
+
+    intentLogger.info(
+      `State restored from snapshot. Restored: ` +
+        `${this.recentActions.length} actions, ` +
+        `${this.routingDecisions.length} routing decisions, ` +
+        `${this.recentTransformations.length} transformations, ` +
+        `${this.recentIntents.length} intents`
+    );
+
+    // Clear the snapshot (it's been used)
+    this.stateSnapshot = null;
+
+    // Reset playback counters
+    this.playbackEventsInjected = 0;
+    this.playbackEventsFailed = 0;
+
+    this.emit('stateRestored');
+    return true;
+  }
+
+  /**
+   * Check if a state snapshot exists.
+   * Useful for UI to know if restore is possible.
+   */
+  hasStateSnapshot(): boolean {
+    return this.stateSnapshot !== null;
   }
 
   // ============================================================================
@@ -3133,15 +3273,14 @@ export class EventConsumer extends EventEmitter {
 
         case 'dev.onex.evt.omniintelligence.intent-classified.v1':
         case 'intent-classified':
-          // Intent classification events go through the intent emitter
-          const intentEmitter = getIntentEventEmitter();
-          intentEmitter.emit('intentClassified', event);
+          // Route through the same handler as live Kafka events for consistent state updates
+          this.handleIntentClassified(event as RawIntentClassifiedEvent);
           break;
 
         case 'router-performance-metrics':
         case 'performance-metric':
-          // Performance metrics can be emitted directly
-          this.emit('performanceMetric', event);
+          // Route through the same handler as live Kafka events for consistent state updates
+          this.handlePerformanceMetric(event as RawPerformanceMetricEvent);
           break;
 
         default:

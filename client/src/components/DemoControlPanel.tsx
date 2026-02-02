@@ -99,6 +99,7 @@ export function DemoControlPanel() {
             'relative gap-2',
             isPlaying && 'bg-amber-600 hover:bg-amber-700 text-white'
           )}
+          aria-label="Demo playback controls"
         >
           <Film className="w-4 h-4" />
           <span className="hidden sm:inline">Demo</span>

@@ -17,7 +17,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { usePlayback } from '../usePlayback';
+import { usePlayback } from '@/hooks/usePlayback';
 import type { Recording, PlaybackStatus, PlaybackOptions } from '@shared/schemas/playback-config';
 
 // Create a fresh QueryClient for each test
@@ -91,6 +91,26 @@ const mockPausedStatus: PlaybackStatus = {
 
 // Global fetch mock
 const mockFetch = vi.fn();
+
+/**
+ * Helper to create mock Response objects.
+ * Ensures error responses have the text() method that the hook's error handling calls.
+ */
+function createMockResponse(options: {
+  ok: boolean;
+  status?: number;
+  statusText?: string;
+  json?: () => Promise<unknown>;
+  text?: string;
+}): Partial<Response> {
+  return {
+    ok: options.ok,
+    status: options.status ?? (options.ok ? 200 : 500),
+    statusText: options.statusText ?? (options.ok ? 'OK' : 'Error'),
+    json: options.json ?? (() => Promise.resolve({})),
+    text: () => Promise.resolve(options.text ?? ''),
+  };
+}
 
 describe('usePlayback', () => {
   let queryClient: QueryClient;
@@ -177,17 +197,21 @@ describe('usePlayback', () => {
     it('should handle fetch recordings error', async () => {
       mockFetch.mockImplementation((url: string) => {
         if (url === '/api/demo/recordings') {
-          return Promise.resolve({
-            ok: false,
-            status: 500,
-            statusText: 'Internal Server Error',
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: false,
+              status: 500,
+              statusText: 'Internal Server Error',
+            })
+          );
         }
         if (url === '/api/demo/status') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockPlaybackStatus),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve(mockPlaybackStatus),
+            })
+          );
         }
         return Promise.reject(new Error(`Unexpected fetch to ${url}`));
       });
@@ -266,17 +290,21 @@ describe('usePlayback', () => {
     it('should handle fetch status error', async () => {
       mockFetch.mockImplementation((url: string) => {
         if (url === '/api/demo/recordings') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ recordings: mockRecordings }),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve({ recordings: mockRecordings }),
+            })
+          );
         }
         if (url === '/api/demo/status') {
-          return Promise.resolve({
-            ok: false,
-            status: 404,
-            statusText: 'Not Found',
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: false,
+              status: 404,
+              statusText: 'Not Found',
+            })
+          );
         }
         return Promise.reject(new Error(`Unexpected fetch to ${url}`));
       });
@@ -436,23 +464,29 @@ describe('usePlayback', () => {
     it('should handle start playback error', async () => {
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
         if (url === '/api/demo/recordings') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ recordings: mockRecordings }),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve({ recordings: mockRecordings }),
+            })
+          );
         }
         if (url === '/api/demo/status') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockPlaybackStatus),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve(mockPlaybackStatus),
+            })
+          );
         }
         if (url === '/api/demo/start' && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: false,
-            status: 400,
-            statusText: 'Bad Request',
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: false,
+              status: 400,
+              statusText: 'Bad Request',
+            })
+          );
         }
         return Promise.reject(new Error(`Unexpected fetch to ${url}`));
       });
@@ -568,23 +602,29 @@ describe('usePlayback', () => {
     it('should handle pause error', async () => {
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
         if (url === '/api/demo/recordings') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ recordings: mockRecordings }),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve({ recordings: mockRecordings }),
+            })
+          );
         }
         if (url === '/api/demo/status') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockPlayingStatus),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve(mockPlayingStatus),
+            })
+          );
         }
         if (url === '/api/demo/pause' && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: false,
-            status: 500,
-            statusText: 'Internal Server Error',
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: false,
+              status: 500,
+              statusText: 'Internal Server Error',
+            })
+          );
         }
         return Promise.reject(new Error(`Unexpected fetch to ${url}`));
       });
@@ -695,23 +735,29 @@ describe('usePlayback', () => {
     it('should handle resume error', async () => {
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
         if (url === '/api/demo/recordings') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ recordings: mockRecordings }),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve({ recordings: mockRecordings }),
+            })
+          );
         }
         if (url === '/api/demo/status') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockPausedStatus),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve(mockPausedStatus),
+            })
+          );
         }
         if (url === '/api/demo/resume' && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: false,
-            status: 409,
-            statusText: 'Conflict',
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: false,
+              status: 409,
+              statusText: 'Conflict',
+            })
+          );
         }
         return Promise.reject(new Error(`Unexpected fetch to ${url}`));
       });
@@ -830,23 +876,29 @@ describe('usePlayback', () => {
     it('should handle stop error', async () => {
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
         if (url === '/api/demo/recordings') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ recordings: mockRecordings }),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve({ recordings: mockRecordings }),
+            })
+          );
         }
         if (url === '/api/demo/status') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockPlayingStatus),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve(mockPlayingStatus),
+            })
+          );
         }
         if (url === '/api/demo/stop' && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: false,
-            status: 500,
-            statusText: 'Internal Server Error',
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: false,
+              status: 500,
+              statusText: 'Internal Server Error',
+            })
+          );
         }
         return Promise.reject(new Error(`Unexpected fetch to ${url}`));
       });
@@ -964,23 +1016,29 @@ describe('usePlayback', () => {
     it('should handle speed change error', async () => {
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
         if (url === '/api/demo/recordings') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ recordings: mockRecordings }),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve({ recordings: mockRecordings }),
+            })
+          );
         }
         if (url === '/api/demo/status') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockPlayingStatus),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve(mockPlayingStatus),
+            })
+          );
         }
         if (url === '/api/demo/speed' && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: false,
-            status: 400,
-            statusText: 'Bad Request',
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: false,
+              status: 400,
+              statusText: 'Bad Request',
+            })
+          );
         }
         return Promise.reject(new Error(`Unexpected fetch to ${url}`));
       });
@@ -1175,23 +1233,29 @@ describe('usePlayback', () => {
     it('should handle setLoop error', async () => {
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
         if (url === '/api/demo/recordings') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ recordings: mockRecordings }),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve({ recordings: mockRecordings }),
+            })
+          );
         }
         if (url === '/api/demo/status') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockPlayingStatus),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve(mockPlayingStatus),
+            })
+          );
         }
         if (url === '/api/demo/loop' && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: false,
-            status: 400,
-            statusText: 'Bad Request',
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: false,
+              status: 400,
+              statusText: 'Bad Request',
+            })
+          );
         }
         return Promise.reject(new Error(`Unexpected fetch to ${url}`));
       });
@@ -1308,23 +1372,29 @@ describe('usePlayback', () => {
     it('should handle server error (500)', async () => {
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
         if (url === '/api/demo/recordings') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ recordings: mockRecordings }),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve({ recordings: mockRecordings }),
+            })
+          );
         }
         if (url === '/api/demo/status') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockPlayingStatus),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve(mockPlayingStatus),
+            })
+          );
         }
         if (url === '/api/demo/loop' && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: false,
-            status: 500,
-            statusText: 'Internal Server Error',
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: false,
+              status: 500,
+              statusText: 'Internal Server Error',
+            })
+          );
         }
         return Promise.reject(new Error(`Unexpected fetch to ${url}`));
       });
@@ -1356,29 +1426,37 @@ describe('usePlayback', () => {
 
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
         if (url === '/api/demo/recordings') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ recordings: mockRecordings }),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve({ recordings: mockRecordings }),
+            })
+          );
         }
         if (url === '/api/demo/status') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockPlaybackStatus),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve(mockPlaybackStatus),
+            })
+          );
         }
         if (url === '/api/demo/start' && options?.method === 'POST') {
           if (shouldFail) {
-            return Promise.resolve({
-              ok: false,
-              status: 500,
-              statusText: 'Internal Server Error',
-            });
+            return Promise.resolve(
+              createMockResponse({
+                ok: false,
+                status: 500,
+                statusText: 'Internal Server Error',
+              })
+            );
           }
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockPlayingStatus),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve(mockPlayingStatus),
+            })
+          );
         }
         return Promise.reject(new Error(`Unexpected fetch to ${url}`));
       });
@@ -1414,23 +1492,29 @@ describe('usePlayback', () => {
     it('should allow manual error clearing via clearError', async () => {
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
         if (url === '/api/demo/recordings') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ recordings: mockRecordings }),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve({ recordings: mockRecordings }),
+            })
+          );
         }
         if (url === '/api/demo/status') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockPlaybackStatus),
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: () => Promise.resolve(mockPlaybackStatus),
+            })
+          );
         }
         if (url === '/api/demo/start' && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: false,
-            status: 500,
-            statusText: 'Internal Server Error',
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: false,
+              status: 500,
+              statusText: 'Internal Server Error',
+            })
+          );
         }
         return Promise.reject(new Error(`Unexpected fetch to ${url}`));
       });

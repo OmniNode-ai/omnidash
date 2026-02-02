@@ -1,14 +1,4 @@
-import {
-  Radio,
-  ChevronRight,
-  Search,
-  Layers,
-  Activity,
-  GitBranch,
-  Globe,
-  Brain,
-  Sparkles,
-} from 'lucide-react';
+import { Radio, ChevronRight, Search, Layers, Globe, Brain, Sparkles } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
   Sidebar,
@@ -22,19 +12,13 @@ import {
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 
-// Dashboards ordered by data availability - working dashboards first
+// Dashboards ordered by priority - core monitoring dashboards first
 const dashboards = [
   {
     title: 'Event Bus',
     url: '/events',
     icon: Radio,
     description: 'Real-time Kafka event stream visualization',
-  },
-  {
-    title: 'Intent Dashboard',
-    url: '/intents',
-    icon: Brain,
-    description: 'Real-time intent classification and analysis',
   },
   {
     title: 'Pattern Learning',
@@ -49,17 +33,13 @@ const dashboards = [
     description: 'Contract-driven node and service discovery',
   },
   {
-    title: 'Execution Graph',
-    url: '/graph',
-    icon: GitBranch,
-    description: 'Node execution visualization',
+    title: 'Intent Dashboard',
+    url: '/intents',
+    icon: Brain,
+    description: 'Real-time intent classification and analysis',
   },
-  {
-    title: 'Demo Stream',
-    url: '/live-events',
-    icon: Activity,
-    description: 'Investor demo - routing & transformation events',
-  },
+  // Hidden: Execution Graph (/graph) - node execution visualization
+  // Hidden: Demo Stream (/live-events) - superseded by Event Bus
 ];
 
 const tools = [
