@@ -68,6 +68,7 @@ export class EventPlaybackService extends EventEmitter {
   private isPlaying = false;
   private isPaused = false;
   private currentTimeout: NodeJS.Timeout | null = null;
+  private currentImmediate: NodeJS.Immediate | null = null;
   private events: RecordedEvent[] = [];
   private currentIndex = 0;
   private options: PlaybackOptions = {};
@@ -185,7 +186,7 @@ export class EventPlaybackService extends EventEmitter {
     // Filter by topics if specified
     if (this.options.topics && !this.options.topics.includes(event.topic)) {
       this.currentIndex++;
-      setImmediate(() => this.playNextEvent());
+      this.currentImmediate = setImmediate(() => this.playNextEvent());
       return;
     }
 
@@ -205,7 +206,7 @@ export class EventPlaybackService extends EventEmitter {
       if (this.options.speed === 0 && this.currentIndex % 50 === 0) {
         this.currentTimeout = setTimeout(() => this.playNextEvent(), 0);
       } else {
-        setImmediate(() => this.playNextEvent());
+        this.currentImmediate = setImmediate(() => this.playNextEvent());
       }
     }
   }
@@ -264,6 +265,10 @@ export class EventPlaybackService extends EventEmitter {
       clearTimeout(this.currentTimeout);
       this.currentTimeout = null;
     }
+    if (this.currentImmediate) {
+      clearImmediate(this.currentImmediate);
+      this.currentImmediate = null;
+    }
 
     playbackLogger.info(`Paused at event ${this.currentIndex}/${this.events.length}`);
     this.emit('playbackPause');
@@ -291,6 +296,10 @@ export class EventPlaybackService extends EventEmitter {
     if (this.currentTimeout) {
       clearTimeout(this.currentTimeout);
       this.currentTimeout = null;
+    }
+    if (this.currentImmediate) {
+      clearImmediate(this.currentImmediate);
+      this.currentImmediate = null;
     }
 
     playbackLogger.info('Stopped');
@@ -328,12 +337,28 @@ export class EventPlaybackService extends EventEmitter {
     this.emit('speedChange', speed);
 
     // If actively playing (not paused), reschedule with new speed
-    if (this.isPlaying && !this.isPaused && this.currentTimeout) {
-      clearTimeout(this.currentTimeout);
-      this.currentTimeout = null;
+    if (this.isPlaying && !this.isPaused) {
+      if (this.currentTimeout) {
+        clearTimeout(this.currentTimeout);
+        this.currentTimeout = null;
+      }
+      if (this.currentImmediate) {
+        clearImmediate(this.currentImmediate);
+        this.currentImmediate = null;
+      }
       // Schedule next event with new speed
       this.playNextEvent();
     }
+  }
+
+  /**
+   * Set loop mode
+   * Can be toggled during playback
+   */
+  setLoop(loop: boolean): void {
+    this.options.loop = loop;
+    playbackLogger.info(`Loop ${loop ? 'enabled' : 'disabled'}`);
+    this.emit('loopChange', loop);
   }
 }
 

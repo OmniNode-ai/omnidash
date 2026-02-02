@@ -77,6 +77,18 @@ async function setSpeed(speed: number): Promise<PlaybackStatus> {
   return res.json();
 }
 
+async function setLoop(loop: boolean): Promise<PlaybackStatus> {
+  const res = await fetch('/api/demo/loop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ loop }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to set loop mode: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
 export function usePlayback() {
   const queryClient = useQueryClient();
 
@@ -164,6 +176,17 @@ export function usePlayback() {
     },
   });
 
+  const loopMutation = useMutation({
+    mutationFn: setLoop,
+    onSuccess: () => {
+      setError(null);
+      invalidateStatus();
+    },
+    onError: (err: Error) => {
+      setError(err.message || 'Failed to set loop mode');
+    },
+  });
+
   return {
     // Data
     recordings: recordings.data || [],
@@ -185,6 +208,7 @@ export function usePlayback() {
     resume: () => resumeMutation.mutate(),
     stop: () => stopMutation.mutate(),
     setSpeed: (speed: number) => speedMutation.mutate(speed),
+    setLoop: (loop: boolean) => loopMutation.mutate(loop),
 
     // Async actions (for awaiting completion)
     startAsync: (options: PlaybackOptions) => startMutation.mutateAsync(options),
@@ -192,12 +216,14 @@ export function usePlayback() {
     resumeAsync: () => resumeMutation.mutateAsync(),
     stopAsync: () => stopMutation.mutateAsync(),
     setSpeedAsync: (speed: number) => speedMutation.mutateAsync(speed),
+    setLoopAsync: (loop: boolean) => loopMutation.mutateAsync(loop),
 
     // Loading states
     isStarting: startMutation.isPending,
     isPausing: pauseMutation.isPending,
     isResuming: resumeMutation.isPending,
     isStopping: stopMutation.isPending,
+    isSettingLoop: loopMutation.isPending,
 
     // Refresh
     refreshRecordings: () => recordings.refetch(),

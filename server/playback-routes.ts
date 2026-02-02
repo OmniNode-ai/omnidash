@@ -210,4 +210,41 @@ router.post('/speed', (req: Request, res: Response) => {
   });
 });
 
+/**
+ * POST /api/demo/loop
+ * Toggle loop mode during playback
+ *
+ * Body:
+ *   - loop: boolean (enable/disable loop)
+ */
+router.post('/loop', (req: Request, res: Response) => {
+  const { loop } = req.body;
+
+  if (typeof loop !== 'boolean') {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid loop value. Must be a boolean',
+    });
+  }
+
+  playback.setLoop(loop);
+  res.json({
+    success: true,
+    message: `Loop ${loop ? 'enabled' : 'disabled'}`,
+    ...playback.getStatus(),
+  });
+});
+
+/**
+ * Cleanup function for server shutdown
+ * Removes event handlers and stops playback to prevent orphaned resources
+ */
+export function cleanupPlaybackRoutes(): void {
+  if (currentEventHandler) {
+    playback.off('event', currentEventHandler);
+    currentEventHandler = null;
+  }
+  playback.stopPlayback();
+}
+
 export default router;

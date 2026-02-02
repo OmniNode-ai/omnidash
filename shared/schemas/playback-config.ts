@@ -62,9 +62,21 @@ export const RecordingSchema = z.object({
 });
 export type Recording = z.infer<typeof RecordingSchema>;
 
-// Speed validation helper
+/**
+ * Validates playback speed value.
+ *
+ * Valid values:
+ * - 0: Instant mode (process all events immediately)
+ * - 0.1-100: Speed multiplier (0.5x, 1x, 2x, etc.)
+ *
+ * Note: The INSTANT_SPEED check (speed === 0) is technically redundant since
+ * MIN_SPEED is also 0, but it's kept explicit for code clarity - the intent
+ * is that 0 is a special "instant" mode, not just the minimum of the range.
+ *
+ * @param speed - The playback speed value to validate
+ * @returns true if speed is valid, false otherwise
+ */
 export function isValidSpeed(speed: number): boolean {
-  // 0 is special "instant" value, otherwise must be within bounds
   return (
     speed === PLAYBACK_CONFIG.INSTANT_SPEED ||
     (speed >= PLAYBACK_CONFIG.MIN_SPEED && speed <= PLAYBACK_CONFIG.MAX_SPEED)
