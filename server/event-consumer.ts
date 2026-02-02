@@ -2915,6 +2915,38 @@ export class EventConsumer extends EventEmitter {
   }
 
   // ============================================================================
+  // Demo Mode State Reset
+  // ============================================================================
+
+  /**
+   * Reset all in-memory state for demo mode.
+   * Clears cached events so demo playback starts with a clean slate.
+   */
+  resetState(): void {
+    const previousCounts = {
+      actions: this.recentActions.length,
+      decisions: this.routingDecisions.length,
+      transformations: this.recentTransformations.length,
+      intents: this.recentIntents.length,
+    };
+
+    this.recentActions = [];
+    this.routingDecisions = [];
+    this.recentTransformations = [];
+    this.recentIntents = [];
+
+    intentLogger.info(
+      `State reset for demo mode. Cleared: ` +
+        `${previousCounts.actions} actions, ` +
+        `${previousCounts.decisions} routing decisions, ` +
+        `${previousCounts.transformations} transformations, ` +
+        `${previousCounts.intents} intents`
+    );
+
+    this.emit('stateReset');
+  }
+
+  // ============================================================================
   // Canonical ONEX Node Registry Getters (OMN-1279)
   // ============================================================================
 

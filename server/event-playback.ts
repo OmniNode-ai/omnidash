@@ -288,11 +288,20 @@ export class EventPlaybackService extends EventEmitter {
 
   /**
    * Set playback speed
+   * If currently playing, reschedules the next event with the new speed
    */
   setSpeed(speed: number): void {
     this.options.speed = speed;
     console.log(`[Playback] Speed set to ${speed}x`);
     this.emit('speedChange', speed);
+
+    // If actively playing (not paused), reschedule with new speed
+    if (this.isPlaying && !this.isPaused && this.currentTimeout) {
+      clearTimeout(this.currentTimeout);
+      this.currentTimeout = null;
+      // Schedule next event with new speed
+      this.playNextEvent();
+    }
   }
 }
 

@@ -84,6 +84,11 @@ router.post('/start', async (req: Request, res: Response) => {
     // Wire up playback events to the EventConsumer
     const eventConsumer = getEventConsumer();
 
+    // Reset state for clean demo experience
+    if (eventConsumer) {
+      eventConsumer.resetState();
+    }
+
     // Remove only our previous handler to avoid duplicates
     // (using targeted removal instead of removeAllListeners to preserve other listeners)
     if (currentEventHandler) {
@@ -158,6 +163,12 @@ router.post('/resume', (_req: Request, res: Response) => {
  * Stop playback
  */
 router.post('/stop', (_req: Request, res: Response) => {
+  // Clean up event handler to prevent stale handler on next start
+  if (currentEventHandler) {
+    playback.off('event', currentEventHandler);
+    currentEventHandler = null;
+  }
+
   playback.stopPlayback();
   res.json({
     success: true,

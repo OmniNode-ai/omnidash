@@ -130,7 +130,9 @@ export function usePlayback() {
     mutationFn: startPlayback,
     onSuccess: () => {
       setError(null);
-      invalidateStatus();
+      // Invalidate ALL queries for clean demo slate
+      // This ensures dashboard components fetch fresh data after state reset
+      queryClient.invalidateQueries();
     },
     onError: (err: Error) => {
       setError(err.message || 'Failed to start playback');
