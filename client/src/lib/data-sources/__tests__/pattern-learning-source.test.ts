@@ -210,7 +210,7 @@ describe('PatternLearningSource', () => {
       expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('order=desc'));
     });
 
-    it('throws PatlearnFetchError on HTTP error', async () => {
+    it('throws PatlearnFetchError on HTTP error when fallback disabled', async () => {
       setupFetchMock(
         new Map([
           [
@@ -220,19 +220,25 @@ describe('PatternLearningSource', () => {
         ])
       );
 
-      await expect(patlearnSource.list()).rejects.toThrow(PatlearnFetchError);
-      await expect(patlearnSource.list()).rejects.toThrow(
+      await expect(patlearnSource.list({}, { fallbackToMock: false })).rejects.toThrow(
+        PatlearnFetchError
+      );
+      await expect(patlearnSource.list({}, { fallbackToMock: false })).rejects.toThrow(
         'Failed to fetch PATLEARN patterns: HTTP 500'
       );
     });
 
-    it('throws PatlearnFetchError on network error', async () => {
+    it('throws PatlearnFetchError on network error when fallback disabled', async () => {
       setupFetchMock(
         new Map([['/api/intelligence/patterns/patlearn', new Error('Network failure')]])
       );
 
-      await expect(patlearnSource.list()).rejects.toThrow(PatlearnFetchError);
-      await expect(patlearnSource.list()).rejects.toThrow('Network failure');
+      await expect(patlearnSource.list({}, { fallbackToMock: false })).rejects.toThrow(
+        PatlearnFetchError
+      );
+      await expect(patlearnSource.list({}, { fallbackToMock: false })).rejects.toThrow(
+        'Network failure'
+      );
     });
 
     it('returns empty array for non-array response (tests safeParseArray)', async () => {
@@ -315,7 +321,7 @@ describe('PatternLearningSource', () => {
       expect(result?.avgScores.composite).toBe(0.81);
     });
 
-    it('throws PatlearnFetchError on HTTP error', async () => {
+    it('throws PatlearnFetchError on HTTP error when fallback disabled', async () => {
       setupFetchMock(
         new Map([
           [
@@ -325,8 +331,30 @@ describe('PatternLearningSource', () => {
         ])
       );
 
-      await expect(patlearnSource.summary()).rejects.toThrow(PatlearnFetchError);
-      await expect(patlearnSource.summary()).rejects.toThrow('HTTP 403');
+      await expect(patlearnSource.summary('24h', { fallbackToMock: false })).rejects.toThrow(
+        PatlearnFetchError
+      );
+      await expect(patlearnSource.summary('24h', { fallbackToMock: false })).rejects.toThrow(
+        'HTTP 403'
+      );
+    });
+
+    it('falls back to mock data on HTTP error by default', async () => {
+      setupFetchMock(
+        new Map([
+          [
+            '/api/intelligence/patterns/patlearn/summary',
+            createMockResponse(null, { status: 500, statusText: 'Internal Server Error' }),
+          ],
+        ])
+      );
+
+      const result = await patlearnSource.summary();
+
+      // Should return mock summary data instead of throwing
+      expect(result).toBeDefined();
+      expect(result?.totalPatterns).toBeGreaterThan(0);
+      expect(result?.byState).toBeDefined();
     });
 
     it('returns null for invalid data (tests safeParseOne)', async () => {
@@ -624,7 +652,7 @@ describe('PatternLearningSource', () => {
   // ===========================
 
   describe('error propagation', () => {
-    it('preserves PatlearnFetchError through all methods', async () => {
+    it('preserves PatlearnFetchError when fallback disabled', async () => {
       setupFetchMock(
         new Map([
           [
@@ -634,9 +662,9 @@ describe('PatternLearningSource', () => {
         ])
       );
 
-      // Test that error type is preserved
+      // Test that error type is preserved when fallback is disabled
       try {
-        await patlearnSource.candidates();
+        await patlearnSource.list({}, { fallbackToMock: false });
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(PatlearnFetchError);
@@ -645,7 +673,7 @@ describe('PatternLearningSource', () => {
       }
     });
 
-    it('handles re-throwing original PatlearnFetchError', async () => {
+    it('handles re-throwing original PatlearnFetchError when fallback disabled', async () => {
       setupFetchMock(
         new Map([
           [
@@ -655,11 +683,30 @@ describe('PatternLearningSource', () => {
         ])
       );
 
-      await expect(patlearnSource.list()).rejects.toMatchObject({
+      await expect(patlearnSource.list({}, { fallbackToMock: false })).rejects.toMatchObject({
         name: 'PatlearnFetchError',
         statusCode: 429,
         method: 'patterns',
       });
+    });
+
+    it('falls back to mock data by default on error', async () => {
+      setupFetchMock(
+        new Map([
+          [
+            '/api/intelligence/patterns/patlearn',
+            createMockResponse(null, { status: 500, statusText: 'Internal Server Error' }),
+          ],
+        ])
+      );
+
+      // Default behavior: graceful degradation returns mock data
+      const result = await patlearnSource.list();
+
+      expect(result).toBeInstanceOf(Array);
+      expect(result.length).toBeGreaterThan(0);
+      // Mock data has __demo flag in metadata
+      expect(result[0].metadata?.__demo).toBe(true);
     });
   });
 

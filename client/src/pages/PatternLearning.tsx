@@ -48,9 +48,18 @@ import {
   X,
   Search,
   Loader2,
+  AlertCircle,
 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { patlearnSource, type PatlearnArtifact, type LifecycleState } from '@/lib/data-sources';
-import { LifecycleStateBadge, PatternScoreDebugger } from '@/components/pattern';
+import {
+  LifecycleStateBadge,
+  PatternScoreDebugger,
+  PatternStatusDistribution,
+  PatternActivityTimeline,
+  PatternSuccessRateTrends,
+  TopPatternsTable,
+} from '@/components/pattern';
 import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
 import { queryKeys } from '@/lib/query-keys';
 
@@ -290,6 +299,9 @@ function PatternLearningContent() {
   const [selectedArtifact, setSelectedArtifact] = useState<PatlearnArtifact | null>(null);
   const [debuggerOpen, setDebuggerOpen] = useState(false);
 
+  // Track if we're using demo data (database unavailable)
+  const [isUsingDemoData, setIsUsingDemoData] = useState(false);
+
   // Fetch summary metrics
   const {
     data: summary,
@@ -338,6 +350,14 @@ function PatternLearningContent() {
   // Flatten pages into single array for filtering
   const patterns = useMemo(() => patternsData?.pages.flat() ?? [], [patternsData]);
 
+  // Detect if we're using demo data (check for __demo flag in metadata)
+  useEffect(() => {
+    if (patterns.length > 0) {
+      const hasDemoData = patterns.some((p) => p.metadata?.__demo === true);
+      setIsUsingDemoData(hasDemoData);
+    }
+  }, [patterns]);
+
   // Derive unique pattern types from the data
   const availablePatternTypes = useMemo(() => {
     if (!patterns.length) return [];
@@ -373,9 +393,16 @@ function PatternLearningContent() {
       );
     }
 
-    // Apply limit
-    return result.slice(0, filters.limit);
-  }, [patterns, filters.state, filters.patternType, filters.limit, deferredSearch]);
+    // Return all filtered patterns (no limit) - widgets need full dataset for analytics
+    return result;
+  }, [patterns, filters.state, filters.patternType, deferredSearch]);
+
+  // Paginated patterns for table display only
+  // Separating this from filteredPatterns ensures widgets analyze all data
+  const paginatedPatterns = useMemo(
+    () => filteredPatterns.slice(0, filters.limit),
+    [filteredPatterns, filters.limit]
+  );
 
   // Check if any filters are active
   const hasActiveFilters = filters.state || filters.patternType || filters.search;
@@ -415,6 +442,18 @@ function PatternLearningContent() {
           Refresh
         </Button>
       </div>
+
+      {/* Demo Mode Banner - shown when database is unavailable */}
+      {isUsingDemoData && (
+        <Alert variant="default" className="border-yellow-500/50 bg-yellow-500/10">
+          <AlertCircle className="h-4 w-4 text-yellow-500" />
+          <AlertTitle className="text-yellow-500">Demo Mode</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            Database connection unavailable. Displaying demo data for preview purposes. The
+            dashboard will automatically reconnect when the database becomes available.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -472,6 +511,43 @@ function PatternLearningContent() {
             />
           </>
         )}
+      </div>
+
+      {/* Visualization Widgets (OMN-1798) */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <PatternStatusDistribution
+          summary={summary}
+          isLoading={summaryLoading}
+          isError={summaryError}
+          selectedState={filters.state}
+          onStateClick={(state) => setFilters((prev) => ({ ...prev, state }))}
+        />
+        <PatternSuccessRateTrends
+          patterns={filteredPatterns}
+          isLoading={patternsLoading}
+          isError={patternsError}
+        />
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <PatternActivityTimeline
+          patterns={filteredPatterns}
+          isLoading={patternsLoading}
+          isError={patternsError}
+          onPatternClick={(patternId) => {
+            const pattern = filteredPatterns.find((p) => p.id === patternId);
+            if (pattern) {
+              handleRowClick(pattern);
+            }
+          }}
+        />
+        <TopPatternsTable
+          patterns={filteredPatterns}
+          isLoading={patternsLoading}
+          isError={patternsError}
+          limit={5}
+          onPatternClick={handleRowClick}
+        />
       </div>
 
       {/* Filter Bar */}
@@ -622,7 +698,7 @@ function PatternLearningContent() {
               <CardDescription>
                 {patternsLoading
                   ? 'Loading patterns...'
-                  : `Showing ${filteredPatterns.length}${patterns.length > 0 && filteredPatterns.length < patterns.length ? ` of ${patterns.length} loaded` : ''} patterns. Click a row to view scoring evidence.`}
+                  : `Showing ${paginatedPatterns.length}${filteredPatterns.length > paginatedPatterns.length ? ` of ${filteredPatterns.length} filtered` : ''}${patterns.length > 0 && filteredPatterns.length < patterns.length ? ` (${patterns.length} total)` : ''} patterns. Click a row to view scoring evidence.`}
               </CardDescription>
             </div>
             {hasActiveFilters &&
@@ -659,7 +735,7 @@ function PatternLearningContent() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
-          ) : filteredPatterns.length > 0 ? (
+          ) : paginatedPatterns.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -671,7 +747,7 @@ function PatternLearningContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPatterns.map((artifact) => (
+                {paginatedPatterns.map((artifact) => (
                   <TableRow
                     key={artifact.id}
                     className="cursor-pointer hover:bg-muted/50"
