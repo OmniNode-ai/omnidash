@@ -50,7 +50,14 @@ import {
   Loader2,
 } from 'lucide-react';
 import { patlearnSource, type PatlearnArtifact, type LifecycleState } from '@/lib/data-sources';
-import { LifecycleStateBadge, PatternScoreDebugger } from '@/components/pattern';
+import {
+  LifecycleStateBadge,
+  PatternScoreDebugger,
+  PatternStatusDistribution,
+  PatternActivityTimeline,
+  PatternSuccessRateTrends,
+  TopPatternsTable,
+} from '@/components/pattern';
 import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
 import { queryKeys } from '@/lib/query-keys';
 
@@ -472,6 +479,43 @@ function PatternLearningContent() {
             />
           </>
         )}
+      </div>
+
+      {/* Visualization Widgets (OMN-1798) */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <PatternStatusDistribution
+          summary={summary}
+          isLoading={summaryLoading}
+          isError={summaryError}
+          selectedState={filters.state}
+          onStateClick={(state) => setFilters((prev) => ({ ...prev, state }))}
+        />
+        <PatternSuccessRateTrends
+          patterns={filteredPatterns}
+          isLoading={patternsLoading}
+          isError={patternsError}
+        />
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <PatternActivityTimeline
+          patterns={filteredPatterns}
+          isLoading={patternsLoading}
+          isError={patternsError}
+          onPatternClick={(patternId) => {
+            const pattern = filteredPatterns.find((p) => p.id === patternId);
+            if (pattern) {
+              handleRowClick(pattern);
+            }
+          }}
+        />
+        <TopPatternsTable
+          patterns={filteredPatterns}
+          isLoading={patternsLoading}
+          isError={patternsError}
+          limit={5}
+          onPatternClick={handleRowClick}
+        />
       </div>
 
       {/* Filter Bar */}
