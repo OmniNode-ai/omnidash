@@ -225,11 +225,13 @@ describe('PatternLearning page', () => {
       const result = renderWithClient(<PatternLearning />);
       queryClient = result.queryClient;
 
+      // Pattern names appear in multiple components (timeline, top patterns, main table)
+      // so we use getAllByText to verify at least one instance is rendered
       await waitFor(() => {
-        expect(screen.getByText('Auth Handler Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('Auth Handler Pattern').length).toBeGreaterThan(0);
       });
 
-      expect(screen.getByText('Retry Logic Pattern')).toBeInTheDocument();
+      expect(screen.getAllByText('Retry Logic Pattern').length).toBeGreaterThan(0);
 
       result.unmount();
     });
@@ -255,12 +257,12 @@ describe('PatternLearning page', () => {
 
       // Wait for initial load
       await waitFor(() => {
-        expect(screen.getByText('Validated Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('Validated Pattern').length).toBeGreaterThan(0);
       });
 
       // All patterns should be visible initially
-      expect(screen.getByText('Candidate Pattern')).toBeInTheDocument();
-      expect(screen.getByText('Provisional Pattern')).toBeInTheDocument();
+      expect(screen.getAllByText('Candidate Pattern').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Provisional Pattern').length).toBeGreaterThan(0);
 
       // Find and click the state filter dropdown (first combobox)
       const comboboxes = screen.getAllByRole('combobox');
@@ -273,10 +275,10 @@ describe('PatternLearning page', () => {
 
       // Now only validated patterns should be visible
       await waitFor(() => {
-        expect(screen.getByText('Validated Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('Validated Pattern').length).toBeGreaterThan(0);
       });
-      expect(screen.queryByText('Candidate Pattern')).not.toBeInTheDocument();
-      expect(screen.queryByText('Provisional Pattern')).not.toBeInTheDocument();
+      expect(screen.queryAllByText('Candidate Pattern')).toHaveLength(0);
+      expect(screen.queryAllByText('Provisional Pattern')).toHaveLength(0);
 
       // State filter badge should appear
       expect(screen.getByText('State: validated')).toBeInTheDocument();
@@ -297,7 +299,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Validated Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('Validated Pattern').length).toBeGreaterThan(0);
       });
 
       const comboboxes = screen.getAllByRole('combobox');
@@ -308,9 +310,9 @@ describe('PatternLearning page', () => {
       await user.click(candidateOption);
 
       await waitFor(() => {
-        expect(screen.getByText('Candidate Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('Candidate Pattern').length).toBeGreaterThan(0);
       });
-      expect(screen.queryByText('Validated Pattern')).not.toBeInTheDocument();
+      expect(screen.queryAllByText('Validated Pattern')).toHaveLength(0);
 
       result.unmount();
     });
@@ -328,7 +330,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Active Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('Active Pattern').length).toBeGreaterThan(0);
       });
 
       const comboboxes = screen.getAllByRole('combobox');
@@ -339,9 +341,9 @@ describe('PatternLearning page', () => {
       await user.click(deprecatedOption);
 
       await waitFor(() => {
-        expect(screen.getByText('Old Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('Old Pattern').length).toBeGreaterThan(0);
       });
-      expect(screen.queryByText('Active Pattern')).not.toBeInTheDocument();
+      expect(screen.queryAllByText('Active Pattern')).toHaveLength(0);
 
       result.unmount();
     });
@@ -366,12 +368,12 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Security Handler')).toBeInTheDocument();
+        expect(screen.getAllByText('Security Handler').length).toBeGreaterThan(0);
       });
 
       // All patterns visible initially
-      expect(screen.getByText('Behavioral Pattern')).toBeInTheDocument();
-      expect(screen.getByText('Auth Guard')).toBeInTheDocument();
+      expect(screen.getAllByText('Behavioral Pattern').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Auth Guard').length).toBeGreaterThan(0);
 
       // Find and click the pattern type filter dropdown (second combobox)
       const comboboxes = screen.getAllByRole('combobox');
@@ -384,10 +386,10 @@ describe('PatternLearning page', () => {
 
       // Only security patterns should be visible
       await waitFor(() => {
-        expect(screen.getByText('Security Handler')).toBeInTheDocument();
+        expect(screen.getAllByText('Security Handler').length).toBeGreaterThan(0);
       });
-      expect(screen.getByText('Auth Guard')).toBeInTheDocument();
-      expect(screen.queryByText('Behavioral Pattern')).not.toBeInTheDocument();
+      expect(screen.getAllByText('Auth Guard').length).toBeGreaterThan(0);
+      expect(screen.queryAllByText('Behavioral Pattern')).toHaveLength(0);
 
       // Type filter badge should appear
       expect(screen.getByText('Type: security')).toBeInTheDocument();
@@ -445,7 +447,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Authentication Handler')).toBeInTheDocument();
+        expect(screen.getAllByText('Authentication Handler').length).toBeGreaterThan(0);
       });
 
       // Type in search box
@@ -454,10 +456,10 @@ describe('PatternLearning page', () => {
 
       // Should match patterns containing 'Auth'
       await waitFor(() => {
-        expect(screen.getByText('Authentication Handler')).toBeInTheDocument();
-        expect(screen.getByText('Auth Token Validator')).toBeInTheDocument();
+        expect(screen.getAllByText('Authentication Handler').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Auth Token Validator').length).toBeGreaterThan(0);
       });
-      expect(screen.queryByText('Retry Logic')).not.toBeInTheDocument();
+      expect(screen.queryAllByText('Retry Logic')).toHaveLength(0);
 
       // Search badge should appear
       expect(screen.getByText('Search: "Auth"')).toBeInTheDocument();
@@ -479,17 +481,17 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('TS Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('TS Pattern').length).toBeGreaterThan(0);
       });
 
       const searchInput = screen.getByPlaceholderText('Search patterns...');
       await user.type(searchInput, 'Python');
 
       await waitFor(() => {
-        expect(screen.getByText('Python Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('Python Pattern').length).toBeGreaterThan(0);
       });
-      expect(screen.queryByText('TS Pattern')).not.toBeInTheDocument();
-      expect(screen.queryByText('JS Pattern')).not.toBeInTheDocument();
+      expect(screen.queryAllByText('TS Pattern')).toHaveLength(0);
+      expect(screen.queryAllByText('JS Pattern')).toHaveLength(0);
 
       result.unmount();
     });
@@ -508,17 +510,17 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Pattern A')).toBeInTheDocument();
+        expect(screen.getAllByText('Pattern A').length).toBeGreaterThan(0);
       });
 
       const searchInput = screen.getByPlaceholderText('Search patterns...');
       await user.type(searchInput, 'security');
 
       await waitFor(() => {
-        expect(screen.getByText('Pattern A')).toBeInTheDocument();
-        expect(screen.getByText('Pattern C')).toBeInTheDocument();
+        expect(screen.getAllByText('Pattern A').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Pattern C').length).toBeGreaterThan(0);
       });
-      expect(screen.queryByText('Pattern B')).not.toBeInTheDocument();
+      expect(screen.queryAllByText('Pattern B')).toHaveLength(0);
 
       result.unmount();
     });
@@ -536,16 +538,16 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('AUTHENTICATION Handler')).toBeInTheDocument();
+        expect(screen.getAllByText('AUTHENTICATION Handler').length).toBeGreaterThan(0);
       });
 
       const searchInput = screen.getByPlaceholderText('Search patterns...');
       await user.type(searchInput, 'authentication');
 
       await waitFor(() => {
-        expect(screen.getByText('AUTHENTICATION Handler')).toBeInTheDocument();
+        expect(screen.getAllByText('AUTHENTICATION Handler').length).toBeGreaterThan(0);
       });
-      expect(screen.queryByText('other pattern')).not.toBeInTheDocument();
+      expect(screen.queryAllByText('other pattern')).toHaveLength(0);
 
       result.unmount();
     });
@@ -587,7 +589,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Validated Security Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('Validated Security Pattern').length).toBeGreaterThan(0);
       });
 
       // Apply state filter: validated
@@ -602,11 +604,11 @@ describe('PatternLearning page', () => {
 
       // Only patterns matching BOTH filters should be visible
       await waitFor(() => {
-        expect(screen.getByText('Validated Security Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('Validated Security Pattern').length).toBeGreaterThan(0);
       });
-      expect(screen.queryByText('Candidate Security Pattern')).not.toBeInTheDocument();
-      expect(screen.queryByText('Validated Behavioral Pattern')).not.toBeInTheDocument();
-      expect(screen.queryByText('Candidate Behavioral Pattern')).not.toBeInTheDocument();
+      expect(screen.queryAllByText('Candidate Security Pattern')).toHaveLength(0);
+      expect(screen.queryAllByText('Validated Behavioral Pattern')).toHaveLength(0);
+      expect(screen.queryAllByText('Candidate Behavioral Pattern')).toHaveLength(0);
 
       // Both filter badges should be visible
       expect(screen.getByText('State: validated')).toBeInTheDocument();
@@ -638,7 +640,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Auth Handler')).toBeInTheDocument();
+        expect(screen.getAllByText('Auth Handler').length).toBeGreaterThan(0);
       });
 
       // Apply state filter: validated
@@ -652,10 +654,10 @@ describe('PatternLearning page', () => {
 
       // Only validated + Auth patterns should be visible
       await waitFor(() => {
-        expect(screen.getByText('Auth Handler')).toBeInTheDocument();
+        expect(screen.getAllByText('Auth Handler').length).toBeGreaterThan(0);
       });
-      expect(screen.queryByText('Auth Validator')).not.toBeInTheDocument();
-      expect(screen.queryByText('Retry Logic')).not.toBeInTheDocument();
+      expect(screen.queryAllByText('Auth Validator')).toHaveLength(0);
+      expect(screen.queryAllByText('Retry Logic')).toHaveLength(0);
 
       result.unmount();
     });
@@ -691,7 +693,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Auth Security Handler')).toBeInTheDocument();
+        expect(screen.getAllByText('Auth Security Handler').length).toBeGreaterThan(0);
       });
 
       // State: validated
@@ -710,11 +712,11 @@ describe('PatternLearning page', () => {
 
       // Only the pattern matching all three should be visible
       await waitFor(() => {
-        expect(screen.getByText('Auth Security Handler')).toBeInTheDocument();
+        expect(screen.getAllByText('Auth Security Handler').length).toBeGreaterThan(0);
       });
-      expect(screen.queryByText('Auth Behavioral Handler')).not.toBeInTheDocument();
-      expect(screen.queryByText('Retry Security Handler')).not.toBeInTheDocument();
-      expect(screen.queryByText('Auth Security Candidate')).not.toBeInTheDocument();
+      expect(screen.queryAllByText('Auth Behavioral Handler')).toHaveLength(0);
+      expect(screen.queryAllByText('Retry Security Handler')).toHaveLength(0);
+      expect(screen.queryAllByText('Auth Security Candidate')).toHaveLength(0);
 
       result.unmount();
     });
@@ -740,11 +742,11 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Pattern 1')).toBeInTheDocument();
+        expect(screen.getAllByText('Pattern 1').length).toBeGreaterThan(0);
       });
 
       // Default limit is 50, so all 30 should be visible
-      expect(screen.getByText('Pattern 30')).toBeInTheDocument();
+      expect(screen.getAllByText('Pattern 30').length).toBeGreaterThan(0);
 
       // Change limit to 25 (third combobox)
       const comboboxes = screen.getAllByRole('combobox');
@@ -753,9 +755,9 @@ describe('PatternLearning page', () => {
 
       // Now only 25 patterns should be visible
       await waitFor(() => {
-        expect(screen.getByText('Pattern 25')).toBeInTheDocument();
+        expect(screen.getAllByText('Pattern 25').length).toBeGreaterThan(0);
       });
-      expect(screen.queryByText('Pattern 26')).not.toBeInTheDocument();
+      expect(screen.queryAllByText('Pattern 26')).toHaveLength(0);
 
       result.unmount();
     });
@@ -775,7 +777,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Pattern 1')).toBeInTheDocument();
+        expect(screen.getAllByText('Pattern 1').length).toBeGreaterThan(0);
       });
 
       // Change limit to 25 (third combobox)
@@ -783,9 +785,9 @@ describe('PatternLearning page', () => {
       await user.click(comboboxes[2]);
       await user.click(screen.getByRole('option', { name: '25' }));
 
-      // Description should show count (text format: "of X loaded")
+      // Description should show count (text format: "of X filtered")
       await waitFor(() => {
-        const description = screen.getByText(/Showing 25 of 100 loaded/);
+        const description = screen.getByText(/Showing 25 of 100 filtered/);
         expect(description).toBeInTheDocument();
       });
 
@@ -811,7 +813,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Pattern A')).toBeInTheDocument();
+        expect(screen.getAllByText('Pattern A').length).toBeGreaterThan(0);
       });
 
       // Apply state filter
@@ -825,7 +827,7 @@ describe('PatternLearning page', () => {
 
       // Verify filters are applied
       await waitFor(() => {
-        expect(screen.queryByText('Pattern B')).not.toBeInTheDocument();
+        expect(screen.queryAllByText('Pattern B')).toHaveLength(0);
       });
 
       // Click Clear button
@@ -834,8 +836,8 @@ describe('PatternLearning page', () => {
 
       // All patterns should be visible again
       await waitFor(() => {
-        expect(screen.getByText('Pattern A')).toBeInTheDocument();
-        expect(screen.getByText('Pattern B')).toBeInTheDocument();
+        expect(screen.getAllByText('Pattern A').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Pattern B').length).toBeGreaterThan(0);
       });
 
       // Filter badges should be gone
@@ -866,7 +868,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Validated Security')).toBeInTheDocument();
+        expect(screen.getAllByText('Validated Security').length).toBeGreaterThan(0);
       });
 
       // No filter badges initially
@@ -895,8 +897,8 @@ describe('PatternLearning page', () => {
       expect(screen.getByText('State: validated')).toBeInTheDocument();
 
       // Only matching pattern visible
-      expect(screen.getByText('Validated Security')).toBeInTheDocument();
-      expect(screen.queryByText('Validated Behavioral')).not.toBeInTheDocument();
+      expect(screen.getAllByText('Validated Security').length).toBeGreaterThan(0);
+      expect(screen.queryAllByText('Validated Behavioral')).toHaveLength(0);
 
       result.unmount();
     });
@@ -959,7 +961,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Validated 1')).toBeInTheDocument();
+        expect(screen.getAllByText('Validated 1').length).toBeGreaterThan(0);
       });
 
       // Apply state filter: validated
@@ -986,7 +988,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Pattern 1')).toBeInTheDocument();
+        expect(screen.getAllByText('Pattern 1').length).toBeGreaterThan(0);
       });
 
       // No hidden badge should be present
@@ -1013,7 +1015,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Pattern A')).toBeInTheDocument();
+        expect(screen.getAllByText('Pattern A').length).toBeGreaterThan(0);
       });
 
       // Apply filter that matches nothing
@@ -1058,8 +1060,9 @@ describe('PatternLearning page', () => {
       const result = renderWithClient(<PatternLearning />);
       queryClient = result.queryClient;
 
+      // "Failed to load patterns" appears in multiple components (Patterns table + TopPatternsTable)
       await waitFor(() => {
-        expect(screen.getByText('Failed to load patterns')).toBeInTheDocument();
+        expect(screen.getAllByText('Failed to load patterns').length).toBeGreaterThan(0);
       });
 
       consoleError.mockRestore();
@@ -1196,7 +1199,7 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       await waitFor(() => {
-        expect(screen.getByText('Test Pattern')).toBeInTheDocument();
+        expect(screen.getAllByText('Test Pattern').length).toBeGreaterThan(0);
       });
 
       // Apply state filter
