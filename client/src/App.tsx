@@ -57,7 +57,7 @@ import DeveloperTools from '@/pages/preview/DeveloperTools';
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={NodeRegistry} />
+      <Route path="/" component={EventBusMonitor} />
       <Route path="/patterns" component={PatternLearning} />
       <Route path="/intelligence" component={IntelligenceOperations} />
       <Route path="/code" component={CodeIntelligence} />

@@ -28,23 +28,21 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Split vendor chunks for better caching
+          // Only split truly independent utilities - let Vite handle React deps
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'react-vendor';
-            }
-            if (id.includes('@tanstack/react-query')) {
-              return 'query-vendor';
-            }
-            if (id.includes('recharts') || id.includes('lucide-react')) {
-              return 'ui-vendor';
-            }
-            if (id.includes('date-fns') || id.includes('zod')) {
+            // Independent utilities with no React dependency
+            if (
+              id.includes('date-fns') ||
+              id.includes('zod') ||
+              id.includes('clsx') ||
+              id.includes('tailwind-merge')
+            ) {
               return 'utils-vendor';
             }
-            // All other node_modules
-            return 'vendor';
+            // Let Vite handle React and all React-dependent packages together
+            // This avoids circular chunk issues (vendor -> react-vendor -> vendor)
           }
+          // Return undefined to let Vite/Rollup decide optimal chunking
         },
       },
     },
