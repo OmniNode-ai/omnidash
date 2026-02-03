@@ -48,7 +48,9 @@ import {
   X,
   Search,
   Loader2,
+  AlertCircle,
 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { patlearnSource, type PatlearnArtifact, type LifecycleState } from '@/lib/data-sources';
 import {
   LifecycleStateBadge,
@@ -297,6 +299,9 @@ function PatternLearningContent() {
   const [selectedArtifact, setSelectedArtifact] = useState<PatlearnArtifact | null>(null);
   const [debuggerOpen, setDebuggerOpen] = useState(false);
 
+  // Track if we're using demo data (database unavailable)
+  const [isUsingDemoData, setIsUsingDemoData] = useState(false);
+
   // Fetch summary metrics
   const {
     data: summary,
@@ -344,6 +349,14 @@ function PatternLearningContent() {
 
   // Flatten pages into single array for filtering
   const patterns = useMemo(() => patternsData?.pages.flat() ?? [], [patternsData]);
+
+  // Detect if we're using demo data (check for __demo flag in metadata)
+  useEffect(() => {
+    if (patterns.length > 0) {
+      const hasDemoData = patterns.some((p) => p.metadata?.__demo === true);
+      setIsUsingDemoData(hasDemoData);
+    }
+  }, [patterns]);
 
   // Derive unique pattern types from the data
   const availablePatternTypes = useMemo(() => {
@@ -422,6 +435,18 @@ function PatternLearningContent() {
           Refresh
         </Button>
       </div>
+
+      {/* Demo Mode Banner - shown when database is unavailable */}
+      {isUsingDemoData && (
+        <Alert variant="default" className="border-yellow-500/50 bg-yellow-500/10">
+          <AlertCircle className="h-4 w-4 text-yellow-500" />
+          <AlertTitle className="text-yellow-500">Demo Mode</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            Database connection unavailable. Displaying demo data for preview purposes. The
+            dashboard will automatically reconnect when the database becomes available.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

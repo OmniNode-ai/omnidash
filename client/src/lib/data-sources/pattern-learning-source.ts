@@ -1,8 +1,11 @@
 /**
  * Pattern Learning Data Source
  *
- * Fetches PATLEARN artifacts from API endpoints.
+ * Fetches PATLEARN artifacts from API endpoints with graceful fallback
+ * to mock data when the database is unavailable.
+ *
  * Part of OMN-1699: Pattern Dashboard with Evidence-Based Score Debugging
+ * Updated for OMN-1798: Graceful degradation support
  */
 
 import {
@@ -15,6 +18,7 @@ import {
   type SimilarityEvidence,
   type SimilarPatternEntry,
 } from '../schemas/api-response-schemas';
+import { getMockPatterns, getMockSummary } from '../mock-data/patlearn-mock';
 
 // ===========================
 // Types
@@ -31,6 +35,17 @@ export interface PatlearnListParams {
 export interface PatlearnDetailResponse {
   artifact: PatlearnArtifact;
   similarPatterns: SimilarPatternEntry[];
+}
+
+/**
+ * Options for data source methods
+ */
+export interface PatlearnFetchOptions {
+  /**
+   * If true, fallback to mock data on error instead of throwing.
+   * Default: true (graceful degradation enabled)
+   */
+  fallbackToMock?: boolean;
 }
 
 // ===========================
@@ -98,10 +113,24 @@ function safeParseOne<T>(
 class PatternLearningSource {
   private baseUrl = '/api/intelligence/patterns/patlearn';
 
+  /** Track if we're currently using mock data (for UI indicator) */
+  private _isUsingMockData = false;
+
+  /** Check if last fetch used mock data */
+  get isUsingMockData(): boolean {
+    return this._isUsingMockData;
+  }
+
   /**
    * List patterns with filtering
+   * Falls back to mock data if database is unavailable (graceful degradation)
    */
-  async list(params: PatlearnListParams = {}): Promise<PatlearnArtifact[]> {
+  async list(
+    params: PatlearnListParams = {},
+    options: PatlearnFetchOptions = {}
+  ): Promise<PatlearnArtifact[]> {
+    const { fallbackToMock = true } = options;
+
     try {
       const query = new URLSearchParams();
 
@@ -122,8 +151,40 @@ class PatternLearningSource {
       }
 
       const data = await response.json();
-      return safeParseArray(patlearnArtifactSchema, data, 'patlearn-list');
+      const patterns = safeParseArray(patlearnArtifactSchema, data, 'patlearn-list');
+
+      // Successfully fetched from API
+      this._isUsingMockData = false;
+      return patterns;
     } catch (error) {
+      // Graceful degradation: fallback to mock data
+      if (fallbackToMock) {
+        console.warn(
+          '[PatternLearningSource] Database unavailable, using demo data:',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+        this._isUsingMockData = true;
+
+        // Apply filtering to mock data
+        let mockPatterns = getMockPatterns();
+
+        // Filter by state if specified
+        if (params.state) {
+          const states = Array.isArray(params.state) ? params.state : [params.state];
+          mockPatterns = mockPatterns.filter((p) =>
+            states.includes(p.lifecycleState as LifecycleState)
+          );
+        }
+
+        // Apply pagination
+        const offset = params.offset ?? 0;
+        const limit = params.limit ?? 50;
+        mockPatterns = mockPatterns.slice(offset, offset + limit);
+
+        return mockPatterns;
+      }
+
+      // Re-throw if fallback disabled
       if (error instanceof PatlearnFetchError) {
         throw error;
       }
@@ -133,8 +194,14 @@ class PatternLearningSource {
 
   /**
    * Get summary metrics
+   * Falls back to mock data if database is unavailable (graceful degradation)
    */
-  async summary(window: '24h' | '7d' | '30d' = '24h'): Promise<PatlearnSummary | null> {
+  async summary(
+    window: '24h' | '7d' | '30d' = '24h',
+    options: PatlearnFetchOptions = {}
+  ): Promise<PatlearnSummary | null> {
+    const { fallbackToMock = true } = options;
+
     try {
       const response = await fetch(`${this.baseUrl}/summary?window=${window}`);
 
@@ -143,8 +210,23 @@ class PatternLearningSource {
       }
 
       const data = await response.json();
-      return safeParseOne(patlearnSummarySchema, data, 'patlearn-summary');
+      const summary = safeParseOne(patlearnSummarySchema, data, 'patlearn-summary');
+
+      // Successfully fetched from API
+      this._isUsingMockData = false;
+      return summary;
     } catch (error) {
+      // Graceful degradation: fallback to mock data
+      if (fallbackToMock) {
+        console.warn(
+          '[PatternLearningSource] Database unavailable for summary, using demo data:',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+        this._isUsingMockData = true;
+        return getMockSummary(window);
+      }
+
+      // Re-throw if fallback disabled
       if (error instanceof PatlearnFetchError) {
         throw error;
       }
