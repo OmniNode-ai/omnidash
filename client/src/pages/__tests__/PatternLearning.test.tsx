@@ -785,9 +785,9 @@ describe('PatternLearning page', () => {
       await user.click(comboboxes[2]);
       await user.click(screen.getByRole('option', { name: '25' }));
 
-      // Description should show count (text format: "of X loaded")
+      // Description should show count (text format: "of X filtered")
       await waitFor(() => {
-        const description = screen.getByText(/Showing 25 of 100 loaded/);
+        const description = screen.getByText(/Showing 25 of 100 filtered/);
         expect(description).toBeInTheDocument();
       });
 

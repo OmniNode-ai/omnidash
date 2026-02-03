@@ -393,9 +393,16 @@ function PatternLearningContent() {
       );
     }
 
-    // Apply limit
-    return result.slice(0, filters.limit);
-  }, [patterns, filters.state, filters.patternType, filters.limit, deferredSearch]);
+    // Return all filtered patterns (no limit) - widgets need full dataset for analytics
+    return result;
+  }, [patterns, filters.state, filters.patternType, deferredSearch]);
+
+  // Paginated patterns for table display only
+  // Separating this from filteredPatterns ensures widgets analyze all data
+  const paginatedPatterns = useMemo(
+    () => filteredPatterns.slice(0, filters.limit),
+    [filteredPatterns, filters.limit]
+  );
 
   // Check if any filters are active
   const hasActiveFilters = filters.state || filters.patternType || filters.search;
@@ -691,7 +698,7 @@ function PatternLearningContent() {
               <CardDescription>
                 {patternsLoading
                   ? 'Loading patterns...'
-                  : `Showing ${filteredPatterns.length}${patterns.length > 0 && filteredPatterns.length < patterns.length ? ` of ${patterns.length} loaded` : ''} patterns. Click a row to view scoring evidence.`}
+                  : `Showing ${paginatedPatterns.length}${filteredPatterns.length > paginatedPatterns.length ? ` of ${filteredPatterns.length} filtered` : ''}${patterns.length > 0 && filteredPatterns.length < patterns.length ? ` (${patterns.length} total)` : ''} patterns. Click a row to view scoring evidence.`}
               </CardDescription>
             </div>
             {hasActiveFilters &&
@@ -728,7 +735,7 @@ function PatternLearningContent() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
-          ) : filteredPatterns.length > 0 ? (
+          ) : paginatedPatterns.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -740,7 +747,7 @@ function PatternLearningContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPatterns.map((artifact) => (
+                {paginatedPatterns.map((artifact) => (
                   <TableRow
                     key={artifact.id}
                     className="cursor-pointer hover:bg-muted/50"
