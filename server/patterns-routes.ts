@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { getIntelligenceDb } from './storage';
+import { tryGetIntelligenceDb } from './storage';
 import {
   learnedPatterns,
   type PatternListItem,
@@ -73,7 +73,20 @@ router.get('/', async (req, res) => {
 
     const { status, min_confidence, limit, offset } = queryResult.data;
 
-    const db = getIntelligenceDb();
+    const db = tryGetIntelligenceDb();
+
+    // Graceful degradation: if database not configured, return empty response
+    if (!db) {
+      console.log('[Patterns] Database not configured - returning empty response (demo mode)');
+      return res.json({
+        patterns: [],
+        total: 0,
+        limit,
+        offset,
+        _demo: true,
+        _message: 'Database not configured. Running in demo-only mode.',
+      } as PaginatedPatternsResponse & { _demo: boolean; _message: string });
+    }
 
     // Check if table exists first
     try {

@@ -44,60 +44,112 @@ export const storage = new MemStorage();
 
 // Intelligence Database Connection
 // Connects to PostgreSQL database at 192.168.86.200:5436 (omninode_bridge)
-// Requires DATABASE_URL or individual POSTGRES_* environment variables to be set
-function getIntelligenceConnectionString(): string {
+// When not configured, dashboard runs in demo-only mode (graceful degradation)
+
+// Track database configuration state for graceful degradation
+let databaseConfigured = false;
+let databaseConnectionError: string | null = null;
+
+/**
+ * Check if database is configured (env vars present).
+ * Does NOT verify connectivity - just configuration.
+ */
+export function isDatabaseConfigured(): boolean {
+  return databaseConfigured;
+}
+
+/**
+ * Get the database configuration error message, if any.
+ * Returns null if database is properly configured.
+ */
+export function getDatabaseError(): string | null {
+  return databaseConnectionError;
+}
+
+function getIntelligenceConnectionString(): string | null {
   // Prefer DATABASE_URL if set
   if (process.env.DATABASE_URL) {
+    databaseConfigured = true;
     return process.env.DATABASE_URL;
   }
 
-  // Otherwise, require POSTGRES_PASSWORD to be explicitly set (no hardcoded fallback)
+  // Check for individual POSTGRES_* environment variables
   const password = process.env.POSTGRES_PASSWORD;
-  if (!password) {
-    throw new Error(
-      'Database connection requires either DATABASE_URL or POSTGRES_PASSWORD environment variable to be set. ' +
-        'See .env.example for required configuration.'
-    );
-  }
-
-  // Build connection string from individual environment variables
   const host = process.env.POSTGRES_HOST;
   const port = process.env.POSTGRES_PORT;
   const database = process.env.POSTGRES_DATABASE;
   const user = process.env.POSTGRES_USER;
 
-  if (!host || !port || !database || !user) {
-    throw new Error(
-      'Database connection requires POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE, and POSTGRES_USER environment variables. ' +
-        'Set them in .env file. Example:\n' +
-        '  POSTGRES_HOST=192.168.86.200\n' +
-        '  POSTGRES_PORT=5436\n' +
-        '  POSTGRES_DATABASE=omninode_bridge\n' +
-        '  POSTGRES_USER=postgres\n' +
-        '  POSTGRES_PASSWORD=your_password'
-    );
+  // Graceful degradation: if not configured, return null instead of throwing
+  if (!password || !host || !port || !database || !user) {
+    const missing: string[] = [];
+    if (!host) missing.push('POSTGRES_HOST');
+    if (!port) missing.push('POSTGRES_PORT');
+    if (!database) missing.push('POSTGRES_DATABASE');
+    if (!user) missing.push('POSTGRES_USER');
+    if (!password) missing.push('POSTGRES_PASSWORD');
+
+    databaseConnectionError = `Database not configured. Missing: ${missing.join(', ')}. Dashboard running in demo-only mode.`;
+    console.warn(`[Database] ${databaseConnectionError}`);
+    databaseConfigured = false;
+    return null;
   }
 
+  databaseConfigured = true;
   return `postgresql://${user}:${password}@${host}:${port}/${database}`;
 }
 
 // Lazy initialization to avoid requiring env vars at module load time
 let poolInstance: InstanceType<typeof Pool> | null = null;
 let intelligenceDbInstance: ReturnType<typeof drizzle> | null = null;
+let connectionAttempted = false;
 
-function getPool(): InstanceType<typeof Pool> {
-  if (!poolInstance) {
-    const intelligenceConnectionString = getIntelligenceConnectionString();
+function getPool(): InstanceType<typeof Pool> | null {
+  if (!poolInstance && !connectionAttempted) {
+    connectionAttempted = true;
+    const connectionString = getIntelligenceConnectionString();
+    if (!connectionString) {
+      // Database not configured - graceful degradation
+      return null;
+    }
     poolInstance = new Pool({
-      connectionString: intelligenceConnectionString,
+      connectionString,
     });
   }
   return poolInstance;
 }
 
-export function getIntelligenceDb() {
+/**
+ * Get the intelligence database connection.
+ * Throws if database is not configured.
+ * Use isDatabaseConfigured() first to check availability for graceful degradation.
+ */
+export function getIntelligenceDb(): ReturnType<typeof drizzle> {
   if (!intelligenceDbInstance) {
-    intelligenceDbInstance = drizzle(getPool());
+    const pool = getPool();
+    if (!pool) {
+      // Database not configured - throw with helpful message
+      throw new Error(
+        databaseConnectionError ||
+          'Database not configured. Set POSTGRES_* environment variables or DATABASE_URL.'
+      );
+    }
+    intelligenceDbInstance = drizzle(pool);
   }
   return intelligenceDbInstance;
+}
+
+/**
+ * Try to get database connection, returns null if not configured.
+ * Use this for routes that want graceful degradation.
+ */
+export function tryGetIntelligenceDb(): ReturnType<typeof drizzle> | null {
+  if (!isDatabaseConfigured()) {
+    return null;
+  }
+  try {
+    return getIntelligenceDb();
+  } catch {
+    return null;
+  }
 }
