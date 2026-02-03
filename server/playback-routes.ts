@@ -9,6 +9,7 @@ import path from 'path';
 import { Router, Request, Response } from 'express';
 import { getPlaybackService, playbackLogger } from './event-playback';
 import { getEventConsumer } from './event-consumer';
+import { getPlaybackDataSource } from './playback-data-source';
 import {
   PLAYBACK_CONFIG,
   isValidSpeed,
@@ -275,19 +276,19 @@ router.post('/start', async (req: Request, res: Response) => {
       currentEventHandler = null;
     }
 
-    // Forward ALL playback events through EventConsumer's injection method
-    // This ensures events flow through the same handlers as live Kafka events
-    if (eventConsumer) {
-      currentEventHandler = (recordedEvent) => {
-        // Inject into EventConsumer using the same pipeline as live events
-        const event = recordedEvent as { topic: string; value: unknown };
-        eventConsumer.injectPlaybackEvent(event.topic, event.value as Record<string, unknown>);
+    // Get playback data source (works without Kafka)
+    const playbackDataSource = getPlaybackDataSource();
 
-        // Broadcast throttled progress updates via WebSocket
-        broadcastProgress();
-      };
-      playback.on('event', currentEventHandler);
-    }
+    // Forward ALL playback events through PlaybackDataSource
+    // This ensures events stream to WebSocket without requiring Kafka
+    currentEventHandler = (recordedEvent) => {
+      const event = recordedEvent as { topic: string; value: unknown };
+      // Use PlaybackDataSource for direct WebSocket broadcast
+      playbackDataSource.injectPlaybackEvent(event.topic, event.value as Record<string, unknown>);
+      // Broadcast throttled progress updates via WebSocket
+      broadcastProgress();
+    };
+    playback.on('event', currentEventHandler);
 
     await playback.startPlayback(filePath, {
       speed,

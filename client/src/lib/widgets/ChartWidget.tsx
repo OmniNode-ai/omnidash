@@ -763,10 +763,11 @@ export function ChartWidget({ widget, config, data, isLoading }: ChartWidgetProp
           )}
         </div>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0 pb-4">
+      <CardContent className="flex-1 min-h-[200px] pb-4">
         {chartData.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            No data available
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
+            <span className="text-sm">No data available</span>
+            <span className="text-xs">Start demo playback to see events</span>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
