@@ -11,6 +11,9 @@ const mockDb = {
 
 vi.mock('../storage', () => ({
   getIntelligenceDb: vi.fn(() => mockDb),
+  tryGetIntelligenceDb: vi.fn(() => mockDb),
+  isDatabaseConfigured: vi.fn(() => true),
+  getDatabaseError: vi.fn(() => null),
 }));
 
 vi.mock('../event-consumer', () => ({
