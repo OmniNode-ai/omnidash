@@ -142,7 +142,7 @@ async function seedEvents(count: number = 10) {
     console.log(`   - Routing decisions: ${count}`);
     console.log(`   - Agent actions: ${messages.length - count}`);
     console.log(`   - Total events: ${messages.length}`);
-    console.log('\n💡 Check the dashboard at http://localhost:3000 to see the data\n');
+    console.log('\n💡 Check the dashboard at http://localhost:5000 to see the data\n');
   } catch (error) {
     console.error('❌ Error seeding events:', error);
     throw error;

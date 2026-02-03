@@ -4,10 +4,10 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "kill-port": "lsof -ti:3000 | xargs kill -9 2>/dev/null || true; sleep 1",
-    "dev": "npm run kill-port && PORT=3000 NODE_ENV=development tsx server/index.ts",
+    "kill-port": "lsof -ti:5000 | xargs kill -9 2>/dev/null || true; sleep 1",
+    "dev": "npm run kill-port && PORT=5000 NODE_ENV=development tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "start": "npm run kill-port && PORT=3000 NODE_ENV=production node dist/index.js",
+    "start": "npm run kill-port && PORT=5000 NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",

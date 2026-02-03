@@ -11,7 +11,7 @@
 
 import fetch from 'node-fetch';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5000';
 
 async function verifyEventBus() {
   console.log('🔍 Verifying Event Bus Data Source...\n');

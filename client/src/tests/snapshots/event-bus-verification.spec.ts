@@ -11,7 +11,7 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Event Bus Verification', () => {
-  const BASE_URL = 'http://localhost:3000';
+  const BASE_URL = 'http://localhost:5000';
 
   test.describe('API Endpoints', () => {
     test('should return event bus status', async ({ request }) => {

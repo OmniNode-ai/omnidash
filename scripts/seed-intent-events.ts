@@ -393,7 +393,7 @@ async function seedEventsOnce(options: SeedOptions): Promise<void> {
     if (includeStored) {
       console.log(`   - Topic: ${INTENT_STORED_TOPIC}`);
     }
-    console.log('\nCheck the Intent Dashboard at http://localhost:3000/intents to see the data\n');
+    console.log('\nCheck the Intent Dashboard at http://localhost:5000/intents to see the data\n');
   } finally {
     await producer.disconnect();
     console.log('Producer disconnected\n');
