@@ -61,6 +61,9 @@ const mockDb = createMockQueryBuilder();
 // Mock the storage module
 vi.mock('../storage', () => ({
   getIntelligenceDb: vi.fn(() => mockDb),
+  tryGetIntelligenceDb: vi.fn(() => mockDb),
+  isDatabaseConfigured: vi.fn(() => true),
+  getDatabaseError: vi.fn(() => null),
 }));
 
 describe('Patterns Routes', () => {
