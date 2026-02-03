@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, Plus, ArrowUp, Archive, Activity, Sparkles } from 'lucide-react';
+import { AlertCircle, Clock, Plus, ArrowUp, Archive, Activity, Sparkles } from 'lucide-react';
 import type { PatlearnArtifact, LifecycleState } from '@/lib/schemas/api-response-schemas';
 
 // ===========================
