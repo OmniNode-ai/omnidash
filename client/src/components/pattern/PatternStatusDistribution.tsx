@@ -70,16 +70,23 @@ const LIFECYCLE_ORDER: LifecycleState[] = ['candidate', 'provisional', 'validate
 // ===========================
 
 interface TooltipPayload {
-  name: string;
-  value: number;
+  name?: string;
+  value?: number;
   payload: ChartDataItem;
 }
 
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
-  if (!active || !payload?.[0]) return null;
+function CustomTooltip({
+  active,
+  payload,
+  total,
+}: {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  total?: number;
+}) {
+  if (!active || !payload?.[0] || total === undefined) return null;
 
   const data = payload[0].payload;
-  const total = payload.reduce((sum, p) => sum + (p.value || 0), 0);
   const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : '0';
 
   return (
@@ -277,7 +284,15 @@ export function PatternStatusDistribution({
                 />
               ))}
             </Pie>
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip
+              content={({ active, payload }) => (
+                <CustomTooltip
+                  active={active}
+                  payload={payload as TooltipPayload[] | undefined}
+                  total={totalPatterns}
+                />
+              )}
+            />
             {/* Center label showing total */}
             <text
               x="50%"
