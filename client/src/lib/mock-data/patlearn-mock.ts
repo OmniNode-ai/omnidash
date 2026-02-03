@@ -222,27 +222,28 @@ export function generateMockSummary(window: '24h' | '7d' | '30d' = '24h'): Patle
 // ===========================
 
 // Cache mock data per session to maintain consistency
-let cachedPatterns: PatlearnArtifact[] | null = null;
-let cachedSummary: PatlearnSummary | null = null;
+// Keyed by parameters to ensure cache invalidation on param changes
+let cachedPatterns: { count: number; data: PatlearnArtifact[] } | null = null;
+let cachedSummary: { window: string; data: PatlearnSummary } | null = null;
 
 /**
- * Get cached mock patterns (generates once per session)
+ * Get cached mock patterns (generates once per session per count)
  */
 export function getMockPatterns(count = 25): PatlearnArtifact[] {
-  if (!cachedPatterns) {
-    cachedPatterns = generateMockPatterns(count);
+  if (!cachedPatterns || cachedPatterns.count !== count) {
+    cachedPatterns = { count, data: generateMockPatterns(count) };
   }
-  return cachedPatterns;
+  return cachedPatterns.data;
 }
 
 /**
- * Get cached mock summary (generates once per session)
+ * Get cached mock summary (generates once per session per window)
  */
 export function getMockSummary(window: '24h' | '7d' | '30d' = '24h'): PatlearnSummary {
-  if (!cachedSummary) {
-    cachedSummary = generateMockSummary(window);
+  if (!cachedSummary || cachedSummary.window !== window) {
+    cachedSummary = { window, data: generateMockSummary(window) };
   }
-  return cachedSummary;
+  return cachedSummary.data;
 }
 
 /**
