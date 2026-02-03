@@ -24,8 +24,19 @@ interface MockEventConsumer {
   hasStateSnapshot: Mock;
 }
 
+interface MockPlaybackDataSource {
+  injectPlaybackEvent: Mock;
+  injectEvent: Mock;
+  start: Mock;
+  stop: Mock;
+  isRunning: Mock;
+  on: Mock;
+  off: Mock;
+  emit: Mock;
+}
+
 // Use vi.hoisted to define mocks that will be available during module mocking
-const { mockPlaybackService, mockEventConsumer } = vi.hoisted(() => {
+const { mockPlaybackService, mockEventConsumer, mockPlaybackDataSource } = vi.hoisted(() => {
   const mockPlaybackService: MockPlaybackService = {
     listRecordings: vi.fn(),
     getStatus: vi.fn(),
@@ -47,7 +58,18 @@ const { mockPlaybackService, mockEventConsumer } = vi.hoisted(() => {
     hasStateSnapshot: vi.fn().mockReturnValue(false),
   };
 
-  return { mockPlaybackService, mockEventConsumer };
+  const mockPlaybackDataSource: MockPlaybackDataSource = {
+    injectPlaybackEvent: vi.fn(),
+    injectEvent: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
+    isRunning: vi.fn().mockReturnValue(false),
+    on: vi.fn(),
+    off: vi.fn(),
+    emit: vi.fn(),
+  };
+
+  return { mockPlaybackService, mockEventConsumer, mockPlaybackDataSource };
 });
 
 // Mock event-playback module
@@ -64,6 +86,11 @@ vi.mock('../event-playback', () => ({
 // Mock event-consumer module
 vi.mock('../event-consumer', () => ({
   getEventConsumer: () => mockEventConsumer,
+}));
+
+// Mock playback-data-source module
+vi.mock('../playback-data-source', () => ({
+  getPlaybackDataSource: () => mockPlaybackDataSource,
 }));
 
 // Import router after mocks are set up
@@ -884,8 +911,10 @@ describe('Playback Routes', () => {
 
       expect(mockEventConsumer.resetState).toHaveBeenCalledTimes(1);
     });
+  });
 
-    it('should wire up event injection to EventConsumer', async () => {
+  describe('PlaybackDataSource integration', () => {
+    it('should wire up event injection to PlaybackDataSource', async () => {
       mockPlaybackService.startPlayback.mockResolvedValue(undefined);
       mockPlaybackService.getStatus.mockReturnValue({
         isPlaying: true,
@@ -914,8 +943,8 @@ describe('Playback Routes', () => {
       };
       eventHandler(testEvent);
 
-      // Verify the event was injected into EventConsumer
-      expect(mockEventConsumer.injectPlaybackEvent).toHaveBeenCalledWith('agent-actions', {
+      // Verify the event was injected into PlaybackDataSource
+      expect(mockPlaybackDataSource.injectPlaybackEvent).toHaveBeenCalledWith('agent-actions', {
         action: 'test',
         timestamp: '2024-01-01T00:00:00Z',
       });

@@ -24,6 +24,7 @@ import {
   type IntentRecentEventPayload,
 } from './intent-events';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
+import { getPlaybackDataSource } from './playback-data-source';
 import { playbackEventEmitter, type PlaybackWSMessage } from './playback-events';
 
 /**
@@ -520,6 +521,33 @@ export function setupWebSocket(httpServer: HTTPServer) {
     );
   }
 
+  // PlaybackDataSource listener (works without Kafka for demo playback)
+  const playbackDataSource = getPlaybackDataSource();
+
+  const playbackDataEventHandler = (event: EventBusEvent) => {
+    // Transform to AGENT_ACTION format for client compatibility
+    const action = {
+      id: event.event_id,
+      correlationId: event.correlation_id || event.event_id,
+      agentName: (event.payload?.agentName as string) || event.source || 'playback',
+      actionType: (event.payload?.actionType as string) || event.event_type,
+      actionName: (event.payload?.actionName as string) || event.event_type,
+      actionDetails: event.payload,
+      durationMs: (event.payload?.durationMs as number) || 0,
+      createdAt: new Date(event.timestamp),
+    };
+    broadcast('AGENT_ACTION', action, 'actions');
+  };
+
+  playbackDataSource.on('event', playbackDataEventHandler);
+
+  // Track for cleanup
+  const playbackDataSourceListeners = [
+    { emitter: playbackDataSource, event: 'event', handler: playbackDataEventHandler },
+  ];
+
+  console.log('[WebSocket] PlaybackDataSource listener registered for demo playback');
+
   // Handle WebSocket connections
   wss.on('connection', (ws: WebSocket, request: IncomingMessage) => {
     console.log('WebSocket client connected from', request.socket.remoteAddress);
@@ -865,6 +893,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
       }
     });
     eventBusListeners.length = 0;
+
+    // Remove playback data source listeners (OMN-1885)
+    console.log(`Removing ${playbackDataSourceListeners.length} playback data source listeners...`);
+    playbackDataSourceListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    playbackDataSourceListeners.length = 0;
 
     // Terminate all client connections
     console.log(`Terminating ${clients.size} client connections...`);
