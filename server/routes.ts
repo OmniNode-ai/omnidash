@@ -8,6 +8,7 @@ import { chatRouter } from './chat-routes';
 import eventBusRoutes from './event-bus-routes';
 import registryRoutes from './registry-routes';
 import playbackRoutes from './playback-routes';
+import patternsRoutes from './patterns-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -39,6 +40,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount demo playback routes for recorded event replay
   app.use('/api/demo', playbackRoutes);
+
+  // Mount patterns routes for learned patterns API (OMN-1797)
+  app.use('/api/patterns', patternsRoutes);
 
   const httpServer = createServer(app);
 
