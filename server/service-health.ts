@@ -3,7 +3,7 @@
  * Tests all external service connections and provides diagnostic information
  */
 
-import { getIntelligenceDb } from './storage';
+import { tryGetIntelligenceDb, isDatabaseConfigured, getDatabaseError } from './storage';
 import { sql } from 'drizzle-orm';
 import { eventConsumer } from './event-consumer';
 import { Kafka } from 'kafkajs';
@@ -33,8 +33,34 @@ export async function checkAllServices(): Promise<ServiceHealthCheck[]> {
 
 async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
+
+  // Check if database is configured first (graceful degradation)
+  if (!isDatabaseConfigured()) {
+    return {
+      service: 'PostgreSQL',
+      status: 'down',
+      latencyMs: 0,
+      error: getDatabaseError() || 'Database not configured',
+      details: {
+        configured: false,
+        message:
+          'Dashboard running in demo-only mode. Set POSTGRES_* environment variables to enable database.',
+      },
+    };
+  }
+
   try {
-    const result = await getIntelligenceDb().execute(
+    const db = tryGetIntelligenceDb();
+    if (!db) {
+      return {
+        service: 'PostgreSQL',
+        status: 'down',
+        latencyMs: 0,
+        error: 'Database connection not available',
+      };
+    }
+
+    const result = await db.execute(
       sql`SELECT 1 as check, NOW() as current_time, version() as pg_version`
     );
     const latency = Date.now() - startTime;
@@ -48,6 +74,7 @@ async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
       status: latency < 1000 ? 'up' : 'warning',
       latencyMs: latency,
       details: {
+        configured: true,
         version: firstRow.pg_version?.substring(0, 50) || 'unknown',
         currentTime: firstRow.current_time,
       },
@@ -58,6 +85,10 @@ async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
       status: 'down',
       latencyMs: Date.now() - startTime,
       error: error instanceof Error ? error.message : 'Unknown error',
+      details: {
+        configured: true,
+        message: 'Database configured but connection failed. Check network/credentials.',
+      },
     };
   }
 }

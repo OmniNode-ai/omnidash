@@ -12,11 +12,18 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { EventEmitter } from 'events';
 import { PLAYBACK_CONFIG, isValidSpeed } from '@shared/schemas/playback-config';
 
-// Recordings directory - all recording files must be within this directory
-const RECORDINGS_DIR = path.resolve('demo/recordings');
+// Get the directory of this module (works in both dev and production)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Recordings directory - resolve relative to module location, not cwd
+// In dev: server/event-playback.ts -> ../demo/recordings
+// In prod: dist/index.js -> ../demo/recordings
+const RECORDINGS_DIR = path.resolve(__dirname, '..', 'demo', 'recordings');
 
 // Test environment detection
 const IS_TEST_ENV = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
