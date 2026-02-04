@@ -17,7 +17,11 @@
 
 import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { getTopicLabel, getEventMonitoringConfig } from '@/lib/configs/event-bus-dashboard';
+import {
+  getTopicLabel,
+  getEventTypeLabel,
+  getEventMonitoringConfig,
+} from '@/lib/configs/event-bus-dashboard';
 import type {
   WireEventMessage,
   WireEventData,
@@ -691,6 +695,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
 
   /**
    * Topic breakdown computed from current events.
+   * Sorted alphabetically by name for stable legend ordering.
    */
   const topicBreakdown = useMemo((): TopicBreakdownItem[] => {
     const counts: Record<string, number> = {};
@@ -703,11 +708,13 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
         topic,
         eventCount: count,
       }))
-      .sort((a, b) => b.eventCount - a.eventCount);
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [events]);
 
   /**
    * Event type breakdown computed from current events.
+   * Uses getEventTypeLabel for human-readable short labels.
+   * Sorted alphabetically by name for stable legend ordering.
    */
   const eventTypeBreakdown = useMemo((): EventTypeBreakdownItem[] => {
     const counts: Record<string, number> = {};
@@ -716,11 +723,11 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     }
     return Object.entries(counts)
       .map(([eventType, count]) => ({
-        name: eventType,
+        name: getEventTypeLabel(eventType),
         eventType,
         eventCount: count,
       }))
-      .sort((a, b) => b.eventCount - a.eventCount);
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [events]);
 
   /**
