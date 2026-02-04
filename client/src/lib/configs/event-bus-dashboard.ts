@@ -319,7 +319,6 @@ export const eventBusDashboardConfig: DashboardConfig = {
     {
       widget_id: 'chart-volume-timeline',
       title: 'Event Volume Over Time',
-      description: 'Events per 10-second interval',
       row: 1,
       col: 0,
       width: 6,
@@ -338,7 +337,6 @@ export const eventBusDashboardConfig: DashboardConfig = {
     {
       widget_id: 'chart-topic-breakdown',
       title: 'Events by Topic',
-      description: 'Distribution of events across topics',
       row: 1,
       col: 6,
       width: 3,
@@ -356,7 +354,6 @@ export const eventBusDashboardConfig: DashboardConfig = {
     {
       widget_id: 'chart-event-type-breakdown',
       title: 'Events by Type',
-      description: 'Distribution of event types',
       row: 1,
       col: 9,
       width: 3,
@@ -401,6 +398,130 @@ export const eventBusDashboardConfig: DashboardConfig = {
     },
   ],
 };
+
+// ============================================================================
+// Event Type Metadata
+// ============================================================================
+
+/**
+ * Event type metadata for display labels.
+ * Maps raw event type strings to human-readable short labels.
+ */
+export const EVENT_TYPE_METADATA: Record<string, { label: string; description?: string }> = {
+  // Agent event types
+  'agent-routing-decisions': { label: 'Routing Decision' },
+  'agent-manifest-injections': { label: 'Manifest Injection' },
+  'agent-transformation-events': { label: 'Transformation' },
+  routing: { label: 'Routing' },
+  transformation: { label: 'Transformation' },
+  performance: { label: 'Performance' },
+  action: { label: 'Action' },
+  error: { label: 'Error' },
+
+  // Common raw event types (with underscores)
+  tool_call: { label: 'Tool Call' },
+  user: { label: 'User Action' },
+  decision: { label: 'Decision' },
+  success: { label: 'Success' },
+
+  // Environment-only values that slip through (map to Unknown)
+  dev: { label: 'Unknown Type' },
+  staging: { label: 'Unknown Type' },
+  prod: { label: 'Unknown Type' },
+  production: { label: 'Unknown Type' },
+  test: { label: 'Unknown Type' },
+
+  // ONEX event types (full paths)
+  'dev.onex.evt.omniclaude.tool-executed.v1': { label: 'Tool Executed' },
+  'dev.onex.evt.omniclaude.prompt-submitted.v1': { label: 'Prompt Submitted' },
+  'dev.onex.evt.omniclaude.session-started.v1': { label: 'Session Started' },
+  'dev.onex.evt.omniclaude.session-ended.v1': { label: 'Session Ended' },
+  'dev.onex.evt.omniintelligence.pattern-scored.v1': { label: 'Pattern Scored' },
+  'dev.onex.evt.omniintelligence.pattern-discovered.v1': { label: 'Pattern Discovered' },
+  'dev.onex.evt.omniintelligence.pattern-learned.v1': { label: 'Pattern Learned' },
+
+  // Node lifecycle event types
+  introspection: { label: 'Introspection' },
+  heartbeat: { label: 'Heartbeat' },
+  state_change: { label: 'State Change' },
+  registry_update: { label: 'Registry Update' },
+};
+
+/** Environment prefixes to skip when extracting event type labels */
+const ENVIRONMENT_PREFIXES = ['dev', 'staging', 'prod', 'production', 'test', 'local'];
+
+/** Structural segments to skip (not meaningful for display) */
+const STRUCTURAL_SEGMENTS = ['evt', 'event', 'events', 'onex', 'omninode_bridge'];
+
+/**
+ * Convert a kebab-case or snake_case string to Title Case.
+ * @example "tool-executed" → "Tool Executed"
+ * @example "pattern_scored" → "Pattern Scored"
+ */
+function toTitleCase(str: string): string {
+  return str
+    .split(/[-_]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/**
+ * Extract a short label from an ONEX-style event type string.
+ *
+ * Patterns supported:
+ * - dev.[namespace].evt.[source].[action].v[N] → "Action"
+ * - dev.[namespace].onex.evt.[action].v[N] → "Action"
+ * - Simple strings like "tool_call" → "Tool Call"
+ *
+ * Skips environment prefixes (dev, staging, prod) and structural segments (evt, onex).
+ */
+function extractEventTypeLabel(eventType: string): string {
+  // Pattern: dev.*.evt.*.[action].v[N]
+  const onexPattern = /^dev\.[^.]+\.evt\.[^.]+\.([^.]+)\.v\d+$/;
+  const match = eventType.match(onexPattern);
+
+  if (match) {
+    return toTitleCase(match[1]);
+  }
+
+  // Alternative pattern: dev.*.onex.evt.[action].v[N]
+  const altPattern = /^dev\.[^.]+\.onex\.evt\.([^.]+)\.v\d+$/;
+  const altMatch = eventType.match(altPattern);
+  if (altMatch) {
+    return toTitleCase(altMatch[1]);
+  }
+
+  // Split and filter out non-meaningful segments
+  const segments = eventType.split('.');
+  const meaningfulSegments = segments.filter((seg) => {
+    const lower = seg.toLowerCase();
+    // Skip environment prefixes
+    if (ENVIRONMENT_PREFIXES.includes(lower)) return false;
+    // Skip structural segments
+    if (STRUCTURAL_SEGMENTS.includes(lower)) return false;
+    // Skip version suffixes (v1, v2, etc.)
+    if (/^v\d+$/.test(lower)) return false;
+    // Skip empty segments
+    if (!seg.trim()) return false;
+    return true;
+  });
+
+  // Take the last meaningful segment (usually the action)
+  if (meaningfulSegments.length > 0) {
+    const lastSegment = meaningfulSegments[meaningfulSegments.length - 1];
+    return toTitleCase(lastSegment);
+  }
+
+  // Ultimate fallback: return as-is but truncated
+  return eventType.length > 25 ? eventType.slice(0, 22) + '...' : eventType;
+}
+
+/**
+ * Get the label for an event type, with fallback to extracted label.
+ */
+export function getEventTypeLabel(eventType: string): string {
+  return EVENT_TYPE_METADATA[eventType]?.label ?? extractEventTypeLabel(eventType);
+}
 
 // ============================================================================
 // Config Accessor Functions

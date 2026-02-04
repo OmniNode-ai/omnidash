@@ -18,6 +18,7 @@ import {
   eventBusDashboardConfig,
   getEventMonitoringConfig,
   getTopicLabel,
+  getEventTypeLabel,
   getMonitoredTopics,
 } from '@/lib/configs/event-bus-dashboard';
 import { useEventBusStream } from '@/hooks/useEventBusStream';
@@ -122,7 +123,7 @@ function toRecentEvent(event: ProcessedEvent) {
     id: event.id,
     topic: event.topic,
     topicRaw: event.topicRaw,
-    eventType: event.eventType,
+    eventType: getEventTypeLabel(event.eventType),
     source: event.source,
     timestamp: event.timestampRaw,
     priority: event.priority,
@@ -248,7 +249,7 @@ export default function EventBusMonitor() {
       }));
 
       const eventTypeBreakdownData = Object.entries(eventTypeCounts).map(([eventType, count]) => ({
-        name: eventType,
+        name: getEventTypeLabel(eventType),
         eventType,
         eventCount: count,
       }));
@@ -317,7 +318,7 @@ export default function EventBusMonitor() {
 
     const filteredEventTypeBreakdown = Object.entries(eventTypeCounts).map(
       ([eventType, count]) => ({
-        name: eventType,
+        name: getEventTypeLabel(eventType),
         eventType,
         eventCount: count,
       })
