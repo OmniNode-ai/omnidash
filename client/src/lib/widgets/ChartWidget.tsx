@@ -156,6 +156,77 @@ function getSeriesColor(index: number): string {
 }
 
 /**
+ * Explicit color assignments for common items to prevent collisions.
+ * These are hand-picked to ensure visually distinct colors for frequently
+ * co-occurring items.
+ */
+const EXPLICIT_COLOR_MAP: Record<string, number> = {
+  // Topics (Events by Topic chart)
+  'Agent Actions': 0, // Blue
+  Heartbeat: 1, // Green
+  'Routing Decisions': 2, // Purple
+  Transformations: 3, // Orange
+  Performance: 4, // Red
+  'Node Introspection': 5, // Teal
+  'Registration Completed': 6, // Yellow
+
+  // Event types (Events by Type chart)
+  'Tool Call': 0, // Blue
+  'Tool Executed': 0, // Blue (same category)
+  User: 1, // Green
+  'Prompt Submitted': 2, // Purple
+  'Pattern Scored': 3, // Orange
+  'Pattern Discovered': 4, // Red
+  'Manifest Injection': 5, // Teal
+  Routing: 6, // Yellow
+  'Unknown Type': 6, // Yellow (for "dev" and similar)
+
+  // Other category always last color
+  Other: 6,
+};
+
+/**
+ * FNV-1a hash function for stable color assignment.
+ * Better distribution than djb2 for short strings.
+ *
+ * @param str - The string to hash
+ * @returns A positive integer hash value
+ */
+function hashString(str: string): number {
+  let hash = 2166136261; // FNV offset basis
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619); // FNV prime
+  }
+  return Math.abs(hash);
+}
+
+/**
+ * Gets a stable color for a named item in pie/donut charts.
+ *
+ * Uses explicit color assignments for common items to prevent collisions,
+ * falling back to hash-based assignment for unknown items.
+ *
+ * @param name - The item name to get a color for
+ * @returns An HSL color string from the semantic chart palette
+ */
+function getStableColor(name: string): string {
+  // Check explicit mappings first
+  if (name in EXPLICIT_COLOR_MAP) {
+    return CHART_COLORS[EXPLICIT_COLOR_MAP[name]];
+  }
+
+  // Check if it starts with "Other" (e.g., "Other (5)")
+  if (name.startsWith('Other')) {
+    return CHART_COLORS[6];
+  }
+
+  // Fall back to hash for unknown items
+  const hash = hashString(name);
+  return CHART_COLORS[hash % CHART_COLORS.length];
+}
+
+/**
  * Aggregates chart data to show top N items plus an "Other" category.
  *
  * This prevents pie/donut charts from becoming unreadable when there
@@ -440,10 +511,22 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
   const valueKey = 'value';
   const nameKey = 'name';
 
+  // Calculate total for percentages in legend
+  const total = (chartData as Record<string, unknown>[]).reduce((sum, item) => {
+    return sum + (Number(item[valueKey]) || 0);
+  }, 0);
+
+  // Create lookup map for percentages
+  const percentMap = new Map<string, number>();
+  (chartData as Record<string, unknown>[]).forEach((item) => {
+    const name = String(item[nameKey] || '');
+    const value = Number(item[valueKey]) || 0;
+    const percent = total > 0 ? (value / total) * 100 : 0;
+    percentMap.set(name, percent);
+  });
+
   return (
-    // Increased top/bottom margins to prevent percentage labels from being clipped
-    // Labels at 12 o'clock and 6 o'clock positions extend beyond the pie outer radius
-    <PieChart margin={{ top: 25, right: 10, bottom: 25, left: 10 }}>
+    <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
       <Pie
         data={chartData}
         dataKey={valueKey}
@@ -453,12 +536,12 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
         innerRadius={35}
         outerRadius={70}
         paddingAngle={PIE_PADDING_ANGLE}
-        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+        label={false}
         labelLine={false}
         isAnimationActive={false}
       >
-        {(chartData as Record<string, unknown>[]).map((_, index) => (
-          <Cell key={`cell-${index}`} fill={getSeriesColor(index)} />
+        {(chartData as Record<string, unknown>[]).map((entry, index) => (
+          <Cell key={`cell-${index}`} fill={getStableColor(String(entry[nameKey] || index))} />
         ))}
       </Pie>
       <Tooltip contentStyle={tooltipStyle} />
@@ -472,9 +555,17 @@ function renderPieChart(chartData: unknown[], config: WidgetConfigChart) {
             fontSize: '11px',
             lineHeight: '1.4',
           }}
-          formatter={(value: string) => (
-            <span style={{ display: 'inline', whiteSpace: 'nowrap' }}>{value}</span>
-          )}
+          formatter={(value: string) => {
+            const percent = percentMap.get(value) ?? 0;
+            return (
+              <span style={{ display: 'inline', whiteSpace: 'nowrap' }}>
+                {value}{' '}
+                <span style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  ({percent.toFixed(0)}%)
+                </span>
+              </span>
+            );
+          }}
         />
       )}
     </PieChart>
@@ -508,10 +599,19 @@ function renderDonutChart(chartData: unknown[], config: WidgetConfigChart) {
         : 'value';
   const nameKey = 'name';
 
-  // Calculate total for center label
+  // Calculate total for percentages in legend
   const total = (chartData as Record<string, unknown>[]).reduce((sum, item) => {
     return sum + (Number(item[valueKey]) || 0);
   }, 0);
+
+  // Create lookup map for percentages
+  const percentMap = new Map<string, number>();
+  (chartData as Record<string, unknown>[]).forEach((item) => {
+    const name = String(item[nameKey] || '');
+    const value = Number(item[valueKey]) || 0;
+    const percent = total > 0 ? (value / total) * 100 : 0;
+    percentMap.set(name, percent);
+  });
 
   return (
     <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
@@ -521,15 +621,15 @@ function renderDonutChart(chartData: unknown[], config: WidgetConfigChart) {
         nameKey={nameKey}
         cx={config.show_legend ? '35%' : '50%'}
         cy="50%"
-        innerRadius="55%"
-        outerRadius="85%"
+        innerRadius={50}
+        outerRadius={75}
         paddingAngle={2}
-        label={({ percent }) => (percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : '')}
+        label={false}
         labelLine={false}
         isAnimationActive={false}
       >
-        {(chartData as Record<string, unknown>[]).map((_, index) => (
-          <Cell key={`cell-${index}`} fill={getSeriesColor(index)} />
+        {(chartData as Record<string, unknown>[]).map((entry, index) => (
+          <Cell key={`cell-${index}`} fill={getStableColor(String(entry[nameKey] || index))} />
         ))}
       </Pie>
       <Tooltip
@@ -549,9 +649,17 @@ function renderDonutChart(chartData: unknown[], config: WidgetConfigChart) {
             fontSize: '11px',
             lineHeight: '1.5',
           }}
-          formatter={(value: string) => (
-            <span style={{ display: 'inline', whiteSpace: 'nowrap' }}>{value}</span>
-          )}
+          formatter={(value: string) => {
+            const percent = percentMap.get(value) ?? 0;
+            return (
+              <span style={{ display: 'inline', whiteSpace: 'nowrap' }}>
+                {value}{' '}
+                <span style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  ({percent.toFixed(0)}%)
+                </span>
+              </span>
+            );
+          }}
         />
       )}
     </PieChart>
