@@ -50,8 +50,6 @@ const LINE_STROKE_WIDTH = 2;
 const ACTIVE_DOT_RADIUS = 4;
 const BAR_CORNER_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
 const AREA_FILL_OPACITY = 0.2;
-const PIE_INNER_RADIUS = 40;
-const PIE_OUTER_RADIUS = 80;
 const PIE_PADDING_ANGLE = 2;
 
 /** Default key for value field in chart data objects */
