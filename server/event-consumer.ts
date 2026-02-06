@@ -1199,6 +1199,8 @@ export class EventConsumer extends EventEmitter {
                   intentLogger.debug(`Processing validation run started: ${event.run_id}`);
                   handleValidationRunStarted(event);
                   this.emit('validation-event', { type: 'run-started', event });
+                } else {
+                  console.warn('[validation] Dropped malformed run-started event on topic', topic);
                 }
                 break;
               case VALIDATION_VIOLATIONS_BATCH_TOPIC:
@@ -1208,6 +1210,11 @@ export class EventConsumer extends EventEmitter {
                   );
                   handleValidationViolationsBatch(event);
                   this.emit('validation-event', { type: 'violations-batch', event });
+                } else {
+                  console.warn(
+                    '[validation] Dropped malformed violations-batch event on topic',
+                    topic
+                  );
                 }
                 break;
               case VALIDATION_RUN_COMPLETED_TOPIC:
@@ -1217,6 +1224,11 @@ export class EventConsumer extends EventEmitter {
                   );
                   handleValidationRunCompleted(event);
                   this.emit('validation-event', { type: 'run-completed', event });
+                } else {
+                  console.warn(
+                    '[validation] Dropped malformed run-completed event on topic',
+                    topic
+                  );
                 }
                 break;
 

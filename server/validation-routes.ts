@@ -166,7 +166,7 @@ router.get('/runs', (req, res) => {
     console.error('Error listing validation runs:', error);
     res.status(500).json({
       error: 'Failed to list validation runs',
-      message: error instanceof Error ? error.message : String(error),
+      message: 'Internal server error',
     });
   }
 });
@@ -186,7 +186,7 @@ router.get('/runs/:runId', (req, res) => {
     console.error('Error getting validation run:', error);
     res.status(500).json({
       error: 'Failed to get validation run',
-      message: error instanceof Error ? error.message : String(error),
+      message: 'Internal server error',
     });
   }
 });
@@ -234,7 +234,7 @@ router.get('/repos/:repoId/trends', (req, res) => {
     console.error('Error getting repo trends:', error);
     res.status(500).json({
       error: 'Failed to get repo trends',
-      message: error instanceof Error ? error.message : String(error),
+      message: 'Internal server error',
     });
   }
 });
@@ -280,7 +280,7 @@ router.get('/summary', (_req, res) => {
     console.error('Error getting validation summary:', error);
     res.status(500).json({
       error: 'Failed to get validation summary',
-      message: error instanceof Error ? error.message : String(error),
+      message: 'Internal server error',
     });
   }
 });
