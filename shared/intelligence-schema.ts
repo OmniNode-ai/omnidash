@@ -10,7 +10,9 @@ import {
   jsonb,
   timestamp,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 
 /**
@@ -502,6 +504,7 @@ export const validationRuns = pgTable(
   (table) => [
     index('idx_validation_runs_status').on(table.status),
     index('idx_validation_runs_started_at').on(table.startedAt),
+    index('idx_validation_runs_repos_gin').using('gin', table.repos),
   ]
 );
 
@@ -530,7 +533,7 @@ export const validationViolations = pgTable(
   },
   (table) => [
     index('idx_validation_violations_run_id').on(table.runId),
-    index('idx_validation_violations_run_batch').on(table.runId, table.batchIndex),
+    uniqueIndex('idx_validation_violations_run_batch').on(table.runId, table.batchIndex),
     index('idx_validation_violations_severity').on(table.severity),
   ]
 );
