@@ -30,22 +30,27 @@ export const WS_CHANNEL_VALIDATION = 'validation';
 // Violation Severity
 // ============================================================================
 
+/** Allowed violation severity levels, ordered from most to least severe. */
 export const VIOLATION_SEVERITIES = ['error', 'warning', 'info'] as const;
+
+/** Union type of valid violation severity strings. */
 export type ViolationSeverity = (typeof VIOLATION_SEVERITIES)[number];
 
 // ============================================================================
 // Zod Schemas
 // ============================================================================
 
+/** Zod schema for the ValidationRunStarted Kafka event. */
 export const ValidationRunStartedSchema = z.object({
   event_type: z.literal('ValidationRunStarted'),
   run_id: z.string(),
   repos: z.array(z.string()),
   validators: z.array(z.string()),
   triggered_by: z.string().optional(),
-  timestamp: z.string(),
+  timestamp: z.string().datetime(),
 });
 
+/** Zod schema for a single validation violation entry. */
 export const ViolationSchema = z.object({
   rule_id: z.string(),
   severity: z.enum(VIOLATION_SEVERITIES),
@@ -56,14 +61,16 @@ export const ViolationSchema = z.object({
   validator: z.string(),
 });
 
+/** Zod schema for the ValidationViolationsBatch Kafka event. */
 export const ValidationViolationsBatchSchema = z.object({
   event_type: z.literal('ValidationViolationsBatch'),
   run_id: z.string(),
   violations: z.array(ViolationSchema),
   batch_index: z.number(),
-  timestamp: z.string(),
+  timestamp: z.string().datetime(),
 });
 
+/** Zod schema for the ValidationRunCompleted Kafka event. */
 export const ValidationRunCompletedSchema = z.object({
   event_type: z.literal('ValidationRunCompleted'),
   run_id: z.string(),
@@ -71,7 +78,7 @@ export const ValidationRunCompletedSchema = z.object({
   total_violations: z.number(),
   violations_by_severity: z.record(z.number()).optional(),
   duration_ms: z.number(),
-  timestamp: z.string(),
+  timestamp: z.string().datetime(),
 });
 
 // ============================================================================
@@ -118,16 +125,19 @@ export interface RepoTrends {
 // Type Guards
 // ============================================================================
 
+/** Type guard that checks whether an unknown value is a valid ValidationRunStarted event. */
 export function isValidationRunStarted(event: unknown): event is ValidationRunStartedEvent {
   return ValidationRunStartedSchema.safeParse(event).success;
 }
 
+/** Type guard that checks whether an unknown value is a valid ValidationViolationsBatch event. */
 export function isValidationViolationsBatch(
   event: unknown
 ): event is ValidationViolationsBatchEvent {
   return ValidationViolationsBatchSchema.safeParse(event).success;
 }
 
+/** Type guard that checks whether an unknown value is a valid ValidationRunCompleted event. */
 export function isValidationRunCompleted(event: unknown): event is ValidationRunCompletedEvent {
   return ValidationRunCompletedSchema.safeParse(event).success;
 }

@@ -6,9 +6,10 @@
  * @see OMN-1907 - Cross-Repo Validation Dashboard Integration
  */
 
-import { useState, useMemo, Fragment } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo, useEffect, Fragment } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -91,6 +92,7 @@ interface SummaryResponse {
 // Helpers
 // ============================================================================
 
+/** Render a colored badge for the given validation run status. */
 function statusBadge(status: string) {
   switch (status) {
     case 'passed':
@@ -126,6 +128,7 @@ function statusBadge(status: string) {
   }
 }
 
+/** Render a colored badge for the given violation severity. */
 function severityBadge(severity: string) {
   switch (severity) {
     case 'error':
@@ -155,12 +158,14 @@ function severityBadge(severity: string) {
   }
 }
 
+/** Format milliseconds into a human-readable duration string. */
 function formatDuration(ms: number | undefined) {
   if (ms === undefined) return '—';
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+/** Format an ISO timestamp into a short locale string. */
 function formatTime(iso: string) {
   const d = new Date(iso);
   return d.toLocaleString(undefined, {
@@ -175,10 +180,34 @@ function formatTime(iso: string) {
 // Component
 // ============================================================================
 
+/**
+ * Dashboard for monitoring cross-repo validation runs, violations, and per-repo trends.
+ *
+ * Displays summary cards, a violation trend chart, and an expandable runs table.
+ * Subscribes to the 'validation' WebSocket topic so data refreshes in real-time
+ * when new validation events arrive, in addition to 15-second polling as a fallback.
+ */
 export default function ValidationDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+
+  // ---------------------------------------------------------------------------
+  // WebSocket: subscribe to validation topic for real-time query invalidation
+  // ---------------------------------------------------------------------------
+  const queryClient = useQueryClient();
+
+  const { subscribe } = useWebSocket({
+    onMessage: (msg) => {
+      if (msg.type === 'VALIDATION_EVENT') {
+        queryClient.invalidateQueries({ queryKey: queryKeys.validation.all });
+      }
+    },
+  });
+
+  useEffect(() => {
+    subscribe(['validation']);
+  }, [subscribe]);
 
   // Fetch summary stats
   const {
@@ -469,9 +498,19 @@ export default function ValidationDashboard() {
                   <Fragment key={run.run_id}>
                     <TableRow
                       className="cursor-pointer hover:bg-muted/50"
+                      tabIndex={0}
+                      role="button"
+                      aria-expanded={expandedRunId === run.run_id}
+                      aria-label={`Toggle details for run ${run.run_id.slice(0, 8)}`}
                       onClick={() =>
                         setExpandedRunId(expandedRunId === run.run_id ? null : run.run_id)
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setExpandedRunId(expandedRunId === run.run_id ? null : run.run_id);
+                        }
+                      }}
                     >
                       <TableCell>
                         {expandedRunId === run.run_id ? (

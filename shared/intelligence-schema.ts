@@ -4,6 +4,7 @@ import {
   text,
   varchar,
   integer,
+  serial,
   numeric,
   boolean,
   jsonb,
@@ -465,3 +466,74 @@ export interface PaginatedPatternsResponse {
   limit: number;
   offset: number;
 }
+
+// ============================================================================
+// Cross-Repo Validation Tables (OMN-1907)
+// ============================================================================
+
+/**
+ * Validation Runs Table
+ * Tracks cross-repo validation run lifecycle from started -> completed.
+ * Populated by Kafka events consumed from ONEX validation topics.
+ */
+export const validationRuns = pgTable(
+  'validation_runs',
+  {
+    runId: text('run_id').primaryKey(),
+    repos: jsonb('repos').notNull().$type<string[]>(),
+    validators: jsonb('validators').notNull().$type<string[]>(),
+    triggeredBy: text('triggered_by'),
+    status: text('status').notNull().default('running'),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    durationMs: integer('duration_ms'),
+    totalViolations: integer('total_violations').notNull().default(0),
+    violationsBySeverity: jsonb('violations_by_severity')
+      .notNull()
+      .default({})
+      .$type<Record<string, number>>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_validation_runs_status').on(table.status),
+    index('idx_validation_runs_started_at').on(table.startedAt),
+  ]
+);
+
+/**
+ * Validation Violations Table
+ * Individual violations discovered during a validation run.
+ * Linked to a run via run_id. batch_index tracks Kafka batch origin
+ * to enable idempotent replay.
+ */
+export const validationViolations = pgTable(
+  'validation_violations',
+  {
+    id: serial('id').primaryKey(),
+    runId: text('run_id').notNull(),
+    batchIndex: integer('batch_index').notNull(),
+    ruleId: text('rule_id').notNull(),
+    severity: text('severity').notNull(),
+    message: text('message').notNull(),
+    repo: text('repo').notNull(),
+    filePath: text('file_path'),
+    line: integer('line'),
+    validator: text('validator').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_validation_violations_run_id').on(table.runId),
+    index('idx_validation_violations_run_batch').on(table.runId, table.batchIndex),
+    index('idx_validation_violations_severity').on(table.severity),
+  ]
+);
+
+// Export Zod schemas for validation
+export const insertValidationRunSchema = createInsertSchema(validationRuns);
+export const insertValidationViolationSchema = createInsertSchema(validationViolations);
+
+// Export TypeScript types
+export type ValidationRunRow = typeof validationRuns.$inferSelect;
+export type InsertValidationRun = typeof validationRuns.$inferInsert;
+export type ValidationViolationRow = typeof validationViolations.$inferSelect;
+export type InsertValidationViolation = typeof validationViolations.$inferInsert;
