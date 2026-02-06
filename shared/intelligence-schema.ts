@@ -469,6 +469,11 @@ export interface PaginatedPatternsResponse {
 
 // ============================================================================
 // Cross-Repo Validation Tables (OMN-1907)
+//
+// These tables live in the intelligence database (omninode_bridge on
+// 192.168.86.200:5436). To create them, run:
+//   npm run db:push
+// or apply the SQL manually against the intelligence DB.
 // ============================================================================
 
 /**
@@ -510,7 +515,9 @@ export const validationViolations = pgTable(
   'validation_violations',
   {
     id: serial('id').primaryKey(),
-    runId: text('run_id').notNull(),
+    runId: text('run_id')
+      .notNull()
+      .references(() => validationRuns.runId, { onDelete: 'cascade' }),
     batchIndex: integer('batch_index').notNull(),
     ruleId: text('rule_id').notNull(),
     severity: text('severity').notNull(),

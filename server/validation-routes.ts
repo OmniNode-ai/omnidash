@@ -269,6 +269,14 @@ router.get('/runs', async (req, res) => {
     const limitStr = req.query.limit as string | undefined;
     const offsetStr = req.query.offset as string | undefined;
 
+    const VALID_STATUSES = ['running', 'passed', 'failed', 'error'];
+    if (status && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({
+        error: 'Invalid status filter',
+        message: `Status must be one of: ${VALID_STATUSES.join(', ')}`,
+      });
+    }
+
     const limit = Math.min(Math.max(parseInt(limitStr || '50', 10) || 50, 1), 200);
     const offset = Math.max(parseInt(offsetStr || '0', 10) || 0, 0);
 
@@ -391,37 +399,50 @@ router.get('/repos/:repoId/trends', async (req, res) => {
       )
       .orderBy(validationRuns.startedAt);
 
-    // Build trend points from runs by querying repo-specific violations
+    // Build trend points with a single grouped query instead of N+1
+    const runIds = rows.map((r) => r.runId);
     const trend: RepoTrendPoint[] = [];
 
-    for (const row of rows) {
-      const repoViolations = await db
+    if (runIds.length > 0) {
+      // Single query: get severity counts per run for this repo
+      const violationCounts = await db
         .select({
+          runId: validationViolations.runId,
           severity: validationViolations.severity,
           count: sql<number>`count(*)::int`,
         })
         .from(validationViolations)
         .where(
-          and(eq(validationViolations.runId, row.runId), eq(validationViolations.repo, repoId))
+          and(
+            sql`${validationViolations.runId} = ANY(${runIds})`,
+            eq(validationViolations.repo, repoId)
+          )
         )
-        .groupBy(validationViolations.severity);
+        .groupBy(validationViolations.runId, validationViolations.severity);
 
-      let errors = 0;
-      let warnings = 0;
-      let infos = 0;
-      for (const sv of repoViolations) {
-        if (sv.severity === 'error') errors = sv.count;
-        else if (sv.severity === 'warning') warnings = sv.count;
-        else if (sv.severity === 'info') infos = sv.count;
+      // Index counts by runId for O(1) lookup
+      const countsByRun = new Map<string, { errors: number; warnings: number; infos: number }>();
+      for (const vc of violationCounts) {
+        let entry = countsByRun.get(vc.runId);
+        if (!entry) {
+          entry = { errors: 0, warnings: 0, infos: 0 };
+          countsByRun.set(vc.runId, entry);
+        }
+        if (vc.severity === 'error') entry.errors = vc.count;
+        else if (vc.severity === 'warning') entry.warnings = vc.count;
+        else if (vc.severity === 'info') entry.infos = vc.count;
       }
 
-      trend.push({
-        date: row.startedAt.toISOString().slice(0, 10),
-        errors,
-        warnings,
-        infos,
-        total: errors + warnings + infos,
-      });
+      for (const row of rows) {
+        const counts = countsByRun.get(row.runId) ?? { errors: 0, warnings: 0, infos: 0 };
+        trend.push({
+          date: row.startedAt.toISOString().slice(0, 10),
+          errors: counts.errors,
+          warnings: counts.warnings,
+          infos: counts.infos,
+          total: counts.errors + counts.warnings + counts.infos,
+        });
+      }
     }
 
     const result: RepoTrends = {
@@ -485,13 +506,16 @@ router.get('/summary', async (_req, res) => {
       }
     }
 
-    // Unique repos across all runs
-    const repoResult = await db.select({ repos: validationRuns.repos }).from(validationRuns);
+    // Unique repos across all runs (extracted in SQL to avoid loading all rows)
+    const repoResult = await db
+      .select({
+        repo: sql<string>`DISTINCT jsonb_array_elements_text(${validationRuns.repos})`,
+      })
+      .from(validationRuns);
 
     const repoSet = new Set<string>();
     for (const row of repoResult) {
-      const repos = row.repos as string[];
-      for (const r of repos) repoSet.add(r);
+      repoSet.add(row.repo);
     }
 
     // Total violations by severity (from completed runs)

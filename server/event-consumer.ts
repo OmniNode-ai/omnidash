@@ -1197,7 +1197,7 @@ export class EventConsumer extends EventEmitter {
               case VALIDATION_RUN_STARTED_TOPIC:
                 if (isValidationRunStarted(event)) {
                   intentLogger.debug(`Processing validation run started: ${event.run_id}`);
-                  handleValidationRunStarted(event);
+                  await handleValidationRunStarted(event);
                   this.emit('validation-event', { type: 'run-started', event });
                 } else {
                   console.warn('[validation] Dropped malformed run-started event on topic', topic);
@@ -1208,7 +1208,7 @@ export class EventConsumer extends EventEmitter {
                   intentLogger.debug(
                     `Processing validation violations batch: ${event.run_id} (${event.violations.length} violations)`
                   );
-                  handleValidationViolationsBatch(event);
+                  await handleValidationViolationsBatch(event);
                   this.emit('validation-event', { type: 'violations-batch', event });
                 } else {
                   console.warn(
@@ -1222,7 +1222,7 @@ export class EventConsumer extends EventEmitter {
                   intentLogger.debug(
                     `Processing validation run completed: ${event.run_id} (${event.status})`
                   );
-                  handleValidationRunCompleted(event);
+                  await handleValidationRunCompleted(event);
                   this.emit('validation-event', { type: 'run-completed', event });
                 } else {
                   console.warn(
