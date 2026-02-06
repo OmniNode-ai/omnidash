@@ -15,7 +15,7 @@ import {
   getMockSummary,
   getMockRunDetail,
   getMockRepoTrends,
-} from '../mock-data/validation-mock';
+} from '@/lib/mock-data/validation-mock';
 
 // ===========================
 // Types

@@ -13,6 +13,7 @@ import type {
   RepoTrends,
   RepoTrendPoint,
 } from '@shared/validation-types';
+import { generateUUID } from '@shared/uuid';
 
 // ===========================
 // Constants
@@ -209,14 +210,6 @@ function randomSubset<T>(arr: readonly T[], min: number, max: number): T[] {
   return shuffled.slice(0, count);
 }
 
-function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
 function pastDate(daysAgo: number, hoursOffset = 0): string {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
@@ -305,14 +298,14 @@ function generateMockRun(daysAgo: number, statusOverride?: ValidationRun['status
 export function generateMockRuns(count = 20): ValidationRun[] {
   const runs: ValidationRun[] = [];
 
-  // 1-2 currently running
-  const runningCount = randomInt(1, 2);
+  // 1-2 currently running (capped to count)
+  const runningCount = Math.min(randomInt(1, 2), count);
   for (let i = 0; i < runningCount; i++) {
     runs.push(generateMockRun(0, 'running'));
   }
 
   // Remaining are completed, spread over 14 days
-  for (let i = 0; i < count - runningCount; i++) {
+  for (let i = 0; i < Math.max(0, count - runningCount); i++) {
     const daysAgo = randomFloat(0, 14, 1);
     runs.push(generateMockRun(daysAgo));
   }
