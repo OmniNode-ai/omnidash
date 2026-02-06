@@ -344,7 +344,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
   // Broadcasts validation lifecycle events (run-started, violations-batch, run-completed)
   // to clients subscribed to the 'validation' topic
   registerEventListener('validation-event', (data: { type: string; event: any }) => {
-    broadcast('VALIDATION_EVENT', data, 'validation');
+    // Send minimal payload - clients only need the type for query invalidation,
+    // plus run_id for targeted cache updates. Full violation data stays server-side.
+    broadcast('VALIDATION_EVENT', { type: data.type, run_id: data.event?.run_id }, 'validation');
   });
 
   // Node Registry event listeners

@@ -51,7 +51,7 @@ import {
   Legend,
 } from 'recharts';
 import { queryKeys } from '@/lib/query-keys';
-import type { ValidationRun, Violation, RepoTrends } from '@shared/validation-types';
+import type { ValidationRun, RepoTrends } from '@shared/validation-types';
 
 // ============================================================================
 // Types

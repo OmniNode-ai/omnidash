@@ -11,7 +11,6 @@ import {
   timestamp,
   index,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 
 /**
