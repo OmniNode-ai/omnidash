@@ -197,7 +197,7 @@ export default function ValidationDashboard() {
   // ---------------------------------------------------------------------------
   const queryClient = useQueryClient();
 
-  const { subscribe } = useWebSocket({
+  const { subscribe, isConnected } = useWebSocket({
     onMessage: (msg) => {
       if (msg.type === 'VALIDATION_EVENT') {
         queryClient.invalidateQueries({ queryKey: queryKeys.validation.all });
@@ -206,8 +206,10 @@ export default function ValidationDashboard() {
   });
 
   useEffect(() => {
-    subscribe(['validation']);
-  }, [subscribe]);
+    if (isConnected) {
+      subscribe(['validation']);
+    }
+  }, [isConnected, subscribe]);
 
   // Fetch summary stats
   const {
