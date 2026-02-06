@@ -35,6 +35,19 @@ import {
   type NodeLivenessExpiredPayload,
   type NodeState,
 } from '@shared/schemas';
+import {
+  VALIDATION_RUN_STARTED_TOPIC,
+  VALIDATION_VIOLATIONS_BATCH_TOPIC,
+  VALIDATION_RUN_COMPLETED_TOPIC,
+  isValidationRunStarted,
+  isValidationViolationsBatch,
+  isValidationRunCompleted,
+} from '@shared/validation-types';
+import {
+  handleValidationRunStarted,
+  handleValidationViolationsBatch,
+  handleValidationRunCompleted,
+} from './validation-routes';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 const DEBUG_CANONICAL_EVENTS = process.env.DEBUG_CANONICAL_EVENTS === 'true' || isTestEnv;
@@ -1083,6 +1096,10 @@ export class EventConsumer extends EventEmitter {
           onexNamespacedTopic('evt', 'omniclaude', 'session-started'),
           onexNamespacedTopic('evt', 'omniclaude', 'tool-executed'),
           onexNamespacedTopic('evt', 'omniclaude', 'session-ended'),
+          // Cross-repo validation topics (OMN-1907)
+          VALIDATION_RUN_STARTED_TOPIC,
+          VALIDATION_VIOLATIONS_BATCH_TOPIC,
+          VALIDATION_RUN_COMPLETED_TOPIC,
         ],
         fromBeginning: true, // Reprocess historical events to populate metrics
       });
@@ -1174,6 +1191,33 @@ export class EventConsumer extends EventEmitter {
                   `Processing omniclaude event: ${event.event_type || event.eventType}`
                 );
                 this.handleOmniclaudeLifecycleEvent(event, topic);
+                break;
+
+              // Cross-repo validation topics (OMN-1907)
+              case VALIDATION_RUN_STARTED_TOPIC:
+                if (isValidationRunStarted(event)) {
+                  intentLogger.debug(`Processing validation run started: ${event.run_id}`);
+                  handleValidationRunStarted(event);
+                  this.emit('validation-event', { type: 'run-started', event });
+                }
+                break;
+              case VALIDATION_VIOLATIONS_BATCH_TOPIC:
+                if (isValidationViolationsBatch(event)) {
+                  intentLogger.debug(
+                    `Processing validation violations batch: ${event.run_id} (${event.violations.length} violations)`
+                  );
+                  handleValidationViolationsBatch(event);
+                  this.emit('validation-event', { type: 'violations-batch', event });
+                }
+                break;
+              case VALIDATION_RUN_COMPLETED_TOPIC:
+                if (isValidationRunCompleted(event)) {
+                  intentLogger.debug(
+                    `Processing validation run completed: ${event.run_id} (${event.status})`
+                  );
+                  handleValidationRunCompleted(event);
+                  this.emit('validation-event', { type: 'run-completed', event });
+                }
                 break;
 
               // Canonical ONEX topics (OMN-1279)

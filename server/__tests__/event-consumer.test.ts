@@ -174,6 +174,10 @@ describe('EventConsumer', () => {
           'dev.onex.evt.omniclaude.session-started.v1',
           'dev.onex.evt.omniclaude.tool-executed.v1',
           'dev.onex.evt.omniclaude.session-ended.v1',
+          // Cross-repo validation topics (OMN-1907)
+          'onex.validation.cross_repo.run.started.v1',
+          'onex.validation.cross_repo.violations.batch.v1',
+          'onex.validation.cross_repo.run.completed.v1',
         ],
         fromBeginning: true,
       });
