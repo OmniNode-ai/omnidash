@@ -242,7 +242,10 @@ export default function ValidationDashboard() {
   const { data: runDetail } = useQuery<ValidationRun>({
     queryKey: queryKeys.validation.detail(expandedRunId ?? ''),
     queryFn: async () => {
-      const res = await apiRequest('GET', `/api/validation/runs/${expandedRunId}`);
+      const res = await apiRequest(
+        'GET',
+        `/api/validation/runs/${encodeURIComponent(expandedRunId!)}`
+      );
       return res.json();
     },
     enabled: !!expandedRunId,

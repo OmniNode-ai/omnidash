@@ -90,7 +90,21 @@ export type Violation = z.infer<typeof ViolationSchema>;
 export type ValidationViolationsBatchEvent = z.infer<typeof ValidationViolationsBatchSchema>;
 export type ValidationRunCompletedEvent = z.infer<typeof ValidationRunCompletedSchema>;
 
-/** Reconstructed validation run from events */
+/**
+ * Reconstructed validation run aggregated from Kafka events.
+ *
+ * @property run_id - Unique identifier for the validation run
+ * @property repos - List of repositories included in the run
+ * @property validators - List of validator names that were executed
+ * @property triggered_by - User or system that initiated the run
+ * @property status - Current run status: running, passed, failed, or error
+ * @property started_at - ISO-8601 timestamp when the run started
+ * @property completed_at - ISO-8601 timestamp when the run finished
+ * @property duration_ms - Total run duration in milliseconds
+ * @property total_violations - Aggregate count of all violations found
+ * @property violations_by_severity - Violation counts keyed by severity level
+ * @property violations - Full list of individual violation records
+ */
 export interface ValidationRun {
   run_id: string;
   repos: string[];
@@ -105,7 +119,15 @@ export interface ValidationRun {
   violations: Violation[];
 }
 
-/** Per-repo violation trend data point */
+/**
+ * Per-repo violation trend data point for a single date.
+ *
+ * @property date - ISO-8601 date string for this data point
+ * @property errors - Number of error-severity violations on this date
+ * @property warnings - Number of warning-severity violations on this date
+ * @property infos - Number of info-severity violations on this date
+ * @property total - Sum of all violations across severities
+ */
 export interface RepoTrendPoint {
   date: string;
   errors: number;
@@ -114,7 +136,13 @@ export interface RepoTrendPoint {
   total: number;
 }
 
-/** Per-repo violation trends */
+/**
+ * Per-repo violation trends over time.
+ *
+ * @property repo - Repository name this trend data belongs to
+ * @property trend - Ordered list of trend data points by date
+ * @property latest_run_id - Run ID of the most recent validation run for this repo
+ */
 export interface RepoTrends {
   repo: string;
   trend: RepoTrendPoint[];

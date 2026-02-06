@@ -327,7 +327,10 @@ router.get('/runs', async (req, res) => {
 
 /**
  * GET /api/validation/runs/:runId
- * Get a single validation run with full violation details.
+ * Get a single validation run with violation details (server-side limited).
+ *
+ * Query params:
+ *   vlimit - Max violations to return (default 200, max 1000)
  */
 router.get('/runs/:runId', async (req, res) => {
   try {
@@ -346,12 +349,16 @@ router.get('/runs/:runId', async (req, res) => {
       return res.status(404).json({ error: 'Validation run not found' });
     }
 
-    // Fetch all violations for this run
+    const vlimitStr = req.query.vlimit as string | undefined;
+    const vlimit = Math.min(Math.max(parseInt(vlimitStr || '200', 10) || 200, 1), 1000);
+
+    // Fetch violations with server-side limit to avoid unbounded memory usage
     const violationRows = await db
       .select()
       .from(validationViolations)
       .where(eq(validationViolations.runId, req.params.runId))
-      .orderBy(validationViolations.batchIndex, validationViolations.id);
+      .orderBy(validationViolations.batchIndex, validationViolations.id)
+      .limit(vlimit);
 
     const violations = violationRows.map(toViolation);
     const run = toValidationRun(rows[0], violations);
