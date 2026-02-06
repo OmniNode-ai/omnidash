@@ -8,8 +8,9 @@
 
 import { useState, useMemo, useEffect, Fragment } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { validationSource } from '@/lib/data-sources/validation-source';
+import type { ValidationSummary, RunsListResponse } from '@/lib/data-sources/validation-source';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,41 +53,6 @@ import {
 } from 'recharts';
 import { queryKeys } from '@/lib/query-keys';
 import type { ValidationRun, RepoTrends } from '@shared/validation-types';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-interface RunSummary {
-  run_id: string;
-  repos: string[];
-  validators: string[];
-  triggered_by?: string;
-  status: 'running' | 'passed' | 'failed' | 'error';
-  started_at: string;
-  completed_at?: string;
-  duration_ms?: number;
-  total_violations: number;
-  violations_by_severity: Record<string, number>;
-  violation_count: number;
-}
-
-interface RunsResponse {
-  runs: RunSummary[];
-  total: number;
-  limit: number;
-  offset: number;
-}
-
-interface SummaryResponse {
-  total_runs: number;
-  completed_runs: number;
-  running_runs: number;
-  unique_repos: number;
-  repos: string[];
-  pass_rate: number;
-  total_violations_by_severity: Record<string, number>;
-}
 
 // ============================================================================
 // Helpers
@@ -211,58 +177,39 @@ export default function ValidationDashboard() {
     }
   }, [isConnected, subscribe]);
 
-  // Fetch summary stats
+  // Fetch summary stats (API-first, falls back to mock data)
   const {
     data: summary,
     isLoading: summaryLoading,
     refetch: refetchSummary,
-  } = useQuery<SummaryResponse>({
+  } = useQuery<ValidationSummary>({
     queryKey: queryKeys.validation.summary(),
-    queryFn: async () => {
-      const res = await apiRequest('GET', '/api/validation/summary');
-      return res.json();
-    },
+    queryFn: () => validationSource.summary(),
     refetchInterval: 15_000,
   });
 
-  // Fetch runs list
-  const statusParam = statusFilter === 'all' ? '' : `&status=${statusFilter}`;
+  // Fetch runs list (API-first, falls back to mock data)
   const {
     data: runsData,
     isLoading: runsLoading,
     refetch: refetchRuns,
-  } = useQuery<RunsResponse>({
+  } = useQuery<RunsListResponse>({
     queryKey: queryKeys.validation.list(statusFilter),
-    queryFn: async () => {
-      const res = await apiRequest('GET', `/api/validation/runs?limit=50${statusParam}`);
-      return res.json();
-    },
+    queryFn: () => validationSource.listRuns({ status: statusFilter, limit: 50 }),
     refetchInterval: 15_000,
   });
 
-  // Fetch expanded run detail
-  const { data: runDetail } = useQuery<ValidationRun>({
+  // Fetch expanded run detail (API-first, falls back to mock data)
+  const { data: runDetail } = useQuery<ValidationRun | null>({
     queryKey: queryKeys.validation.detail(expandedRunId ?? ''),
-    queryFn: async () => {
-      const res = await apiRequest(
-        'GET',
-        `/api/validation/runs/${encodeURIComponent(expandedRunId!)}`
-      );
-      return res.json();
-    },
+    queryFn: () => validationSource.getRunDetail(expandedRunId!),
     enabled: !!expandedRunId,
   });
 
-  // Fetch repo trends when a repo is selected
+  // Fetch repo trends when a repo is selected (API-first, falls back to mock data)
   const { data: repoTrends } = useQuery<RepoTrends>({
     queryKey: queryKeys.validation.trends(selectedRepo ?? ''),
-    queryFn: async () => {
-      const res = await apiRequest(
-        'GET',
-        `/api/validation/repos/${encodeURIComponent(selectedRepo!)}/trends`
-      );
-      return res.json();
-    },
+    queryFn: () => validationSource.getRepoTrends(selectedRepo!),
     enabled: !!selectedRepo,
   });
 
@@ -286,10 +233,17 @@ export default function ValidationDashboard() {
             Monitor validation runs, violations, and per-repo trends
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh}>
-          <RefreshCw className="w-4 h-4 mr-1" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-3">
+          {validationSource.isUsingMockData && (
+            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+              Demo Data
+            </Badge>
+          )}
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="w-4 h-4 mr-1" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
