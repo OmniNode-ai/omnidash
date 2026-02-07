@@ -1544,7 +1544,10 @@ export class EventConsumer extends EventEmitter {
     actionName: string
   ): { actionType: string; agentName: string } {
     const isJunkType =
-      !rawActionType || (ENVIRONMENT_PREFIXES as readonly string[]).includes(rawActionType);
+      !rawActionType ||
+      (ENVIRONMENT_PREFIXES as readonly string[]).includes(rawActionType) ||
+      /^v\d+$/.test(rawActionType) ||
+      /^\d+\.\d+(\.\d+)?$/.test(rawActionType);
     const isJunkAgent = !rawAgentName || rawAgentName === 'unknown';
 
     let actionType = rawActionType;

@@ -18,6 +18,7 @@ import {
   eventBusDashboardConfig,
   getEventMonitoringConfig,
   getTopicLabel,
+  getTopicMetadata,
   getEventTypeLabel,
   getMonitoredTopics,
 } from '@/lib/configs/event-bus-dashboard';
@@ -46,6 +47,7 @@ import {
   EventDetailPanel,
   type EventDetailPanelProps,
 } from '@/components/event-bus/EventDetailPanel';
+import { TopicSelector, type TopicStatusRow } from '@/components/event-bus/TopicSelector';
 
 // ============================================================================
 // Types
@@ -94,27 +96,6 @@ function formatRelativeTime(timestamp: string | Date): string {
   if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}m ago`;
   if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)}h ago`;
   return date.toLocaleDateString();
-}
-
-/**
- * Map topic to a left-border color class for row color coding.
- * TODO: The DashboardRenderer TableWidget does not currently support per-row
- * className props. This function is defined for future use when the TableWidget
- * is enhanced to accept a rowClassName or topicColor field from row data.
- */
-function _getTopicColorClass(topicRaw: string): string {
-  if (topicRaw.includes('agent-actions')) return 'border-l-blue-500';
-  if (topicRaw.includes('agent-routing')) return 'border-l-purple-500';
-  if (topicRaw.includes('agent-transformation')) return 'border-l-indigo-500';
-  if (topicRaw.includes('performance')) return 'border-l-cyan-500';
-  if (topicRaw.includes('heartbeat')) return 'border-l-green-500';
-  if (topicRaw.includes('registration') || topicRaw.includes('contract'))
-    return 'border-l-amber-500';
-  if (topicRaw.includes('introspection')) return 'border-l-teal-500';
-  if (topicRaw.includes('claude') || topicRaw.includes('omniclaude')) return 'border-l-orange-500';
-  if (topicRaw.includes('intent') || topicRaw.includes('memory')) return 'border-l-pink-500';
-  if (topicRaw.includes('validation')) return 'border-l-red-500';
-  return 'border-l-gray-500';
 }
 
 /**
@@ -256,6 +237,61 @@ export default function EventBusMonitor() {
     }
     return new Date();
   }, [stats.lastEventAt]);
+
+  // ============================================================================
+  // Topic Status Data
+  // ============================================================================
+
+  const topicStatusData = useMemo(() => {
+    const now = Date.now();
+    const FIVE_MINUTES_MS = 5 * 60 * 1000;
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+    const statusRows = monitoredTopics.map((topic) => {
+      const topicEvents = sourceData.events.filter((e) => e.topicRaw === topic);
+      const eventCount = topicEvents.length;
+      const lastEvent = topicEvents.length > 0 ? topicEvents[0] : null;
+      const lastEventAt = lastEvent ? lastEvent.timestampRaw : null;
+
+      let lastEventFormatted: string;
+      if (!lastEventAt) {
+        lastEventFormatted = 'never';
+      } else {
+        const diffMs = now - new Date(lastEventAt).getTime();
+        if (diffMs > TWENTY_FOUR_HOURS_MS) {
+          lastEventFormatted = '>24h ago';
+        } else {
+          lastEventFormatted = formatRelativeTime(lastEventAt);
+        }
+      }
+
+      let status: 'active' | 'silent' | 'error';
+      if (lastEventAt && now - new Date(lastEventAt).getTime() <= FIVE_MINUTES_MS) {
+        status = 'active';
+      } else {
+        status = 'silent';
+      }
+
+      return {
+        topic,
+        label: getTopicLabel(topic),
+        category: getTopicMetadata(topic)?.category || 'unknown',
+        eventCount,
+        lastEventAt,
+        lastEventFormatted,
+        status,
+      };
+    });
+
+    // Sort: active first, then silent; within each group, by eventCount desc
+    statusRows.sort((a, b) => {
+      if (a.status === 'active' && b.status !== 'active') return -1;
+      if (a.status !== 'active' && b.status === 'active') return 1;
+      return b.eventCount - a.eventCount;
+    });
+
+    return statusRows;
+  }, [sourceData.events]);
 
   // ============================================================================
   // Filtered Data
@@ -613,42 +649,31 @@ export default function EventBusMonitor() {
         </div>
       </Card>
 
-      {/* Topic Legend — only show topics with events in the current view */}
-      <div className="flex items-center gap-2 flex-wrap text-xs">
-        <span className="text-muted-foreground text-sm mr-1">Topics:</span>
-        {monitoredTopics
-          .filter((topic) => sourceData.events.some((e) => e.topicRaw === topic))
-          .map((topic) => (
-            <Badge
-              key={topic}
-              variant={filters.topic === topic ? 'default' : 'outline'}
-              className="cursor-pointer gap-1.5 px-2 py-0.5"
-              onClick={() =>
-                setFilters((prev) => ({
-                  ...prev,
-                  topic: prev.topic === topic ? null : topic,
-                }))
-              }
-            >
-              <div
-                className={`h-2 w-2 rounded-full ${
-                  topic.includes('agent')
-                    ? 'bg-blue-500'
-                    : topic.includes('heartbeat')
-                      ? 'bg-green-500'
-                      : topic.includes('introspection')
-                        ? 'bg-teal-500'
-                        : topic.includes('registration') || topic.includes('contract')
-                          ? 'bg-amber-500'
-                          : 'bg-primary'
-                }`}
-              />
-              {getTopicLabel(topic)}
-            </Badge>
-          ))}
-        {monitoredTopics.filter((topic) => sourceData.events.some((e) => e.topicRaw === topic))
-          .length === 0 && <span className="text-muted-foreground italic">No active topics</span>}
-      </div>
+      {/* Topic Selector */}
+      <TopicSelector
+        topics={topicStatusData}
+        selectedTopic={filters.topic}
+        onSelectTopic={(topic) => setFilters((prev) => ({ ...prev, topic: topic }))}
+      />
+
+      {/* Context Header -- only shown when a topic is selected */}
+      {filters.topic && (
+        <Card className="p-3 flex items-center justify-between border-l-4 border-l-primary bg-accent/30">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">Events for: {getTopicLabel(filters.topic)}</span>
+            <span className="text-xs text-muted-foreground font-mono">({filters.topic})</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setFilters((prev) => ({ ...prev, topic: null }))}
+            className="gap-1 h-7"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear
+          </Button>
+        </Card>
+      )}
 
       {/* Dashboard Renderer */}
       <DashboardRenderer
