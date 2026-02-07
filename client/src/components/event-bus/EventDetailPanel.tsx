@@ -46,7 +46,6 @@ import {
   formatTimestamp,
   formatPayload,
   extractParsedDetails,
-  getCleanPayload,
   safeJsonStringify,
   safePercentage,
   type ParsedDetails,
@@ -144,7 +143,7 @@ export interface EventDetailPanelProps {
  */
 export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanelProps) {
   const [copied, setCopied] = useState(false);
-  const [showRawJson, setShowRawJson] = useState(true);
+  const [showRawJson, setShowRawJson] = useState(false);
   const [showMetadata, setShowMetadata] = useState(true);
   const [parseError, setParseError] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -182,12 +181,6 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
   const formattedPayload = useMemo(() => {
     if (!event) return '';
     return formatPayload(event.payload);
-  }, [event]);
-
-  // Get clean payload (without metadata fields)
-  const cleanPayload: Record<string, unknown> | null = useMemo(() => {
-    if (!event) return null;
-    return getCleanPayload(event.payload);
   }, [event]);
 
   // Extract parsed details from payload with error handling
@@ -446,19 +439,6 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
                   )}
                 </div>
               )}
-
-              {/* Clean Payload - when no parsed details, has parse error, or additional data */}
-              {cleanPayload &&
-                (parseError || (!parsedDetails?.prompt && !parsedDetails?.toolResult)) && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Payload Content</h4>
-                    <div className="bg-background rounded-lg p-4 border">
-                      <pre className="text-sm whitespace-pre-wrap break-words font-mono">
-                        {safeJsonStringify(cleanPayload)}
-                      </pre>
-                    </div>
-                  </div>
-                )}
             </PayloadErrorBoundary>
 
             {/* Event Metadata - Collapsible */}

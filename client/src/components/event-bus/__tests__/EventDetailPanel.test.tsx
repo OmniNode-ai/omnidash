@@ -265,36 +265,51 @@ describe('EventDetailPanel', () => {
   });
 
   describe('Payload Formatting', () => {
-    it('should format valid JSON payload', () => {
+    it('should format valid JSON payload', async () => {
+      const user = userEvent.setup();
       const event = createMockEvent({
         payload: JSON.stringify({ testKey: 'testValue' }),
       });
 
       render(<EventDetailPanel event={event} open={true} onOpenChange={mockOnOpenChange} />);
 
-      // JSON should be formatted in the Raw JSON section (there may be multiple matches)
+      // Raw JSON is collapsed by default, expand it first
+      const toggleButton = screen.getByText('Raw JSON').closest('button');
+      if (toggleButton) await user.click(toggleButton);
+
+      // JSON should be formatted in the Raw JSON section
       const elements = screen.getAllByText(/testKey/);
       expect(elements.length).toBeGreaterThan(0);
     });
 
-    it('should handle invalid JSON payload gracefully', () => {
+    it('should handle invalid JSON payload gracefully', async () => {
+      const user = userEvent.setup();
       const event = createMockEvent({
         payload: 'not valid json {{{',
       });
 
       render(<EventDetailPanel event={event} open={true} onOpenChange={mockOnOpenChange} />);
 
+      // Expand Raw JSON (collapsed by default)
+      const toggleButton = screen.getByText('Raw JSON').closest('button');
+      if (toggleButton) await user.click(toggleButton);
+
       // Should display the raw string
       const dialog = screen.getByRole('dialog');
       expect(dialog.textContent).toContain('not valid json');
     });
 
-    it('should display message when payload is undefined', () => {
+    it('should display message when payload is undefined', async () => {
+      const user = userEvent.setup();
       const event = createMockEvent({
         payload: undefined,
       });
 
       render(<EventDetailPanel event={event} open={true} onOpenChange={mockOnOpenChange} />);
+
+      // Expand Raw JSON (collapsed by default)
+      const toggleButton = screen.getByText('Raw JSON').closest('button');
+      if (toggleButton) await user.click(toggleButton);
 
       expect(screen.getByText('No payload data available')).toBeInTheDocument();
     });
@@ -491,18 +506,17 @@ describe('EventDetailPanel', () => {
   });
 
   describe('Collapsible Sections', () => {
-    it('should have Raw JSON section visible by default', () => {
+    it('should have Raw JSON section collapsed by default', () => {
       const event = createMockEvent({
         payload: JSON.stringify({ visibleKey: 'visibleValue' }),
       });
 
       render(<EventDetailPanel event={event} open={true} onOpenChange={mockOnOpenChange} />);
 
-      // Raw JSON section should be visible by default (showRawJson starts as true)
+      // Raw JSON header should be visible
       expect(screen.getByText('Raw JSON')).toBeInTheDocument();
-      // The JSON content should be visible (use getAllByText since it appears in multiple places)
-      const elements = screen.getAllByText(/visibleKey/);
-      expect(elements.length).toBeGreaterThan(0);
+      // But the JSON content should be collapsed (not visible)
+      expect(screen.queryByText(/visibleKey/)).not.toBeInTheDocument();
     });
 
     it('should toggle Raw JSON section when clicked', async () => {
@@ -517,23 +531,18 @@ describe('EventDetailPanel', () => {
       const toggleButton = screen.getByText('Raw JSON').closest('button');
       expect(toggleButton).toBeInTheDocument();
 
-      // Verify content is initially visible
-      const elementsBeforeToggle = screen.getAllByText(/toggleTestKey/);
-      expect(elementsBeforeToggle.length).toBeGreaterThan(0);
+      // Verify content is initially hidden (collapsed by default)
+      expect(screen.queryByText(/toggleTestKey/)).not.toBeInTheDocument();
 
-      // Click to collapse
+      // Click to expand
       if (toggleButton) {
         await user.click(toggleButton);
       }
 
-      // After collapse, the Raw JSON pre element should be hidden (only Payload Content remains)
+      // After expansion, the Raw JSON content should be visible
       await waitFor(() => {
-        // Check that the raw JSON pre element is gone
-        const rawJsonSection = screen.getByText('Raw JSON').closest('.border.rounded-lg');
-        if (rawJsonSection) {
-          const preElements = rawJsonSection.querySelectorAll('pre');
-          expect(preElements.length).toBe(0);
-        }
+        const elements = screen.getAllByText(/toggleTestKey/);
+        expect(elements.length).toBeGreaterThan(0);
       });
     });
 
@@ -626,21 +635,22 @@ describe('EventDetailPanel', () => {
   });
 
   describe('Status Display', () => {
-    it('should display status badge when present in payload', () => {
+    it('should display status badge when present in payload with action context', () => {
       const event = createMockEvent({
         payload: JSON.stringify({
           status: 'completed',
+          action_type: 'tool_execution',
         }),
       });
 
       render(<EventDetailPanel event={event} open={true} onOpenChange={mockOnOpenChange} />);
 
-      // Status may appear in multiple places (badge and raw JSON)
+      // Status badge renders when action context fields are present
       const dialog = screen.getByRole('dialog');
       expect(dialog.textContent).toContain('completed');
     });
 
-    it('should display error status badge', () => {
+    it('should display error message and status', () => {
       const event = createMockEvent({
         payload: JSON.stringify({
           status: 'error',
@@ -650,10 +660,11 @@ describe('EventDetailPanel', () => {
 
       render(<EventDetailPanel event={event} open={true} onOpenChange={mockOnOpenChange} />);
 
-      // Both the status badge and error message should be present
+      // Error message renders in a dedicated section regardless of badge context
       const dialog = screen.getByRole('dialog');
-      expect(dialog.textContent).toContain('error');
       expect(dialog.textContent).toContain('Something went wrong');
+      // The Error section title is also present
+      expect(screen.getByText('Error')).toBeInTheDocument();
     });
   });
 
@@ -683,8 +694,9 @@ describe('EventDetailPanel', () => {
     });
   });
 
-  describe('Clean Payload Display', () => {
-    it('should show payload content when no prompt or tool result extracted', () => {
+  describe('Raw JSON as Payload Fallback', () => {
+    it('should provide raw JSON access when no structured details extracted', async () => {
+      const user = userEvent.setup();
       const event = createMockEvent({
         payload: JSON.stringify({
           custom_field: 'custom_value',
@@ -694,11 +706,18 @@ describe('EventDetailPanel', () => {
 
       render(<EventDetailPanel event={event} open={true} onOpenChange={mockOnOpenChange} />);
 
-      // Should have Payload Content section since no prompt/tool_result
-      expect(screen.getByText('Payload Content')).toBeInTheDocument();
+      // With no prompt/tool_result, data is accessible via Raw JSON
+      expect(screen.getByText('Raw JSON')).toBeInTheDocument();
+
+      // Expand Raw JSON to verify payload is accessible
+      const toggleButton = screen.getByText('Raw JSON').closest('button');
+      if (toggleButton) await user.click(toggleButton);
+
+      const dialog = screen.getByRole('dialog');
+      expect(dialog.textContent).toContain('custom_value');
     });
 
-    it('should not show Payload Content section when prompt is extracted', () => {
+    it('should not show Payload Content section (removed in favor of Raw JSON)', () => {
       const event = createMockEvent({
         payload: JSON.stringify({
           prompt: 'This is a prompt',
@@ -709,7 +728,7 @@ describe('EventDetailPanel', () => {
       render(<EventDetailPanel event={event} open={true} onOpenChange={mockOnOpenChange} />);
 
       expect(screen.getByText('Prompt Content')).toBeInTheDocument();
-      // Payload Content section should not appear when prompt is shown
+      // Payload Content section has been removed
       expect(screen.queryByText('Payload Content')).not.toBeInTheDocument();
     });
   });

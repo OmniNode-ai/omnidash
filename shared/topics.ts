@@ -82,6 +82,16 @@ export const SUFFIX_REGISTRATION_SNAPSHOTS = 'onex.snapshot.platform.registratio
 export const SUFFIX_NODE_BECAME_ACTIVE = 'onex.evt.platform.node-became-active.v1';
 export const SUFFIX_NODE_LIVENESS_EXPIRED = 'onex.evt.platform.node-liveness-expired.v1';
 
+/** Contract lifecycle events */
+export const SUFFIX_CONTRACT_REGISTERED = 'onex.evt.platform.contract-registered.v1';
+export const SUFFIX_CONTRACT_DEREGISTERED = 'onex.evt.platform.contract-deregistered.v1';
+
+/** Granular node registration lifecycle events */
+export const SUFFIX_NODE_REGISTRATION_INITIATED =
+  'onex.evt.platform.node-registration-initiated.v1';
+export const SUFFIX_NODE_REGISTRATION_ACCEPTED = 'onex.evt.platform.node-registration-accepted.v1';
+export const SUFFIX_NODE_REGISTRATION_REJECTED = 'onex.evt.platform.node-registration-rejected.v1';
+
 // ============================================================================
 // OmniClaude Topics
 // ============================================================================
@@ -158,6 +168,12 @@ export const PLATFORM_NODE_SUFFIXES = [
   SUFFIX_NODE_BECAME_ACTIVE,
   SUFFIX_NODE_LIVENESS_EXPIRED,
   SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_CONTRACT_REGISTERED,
+  SUFFIX_CONTRACT_DEREGISTERED,
+  SUFFIX_NODE_REGISTRATION_INITIATED,
+  SUFFIX_NODE_REGISTRATION_ACCEPTED,
+  SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_REGISTRATION_SNAPSHOTS,
 ] as const;
 
 /** OmniClaude lifecycle topic suffixes */
@@ -184,25 +200,23 @@ export const VALIDATION_SUFFIXES = [
 
 /**
  * Build the complete subscription topic list for the event consumer.
- * Combines legacy topics (used as-is) with canonical topics (env-prefixed).
+ * Legacy agent topics use flat names (no prefix).
+ * Canonical ONEX topics use their suffix directly — infra4 producers
+ * emit to unprefixed canonical names (e.g. `onex.evt.platform.node-heartbeat.v1`).
  *
  * Note: LEGACY_AGENT_MANIFEST_INJECTIONS is deliberately excluded from the live
  * consumer subscription (it is not consumed at runtime). The recording script
  * (scripts/record-events.ts) manually appends it for offline capture/replay.
  */
-export function buildSubscriptionTopics(envPrefix?: string): string[] {
-  const prefix = envPrefix ?? getTopicEnvPrefix();
+export function buildSubscriptionTopics(): string[] {
   return [
-    // Legacy agent topics (no prefix)
+    // Legacy agent topics (flat names, no prefix)
     ...LEGACY_AGENT_TOPICS,
-    // Platform node topics
-    ...PLATFORM_NODE_SUFFIXES.map((s) => resolveTopicName(s, prefix)),
-    // OmniClaude topics
-    ...[SUFFIX_INTELLIGENCE_CLAUDE_HOOK].map((s) => resolveTopicName(s, prefix)),
-    ...OMNICLAUDE_SUFFIXES.map((s) => resolveTopicName(s, prefix)),
-    // Intent topics
-    ...INTENT_SUFFIXES.map((s) => resolveTopicName(s, prefix)),
-    // Validation topics
-    ...VALIDATION_SUFFIXES.map((s) => resolveTopicName(s, prefix)),
+    // Canonical ONEX topics (suffixes used directly — no env prefix)
+    ...PLATFORM_NODE_SUFFIXES,
+    SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
+    ...OMNICLAUDE_SUFFIXES,
+    ...INTENT_SUFFIXES,
+    ...VALIDATION_SUFFIXES,
   ];
 }

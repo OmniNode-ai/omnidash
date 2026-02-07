@@ -6,6 +6,7 @@
  */
 
 import { getTopicLabel } from '@/lib/configs/event-bus-dashboard';
+import { extractParsedDetails, type ParsedDetails } from '@/components/event-bus/eventDetailUtils';
 import {
   SUFFIX_NODE_INTROSPECTION,
   SUFFIX_NODE_HEARTBEAT,
@@ -152,7 +153,17 @@ export function extractPriority(data: WireEventData): EventPriority {
  * Extract source from event data with fallbacks.
  */
 export function extractSource(data: WireEventData): string {
-  return data.agentName || data.sourceAgent || data.selectedAgent || 'system';
+  const payload = (data.payload ?? data) as Record<string, unknown>;
+  return (
+    data.agentName ||
+    data.sourceAgent ||
+    data.selectedAgent ||
+    (typeof payload.node_id === 'string' ? payload.node_id : undefined) ||
+    (typeof (data as Record<string, unknown>).node_id === 'string'
+      ? ((data as Record<string, unknown>).node_id as string)
+      : undefined) ||
+    'system'
+  );
 }
 
 /**
@@ -162,6 +173,145 @@ export function normalizeTimestamp(timestamp: string | number | undefined): stri
   if (!timestamp) return new Date().toISOString();
   if (typeof timestamp === 'number') return new Date(timestamp).toISOString();
   return timestamp;
+}
+
+/**
+ * Generate a one-line human-readable summary from parsed event details.
+ * Called once during processEvent(), not on each render.
+ */
+export function generateSummary(
+  eventType: string,
+  parsedDetails: ParsedDetails | null,
+  data: WireEventData
+): string {
+  if (!parsedDetails) {
+    // Fallback: use actionName or eventType
+    const actionName =
+      data.actionType || data.actionName || (data as Record<string, unknown>).action_type;
+    if (actionName && typeof actionName === 'string') {
+      return actionName.length > 60 ? actionName.slice(0, 57) + '...' : actionName;
+    }
+    return eventType.length > 60 ? eventType.slice(0, 57) + '...' : eventType;
+  }
+
+  // Tool content events: "{tool_name} {basename(file_path)}"
+  if (parsedDetails.toolName) {
+    const filePath = parsedDetails.filePath ?? findFilePathInData(data);
+    if (filePath) {
+      const basename = filePath.split('/').pop() || filePath;
+      return `${parsedDetails.toolName} ${basename}`;
+    }
+    return parsedDetails.toolName;
+  }
+
+  // Heartbeat events: "{node_id} — {health_status}"
+  if (parsedDetails.nodeId) {
+    const healthStatus = parsedDetails.status || 'unknown';
+    return `${parsedDetails.nodeId} — ${healthStatus}`;
+  }
+
+  // Routing decisions: "Selected {selectedAgent} ({confidence}%)"
+  if (parsedDetails.selectedAgent) {
+    const conf = parsedDetails.confidence;
+    const confStr = typeof conf === 'number' ? ` (${Math.round(conf * 100)}%)` : '';
+    return `Selected ${parsedDetails.selectedAgent}${confStr}`;
+  }
+
+  // Errors: "{error_type}: {truncated(error_message)}"
+  if (parsedDetails.error) {
+    const errorType = parsedDetails.actionType || 'Error';
+    const msg =
+      parsedDetails.error.length > 50
+        ? parsedDetails.error.slice(0, 47) + '...'
+        : parsedDetails.error;
+    return `${errorType}: ${msg}`;
+  }
+
+  // Agent action with action name
+  if (parsedDetails.actionName) {
+    return parsedDetails.actionName.length > 60
+      ? parsedDetails.actionName.slice(0, 57) + '...'
+      : parsedDetails.actionName;
+  }
+
+  // Fallback
+  return eventType.length > 60 ? eventType.slice(0, 57) + '...' : eventType;
+}
+
+/**
+ * Search for file_path in event data (handles nested payload structures).
+ */
+function findFilePathInData(data: WireEventData): string | undefined {
+  const d = data as Record<string, unknown>;
+  if (typeof d.file_path === 'string') return d.file_path;
+  if (typeof d.filePath === 'string') return d.filePath;
+  // Check nested payload
+  const payload = d.payload;
+  if (payload && typeof payload === 'object') {
+    const p = payload as Record<string, unknown>;
+    if (typeof p.file_path === 'string') return p.file_path;
+    if (typeof p.filePath === 'string') return p.filePath;
+  }
+  // Check nested content/details
+  for (const wrapper of ['content', 'details', 'actionDetails', 'action_details', 'data']) {
+    if (d[wrapper] && typeof d[wrapper] === 'object') {
+      const nested = d[wrapper] as Record<string, unknown>;
+      if (typeof nested.file_path === 'string') return nested.file_path;
+      if (typeof nested.filePath === 'string') return nested.filePath;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Compute a normalized type suitable for chart grouping.
+ * Instead of showing "tool-content" for everything, break down by tool_name.
+ */
+export function computeNormalizedType(
+  eventType: string,
+  parsedDetails: ParsedDetails | null
+): string {
+  // For tool events, use the tool name as the type
+  if (parsedDetails?.toolName) {
+    return parsedDetails.toolName;
+  }
+  // For routing decisions, use the selected agent
+  if (parsedDetails?.selectedAgent) {
+    return `route:${parsedDetails.selectedAgent}`;
+  }
+  // Default to eventType
+  return eventType;
+}
+
+/**
+ * Compute a group key for collapsing similar events.
+ * Format: "{normalizedType}:{distinguishing_detail}:{status}"
+ */
+export function computeGroupKey(
+  normalizedType: string,
+  parsedDetails: ParsedDetails | null,
+  data: WireEventData
+): string {
+  const parts = [normalizedType];
+
+  if (parsedDetails?.toolName) {
+    const filePath = findFilePathInData(data);
+    if (filePath) {
+      parts.push(filePath.split('/').pop() || filePath);
+    }
+    if (parsedDetails.status) {
+      parts.push(parsedDetails.status);
+    }
+  } else if (parsedDetails?.nodeId) {
+    parts.push(parsedDetails.nodeId);
+    if (parsedDetails.status) {
+      parts.push(parsedDetails.status);
+    }
+  } else if (parsedDetails?.selectedAgent) {
+    parts.push(parsedDetails.selectedAgent);
+  }
+
+  return parts.join(':');
 }
 
 /**
@@ -181,6 +331,10 @@ export function processEvent(
     const id = getEventId(data, topic, eventType);
     const timestampRaw = normalizeTimestamp(data.createdAt || data.timestamp);
 
+    const payloadStr = JSON.stringify(data);
+    const parsedDetails = extractParsedDetails(payloadStr, eventType);
+    const normalizedType = computeNormalizedType(eventType, parsedDetails);
+
     const event: ProcessedEvent = {
       id,
       topic: getTopicLabel(topic),
@@ -191,7 +345,11 @@ export function processEvent(
       timestampRaw,
       source: extractSource(data),
       correlationId: data.correlationId,
-      payload: JSON.stringify(data),
+      payload: payloadStr,
+      summary: generateSummary(eventType, parsedDetails, data),
+      normalizedType,
+      groupKey: computeGroupKey(normalizedType, parsedDetails, data),
+      parsedDetails,
     };
 
     return { status: 'success', event };

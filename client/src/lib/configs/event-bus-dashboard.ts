@@ -19,6 +19,12 @@ import {
   SUFFIX_NODE_REGISTRATION,
   SUFFIX_NODE_HEARTBEAT,
   SUFFIX_REQUEST_INTROSPECTION,
+  SUFFIX_CONTRACT_REGISTERED,
+  SUFFIX_CONTRACT_DEREGISTERED,
+  SUFFIX_NODE_REGISTRATION_INITIATED,
+  SUFFIX_NODE_REGISTRATION_ACCEPTED,
+  SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_REGISTRATION_SNAPSHOTS,
   SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
   SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
   SUFFIX_OMNICLAUDE_SESSION_STARTED,
@@ -75,6 +81,12 @@ export const NODE_TOPICS = [
   SUFFIX_NODE_REGISTRATION,
   SUFFIX_NODE_HEARTBEAT,
   SUFFIX_REQUEST_INTROSPECTION,
+  SUFFIX_CONTRACT_REGISTERED,
+  SUFFIX_CONTRACT_DEREGISTERED,
+  SUFFIX_NODE_REGISTRATION_INITIATED,
+  SUFFIX_NODE_REGISTRATION_ACCEPTED,
+  SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_REGISTRATION_SNAPSHOTS,
 ] as const;
 
 /**
@@ -138,6 +150,36 @@ export const TOPIC_METADATA: Record<
     label: 'Registry Introspection Request',
     description: 'Introspection requests from registry to nodes',
     category: 'introspection',
+  },
+  [SUFFIX_CONTRACT_REGISTERED]: {
+    label: 'Contract Registered',
+    description: 'Contract registration events',
+    category: 'lifecycle',
+  },
+  [SUFFIX_CONTRACT_DEREGISTERED]: {
+    label: 'Contract Deregistered',
+    description: 'Contract deregistration events',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_INITIATED]: {
+    label: 'Registration Initiated',
+    description: 'Node registration initiation events',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_ACCEPTED]: {
+    label: 'Registration Accepted',
+    description: 'Node registration acceptance events',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_REJECTED]: {
+    label: 'Registration Rejected',
+    description: 'Node registration rejection events',
+    category: 'lifecycle',
+  },
+  [SUFFIX_REGISTRATION_SNAPSHOTS]: {
+    label: 'Registration Snapshots',
+    description: 'Point-in-time registration state snapshots',
+    category: 'snapshot',
   },
   // Error topics
   errors: {
@@ -224,6 +266,36 @@ export const eventBusDashboardConfig: DashboardConfig = {
       label: 'Registry Introspection Request',
       description: 'Introspection requests from registry to nodes',
       category: 'introspection',
+    },
+    [SUFFIX_CONTRACT_REGISTERED]: {
+      label: 'Contract Registered',
+      description: 'Contract registration events',
+      category: 'lifecycle',
+    },
+    [SUFFIX_CONTRACT_DEREGISTERED]: {
+      label: 'Contract Deregistered',
+      description: 'Contract deregistration events',
+      category: 'lifecycle',
+    },
+    [SUFFIX_NODE_REGISTRATION_INITIATED]: {
+      label: 'Registration Initiated',
+      description: 'Node registration initiation events',
+      category: 'lifecycle',
+    },
+    [SUFFIX_NODE_REGISTRATION_ACCEPTED]: {
+      label: 'Registration Accepted',
+      description: 'Node registration acceptance events',
+      category: 'lifecycle',
+    },
+    [SUFFIX_NODE_REGISTRATION_REJECTED]: {
+      label: 'Registration Rejected',
+      description: 'Node registration rejection events',
+      category: 'lifecycle',
+    },
+    [SUFFIX_REGISTRATION_SNAPSHOTS]: {
+      label: 'Registration Snapshots',
+      description: 'Point-in-time registration state snapshots',
+      category: 'snapshot',
     },
     // Error topics
     errors: {
@@ -385,11 +457,11 @@ export const eventBusDashboardConfig: DashboardConfig = {
         striped: true,
         hover_highlight: true,
         columns: [
-          { key: 'topic', header: 'Topic', width: 200, sortable: true },
-          { key: 'eventType', header: 'Event Type', width: 150, sortable: true },
+          { key: 'topic', header: 'Topic', width: 150, sortable: true },
+          { key: 'eventType', header: 'Event Type', width: 130, sortable: true },
+          { key: 'summary', header: 'Summary', width: 250, sortable: false },
           { key: 'source', header: 'Source', width: 120, sortable: true },
-          { key: 'timestamp', header: 'Time', width: 100, sortable: true, format: 'datetime' },
-          { key: 'priority', header: 'Priority', width: 80, sortable: true, format: 'badge' },
+          { key: 'timestamp', header: 'Time', width: 100, sortable: true },
         ],
       },
     },

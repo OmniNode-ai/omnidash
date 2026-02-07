@@ -41,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Activity, RefreshCw, Filter, X, Pause, Play } from 'lucide-react';
+import { Activity, RefreshCw, Filter, X, Pause, Play, Eye, EyeOff } from 'lucide-react';
 import {
   EventDetailPanel,
   type EventDetailPanelProps,
@@ -78,6 +78,44 @@ const monitoredTopics = getMonitoredTopics();
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/**
+ * Format a timestamp as a relative time string (e.g., "5s ago", "2m ago").
+ * Falls back to absolute time for events older than 1 hour.
+ */
+function formatRelativeTime(timestamp: string | Date): string {
+  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+
+  if (diffMs < 0) return 'just now';
+  if (diffMs < 1000) return 'just now';
+  if (diffMs < 60000) return `${Math.floor(diffMs / 1000)}s ago`;
+  if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}m ago`;
+  if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)}h ago`;
+  return date.toLocaleDateString();
+}
+
+/**
+ * Map topic to a left-border color class for row color coding.
+ * TODO: The DashboardRenderer TableWidget does not currently support per-row
+ * className props. This function is defined for future use when the TableWidget
+ * is enhanced to accept a rowClassName or topicColor field from row data.
+ */
+function _getTopicColorClass(topicRaw: string): string {
+  if (topicRaw.includes('agent-actions')) return 'border-l-blue-500';
+  if (topicRaw.includes('agent-routing')) return 'border-l-purple-500';
+  if (topicRaw.includes('agent-transformation')) return 'border-l-indigo-500';
+  if (topicRaw.includes('performance')) return 'border-l-cyan-500';
+  if (topicRaw.includes('heartbeat')) return 'border-l-green-500';
+  if (topicRaw.includes('registration') || topicRaw.includes('contract'))
+    return 'border-l-amber-500';
+  if (topicRaw.includes('introspection')) return 'border-l-teal-500';
+  if (topicRaw.includes('claude') || topicRaw.includes('omniclaude')) return 'border-l-orange-500';
+  if (topicRaw.includes('intent') || topicRaw.includes('memory')) return 'border-l-pink-500';
+  if (topicRaw.includes('validation')) return 'border-l-red-500';
+  return 'border-l-gray-500';
+}
 
 /**
  * Map event priority to UI type for EventFeed display.
@@ -124,8 +162,10 @@ function toRecentEvent(event: ProcessedEvent) {
     topic: event.topic,
     topicRaw: event.topicRaw,
     eventType: getEventTypeLabel(event.eventType),
+    summary: event.summary,
     source: event.source,
-    timestamp: event.timestampRaw,
+    timestamp: formatRelativeTime(event.timestampRaw),
+    timestampSort: event.timestampRaw,
     priority: event.priority,
     correlationId: event.correlationId,
     payload: event.payload,
@@ -163,6 +203,7 @@ export default function EventBusMonitor() {
   const [selectedEvent, setSelectedEvent] = useState<EventDetailPanelProps['event']>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [hideHeartbeats, setHideHeartbeats] = useState(false);
 
   // Paused snapshot - captures state when pausing
   const pausedSnapshotRef = useRef<PausedSnapshot | null>(null);
@@ -224,7 +265,7 @@ export default function EventBusMonitor() {
     const { events: srcEvents } = sourceData;
 
     // Quick path: no filters active - but still compute charts from displayed events
-    if (!filters.topic && !filters.priority && !filters.search) {
+    if (!filters.topic && !filters.priority && !filters.search && !hideHeartbeats) {
       const displayedEvents = srcEvents.slice(0, maxEvents);
       const liveEvents = displayedEvents.map(toLiveEvent);
       const recentEvents = displayedEvents.map(toRecentEvent);
@@ -236,7 +277,7 @@ export default function EventBusMonitor() {
 
       for (const event of displayedEvents) {
         topicCounts[event.topicRaw] = (topicCounts[event.topicRaw] || 0) + 1;
-        eventTypeCounts[event.eventType] = (eventTypeCounts[event.eventType] || 0) + 1;
+        eventTypeCounts[event.normalizedType] = (eventTypeCounts[event.normalizedType] || 0) + 1;
         const bucketTime =
           Math.floor(event.timestamp.getTime() / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
         timeBuckets[bucketTime] = (timeBuckets[bucketTime] || 0) + 1;
@@ -284,6 +325,12 @@ export default function EventBusMonitor() {
 
     // Filter events
     const filtered = srcEvents.filter((event) => {
+      if (
+        hideHeartbeats &&
+        (event.topicRaw.includes('heartbeat') ||
+          event.eventType.toLowerCase().includes('heartbeat'))
+      )
+        return false;
       if (filters.topic && event.topicRaw !== filters.topic) return false;
       if (filters.priority && event.priority !== filters.priority) return false;
       if (filters.search) {
@@ -291,7 +338,12 @@ export default function EventBusMonitor() {
         const matchesSearch =
           event.eventType.toLowerCase().includes(searchLower) ||
           event.source.toLowerCase().includes(searchLower) ||
-          event.topic.toLowerCase().includes(searchLower);
+          event.topic.toLowerCase().includes(searchLower) ||
+          event.summary.toLowerCase().includes(searchLower) ||
+          (event.parsedDetails?.toolName?.toLowerCase().includes(searchLower) ?? false) ||
+          (event.parsedDetails?.nodeId?.toLowerCase().includes(searchLower) ?? false) ||
+          (event.parsedDetails?.selectedAgent?.toLowerCase().includes(searchLower) ?? false) ||
+          (event.parsedDetails?.actionName?.toLowerCase().includes(searchLower) ?? false);
         if (!matchesSearch) return false;
       }
       return true;
@@ -304,7 +356,7 @@ export default function EventBusMonitor() {
 
     for (const event of filtered) {
       topicCounts[event.topicRaw] = (topicCounts[event.topicRaw] || 0) + 1;
-      eventTypeCounts[event.eventType] = (eventTypeCounts[event.eventType] || 0) + 1;
+      eventTypeCounts[event.normalizedType] = (eventTypeCounts[event.normalizedType] || 0) + 1;
       const bucketTime =
         Math.floor(event.timestamp.getTime() / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
       timeBuckets[bucketTime] = (timeBuckets[bucketTime] || 0) + 1;
@@ -350,7 +402,7 @@ export default function EventBusMonitor() {
       timeSeriesData: filteredTimeSeries,
       topicHealth: [],
     };
-  }, [sourceData, filters, maxEvents]);
+  }, [sourceData, filters, maxEvents, hideHeartbeats]);
 
   // ============================================================================
   // Handlers
@@ -381,7 +433,7 @@ export default function EventBusMonitor() {
   // Derived State
   // ============================================================================
 
-  const hasActiveFilters = filters.topic || filters.priority || filters.search;
+  const hasActiveFilters = filters.topic || filters.priority || filters.search || hideHeartbeats;
   const isConnected = connectionStatus === 'connected';
   const eventCount = stats.totalReceived;
 
@@ -501,6 +553,16 @@ export default function EventBusMonitor() {
               className="h-9"
             />
           </div>
+
+          <Button
+            variant={hideHeartbeats ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setHideHeartbeats(!hideHeartbeats)}
+            className="gap-1.5"
+          >
+            {hideHeartbeats ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            Heartbeats
+          </Button>
 
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Max events:</span>

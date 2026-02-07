@@ -19,10 +19,8 @@ import {
 } from '@shared/intent-types';
 // Import intentEventEmitter for WebSocket broadcasting of intent events
 import { getIntentEventEmitter } from './intent-events';
-// Import canonical topic constants and resolution utilities
+// Import canonical topic constants
 import {
-  resolveTopicName,
-  getTopicEnvPrefix,
   buildSubscriptionTopics,
   ENVIRONMENT_PREFIXES,
   LEGACY_AGENT_ROUTING_DECISIONS,
@@ -35,6 +33,12 @@ import {
   SUFFIX_NODE_BECAME_ACTIVE,
   SUFFIX_NODE_LIVENESS_EXPIRED,
   SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_CONTRACT_REGISTERED,
+  SUFFIX_CONTRACT_DEREGISTERED,
+  SUFFIX_NODE_REGISTRATION_INITIATED,
+  SUFFIX_NODE_REGISTRATION_ACCEPTED,
+  SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_REGISTRATION_SNAPSHOTS,
   SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
   SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
   SUFFIX_OMNICLAUDE_SESSION_STARTED,
@@ -86,9 +90,9 @@ const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
 
-// Pre-resolve all canonical topic names for use in switch-case routing.
-// Suffixes come from @shared/topics; env prefix from TOPIC_ENV_PREFIX / ONEX_ENV.
-// ⚠️ Evaluated once at module load time — env vars must be set before import.
+// Canonical ONEX topics — used directly as suffixes (no env prefix).
+// Infra4 producers emit to unprefixed canonical names
+// (e.g. `onex.evt.platform.node-heartbeat.v1`).
 //
 // ⚠️ DEPLOYMENT ORDER: Node/platform topic names below use canonical ONEX format.
 // The upstream producer (omninode_bridge, omniclaude hooks) MUST be deployed
@@ -96,28 +100,26 @@ const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
 // to the new canonical names before producers emit on them, node registry
 // events (introspection, heartbeat, registration, liveness) will be silently
 // lost (no error, just missing data on the Node Registry dashboard).
-//
-// Old format: node.heartbeat, omninode_bridge.onex.evt.node-introspection.v1
-// New format: dev.onex.evt.platform.node-heartbeat.v1 (canonical)
-//
-// No dual-subscription is implemented — atomic cutover is required.
-const ENV_PREFIX = getTopicEnvPrefix();
-const resolve = (suffix: string) => resolveTopicName(suffix, ENV_PREFIX);
-
 const TOPIC = {
-  // Platform — see deployment order warning above
-  NODE_INTROSPECTION: resolve(SUFFIX_NODE_INTROSPECTION),
-  NODE_REGISTRATION: resolve(SUFFIX_NODE_REGISTRATION),
-  REQUEST_INTROSPECTION: resolve(SUFFIX_REQUEST_INTROSPECTION),
-  NODE_BECAME_ACTIVE: resolve(SUFFIX_NODE_BECAME_ACTIVE),
-  NODE_LIVENESS_EXPIRED: resolve(SUFFIX_NODE_LIVENESS_EXPIRED),
-  NODE_HEARTBEAT: resolve(SUFFIX_NODE_HEARTBEAT),
+  // Platform
+  NODE_INTROSPECTION: SUFFIX_NODE_INTROSPECTION,
+  NODE_REGISTRATION: SUFFIX_NODE_REGISTRATION,
+  REQUEST_INTROSPECTION: SUFFIX_REQUEST_INTROSPECTION,
+  NODE_BECAME_ACTIVE: SUFFIX_NODE_BECAME_ACTIVE,
+  NODE_LIVENESS_EXPIRED: SUFFIX_NODE_LIVENESS_EXPIRED,
+  NODE_HEARTBEAT: SUFFIX_NODE_HEARTBEAT,
+  CONTRACT_REGISTERED: SUFFIX_CONTRACT_REGISTERED,
+  CONTRACT_DEREGISTERED: SUFFIX_CONTRACT_DEREGISTERED,
+  NODE_REGISTRATION_INITIATED: SUFFIX_NODE_REGISTRATION_INITIATED,
+  NODE_REGISTRATION_ACCEPTED: SUFFIX_NODE_REGISTRATION_ACCEPTED,
+  NODE_REGISTRATION_REJECTED: SUFFIX_NODE_REGISTRATION_REJECTED,
+  REGISTRATION_SNAPSHOTS: SUFFIX_REGISTRATION_SNAPSHOTS,
   // OmniClaude
-  CLAUDE_HOOK: resolve(SUFFIX_INTELLIGENCE_CLAUDE_HOOK),
-  PROMPT_SUBMITTED: resolve(SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED),
-  SESSION_STARTED: resolve(SUFFIX_OMNICLAUDE_SESSION_STARTED),
-  SESSION_ENDED: resolve(SUFFIX_OMNICLAUDE_SESSION_ENDED),
-  TOOL_EXECUTED: resolve(SUFFIX_OMNICLAUDE_TOOL_EXECUTED),
+  CLAUDE_HOOK: SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
+  PROMPT_SUBMITTED: SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
+  SESSION_STARTED: SUFFIX_OMNICLAUDE_SESSION_STARTED,
+  SESSION_ENDED: SUFFIX_OMNICLAUDE_SESSION_ENDED,
+  TOOL_EXECUTED: SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
 } as const;
 
 // Structured logging for intent handlers
@@ -1066,7 +1068,7 @@ export class EventConsumer extends EventEmitter {
       }
 
       await this.consumer.subscribe({
-        topics: buildSubscriptionTopics(ENV_PREFIX),
+        topics: buildSubscriptionTopics(),
         fromBeginning: true, // Reprocess historical events to populate metrics
       });
 
@@ -1155,6 +1157,26 @@ export class EventConsumer extends EventEmitter {
                 }
                 this.handleCanonicalNodeLivenessExpired(message);
                 break;
+              case TOPIC.CONTRACT_REGISTERED:
+              case TOPIC.CONTRACT_DEREGISTERED: {
+                intentLogger.debug(`Processing contract lifecycle event from topic: ${topic}`);
+                this.handleCanonicalNodeIntrospection(message);
+                break;
+              }
+              case TOPIC.NODE_REGISTRATION_INITIATED:
+              case TOPIC.NODE_REGISTRATION_ACCEPTED:
+              case TOPIC.NODE_REGISTRATION_REJECTED: {
+                intentLogger.debug(
+                  `Processing node registration lifecycle event from topic: ${topic}`
+                );
+                this.handleCanonicalNodeIntrospection(message);
+                break;
+              }
+              case TOPIC.REGISTRATION_SNAPSHOTS: {
+                intentLogger.debug('Processing registration snapshot');
+                this.handleCanonicalNodeIntrospection(message);
+                break;
+              }
 
               // Intent topics
               case INTENT_CLASSIFIED_TOPIC:
