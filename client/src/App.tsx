@@ -34,6 +34,7 @@ import LiveEventStream from '@/pages/LiveEventStream';
 import ExecutionGraph from '@/pages/ExecutionGraph';
 import RegistryDiscovery from '@/pages/RegistryDiscovery';
 import IntentDashboard from '@/pages/IntentDashboard';
+import ValidationDashboard from '@/pages/ValidationDashboard';
 
 // Preview pages
 import EnhancedAnalytics from '@/pages/preview/EnhancedAnalytics';
@@ -77,6 +78,7 @@ function Router() {
       <Route path="/registry" component={NodeRegistry} />
       <Route path="/discovery" component={RegistryDiscovery} />
       <Route path="/intents" component={IntentDashboard} />
+      <Route path="/validation" component={ValidationDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

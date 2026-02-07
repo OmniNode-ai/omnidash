@@ -79,6 +79,7 @@ node scripts/seed-events.ts      # Direct script execution
 - Platform Health: http://localhost:3000/health
 - Developer Experience: http://localhost:3000/developer
 - Chat: http://localhost:3000/chat
+- Validation: http://localhost:3000/validation
 
 **Environment**:
 
@@ -100,7 +101,7 @@ Three-directory monorepo with TypeScript path aliases:
 
 ### Frontend Architecture
 
-**Router Pattern**: Wouter-based SPA with 9 dashboard routes representing different platform capabilities:
+**Router Pattern**: Wouter-based SPA with 10 dashboard routes representing different platform capabilities:
 
 | Route           | Component              | Purpose                         |
 | --------------- | ---------------------- | ------------------------------- |
@@ -113,6 +114,7 @@ Three-directory monorepo with TypeScript path aliases:
 | `/health`       | PlatformHealth         | System health monitoring        |
 | `/developer`    | DeveloperExperience    | Workflow metrics                |
 | `/chat`         | Chat                   | AI query assistant              |
+| `/validation`   | ValidationDashboard    | Cross-repo validation runs      |
 
 **Component System**: Built on shadcn/ui (New York variant) with Radix UI primitives. All UI components live in `client/src/components/ui/` and follow shadcn conventions.
 

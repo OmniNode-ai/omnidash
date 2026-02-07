@@ -155,6 +155,8 @@ const VALID_TOPICS = [
   'event-bus',
   // Demo playback events (OMN-1843)
   'playback',
+  // Cross-repo validation events (OMN-1907)
+  'validation',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -336,6 +338,15 @@ export function setupWebSocket(httpServer: HTTPServer) {
   registerEventListener('stateSnapshotted', () => {
     console.log('[WebSocket] Demo mode: state snapshotted');
     // No broadcast needed - just logging for debugging
+  });
+
+  // Cross-repo validation event listener (OMN-1907)
+  // Broadcasts validation lifecycle events (run-started, violations-batch, run-completed)
+  // to clients subscribed to the 'validation' topic
+  registerEventListener('validation-event', (data: { type: string; event: any }) => {
+    // Send minimal payload - clients only need the type for query invalidation,
+    // plus run_id for targeted cache updates. Full violation data stays server-side.
+    broadcast('VALIDATION_EVENT', { type: data.type, run_id: data.event?.run_id }, 'validation');
   });
 
   // Node Registry event listeners
