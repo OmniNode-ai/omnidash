@@ -47,7 +47,7 @@ import {
   EventDetailPanel,
   type EventDetailPanelProps,
 } from '@/components/event-bus/EventDetailPanel';
-import { TopicSelector, type TopicStatusRow } from '@/components/event-bus/TopicSelector';
+import { TopicSelector } from '@/components/event-bus/TopicSelector';
 
 // ============================================================================
 // Types
@@ -469,7 +469,7 @@ export default function EventBusMonitor() {
   // Derived State
   // ============================================================================
 
-  const hasActiveFilters = filters.topic || filters.priority || filters.search || hideHeartbeats;
+  const hasActiveFilters = filters.priority || filters.search || hideHeartbeats;
   const isConnected = connectionStatus === 'connected';
   const eventCount = stats.totalReceived;
 
@@ -478,7 +478,7 @@ export default function EventBusMonitor() {
   // ============================================================================
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -537,31 +537,14 @@ export default function EventBusMonitor() {
       </div>
 
       {/* Filters */}
-      <Card className="p-4">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Filters:</span>
+      <Card className="p-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Filters
+            </span>
           </div>
-
-          <Select
-            value={filters.topic || 'all'}
-            onValueChange={(value) =>
-              setFilters((prev) => ({ ...prev, topic: value === 'all' ? null : value }))
-            }
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="All Topics" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Topics</SelectItem>
-              {monitoredTopics.map((topic) => (
-                <SelectItem key={topic} value={topic}>
-                  {getTopicLabel(topic)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
 
           <Select
             value={filters.priority || 'all'}
@@ -569,7 +552,7 @@ export default function EventBusMonitor() {
               setFilters((prev) => ({ ...prev, priority: value === 'all' ? null : value }))
             }
           >
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[130px] h-8 text-xs">
               <SelectValue placeholder="All Priorities" />
             </SelectTrigger>
             <SelectContent>
@@ -586,7 +569,7 @@ export default function EventBusMonitor() {
               placeholder="Search events..."
               value={filters.search}
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-              className="h-9"
+              className="h-8 text-xs"
             />
           </div>
 
@@ -594,19 +577,19 @@ export default function EventBusMonitor() {
             variant={hideHeartbeats ? 'default' : 'outline'}
             size="sm"
             onClick={() => setHideHeartbeats(!hideHeartbeats)}
-            className="gap-1.5"
+            className="gap-1.5 h-8 text-xs"
           >
             {hideHeartbeats ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             Heartbeats
           </Button>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Max events:</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">Max:</span>
             <Select
               value={String(maxEvents)}
               onValueChange={(value) => setMaxEvents(Number(value))}
             >
-              <SelectTrigger className="w-[100px]">
+              <SelectTrigger className="w-[80px] h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -620,32 +603,11 @@ export default function EventBusMonitor() {
           </div>
 
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
-              <X className="h-4 w-4" />
-              Clear
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-8 text-xs">
+              <X className="h-3.5 w-3.5" />
+              Clear all
             </Button>
           )}
-
-          <div className="flex items-center gap-2">
-            {filters.topic && (
-              <Badge variant="secondary" className="gap-1">
-                Topic: {getTopicLabel(filters.topic)}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => setFilters((prev) => ({ ...prev, topic: null }))}
-                />
-              </Badge>
-            )}
-            {filters.priority && (
-              <Badge variant="secondary" className="gap-1">
-                Priority: {filters.priority}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => setFilters((prev) => ({ ...prev, priority: null }))}
-                />
-              </Badge>
-            )}
-          </div>
         </div>
       </Card>
 
@@ -656,23 +618,24 @@ export default function EventBusMonitor() {
         onSelectTopic={(topic) => setFilters((prev) => ({ ...prev, topic: topic }))}
       />
 
-      {/* Context Header -- only shown when a topic is selected */}
+      {/* Context Header — explicit filter state when a topic is selected */}
       {filters.topic && (
-        <Card className="p-3 flex items-center justify-between border-l-4 border-l-primary bg-accent/30">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium">Events for: {getTopicLabel(filters.topic)}</span>
-            <span className="text-xs text-muted-foreground font-mono">({filters.topic})</span>
+        <div className="flex items-center justify-between px-3 py-2 rounded-md bg-primary/5 border border-primary/20">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-1 rounded-full bg-primary" />
+            <span className="text-sm font-semibold">{getTopicLabel(filters.topic)}</span>
+            <span className="text-[11px] text-muted-foreground font-mono">{filters.topic}</span>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setFilters((prev) => ({ ...prev, topic: null }))}
-            className="gap-1 h-7"
+            className="gap-1 h-6 text-xs text-muted-foreground hover:text-foreground"
           >
-            <X className="h-3.5 w-3.5" />
-            Clear
+            <X className="h-3 w-3" />
+            Clear filter
           </Button>
-        </Card>
+        </div>
       )}
 
       {/* Dashboard Renderer */}
