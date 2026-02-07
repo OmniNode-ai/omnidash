@@ -27,7 +27,13 @@ export type OnexTopicKind = 'evt' | 'cmd' | 'intent' | 'snapshot' | 'dlq';
  * Get the topic environment prefix from environment variables.
  * Defaults to 'dev' if not specified.
  *
- * On the client-side (browser), `process.env` is not available — defaults to 'dev'.
+ * **Client-side (browser)**: Vite replaces `process.env.*` at build time.
+ * Since TOPIC_ENV_PREFIX / ONEX_ENV are not in the Vite define list,
+ * the browser bundle always resolves to `'dev'`.
+ *
+ * **Server-side**: Reads from `TOPIC_ENV_PREFIX` or `ONEX_ENV` env vars.
+ * These must be set BEFORE any module that imports from this file is evaluated,
+ * because topic constants are resolved at module load time (not lazily).
  */
 export function getTopicEnvPrefix(): string {
   if (typeof process !== 'undefined' && process.env !== undefined) {
@@ -46,18 +52,6 @@ export function getTopicEnvPrefix(): string {
 export function resolveTopicName(suffix: string, envPrefix?: string): string {
   const prefix = envPrefix ?? getTopicEnvPrefix();
   return `${prefix}.${suffix}`;
-}
-
-/**
- * Extract the canonical suffix from a full topic name by stripping the env prefix.
- *
- * @example
- * extractSuffix('dev.onex.evt.platform.node-heartbeat.v1')
- * // => 'onex.evt.platform.node-heartbeat.v1'
- */
-export function extractSuffix(fullTopicName: string): string {
-  const match = fullTopicName.match(/^[^.]+\.(.+)$/);
-  return match ? match[1] : fullTopicName;
 }
 
 // ============================================================================

@@ -87,6 +87,7 @@ const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
 
 // Pre-resolve all canonical topic names for use in switch-case routing.
 // Suffixes come from @shared/topics; env prefix from TOPIC_ENV_PREFIX / ONEX_ENV.
+// ⚠️ Evaluated once at module load time — env vars must be set before import.
 const ENV_PREFIX = getTopicEnvPrefix();
 const resolve = (suffix: string) => resolveTopicName(suffix, ENV_PREFIX);
 

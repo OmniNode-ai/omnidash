@@ -22,11 +22,17 @@ import {
 // Corrected format: onex.evt.validation.<event-name>.v1
 // (was: onex.validation.cross_repo.<event>.v1 — non-canonical)
 //
-// Migration note: upstream producer (omnibase_infra topic_resolver.py) was updated
-// to the canonical format in the same changeset. See platform_topic_suffixes.py
-// for the matching suffixes. No dual-subscription is needed because omnidash and
-// omnibase_infra are deployed together — deploy the upstream producer first (or
-// simultaneously) so the new topic names are active before omnidash subscribes.
+// ⚠️ DEPLOYMENT ORDER: This is a BREAKING CHANGE to topic names.
+// The upstream producer (omnibase_infra topic_resolver.py) MUST be deployed
+// BEFORE or SIMULTANEOUSLY with this omnidash change. If omnidash subscribes
+// to the new canonical names before the producer emits on them, validation
+// events will be silently lost (no error, just missing data).
+//
+// Old format: onex.validation.cross_repo.run.started.v1 (non-canonical)
+// New format: dev.onex.evt.validation.cross-repo-run-started.v1 (canonical)
+//
+// See platform_topic_suffixes.py for the matching producer-side suffixes.
+// No dual-subscription is implemented — atomic cutover is required.
 // ============================================================================
 
 /** Kafka topic for validation run started events */
