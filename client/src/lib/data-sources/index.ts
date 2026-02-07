@@ -14,3 +14,11 @@ export {
 } from './pattern-learning-source';
 
 export type { PatlearnArtifact, PatlearnSummary, LifecycleState } from './pattern-learning-source';
+
+// Validation dashboard data source (OMN-1907)
+export {
+  validationSource,
+  type ValidationSummary,
+  type RunSummary,
+  type RunsListResponse,
+} from './validation-source';

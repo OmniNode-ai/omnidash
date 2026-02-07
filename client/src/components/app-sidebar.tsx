@@ -1,4 +1,13 @@
-import { Radio, ChevronRight, Search, Layers, Globe, Brain, Sparkles } from 'lucide-react';
+import {
+  Radio,
+  ChevronRight,
+  Search,
+  Layers,
+  Globe,
+  Brain,
+  Sparkles,
+  ShieldCheck,
+} from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
   Sidebar,
@@ -37,6 +46,12 @@ const dashboards = [
     url: '/intents',
     icon: Brain,
     description: 'Real-time intent classification and analysis',
+  },
+  {
+    title: 'Validation',
+    url: '/validation',
+    icon: ShieldCheck,
+    description: 'Cross-repo validation runs and violation trends',
   },
   // Hidden: Execution Graph (/graph) - node execution visualization
   // Hidden: Demo Stream (/live-events) - superseded by Event Bus

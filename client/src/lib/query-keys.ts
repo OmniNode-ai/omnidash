@@ -367,6 +367,32 @@ export const queryKeys = {
     /** Service discovery */
     services: () => [...queryKeys.registry.all, 'services'] as const,
   },
+  // ============================================================================
+  // Validation
+  // ============================================================================
+
+  /**
+   * Cross-repo validation query keys for validation dashboard
+   */
+  validation: {
+    /** Base key for all validation queries */
+    all: ['validation'] as const,
+
+    /** Summary stats */
+    summary: () => [...queryKeys.validation.all, 'summary'] as const,
+
+    /** Run lists */
+    lists: () => [...queryKeys.validation.all, 'list'] as const,
+
+    /** Filtered run list */
+    list: (filter: string) => [...queryKeys.validation.lists(), filter] as const,
+
+    /** Single run detail */
+    detail: (runId: string) => [...queryKeys.validation.all, 'detail', runId] as const,
+
+    /** Per-repo trends */
+    trends: (repo: string) => [...queryKeys.validation.all, 'trends', repo] as const,
+  },
 } as const;
 
 /**
