@@ -206,7 +206,7 @@ export function generateSummary(
 
   // Heartbeat events: "{node_id} — {health_status}"
   if (parsedDetails.nodeId) {
-    const healthStatus = parsedDetails.status || 'unknown';
+    const healthStatus = parsedDetails.healthStatus || parsedDetails.status || 'healthy';
     return `${parsedDetails.nodeId} — ${healthStatus}`;
   }
 
@@ -278,6 +278,10 @@ export function computeNormalizedType(
   // For routing decisions, use the selected agent
   if (parsedDetails?.selectedAgent) {
     return `route:${parsedDetails.selectedAgent}`;
+  }
+  // Skip version suffixes (v1, v2, etc.) — these leak from canonical topic parsing
+  if (/^v\d+$/.test(eventType)) {
+    return parsedDetails?.actionType || parsedDetails?.actionName || 'unknown';
   }
   // Default to eventType
   return eventType;

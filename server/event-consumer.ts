@@ -1553,10 +1553,16 @@ export class EventConsumer extends EventEmitter {
     // Parse canonical actionName (e.g. "onex.cmd.omniintelligence.tool-content.v1")
     if ((isJunkType || isJunkAgent) && actionName.startsWith('onex.')) {
       const parts = actionName.split('.');
-      // Format: onex.<kind>.<producer>.<event-name>.v<N>
-      if (parts.length >= 4) {
-        if (isJunkType) actionType = parts[3] || rawActionType; // e.g. "tool-content"
-        if (isJunkAgent) agentName = parts[2] || rawAgentName; // e.g. "omniintelligence"
+      // Strip trailing version suffix (e.g. "v1", "v2")
+      const stripped = /^v\d+$/.test(parts[parts.length - 1]) ? parts.slice(0, -1) : parts;
+      // 4-part: onex.<kind>.<producer>.<event-name>
+      // 3-part: onex.<kind>.<event-name> (rare, missing producer)
+      if (stripped.length >= 4) {
+        if (isJunkType) actionType = stripped[3] || rawActionType; // e.g. "tool-content"
+        if (isJunkAgent) agentName = stripped[2] || rawAgentName; // e.g. "omniintelligence"
+      } else if (stripped.length === 3) {
+        if (isJunkType) actionType = stripped[2] || rawActionType; // e.g. "registration-completed"
+        // No producer segment available for agentName
       }
     }
 

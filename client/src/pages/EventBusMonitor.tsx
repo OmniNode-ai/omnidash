@@ -613,34 +613,41 @@ export default function EventBusMonitor() {
         </div>
       </Card>
 
-      {/* Topic Legend */}
-      <div className="flex items-center gap-6 text-sm">
-        <span className="text-muted-foreground">Topics:</span>
-        {monitoredTopics.map((topic) => (
-          <div
-            key={topic}
-            className="flex items-center gap-2 cursor-pointer hover:opacity-80"
-            onClick={() =>
-              setFilters((prev) => ({
-                ...prev,
-                topic: prev.topic === topic ? null : topic,
-              }))
-            }
-          >
-            <div
-              className={`h-3 w-3 rounded-full ${
-                topic.includes('agent')
-                  ? 'bg-blue-500'
-                  : topic.includes('heartbeat')
-                    ? 'bg-status-healthy'
-                    : 'bg-primary'
-              }`}
-            />
-            <span className={filters.topic === topic ? 'font-medium' : ''}>
+      {/* Topic Legend — only show topics with events in the current view */}
+      <div className="flex items-center gap-2 flex-wrap text-xs">
+        <span className="text-muted-foreground text-sm mr-1">Topics:</span>
+        {monitoredTopics
+          .filter((topic) => sourceData.events.some((e) => e.topicRaw === topic))
+          .map((topic) => (
+            <Badge
+              key={topic}
+              variant={filters.topic === topic ? 'default' : 'outline'}
+              className="cursor-pointer gap-1.5 px-2 py-0.5"
+              onClick={() =>
+                setFilters((prev) => ({
+                  ...prev,
+                  topic: prev.topic === topic ? null : topic,
+                }))
+              }
+            >
+              <div
+                className={`h-2 w-2 rounded-full ${
+                  topic.includes('agent')
+                    ? 'bg-blue-500'
+                    : topic.includes('heartbeat')
+                      ? 'bg-green-500'
+                      : topic.includes('introspection')
+                        ? 'bg-teal-500'
+                        : topic.includes('registration') || topic.includes('contract')
+                          ? 'bg-amber-500'
+                          : 'bg-primary'
+                }`}
+              />
               {getTopicLabel(topic)}
-            </span>
-          </div>
-        ))}
+            </Badge>
+          ))}
+        {monitoredTopics.filter((topic) => sourceData.events.some((e) => e.topicRaw === topic))
+          .length === 0 && <span className="text-muted-foreground italic">No active topics</span>}
       </div>
 
       {/* Dashboard Renderer */}
