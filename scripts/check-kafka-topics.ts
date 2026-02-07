@@ -10,6 +10,7 @@
  */
 
 import { Kafka } from 'kafkajs';
+import { LEGACY_AGENT_TOPICS } from '../shared/topics';
 
 const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
 if (!brokers) {
@@ -25,8 +26,6 @@ const kafka = new Kafka({
   brokers: brokers.split(','),
   clientId: 'omnidash-topic-checker',
 });
-
-import { LEGACY_AGENT_TOPICS } from '../shared/topics';
 
 const TOPICS_TO_CHECK = [...LEGACY_AGENT_TOPICS];
 

@@ -321,15 +321,15 @@ export class EventPlaybackService extends EventEmitter {
         break;
       default:
         // ONEX topics: match by suffix (handles any env prefix in recordings)
-        if (topic.includes(SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED)) {
+        if (topic.endsWith(SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED)) {
           this.emit('promptSubmitted', value);
-        } else if (topic.includes(SUFFIX_OMNICLAUDE_SESSION_STARTED)) {
+        } else if (topic.endsWith(SUFFIX_OMNICLAUDE_SESSION_STARTED)) {
           this.emit('sessionStarted', value);
-        } else if (topic.includes(SUFFIX_OMNICLAUDE_SESSION_ENDED)) {
+        } else if (topic.endsWith(SUFFIX_OMNICLAUDE_SESSION_ENDED)) {
           this.emit('sessionEnded', value);
-        } else if (topic.includes(SUFFIX_OMNICLAUDE_TOOL_EXECUTED)) {
+        } else if (topic.endsWith(SUFFIX_OMNICLAUDE_TOOL_EXECUTED)) {
           this.emit('toolExecuted', value);
-        } else if (topic.includes(SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED)) {
+        } else if (topic.endsWith(SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED)) {
           this.emit('intentClassified', value);
         } else {
           this.emit('unknownTopic', event);
