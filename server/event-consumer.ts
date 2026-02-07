@@ -1099,6 +1099,11 @@ export class EventConsumer extends EventEmitter {
                   `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
                 );
                 this.handleNodeIntrospection(event);
+                // Also route through canonical envelope handler for deduplication and registry updates
+                if (DEBUG_CANONICAL_EVENTS) {
+                  intentLogger.debug('Processing canonical node-introspection event');
+                }
+                this.handleCanonicalNodeIntrospection(message);
                 break;
               case TOPIC.NODE_HEARTBEAT:
                 intentLogger.debug(`Processing node heartbeat: ${event.node_id || event.nodeId}`);

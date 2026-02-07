@@ -6,6 +6,8 @@ export {
   SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED as ONEX_EVT_OMNIINTELLIGENCE_INTENT_CLASSIFIED_V1,
   SUFFIX_MEMORY_INTENT_STORED as ONEX_EVT_OMNIMEMORY_INTENT_STORED_V1,
   SUFFIX_MEMORY_INTENT_QUERY_RESPONSE as ONEX_EVT_OMNIMEMORY_INTENT_QUERY_RESPONSE_V1,
-  resolveTopicName as withEnvPrefix,
   getTopicEnvPrefix,
 } from '@shared/topics';
+
+// Note: `withEnvPrefix(envPrefix, topic)` was removed because `resolveTopicName(suffix, envPrefix?)`
+// has reversed parameter order. Use `resolveTopicName` from '@shared/topics' directly.

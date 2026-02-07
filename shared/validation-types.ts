@@ -21,6 +21,10 @@ import {
 //
 // Corrected format: onex.evt.validation.<event-name>.v1
 // (was: onex.validation.cross_repo.<event>.v1 — non-canonical)
+//
+// Migration note: upstream producer (omnibase_infra topic_resolver.py) was updated
+// to the canonical format in the same changeset. See platform_topic_suffixes.py
+// for the matching suffixes. No dual-subscription is needed.
 // ============================================================================
 
 /** Kafka topic for validation run started events */
