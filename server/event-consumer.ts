@@ -89,11 +89,23 @@ const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
 // Pre-resolve all canonical topic names for use in switch-case routing.
 // Suffixes come from @shared/topics; env prefix from TOPIC_ENV_PREFIX / ONEX_ENV.
 // ⚠️ Evaluated once at module load time — env vars must be set before import.
+//
+// ⚠️ DEPLOYMENT ORDER: Node/platform topic names below use canonical ONEX format.
+// The upstream producer (omninode_bridge, omniclaude hooks) MUST be deployed
+// BEFORE or SIMULTANEOUSLY with this omnidash change. If omnidash subscribes
+// to the new canonical names before producers emit on them, node registry
+// events (introspection, heartbeat, registration, liveness) will be silently
+// lost (no error, just missing data on the Node Registry dashboard).
+//
+// Old format: node.heartbeat, omninode_bridge.onex.evt.node-introspection.v1
+// New format: dev.onex.evt.platform.node-heartbeat.v1 (canonical)
+//
+// No dual-subscription is implemented — atomic cutover is required.
 const ENV_PREFIX = getTopicEnvPrefix();
 const resolve = (suffix: string) => resolveTopicName(suffix, ENV_PREFIX);
 
 const TOPIC = {
-  // Platform
+  // Platform — see deployment order warning above
   NODE_INTROSPECTION: resolve(SUFFIX_NODE_INTROSPECTION),
   NODE_REGISTRATION: resolve(SUFFIX_NODE_REGISTRATION),
   REQUEST_INTROSPECTION: resolve(SUFFIX_REQUEST_INTROSPECTION),
