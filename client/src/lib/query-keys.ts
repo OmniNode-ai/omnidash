@@ -393,6 +393,29 @@ export const queryKeys = {
     /** Per-repo trends */
     trends: (repo: string) => [...queryKeys.validation.all, 'trends', repo] as const,
   },
+  // ============================================================================
+  // Injection Effectiveness (OMN-1891)
+  // ============================================================================
+
+  effectiveness: {
+    /** Base key for all effectiveness queries */
+    all: ['effectiveness'] as const,
+
+    /** Executive summary */
+    summary: () => [...queryKeys.effectiveness.all, 'summary'] as const,
+
+    /** Auto-throttle status */
+    throttle: () => [...queryKeys.effectiveness.all, 'throttle'] as const,
+
+    /** Latency details */
+    latency: () => [...queryKeys.effectiveness.all, 'latency'] as const,
+
+    /** Utilization analytics */
+    utilization: () => [...queryKeys.effectiveness.all, 'utilization'] as const,
+
+    /** A/B comparison */
+    ab: () => [...queryKeys.effectiveness.all, 'ab'] as const,
+  },
 } as const;
 
 /**
