@@ -72,14 +72,19 @@ router.get('/summary', async (_req, res) => {
       .where(and(eq(ie.cohort, 'treatment'), eq(ie.injectionOccurred, true)));
     const meanAccuracy = accResult[0]?.mean ?? 0;
 
-    // Latency delta P95: treatment P95 - control P95
+    // Latency delta P95: treatment P95 (injected only) - control P95
     const latencyResult = await db
       .select({
         cohort: ie.cohort,
         p95: sql<number>`percentile_cont(0.95) WITHIN GROUP (ORDER BY ${ie.userVisibleLatencyMs})`,
       })
       .from(ie)
-      .where(sql`${ie.userVisibleLatencyMs} IS NOT NULL`)
+      .where(
+        and(
+          sql`${ie.userVisibleLatencyMs} IS NOT NULL`,
+          sql`(${ie.cohort} = 'control' OR (${ie.cohort} = 'treatment' AND ${ie.injectionOccurred} = true))`
+        )
+      )
       .groupBy(ie.cohort);
 
     let treatmentP95 = 0;

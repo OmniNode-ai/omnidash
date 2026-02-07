@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
+import { formatRelativeTime } from '@/lib/date-utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,18 +47,6 @@ import {
 /** Format a bucket range into a label like "0.0-0.1". */
 function bucketLabel(start: number, end: number): string {
   return `${start.toFixed(1)}-${end.toFixed(1)}`;
-}
-
-/** Format a relative timestamp into a human-readable string. */
-function formatRelativeTime(iso: string): string {
-  const now = Date.now();
-  const then = new Date(iso).getTime();
-  const diffMs = now - then;
-
-  if (diffMs < 60_000) return 'just now';
-  if (diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)}m ago`;
-  if (diffMs < 86_400_000) return `${Math.floor(diffMs / 3_600_000)}h ago`;
-  return `${Math.floor(diffMs / 86_400_000)}d ago`;
 }
 
 // ============================================================================

@@ -28,10 +28,19 @@ export interface EffectivenessFetchOptions {
 
 class EffectivenessSource {
   private baseUrl = '/api/effectiveness';
-  private _isUsingMockData = false;
+  private _mockEndpoints = new Set<string>();
 
+  /** True if any endpoint fell back to mock data */
   get isUsingMockData(): boolean {
-    return this._isUsingMockData;
+    return this._mockEndpoints.size > 0;
+  }
+
+  private markReal(endpoint: string): void {
+    this._mockEndpoints.delete(endpoint);
+  }
+
+  private markMock(endpoint: string): void {
+    this._mockEndpoints.add(endpoint);
   }
 
   async summary(options: EffectivenessFetchOptions = {}): Promise<EffectivenessSummary> {
@@ -40,12 +49,12 @@ class EffectivenessSource {
       const response = await fetch(`${this.baseUrl}/summary`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      this._isUsingMockData = false;
+      this.markReal('summary');
       return data;
     } catch (error) {
       if (fallbackToMock) {
         console.warn('[EffectivenessSource] API unavailable for summary, using demo data');
-        this._isUsingMockData = true;
+        this.markMock('summary');
         return getMockSummary();
       }
       throw error;
@@ -58,12 +67,12 @@ class EffectivenessSource {
       const response = await fetch(`${this.baseUrl}/throttle`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      this._isUsingMockData = false;
+      this.markReal('throttle');
       return data;
     } catch (error) {
       if (fallbackToMock) {
         console.warn('[EffectivenessSource] API unavailable for throttle, using demo data');
-        this._isUsingMockData = true;
+        this.markMock('throttle');
         return getMockThrottleStatus();
       }
       throw error;
@@ -76,12 +85,12 @@ class EffectivenessSource {
       const response = await fetch(`${this.baseUrl}/latency`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      this._isUsingMockData = false;
+      this.markReal('latency');
       return data;
     } catch (error) {
       if (fallbackToMock) {
         console.warn('[EffectivenessSource] API unavailable for latency, using demo data');
-        this._isUsingMockData = true;
+        this.markMock('latency');
         return getMockLatencyDetails();
       }
       throw error;
@@ -94,12 +103,12 @@ class EffectivenessSource {
       const response = await fetch(`${this.baseUrl}/utilization`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      this._isUsingMockData = false;
+      this.markReal('utilization');
       return data;
     } catch (error) {
       if (fallbackToMock) {
         console.warn('[EffectivenessSource] API unavailable for utilization, using demo data');
-        this._isUsingMockData = true;
+        this.markMock('utilization');
         return getMockUtilizationDetails();
       }
       throw error;
@@ -112,12 +121,12 @@ class EffectivenessSource {
       const response = await fetch(`${this.baseUrl}/ab`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      this._isUsingMockData = false;
+      this.markReal('ab');
       return data;
     } catch (error) {
       if (fallbackToMock) {
         console.warn('[EffectivenessSource] API unavailable for A/B, using demo data');
-        this._isUsingMockData = true;
+        this.markMock('ab');
         return getMockABComparison();
       }
       throw error;
