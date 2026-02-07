@@ -26,7 +26,7 @@ import {
 } from '@/lib/configs/node-registry-dashboard';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import type { DashboardData } from '@/lib/dashboard-schema';
-import { SUFFIX_NODE_INTROSPECTION } from '@shared/topics';
+import { SUFFIX_NODE_INTROSPECTION, resolveTopicName } from '@shared/topics';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Wifi, WifiOff, Info } from 'lucide-react';
@@ -475,7 +475,9 @@ export default function NodeRegistry() {
               </div>
               <div>
                 <span className="font-medium">Kafka Topics:</span>
-                <div className="text-muted-foreground mt-1">{SUFFIX_NODE_INTROSPECTION}</div>
+                <div className="text-muted-foreground mt-1">
+                  {resolveTopicName(SUFFIX_NODE_INTROSPECTION)}
+                </div>
               </div>
             </div>
           </div>
