@@ -37,7 +37,8 @@ export type OnexTopicKind = 'evt' | 'cmd' | 'intent' | 'snapshot' | 'dlq';
  */
 export function getTopicEnvPrefix(): string {
   if (typeof process !== 'undefined' && process.env !== undefined) {
-    return process.env.TOPIC_ENV_PREFIX || process.env.ONEX_ENV || 'dev';
+    const prefix = process.env.TOPIC_ENV_PREFIX ?? process.env.ONEX_ENV;
+    return prefix !== undefined && prefix !== '' ? prefix : 'dev';
   }
   return 'dev';
 }

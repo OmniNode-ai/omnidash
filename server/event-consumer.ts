@@ -1092,34 +1092,38 @@ export class EventConsumer extends EventEmitter {
 
               // Platform node topics (canonical ONEX)
               case TOPIC.NODE_INTROSPECTION:
-              case TOPIC.REQUEST_INTROSPECTION:
-                intentLogger.debug(
-                  `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
-                );
-                this.handleNodeIntrospection(event);
-                // Also route through canonical envelope handler for deduplication and registry updates.
-                // Guard: only attempt envelope parsing if the event looks like a canonical envelope
-                // (has event_type + payload fields). Legacy-format events skip this path to avoid
-                // spurious Zod parse warnings in the logs.
-                if (event.event_type && event.payload) {
+              case TOPIC.REQUEST_INTROSPECTION: {
+                // Detect envelope format to route to exactly ONE handler path.
+                // Canonical envelopes carry event_type + payload; legacy events have
+                // flat fields like node_id at the top level.
+                const isIntrospectionEnvelope = Boolean(event.event_type && event.payload);
+                if (!isIntrospectionEnvelope) {
+                  intentLogger.debug(
+                    `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
+                  );
+                  this.handleNodeIntrospection(event);
+                } else {
                   if (DEBUG_CANONICAL_EVENTS) {
                     intentLogger.debug('Processing canonical node-introspection event');
                   }
                   this.handleCanonicalNodeIntrospection(message);
                 }
                 break;
-              case TOPIC.NODE_HEARTBEAT:
-                intentLogger.debug(`Processing node heartbeat: ${event.node_id || event.nodeId}`);
-                this.handleNodeHeartbeat(event);
-                // Also route through canonical envelope handler.
-                // Guard: only attempt envelope parsing for canonical-format events (see above).
-                if (event.event_type && event.payload) {
+              }
+              case TOPIC.NODE_HEARTBEAT: {
+                // Detect envelope format to route to exactly ONE handler path.
+                const isHeartbeatEnvelope = Boolean(event.event_type && event.payload);
+                if (!isHeartbeatEnvelope) {
+                  intentLogger.debug(`Processing node heartbeat: ${event.node_id || event.nodeId}`);
+                  this.handleNodeHeartbeat(event);
+                } else {
                   if (DEBUG_CANONICAL_EVENTS) {
                     intentLogger.debug('Processing canonical node-heartbeat event');
                   }
                   this.handleCanonicalNodeHeartbeat(message);
                 }
                 break;
+              }
               case TOPIC.NODE_REGISTRATION:
                 intentLogger.debug(
                   `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
@@ -2228,6 +2232,45 @@ export class EventConsumer extends EventEmitter {
   // ============================================================================
 
   /**
+   * Map a canonical OnexNodeState ('ACTIVE' | 'PENDING' | 'OFFLINE') to the
+   * legacy RegistrationState used by the registeredNodes map and WebSocket
+   * consumers.
+   */
+  private mapCanonicalState(state: OnexNodeState): RegistrationState {
+    const stateMap: Record<string, RegistrationState> = {
+      ACTIVE: 'active',
+      PENDING: 'pending_registration',
+      OFFLINE: 'liveness_expired',
+    };
+    return stateMap[state] || 'pending_registration';
+  }
+
+  /**
+   * Sync a canonical node into the legacy registeredNodes map so that
+   * getRegisteredNodes() reflects canonical state for WebSocket consumers.
+   *
+   * Preserves existing RegisteredNode data (nodeType, version, metrics,
+   * endpoints) when available, and overlays the canonical state and timestamp.
+   */
+  private syncCanonicalToRegistered(canonicalNode: CanonicalOnexNode): void {
+    const existing = this.registeredNodes.get(canonicalNode.node_id);
+
+    const node: RegisteredNode = {
+      nodeId: canonicalNode.node_id,
+      nodeType: existing?.nodeType ?? 'COMPUTE',
+      state: this.mapCanonicalState(canonicalNode.state),
+      version: existing?.version ?? '1.0.0',
+      uptimeSeconds: existing?.uptimeSeconds ?? 0,
+      lastSeen: new Date(canonicalNode.last_event_at || Date.now()),
+      memoryUsageMb: existing?.memoryUsageMb,
+      cpuUsagePercent: existing?.cpuUsagePercent,
+      endpoints: existing?.endpoints ?? {},
+    };
+
+    this.registeredNodes.set(canonicalNode.node_id, node);
+  }
+
+  /**
    * Handle canonical node-became-active events.
    * Updates the canonical node registry and emits dashboard events.
    */
@@ -2263,6 +2306,9 @@ export class EventConsumer extends EventEmitter {
       last_heartbeat_at: emittedAtMs,
       last_event_at: emittedAtMs,
     });
+
+    // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
+    this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
 
     // Emit dashboard event for WebSocket broadcast
     this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
@@ -2316,6 +2362,9 @@ export class EventConsumer extends EventEmitter {
       last_event_at: emittedAtMs,
     });
 
+    // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
+    this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
+
     // Emit dashboard event for WebSocket broadcast
     this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
@@ -2348,6 +2397,9 @@ export class EventConsumer extends EventEmitter {
         last_event_at: emittedAtMs,
       });
 
+      // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
+      this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
+
       // Emit dashboard event so newly discovered nodes appear immediately
       this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
       return;
@@ -2363,6 +2415,9 @@ export class EventConsumer extends EventEmitter {
       last_heartbeat_at: emittedAtMs,
       last_event_at: emittedAtMs,
     });
+
+    // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
+    this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
 
     // Emit dashboard event for WebSocket broadcast
     this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
@@ -2410,6 +2465,9 @@ export class EventConsumer extends EventEmitter {
         };
 
     this.canonicalNodes.set(payload.node_id, node);
+
+    // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
+    this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
 
     // Emit dashboard event for WebSocket broadcast
     this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
