@@ -55,6 +55,28 @@ vi.mock('../storage', () => ({
 
 // Import after mocks are set up - this will use our mocks
 import { EventConsumer } from '../event-consumer';
+import {
+  resolveTopicName,
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_REGISTRATION,
+  SUFFIX_REQUEST_INTROSPECTION,
+  SUFFIX_NODE_BECAME_ACTIVE,
+  SUFFIX_NODE_LIVENESS_EXPIRED,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
+  SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
+  SUFFIX_OMNICLAUDE_SESSION_STARTED,
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_OMNICLAUDE_SESSION_ENDED,
+  SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED,
+  SUFFIX_MEMORY_INTENT_STORED,
+  SUFFIX_MEMORY_INTENT_QUERY_RESPONSE,
+} from '../../shared/topics';
+import {
+  VALIDATION_RUN_STARTED_TOPIC,
+  VALIDATION_VIOLATIONS_BATCH_TOPIC,
+  VALIDATION_RUN_COMPLETED_TOPIC,
+} from '../../shared/validation-types';
 
 describe('EventConsumer', () => {
   let consumer: InstanceType<typeof EventConsumer>;
@@ -154,27 +176,27 @@ describe('EventConsumer', () => {
       expect(call.topics).toContain('agent-actions');
       expect(call.topics).toContain('agent-transformation-events');
       expect(call.topics).toContain('router-performance-metrics');
-      // Canonical platform topics (env-prefixed)
-      expect(call.topics).toContain('dev.onex.evt.platform.node-introspection.v1');
-      expect(call.topics).toContain('dev.onex.evt.platform.node-registration.v1');
-      expect(call.topics).toContain('dev.onex.cmd.platform.request-introspection.v1');
-      expect(call.topics).toContain('dev.onex.evt.platform.node-became-active.v1');
-      expect(call.topics).toContain('dev.onex.evt.platform.node-liveness-expired.v1');
-      expect(call.topics).toContain('dev.onex.evt.platform.node-heartbeat.v1');
+      // Canonical platform topics (env-prefixed via resolveTopicName)
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_NODE_INTROSPECTION));
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_NODE_REGISTRATION));
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_REQUEST_INTROSPECTION));
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_NODE_BECAME_ACTIVE));
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_NODE_LIVENESS_EXPIRED));
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_NODE_HEARTBEAT));
       // OmniClaude topics
-      expect(call.topics).toContain('dev.onex.cmd.omniintelligence.claude-hook-event.v1');
-      expect(call.topics).toContain('dev.onex.evt.omniclaude.prompt-submitted.v1');
-      expect(call.topics).toContain('dev.onex.evt.omniclaude.session-started.v1');
-      expect(call.topics).toContain('dev.onex.evt.omniclaude.tool-executed.v1');
-      expect(call.topics).toContain('dev.onex.evt.omniclaude.session-ended.v1');
-      // Intent topics
-      expect(call.topics).toContain('dev.onex.evt.omniintelligence.intent-classified.v1');
-      expect(call.topics).toContain('dev.onex.evt.omnimemory.intent-stored.v1');
-      expect(call.topics).toContain('dev.onex.evt.omnimemory.intent-query-response.v1');
-      // Validation topics (canonical format)
-      expect(call.topics).toContain('dev.onex.evt.validation.cross-repo-run-started.v1');
-      expect(call.topics).toContain('dev.onex.evt.validation.cross-repo-violations-batch.v1');
-      expect(call.topics).toContain('dev.onex.evt.validation.cross-repo-run-completed.v1');
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_INTELLIGENCE_CLAUDE_HOOK));
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED));
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_OMNICLAUDE_SESSION_STARTED));
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_OMNICLAUDE_TOOL_EXECUTED));
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_OMNICLAUDE_SESSION_ENDED));
+      // Intent topics (resolved at export site in shared/intent-types)
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED));
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_MEMORY_INTENT_STORED));
+      expect(call.topics).toContain(resolveTopicName(SUFFIX_MEMORY_INTENT_QUERY_RESPONSE));
+      // Validation topics (resolved at export site in shared/validation-types)
+      expect(call.topics).toContain(VALIDATION_RUN_STARTED_TOPIC);
+      expect(call.topics).toContain(VALIDATION_VIOLATIONS_BATCH_TOPIC);
+      expect(call.topics).toContain(VALIDATION_RUN_COMPLETED_TOPIC);
       expect(mockConsumerRun).toHaveBeenCalled();
     });
 
