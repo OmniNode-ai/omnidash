@@ -10,7 +10,7 @@
  */
 
 import { Router } from 'express';
-import { sql, desc, gte, and, eq, lt } from 'drizzle-orm';
+import { sql, desc, gte, and, eq } from 'drizzle-orm';
 import { tryGetIntelligenceDb } from './storage';
 import {
   injectionEffectiveness,

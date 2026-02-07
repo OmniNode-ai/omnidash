@@ -7,52 +7,8 @@
  * @see OMN-1891 - Build Effectiveness Dashboard
  */
 
-// ============================================================================
-// Database Row Types (mirrors OMN-1890 schema)
-// ============================================================================
-
-export interface InjectionEffectivenessRow {
-  id: string;
-  session_id: string;
-  correlation_id: string;
-  cohort: 'treatment' | 'control';
-  injection_occurred: boolean;
-  agent_name: string | null;
-  detection_method: string | null;
-  utilization_score: number | null;
-  utilization_method: string | null;
-  agent_match_score: number | null;
-  user_visible_latency_ms: number | null;
-  session_outcome: string | null;
-  routing_time_ms: number | null;
-  retrieval_time_ms: number | null;
-  injection_time_ms: number | null;
-  patterns_count: number | null;
-  cache_hit: boolean;
-  created_at: string;
-}
-
-export interface LatencyBreakdownRow {
-  id: string;
-  session_id: string;
-  prompt_id: string;
-  routing_time_ms: number | null;
-  retrieval_time_ms: number | null;
-  injection_time_ms: number | null;
-  user_visible_latency_ms: number | null;
-  cohort: string;
-  cache_hit: boolean;
-  created_at: string;
-}
-
-export interface PatternHitRateRow {
-  id: string;
-  session_id: string;
-  pattern_id: string;
-  utilization_score: number | null;
-  utilization_method: string | null;
-  created_at: string;
-}
+// Database row types are inferred from Drizzle in shared/intelligence-schema.ts:
+//   InjectionEffectivenessRow, LatencyBreakdownRow, PatternHitRateRow
 
 // ============================================================================
 // API Response Types

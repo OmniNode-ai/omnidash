@@ -202,7 +202,7 @@ export default function EffectivenessSummary() {
           />
           <MetricCard
             label="Latency Delta P95"
-            value={`+${summary.latency_delta_p95_ms.toFixed(0)}ms`}
+            value={`${summary.latency_delta_p95_ms >= 0 ? '+' : ''}${summary.latency_delta_p95_ms.toFixed(0)}ms`}
             icon={Clock}
             status={
               summary.latency_delta_p95_ms <= summary.latency_delta_target_ms
