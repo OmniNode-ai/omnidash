@@ -55,6 +55,7 @@ vi.mock('../storage', () => ({
 
 // Import after mocks are set up - this will use our mocks
 import { EventConsumer } from '../event-consumer';
+import { buildSubscriptionTopics } from '@shared/topics';
 
 describe('EventConsumer', () => {
   let consumer: InstanceType<typeof EventConsumer>;
@@ -146,41 +147,11 @@ describe('EventConsumer', () => {
       await consumer.start();
 
       expect(mockConsumerConnect).toHaveBeenCalled();
-      expect(mockConsumerSubscribe).toHaveBeenCalledWith({
-        topics: [
-          // Agent topics
-          'agent-routing-decisions',
-          'agent-transformation-events',
-          'router-performance-metrics',
-          'agent-actions',
-          // Node registry topics (legacy)
-          'dev.omninode_bridge.onex.evt.node-introspection.v1',
-          'dev.onex.evt.registration-completed.v1',
-          'node.heartbeat',
-          'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
-          // Intent topics
-          'dev.onex.evt.omnimemory.intent-stored.v1',
-          'dev.onex.evt.omnimemory.intent-query-response.v1',
-          'dev.onex.evt.omniintelligence.intent-classified.v1',
-          // Canonical ONEX topics (OMN-1279)
-          'dev.onex.evt.node-became-active.v1',
-          'dev.onex.evt.node-liveness-expired.v1',
-          'dev.onex.evt.node-heartbeat.v1',
-          'dev.onex.evt.node-introspection.v1',
-          // OmniClaude hook events (prompt submissions, tool executions)
-          'dev.onex.cmd.omniintelligence.claude-hook-event.v1',
-          // OmniClaude lifecycle events
-          'dev.onex.evt.omniclaude.prompt-submitted.v1',
-          'dev.onex.evt.omniclaude.session-started.v1',
-          'dev.onex.evt.omniclaude.tool-executed.v1',
-          'dev.onex.evt.omniclaude.session-ended.v1',
-          // Cross-repo validation topics (OMN-1907)
-          'onex.validation.cross_repo.run.started.v1',
-          'onex.validation.cross_repo.violations.batch.v1',
-          'onex.validation.cross_repo.run.completed.v1',
-        ],
-        fromBeginning: true,
-      });
+      // Verify subscription topics match the shared builder output
+      const call = mockConsumerSubscribe.mock.calls[0][0];
+      expect(call.fromBeginning).toBe(true);
+      const expectedTopics = buildSubscriptionTopics();
+      expect(call.topics).toEqual(expectedTopics);
       expect(mockConsumerRun).toHaveBeenCalled();
     });
 
@@ -1008,6 +979,72 @@ describe('EventConsumer', () => {
       expect(pruningLogs.length).toBe(0);
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('normalizeActionFields', () => {
+    // Access the private static method for direct testing
+    const normalize = (EventConsumer as any).normalizeActionFields.bind(EventConsumer);
+
+    it('should extract actionType from canonical actionName when rawActionType is env prefix', () => {
+      const result = normalize('dev', 'valid-agent', 'onex.cmd.omniintelligence.tool-content.v1');
+      expect(result.actionType).toBe('tool-content');
+      expect(result.agentName).toBe('valid-agent');
+    });
+
+    it('should extract agentName from canonical actionName when rawAgentName is "unknown"', () => {
+      const result = normalize('tool_call', 'unknown', 'onex.cmd.omniintelligence.tool-content.v1');
+      expect(result.agentName).toBe('omniintelligence');
+      expect(result.actionType).toBe('tool_call');
+    });
+
+    it('should normalize both fields when both are junk', () => {
+      const result = normalize('dev', 'unknown', 'onex.evt.archon.session-started.v1');
+      expect(result.actionType).toBe('session-started');
+      expect(result.agentName).toBe('archon');
+    });
+
+    it('should treat all env prefixes as junk actionType', () => {
+      for (const prefix of ['dev', 'staging', 'prod', 'production', 'test', 'local']) {
+        const result = normalize(prefix, 'valid-agent', 'onex.cmd.producer.action-name.v1');
+        expect(result.actionType).toBe('action-name');
+      }
+    });
+
+    it('should treat empty string as junk actionType', () => {
+      const result = normalize('', 'valid-agent', 'onex.cmd.producer.my-action.v1');
+      expect(result.actionType).toBe('my-action');
+      expect(result.agentName).toBe('valid-agent');
+    });
+
+    it('should preserve valid actionType', () => {
+      const result = normalize('tool_call', 'valid-agent', 'onex.cmd.producer.action.v1');
+      expect(result.actionType).toBe('tool_call');
+      expect(result.agentName).toBe('valid-agent');
+    });
+
+    it('should preserve valid agentName even when actionType is junk', () => {
+      const result = normalize('dev', 'my-agent', 'onex.cmd.producer.action.v1');
+      expect(result.actionType).toBe('action');
+      expect(result.agentName).toBe('my-agent');
+    });
+
+    it('should not parse non-canonical actionName', () => {
+      const result = normalize('dev', 'unknown', 'some-legacy-action');
+      expect(result.actionType).toBe('dev');
+      expect(result.agentName).toBe('unknown');
+    });
+
+    it('should handle short canonical actionName gracefully', () => {
+      const result = normalize('dev', 'unknown', 'onex.cmd');
+      expect(result.actionType).toBe('dev');
+      expect(result.agentName).toBe('unknown');
+    });
+
+    it('should return original values when both are valid', () => {
+      const result = normalize('tool_call', 'agent-1', 'whatever');
+      expect(result.actionType).toBe('tool_call');
+      expect(result.agentName).toBe('agent-1');
     });
   });
 });

@@ -69,6 +69,51 @@ vi.mock('../event-consumer', () => {
   };
 });
 
+// Mock heavy server-side dependencies to prevent esbuild TextEncoder invariant errors
+// in the jsdom test environment. These modules pull in kafkajs which triggers the issue.
+vi.mock('../event-bus-data-source', () => ({
+  getEventBusDataSource: () => null,
+}));
+
+vi.mock('../playback-data-source', () => {
+  const { EventEmitter } = require('events');
+  return {
+    getPlaybackDataSource: () => new EventEmitter(),
+  };
+});
+
+vi.mock('../playback-events', () => {
+  const { EventEmitter } = require('events');
+  return {
+    playbackEventEmitter: new EventEmitter(),
+  };
+});
+
+vi.mock('../registry-events', () => {
+  const { EventEmitter } = require('events');
+  return {
+    registryEventEmitter: new EventEmitter(),
+  };
+});
+
+vi.mock('../intent-events', () => {
+  const { EventEmitter } = require('events');
+  return {
+    intentEventEmitter: new EventEmitter(),
+  };
+});
+
+vi.mock('../utils/case-transform', () => ({
+  transformNodeIntrospectionToSnakeCase: (e: any) => e,
+  transformNodeHeartbeatToSnakeCase: (e: any) => e,
+  transformNodeStateChangeToSnakeCase: (e: any) => e,
+  transformNodesToSnakeCase: (nodes: any) => nodes,
+}));
+
+vi.mock('../storage', () => ({
+  getIntelligenceDb: () => null,
+}));
+
 /**
  * IMPORTANT: These dynamic imports are moved to be lazy-loaded to prevent CI failures.
  * The esbuild TextEncoder invariant check fails in some CI Node.js environments when
@@ -721,5 +766,225 @@ describe.skip('WebSocket Server', () => {
 
     // This test verifies the PRIMARY goal: prevent memory leaks by removing EventConsumer listeners
     // when the WebSocket server closes. Client-side behavior is secondary.
+  });
+});
+
+/**
+ * Unit tests for transformEventToClientAction (OMN-1933)
+ *
+ * Tests the pure transformation logic that converts raw EventBusEvent objects
+ * into ClientAction objects for WebSocket delivery. Covers:
+ * - Env prefix filtering (dev, staging, prod, etc.)
+ * - Canonical ONEX topic parsing
+ * - PascalCase and dot-notation event type parsing
+ * - Agent name extraction from payload, source, and topic
+ * - Duration extraction from payload
+ * - Edge cases (empty strings, non-object payloads)
+ */
+
+// NOTE: We use dynamic import inside beforeAll to avoid the vi.mock hoisting
+// issue that prevents top-level static imports of '../websocket'.
+// The EventBusEvent type is imported only for type annotations.
+type EventBusEvent = import('../event-bus-data-source').EventBusEvent;
+
+/** Helper to create a minimal EventBusEvent with sensible defaults */
+function makeEvent(overrides: Partial<EventBusEvent> = {}): EventBusEvent {
+  return {
+    event_id: 'test-id',
+    timestamp: '2024-01-01T00:00:00Z',
+    event_type: 'test_event',
+    topic: 'test-topic',
+    source: 'test-source',
+    correlation_id: 'test-corr',
+    tenant_id: 'test-tenant',
+    namespace: 'test-ns',
+    schema_ref: 'test-schema',
+    payload: {},
+    partition: 0,
+    offset: '0',
+    processed_at: new Date('2024-01-01T00:00:00Z'),
+    ...overrides,
+  };
+}
+
+describe('transformEventToClientAction', () => {
+  let transformEventToClientAction: typeof import('../websocket').transformEventToClientAction;
+
+  beforeAll(async () => {
+    const mod = await import('../websocket');
+    transformEventToClientAction = mod.transformEventToClientAction;
+  });
+  // --- Env prefix filtering ---
+
+  it('should fall back to topic when event_type is just an env prefix', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        event_type: 'dev',
+        topic: 'dev.onex.cmd.omniintelligence.tool-content.v1',
+      })
+    );
+    expect(result.actionType).toBe('tool-content');
+    expect(result.actionName).toBe('onex.cmd.omniintelligence.tool-content.v1');
+  });
+
+  it('should filter all env prefixes: dev, staging, prod, production, test, local', () => {
+    for (const prefix of ['dev', 'staging', 'prod', 'production', 'test', 'local']) {
+      const result = transformEventToClientAction(
+        makeEvent({
+          event_type: prefix,
+          topic: `${prefix}.onex.evt.archon.session-started.v1`,
+        })
+      );
+      expect(result.actionType).not.toBe(prefix);
+    }
+  });
+
+  // --- Canonical ONEX topic parsing ---
+
+  it('should parse canonical ONEX format from topic name', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        event_type: 'dev',
+        topic: 'dev.onex.evt.archon.session-outcome.v1',
+        source: 'unknown',
+        payload: {},
+      })
+    );
+    expect(result.actionType).toBe('session-outcome');
+    expect(result.actionName).toBe('onex.evt.archon.session-outcome.v1');
+    expect(result.agentName).toBe('archon');
+  });
+
+  // --- Generic dot-notation ---
+
+  it('should handle generic dot-notation event types', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        event_type: 'hook.prompt.submitted',
+      })
+    );
+    expect(result.actionType).toBe('hook');
+    expect(result.actionName).toBe('prompt.submitted');
+  });
+
+  // --- PascalCase event types ---
+
+  it('should parse PascalCase event types', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        event_type: 'UserPromptSubmit',
+      })
+    );
+    expect(result.actionType).toBe('user');
+    expect(result.actionName).toBe('prompt_submit');
+  });
+
+  // --- Agent name extraction ---
+
+  it('should extract agentName from payload.agent_name', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        payload: { agent_name: 'my-agent' },
+      })
+    );
+    expect(result.agentName).toBe('my-agent');
+  });
+
+  it('should extract agentName from topic when source is "unknown"', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        event_type: 'dev',
+        topic: 'dev.onex.cmd.omniintelligence.tool-content.v1',
+        source: 'unknown',
+        payload: {},
+      })
+    );
+    expect(result.agentName).toBe('omniintelligence');
+  });
+
+  it('should use source as agentName when payload has no agent name', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        source: 'my-service',
+        payload: {},
+      })
+    );
+    expect(result.agentName).toBe('my-service');
+  });
+
+  // --- Duration extraction ---
+
+  it('should extract duration_ms from payload', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        payload: { duration_ms: 150 },
+      })
+    );
+    expect(result.durationMs).toBe(150);
+  });
+
+  // --- Edge cases ---
+
+  it('should default to "unknown" when event_type is empty', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        event_type: '',
+        topic: '',
+      })
+    );
+    expect(result.actionType).toBe('event');
+    expect(result.actionName).toBe('unknown');
+  });
+
+  it('should handle string payload gracefully', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        payload: 'not-an-object' as any,
+      })
+    );
+    expect(result.agentName).toBe('test-source');
+  });
+
+  // --- Structural output fields ---
+
+  it('should map event_id to id and use correlation_id', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        event_id: 'evt-123',
+        correlation_id: 'corr-456',
+      })
+    );
+    expect(result.id).toBe('evt-123');
+    expect(result.correlationId).toBe('corr-456');
+  });
+
+  it('should fall back to event_id when correlation_id is missing', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        event_id: 'evt-789',
+        correlation_id: undefined,
+      })
+    );
+    expect(result.correlationId).toBe('evt-789');
+  });
+
+  it('should parse timestamp into createdAt Date', () => {
+    const result = transformEventToClientAction(
+      makeEvent({
+        timestamp: '2024-06-15T12:30:00Z',
+      })
+    );
+    expect(result.createdAt).toEqual(new Date('2024-06-15T12:30:00Z'));
+  });
+
+  it('should pass payload through as actionDetails', () => {
+    const payload = { foo: 'bar', count: 42 };
+    const result = transformEventToClientAction(makeEvent({ payload }));
+    expect(result.actionDetails).toBe(payload);
+  });
+
+  it('should default durationMs to 0 when payload has no duration fields', () => {
+    const result = transformEventToClientAction(makeEvent({ payload: {} }));
+    expect(result.durationMs).toBe(0);
   });
 });
