@@ -9,19 +9,30 @@
  */
 
 import { z } from 'zod';
+import {
+  resolveTopicName,
+  SUFFIX_VALIDATION_RUN_STARTED,
+  SUFFIX_VALIDATION_VIOLATIONS_BATCH,
+  SUFFIX_VALIDATION_RUN_COMPLETED,
+} from './topics';
 
 // ============================================================================
-// Topic Constants (ONEX canonical naming)
+// Topic Constants (resolved at runtime from canonical ONEX suffixes)
+//
+// Corrected format: onex.evt.validation.<event-name>.v1
+// (was: onex.validation.cross_repo.<event>.v1 — non-canonical)
 // ============================================================================
 
 /** Kafka topic for validation run started events */
-export const VALIDATION_RUN_STARTED_TOPIC = 'onex.validation.cross_repo.run.started.v1';
+export const VALIDATION_RUN_STARTED_TOPIC = resolveTopicName(SUFFIX_VALIDATION_RUN_STARTED);
 
 /** Kafka topic for validation violations batch events */
-export const VALIDATION_VIOLATIONS_BATCH_TOPIC = 'onex.validation.cross_repo.violations.batch.v1';
+export const VALIDATION_VIOLATIONS_BATCH_TOPIC = resolveTopicName(
+  SUFFIX_VALIDATION_VIOLATIONS_BATCH
+);
 
 /** Kafka topic for validation run completed events */
-export const VALIDATION_RUN_COMPLETED_TOPIC = 'onex.validation.cross_repo.run.completed.v1';
+export const VALIDATION_RUN_COMPLETED_TOPIC = resolveTopicName(SUFFIX_VALIDATION_RUN_COMPLETED);
 
 /** WebSocket channel for validation events */
 export const WS_CHANNEL_VALIDATION = 'validation';

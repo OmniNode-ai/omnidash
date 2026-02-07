@@ -16,40 +16,38 @@
 
 import { z } from 'zod';
 import { generateUUID } from './uuid';
+import {
+  resolveTopicName,
+  SUFFIX_MEMORY_INTENT_QUERY_REQUESTED,
+  SUFFIX_MEMORY_INTENT_QUERY_RESPONSE,
+  SUFFIX_MEMORY_INTENT_STORED,
+  SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED,
+} from './topics';
 
 // ============================================================================
-// Topic Constants (ONEX canonical naming: dev.onex.{evt|cmd}.{owner}.{event-name}.v{n})
-// - evt = event (something happened, notification)
-// - cmd = command (request to do something)
+// Topic Constants (resolved at runtime from canonical ONEX suffixes)
+//
+// Format: onex.<kind>.<producer>.<event-name>.v<version>
+// Full:   {env}.{suffix} — env comes from TOPIC_ENV_PREFIX or ONEX_ENV
 // ============================================================================
 
-/**
- * Kafka topic for intent query requests (command - requesting data)
- */
-export const INTENT_QUERY_REQUESTED_TOPIC = 'dev.onex.cmd.omnimemory.intent-query-requested.v1';
+/** Kafka topic for intent query requests (command) */
+export const INTENT_QUERY_REQUESTED_TOPIC = resolveTopicName(SUFFIX_MEMORY_INTENT_QUERY_REQUESTED);
+
+/** Kafka topic for intent query responses (event) */
+export const INTENT_QUERY_RESPONSE_TOPIC = resolveTopicName(SUFFIX_MEMORY_INTENT_QUERY_RESPONSE);
+
+/** Kafka topic for intent stored events (event) */
+export const INTENT_STORED_TOPIC = resolveTopicName(SUFFIX_MEMORY_INTENT_STORED);
 
 /**
- * Kafka topic for intent query responses (event - response notification)
- */
-export const INTENT_QUERY_RESPONSE_TOPIC = 'dev.onex.evt.omnimemory.intent-query-response.v1';
-
-/**
- * Kafka topic for intent stored events (event - write completed)
- */
-export const INTENT_STORED_TOPIC = 'dev.onex.evt.omnimemory.intent-stored.v1';
-
-/**
- * Kafka topic for intent classified events (event - classification completed)
+ * Kafka topic for intent classified events (event)
  *
  * NOTE: Topic name vs event_type distinction:
- * - Topic name (this constant): Used for Kafka routing, follows ONEX canonical naming
- *   Format: dev.onex.{evt|cmd}.{owner}.{event-name}.v{n}
+ * - Topic name (this constant): Used for Kafka routing
  * - event_type field: Short identifier within the event payload (e.g., "IntentClassified")
- *
- * The IntentClassifiedEvent.event_type field contains "IntentClassified" (the event type name),
- * NOT this topic constant. See isIntentClassifiedEvent() type guard for usage.
  */
-export const INTENT_CLASSIFIED_TOPIC = 'dev.onex.evt.omniintelligence.intent-classified.v1';
+export const INTENT_CLASSIFIED_TOPIC = resolveTopicName(SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED);
 
 // ============================================================================
 // WebSocket Channel Constants

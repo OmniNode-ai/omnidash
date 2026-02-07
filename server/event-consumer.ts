@@ -7,9 +7,9 @@ import { LRUCache } from 'lru-cache';
 import { z } from 'zod';
 // Import topic constants and type utilities from shared module (single source of truth)
 import {
-  INTENT_CLASSIFIED_TOPIC as SHARED_INTENT_CLASSIFIED_TOPIC,
-  INTENT_STORED_TOPIC as SHARED_INTENT_STORED_TOPIC,
-  INTENT_QUERY_RESPONSE_TOPIC as SHARED_INTENT_QUERY_RESPONSE_TOPIC,
+  INTENT_CLASSIFIED_TOPIC,
+  INTENT_STORED_TOPIC,
+  INTENT_QUERY_RESPONSE_TOPIC,
   EVENT_TYPE_NAMES,
   isIntentClassifiedEvent,
   isIntentStoredEvent,
@@ -19,8 +19,30 @@ import {
 } from '@shared/intent-types';
 // Import intentEventEmitter for WebSocket broadcasting of intent events
 import { getIntentEventEmitter } from './intent-events';
-// Import env prefix utilities from server-side topics module
-import { withEnvPrefix, getTopicEnvPrefix } from './topics/onex-intent-topics';
+// Import canonical topic constants and resolution utilities
+import {
+  resolveTopicName,
+  getTopicEnvPrefix,
+  buildSubscriptionTopics,
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_REGISTRATION,
+  SUFFIX_REQUEST_INTROSPECTION,
+  SUFFIX_NODE_BECAME_ACTIVE,
+  SUFFIX_NODE_LIVENESS_EXPIRED,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
+  SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED,
+  SUFFIX_MEMORY_INTENT_STORED,
+  SUFFIX_MEMORY_INTENT_QUERY_RESPONSE,
+  SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
+  SUFFIX_OMNICLAUDE_SESSION_STARTED,
+  SUFFIX_OMNICLAUDE_SESSION_ENDED,
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+} from '@shared/topics';
 import {
   EventEnvelopeSchema,
   NodeBecameActivePayloadSchema,
@@ -66,61 +88,25 @@ const SQL_PRELOAD_METRICS_LIMIT = 100;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
 
-// Intent topics with environment prefix (ONEX canonical naming)
-// Derive canonical names from shared constants by removing the 'dev.' prefix
-const TOPIC_ENV_PREFIX = getTopicEnvPrefix();
-const extractCanonicalName = (topic: string): string => {
-  // Shared constants have format: 'dev.onex.evt...' - extract 'onex.evt...'
-  const match = topic.match(/^dev\.(.+)$/);
-  return match ? match[1] : topic;
-};
-const INTENT_STORED_TOPIC = withEnvPrefix(
-  TOPIC_ENV_PREFIX,
-  extractCanonicalName(SHARED_INTENT_STORED_TOPIC)
-);
-const INTENT_QUERY_RESPONSE_TOPIC = withEnvPrefix(
-  TOPIC_ENV_PREFIX,
-  extractCanonicalName(SHARED_INTENT_QUERY_RESPONSE_TOPIC)
-);
-const INTENT_CLASSIFIED_TOPIC = withEnvPrefix(
-  TOPIC_ENV_PREFIX,
-  extractCanonicalName(SHARED_INTENT_CLASSIFIED_TOPIC)
-);
+// Pre-resolve all canonical topic names for use in switch-case routing.
+// Suffixes come from @shared/topics; env prefix from TOPIC_ENV_PREFIX / ONEX_ENV.
+const ENV_PREFIX = getTopicEnvPrefix();
+const resolve = (suffix: string) => resolveTopicName(suffix, ENV_PREFIX);
 
-// Environment-aware ONEX topic naming for canonical node events
-const ONEX_ENV = process.env.ONEX_ENV || 'dev';
-
-/**
- * Generate canonical ONEX topic name for event subscriptions.
- * Format: {env}.onex.evt.{event-name}.v1
- */
-function onexTopic(eventName: string): string {
-  return `${ONEX_ENV}.onex.evt.${eventName}.v1`;
-}
-
-/**
- * Generate canonical ONEX topic name with namespace and message type support.
- * Format: {env}.onex.{type}.{namespace}.{event-name}.v1
- */
-function onexNamespacedTopic(type: 'cmd' | 'evt', namespace: string, eventName: string): string {
-  return `${ONEX_ENV}.onex.${type}.${namespace}.${eventName}.v1`;
-}
-
-/**
- * OmniClaude topic constants - environment-aware topic names.
- * Uses ONEX canonical naming convention with appropriate namespaces.
- */
-const OMNICLAUDE_TOPICS = {
-  /** Command topic for Claude hook events (prompt submissions from intelligence) */
-  CLAUDE_HOOK_EVENT: onexNamespacedTopic('cmd', 'omniintelligence', 'claude-hook-event'),
-  /** Event topic for prompt submission lifecycle events */
-  PROMPT_SUBMITTED: onexNamespacedTopic('evt', 'omniclaude', 'prompt-submitted'),
-  /** Event topic for session start lifecycle events */
-  SESSION_STARTED: onexNamespacedTopic('evt', 'omniclaude', 'session-started'),
-  /** Event topic for tool execution lifecycle events */
-  TOOL_EXECUTED: onexNamespacedTopic('evt', 'omniclaude', 'tool-executed'),
-  /** Event topic for session end lifecycle events */
-  SESSION_ENDED: onexNamespacedTopic('evt', 'omniclaude', 'session-ended'),
+const TOPIC = {
+  // Platform
+  NODE_INTROSPECTION: resolve(SUFFIX_NODE_INTROSPECTION),
+  NODE_REGISTRATION: resolve(SUFFIX_NODE_REGISTRATION),
+  REQUEST_INTROSPECTION: resolve(SUFFIX_REQUEST_INTROSPECTION),
+  NODE_BECAME_ACTIVE: resolve(SUFFIX_NODE_BECAME_ACTIVE),
+  NODE_LIVENESS_EXPIRED: resolve(SUFFIX_NODE_LIVENESS_EXPIRED),
+  NODE_HEARTBEAT: resolve(SUFFIX_NODE_HEARTBEAT),
+  // OmniClaude
+  CLAUDE_HOOK: resolve(SUFFIX_INTELLIGENCE_CLAUDE_HOOK),
+  PROMPT_SUBMITTED: resolve(SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED),
+  SESSION_STARTED: resolve(SUFFIX_OMNICLAUDE_SESSION_STARTED),
+  SESSION_ENDED: resolve(SUFFIX_OMNICLAUDE_SESSION_ENDED),
+  TOOL_EXECUTED: resolve(SUFFIX_OMNICLAUDE_TOOL_EXECUTED),
 } as const;
 
 // Structured logging for intent handlers
@@ -540,8 +526,8 @@ export interface RawPerformanceMetricEvent {
 
 /**
  * Raw node introspection event from Kafka (snake_case)
- * Topics: dev.omninode_bridge.onex.evt.node-introspection.v1,
- *         dev.omninode_bridge.onex.evt.registry-request-introspection.v1
+ * Topics: onex.evt.platform.node-introspection.v1,
+ *         onex.cmd.platform.request-introspection.v1
  */
 export interface RawNodeIntrospectionEvent {
   id?: string;
@@ -564,7 +550,7 @@ export interface RawNodeIntrospectionEvent {
 
 /**
  * Raw node heartbeat event from Kafka (snake_case)
- * Topic: node.heartbeat
+ * Topic: onex.evt.platform.node-heartbeat.v1
  */
 export interface RawNodeHeartbeatEvent {
   id?: string;
@@ -585,7 +571,7 @@ export interface RawNodeHeartbeatEvent {
 
 /**
  * Raw node state change event from Kafka (snake_case)
- * Topic: dev.onex.evt.registration-completed.v1
+ * Topic: onex.evt.platform.node-registration.v1
  */
 export interface RawNodeStateChangeEvent {
   id?: string;
@@ -1069,38 +1055,7 @@ export class EventConsumer extends EventEmitter {
       }
 
       await this.consumer.subscribe({
-        topics: [
-          // Agent topics
-          'agent-routing-decisions',
-          'agent-transformation-events',
-          'router-performance-metrics',
-          'agent-actions',
-          // Node registry topics (legacy - actual Kafka topic names from omnibase_infra)
-          'dev.omninode_bridge.onex.evt.node-introspection.v1',
-          'dev.onex.evt.registration-completed.v1',
-          'node.heartbeat',
-          'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
-          // Intent topics
-          INTENT_STORED_TOPIC,
-          INTENT_QUERY_RESPONSE_TOPIC,
-          INTENT_CLASSIFIED_TOPIC,
-          // Canonical ONEX topics (OMN-1279)
-          onexTopic('node-became-active'),
-          onexTopic('node-liveness-expired'),
-          onexTopic('node-heartbeat'),
-          onexTopic('node-introspection'),
-          // OmniClaude hook events (prompt submissions, tool executions)
-          onexNamespacedTopic('cmd', 'omniintelligence', 'claude-hook-event'),
-          // OmniClaude lifecycle events (additional coverage)
-          onexNamespacedTopic('evt', 'omniclaude', 'prompt-submitted'),
-          onexNamespacedTopic('evt', 'omniclaude', 'session-started'),
-          onexNamespacedTopic('evt', 'omniclaude', 'tool-executed'),
-          onexNamespacedTopic('evt', 'omniclaude', 'session-ended'),
-          // Cross-repo validation topics (OMN-1907)
-          VALIDATION_RUN_STARTED_TOPIC,
-          VALIDATION_VIOLATIONS_BATCH_TOPIC,
-          VALIDATION_RUN_COMPLETED_TOPIC,
-        ],
+        topics: buildSubscriptionTopics(ENV_PREFIX),
         fromBeginning: true, // Reprocess historical events to populate metrics
       });
 
@@ -1111,47 +1066,69 @@ export class EventConsumer extends EventEmitter {
             intentLogger.debug(`Received event from topic: ${topic}`);
 
             switch (topic) {
-              case 'agent-routing-decisions':
+              // Legacy agent topics
+              case LEGACY_AGENT_ROUTING_DECISIONS:
                 intentLogger.debug(
                   `Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`
                 );
                 this.handleRoutingDecision(event);
                 break;
-              case 'agent-actions':
+              case LEGACY_AGENT_ACTIONS:
                 intentLogger.debug(
                   `Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`
                 );
                 this.handleAgentAction(event);
                 break;
-              case 'agent-transformation-events':
+              case LEGACY_AGENT_TRANSFORMATION_EVENTS:
                 intentLogger.debug(
                   `Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`
                 );
                 this.handleTransformationEvent(event);
                 break;
-              case 'router-performance-metrics':
+              case LEGACY_ROUTER_PERFORMANCE_METRICS:
                 intentLogger.debug(
                   `Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
                 );
                 this.handlePerformanceMetric(event);
                 break;
-              case 'dev.omninode_bridge.onex.evt.node-introspection.v1':
-              case 'dev.omninode_bridge.onex.evt.registry-request-introspection.v1':
+
+              // Platform node topics (canonical ONEX)
+              case TOPIC.NODE_INTROSPECTION:
+              case TOPIC.REQUEST_INTROSPECTION:
                 intentLogger.debug(
                   `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
                 );
                 this.handleNodeIntrospection(event);
                 break;
-              case 'node.heartbeat':
+              case TOPIC.NODE_HEARTBEAT:
                 intentLogger.debug(`Processing node heartbeat: ${event.node_id || event.nodeId}`);
                 this.handleNodeHeartbeat(event);
+                // Also route through canonical envelope handler
+                if (DEBUG_CANONICAL_EVENTS) {
+                  intentLogger.debug('Processing canonical node-heartbeat event');
+                }
+                this.handleCanonicalNodeHeartbeat(message);
                 break;
-              case 'dev.onex.evt.registration-completed.v1':
+              case TOPIC.NODE_REGISTRATION:
                 intentLogger.debug(
                   `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
                 );
                 this.handleNodeStateChange(event);
                 break;
+              case TOPIC.NODE_BECAME_ACTIVE:
+                if (DEBUG_CANONICAL_EVENTS) {
+                  intentLogger.debug('Processing canonical node-became-active event');
+                }
+                this.handleCanonicalNodeBecameActive(message);
+                break;
+              case TOPIC.NODE_LIVENESS_EXPIRED:
+                if (DEBUG_CANONICAL_EVENTS) {
+                  intentLogger.debug('Processing canonical node-liveness-expired event');
+                }
+                this.handleCanonicalNodeLivenessExpired(message);
+                break;
+
+              // Intent topics
               case INTENT_CLASSIFIED_TOPIC:
                 intentLogger.debug(
                   `Processing intent classified: ${event.intent_type || event.intentType} (confidence: ${event.confidence})`
@@ -1170,30 +1147,31 @@ export class EventConsumer extends EventEmitter {
                 );
                 this.handleIntentQueryResponse(event);
                 break;
-              // OmniClaude hook events (prompt submissions)
-              case 'dev.onex.cmd.omniintelligence.claude-hook-event.v1':
+
+              // OmniClaude hook events
+              case TOPIC.CLAUDE_HOOK:
                 intentLogger.debug(
                   `Processing claude hook event: ${event.event_type || event.eventType} - ${(event.payload?.prompt || '').slice(0, 50)}...`
                 );
                 this.handleClaudeHookEvent(event);
                 break;
               // OmniClaude lifecycle events
-              case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
+              case TOPIC.PROMPT_SUBMITTED:
                 intentLogger.debug(
                   `Processing prompt-submitted: ${(event.payload?.prompt_preview || '').slice(0, 50)}...`
                 );
                 this.handlePromptSubmittedEvent(event);
                 break;
-              case 'dev.onex.evt.omniclaude.session-started.v1':
-              case 'dev.onex.evt.omniclaude.session-ended.v1':
-              case 'dev.onex.evt.omniclaude.tool-executed.v1':
+              case TOPIC.SESSION_STARTED:
+              case TOPIC.SESSION_ENDED:
+              case TOPIC.TOOL_EXECUTED:
                 intentLogger.debug(
                   `Processing omniclaude event: ${event.event_type || event.eventType}`
                 );
                 this.handleOmniclaudeLifecycleEvent(event, topic);
                 break;
 
-              // Cross-repo validation topics (OMN-1907)
+              // Cross-repo validation topics
               case VALIDATION_RUN_STARTED_TOPIC:
                 if (isValidationRunStarted(event)) {
                   intentLogger.debug(`Processing validation run started: ${event.run_id}`);
@@ -1232,30 +1210,8 @@ export class EventConsumer extends EventEmitter {
                 }
                 break;
 
-              // Canonical ONEX topics (OMN-1279)
               default:
-                // Handle canonical ONEX topics using environment-aware routing
-                if (topic === onexTopic('node-became-active')) {
-                  if (DEBUG_CANONICAL_EVENTS) {
-                    intentLogger.debug('Processing canonical node-became-active event');
-                  }
-                  this.handleCanonicalNodeBecameActive(message);
-                } else if (topic === onexTopic('node-liveness-expired')) {
-                  if (DEBUG_CANONICAL_EVENTS) {
-                    intentLogger.debug('Processing canonical node-liveness-expired event');
-                  }
-                  this.handleCanonicalNodeLivenessExpired(message);
-                } else if (topic === onexTopic('node-heartbeat')) {
-                  if (DEBUG_CANONICAL_EVENTS) {
-                    intentLogger.debug('Processing canonical node-heartbeat event');
-                  }
-                  this.handleCanonicalNodeHeartbeat(message);
-                } else if (topic === onexTopic('node-introspection')) {
-                  if (DEBUG_CANONICAL_EVENTS) {
-                    intentLogger.debug('Processing canonical node-introspection event');
-                  }
-                  this.handleCanonicalNodeIntrospection(message);
-                }
+                intentLogger.debug(`Unhandled topic: ${topic}`);
                 break;
             }
           } catch (error) {
@@ -3281,59 +3237,59 @@ export class EventConsumer extends EventEmitter {
       this.playbackEventsInjected++;
 
       switch (topic) {
-        case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
+        case TOPIC.PROMPT_SUBMITTED:
         case 'prompt-submitted':
           this.handlePromptSubmittedEvent(
             event as Parameters<typeof this.handlePromptSubmittedEvent>[0]
           );
           break;
 
-        case 'agent-routing-decisions':
+        case LEGACY_AGENT_ROUTING_DECISIONS:
         case 'routing-decision':
           this.handleRoutingDecision(event as RawRoutingDecisionEvent);
           break;
 
-        case 'agent-actions':
+        case LEGACY_AGENT_ACTIONS:
         case 'action':
           this.handleAgentAction(event as RawAgentActionEvent);
           break;
 
-        case 'agent-transformation-events':
+        case LEGACY_AGENT_TRANSFORMATION_EVENTS:
         case 'transformation':
           this.handleTransformationEvent(event as RawTransformationEvent);
           break;
 
-        case 'dev.onex.evt.omniclaude.tool-executed.v1':
+        case TOPIC.TOOL_EXECUTED:
         case 'tool-executed':
           this.handleOmniclaudeLifecycleEvent(
             event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
-            'dev.onex.evt.omniclaude.tool-executed.v1'
+            TOPIC.TOOL_EXECUTED
           );
           break;
 
-        case 'dev.onex.evt.omniclaude.session-started.v1':
+        case TOPIC.SESSION_STARTED:
         case 'session-started':
           this.handleOmniclaudeLifecycleEvent(
             event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
-            'dev.onex.evt.omniclaude.session-started.v1'
+            TOPIC.SESSION_STARTED
           );
           break;
 
-        case 'dev.onex.evt.omniclaude.session-ended.v1':
+        case TOPIC.SESSION_ENDED:
         case 'session-ended':
           this.handleOmniclaudeLifecycleEvent(
             event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
-            'dev.onex.evt.omniclaude.session-ended.v1'
+            TOPIC.SESSION_ENDED
           );
           break;
 
-        case 'dev.onex.evt.omniintelligence.intent-classified.v1':
+        case INTENT_CLASSIFIED_TOPIC:
         case 'intent-classified':
           // Route through the same handler as live Kafka events for consistent state updates
           this.handleIntentClassified(event as RawIntentClassifiedEvent);
           break;
 
-        case 'router-performance-metrics':
+        case LEGACY_ROUTER_PERFORMANCE_METRICS:
         case 'performance-metric':
           // Route through the same handler as live Kafka events for consistent state updates
           this.handlePerformanceMetric(event as RawPerformanceMetricEvent);

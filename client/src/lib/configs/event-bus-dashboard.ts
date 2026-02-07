@@ -4,22 +4,29 @@
  * Real-time Kafka event stream visualization dashboard.
  * Monitors agent and ONEX event topics via WebSocket connection to server.
  *
- * Topics monitored (from server/event-consumer.ts):
- * Agent topics:
- * - agent-routing-decisions
- * - agent-transformation-events
- * - router-performance-metrics
- * - agent-actions
- *
- * Node registry topics (actual Kafka topic names from omnibase_infra):
- * - dev.omninode_bridge.onex.evt.node-introspection.v1
- * - dev.onex.evt.registration-completed.v1
- * - node.heartbeat
- * - dev.omninode_bridge.onex.evt.registry-request-introspection.v1
+ * Topic constants imported from @shared/topics (single source of truth).
  */
 
 import type { DashboardConfig } from '@/lib/dashboard-schema';
 import { DashboardTheme } from '@/lib/dashboard-schema';
+import {
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+  LEGACY_AGENT_ACTIONS,
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_REGISTRATION,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_REQUEST_INTROSPECTION,
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
+  SUFFIX_OMNICLAUDE_SESSION_STARTED,
+  SUFFIX_OMNICLAUDE_SESSION_ENDED,
+  SUFFIX_INTELLIGENCE_PATTERN_SCORED,
+  SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  extractSuffix,
+} from '@shared/topics';
 
 /**
  * Event message schema from omnibase_infra Kafka events
@@ -50,23 +57,23 @@ export interface EventHeaders {
 // ============================================================================
 
 /**
- * Agent topics - core agent functionality events
+ * Agent topics - core agent functionality events (legacy flat names)
  */
 export const AGENT_TOPICS = [
-  'agent-routing-decisions',
-  'agent-transformation-events',
-  'router-performance-metrics',
-  'agent-actions',
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+  LEGACY_AGENT_ACTIONS,
 ] as const;
 
 /**
- * Node registry topics - node lifecycle and health events
+ * Node registry topics - canonical ONEX suffixes for node lifecycle and health
  */
 export const NODE_TOPICS = [
-  'dev.omninode_bridge.onex.evt.node-introspection.v1',
-  'dev.onex.evt.registration-completed.v1',
-  'node.heartbeat',
-  'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_REGISTRATION,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_REQUEST_INTROSPECTION,
 ] as const;
 
 /**
@@ -89,44 +96,44 @@ export const TOPIC_METADATA: Record<
   string,
   { label: string; description: string; category: string }
 > = {
-  // Agent topics
-  'agent-routing-decisions': {
+  // Agent topics (legacy flat names)
+  [LEGACY_AGENT_ROUTING_DECISIONS]: {
     label: 'Routing Decisions',
     description: 'Agent selection and routing decisions with confidence scores',
     category: 'routing',
   },
-  'agent-transformation-events': {
+  [LEGACY_AGENT_TRANSFORMATION_EVENTS]: {
     label: 'Transformations',
     description: 'Polymorphic agent transformation events',
     category: 'transformation',
   },
-  'router-performance-metrics': {
+  [LEGACY_ROUTER_PERFORMANCE_METRICS]: {
     label: 'Performance',
     description: 'Routing performance metrics and cache statistics',
     category: 'performance',
   },
-  'agent-actions': {
+  [LEGACY_AGENT_ACTIONS]: {
     label: 'Agent Actions',
     description: 'Tool calls, decisions, errors, and successes',
     category: 'actions',
   },
-  // Node registry topics
-  'dev.omninode_bridge.onex.evt.node-introspection.v1': {
+  // Node registry topics (canonical ONEX suffixes)
+  [SUFFIX_NODE_INTROSPECTION]: {
     label: 'Node Introspection',
     description: 'Node introspection events for debugging and monitoring',
     category: 'introspection',
   },
-  'dev.onex.evt.registration-completed.v1': {
-    label: 'Registration Completed',
-    description: 'Node registration completion events',
+  [SUFFIX_NODE_REGISTRATION]: {
+    label: 'Node Registration',
+    description: 'Node registration lifecycle events',
     category: 'lifecycle',
   },
-  'node.heartbeat': {
+  [SUFFIX_NODE_HEARTBEAT]: {
     label: 'Heartbeat',
     description: 'Node health heartbeat signals',
     category: 'health',
   },
-  'dev.omninode_bridge.onex.evt.registry-request-introspection.v1': {
+  [SUFFIX_REQUEST_INTROSPECTION]: {
     label: 'Registry Introspection Request',
     description: 'Introspection requests from registry to nodes',
     category: 'introspection',
@@ -175,44 +182,44 @@ export const eventBusDashboardConfig: DashboardConfig = {
 
   // Topic metadata for display labels and categorization
   topic_metadata: {
-    // Agent topics
-    'agent-routing-decisions': {
+    // Agent topics (legacy flat names)
+    [LEGACY_AGENT_ROUTING_DECISIONS]: {
       label: 'Routing Decisions',
       description: 'Agent selection and routing decisions with confidence scores',
       category: 'routing',
     },
-    'agent-transformation-events': {
+    [LEGACY_AGENT_TRANSFORMATION_EVENTS]: {
       label: 'Transformations',
       description: 'Polymorphic agent transformation events',
       category: 'transformation',
     },
-    'router-performance-metrics': {
+    [LEGACY_ROUTER_PERFORMANCE_METRICS]: {
       label: 'Performance',
       description: 'Routing performance metrics and cache statistics',
       category: 'performance',
     },
-    'agent-actions': {
+    [LEGACY_AGENT_ACTIONS]: {
       label: 'Agent Actions',
       description: 'Tool calls, decisions, errors, and successes',
       category: 'actions',
     },
-    // Node registry topics
-    'dev.omninode_bridge.onex.evt.node-introspection.v1': {
+    // Node registry topics (canonical ONEX suffixes)
+    [SUFFIX_NODE_INTROSPECTION]: {
       label: 'Node Introspection',
       description: 'Node introspection events for debugging and monitoring',
       category: 'introspection',
     },
-    'dev.onex.evt.registration-completed.v1': {
-      label: 'Registration Completed',
-      description: 'Node registration completion events',
+    [SUFFIX_NODE_REGISTRATION]: {
+      label: 'Node Registration',
+      description: 'Node registration lifecycle events',
       category: 'lifecycle',
     },
-    'node.heartbeat': {
+    [SUFFIX_NODE_HEARTBEAT]: {
       label: 'Heartbeat',
       description: 'Node health heartbeat signals',
       category: 'health',
     },
-    'dev.omninode_bridge.onex.evt.registry-request-introspection.v1': {
+    [SUFFIX_REQUEST_INTROSPECTION]: {
       label: 'Registry Introspection Request',
       description: 'Introspection requests from registry to nodes',
       category: 'introspection',
@@ -226,18 +233,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
   },
 
   // List of all monitored Kafka topics
-  monitored_topics: [
-    // Agent topics
-    'agent-routing-decisions',
-    'agent-transformation-events',
-    'router-performance-metrics',
-    'agent-actions',
-    // Node registry topics
-    'dev.omninode_bridge.onex.evt.node-introspection.v1',
-    'dev.onex.evt.registration-completed.v1',
-    'node.heartbeat',
-    'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
-  ],
+  monitored_topics: [...AGENT_TOPICS, ...NODE_TOPICS],
 
   widgets: [
     // Row 1: Metric Cards (4 widgets)
@@ -408,10 +404,10 @@ export const eventBusDashboardConfig: DashboardConfig = {
  * Maps raw event type strings to human-readable short labels.
  */
 export const EVENT_TYPE_METADATA: Record<string, { label: string; description?: string }> = {
-  // Agent event types
-  'agent-routing-decisions': { label: 'Routing Decision' },
+  // Agent event types (legacy flat names)
+  [LEGACY_AGENT_ROUTING_DECISIONS]: { label: 'Routing Decision' },
   'agent-manifest-injections': { label: 'Manifest Injection' },
-  'agent-transformation-events': { label: 'Transformation' },
+  [LEGACY_AGENT_TRANSFORMATION_EVENTS]: { label: 'Transformation' },
   routing: { label: 'Routing' },
   transformation: { label: 'Transformation' },
   performance: { label: 'Performance' },
@@ -431,14 +427,14 @@ export const EVENT_TYPE_METADATA: Record<string, { label: string; description?: 
   production: { label: 'Unknown Type' },
   test: { label: 'Unknown Type' },
 
-  // ONEX event types (full paths)
-  'dev.onex.evt.omniclaude.tool-executed.v1': { label: 'Tool Executed' },
-  'dev.onex.evt.omniclaude.prompt-submitted.v1': { label: 'Prompt Submitted' },
-  'dev.onex.evt.omniclaude.session-started.v1': { label: 'Session Started' },
-  'dev.onex.evt.omniclaude.session-ended.v1': { label: 'Session Ended' },
-  'dev.onex.evt.omniintelligence.pattern-scored.v1': { label: 'Pattern Scored' },
-  'dev.onex.evt.omniintelligence.pattern-discovered.v1': { label: 'Pattern Discovered' },
-  'dev.onex.evt.omniintelligence.pattern-learned.v1': { label: 'Pattern Learned' },
+  // ONEX event types (canonical suffixes)
+  [SUFFIX_OMNICLAUDE_TOOL_EXECUTED]: { label: 'Tool Executed' },
+  [SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED]: { label: 'Prompt Submitted' },
+  [SUFFIX_OMNICLAUDE_SESSION_STARTED]: { label: 'Session Started' },
+  [SUFFIX_OMNICLAUDE_SESSION_ENDED]: { label: 'Session Ended' },
+  [SUFFIX_INTELLIGENCE_PATTERN_SCORED]: { label: 'Pattern Scored' },
+  [SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED]: { label: 'Pattern Discovered' },
+  [SUFFIX_INTELLIGENCE_PATTERN_LEARNED]: { label: 'Pattern Learned' },
 
   // Node lifecycle event types
   introspection: { label: 'Introspection' },
@@ -599,11 +595,11 @@ export function generateEventBusMockData(): Record<string, unknown> {
     name: TOPIC_METADATA[topic]?.label || topic,
     topic,
     eventCount:
-      topic === 'node.heartbeat'
+      topic === SUFFIX_NODE_HEARTBEAT
         ? Math.floor(Math.random() * 500) + 200
-        : topic === 'agent-actions'
+        : topic === LEGACY_AGENT_ACTIONS
           ? Math.floor(Math.random() * 300) + 100
-          : topic === 'agent-routing-decisions'
+          : topic === LEGACY_AGENT_ROUTING_DECISIONS
             ? Math.floor(Math.random() * 150) + 50
             : Math.floor(Math.random() * 100) + 30,
   }));
@@ -656,9 +652,9 @@ export function generateEventBusMockData(): Record<string, unknown> {
     const eventCount = topicBreakdownData.find((t) => t.topic === topic)?.eventCount || 0;
     let status: string;
 
-    if (topic === 'node.heartbeat' || topic === 'agent-actions') {
+    if (topic === SUFFIX_NODE_HEARTBEAT || topic === LEGACY_AGENT_ACTIONS) {
       status = eventCount > 100 ? 'healthy' : eventCount > 50 ? 'warning' : 'error';
-    } else if (topic === 'agent-routing-decisions') {
+    } else if (topic === LEGACY_AGENT_ROUTING_DECISIONS) {
       status = eventCount > 50 ? 'healthy' : eventCount > 20 ? 'warning' : 'offline';
     } else {
       status = eventCount > 10 ? 'healthy' : eventCount > 0 ? 'warning' : 'offline';
@@ -700,27 +696,27 @@ export function generateEventBusMockData(): Record<string, unknown> {
 function getEventTypeForTopic(topic: string): string {
   const eventTypes: Record<string, string[]> = {
     // Agent topics
-    'agent-routing-decisions': ['routing.decision', 'agent.selected', 'confidence.evaluated'],
-    'agent-transformation-events': [
+    [LEGACY_AGENT_ROUTING_DECISIONS]: [
+      'routing.decision',
+      'agent.selected',
+      'confidence.evaluated',
+    ],
+    [LEGACY_AGENT_TRANSFORMATION_EVENTS]: [
       'transformation.started',
       'transformation.completed',
       'agent.transformed',
     ],
-    'router-performance-metrics': ['cache.hit', 'cache.miss', 'routing.timed'],
-    'agent-actions': ['tool.called', 'decision.made', 'action.completed', 'error.occurred'],
-    // Node topics
-    'dev.omninode_bridge.onex.evt.node-introspection.v1': [
+    [LEGACY_ROUTER_PERFORMANCE_METRICS]: ['cache.hit', 'cache.miss', 'routing.timed'],
+    [LEGACY_AGENT_ACTIONS]: ['tool.called', 'decision.made', 'action.completed', 'error.occurred'],
+    // Node topics (canonical ONEX suffixes)
+    [SUFFIX_NODE_INTROSPECTION]: [
       'node.introspected',
       'node.capabilities.discovered',
       'node.schema.extracted',
     ],
-    'dev.onex.evt.registration-completed.v1': [
-      'node.registered',
-      'node.validated',
-      'node.activated',
-    ],
-    'node.heartbeat': ['heartbeat.ping', 'heartbeat.pong', 'health.check'],
-    'dev.omninode_bridge.onex.evt.registry-request-introspection.v1': [
+    [SUFFIX_NODE_REGISTRATION]: ['node.registered', 'node.validated', 'node.activated'],
+    [SUFFIX_NODE_HEARTBEAT]: ['heartbeat.ping', 'heartbeat.pong', 'health.check'],
+    [SUFFIX_REQUEST_INTROSPECTION]: [
       'introspection.requested',
       'registry.polling',
       'node.discovery',
@@ -751,33 +747,33 @@ function generateCorrelationId(): string {
 function generatePayloadPreview(topic: string): string {
   const previews: Record<string, string[]> = {
     // Agent topics
-    'agent-routing-decisions': [
+    [LEGACY_AGENT_ROUTING_DECISIONS]: [
       '{"selected_agent": "api-architect", "confidence": 0.95}',
       '{"routing_time_ms": 45, "strategy": "keyword"}',
     ],
-    'agent-transformation-events': [
+    [LEGACY_AGENT_TRANSFORMATION_EVENTS]: [
       '{"source": "polymorphic", "target": "api-architect"}',
       '{"transformation_duration_ms": 120, "success": true}',
     ],
-    'router-performance-metrics': [
+    [LEGACY_ROUTER_PERFORMANCE_METRICS]: [
       '{"cache_hit": true, "candidates_evaluated": 5}',
       '{"routing_duration_ms": 23, "strategy": "semantic"}',
     ],
-    'agent-actions': [
+    [LEGACY_AGENT_ACTIONS]: [
       '{"action_type": "tool_call", "tool": "Read"}',
       '{"action_type": "decision", "agent": "debug"}',
     ],
-    // Node topics
-    'dev.omninode_bridge.onex.evt.node-introspection.v1': [
+    // Node topics (canonical ONEX suffixes)
+    [SUFFIX_NODE_INTROSPECTION]: [
       '{"node_id": "node-123", "capabilities": [...]}',
       '{"schema_version": "1.0", "fields": [...]}',
     ],
-    'dev.onex.evt.registration-completed.v1': [
+    [SUFFIX_NODE_REGISTRATION]: [
       '{"node_id": "node-456", "status": "active"}',
       '{"registration_id": "reg-789"}',
     ],
-    'node.heartbeat': ['{"node_id": "node-123", "uptime": 3600}', '{"status": "healthy"}'],
-    'dev.omninode_bridge.onex.evt.registry-request-introspection.v1': [
+    [SUFFIX_NODE_HEARTBEAT]: ['{"node_id": "node-123", "uptime": 3600}', '{"status": "healthy"}'],
+    [SUFFIX_REQUEST_INTROSPECTION]: [
       '{"node_id": "node-789", "request_type": "introspection"}',
       '{"registry_id": "reg-001", "target_nodes": [...]}',
     ],

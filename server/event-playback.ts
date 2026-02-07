@@ -13,6 +13,18 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  resolveTopicName,
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+  SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
+  SUFFIX_OMNICLAUDE_SESSION_STARTED,
+  SUFFIX_OMNICLAUDE_SESSION_ENDED,
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED,
+} from '@shared/topics';
 import { EventEmitter } from 'events';
 import { PLAYBACK_CONFIG, isValidSpeed } from '@shared/schemas/playback-config';
 
@@ -292,36 +304,37 @@ export class EventPlaybackService extends EventEmitter {
     // Emit topic-specific events that match EventConsumer patterns
     const value = event.value as Record<string, unknown>;
 
-    switch (event.topic) {
-      case 'agent-routing-decisions':
+    // Match topic names — supports both canonical resolved names and
+    // legacy names from older recordings.
+    const topic = event.topic;
+    switch (topic) {
+      case LEGACY_AGENT_ROUTING_DECISIONS:
         this.emit('routingDecision', value);
         break;
-      case 'agent-actions':
+      case LEGACY_AGENT_ACTIONS:
         this.emit('action', value);
         break;
-      case 'agent-transformation-events':
+      case LEGACY_AGENT_TRANSFORMATION_EVENTS:
         this.emit('transformation', value);
         break;
-      case 'router-performance-metrics':
+      case LEGACY_ROUTER_PERFORMANCE_METRICS:
         this.emit('performanceMetric', value);
         break;
-      case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
-        this.emit('promptSubmitted', value);
-        break;
-      case 'dev.onex.evt.omniclaude.session-started.v1':
-        this.emit('sessionStarted', value);
-        break;
-      case 'dev.onex.evt.omniclaude.session-ended.v1':
-        this.emit('sessionEnded', value);
-        break;
-      case 'dev.onex.evt.omniclaude.tool-executed.v1':
-        this.emit('toolExecuted', value);
-        break;
-      case 'dev.onex.evt.omniintelligence.intent-classified.v1':
-        this.emit('intentClassified', value);
-        break;
       default:
-        this.emit('unknownTopic', event);
+        // ONEX topics: match by suffix (handles any env prefix in recordings)
+        if (topic.includes(SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED)) {
+          this.emit('promptSubmitted', value);
+        } else if (topic.includes(SUFFIX_OMNICLAUDE_SESSION_STARTED)) {
+          this.emit('sessionStarted', value);
+        } else if (topic.includes(SUFFIX_OMNICLAUDE_SESSION_ENDED)) {
+          this.emit('sessionEnded', value);
+        } else if (topic.includes(SUFFIX_OMNICLAUDE_TOOL_EXECUTED)) {
+          this.emit('toolExecuted', value);
+        } else if (topic.includes(SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED)) {
+          this.emit('intentClassified', value);
+        } else {
+          this.emit('unknownTopic', event);
+        }
     }
   }
 

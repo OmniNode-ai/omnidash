@@ -474,7 +474,9 @@ export default function NodeRegistry() {
               </div>
               <div>
                 <span className="font-medium">Kafka Topics:</span>
-                <div className="text-muted-foreground mt-1">dev.onex.evt.node-introspection.v1</div>
+                <div className="text-muted-foreground mt-1">
+                  onex.evt.platform.node-introspection.v1
+                </div>
               </div>
             </div>
           </div>

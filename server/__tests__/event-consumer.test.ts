@@ -146,41 +146,35 @@ describe('EventConsumer', () => {
       await consumer.start();
 
       expect(mockConsumerConnect).toHaveBeenCalled();
-      expect(mockConsumerSubscribe).toHaveBeenCalledWith({
-        topics: [
-          // Agent topics
-          'agent-routing-decisions',
-          'agent-transformation-events',
-          'router-performance-metrics',
-          'agent-actions',
-          // Node registry topics (legacy)
-          'dev.omninode_bridge.onex.evt.node-introspection.v1',
-          'dev.onex.evt.registration-completed.v1',
-          'node.heartbeat',
-          'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
-          // Intent topics
-          'dev.onex.evt.omnimemory.intent-stored.v1',
-          'dev.onex.evt.omnimemory.intent-query-response.v1',
-          'dev.onex.evt.omniintelligence.intent-classified.v1',
-          // Canonical ONEX topics (OMN-1279)
-          'dev.onex.evt.node-became-active.v1',
-          'dev.onex.evt.node-liveness-expired.v1',
-          'dev.onex.evt.node-heartbeat.v1',
-          'dev.onex.evt.node-introspection.v1',
-          // OmniClaude hook events (prompt submissions, tool executions)
-          'dev.onex.cmd.omniintelligence.claude-hook-event.v1',
-          // OmniClaude lifecycle events
-          'dev.onex.evt.omniclaude.prompt-submitted.v1',
-          'dev.onex.evt.omniclaude.session-started.v1',
-          'dev.onex.evt.omniclaude.tool-executed.v1',
-          'dev.onex.evt.omniclaude.session-ended.v1',
-          // Cross-repo validation topics (OMN-1907)
-          'onex.validation.cross_repo.run.started.v1',
-          'onex.validation.cross_repo.violations.batch.v1',
-          'onex.validation.cross_repo.run.completed.v1',
-        ],
-        fromBeginning: true,
-      });
+      // Verify subscription uses buildSubscriptionTopics() from shared/topics.ts
+      const call = mockConsumerSubscribe.mock.calls[0][0];
+      expect(call.fromBeginning).toBe(true);
+      // Legacy agent topics (no env prefix)
+      expect(call.topics).toContain('agent-routing-decisions');
+      expect(call.topics).toContain('agent-actions');
+      expect(call.topics).toContain('agent-transformation-events');
+      expect(call.topics).toContain('router-performance-metrics');
+      // Canonical platform topics (env-prefixed)
+      expect(call.topics).toContain('dev.onex.evt.platform.node-introspection.v1');
+      expect(call.topics).toContain('dev.onex.evt.platform.node-registration.v1');
+      expect(call.topics).toContain('dev.onex.cmd.platform.request-introspection.v1');
+      expect(call.topics).toContain('dev.onex.evt.platform.node-became-active.v1');
+      expect(call.topics).toContain('dev.onex.evt.platform.node-liveness-expired.v1');
+      expect(call.topics).toContain('dev.onex.evt.platform.node-heartbeat.v1');
+      // OmniClaude topics
+      expect(call.topics).toContain('dev.onex.cmd.omniintelligence.claude-hook-event.v1');
+      expect(call.topics).toContain('dev.onex.evt.omniclaude.prompt-submitted.v1');
+      expect(call.topics).toContain('dev.onex.evt.omniclaude.session-started.v1');
+      expect(call.topics).toContain('dev.onex.evt.omniclaude.tool-executed.v1');
+      expect(call.topics).toContain('dev.onex.evt.omniclaude.session-ended.v1');
+      // Intent topics
+      expect(call.topics).toContain('dev.onex.evt.omniintelligence.intent-classified.v1');
+      expect(call.topics).toContain('dev.onex.evt.omnimemory.intent-stored.v1');
+      expect(call.topics).toContain('dev.onex.evt.omnimemory.intent-query-response.v1');
+      // Validation topics (canonical format)
+      expect(call.topics).toContain('dev.onex.evt.validation.cross-repo-run-started.v1');
+      expect(call.topics).toContain('dev.onex.evt.validation.cross-repo-violations-batch.v1');
+      expect(call.topics).toContain('dev.onex.evt.validation.cross-repo-run-completed.v1');
       expect(mockConsumerRun).toHaveBeenCalled();
     });
 

@@ -26,12 +26,9 @@ const kafka = new Kafka({
   clientId: 'omnidash-topic-checker',
 });
 
-const TOPICS_TO_CHECK = [
-  'agent-routing-decisions',
-  'agent-transformation-events',
-  'router-performance-metrics',
-  'agent-actions',
-];
+import { LEGACY_AGENT_TOPICS } from '../shared/topics';
+
+const TOPICS_TO_CHECK = [...LEGACY_AGENT_TOPICS];
 
 const CONSUMER_GROUP = 'omnidash-consumers-v2';
 

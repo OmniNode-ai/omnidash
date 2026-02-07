@@ -114,19 +114,19 @@ export default function NodeNetworkComposer() {
           id: 'e1',
           source: 'compute-ingest',
           target: 'reducer-aggregate',
-          channel: 'agent-actions',
+          channel: 'agent-actions', // legacy flat topic name
         },
         {
           id: 'e2',
           source: 'reducer-aggregate',
           target: 'effect-notify',
-          channel: 'router-performance-metrics',
+          channel: 'router-performance-metrics', // legacy flat topic name
         },
         {
           id: 'e3',
           source: 'orchestrator-root',
           target: 'compute-ingest',
-          channel: 'agent-routing-decisions',
+          channel: 'agent-routing-decisions', // legacy flat topic name
         },
       ];
       setNodes(mockNodes);

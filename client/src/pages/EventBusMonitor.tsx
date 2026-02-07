@@ -569,7 +569,7 @@ export default function EventBusMonitor() {
               className={`h-3 w-3 rounded-full ${
                 topic.includes('agent')
                   ? 'bg-blue-500'
-                  : topic === 'node.heartbeat'
+                  : topic.includes('heartbeat')
                     ? 'bg-status-healthy'
                     : 'bg-primary'
               }`}

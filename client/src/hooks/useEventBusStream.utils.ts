@@ -56,12 +56,19 @@ export const TIME_SERIES_BUCKET_MS = 15000;
  */
 export const MAX_HASH_INPUT_LENGTH = 500;
 
-/** Topics to map from message type to raw topic string */
+import {
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_NODE_REGISTRATION,
+  SUFFIX_REQUEST_INTROSPECTION,
+} from '@shared/topics';
+
+/** Topics to map from message type to canonical ONEX topic suffix */
 export const NODE_TOPIC_MAP: Record<string, string> = {
-  NODE_INTROSPECTION: 'dev.omninode_bridge.onex.evt.node-introspection.v1',
-  NODE_HEARTBEAT: 'node.heartbeat',
-  NODE_STATE_CHANGE: 'dev.onex.evt.registration-completed.v1',
-  NODE_REGISTRY_UPDATE: 'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
+  NODE_INTROSPECTION: SUFFIX_NODE_INTROSPECTION,
+  NODE_HEARTBEAT: SUFFIX_NODE_HEARTBEAT,
+  NODE_STATE_CHANGE: SUFFIX_NODE_REGISTRATION,
+  NODE_REGISTRY_UPDATE: SUFFIX_REQUEST_INTROSPECTION,
 };
 
 // ============================================================================
