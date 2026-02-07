@@ -24,7 +24,9 @@ import {
 //
 // Migration note: upstream producer (omnibase_infra topic_resolver.py) was updated
 // to the canonical format in the same changeset. See platform_topic_suffixes.py
-// for the matching suffixes. No dual-subscription is needed.
+// for the matching suffixes. No dual-subscription is needed because omnidash and
+// omnibase_infra are deployed together — deploy the upstream producer first (or
+// simultaneously) so the new topic names are active before omnidash subscribes.
 // ============================================================================
 
 /** Kafka topic for validation run started events */

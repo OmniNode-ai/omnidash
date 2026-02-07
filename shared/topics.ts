@@ -179,6 +179,10 @@ export const VALIDATION_SUFFIXES = [
 /**
  * Build the complete subscription topic list for the event consumer.
  * Combines legacy topics (used as-is) with canonical topics (env-prefixed).
+ *
+ * Note: LEGACY_AGENT_MANIFEST_INJECTIONS is deliberately excluded from the live
+ * consumer subscription (it is not consumed at runtime). The recording script
+ * (scripts/record-events.ts) manually appends it for offline capture/replay.
  */
 export function buildSubscriptionTopics(envPrefix?: string): string[] {
   const prefix = envPrefix ?? getTopicEnvPrefix();

@@ -1096,20 +1096,28 @@ export class EventConsumer extends EventEmitter {
                   `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
                 );
                 this.handleNodeIntrospection(event);
-                // Also route through canonical envelope handler for deduplication and registry updates
-                if (DEBUG_CANONICAL_EVENTS) {
-                  intentLogger.debug('Processing canonical node-introspection event');
+                // Also route through canonical envelope handler for deduplication and registry updates.
+                // Guard: only attempt envelope parsing if the event looks like a canonical envelope
+                // (has event_type + payload fields). Legacy-format events skip this path to avoid
+                // spurious Zod parse warnings in the logs.
+                if (event.event_type && event.payload) {
+                  if (DEBUG_CANONICAL_EVENTS) {
+                    intentLogger.debug('Processing canonical node-introspection event');
+                  }
+                  this.handleCanonicalNodeIntrospection(message);
                 }
-                this.handleCanonicalNodeIntrospection(message);
                 break;
               case TOPIC.NODE_HEARTBEAT:
                 intentLogger.debug(`Processing node heartbeat: ${event.node_id || event.nodeId}`);
                 this.handleNodeHeartbeat(event);
-                // Also route through canonical envelope handler
-                if (DEBUG_CANONICAL_EVENTS) {
-                  intentLogger.debug('Processing canonical node-heartbeat event');
+                // Also route through canonical envelope handler.
+                // Guard: only attempt envelope parsing for canonical-format events (see above).
+                if (event.event_type && event.payload) {
+                  if (DEBUG_CANONICAL_EVENTS) {
+                    intentLogger.debug('Processing canonical node-heartbeat event');
+                  }
+                  this.handleCanonicalNodeHeartbeat(message);
                 }
-                this.handleCanonicalNodeHeartbeat(message);
                 break;
               case TOPIC.NODE_REGISTRATION:
                 intentLogger.debug(
