@@ -14,7 +14,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import {
-  resolveTopicName,
   LEGACY_AGENT_ROUTING_DECISIONS,
   LEGACY_AGENT_ACTIONS,
   LEGACY_AGENT_TRANSFORMATION_EVENTS,

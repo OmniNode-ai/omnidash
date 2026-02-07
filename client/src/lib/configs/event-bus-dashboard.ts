@@ -14,6 +14,7 @@ import {
   LEGACY_AGENT_TRANSFORMATION_EVENTS,
   LEGACY_ROUTER_PERFORMANCE_METRICS,
   LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_MANIFEST_INJECTIONS,
   SUFFIX_NODE_INTROSPECTION,
   SUFFIX_NODE_REGISTRATION,
   SUFFIX_NODE_HEARTBEAT,
@@ -25,7 +26,6 @@ import {
   SUFFIX_INTELLIGENCE_PATTERN_SCORED,
   SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
-  extractSuffix,
 } from '@shared/topics';
 
 /**
@@ -406,7 +406,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
 export const EVENT_TYPE_METADATA: Record<string, { label: string; description?: string }> = {
   // Agent event types (legacy flat names)
   [LEGACY_AGENT_ROUTING_DECISIONS]: { label: 'Routing Decision' },
-  'agent-manifest-injections': { label: 'Manifest Injection' },
+  [LEGACY_AGENT_MANIFEST_INJECTIONS]: { label: 'Manifest Injection' },
   [LEGACY_AGENT_TRANSFORMATION_EVENTS]: { label: 'Transformation' },
   routing: { label: 'Routing' },
   transformation: { label: 'Transformation' },
