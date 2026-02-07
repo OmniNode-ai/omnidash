@@ -544,11 +544,25 @@ export function getEventMonitoringConfig() {
 /**
  * Get topic metadata from the config.
  * Falls back to the TOPIC_METADATA constant for completeness.
+ *
+ * Handles env-prefixed topic names (e.g. 'dev.onex.evt.platform.node-introspection.v1')
+ * by stripping the leading env segment and retrying against suffix-keyed metadata.
  */
 export function getTopicMetadata(
   topic: string
 ): { label: string; description: string; category: string } | undefined {
-  return eventBusDashboardConfig.topic_metadata?.[topic] ?? TOPIC_METADATA[topic];
+  // Direct lookup first (handles legacy flat names and exact suffix matches)
+  const direct = eventBusDashboardConfig.topic_metadata?.[topic] ?? TOPIC_METADATA[topic];
+  if (direct) return direct;
+
+  // Try suffix extraction for env-prefixed topics (e.g., 'dev.onex.evt...' -> 'onex.evt...')
+  const suffixMatch = topic.match(/^[^.]+\.(.+)$/);
+  if (suffixMatch) {
+    const suffix = suffixMatch[1];
+    return eventBusDashboardConfig.topic_metadata?.[suffix] ?? TOPIC_METADATA[suffix];
+  }
+
+  return undefined;
 }
 
 /**

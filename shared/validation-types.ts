@@ -14,7 +14,7 @@ import {
   SUFFIX_VALIDATION_RUN_STARTED,
   SUFFIX_VALIDATION_VIOLATIONS_BATCH,
   SUFFIX_VALIDATION_RUN_COMPLETED,
-} from './topics';
+} from '@shared/topics';
 
 // ============================================================================
 // Topic Constants (resolved at runtime from canonical ONEX suffixes)

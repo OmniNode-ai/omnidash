@@ -30,7 +30,7 @@ export type OnexTopicKind = 'evt' | 'cmd' | 'intent' | 'snapshot' | 'dlq';
  * On the client-side (browser), `process.env` is not available — defaults to 'dev'.
  */
 export function getTopicEnvPrefix(): string {
-  if (typeof process !== 'undefined' && process.env) {
+  if (typeof process !== 'undefined' && process.env !== undefined) {
     return process.env.TOPIC_ENV_PREFIX || process.env.ONEX_ENV || 'dev';
   }
   return 'dev';

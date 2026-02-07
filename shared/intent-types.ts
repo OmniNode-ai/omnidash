@@ -22,7 +22,7 @@ import {
   SUFFIX_MEMORY_INTENT_QUERY_RESPONSE,
   SUFFIX_MEMORY_INTENT_STORED,
   SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED,
-} from './topics';
+} from '@shared/topics';
 
 // ============================================================================
 // Topic Constants (resolved at runtime from canonical ONEX suffixes)

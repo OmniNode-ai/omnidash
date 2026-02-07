@@ -23,7 +23,7 @@ import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import * as fs from 'fs';
 import * as path from 'path';
 import 'dotenv/config';
-import { buildSubscriptionTopics, LEGACY_AGENT_MANIFEST_INJECTIONS } from '../shared/topics';
+import { buildSubscriptionTopics, LEGACY_AGENT_MANIFEST_INJECTIONS } from '@shared/topics';
 
 // Configuration
 const KAFKA_BROKERS = (process.env.KAFKA_BOOTSTRAP_SERVERS || '192.168.86.200:29092').split(',');

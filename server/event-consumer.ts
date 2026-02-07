@@ -2264,11 +2264,7 @@ export class EventConsumer extends EventEmitter {
     });
 
     // Emit dashboard event for WebSocket broadcast
-    this.emit('nodeRegistryUpdate', {
-      type: 'NODE_ACTIVATED',
-      payload: { node_id: payload.node_id, capabilities: payload.capabilities },
-      emitted_at: emittedAtMs,
-    });
+    this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
     if (DEBUG_CANONICAL_EVENTS) {
       intentLogger.debug(`Canonical node-became-active processed: ${payload.node_id}`);
@@ -2320,11 +2316,7 @@ export class EventConsumer extends EventEmitter {
     });
 
     // Emit dashboard event for WebSocket broadcast
-    this.emit('nodeRegistryUpdate', {
-      type: 'NODE_OFFLINE',
-      payload: { node_id: payload.node_id },
-      emitted_at: emittedAtMs,
-    });
+    this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
     if (DEBUG_CANONICAL_EVENTS) {
       intentLogger.debug(`Canonical node-liveness-expired processed: ${payload.node_id}`);
@@ -2356,11 +2348,7 @@ export class EventConsumer extends EventEmitter {
       });
 
       // Emit dashboard event so newly discovered nodes appear immediately
-      this.emit('nodeRegistryUpdate', {
-        type: 'NODE_DISCOVERED',
-        payload: { node_id: payload.node_id, last_heartbeat_at: emittedAtMs },
-        emitted_at: emittedAtMs,
-      });
+      this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
       return;
     }
 
@@ -2376,11 +2364,7 @@ export class EventConsumer extends EventEmitter {
     });
 
     // Emit dashboard event for WebSocket broadcast
-    this.emit('nodeRegistryUpdate', {
-      type: 'NODE_HEARTBEAT',
-      payload: { node_id: payload.node_id, last_heartbeat_at: emittedAtMs },
-      emitted_at: emittedAtMs,
-    });
+    this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
   }
 
   /**
@@ -2427,11 +2411,7 @@ export class EventConsumer extends EventEmitter {
     this.canonicalNodes.set(payload.node_id, node);
 
     // Emit dashboard event for WebSocket broadcast
-    this.emit('nodeRegistryUpdate', {
-      type: 'NODE_INTROSPECTION',
-      payload: { node_id: payload.node_id, capabilities: payload.capabilities },
-      emitted_at: emittedAtMs,
-    });
+    this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
     if (DEBUG_CANONICAL_EVENTS) {
       intentLogger.debug(`Canonical node-introspection processed: ${payload.node_id}`);

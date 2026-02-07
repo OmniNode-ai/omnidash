@@ -10,7 +10,7 @@
  */
 
 import { Kafka } from 'kafkajs';
-import { LEGACY_AGENT_TOPICS } from '../shared/topics';
+import { LEGACY_AGENT_TOPICS } from '@shared/topics';
 
 const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
 if (!brokers) {
