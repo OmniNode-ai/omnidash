@@ -26,6 +26,7 @@ import {
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
 import { playbackEventEmitter, type PlaybackWSMessage } from './playback-events';
+import { ENVIRONMENT_PREFIXES } from '@shared/topics';
 
 /**
  * Transform EventBusEvent from database to client-expected format
@@ -43,18 +44,32 @@ interface ClientAction {
 }
 
 function transformEventToClientAction(event: EventBusEvent): ClientAction {
-  const eventType = event.event_type || 'unknown';
+  const rawEventType = event.event_type || 'unknown';
+
+  // When event_type is just an env prefix (junk from upstream), fall back to topic name
+  const eventType =
+    (ENVIRONMENT_PREFIXES as readonly string[]).includes(rawEventType) && event.topic
+      ? event.topic
+      : rawEventType;
 
   // Parse event_type to derive actionType and actionName
-  // Common patterns: "UserPromptSubmit", "hook.prompt.submitted", "agent.routing.completed"
+  // Common patterns: "UserPromptSubmit", "hook.prompt.submitted", "dev.onex.cmd.producer.action.v1"
   let actionType = 'event';
   let actionName = eventType;
 
   if (eventType.includes('.')) {
-    // Dot-notation format: "hook.prompt.submitted" -> type: "hook", name: "prompt.submitted"
     const parts = eventType.split('.');
-    actionType = parts[0];
-    actionName = parts.slice(1).join('.');
+    // Canonical ONEX format: {env}.onex.{kind}.{producer}.{action}.v{N}
+    // or suffix: onex.{kind}.{producer}.{action}.v{N}
+    const onexIdx = parts.indexOf('onex');
+    if (onexIdx >= 0 && parts.length >= onexIdx + 4) {
+      actionType = parts[onexIdx + 3] || parts[0]; // e.g. "tool-content"
+      actionName = parts.slice(onexIdx).join('.'); // e.g. "onex.cmd.omniintelligence.tool-content.v1"
+    } else {
+      // Generic dot-notation: "hook.prompt.submitted" -> type: "hook", name: "prompt.submitted"
+      actionType = parts[0];
+      actionName = parts.slice(1).join('.');
+    }
   } else if (/[A-Z]/.test(eventType)) {
     // PascalCase format: "UserPromptSubmit" -> type: "user", name: "prompt_submit"
     const snakeCase = eventType
@@ -69,14 +84,22 @@ function transformEventToClientAction(event: EventBusEvent): ClientAction {
   }
 
   // Type guard: ensure payload is an object before accessing properties
-  // This handles cases where payload might be a string (malformed JSON) or other non-object type
   const payloadIsObject =
     event.payload && typeof event.payload === 'object' && !Array.isArray(event.payload);
   const payload = payloadIsObject ? (event.payload as Record<string, unknown>) : {};
 
-  // Extract agent name from source or payload
-  const agentName =
+  // Extract agent name from source, payload, or canonical topic structure
+  let agentName =
     (payload.agent_name as string) || (payload.agentName as string) || event.source || 'system';
+
+  // If source is "unknown", try to extract producer from canonical topic name
+  if (agentName === 'unknown' && event.topic) {
+    const topicParts = event.topic.split('.');
+    const onexIdx = topicParts.indexOf('onex');
+    if (onexIdx >= 0 && topicParts.length >= onexIdx + 3) {
+      agentName = topicParts[onexIdx + 2] || agentName; // e.g. "omniintelligence"
+    }
+  }
 
   // Extract duration from payload if available
   const durationMs =
@@ -929,3 +952,5 @@ export function setupWebSocket(httpServer: HTTPServer) {
   console.log('WebSocket server initialized at /ws');
   return wss;
 }
+
+export { transformEventToClientAction };

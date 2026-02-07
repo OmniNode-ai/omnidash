@@ -23,6 +23,17 @@ export type OnexTopicKind = 'evt' | 'cmd' | 'intent' | 'snapshot' | 'dlq';
 // Environment Prefix Resolution
 // ============================================================================
 
+/** Environment prefixes used in canonical topic names -- used to filter junk values from upstream producers */
+export const ENVIRONMENT_PREFIXES = [
+  'dev',
+  'staging',
+  'prod',
+  'production',
+  'test',
+  'local',
+] as const;
+export type EnvironmentPrefix = (typeof ENVIRONMENT_PREFIXES)[number];
+
 /**
  * Get the topic environment prefix from environment variables.
  * Defaults to 'dev' if not specified.

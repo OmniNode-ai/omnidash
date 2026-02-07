@@ -24,6 +24,7 @@ import {
   resolveTopicName,
   getTopicEnvPrefix,
   buildSubscriptionTopics,
+  ENVIRONMENT_PREFIXES,
   LEGACY_AGENT_ROUTING_DECISIONS,
   LEGACY_AGENT_ACTIONS,
   LEGACY_AGENT_TRANSFORMATION_EVENTS,
@@ -1293,17 +1294,24 @@ export class EventConsumer extends EventEmitter {
 
       if (Array.isArray(actionsRows)) {
         // Collect all actions first, then slice once at the end (O(n) instead of O(n²))
-        const actions: AgentAction[] = (actionsRows as AgentActionRow[]).map((r) => ({
-          id: r.id,
-          correlationId: r.correlation_id || '',
-          agentName: r.agent_name || '',
-          actionType: r.action_type || '',
-          actionName: r.action_name || '',
-          actionDetails: r.action_details,
-          debugMode: !!r.debug_mode,
-          durationMs: Number(r.duration_ms || 0),
-          createdAt: new Date(r.created_at),
-        }));
+        const actions: AgentAction[] = (actionsRows as AgentActionRow[]).map((r) => {
+          const { actionType, agentName } = EventConsumer.normalizeActionFields(
+            r.action_type || '',
+            r.agent_name || '',
+            r.action_name || ''
+          );
+          return {
+            id: r.id,
+            correlationId: r.correlation_id || '',
+            agentName,
+            actionType,
+            actionName: r.action_name || '',
+            actionDetails: r.action_details,
+            debugMode: !!r.debug_mode,
+            durationMs: Number(r.duration_ms || 0),
+            createdAt: new Date(r.created_at),
+          };
+        });
         // Single slice operation at the end
         this.recentActions = actions.slice(-this.maxActions);
       }
@@ -1491,13 +1499,52 @@ export class EventConsumer extends EventEmitter {
     this.emit('routingUpdate', decision);
   }
 
+  /**
+   * Normalize actionType and agentName when upstream producers set junk values.
+   * Extracts meaningful segments from canonical actionName when raw fields are
+   * env prefixes (e.g. "dev") or "unknown".
+   */
+  private static normalizeActionFields(
+    rawActionType: string,
+    rawAgentName: string,
+    actionName: string
+  ): { actionType: string; agentName: string } {
+    const isJunkType =
+      !rawActionType || (ENVIRONMENT_PREFIXES as readonly string[]).includes(rawActionType);
+    const isJunkAgent = !rawAgentName || rawAgentName === 'unknown';
+
+    let actionType = rawActionType;
+    let agentName = rawAgentName;
+
+    // Parse canonical actionName (e.g. "onex.cmd.omniintelligence.tool-content.v1")
+    if ((isJunkType || isJunkAgent) && actionName.startsWith('onex.')) {
+      const parts = actionName.split('.');
+      // Format: onex.<kind>.<producer>.<event-name>.v<N>
+      if (parts.length >= 4) {
+        if (isJunkType) actionType = parts[3] || rawActionType; // e.g. "tool-content"
+        if (isJunkAgent) agentName = parts[2] || rawAgentName; // e.g. "omniintelligence"
+      }
+    }
+
+    return { actionType, agentName };
+  }
+
   private handleAgentAction(event: RawAgentActionEvent): void {
+    const rawActionType = event.action_type || event.actionType || '';
+    const rawAgentName = event.agent_name || event.agentName || '';
+    const actionName = event.action_name || event.actionName || '';
+    const { actionType, agentName } = EventConsumer.normalizeActionFields(
+      rawActionType,
+      rawAgentName,
+      actionName
+    );
+
     const action: AgentAction = {
       id: event.id || crypto.randomUUID(),
       correlationId: event.correlation_id || event.correlationId || '',
-      agentName: event.agent_name || event.agentName || '',
-      actionType: event.action_type || event.actionType || '',
-      actionName: event.action_name || event.actionName || '',
+      agentName,
+      actionType,
+      actionName,
       actionDetails: event.action_details || event.actionDetails,
       debugMode: event.debug_mode || event.debugMode,
       durationMs: event.duration_ms || event.durationMs || 0,

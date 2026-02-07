@@ -981,4 +981,70 @@ describe('EventConsumer', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('normalizeActionFields', () => {
+    // Access the private static method for direct testing
+    const normalize = (EventConsumer as any).normalizeActionFields.bind(EventConsumer);
+
+    it('should extract actionType from canonical actionName when rawActionType is env prefix', () => {
+      const result = normalize('dev', 'valid-agent', 'onex.cmd.omniintelligence.tool-content.v1');
+      expect(result.actionType).toBe('tool-content');
+      expect(result.agentName).toBe('valid-agent');
+    });
+
+    it('should extract agentName from canonical actionName when rawAgentName is "unknown"', () => {
+      const result = normalize('tool_call', 'unknown', 'onex.cmd.omniintelligence.tool-content.v1');
+      expect(result.agentName).toBe('omniintelligence');
+      expect(result.actionType).toBe('tool_call');
+    });
+
+    it('should normalize both fields when both are junk', () => {
+      const result = normalize('dev', 'unknown', 'onex.evt.archon.session-started.v1');
+      expect(result.actionType).toBe('session-started');
+      expect(result.agentName).toBe('archon');
+    });
+
+    it('should treat all env prefixes as junk actionType', () => {
+      for (const prefix of ['dev', 'staging', 'prod', 'production', 'test', 'local']) {
+        const result = normalize(prefix, 'valid-agent', 'onex.cmd.producer.action-name.v1');
+        expect(result.actionType).toBe('action-name');
+      }
+    });
+
+    it('should treat empty string as junk actionType', () => {
+      const result = normalize('', 'valid-agent', 'onex.cmd.producer.my-action.v1');
+      expect(result.actionType).toBe('my-action');
+      expect(result.agentName).toBe('valid-agent');
+    });
+
+    it('should preserve valid actionType', () => {
+      const result = normalize('tool_call', 'valid-agent', 'onex.cmd.producer.action.v1');
+      expect(result.actionType).toBe('tool_call');
+      expect(result.agentName).toBe('valid-agent');
+    });
+
+    it('should preserve valid agentName even when actionType is junk', () => {
+      const result = normalize('dev', 'my-agent', 'onex.cmd.producer.action.v1');
+      expect(result.actionType).toBe('action');
+      expect(result.agentName).toBe('my-agent');
+    });
+
+    it('should not parse non-canonical actionName', () => {
+      const result = normalize('dev', 'unknown', 'some-legacy-action');
+      expect(result.actionType).toBe('dev');
+      expect(result.agentName).toBe('unknown');
+    });
+
+    it('should handle short canonical actionName gracefully', () => {
+      const result = normalize('dev', 'unknown', 'onex.cmd');
+      expect(result.actionType).toBe('dev');
+      expect(result.agentName).toBe('unknown');
+    });
+
+    it('should return original values when both are valid', () => {
+      const result = normalize('tool_call', 'agent-1', 'whatever');
+      expect(result.actionType).toBe('tool_call');
+      expect(result.agentName).toBe('agent-1');
+    });
+  });
 });

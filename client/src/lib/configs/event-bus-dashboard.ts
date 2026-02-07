@@ -26,6 +26,7 @@ import {
   SUFFIX_INTELLIGENCE_PATTERN_SCORED,
   SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  ENVIRONMENT_PREFIXES,
 } from '@shared/topics';
 
 /**
@@ -441,10 +442,19 @@ export const EVENT_TYPE_METADATA: Record<string, { label: string; description?: 
   heartbeat: { label: 'Heartbeat' },
   state_change: { label: 'State Change' },
   registry_update: { label: 'Registry Update' },
-};
 
-/** Environment prefixes to skip when extracting event type labels */
-const ENVIRONMENT_PREFIXES = ['dev', 'staging', 'prod', 'production', 'test', 'local'];
+  // Canonical event-name segments (extracted from actionName by server)
+  'tool-content': { label: 'Tool Content' },
+  'claude-hook-event': { label: 'Claude Hook' },
+  'intent-classified': { label: 'Intent Classified' },
+  'intent-stored': { label: 'Intent Stored' },
+  'intent-query-response': { label: 'Intent Query' },
+  'session-outcome': { label: 'Session Outcome' },
+  'prompt-submitted': { label: 'Prompt Submitted' },
+  'session-started': { label: 'Session Started' },
+  'session-ended': { label: 'Session Ended' },
+  'tool-executed': { label: 'Tool Executed' },
+};
 
 /** Structural segments to skip (not meaningful for display) */
 const STRUCTURAL_SEGMENTS = ['evt', 'event', 'events', 'onex', 'omninode_bridge'];
@@ -465,24 +475,28 @@ function toTitleCase(str: string): string {
  * Extract a short label from an ONEX-style event type string.
  *
  * Patterns supported:
- * - dev.[namespace].evt.[source].[action].v[N] → "Action"
- * - dev.[namespace].onex.evt.[action].v[N] → "Action"
+ * - {env}.[namespace].evt.[source].[action].v[N] → "Action"
+ * - {env}.[namespace].onex.evt.[action].v[N] → "Action"
  * - Simple strings like "tool_call" → "Tool Call"
  *
  * Skips environment prefixes (dev, staging, prod) and structural segments (evt, onex).
  */
+const _envPrefixPattern = ENVIRONMENT_PREFIXES.join('|');
+const _onexRegex = new RegExp(`^(?:${_envPrefixPattern})\\.[^.]+\\.evt\\.[^.]+\\.([^.]+)\\.v\\d+$`);
+const _onexAltRegex = new RegExp(
+  `^(?:${_envPrefixPattern})\\.[^.]+\\.onex\\.evt\\.([^.]+)\\.v\\d+$`
+);
+
 function extractEventTypeLabel(eventType: string): string {
-  // Pattern: dev.*.evt.*.[action].v[N]
-  const onexPattern = /^dev\.[^.]+\.evt\.[^.]+\.([^.]+)\.v\d+$/;
-  const match = eventType.match(onexPattern);
+  // Pattern: {env}.*.evt.*.[action].v[N]
+  const match = eventType.match(_onexRegex);
 
   if (match) {
     return toTitleCase(match[1]);
   }
 
-  // Alternative pattern: dev.*.onex.evt.[action].v[N]
-  const altPattern = /^dev\.[^.]+\.onex\.evt\.([^.]+)\.v\d+$/;
-  const altMatch = eventType.match(altPattern);
+  // Alternative pattern: {env}.*.onex.evt.[action].v[N]
+  const altMatch = eventType.match(_onexAltRegex);
   if (altMatch) {
     return toTitleCase(altMatch[1]);
   }
@@ -492,7 +506,7 @@ function extractEventTypeLabel(eventType: string): string {
   const meaningfulSegments = segments.filter((seg) => {
     const lower = seg.toLowerCase();
     // Skip environment prefixes
-    if (ENVIRONMENT_PREFIXES.includes(lower)) return false;
+    if ((ENVIRONMENT_PREFIXES as readonly string[]).includes(lower)) return false;
     // Skip structural segments
     if (STRUCTURAL_SEGMENTS.includes(lower)) return false;
     // Skip version suffixes (v1, v2, etc.)
