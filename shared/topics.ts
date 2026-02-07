@@ -9,8 +9,8 @@
  *   kind:     evt | cmd | intent | snapshot | dlq
  *   producer: platform | omniclaude | omniintelligence | omnimemory | validation
  *
- * @see /Volumes/PRO-G40/Code/omnibase_infra2/src/omnibase_infra/topics/topic_resolver.py
- * @see /Volumes/PRO-G40/Code/omnibase_infra/src/omnibase_infra/topics/platform_topic_suffixes.py
+ * @see omnibase_infra2/src/omnibase_infra/topics/topic_resolver.py
+ * @see omnibase_infra/src/omnibase_infra/topics/platform_topic_suffixes.py
  */
 
 // ============================================================================

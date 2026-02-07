@@ -6,6 +6,12 @@
  */
 
 import { getTopicLabel } from '@/lib/configs/event-bus-dashboard';
+import {
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_NODE_REGISTRATION,
+  SUFFIX_REQUEST_INTROSPECTION,
+} from '@shared/topics';
 import type {
   WireEventData,
   ProcessedEvent,
@@ -55,13 +61,6 @@ export const TIME_SERIES_BUCKET_MS = 15000;
  * for very long inputs (e.g., large event payloads).
  */
 export const MAX_HASH_INPUT_LENGTH = 500;
-
-import {
-  SUFFIX_NODE_INTROSPECTION,
-  SUFFIX_NODE_HEARTBEAT,
-  SUFFIX_NODE_REGISTRATION,
-  SUFFIX_REQUEST_INTROSPECTION,
-} from '@shared/topics';
 
 /** Topics to map from message type to canonical ONEX topic suffix */
 export const NODE_TOPIC_MAP: Record<string, string> = {
