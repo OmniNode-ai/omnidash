@@ -5,11 +5,11 @@ import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 import { LRUCache } from 'lru-cache';
 import { z } from 'zod';
+import type { EventBusEvent } from './event-bus-data-source';
 // Import topic constants and type utilities from shared module (single source of truth)
 import {
   INTENT_CLASSIFIED_TOPIC,
   INTENT_STORED_TOPIC,
-  INTENT_QUERY_RESPONSE_TOPIC,
   EVENT_TYPE_NAMES,
   isIntentClassifiedEvent,
   isIntentStoredEvent,
@@ -40,10 +40,17 @@ import {
   SUFFIX_NODE_REGISTRATION_REJECTED,
   SUFFIX_REGISTRATION_SNAPSHOTS,
   SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
+  SUFFIX_INTELLIGENCE_TOOL_CONTENT,
+  SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED,
+  SUFFIX_MEMORY_INTENT_STORED,
+  SUFFIX_MEMORY_INTENT_QUERY_RESPONSE,
   SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
   SUFFIX_OMNICLAUDE_SESSION_STARTED,
   SUFFIX_OMNICLAUDE_SESSION_ENDED,
   SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_VALIDATION_RUN_STARTED,
+  SUFFIX_VALIDATION_VIOLATIONS_BATCH,
+  SUFFIX_VALIDATION_RUN_COMPLETED,
 } from '@shared/topics';
 import {
   EventEnvelopeSchema,
@@ -60,9 +67,6 @@ import {
   type NodeState,
 } from '@shared/schemas';
 import {
-  VALIDATION_RUN_STARTED_TOPIC,
-  VALIDATION_VIOLATIONS_BATCH_TOPIC,
-  VALIDATION_RUN_COMPLETED_TOPIC,
   isValidationRunStarted,
   isValidationViolationsBatch,
   isValidationRunCompleted,
@@ -83,14 +87,11 @@ const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
  * Extracted for maintainability and easy tuning.
  */
 const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
-const SQL_PRELOAD_ACTIONS_LIMIT = 1000;
-const SQL_PRELOAD_ROUTING_LIMIT = 1000;
-const SQL_PRELOAD_TRANSFORMATIONS_LIMIT = 500;
-const SQL_PRELOAD_METRICS_LIMIT = 100;
+const SQL_PRELOAD_LIMIT = 2000;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
 
-// Canonical ONEX topics — used directly as suffixes (no env prefix).
+// Canonical ONEX topic names (no env prefix).
 // Infra4 producers emit to unprefixed canonical names
 // (e.g. `onex.evt.platform.node-heartbeat.v1`).
 //
@@ -116,6 +117,7 @@ const TOPIC = {
   REGISTRATION_SNAPSHOTS: SUFFIX_REGISTRATION_SNAPSHOTS,
   // OmniClaude
   CLAUDE_HOOK: SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
+  TOOL_CONTENT: SUFFIX_INTELLIGENCE_TOOL_CONTENT,
   PROMPT_SUBMITTED: SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
   SESSION_STARTED: SUFFIX_OMNICLAUDE_SESSION_STARTED,
   SESSION_ENDED: SUFFIX_OMNICLAUDE_SESSION_ENDED,
@@ -241,52 +243,6 @@ export interface TransformationEvent {
 // ============================================================================
 
 /** Row type for agent_actions table query results */
-interface AgentActionRow {
-  id: string;
-  correlation_id?: string;
-  agent_name?: string;
-  action_type?: string;
-  action_name?: string;
-  action_details?: unknown;
-  debug_mode?: boolean;
-  duration_ms?: number | string;
-  created_at: string | Date;
-}
-
-/** Row type for metrics aggregation query results */
-interface AgentMetricsRow {
-  agent?: string;
-  total_requests?: number | string;
-  avg_routing_time?: number | string;
-  avg_confidence?: number | string;
-}
-
-/** Row type for agent_routing_decisions table query results */
-interface RoutingDecisionRow {
-  id: string;
-  correlation_id?: string;
-  user_request?: string;
-  selected_agent?: string;
-  confidence_score?: number | string;
-  routing_strategy?: string;
-  alternatives?: unknown;
-  reasoning?: string;
-  routing_time_ms?: number | string;
-  created_at: string | Date;
-}
-
-/** Row type for agent_transformation_events table query results */
-interface TransformationEventRow {
-  id: string;
-  correlation_id?: string;
-  source_agent?: string;
-  target_agent?: string;
-  transformation_duration_ms?: number | string;
-  success?: boolean;
-  routing_confidence?: number | string;
-  started_at: string | Date;
-}
-
 // Node Registry Types
 export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
 
@@ -825,6 +781,11 @@ export class EventConsumer extends EventEmitter {
   private playbackEventsInjected: number = 0;
   private playbackEventsFailed: number = 0;
 
+  // Raw event bus event rows loaded during preloadFromDatabase().
+  // Exposed via getPreloadedEventBusEvents() so WebSocket INITIAL_STATE
+  // can serve them from memory instead of re-querying PostgreSQL.
+  private preloadedEventBusEvents: EventBusEvent[] = [];
+
   // State snapshot for demo mode - stores live data while playback is active
   private stateSnapshot: {
     recentActions: AgentAction[];
@@ -1073,9 +1034,22 @@ export class EventConsumer extends EventEmitter {
       });
 
       await this.consumer.run({
-        eachMessage: async ({ topic, message }) => {
+        eachMessage: async ({ topic: rawTopic, message }) => {
           try {
             const event = JSON.parse(message.value?.toString() || '{}');
+
+            // Strip legacy env prefix (e.g. "dev.onex.evt..." → "onex.evt...")
+            // so topics match canonical names used by the switch cases below.
+            // Legacy flat topics like "agent-actions" have no dot-prefix and pass through.
+            let topic = rawTopic;
+            const dotIdx = rawTopic.indexOf('.');
+            if (dotIdx > 0) {
+              const prefix = rawTopic.slice(0, dotIdx);
+              if ((ENVIRONMENT_PREFIXES as readonly string[]).includes(prefix)) {
+                topic = rawTopic.slice(dotIdx + 1);
+              }
+            }
+
             intentLogger.debug(`Received event from topic: ${topic}`);
 
             switch (topic) {
@@ -1178,20 +1152,20 @@ export class EventConsumer extends EventEmitter {
                 break;
               }
 
-              // Intent topics
-              case INTENT_CLASSIFIED_TOPIC:
+              // Intent topics (canonical names, matched after legacy prefix stripping)
+              case SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED:
                 intentLogger.debug(
                   `Processing intent classified: ${event.intent_type || event.intentType} (confidence: ${event.confidence})`
                 );
                 this.handleIntentClassified(event);
                 break;
-              case INTENT_STORED_TOPIC:
+              case SUFFIX_MEMORY_INTENT_STORED:
                 intentLogger.debug(
                   `Processing intent stored: ${event.intent_id || event.intentId}`
                 );
                 this.handleIntentStored(event);
                 break;
-              case INTENT_QUERY_RESPONSE_TOPIC:
+              case SUFFIX_MEMORY_INTENT_QUERY_RESPONSE:
                 intentLogger.debug(
                   `Processing intent query response: ${event.query_id || event.queryId}`
                 );
@@ -1221,8 +1195,23 @@ export class EventConsumer extends EventEmitter {
                 this.handleOmniclaudeLifecycleEvent(event, topic);
                 break;
 
-              // Cross-repo validation topics
-              case VALIDATION_RUN_STARTED_TOPIC:
+              // Tool-content events from omniintelligence (tool execution records)
+              case TOPIC.TOOL_CONTENT:
+                intentLogger.debug(
+                  `Processing tool-content: ${(event as Record<string, string>).tool_name || 'unknown'}`
+                );
+                this.handleAgentAction({
+                  action_type: 'tool',
+                  agent_name: 'omniclaude',
+                  action_name: (event as Record<string, string>).tool_name || 'unknown',
+                  correlation_id: (event as Record<string, string>).correlation_id,
+                  duration_ms: Number((event as Record<string, unknown>).duration_ms || 0),
+                  timestamp: (event as Record<string, string>).timestamp,
+                } as RawAgentActionEvent);
+                break;
+
+              // Cross-repo validation topics (canonical names, matched after legacy prefix stripping)
+              case SUFFIX_VALIDATION_RUN_STARTED:
                 if (isValidationRunStarted(event)) {
                   intentLogger.debug(`Processing validation run started: ${event.run_id}`);
                   await handleValidationRunStarted(event);
@@ -1231,7 +1220,7 @@ export class EventConsumer extends EventEmitter {
                   console.warn('[validation] Dropped malformed run-started event on topic', topic);
                 }
                 break;
-              case VALIDATION_VIOLATIONS_BATCH_TOPIC:
+              case SUFFIX_VALIDATION_VIOLATIONS_BATCH:
                 if (isValidationViolationsBatch(event)) {
                   intentLogger.debug(
                     `Processing validation violations batch: ${event.run_id} (${event.violations.length} violations)`
@@ -1245,7 +1234,7 @@ export class EventConsumer extends EventEmitter {
                   );
                 }
                 break;
-              case VALIDATION_RUN_COMPLETED_TOPIC:
+              case SUFFIX_VALIDATION_RUN_COMPLETED:
                 if (isValidationRunCompleted(event)) {
                   intentLogger.debug(
                     `Processing validation run completed: ${event.run_id} (${event.status})`
@@ -1311,163 +1300,122 @@ export class EventConsumer extends EventEmitter {
 
   private async preloadFromDatabase() {
     try {
-      // Load recent actions
-      const actionsResult = await getIntelligenceDb().execute(
+      // Query event_bus_events for the most recent events across ALL topics.
+      // Uses a window function to cap each topic at 200 rows, preventing any
+      // single high-volume topic (e.g. tool-content) from drowning the rest.
+      // Selects all EventBusEvent-relevant columns so preloaded rows can be
+      // served directly to WebSocket INITIAL_STATE (eliminates redundant DB query).
+      const result = await getIntelligenceDb().execute(
         sql.raw(`
-        SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
-        FROM agent_actions
-        ORDER BY created_at DESC
-        LIMIT ${SQL_PRELOAD_ACTIONS_LIMIT};
+        SELECT event_type, event_id, timestamp, tenant_id, namespace, source,
+               correlation_id, causation_id, schema_ref, payload, topic,
+               partition, "offset", processed_at, stored_at
+        FROM (
+          SELECT event_type, event_id, timestamp, tenant_id, namespace, source,
+                 correlation_id, causation_id, schema_ref, payload, topic,
+                 partition, "offset", processed_at, stored_at,
+                 ROW_NUMBER() OVER (PARTITION BY topic ORDER BY timestamp DESC) AS rn
+          FROM event_bus_events
+        ) ranked
+        WHERE rn <= 200
+        ORDER BY timestamp DESC
+        LIMIT ${SQL_PRELOAD_LIMIT};
       `)
       );
 
-      // Handle different return types from Drizzle
-      const actionsRows = Array.isArray(actionsResult)
-        ? actionsResult
-        : actionsResult?.rows || actionsResult || [];
-
-      if (Array.isArray(actionsRows)) {
-        // Collect all actions first, then slice once at the end (O(n) instead of O(n²))
-        const actions: AgentAction[] = (actionsRows as AgentActionRow[]).map((r) => {
-          const { actionType, agentName } = EventConsumer.normalizeActionFields(
-            r.action_type || '',
-            r.agent_name || '',
-            r.action_name || ''
-          );
-          return {
-            id: r.id,
-            correlationId: r.correlation_id || '',
-            agentName,
-            actionType,
-            actionName: r.action_name || '',
-            actionDetails: r.action_details,
-            debugMode: !!r.debug_mode,
-            durationMs: Number(r.duration_ms || 0),
-            createdAt: new Date(r.created_at),
-          };
-        });
-        // Single slice operation at the end
-        this.recentActions = actions.slice(-this.maxActions);
+      const rows = Array.isArray(result) ? result : result?.rows || result || [];
+      if (!Array.isArray(rows) || rows.length === 0) {
+        intentLogger.info('Preload: no events found in event_bus_events');
+        return;
       }
 
-      // Seed agent metrics using routing decisions + actions
-      const metricsResult = await getIntelligenceDb().execute(
-        sql.raw(`
-        SELECT COALESCE(ard.selected_agent, aa.agent_name) AS agent,
-               COUNT(aa.id) AS total_requests,
-               AVG(COALESCE(ard.routing_time_ms, aa.duration_ms, 0)) AS avg_routing_time,
-               AVG(COALESCE(ard.confidence_score, 0)) AS avg_confidence
-        FROM agent_actions aa
-        FULL OUTER JOIN agent_routing_decisions ard
-          ON aa.correlation_id = ard.correlation_id
-        WHERE (aa.created_at IS NULL OR aa.created_at >= NOW() - INTERVAL '24 hours')
-           OR (ard.created_at IS NULL OR ard.created_at >= NOW() - INTERVAL '24 hours')
-        GROUP BY COALESCE(ard.selected_agent, aa.agent_name)
-        ORDER BY total_requests DESC
-        LIMIT ${SQL_PRELOAD_METRICS_LIMIT};
-      `)
-      );
-
-      // Handle different return types from Drizzle
-      const metricsRows = Array.isArray(metricsResult)
-        ? metricsResult
-        : metricsResult?.rows || metricsResult || [];
-
-      if (Array.isArray(metricsRows)) {
-        (metricsRows as AgentMetricsRow[]).forEach((r) => {
-          const agent = r.agent || 'unknown';
-          this.agentMetrics.set(agent, {
-            count: Number(r.total_requests || 0),
-            totalRoutingTime: Number(r.avg_routing_time || 0) * Number(r.total_requests || 0),
-            totalConfidence: Number(r.avg_confidence || 0) * Number(r.total_requests || 0),
-            successCount: 0,
-            errorCount: 0,
-            lastSeen: new Date(),
+      // Store raw rows as EventBusEvent objects for INITIAL_STATE delivery.
+      // The rows are already sorted newest-first (ORDER BY timestamp DESC)
+      // which matches the order expected by the WebSocket client.
+      // Uses per-row try/catch so a single malformed payload doesn't prevent
+      // all events from being served via WebSocket INITIAL_STATE.
+      this.preloadedEventBusEvents = [];
+      for (const row of rows as Array<Record<string, unknown>>) {
+        try {
+          let parsedPayload: Record<string, any>;
+          try {
+            parsedPayload = (
+              typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload || {}
+            ) as Record<string, any>;
+          } catch {
+            parsedPayload = {};
+          }
+          this.preloadedEventBusEvents.push({
+            event_type: (row.event_type as string) || '',
+            event_id: (row.event_id as string) || '',
+            timestamp: (row.timestamp as string) || '',
+            tenant_id: (row.tenant_id as string) || '',
+            namespace: (row.namespace as string) || '',
+            source: (row.source as string) || '',
+            correlation_id: row.correlation_id as string | undefined,
+            causation_id: row.causation_id as string | undefined,
+            schema_ref: (row.schema_ref as string) || '',
+            payload: parsedPayload,
+            topic: (row.topic as string) || '',
+            partition: (row.partition as number) || 0,
+            offset: String(row.offset || '0'),
+            processed_at: row.processed_at ? new Date(row.processed_at as string) : new Date(),
+            stored_at: row.stored_at ? new Date(row.stored_at as string) : undefined,
           });
-        });
+        } catch {
+          // Skip malformed rows — don't let one bad row prevent all INITIAL_STATE events
+        }
       }
 
-      // Load routing decisions
-      const routingResult = await getIntelligenceDb().execute(
-        sql.raw(`
-        SELECT id, correlation_id, user_request, selected_agent, confidence_score,
-               routing_strategy, alternatives, reasoning, routing_time_ms, created_at
-        FROM agent_routing_decisions
-        ORDER BY created_at DESC
-        LIMIT ${SQL_PRELOAD_ROUTING_LIMIT};
-      `)
-      );
+      // Replay in chronological order (oldest first) so newest ends up on top
+      const chronological = (rows as Array<{ topic: string; payload: unknown; timestamp: string }>)
+        .slice()
+        .reverse();
 
-      const routingRows = Array.isArray(routingResult)
-        ? routingResult
-        : routingResult?.rows || routingResult || [];
+      let injected = 0;
+      const topicCounts = new Map<string, number>();
 
-      if (Array.isArray(routingRows)) {
-        const decisions: RoutingDecision[] = (routingRows as RoutingDecisionRow[]).map((r) => ({
-          id: r.id,
-          correlationId: r.correlation_id || '',
-          userRequest: r.user_request || '',
-          selectedAgent: r.selected_agent || '',
-          confidenceScore: Number(r.confidence_score || 0),
-          routingStrategy: r.routing_strategy || '',
-          alternatives: r.alternatives,
-          reasoning: r.reasoning,
-          routingTimeMs: Number(r.routing_time_ms || 0),
-          createdAt: new Date(r.created_at),
-        }));
-        this.routingDecisions = decisions.slice(0, this.maxDecisions);
+      for (const row of chronological) {
+        const event = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload || {};
+
+        // Strip legacy env prefix (e.g. "dev.onex.evt..." -> "onex.evt...") so topics
+        // match canonical names used by injectPlaybackEvent handlers.
+        // Legacy flat topics like "agent-actions" have no prefix and pass through.
+        let topic = row.topic;
+        const dotIdx = topic.indexOf('.');
+        if (dotIdx > 0) {
+          const prefix = topic.slice(0, dotIdx);
+          if ((ENVIRONMENT_PREFIXES as readonly string[]).includes(prefix)) {
+            topic = topic.slice(dotIdx + 1);
+          }
+        }
+
+        try {
+          this.injectPlaybackEvent(topic, event as Record<string, unknown>);
+          injected++;
+          topicCounts.set(topic, (topicCounts.get(topic) || 0) + 1);
+        } catch {
+          // Skip malformed events — don't crash preload
+        }
       }
 
-      // Load transformation events
-      // Note: Table uses routing_confidence (not confidence_score) and started_at (not created_at)
-      const transformResult = await getIntelligenceDb().execute(
-        sql.raw(`
-        SELECT id, correlation_id, source_agent, target_agent, transformation_duration_ms,
-               success, routing_confidence, started_at
-        FROM agent_transformation_events
-        ORDER BY started_at DESC
-        LIMIT ${SQL_PRELOAD_TRANSFORMATIONS_LIMIT};
-      `)
-      );
+      // Build a concise summary grouped by topic
+      const topSummary = [...topicCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([t, n]) => `${t.replace(/^dev\./, '')}(${n})`)
+        .join(', ');
 
-      const transformRows = Array.isArray(transformResult)
-        ? transformResult
-        : transformResult?.rows || transformResult || [];
-
-      if (Array.isArray(transformRows)) {
-        const transformations: TransformationEvent[] = (
-          transformRows as TransformationEventRow[]
-        ).map((r) => ({
-          id: r.id,
-          correlationId: r.correlation_id || '',
-          sourceAgent: r.source_agent || '',
-          targetAgent: r.target_agent || '',
-          transformationDurationMs: Number(r.transformation_duration_ms || 0),
-          success: !!r.success,
-          confidenceScore: Number(r.routing_confidence || 0),
-          createdAt: new Date(r.started_at),
-        }));
-        this.recentTransformations = transformations.slice(0, this.maxTransformations);
-      }
-
-      // Log preload counts
       intentLogger.info(
-        `Preloaded from database: ` +
-          `${this.recentActions.length} actions, ` +
-          `${this.routingDecisions.length} routing decisions, ` +
-          `${this.recentTransformations.length} transformations, ` +
-          `${this.agentMetrics.size} agent metrics`
+        `Preloaded ${injected}/${rows.length} events from event_bus_events — ${topSummary}`
       );
 
-      // Emit initial metric snapshot
+      // Emit initial snapshots for WebSocket clients
       this.emit('metricUpdate', this.getAgentMetrics());
-      // Emit initial actions snapshot (emit last one to trigger UI refresh)
-      const last = this.recentActions[this.recentActions.length - 1];
-      if (last) this.emit('actionUpdate', last);
-      // Emit initial routing decision snapshot
+      const lastAction = this.recentActions[this.recentActions.length - 1];
+      if (lastAction) this.emit('actionUpdate', lastAction);
       const lastRouting = this.routingDecisions[0];
       if (lastRouting) this.emit('routingUpdate', lastRouting);
-      // Emit initial transformation snapshot
       const lastTransform = this.recentTransformations[0];
       if (lastTransform) this.emit('transformationUpdate', lastTransform);
     } catch (error) {
@@ -2838,6 +2786,20 @@ export class EventConsumer extends EventEmitter {
   }
 
   /**
+   * Get raw event bus event rows loaded during preloadFromDatabase().
+   *
+   * Returns the full EventBusEvent objects that were loaded at startup,
+   * ordered newest-first. Used by WebSocket INITIAL_STATE to serve event
+   * bus data from memory instead of re-querying PostgreSQL on every
+   * client connection.
+   *
+   * @returns Array of EventBusEvent objects from the preload cache
+   */
+  getPreloadedEventBusEvents(): EventBusEvent[] {
+    return this.preloadedEventBusEvents;
+  }
+
+  /**
    * Get actions for a specific agent within a time window.
    *
    * Filters the in-memory action buffer by agent name and time range.
@@ -3422,7 +3384,19 @@ export class EventConsumer extends EventEmitter {
           );
           break;
 
-        case INTENT_CLASSIFIED_TOPIC:
+        // Tool-content events from omniintelligence (tool execution records)
+        case TOPIC.TOOL_CONTENT:
+          this.handleAgentAction({
+            action_type: 'tool',
+            agent_name: 'omniclaude',
+            action_name: (event as Record<string, string>).tool_name || 'unknown',
+            correlation_id: (event as Record<string, string>).correlation_id,
+            duration_ms: Number((event as Record<string, unknown>).duration_ms || 0),
+            timestamp: (event as Record<string, string>).timestamp,
+          } as RawAgentActionEvent);
+          break;
+
+        case SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED:
         case 'intent-classified':
           // Route through the same handler as live Kafka events for consistent state updates
           this.handleIntentClassified(event as RawIntentClassifiedEvent);
@@ -3565,7 +3539,8 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
         prop === 'getNodeHeartbeatEvents' ||
         prop === 'getNodeStateChangeEvents' ||
         prop === 'getRecentIntents' ||
-        prop === 'getCanonicalNodes'
+        prop === 'getCanonicalNodes' ||
+        prop === 'getPreloadedEventBusEvents'
       ) {
         return () => [];
       }
