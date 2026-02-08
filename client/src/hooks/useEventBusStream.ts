@@ -227,9 +227,13 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       // Add to pending buffer
       pendingEventsRef.current.push(event);
 
-      // Update timestamps for throughput
+      // Update timestamps for throughput (exclude heartbeats — they're health pings, not traffic)
       const now = Date.now();
-      timestampsRef.current.push(now);
+      const isHeartbeat =
+        event.topicRaw.includes('heartbeat') || event.eventType.toLowerCase().includes('heartbeat');
+      if (!isHeartbeat) {
+        timestampsRef.current.push(now);
+      }
 
       /**
        * Enforce timestamp array cap with 50% retention strategy.
@@ -369,20 +373,58 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     (state: WireInitialState): void => {
       const now = Date.now();
 
-      // Process all events from initial state
-      const recentActions = (state.recentActions || []).map((a) =>
-        processEvent(a.actionType || 'action', a, 'agent-actions')
-      );
-      const routingDecisions = (state.routingDecisions || []).map((d) =>
-        processEvent('routing', d, 'agent-routing-decisions')
-      );
-      const recentTransformations = (state.recentTransformations || []).map((t) =>
-        processEvent('transformation', t, 'agent-transformation-events')
-      );
+      // Prefer eventBusEvents (raw events with correct topic info) over legacy arrays
+      const rawBusEvents = (state as unknown as Record<string, unknown>).eventBusEvents as
+        | Array<{
+            event_type: string;
+            topic: string;
+            payload: unknown;
+            timestamp?: string;
+            source?: string;
+            correlation_id?: string;
+            event_id?: string;
+          }>
+        | undefined;
 
-      // Combine and filter successful results (no time filter - show all historical data)
-      // Note: We don't slice here - maxItems is enforced by the trim effect when it changes
-      const allResults = [...recentActions, ...routingDecisions, ...recentTransformations];
+      let allResults: EventIngestResult[];
+
+      if (rawBusEvents && rawBusEvents.length > 0) {
+        // Process raw event bus events with correct topic names
+        allResults = rawBusEvents.flatMap((e) => {
+          let payload: Record<string, unknown>;
+          try {
+            payload =
+              typeof e.payload === 'string'
+                ? JSON.parse(e.payload)
+                : (e.payload as Record<string, unknown>) || {};
+          } catch {
+            log('Skipping event with malformed JSON payload:', e.event_type);
+            return [];
+          }
+          const data: WireEventData = {
+            ...payload,
+            timestamp: e.timestamp,
+            source: e.source,
+            correlationId: e.correlation_id,
+            id: e.event_id,
+          };
+          return [processEvent(e.event_type, data, e.topic)];
+        });
+      } else {
+        // Fallback: legacy arrays (recentActions, routingDecisions, transformations)
+        const recentActions = (state.recentActions || []).map((a) =>
+          processEvent(a.actionType || 'action', a, 'agent-actions')
+        );
+        const routingDecisions = (state.routingDecisions || []).map((d) =>
+          processEvent('routing', d, 'agent-routing-decisions')
+        );
+        const recentTransformations = (state.recentTransformations || []).map((t) =>
+          processEvent('transformation', t, 'agent-transformation-events')
+        );
+        allResults = [...recentActions, ...routingDecisions, ...recentTransformations];
+      }
+
+      // Filter successful results, sort newest first
       const processed = allResults
         .filter((r): r is { status: 'success'; event: ProcessedEvent } => r.status === 'success')
         .map((r) => r.event)
@@ -391,9 +433,13 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       // Rebuild seenIds from hydrated events
       seenIdsRef.current = new Set(processed.map((e) => e.id));
 
-      // Populate timestamps for throughput (only recent events count toward throughput)
+      // Populate timestamps for throughput (exclude heartbeats, only recent events)
       const throughputCutoff = now - throughputWindowMs;
       const recentTimestamps = processed
+        .filter(
+          (e) =>
+            !e.topicRaw.includes('heartbeat') && !e.eventType.toLowerCase().includes('heartbeat')
+        )
         .map((e) => e.timestamp.getTime())
         .filter((t) => t > throughputCutoff);
       timestampsRef.current = recentTimestamps.slice(-MAX_TIMESTAMP_ENTRIES);
@@ -687,10 +733,11 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
   const eventsPerSecond = useMemo(() => {
     const now = Date.now();
     const cutoff = now - throughputWindowMs;
+    // Use timestampsRef (lightweight number[]) instead of filtering full events array.
+    // Heartbeats are already excluded at insertion time in ingestEvent/handleInitialState.
     const recentCount = timestampsRef.current.filter((t) => t > cutoff).length;
     const windowSeconds = throughputWindowMs / 1000;
     return Math.round((recentCount / windowSeconds) * 10) / 10;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- events triggers recalc (see comment above)
   }, [events, throughputWindowMs]);
 
   /**

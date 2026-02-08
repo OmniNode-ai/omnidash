@@ -213,8 +213,10 @@ export const eventBusDashboardConfig: DashboardConfig = {
   // Runtime configuration for event monitoring behavior
   runtime_config: {
     event_monitoring: {
-      max_events: 50,
-      max_events_options: [50, 100, 200, 500, 1000],
+      // Memory impact: ~2KB per event with parsedDetails. At 2000 events ≈ 4MB.
+      // Options above 2000 should be used sparingly on memory-constrained clients.
+      max_events: 2000,
+      max_events_options: [200, 500, 1000, 2000, 5000],
       throughput_cleanup_interval: 100,
       time_series_window_ms: 5 * 60 * 1000, // 5 minutes
       throughput_window_ms: 60 * 1000, // 1 minute
@@ -309,31 +311,31 @@ export const eventBusDashboardConfig: DashboardConfig = {
   monitored_topics: [...AGENT_TOPICS, ...NODE_TOPICS],
 
   widgets: [
-    // Row 1: Metric Cards (4 widgets)
+    // Row 1: Metric Cards (3 widgets)
     {
-      widget_id: 'metric-total-events',
-      title: 'Total Events',
-      description: 'Events received in the last hour',
+      widget_id: 'metric-topics-loaded',
+      title: 'Topics Active',
+      description: 'Number of topics with events in the current buffer',
       row: 0,
       col: 0,
-      width: 3,
+      width: 4,
       height: 1,
       config: {
         config_kind: 'metric_card',
-        metric_key: 'totalEvents',
-        label: 'Total Events',
+        metric_key: 'activeTopics',
+        label: 'Topics Active',
         value_format: 'number',
         precision: 0,
-        icon: 'activity',
+        icon: 'database',
       },
     },
     {
       widget_id: 'metric-throughput',
       title: 'Events/sec',
-      description: 'Events received per second (60-second sliding window)',
+      description: 'Live events received per second (60-second sliding window)',
       row: 0,
-      col: 3,
-      width: 3,
+      col: 4,
+      width: 4,
       height: 1,
       config: {
         config_kind: 'metric_card',
@@ -349,8 +351,8 @@ export const eventBusDashboardConfig: DashboardConfig = {
       title: 'Error Rate',
       description: 'Percentage of events sent to DLQ',
       row: 0,
-      col: 6,
-      width: 3,
+      col: 8,
+      width: 4,
       height: 1,
       config: {
         config_kind: 'metric_card',
@@ -364,23 +366,6 @@ export const eventBusDashboardConfig: DashboardConfig = {
           { value: 10, severity: 'error', label: 'High error rate' },
           { value: 25, severity: 'critical', label: 'Critical error rate' },
         ],
-      },
-    },
-    {
-      widget_id: 'metric-active-topics',
-      title: 'Active Topics',
-      description: 'Number of topics with recent activity',
-      row: 0,
-      col: 9,
-      width: 3,
-      height: 1,
-      config: {
-        config_kind: 'metric_card',
-        metric_key: 'activeTopics',
-        label: 'Active Topics',
-        value_format: 'number',
-        precision: 0,
-        icon: 'database',
       },
     },
 
@@ -412,8 +397,8 @@ export const eventBusDashboardConfig: DashboardConfig = {
       height: 2,
       config: {
         config_kind: 'chart',
-        chart_type: 'donut',
-        alternate_chart_type: 'bar',
+        chart_type: 'bar',
+        alternate_chart_type: 'donut',
         data_key: 'eventTypeBreakdownData',
         series: [{ name: 'Events', data_key: 'eventCount' }],
         show_legend: true,
@@ -581,11 +566,79 @@ function extractEventTypeLabel(eventType: string): string {
   return eventType.length > 25 ? eventType.slice(0, 22) + '...' : eventType;
 }
 
+/** Max label length for chart axis readability */
+const MAX_LABEL_LENGTH = 14;
+
 /**
  * Get the label for an event type, with fallback to extracted label.
+ * Handles internal grouping prefixes like "route:agentName".
  */
 export function getEventTypeLabel(eventType: string): string {
-  return EVENT_TYPE_METADATA[eventType]?.label ?? extractEventTypeLabel(eventType);
+  // Direct lookup first
+  const direct = EVENT_TYPE_METADATA[eventType]?.label;
+  if (direct) return direct;
+
+  // Handle internal grouping prefixes: "route:agentName"
+  const colonIdx = eventType.indexOf(':');
+  if (colonIdx !== -1) {
+    const value = eventType.slice(colonIdx + 1).trim();
+    const label = value.charAt(0).toUpperCase() + value.slice(1);
+    return label.length > MAX_LABEL_LENGTH
+      ? label.slice(0, MAX_LABEL_LENGTH - 1) + '\u2026'
+      : label;
+  }
+
+  return extractEventTypeLabel(eventType);
+}
+
+// ============================================================================
+// Topic Matching Utilities
+// ============================================================================
+
+/**
+ * Topic matching contract:
+ * - Monitored topics are suffix-only (e.g. "onex.evt.platform.node-heartbeat.v1")
+ * - Kafka delivers env-prefixed names (e.g. "dev.onex.evt.platform.node-heartbeat.v1")
+ * - Environment prefix is dot-delimited (single segment before first relevant dot)
+ * - Matching is literal string comparison — no wildcards or regex patterns
+ * - Legacy flat topics (e.g. "agent-routing-decisions") have no prefix and match exactly
+ */
+
+/**
+ * Check whether an event's raw topic matches a monitored suffix.
+ *
+ * Handles both exact match (legacy flat topics, or suffix appearing without prefix)
+ * and env-prefixed match (e.g. "dev.onex.evt..." matching suffix "onex.evt...").
+ *
+ * Uses `endsWith("." + suffix)` to avoid false positives from partial matches
+ * (e.g. suffix "v1" will NOT match "some-topic.v12").
+ */
+export function topicMatchesSuffix(eventTopicRaw: string, monitoredSuffix: string): boolean {
+  return eventTopicRaw === monitoredSuffix || eventTopicRaw.endsWith('.' + monitoredSuffix);
+}
+
+/**
+ * Normalize a potentially env-prefixed topic name to its monitored suffix form.
+ *
+ * Used at write boundaries (e.g. when setting filter state from EventDetailPanel)
+ * so that stored filter values are always suffix-only and can be compared directly
+ * with TopicSelector row keys.
+ *
+ * Returns the original topic if no monitored suffix matches.
+ */
+export function normalizeToSuffix(
+  topic: string,
+  topics: readonly string[] = MONITORED_TOPICS
+): string {
+  // Already a monitored suffix — return as-is
+  if ((topics as readonly string[]).includes(topic)) return topic;
+
+  // Try stripping env prefix: "dev.onex.evt...." → "onex.evt...."
+  for (const suffix of topics) {
+    if (topicMatchesSuffix(topic, suffix)) return suffix;
+  }
+
+  return topic;
 }
 
 // ============================================================================
@@ -624,11 +677,13 @@ export function getTopicMetadata(
   const direct = eventBusDashboardConfig.topic_metadata?.[topic] ?? TOPIC_METADATA[topic];
   if (direct) return direct;
 
-  // Try suffix extraction for env-prefixed topics (e.g., 'dev.onex.evt...' -> 'onex.evt...')
-  const suffixMatch = topic.match(/^[^.]+\.(.+)$/);
-  if (suffixMatch) {
-    const suffix = suffixMatch[1];
-    return eventBusDashboardConfig.topic_metadata?.[suffix] ?? TOPIC_METADATA[suffix];
+  // Try stripping known env prefixes only (e.g., 'dev.onex.evt...' -> 'onex.evt...')
+  for (const prefix of ENVIRONMENT_PREFIXES) {
+    const prefixDot = prefix + '.';
+    if (topic.startsWith(prefixDot)) {
+      const suffix = topic.slice(prefixDot.length);
+      return eventBusDashboardConfig.topic_metadata?.[suffix] ?? TOPIC_METADATA[suffix];
+    }
   }
 
   return undefined;

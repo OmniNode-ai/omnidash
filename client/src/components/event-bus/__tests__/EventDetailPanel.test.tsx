@@ -275,7 +275,8 @@ describe('EventDetailPanel', () => {
 
       // Raw JSON is collapsed by default, expand it first
       const toggleButton = screen.getByText('Raw JSON').closest('button');
-      if (toggleButton) await user.click(toggleButton);
+      expect(toggleButton).toBeTruthy();
+      await user.click(toggleButton!);
 
       // JSON should be formatted in the Raw JSON section
       const elements = screen.getAllByText(/testKey/);
@@ -292,7 +293,8 @@ describe('EventDetailPanel', () => {
 
       // Expand Raw JSON (collapsed by default)
       const toggleButton = screen.getByText('Raw JSON').closest('button');
-      if (toggleButton) await user.click(toggleButton);
+      expect(toggleButton).toBeTruthy();
+      await user.click(toggleButton!);
 
       // Should display the raw string
       const dialog = screen.getByRole('dialog');
@@ -309,7 +311,8 @@ describe('EventDetailPanel', () => {
 
       // Expand Raw JSON (collapsed by default)
       const toggleButton = screen.getByText('Raw JSON').closest('button');
-      if (toggleButton) await user.click(toggleButton);
+      expect(toggleButton).toBeTruthy();
+      await user.click(toggleButton!);
 
       expect(screen.getByText('No payload data available')).toBeInTheDocument();
     });
@@ -535,9 +538,7 @@ describe('EventDetailPanel', () => {
       expect(screen.queryByText(/toggleTestKey/)).not.toBeInTheDocument();
 
       // Click to expand
-      if (toggleButton) {
-        await user.click(toggleButton);
-      }
+      await user.click(toggleButton!);
 
       // After expansion, the Raw JSON content should be visible
       await waitFor(() => {
@@ -592,14 +593,16 @@ describe('EventDetailPanel', () => {
       expect(screen.getByText('correlation-id-789')).toBeInTheDocument();
     });
 
-    it('should not display correlation section when correlationId is absent', () => {
+    it('should display N/A for correlation when correlationId is absent', () => {
       const event = createMockEvent({
         correlationId: undefined,
       });
 
       render(<EventDetailPanel event={event} open={true} onOpenChange={mockOnOpenChange} />);
 
-      expect(screen.queryByText('Correlation')).not.toBeInTheDocument();
+      // Correlation label is always shown (establishes the contract)
+      expect(screen.getByText('Correlation')).toBeInTheDocument();
+      expect(screen.getByText('N/A')).toBeInTheDocument();
     });
   });
 
@@ -711,7 +714,8 @@ describe('EventDetailPanel', () => {
 
       // Expand Raw JSON to verify payload is accessible
       const toggleButton = screen.getByText('Raw JSON').closest('button');
-      if (toggleButton) await user.click(toggleButton);
+      expect(toggleButton).toBeTruthy();
+      await user.click(toggleButton!);
 
       const dialog = screen.getByRole('dialog');
       expect(dialog.textContent).toContain('custom_value');
