@@ -23,6 +23,7 @@ import { getIntentEventEmitter } from './intent-events';
 import {
   buildSubscriptionTopics,
   ENVIRONMENT_PREFIXES,
+  extractSuffix,
   LEGACY_AGENT_ROUTING_DECISIONS,
   LEGACY_AGENT_ACTIONS,
   LEGACY_AGENT_TRANSFORMATION_EVENTS,
@@ -1038,17 +1039,10 @@ export class EventConsumer extends EventEmitter {
           try {
             const event = JSON.parse(message.value?.toString() || '{}');
 
-            // Strip legacy env prefix (e.g. "dev.onex.evt..." → "onex.evt...")
+            // Strip legacy env prefix (e.g. "dev.onex.evt..." -> "onex.evt...")
             // so topics match canonical names used by the switch cases below.
             // Legacy flat topics like "agent-actions" have no dot-prefix and pass through.
-            let topic = rawTopic;
-            const dotIdx = rawTopic.indexOf('.');
-            if (dotIdx > 0) {
-              const prefix = rawTopic.slice(0, dotIdx);
-              if ((ENVIRONMENT_PREFIXES as readonly string[]).includes(prefix)) {
-                topic = rawTopic.slice(dotIdx + 1);
-              }
-            }
+            const topic = extractSuffix(rawTopic);
 
             intentLogger.debug(`Received event from topic: ${topic}`);
 
@@ -1400,26 +1394,20 @@ export class EventConsumer extends EventEmitter {
       const topicCounts = new Map<string, number>();
 
       for (const row of chronological) {
-        const event = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload || {};
-
-        // Strip legacy env prefix (e.g. "dev.onex.evt..." -> "onex.evt...") so topics
-        // match canonical names used by injectPlaybackEvent handlers.
-        // Legacy flat topics like "agent-actions" have no prefix and pass through.
-        let topic = row.topic;
-        const dotIdx = topic.indexOf('.');
-        if (dotIdx > 0) {
-          const prefix = topic.slice(0, dotIdx);
-          if ((ENVIRONMENT_PREFIXES as readonly string[]).includes(prefix)) {
-            topic = topic.slice(dotIdx + 1);
-          }
-        }
-
         try {
+          const event =
+            typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload || {};
+
+          // Strip legacy env prefix (e.g. "dev.onex.evt..." -> "onex.evt...") so topics
+          // match canonical names used by injectPlaybackEvent handlers.
+          // Legacy flat topics like "agent-actions" have no prefix and pass through.
+          const topic = extractSuffix(row.topic);
+
           this.injectPlaybackEvent(topic, event as Record<string, unknown>);
           injected++;
           topicCounts.set(topic, (topicCounts.get(topic) || 0) + 1);
         } catch {
-          // Skip malformed events — don't crash preload
+          // Skip rows with malformed JSON or events that fail injection
         }
       }
 
@@ -1427,7 +1415,7 @@ export class EventConsumer extends EventEmitter {
       const topSummary = [...topicCounts.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 8)
-        .map(([t, n]) => `${t.replace(/^dev\./, '')}(${n})`)
+        .map(([t, n]) => `${t}(${n})`)
         .join(', ');
 
       intentLogger.info(
