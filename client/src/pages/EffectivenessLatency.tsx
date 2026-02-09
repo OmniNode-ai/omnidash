@@ -30,7 +30,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
 import type { LatencyDetails, LatencyBreakdown } from '@shared/effectiveness-types';
 import type { Payload } from 'recharts/types/component/DefaultLegendContent';
-import { Clock, RefreshCw, Zap, Database } from 'lucide-react';
+import { Clock, ChevronLeft, RefreshCw, Zap, Database } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -147,6 +147,10 @@ export default function EffectivenessLatency() {
       delta_p95: Math.round(t.delta_p95),
     })) ?? [];
 
+  const treatmentBreakdown = data?.breakdowns.find((b) => b.cohort === 'treatment');
+  const controlBreakdown = data?.breakdowns.find((b) => b.cohort === 'control');
+  const p95Delta = (treatmentBreakdown?.p95_ms ?? 0) - (controlBreakdown?.p95_ms ?? 0);
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -156,13 +160,13 @@ export default function EffectivenessLatency() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
-            <Link href="/effectiveness" className="hover:text-foreground transition-colors">
-              Effectiveness
-            </Link>
-            <span>/</span>
-            <span className="text-foreground">Latency Details</span>
-          </div>
+          <Link
+            href="/effectiveness"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-1"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Effectiveness
+          </Link>
           <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
             <Clock className="w-6 h-6 text-primary" />
             Latency Details
@@ -184,19 +188,44 @@ export default function EffectivenessLatency() {
         </div>
       </div>
 
-      {/* Cache Hit Rate Metric */}
+      {/* KPI Metric Cards */}
       {isLoading ? (
-        <Skeleton className="h-[88px] w-full max-w-xs rounded-lg" />
-      ) : data?.cache ? (
-        <div className="max-w-xs">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[88px] w-full rounded-lg" />
+          ))}
+        </div>
+      ) : data ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           <MetricCard
-            label="Cache Hit Rate"
-            value={`${(data.cache.hit_rate * 100).toFixed(1)}%`}
-            icon={Database}
-            status={data.cache.hit_rate >= 0.5 ? 'healthy' : 'warning'}
-            tooltip={`${data.cache.total_hits} hits / ${data.cache.total_hits + data.cache.total_misses} total lookups`}
-            subtitle={`${data.cache.total_hits.toLocaleString()} / ${(data.cache.total_hits + data.cache.total_misses).toLocaleString()} lookups`}
+            label="Treatment P95"
+            value={treatmentBreakdown ? `${treatmentBreakdown.p95_ms.toFixed(0)}ms` : '--'}
+            icon={Clock}
+            subtitle={`${treatmentBreakdown?.sample_count.toLocaleString() ?? '0'} samples in treatment cohort`}
           />
+          <MetricCard
+            label="Control P95"
+            value={controlBreakdown ? `${controlBreakdown.p95_ms.toFixed(0)}ms` : '--'}
+            icon={Clock}
+            subtitle={`${controlBreakdown?.sample_count.toLocaleString() ?? '0'} samples in control cohort`}
+          />
+          <MetricCard
+            label="P95 Delta"
+            value={`${p95Delta >= 0 ? '+' : ''}${p95Delta.toFixed(0)}ms`}
+            icon={Zap}
+            status={Math.abs(p95Delta) <= 50 ? 'healthy' : 'warning'}
+            subtitle="Injection overhead at 95th percentile"
+          />
+          {data.cache && (
+            <MetricCard
+              label="Cache Hit Rate"
+              value={`${(data.cache.hit_rate * 100).toFixed(1)}%`}
+              icon={Database}
+              status={data.cache.hit_rate >= 0.5 ? 'healthy' : 'warning'}
+              tooltip={`${data.cache.total_hits} hits / ${data.cache.total_hits + data.cache.total_misses} total lookups`}
+              subtitle={`${data.cache.total_hits.toLocaleString()} / ${(data.cache.total_hits + data.cache.total_misses).toLocaleString()} lookups`}
+            />
+          )}
         </div>
       ) : null}
 

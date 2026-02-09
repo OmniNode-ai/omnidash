@@ -246,6 +246,7 @@ export default function EffectivenessSummary() {
                   summary.injection_rate >= summary.injection_rate_target ? 'healthy' : 'warning'
                 }
                 tooltip={`Percentage of sessions with context injection (target: ${(summary.injection_rate_target * 100).toFixed(0)}%)`}
+                subtitle={`Target ${(summary.injection_rate_target * 100).toFixed(0)}% · ${summary.treatment_sessions} treatment sessions`}
                 className="group-hover:ring-1 group-hover:ring-primary/30 rounded-lg transition-all"
               />
             </div>
@@ -254,12 +255,13 @@ export default function EffectivenessSummary() {
             <div className="group">
               <MetricCard
                 label="Context Utilization"
-                value={summary.median_utilization.toFixed(2)}
+                value={`${(summary.median_utilization * 100).toFixed(1)}%`}
                 icon={Gauge}
                 status={
                   summary.median_utilization >= summary.utilization_target ? 'healthy' : 'warning'
                 }
                 tooltip={`Median utilization score of injected patterns (target: ${summary.utilization_target})`}
+                subtitle="Median pattern utilization across injected sessions"
                 className="group-hover:ring-1 group-hover:ring-primary/30 rounded-lg transition-all"
               />
             </div>
@@ -268,12 +270,13 @@ export default function EffectivenessSummary() {
             <div className="group">
               <MetricCard
                 label="Agent Accuracy"
-                value={summary.mean_agent_accuracy.toFixed(2)}
+                value={`${(summary.mean_agent_accuracy * 100).toFixed(1)}%`}
                 icon={Target}
                 status={
                   summary.mean_agent_accuracy >= summary.accuracy_target ? 'healthy' : 'warning'
                 }
                 tooltip={`Mean agent-match accuracy across sessions (target: ${summary.accuracy_target})`}
+                subtitle="Mean agent-match score for treatment cohort"
                 className="group-hover:ring-1 group-hover:ring-primary/30 rounded-lg transition-all"
               />
             </div>
@@ -290,6 +293,7 @@ export default function EffectivenessSummary() {
                     : 'warning'
                 }
                 tooltip={`P95 latency overhead of injection vs control (target: +${summary.latency_delta_target_ms}ms)`}
+                subtitle={`Budget +${summary.latency_delta_target_ms}ms · injection overhead vs control`}
                 className="group-hover:ring-1 group-hover:ring-primary/30 rounded-lg transition-all"
               />
             </div>

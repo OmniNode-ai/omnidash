@@ -13,6 +13,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
 import { formatRelativeTime } from '@/lib/date-utils';
+import { MetricCard } from '@/components/MetricCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,18 @@ import type {
   UtilizationByMethod,
   PatternUtilization,
 } from '@shared/effectiveness-types';
-import { BarChart3, RefreshCw, AlertCircle, TrendingDown, Copy, Check } from 'lucide-react';
+import {
+  BarChart3,
+  ChevronLeft,
+  RefreshCw,
+  AlertCircle,
+  TrendingDown,
+  Copy,
+  Check,
+  Activity,
+  Layers,
+  TrendingUp,
+} from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -197,6 +209,13 @@ export default function EffectivenessUtilization() {
 
   const lowSessions = data?.low_utilization_sessions ?? [];
 
+  const totalSessions = (data?.histogram ?? []).reduce((sum, b) => sum + b.count, 0);
+  const methodCount = (data?.by_method ?? []).length;
+  const peakPatternUtil = (data?.pattern_rates ?? []).reduce(
+    (best, p) => (p.avg_utilization > best ? p.avg_utilization : best),
+    0
+  );
+
   /** Copy pattern ID to clipboard and flash check icon. */
   const copyPatternId = useCallback((id: string) => {
     navigator.clipboard.writeText(id);
@@ -213,13 +232,13 @@ export default function EffectivenessUtilization() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
-            <Link href="/effectiveness" className="hover:text-foreground transition-colors">
-              Effectiveness
-            </Link>
-            <span>/</span>
-            <span className="text-foreground">Utilization Analytics</span>
-          </div>
+          <Link
+            href="/effectiveness"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-1"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Effectiveness
+          </Link>
           <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-primary" />
             Utilization Analytics
@@ -240,6 +259,43 @@ export default function EffectivenessUtilization() {
           </Button>
         </div>
       </div>
+
+      {/* KPI Metric Cards */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[88px] w-full rounded-lg" />
+          ))}
+        </div>
+      ) : data ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <MetricCard
+            label="Sessions Analyzed"
+            value={totalSessions.toLocaleString()}
+            icon={Activity}
+            subtitle="Sessions with utilization scoring data"
+          />
+          <MetricCard
+            label="Detection Methods"
+            value={methodCount}
+            icon={Layers}
+            subtitle="Unique methods observed across sessions"
+          />
+          <MetricCard
+            label="Low Utilization"
+            value={lowSessions.length}
+            icon={AlertCircle}
+            status={lowSessions.length > 0 ? 'warning' : 'healthy'}
+            subtitle="Sessions with utilization below 0.2"
+          />
+          <MetricCard
+            label="Peak Pattern Rate"
+            value={`${(peakPatternUtil * 100).toFixed(0)}%`}
+            icon={TrendingUp}
+            subtitle="Highest avg utilization across patterns"
+          />
+        </div>
+      ) : null}
 
       {/* Utilization Distribution Histogram */}
       <Card>

@@ -20,7 +20,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
 import type { ABComparison, CohortComparison } from '@shared/effectiveness-types';
-import { GitCompare, RefreshCw, Users, TrendingUp, Clock, ExternalLink } from 'lucide-react';
+import {
+  GitCompare,
+  ChevronLeft,
+  RefreshCw,
+  Users,
+  TrendingUp,
+  Clock,
+  ExternalLink,
+} from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -136,6 +144,9 @@ function CohortCard({ cohort, label, borderClass, badgeClass, deltas }: CohortCa
           <div>
             <div className="text-xs text-muted-foreground uppercase">Sessions</div>
             <div className="text-2xl font-bold font-mono">{cohort.session_count}</div>
+            <div className="text-[11px] text-muted-foreground mt-1 leading-tight">
+              Total sessions in cohort
+            </div>
           </div>
           <Link href="/effectiveness/utilization" className="group block">
             <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
@@ -148,12 +159,18 @@ function CohortCard({ cohort, label, borderClass, badgeClass, deltas }: CohortCa
                 <DeltaBadge metric="utilization" value={deltas.utilization} />
               )}
             </div>
+            <div className="text-[11px] text-muted-foreground mt-1 leading-tight">
+              Median pattern utilization score
+            </div>
           </Link>
           <div>
             <div className="text-xs text-muted-foreground uppercase">Accuracy</div>
             <div className="text-2xl font-bold font-mono">
               {cohort.avg_accuracy_pct.toFixed(1)}%
               {deltas?.accuracy != null && <DeltaBadge metric="accuracy" value={deltas.accuracy} />}
+            </div>
+            <div className="text-[11px] text-muted-foreground mt-1 leading-tight">
+              Mean agent-match score
             </div>
           </div>
           <div>
@@ -164,6 +181,9 @@ function CohortCard({ cohort, label, borderClass, badgeClass, deltas }: CohortCa
                 <DeltaBadge metric="success_rate" value={deltas.success_rate} />
               )}
             </div>
+            <div className="text-[11px] text-muted-foreground mt-1 leading-tight">
+              Successful task completions
+            </div>
           </div>
           <Link href="/effectiveness/latency" className="col-span-2 group block">
             <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
@@ -173,6 +193,9 @@ function CohortCard({ cohort, label, borderClass, badgeClass, deltas }: CohortCa
             <div className="text-2xl font-bold font-mono cursor-pointer hover:text-primary transition-colors">
               {cohort.avg_latency_ms.toFixed(0)}ms
               {deltas?.latency != null && <DeltaBadge metric="latency" value={deltas.latency} />}
+            </div>
+            <div className="text-[11px] text-muted-foreground mt-1 leading-tight">
+              Mean end-to-end response time
             </div>
           </Link>
         </div>
@@ -248,13 +271,13 @@ export default function EffectivenessAB() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
-            <Link href="/effectiveness" className="hover:text-foreground transition-colors">
-              Effectiveness
-            </Link>
-            <span>/</span>
-            <span className="text-foreground">A/B Comparison</span>
-          </div>
+          <Link
+            href="/effectiveness"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-1"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Effectiveness
+          </Link>
           <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
             <GitCompare className="w-6 h-6 text-primary" />
             A/B Comparison
