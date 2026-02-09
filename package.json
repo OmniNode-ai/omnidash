@@ -23,6 +23,7 @@
     "db:push": "drizzle-kit push",
     "seed-events": "tsx scripts/seed-events.ts",
     "seed-events:continuous": "tsx scripts/seed-events.ts --continuous",
+    "seed-effectiveness": "tsx scripts/seed-effectiveness.ts",
     "seed-intents": "tsx scripts/seed-intent-events.ts",
     "seed-intents:continuous": "tsx scripts/seed-intent-events.ts --continuous",
     "seed-demo-patterns": "tsx scripts/seed-demo-patterns.ts seed",

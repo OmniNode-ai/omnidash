@@ -545,3 +545,102 @@ export type ValidationRunRow = typeof validationRuns.$inferSelect;
 export type InsertValidationRun = typeof validationRuns.$inferInsert;
 export type ValidationViolationRow = typeof validationViolations.$inferSelect;
 export type InsertValidationViolation = typeof validationViolations.$inferInsert;
+
+// ============================================================================
+// Injection Effectiveness Tables (OMN-1891)
+//
+// These tables were created by OMN-1890 in omnibase_infra. These Drizzle
+// definitions are read-only projections for the dashboard.
+// ============================================================================
+
+/**
+ * Injection Effectiveness Table (session-level summary)
+ * Tracks A/B cohort metrics, utilization, accuracy, and latency per session.
+ */
+export const injectionEffectiveness = pgTable(
+  'injection_effectiveness',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id').notNull(),
+    correlationId: uuid('correlation_id').notNull(),
+    cohort: text('cohort').notNull(), // 'treatment' | 'control'
+    injectionOccurred: boolean('injection_occurred').notNull().default(false),
+    agentName: text('agent_name'),
+    detectionMethod: text('detection_method'),
+    utilizationScore: numeric('utilization_score', { precision: 10, scale: 6 }),
+    utilizationMethod: text('utilization_method'),
+    agentMatchScore: numeric('agent_match_score', { precision: 10, scale: 6 }),
+    userVisibleLatencyMs: integer('user_visible_latency_ms'),
+    sessionOutcome: text('session_outcome'),
+    routingTimeMs: integer('routing_time_ms'),
+    retrievalTimeMs: integer('retrieval_time_ms'),
+    injectionTimeMs: integer('injection_time_ms'),
+    patternsCount: integer('patterns_count'),
+    cacheHit: boolean('cache_hit').default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_ie_session_id').on(table.sessionId),
+    index('idx_ie_cohort').on(table.cohort),
+    index('idx_ie_created_at').on(table.createdAt),
+    index('idx_ie_injection_occurred').on(table.injectionOccurred),
+  ]
+);
+
+/**
+ * Latency Breakdowns Table (per-prompt performance)
+ * Tracks internal timings for routing, retrieval, and injection per prompt.
+ */
+export const latencyBreakdowns = pgTable(
+  'latency_breakdowns',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id').notNull(),
+    promptId: uuid('prompt_id').notNull(),
+    routingTimeMs: integer('routing_time_ms'),
+    retrievalTimeMs: integer('retrieval_time_ms'),
+    injectionTimeMs: integer('injection_time_ms'),
+    userVisibleLatencyMs: integer('user_visible_latency_ms'),
+    cohort: text('cohort').notNull(),
+    cacheHit: boolean('cache_hit').default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_lb_session_id').on(table.sessionId),
+    index('idx_lb_cohort').on(table.cohort),
+    index('idx_lb_created_at').on(table.createdAt),
+  ]
+);
+
+/**
+ * Pattern Hit Rates Table (pattern effectiveness)
+ * Tracks per-pattern utilization with method and score.
+ */
+export const patternHitRates = pgTable(
+  'pattern_hit_rates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id').notNull(),
+    patternId: uuid('pattern_id').notNull(),
+    utilizationScore: numeric('utilization_score', { precision: 10, scale: 6 }),
+    utilizationMethod: text('utilization_method'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_phr_session_id').on(table.sessionId),
+    index('idx_phr_pattern_id').on(table.patternId),
+  ]
+);
+
+// Export Zod schemas
+export const insertInjectionEffectivenessSchema = createInsertSchema(injectionEffectiveness);
+export const insertLatencyBreakdownSchema = createInsertSchema(latencyBreakdowns);
+export const insertPatternHitRateSchema = createInsertSchema(patternHitRates);
+
+// Export TypeScript types
+export type InjectionEffectivenessRow = typeof injectionEffectiveness.$inferSelect;
+export type InsertInjectionEffectiveness = typeof injectionEffectiveness.$inferInsert;
+export type LatencyBreakdownRow = typeof latencyBreakdowns.$inferSelect;
+export type InsertLatencyBreakdown = typeof latencyBreakdowns.$inferInsert;
+export type PatternHitRateRow = typeof patternHitRates.$inferSelect;
+export type InsertPatternHitRate = typeof patternHitRates.$inferInsert;
