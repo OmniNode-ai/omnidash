@@ -22,6 +22,12 @@ import {
   getEventTypeLabel,
   getEventMonitoringConfig,
 } from '@/lib/configs/event-bus-dashboard';
+import {
+  LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+} from '@shared/topics';
 import type {
   WireEventMessage,
   WireEventData,
@@ -393,10 +399,13 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
         allResults = rawBusEvents.flatMap((e) => {
           let payload: Record<string, unknown>;
           try {
+            const parsed = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload;
+            // Guard: JSON.parse may return null, a number, or a string.
+            // Only use it if the result is a non-null object.
             payload =
-              typeof e.payload === 'string'
-                ? JSON.parse(e.payload)
-                : (e.payload as Record<string, unknown>) || {};
+              parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+                ? (parsed as Record<string, unknown>)
+                : {};
           } catch {
             log('Skipping event with malformed JSON payload:', e.event_type);
             return [];
@@ -413,13 +422,13 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       } else {
         // Fallback: legacy arrays (recentActions, routingDecisions, transformations)
         const recentActions = (state.recentActions || []).map((a) =>
-          processEvent(a.actionType || 'action', a, 'agent-actions')
+          processEvent(a.actionType || 'action', a, LEGACY_AGENT_ACTIONS)
         );
         const routingDecisions = (state.routingDecisions || []).map((d) =>
-          processEvent('routing', d, 'agent-routing-decisions')
+          processEvent('routing', d, LEGACY_AGENT_ROUTING_DECISIONS)
         );
         const recentTransformations = (state.recentTransformations || []).map((t) =>
-          processEvent('transformation', t, 'agent-transformation-events')
+          processEvent('transformation', t, LEGACY_AGENT_TRANSFORMATION_EVENTS)
         );
         allResults = [...recentActions, ...routingDecisions, ...recentTransformations];
       }
@@ -480,33 +489,36 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
           break;
 
         case 'AGENT_ACTION': {
-          const action = wireMessage.data as WireEventData;
-          if (action) {
-            processAndIngest(action.actionType || 'action', action, 'agent-actions');
+          const action = wireMessage.data as WireEventData | undefined;
+          if (action !== undefined) {
+            processAndIngest(action.actionType || 'action', action, LEGACY_AGENT_ACTIONS);
           }
           break;
         }
 
         case 'ROUTING_DECISION': {
-          const decision = wireMessage.data as WireEventData;
-          if (decision) {
-            processAndIngest('routing', decision, 'agent-routing-decisions');
+          const decision = wireMessage.data as WireEventData | undefined;
+          if (decision !== undefined) {
+            processAndIngest('routing', decision, LEGACY_AGENT_ROUTING_DECISIONS);
           }
           break;
         }
 
         case 'AGENT_TRANSFORMATION': {
-          const transformation = wireMessage.data as WireEventData;
-          if (transformation) {
-            processAndIngest('transformation', transformation, 'agent-transformation-events');
+          const transformation = wireMessage.data as WireEventData | undefined;
+          if (transformation !== undefined) {
+            processAndIngest('transformation', transformation, LEGACY_AGENT_TRANSFORMATION_EVENTS);
           }
           break;
         }
 
         case 'PERFORMANCE_METRIC': {
-          const { metric } = (wireMessage.data as WirePerformanceMetricData) || {};
-          if (metric) {
-            processAndIngest('performance', metric, 'router-performance-metrics');
+          const perfData = wireMessage.data as WirePerformanceMetricData | undefined;
+          if (perfData !== undefined) {
+            const { metric } = perfData;
+            if (metric !== undefined) {
+              processAndIngest('performance', metric, LEGACY_ROUTER_PERFORMANCE_METRICS);
+            }
           }
           break;
         }
@@ -515,8 +527,8 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
         case 'NODE_HEARTBEAT':
         case 'NODE_STATE_CHANGE':
         case 'NODE_REGISTRY_UPDATE': {
-          const nodeData = wireMessage.data as WireEventData;
-          if (nodeData) {
+          const nodeData = wireMessage.data as WireEventData | undefined;
+          if (nodeData !== undefined) {
             const topic = NODE_TOPIC_MAP[wireMessage.type] || 'node.events';
             const eventType = wireMessage.type.toLowerCase().replace('node_', '');
             processAndIngest(eventType, nodeData, topic);

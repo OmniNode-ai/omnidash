@@ -225,87 +225,8 @@ export const eventBusDashboardConfig: DashboardConfig = {
     },
   },
 
-  // Topic metadata for display labels and categorization
-  topic_metadata: {
-    // Agent topics (legacy flat names)
-    [LEGACY_AGENT_ROUTING_DECISIONS]: {
-      label: 'Routing Decisions',
-      description: 'Agent selection and routing decisions with confidence scores',
-      category: 'routing',
-    },
-    [LEGACY_AGENT_TRANSFORMATION_EVENTS]: {
-      label: 'Transformations',
-      description: 'Polymorphic agent transformation events',
-      category: 'transformation',
-    },
-    [LEGACY_ROUTER_PERFORMANCE_METRICS]: {
-      label: 'Performance',
-      description: 'Routing performance metrics and cache statistics',
-      category: 'performance',
-    },
-    [LEGACY_AGENT_ACTIONS]: {
-      label: 'Agent Actions',
-      description: 'Tool calls, decisions, errors, and successes',
-      category: 'actions',
-    },
-    // Node registry topics (canonical ONEX suffixes)
-    [SUFFIX_NODE_INTROSPECTION]: {
-      label: 'Node Introspection',
-      description: 'Node introspection events for debugging and monitoring',
-      category: 'introspection',
-    },
-    [SUFFIX_NODE_REGISTRATION]: {
-      label: 'Node Registration',
-      description: 'Node registration lifecycle events',
-      category: 'lifecycle',
-    },
-    [SUFFIX_NODE_HEARTBEAT]: {
-      label: 'Heartbeat',
-      description: 'Node health heartbeat signals',
-      category: 'health',
-    },
-    [SUFFIX_REQUEST_INTROSPECTION]: {
-      label: 'Registry Introspection Request',
-      description: 'Introspection requests from registry to nodes',
-      category: 'introspection',
-    },
-    [SUFFIX_CONTRACT_REGISTERED]: {
-      label: 'Contract Registered',
-      description: 'Contract registration events',
-      category: 'lifecycle',
-    },
-    [SUFFIX_CONTRACT_DEREGISTERED]: {
-      label: 'Contract Deregistered',
-      description: 'Contract deregistration events',
-      category: 'lifecycle',
-    },
-    [SUFFIX_NODE_REGISTRATION_INITIATED]: {
-      label: 'Registration Initiated',
-      description: 'Node registration initiation events',
-      category: 'lifecycle',
-    },
-    [SUFFIX_NODE_REGISTRATION_ACCEPTED]: {
-      label: 'Registration Accepted',
-      description: 'Node registration acceptance events',
-      category: 'lifecycle',
-    },
-    [SUFFIX_NODE_REGISTRATION_REJECTED]: {
-      label: 'Registration Rejected',
-      description: 'Node registration rejection events',
-      category: 'lifecycle',
-    },
-    [SUFFIX_REGISTRATION_SNAPSHOTS]: {
-      label: 'Registration Snapshots',
-      description: 'Point-in-time registration state snapshots',
-      category: 'snapshot',
-    },
-    // Error topics
-    errors: {
-      label: 'Errors',
-      description: 'System errors and failures',
-      category: 'error',
-    },
-  },
+  // Topic metadata — references the TOPIC_METADATA constant to avoid duplication.
+  topic_metadata: TOPIC_METADATA,
 
   // List of all monitored Kafka topics
   monitored_topics: [...AGENT_TOPICS, ...NODE_TOPICS],
@@ -664,11 +585,14 @@ export function getEventMonitoringConfig() {
 }
 
 /**
- * Get topic metadata from the config.
- * Falls back to the TOPIC_METADATA constant for completeness.
+ * Get topic metadata from the dashboard config or the TOPIC_METADATA constant.
  *
  * Handles env-prefixed topic names (e.g. 'dev.onex.evt.platform.node-introspection.v1')
  * by stripping the leading env segment and retrying against suffix-keyed metadata.
+ * Only strips the prefix when the remainder starts with 'onex.' to avoid false matches.
+ *
+ * @param topic - Raw topic name, possibly env-prefixed
+ * @returns Metadata object with label, description, and category, or undefined if not found
  */
 export function getTopicMetadata(
   topic: string
@@ -677,12 +601,18 @@ export function getTopicMetadata(
   const direct = eventBusDashboardConfig.topic_metadata?.[topic] ?? TOPIC_METADATA[topic];
   if (direct) return direct;
 
-  // Try stripping known env prefixes only (e.g., 'dev.onex.evt...' -> 'onex.evt...')
+  // Try stripping known env prefixes only when followed by "onex." — the
+  // canonical ONEX prefix.  This prevents accidental matches for topic names
+  // that happen to start with an env prefix (e.g. "production.errors" should
+  // NOT strip to "errors").  Legacy flat topics (e.g. "agent-routing-decisions")
+  // never carry an env prefix so this guard is safe.
   for (const prefix of ENVIRONMENT_PREFIXES) {
     const prefixDot = prefix + '.';
     if (topic.startsWith(prefixDot)) {
       const suffix = topic.slice(prefixDot.length);
-      return eventBusDashboardConfig.topic_metadata?.[suffix] ?? TOPIC_METADATA[suffix];
+      if (suffix.startsWith('onex.')) {
+        return eventBusDashboardConfig.topic_metadata?.[suffix] ?? TOPIC_METADATA[suffix];
+      }
     }
   }
 
@@ -690,7 +620,10 @@ export function getTopicMetadata(
 }
 
 /**
- * Get the label for a topic, with fallback to the topic name itself.
+ * Get the display label for a topic, with fallback to the raw topic name.
+ *
+ * @param topic - Raw or canonical topic name (may include env prefix)
+ * @returns Human-readable label from TOPIC_METADATA, or the raw topic if not found
  */
 export function getTopicLabel(topic: string): string {
   return getTopicMetadata(topic)?.label ?? topic;

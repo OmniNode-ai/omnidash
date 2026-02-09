@@ -1083,9 +1083,15 @@ export class EventConsumer extends EventEmitter {
               case TOPIC.NODE_INTROSPECTION:
               case TOPIC.REQUEST_INTROSPECTION: {
                 // Detect envelope format to route to exactly ONE handler path.
-                // Canonical envelopes carry event_type + payload; legacy events have
-                // flat fields like node_id at the top level.
-                const isIntrospectionEnvelope = Boolean(event.event_type && event.payload);
+                // Canonical envelopes carry entity_id + emitted_at + payload (per
+                // EventEnvelopeSchema); legacy events have flat fields like node_id
+                // at the top level. We check entity_id (required UUID in the
+                // envelope schema and absent from legacy events) instead of
+                // event_type which is NOT part of EventEnvelopeSchema and may be
+                // omitted by some producers.
+                const isIntrospectionEnvelope = Boolean(
+                  event.entity_id && event.emitted_at && event.payload
+                );
                 if (!isIntrospectionEnvelope) {
                   intentLogger.debug(
                     `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
@@ -1101,7 +1107,11 @@ export class EventConsumer extends EventEmitter {
               }
               case TOPIC.NODE_HEARTBEAT: {
                 // Detect envelope format to route to exactly ONE handler path.
-                const isHeartbeatEnvelope = Boolean(event.event_type && event.payload);
+                // Uses entity_id + emitted_at (required by EventEnvelopeSchema)
+                // instead of event_type which is not part of the envelope schema.
+                const isHeartbeatEnvelope = Boolean(
+                  event.entity_id && event.emitted_at && event.payload
+                );
                 if (!isHeartbeatEnvelope) {
                   intentLogger.debug(`Processing node heartbeat: ${event.node_id || event.nodeId}`);
                   this.handleNodeHeartbeat(event);
@@ -1113,12 +1123,26 @@ export class EventConsumer extends EventEmitter {
                 }
                 break;
               }
-              case TOPIC.NODE_REGISTRATION:
-                intentLogger.debug(
-                  `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
+              case TOPIC.NODE_REGISTRATION: {
+                // Detect envelope format: canonical envelopes have entity_id +
+                // emitted_at + payload; legacy events have flat fields like node_id
+                // at the top level.
+                const isRegistrationEnvelope = Boolean(
+                  event.entity_id && event.emitted_at && event.payload
                 );
-                this.handleNodeStateChange(event);
+                if (!isRegistrationEnvelope) {
+                  intentLogger.debug(
+                    `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
+                  );
+                  this.handleNodeStateChange(event);
+                } else {
+                  if (DEBUG_CANONICAL_EVENTS) {
+                    intentLogger.debug('Processing canonical node-registration event');
+                  }
+                  this.handleCanonicalNodeIntrospection(message);
+                }
                 break;
+              }
               case TOPIC.NODE_BECAME_ACTIVE:
                 if (DEBUG_CANONICAL_EVENTS) {
                   intentLogger.debug('Processing canonical node-became-active event');
@@ -1501,9 +1525,20 @@ export class EventConsumer extends EventEmitter {
     let actionType = rawActionType;
     let agentName = rawAgentName;
 
+    // Strip legacy env prefix from actionName if present
+    // (e.g. "dev.onex.evt.producer.event.v1" -> "onex.evt.producer.event.v1")
+    let canonicalActionName = actionName;
+    const dotIdx = actionName.indexOf('.');
+    if (dotIdx > 0) {
+      const prefix = actionName.slice(0, dotIdx);
+      if ((ENVIRONMENT_PREFIXES as readonly string[]).includes(prefix)) {
+        canonicalActionName = actionName.slice(dotIdx + 1);
+      }
+    }
+
     // Parse canonical actionName (e.g. "onex.cmd.omniintelligence.tool-content.v1")
-    if ((isJunkType || isJunkAgent) && actionName.startsWith('onex.')) {
-      const parts = actionName.split('.');
+    if ((isJunkType || isJunkAgent) && canonicalActionName.startsWith('onex.')) {
+      const parts = canonicalActionName.split('.');
       // Strip trailing version suffix (e.g. "v1", "v2")
       const stripped = /^v\d+$/.test(parts[parts.length - 1]) ? parts.slice(0, -1) : parts;
       // 4-part: onex.<kind>.<producer>.<event-name>
@@ -2438,6 +2473,11 @@ export class EventConsumer extends EventEmitter {
       // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
       this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
 
+      // Propagate heartbeat metrics to the registered node so dashboard
+      // displays current values (syncCanonicalToRegistered only preserves
+      // existing metrics; we must overlay the payload data explicitly).
+      this.propagateHeartbeatMetrics(payload);
+
       // Emit dashboard event so newly discovered nodes appear immediately
       this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
       return;
@@ -2457,8 +2497,37 @@ export class EventConsumer extends EventEmitter {
     // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
     this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
 
+    // Propagate heartbeat metrics to the registered node so dashboard
+    // displays current values (syncCanonicalToRegistered only preserves
+    // existing metrics; we must overlay the payload data explicitly).
+    this.propagateHeartbeatMetrics(payload);
+
     // Emit dashboard event for WebSocket broadcast
     this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
+  }
+
+  /**
+   * Propagate heartbeat payload metrics (uptime, memory, CPU) into the legacy
+   * registeredNodes map. syncCanonicalToRegistered preserves existing metric
+   * values but does not update them from the canonical payload. This method
+   * fills that gap so canonical heartbeat events update the dashboard.
+   */
+  private propagateHeartbeatMetrics(payload: {
+    node_id: string;
+    uptime_seconds?: number;
+    memory_usage_mb?: number;
+    cpu_usage_percent?: number;
+    active_operations_count?: number;
+  }): void {
+    const regNode = this.registeredNodes.get(payload.node_id);
+    if (!regNode) return;
+
+    this.registeredNodes.set(payload.node_id, {
+      ...regNode,
+      uptimeSeconds: payload.uptime_seconds ?? regNode.uptimeSeconds,
+      memoryUsageMb: payload.memory_usage_mb ?? regNode.memoryUsageMb,
+      cpuUsagePercent: payload.cpu_usage_percent ?? regNode.cpuUsagePercent,
+    });
   }
 
   /**

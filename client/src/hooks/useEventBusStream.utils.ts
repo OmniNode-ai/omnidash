@@ -281,7 +281,13 @@ export function computeNormalizedType(
   }
   // Skip version suffixes (v1, v2, etc.) — these leak from canonical topic parsing
   if (/^v\d+$/.test(eventType)) {
-    return parsedDetails?.actionType || parsedDetails?.actionName || 'unknown';
+    return (
+      parsedDetails?.toolName ||
+      parsedDetails?.actionName ||
+      parsedDetails?.actionType ||
+      parsedDetails?.nodeId ||
+      'unknown'
+    );
   }
   // Default to eventType
   return eventType;

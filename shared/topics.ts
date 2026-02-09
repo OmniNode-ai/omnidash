@@ -1,16 +1,19 @@
 /**
  * ONEX Topic Constants — Single Source of Truth
  *
- * Canonical, environment-agnostic topic suffixes for all Kafka topics.
- * Constants store SUFFIXES only (no env prefix).
- * Full topic names are built at runtime via `resolveTopicName()`.
+ * Canonical topic names for all Kafka topics.
+ * The canonical format IS `onex.<kind>.<producer>.<event-name>.v<version>` —
+ * these are the real topic names, not suffixes.
  *
- * Format: onex.<kind>.<producer>.<event-name>.v<version>
+ * Legacy topics used a `{env}.` prefix (e.g. `dev.onex.evt...`).
+ * New producers emit to the canonical name directly (no env prefix).
+ * Constants are still named `SUFFIX_*` for historical reasons.
+ *
  *   kind:     evt | cmd | intent | snapshot | dlq
  *   producer: platform | omniclaude | omniintelligence | omnimemory | validation
  *
- * @see omnibase_infra2/src/omnibase_infra/topics/topic_resolver.py
- * @see omnibase_infra/src/omnibase_infra/topics/platform_topic_suffixes.py
+ * @see omnibase_infra topic_resolver.py (sibling repo — canonical topic resolution)
+ * @see omnibase_infra platform_topic_suffixes.py (sibling repo — suffix constants)
  */
 
 // ============================================================================
@@ -23,7 +26,7 @@ export type OnexTopicKind = 'evt' | 'cmd' | 'intent' | 'snapshot' | 'dlq';
 // Environment Prefix Resolution
 // ============================================================================
 
-/** Environment prefixes used in canonical topic names -- used to filter junk values from upstream producers */
+/** Legacy environment prefixes (e.g. `dev.`, `staging.`). Old producers prepended these to topic names. Used to strip legacy prefixes from incoming Kafka messages so they match canonical names. */
 export const ENVIRONMENT_PREFIXES = [
   'dev',
   'staging',
@@ -55,15 +58,75 @@ export function getTopicEnvPrefix(): string {
 }
 
 /**
- * Build a full topic name by prepending the environment prefix to a canonical suffix.
+ * Build a legacy-format topic name by prepending the environment prefix.
+ * Only needed for compatibility with older producers/consumers that expect
+ * the `{env}.{topic}` format. New code should use the canonical name directly.
  *
  * @example
  * resolveTopicName('onex.evt.platform.node-heartbeat.v1')
- * // => 'dev.onex.evt.platform.node-heartbeat.v1'
+ * // => 'dev.onex.evt.platform.node-heartbeat.v1'  (legacy format)
  */
 export function resolveTopicName(suffix: string, envPrefix?: string): string {
   const prefix = envPrefix ?? getTopicEnvPrefix();
   return `${prefix}.${suffix}`;
+}
+
+// ============================================================================
+// Environment Prefix Stripping
+// ============================================================================
+
+/**
+ * Strip a leading environment prefix from a topic name, returning the canonical suffix.
+ *
+ * If the topic starts with a known environment prefix (e.g. `dev.`, `staging.`),
+ * the prefix is removed and the remainder is returned.
+ * If no known prefix is found, the input is returned unchanged — this makes it
+ * safe to call on topics that are already in canonical (suffix) form.
+ *
+ * @example
+ * extractSuffix('dev.onex.evt.platform.node-heartbeat.v1')
+ * // => 'onex.evt.platform.node-heartbeat.v1'
+ *
+ * extractSuffix('onex.evt.platform.node-heartbeat.v1')
+ * // => 'onex.evt.platform.node-heartbeat.v1'  (already canonical, returned as-is)
+ *
+ * extractSuffix('agent-actions')
+ * // => 'agent-actions'  (legacy flat name, no prefix to strip)
+ */
+export function extractSuffix(topic: string): string {
+  for (const prefix of ENVIRONMENT_PREFIXES) {
+    const prefixDot = prefix + '.';
+    if (topic.startsWith(prefixDot)) {
+      return topic.slice(prefixDot.length);
+    }
+  }
+  return topic;
+}
+
+/**
+ * Look up a value from a topic-keyed map, normalizing env-prefixed topics first.
+ *
+ * Tries the raw topic key first for exact matches (works for legacy flat names
+ * and canonical suffixes), then strips any env prefix and retries.
+ *
+ * Use this instead of direct `map[topic]` access when the topic may arrive with
+ * an environment prefix (e.g. `dev.onex.evt...`) but the map is keyed by
+ * canonical suffix (`onex.evt...`).
+ *
+ * @example
+ * const meta = lookupByTopic(TOPIC_METADATA, 'dev.onex.evt.platform.node-heartbeat.v1');
+ * // Finds the entry keyed by 'onex.evt.platform.node-heartbeat.v1'
+ */
+export function lookupByTopic<T>(map: Record<string, T>, topic: string): T | undefined {
+  const direct = map[topic];
+  if (direct !== undefined) return direct;
+
+  const suffix = extractSuffix(topic);
+  if (suffix !== topic) {
+    return map[suffix];
+  }
+
+  return undefined;
 }
 
 // ============================================================================
@@ -119,6 +182,7 @@ export const SUFFIX_INTELLIGENCE_PATTERN_SCORED = 'onex.evt.omniintelligence.pat
 export const SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED =
   'onex.evt.omniintelligence.pattern-discovered.v1';
 export const SUFFIX_INTELLIGENCE_PATTERN_LEARNED = 'onex.evt.omniintelligence.pattern-learned.v1';
+export const SUFFIX_INTELLIGENCE_TOOL_CONTENT = 'onex.cmd.omniintelligence.tool-content.v1';
 
 // ============================================================================
 // OmniMemory Topics
@@ -142,10 +206,15 @@ export const SUFFIX_VALIDATION_RUN_COMPLETED = 'onex.evt.validation.cross-repo-r
 // These do NOT get an env prefix — used as-is.
 // ============================================================================
 
+/** Routing decision events emitted by the agent router. */
 export const LEGACY_AGENT_ROUTING_DECISIONS = 'agent-routing-decisions';
+/** Tool calls, decisions, errors, and successes from agent execution. */
 export const LEGACY_AGENT_ACTIONS = 'agent-actions';
+/** Polymorphic agent transformation lifecycle events. */
 export const LEGACY_AGENT_TRANSFORMATION_EVENTS = 'agent-transformation-events';
+/** Routing performance metrics and cache statistics. */
 export const LEGACY_ROUTER_PERFORMANCE_METRICS = 'router-performance-metrics';
+/** Manifest injection snapshots (offline capture only, not in live consumer). */
 export const LEGACY_AGENT_MANIFEST_INJECTIONS = 'agent-manifest-injections';
 
 // ============================================================================
@@ -200,21 +269,24 @@ export const VALIDATION_SUFFIXES = [
 
 /**
  * Build the complete subscription topic list for the event consumer.
- * Legacy agent topics use flat names (no prefix).
- * Canonical ONEX topics use their suffix directly — infra4 producers
- * emit to unprefixed canonical names (e.g. `onex.evt.platform.node-heartbeat.v1`).
+ * Legacy agent topics use flat names (e.g. `agent-actions`).
+ * Canonical ONEX topics are subscribed by their canonical name directly
+ * (e.g. `onex.evt.platform.node-heartbeat.v1`).
  *
  * Note: LEGACY_AGENT_MANIFEST_INJECTIONS is deliberately excluded from the live
  * consumer subscription (it is not consumed at runtime). The recording script
  * (scripts/record-events.ts) manually appends it for offline capture/replay.
+ *
+ * @returns Array of topic strings suitable for passing to Kafka `consumer.subscribe()`
  */
 export function buildSubscriptionTopics(): string[] {
   return [
     // Legacy agent topics (flat names, no prefix)
     ...LEGACY_AGENT_TOPICS,
-    // Canonical ONEX topics (suffixes used directly — no env prefix)
+    // Canonical ONEX topics (subscribed by canonical name)
     ...PLATFORM_NODE_SUFFIXES,
     SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
+    SUFFIX_INTELLIGENCE_TOOL_CONTENT,
     ...OMNICLAUDE_SUFFIXES,
     ...INTENT_SUFFIXES,
     ...VALIDATION_SUFFIXES,

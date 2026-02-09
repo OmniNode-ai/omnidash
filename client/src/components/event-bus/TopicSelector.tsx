@@ -1,9 +1,8 @@
 /**
  * TopicSelector Component
  *
- * A compact navigation pane for selecting Kafka topics in the Event Bus
- * Monitor. Visually distinct from data tables: tighter rows, muted
- * background, strong selected state with left-border accent.
+ * Always-visible navigation pane for selecting Kafka topics in the Event Bus
+ * Monitor. Fixed height, overflow-contained, no collapsing.
  */
 
 import { useState, useMemo } from 'react';
@@ -39,6 +38,7 @@ export function TopicSelector({ topics, selectedTopic, onSelectTopic }: TopicSel
   const [filter, setFilter] = useState<FilterMode>('all');
 
   const activeCount = useMemo(() => topics.filter((t) => t.status === 'active').length, [topics]);
+  const silentCount = useMemo(() => topics.filter((t) => t.status === 'silent').length, [topics]);
 
   const filteredTopics = useMemo(() => {
     if (filter === 'all') return topics;
@@ -50,21 +50,32 @@ export function TopicSelector({ topics, selectedTopic, onSelectTopic }: TopicSel
   };
 
   return (
-    <div className="rounded-lg border border-border/60 bg-muted/30">
-      {/* Header — tight, control-like */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border/40">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Topics
-          </span>
-          <span className="text-[10px] tabular-nums text-muted-foreground">
-            {activeCount}/{topics.length} active
-          </span>
-        </div>
+    <div className="rounded-lg border border-border/60 bg-muted/30 overflow-hidden flex flex-col h-full">
+      {/* Row 1: Title + status counts */}
+      <div className="flex items-center gap-2.5 px-3 pt-2.5 pb-1 shrink-0">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Topics
+        </span>
+        <span className="flex items-center gap-1 text-[10px] tabular-nums text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
+          {activeCount}
+        </span>
+        <span className="flex items-center gap-1 text-[10px] tabular-nums text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-zinc-500/50 inline-block" />
+          {silentCount}
+        </span>
+      </div>
 
-        {/* Filter toggles */}
+      {/* Row 2: Filter toggle pills */}
+      <div className="flex items-center px-3 pb-2 shrink-0">
         <div className="flex items-center gap-0.5 rounded-md bg-background/50 p-0.5">
-          {(['all', 'active', 'silent'] as const).map((mode) => (
+          {(
+            [
+              { mode: 'all' as const, label: 'All', count: topics.length },
+              { mode: 'active' as const, label: 'Active', count: activeCount },
+              { mode: 'silent' as const, label: 'Silent', count: silentCount },
+            ] as const
+          ).map(({ mode, label, count }) => (
             <Button
               key={mode}
               variant="ghost"
@@ -76,15 +87,16 @@ export function TopicSelector({ topics, selectedTopic, onSelectTopic }: TopicSel
               )}
               onClick={() => setFilter(mode)}
             >
-              {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              {label}
+              <span className="ml-1 opacity-60">({count})</span>
             </Button>
           ))}
         </div>
       </div>
 
-      {/* Topic list — compact nav rows */}
-      <ScrollArea className="max-h-[260px]">
-        <div className="py-0.5">
+      {/* Topic list — scrollable, fills remaining space */}
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="py-0.5 border-t border-border/40">
           {filteredTopics.length === 0 ? (
             <p className="px-3 py-4 text-center text-[11px] text-muted-foreground italic">
               No {filter} topics
@@ -98,9 +110,10 @@ export function TopicSelector({ topics, selectedTopic, onSelectTopic }: TopicSel
                 <button
                   key={row.topic}
                   type="button"
+                  title={row.topic}
                   onClick={() => handleRowClick(row.topic)}
                   className={cn(
-                    'w-full flex items-center gap-2.5 py-1.5 px-3 cursor-pointer transition-all text-left',
+                    'w-full grid grid-cols-[8px_1fr_auto_auto] items-center gap-x-2 h-7 px-3 cursor-pointer transition-all text-left',
                     'border-l-[3px]',
                     'hover:bg-accent/40',
                     isSelected && 'border-l-primary bg-accent/60',
@@ -120,35 +133,30 @@ export function TopicSelector({ topics, selectedTopic, onSelectTopic }: TopicSel
                     <span className={cn('relative h-2 w-2 rounded-full', dot.color)} />
                   </span>
 
-                  {/* Label + canonical — primary/secondary hierarchy */}
-                  <div className="flex-1 min-w-0">
-                    <span
-                      className={cn(
-                        'text-[13px] leading-tight',
-                        isSelected ? 'font-semibold text-foreground' : 'font-medium'
-                      )}
-                    >
-                      {row.label}
-                    </span>
-                    <div className="text-[10px] text-muted-foreground/70 font-mono truncate leading-tight">
-                      {row.topic}
-                    </div>
-                  </div>
+                  {/* Topic name */}
+                  <span
+                    className={cn(
+                      'text-[12px] truncate',
+                      isSelected ? 'font-semibold text-foreground' : 'font-medium'
+                    )}
+                  >
+                    {row.label}
+                  </span>
 
-                  {/* Count + recency — right-aligned */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span
-                      className={cn(
-                        'text-[11px] tabular-nums font-medium min-w-[2ch] text-right',
-                        row.eventCount > 0 ? 'text-foreground' : 'text-muted-foreground/50'
-                      )}
-                    >
-                      {row.eventCount > 0 ? row.eventCount.toLocaleString() : '\u2014'}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground/60 w-[52px] text-right whitespace-nowrap">
-                      {row.lastEventFormatted}
-                    </span>
-                  </div>
+                  {/* Event count */}
+                  <span
+                    className={cn(
+                      'text-[11px] tabular-nums font-medium min-w-[3ch] text-right',
+                      row.eventCount > 0 ? 'text-foreground' : 'text-muted-foreground/50'
+                    )}
+                  >
+                    {row.eventCount > 0 ? row.eventCount.toLocaleString() : '\u2014'}
+                  </span>
+
+                  {/* Last seen */}
+                  <span className="text-[10px] text-muted-foreground/60 w-[52px] text-right whitespace-nowrap">
+                    {row.lastEventFormatted}
+                  </span>
                 </button>
               );
             })

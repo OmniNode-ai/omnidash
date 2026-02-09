@@ -34,6 +34,7 @@ import {
   Bot,
   Timer,
   BarChart2,
+  Filter,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -113,6 +114,11 @@ function PayloadRenderErrorFallback({ error }: { error?: Error | null }) {
   );
 }
 
+export interface FilterRequest {
+  type: 'topic' | 'source' | 'search';
+  value: string;
+}
+
 export interface EventDetailPanelProps {
   event: {
     id: string;
@@ -127,6 +133,7 @@ export interface EventDetailPanelProps {
   } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onFilterRequest?: (filter: FilterRequest) => void;
 }
 
 /**
@@ -141,13 +148,39 @@ export interface EventDetailPanelProps {
  * />
  * ```
  */
-export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanelProps) {
+export function EventDetailPanel({
+  event,
+  open,
+  onOpenChange,
+  onFilterRequest,
+}: EventDetailPanelProps) {
   const [copied, setCopied] = useState(false);
   const [showRawJson, setShowRawJson] = useState(false);
   const [showMetadata, setShowMetadata] = useState(true);
   const [parseError, setParseError] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
+
+  /** Copy a single metadata value to clipboard with toast feedback */
+  const handleCopyValue = async (label: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({ title: 'Copied', description: `${label} copied to clipboard` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Copy failed' });
+    }
+  };
+
+  /** Apply a filter and close the panel */
+  const handleFilter = (filter: FilterRequest) => {
+    onFilterRequest?.(filter);
+    onOpenChange(false);
+    const truncated = filter.value.length > 40 ? filter.value.slice(0, 37) + '...' : filter.value;
+    toast({
+      title: 'Filter applied',
+      description: `Filtered to ${filter.type}=${truncated}`,
+    });
+  };
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -459,37 +492,119 @@ export function EventDetailPanel({ event, open, onOpenChange }: EventDetailPanel
               </button>
               {showMetadata && (
                 <div className="px-3 pb-3 space-y-2 border-t pt-3">
-                  <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-2 text-sm">
+                  <div className="grid grid-cols-[auto,1fr,auto] gap-x-3 gap-y-2 text-sm items-center">
+                    {/* Event ID — always shown */}
                     <span className="text-muted-foreground">Event ID</span>
                     <span className="font-mono truncate">{event.id}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0"
+                      onClick={() => handleCopyValue('Event ID', event.id)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
 
-                    <span className="text-muted-foreground">Source</span>
-                    <span className="font-mono">{event.source}</span>
-
+                    {/* Topic (raw) — always shown */}
                     <span className="text-muted-foreground">Topic</span>
                     <span className="font-mono text-xs break-all">{event.topicRaw}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0"
+                      onClick={() => handleCopyValue('Topic', event.topicRaw)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
 
-                    {event.correlationId && (
-                      <>
-                        <span className="text-muted-foreground">Correlation</span>
-                        <span className="font-mono truncate">{event.correlationId}</span>
-                      </>
+                    {/* Source — always shown */}
+                    <span className="text-muted-foreground">Source</span>
+                    <span className="font-mono">{event.source}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0"
+                      onClick={() => handleCopyValue('Source', event.source)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+
+                    {/* Correlation ID — always shown (N/A if absent) */}
+                    <span className="text-muted-foreground">Correlation</span>
+                    {event.correlationId ? (
+                      <button
+                        type="button"
+                        className="font-mono truncate text-left text-primary hover:underline cursor-pointer"
+                        onClick={() =>
+                          handleFilter({ type: 'search', value: event.correlationId! })
+                        }
+                        title="Click to filter by this correlation ID"
+                      >
+                        {event.correlationId}
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground/50 italic">N/A</span>
+                    )}
+                    {event.correlationId ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0"
+                        onClick={() => handleCopyValue('Correlation ID', event.correlationId!)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    ) : (
+                      <span />
                     )}
 
+                    {/* Timestamp — always shown */}
+                    <span className="text-muted-foreground">Timestamp</span>
+                    <span className="font-mono text-xs">{formatTimestamp(event.timestamp)}</span>
+                    <span />
+
+                    {/* Session — conditional */}
                     {parsedDetails?.sessionId && (
                       <>
                         <span className="text-muted-foreground">Session</span>
                         <span className="font-mono truncate">{parsedDetails.sessionId}</span>
+                        <span />
                       </>
                     )}
 
+                    {/* Node — conditional */}
                     {parsedDetails?.nodeId && (
                       <>
                         <span className="text-muted-foreground">Node</span>
                         <span className="font-mono">{parsedDetails.nodeId}</span>
+                        <span />
                       </>
                     )}
                   </div>
+
+                  {/* Quick filter buttons */}
+                  {onFilterRequest && (
+                    <div className="flex flex-wrap gap-2 pt-3 border-t mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={() => handleFilter({ type: 'topic', value: event.topicRaw })}
+                      >
+                        <Filter className="h-3 w-3" />
+                        Filter to this topic
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={() => handleFilter({ type: 'source', value: event.source })}
+                      >
+                        <Filter className="h-3 w-3" />
+                        Filter to this source
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

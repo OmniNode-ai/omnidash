@@ -83,7 +83,7 @@ The `event_bus_data_source` Kafka consumer group was bumped from `v1` to `v2` to
 
 ### Data flow
 
-```
+```text
 PostgreSQL (event_bus_events)
     |
     | SQL: windowed query, 200 rows/topic, 2000 total, newest first
@@ -129,17 +129,13 @@ Dashboard renders with historical data
 
 ## Known Issues / Not Yet Done
 
-### 1. Live Kafka eachMessage prefix mismatch
-**File**: `server/event-consumer.ts` lines 1026-1145
-**Issue**: The `eachMessage` handler uses `switch (topic)` where `topic` comes from Kafka with env prefix (e.g., `dev.onex.evt.platform.node-heartbeat.v1`), but `case` values are suffix-only constants (e.g., `onex.evt.platform.node-heartbeat.v1`). This means canonical ONEX topics delivered by Kafka will fall through to the `default` case and be silently ignored. Only legacy flat topics (`agent-actions`, `agent-routing-decisions`, etc.) match correctly because they have no prefix.
-**Impact**: Node registry events, OmniClaude lifecycle events, and intent events from Kafka are not processed in real-time. They ARE processed during preload (where prefix is stripped), so dashboards show historical data but not live updates.
-**Fix**: Strip env prefix from `topic` before the switch statement, matching the pattern used in `preloadFromDatabase()`.
+### 1. ~~Live Kafka eachMessage prefix mismatch~~ FIXED
+**File**: `server/event-consumer.ts`
+**Status**: Fixed in this PR. The `eachMessage` handler now strips the legacy env prefix (e.g., `dev.onex.evt...` to `onex.evt...`) before the switch statement, using `ENVIRONMENT_PREFIXES` from `@shared/topics`. Legacy flat topics pass through unchanged.
 
-### 2. tool-content events not handled in live Kafka consumer
-**File**: `server/event-consumer.ts` eachMessage handler
-**Issue**: Events with topic `onex.cmd.omniintelligence.tool-content.v1` (or `dev.onex.cmd.omniintelligence.tool-content.v1`) have no case in the live `eachMessage` switch statement. They are only handled in `injectPlaybackEvent()` (line 3292) for preload/playback.
-**Impact**: Tool content events appear on dashboard from historical preload but not from live Kafka stream.
-**Fix**: Add a case for tool-content topic in the eachMessage handler (after fixing issue #1).
+### 2. ~~tool-content events not handled in live Kafka consumer~~ FIXED
+**File**: `server/event-consumer.ts`
+**Status**: Fixed in this PR. A `case TOPIC.TOOL_CONTENT` branch was added to the live `eachMessage` handler, routing tool-content events through `handleAgentAction()` with the tool name extracted from the payload.
 
 ### 3. Redundant database query in fetchRealEventsForInitialState
 **File**: `server/websocket.ts` lines 170-198

@@ -24,7 +24,7 @@ import {
   type IntentClassifiedEvent,
   type IntentStoredEvent,
   type IntentCategory,
-} from '../shared/intent-types';
+} from '@shared/intent-types';
 
 // ============================================================================
 // Configuration

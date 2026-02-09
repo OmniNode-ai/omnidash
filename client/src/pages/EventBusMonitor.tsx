@@ -21,6 +21,8 @@ import {
   getTopicMetadata,
   getEventTypeLabel,
   getMonitoredTopics,
+  topicMatchesSuffix,
+  normalizeToSuffix,
 } from '@/lib/configs/event-bus-dashboard';
 import { useEventBusStream } from '@/hooks/useEventBusStream';
 import type {
@@ -42,10 +44,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Activity, RefreshCw, Filter, X, Pause, Play, Eye, EyeOff } from 'lucide-react';
+import {
+  Activity,
+  RefreshCw,
+  Filter,
+  X,
+  Pause,
+  Play,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+} from 'lucide-react';
 import {
   EventDetailPanel,
   type EventDetailPanelProps,
+  type FilterRequest,
 } from '@/components/event-bus/EventDetailPanel';
 import { TopicSelector } from '@/components/event-bus/TopicSelector';
 
@@ -83,7 +96,7 @@ const monitoredTopics = getMonitoredTopics();
 
 /**
  * Format a timestamp as a relative time string (e.g., "5s ago", "2m ago").
- * Falls back to absolute time for events older than 1 hour.
+ * Falls back to absolute date for events older than 24 hours.
  */
 function formatRelativeTime(timestamp: string | Date): string {
   const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
@@ -154,6 +167,47 @@ function toRecentEvent(event: ProcessedEvent) {
 }
 
 // ============================================================================
+// Chart Bucketing
+// ============================================================================
+
+/** Minimum share (0..1) for an event type to avoid being collapsed into "Other" */
+const OTHER_THRESHOLD_SHARE = 0.03;
+/** Minimum absolute count for an event type to avoid being collapsed into "Other" */
+const OTHER_THRESHOLD_COUNT = 2;
+
+/**
+ * Aggregate small event-type slices into an "Other" bucket.
+ * Types with <3% share OR <2 events get merged, unless that would merge everything.
+ */
+function bucketSmallTypes(
+  items: Array<{ name: string; eventType: string; eventCount: number }>
+): Array<{ name: string; eventType: string; eventCount: number }> {
+  const total = items.reduce((sum, i) => sum + i.eventCount, 0);
+  if (total === 0) return items;
+
+  const kept: typeof items = [];
+  let otherCount = 0;
+
+  for (const item of items) {
+    const share = item.eventCount / total;
+    if (share < OTHER_THRESHOLD_SHARE || item.eventCount < OTHER_THRESHOLD_COUNT) {
+      otherCount += item.eventCount;
+    } else {
+      kept.push(item);
+    }
+  }
+
+  // If everything collapsed, just return original — don't show a single "Other" bar
+  if (kept.length === 0) return items;
+
+  if (otherCount > 0) {
+    kept.push({ name: 'Other', eventType: 'other', eventCount: otherCount });
+  }
+
+  return kept;
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -190,6 +244,13 @@ export default function EventBusMonitor() {
   const pausedSnapshotRef = useRef<PausedSnapshot | null>(null);
   // Track previous pause state to detect transitions
   const wasPausedRef = useRef(false);
+
+  // Chart snapshot — prevents blank charts when old events expire from the
+  // bounded buffer while a topic filter is active. Cleared on filter change.
+  const chartSnapshotRef = useRef<{
+    eventTypeBreakdownData: Array<{ name: string; eventType: string; eventCount: number }>;
+    timeSeriesData: Array<{ time: number; timestamp: string; name: string; events: number }>;
+  } | null>(null);
 
   // Capture snapshot only on transition from unpaused -> paused
   useEffect(() => {
@@ -242,13 +303,27 @@ export default function EventBusMonitor() {
   // Topic Status Data
   // ============================================================================
 
+  // Tick counter forces topicStatusData to recompute every 30 seconds so that
+  // topic statuses properly decay from "active" to "silent" even when no new
+  // events arrive.  Without this, the useMemo only runs when sourceData.events
+  // changes, leaving stale "active" badges indefinitely.
+  const [statusTick, setStatusTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setStatusTick((t) => t + 1), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
   const topicStatusData = useMemo(() => {
+    // statusTick is read here so the linter keeps it in the dep array; the
+    // actual value is unused — it just forces a periodic recomputation.
+    void statusTick;
+
     const now = Date.now();
     const FIVE_MINUTES_MS = 5 * 60 * 1000;
     const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
     const statusRows = monitoredTopics.map((topic) => {
-      const topicEvents = sourceData.events.filter((e) => e.topicRaw === topic);
+      const topicEvents = sourceData.events.filter((e) => topicMatchesSuffix(e.topicRaw, topic));
       const eventCount = topicEvents.length;
       const lastEvent = topicEvents.length > 0 ? topicEvents[0] : null;
       const lastEventAt = lastEvent ? lastEvent.timestampRaw : null;
@@ -291,7 +366,13 @@ export default function EventBusMonitor() {
     });
 
     return statusRows;
-  }, [sourceData.events]);
+  }, [sourceData.events, statusTick]);
+
+  // Derive Topics Loaded KPI — count of topics with any events in the current buffer
+  const activeTopicsCount = useMemo(
+    () => topicStatusData.filter((t) => t.eventCount > 0).length,
+    [topicStatusData]
+  );
 
   // ============================================================================
   // Filtered Data
@@ -325,11 +406,12 @@ export default function EventBusMonitor() {
         eventCount: count,
       }));
 
-      const eventTypeBreakdownData = Object.entries(eventTypeCounts).map(([eventType, count]) => ({
+      const eventTypeBreakdownRaw = Object.entries(eventTypeCounts).map(([eventType, count]) => ({
         name: getEventTypeLabel(eventType),
         eventType,
         eventCount: count,
       }));
+      const eventTypeBreakdownData = bucketSmallTypes(eventTypeBreakdownRaw);
 
       const timeSeriesData = Object.entries(timeBuckets)
         .map(([time, count]) => {
@@ -348,7 +430,7 @@ export default function EventBusMonitor() {
         totalEvents: displayedEvents.length,
         eventsPerSecond: sourceData.eventsPerSecond,
         errorRate: sourceData.errorRate,
-        activeTopics: topicBreakdownData.length,
+        activeTopics: activeTopicsCount,
         dlqCount: displayedEvents.filter((e) => e.priority === 'critical').length,
         recentEvents,
         liveEvents,
@@ -367,7 +449,7 @@ export default function EventBusMonitor() {
           event.eventType.toLowerCase().includes('heartbeat'))
       )
         return false;
-      if (filters.topic && event.topicRaw !== filters.topic) return false;
+      if (filters.topic && !topicMatchesSuffix(event.topicRaw, filters.topic)) return false;
       if (filters.priority && event.priority !== filters.priority) return false;
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
@@ -404,13 +486,14 @@ export default function EventBusMonitor() {
       eventCount: count,
     }));
 
-    const filteredEventTypeBreakdown = Object.entries(eventTypeCounts).map(
+    const filteredEventTypeBreakdownRaw = Object.entries(eventTypeCounts).map(
       ([eventType, count]) => ({
         name: getEventTypeLabel(eventType),
         eventType,
         eventCount: count,
       })
     );
+    const filteredEventTypeBreakdown = bucketSmallTypes(filteredEventTypeBreakdownRaw);
 
     const filteredTimeSeries = Object.entries(timeBuckets)
       .map(([time, count]) => {
@@ -425,20 +508,44 @@ export default function EventBusMonitor() {
       })
       .sort((a, b) => a.time - b.time);
 
+    // Cache non-empty chart data so charts don't go blank when old events
+    // expire from the bounded buffer while a topic filter is active.
+    if (filteredEventTypeBreakdown.length > 0) {
+      chartSnapshotRef.current = {
+        eventTypeBreakdownData: filteredEventTypeBreakdown,
+        timeSeriesData: filteredTimeSeries,
+      };
+    }
+
+    // Fall back to cached chart data when current computation yields nothing
+    const effectiveBreakdown =
+      filteredEventTypeBreakdown.length > 0
+        ? filteredEventTypeBreakdown
+        : (chartSnapshotRef.current?.eventTypeBreakdownData ?? []);
+    const effectiveTimeSeries =
+      filteredTimeSeries.length > 0
+        ? filteredTimeSeries
+        : (chartSnapshotRef.current?.timeSeriesData ?? []);
+
     return {
       totalEvents: filtered.length,
       eventsPerSecond: sourceData.eventsPerSecond,
       errorRate: sourceData.errorRate,
-      activeTopics: filteredTopicBreakdown.length,
+      activeTopics: activeTopicsCount,
       dlqCount: filtered.filter((e) => e.priority === 'critical').length,
       recentEvents: filtered.slice(0, maxEvents).map(toRecentEvent),
       liveEvents: filtered.slice(0, maxEvents).map(toLiveEvent),
       topicBreakdownData: filteredTopicBreakdown,
-      eventTypeBreakdownData: filteredEventTypeBreakdown,
-      timeSeriesData: filteredTimeSeries,
+      eventTypeBreakdownData: effectiveBreakdown,
+      timeSeriesData: effectiveTimeSeries,
       topicHealth: [],
     };
-  }, [sourceData, filters, maxEvents, hideHeartbeats]);
+  }, [sourceData, filters, maxEvents, hideHeartbeats, activeTopicsCount]);
+
+  // Clear chart snapshot when topic filter changes so stale data doesn't linger
+  useEffect(() => {
+    chartSnapshotRef.current = null;
+  }, [filters.topic]);
 
   // ============================================================================
   // Handlers
@@ -446,6 +553,21 @@ export default function EventBusMonitor() {
 
   const clearFilters = useCallback(() => {
     setFilters({ topic: null, priority: null, search: '' });
+  }, []);
+
+  const handleFilterRequest = useCallback((filter: FilterRequest) => {
+    switch (filter.type) {
+      case 'topic':
+        // Normalize env-prefixed topic to suffix so TopicSelector highlight matches
+        setFilters((prev) => ({ ...prev, topic: normalizeToSuffix(filter.value) }));
+        break;
+      case 'source':
+        setFilters((prev) => ({ ...prev, search: filter.value }));
+        break;
+      case 'search':
+        setFilters((prev) => ({ ...prev, search: filter.value }));
+        break;
+    }
   }, []);
 
   const handleEventClick = useCallback((widgetId: string, row: Record<string, unknown>) => {
@@ -471,7 +593,83 @@ export default function EventBusMonitor() {
 
   const hasActiveFilters = filters.priority || filters.search || hideHeartbeats;
   const isConnected = connectionStatus === 'connected';
-  const eventCount = stats.totalReceived;
+
+  // Staleness detection — computed from ALL events (unfiltered), excluding heartbeats
+  const stalenessInfo = useMemo(() => {
+    const STALENESS_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+    const now = Date.now();
+    const allEvents = sourceData.events;
+
+    const nonHeartbeatEvents = allEvents.filter(
+      (e) => !e.topicRaw.includes('heartbeat') && !e.eventType.toLowerCase().includes('heartbeat')
+    );
+
+    const hasOnlyHeartbeats = nonHeartbeatEvents.length === 0 && allEvents.length > 0;
+    const hasNoEvents = allEvents.length === 0;
+
+    if (hasNoEvents) return { stale: false, hasOnlyHeartbeats: false } as const;
+    if (hasOnlyHeartbeats) return { stale: true, hasOnlyHeartbeats: true } as const;
+
+    // Find the newest non-heartbeat event
+    const newest = nonHeartbeatEvents.reduce(
+      (latest, e) => (e.timestamp.getTime() > latest.timestamp.getTime() ? e : latest),
+      nonHeartbeatEvents[0]
+    );
+    const ageMs = now - newest.timestamp.getTime();
+
+    if (ageMs <= STALENESS_THRESHOLD_MS) return { stale: false, hasOnlyHeartbeats: false } as const;
+
+    // Format the age
+    let ageStr: string;
+    if (ageMs < 3600000) ageStr = `${Math.floor(ageMs / 60000)}m`;
+    else if (ageMs < 86400000) ageStr = `${Math.floor(ageMs / 3600000)}h`;
+    else ageStr = `${Math.floor(ageMs / 86400000)}d`;
+
+    return {
+      stale: true,
+      hasOnlyHeartbeats: false,
+      ageStr,
+      newestTopic: newest.topic,
+      newestTimestamp: newest.timestamp.toLocaleString(),
+    } as const;
+  }, [sourceData.events]);
+
+  // ============================================================================
+  // Split dashboard config: KPIs, Charts, Table
+  // ============================================================================
+
+  const kpiConfig = useMemo(
+    () => ({
+      ...eventBusDashboardConfig,
+      dashboard_id: 'event-bus-kpis',
+      widgets: eventBusDashboardConfig.widgets.filter(
+        (w) => w.config.config_kind === 'metric_card'
+      ),
+    }),
+    []
+  );
+
+  const chartsConfig = useMemo(
+    () => ({
+      ...eventBusDashboardConfig,
+      dashboard_id: 'event-bus-charts',
+      widgets: eventBusDashboardConfig.widgets
+        .filter((w) => w.config.config_kind === 'chart')
+        .map((w) => ({ ...w, row: w.row - 1 })),
+    }),
+    []
+  );
+
+  const tableConfig = useMemo(
+    () => ({
+      ...eventBusDashboardConfig,
+      dashboard_id: 'event-bus-table',
+      widgets: eventBusDashboardConfig.widgets
+        .filter((w) => w.config.config_kind === 'table')
+        .map((w) => ({ ...w, row: 0 })),
+    }),
+    []
+  );
 
   // ============================================================================
   // Render
@@ -499,10 +697,6 @@ export default function EventBusMonitor() {
               Live Data
             </Badge>
           )}
-
-          <div className="text-sm text-muted-foreground">
-            <span className="font-mono">{eventCount.toLocaleString()}</span> events
-          </div>
 
           <div className="text-sm text-muted-foreground">
             Updated: {lastUpdate.toLocaleTimeString()}
@@ -535,6 +729,27 @@ export default function EventBusMonitor() {
           )}
         </div>
       </div>
+
+      {/* Staleness Warning Banner */}
+      {stalenessInfo.stale && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0" />
+          <span className="text-sm">
+            {stalenessInfo.hasOnlyHeartbeats ? (
+              'Only heartbeats detected — no application events in the buffer'
+            ) : (
+              <>
+                No new non-heartbeat events in{' '}
+                <span className="font-semibold">{stalenessInfo.ageStr}</span>
+                {' — '}producers may not be emitting.
+                <span className="text-amber-300/70 ml-2">
+                  Newest: {stalenessInfo.newestTimestamp} ({stalenessInfo.newestTopic})
+                </span>
+              </>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* Filters */}
       <Card className="p-3">
@@ -611,43 +826,83 @@ export default function EventBusMonitor() {
         </div>
       </Card>
 
-      {/* Topic Selector */}
-      <TopicSelector
-        topics={topicStatusData}
-        selectedTopic={filters.topic}
-        onSelectTopic={(topic) => setFilters((prev) => ({ ...prev, topic: topic }))}
+      {/* KPI Metric Cards */}
+      <DashboardRenderer
+        config={kpiConfig}
+        data={filteredData}
+        isLoading={connectionStatus === 'connecting'}
       />
 
-      {/* Context Header — explicit filter state when a topic is selected */}
-      {filters.topic && (
-        <div className="flex items-center justify-between px-3 py-2 rounded-md bg-primary/5 border border-primary/20">
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-1 rounded-full bg-primary" />
-            <span className="text-sm font-semibold">{getTopicLabel(filters.topic)}</span>
-            <span className="text-[11px] text-muted-foreground font-mono">{filters.topic}</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setFilters((prev) => ({ ...prev, topic: null }))}
-            className="gap-1 h-6 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-3 w-3" />
-            Clear filter
-          </Button>
-        </div>
-      )}
+      {/* Topics + Charts — single row, fixed height so neither child can overflow */}
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4 h-[340px]">
+        <TopicSelector
+          topics={topicStatusData}
+          selectedTopic={filters.topic}
+          onSelectTopic={(topic) => setFilters((prev) => ({ ...prev, topic: topic }))}
+        />
 
-      {/* Dashboard Renderer */}
+        <DashboardRenderer
+          config={chartsConfig}
+          data={filteredData}
+          isLoading={connectionStatus === 'connecting'}
+        />
+      </div>
+
+      {/* Context line + active filter banner */}
+      <div className="space-y-2">
+        {filters.topic && (
+          <div className="flex items-center justify-between px-3 py-2 rounded-md bg-primary/5 border border-primary/20">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-1 rounded-full bg-primary" />
+              <span className="text-sm font-semibold">{getTopicLabel(filters.topic)}</span>
+              <span className="text-[11px] text-muted-foreground font-mono">{filters.topic}</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFilters((prev) => ({ ...prev, topic: null }))}
+              className="gap-1 h-6 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3 w-3" />
+              Clear filter
+            </Button>
+          </div>
+        )}
+
+        <div className="text-xs text-muted-foreground px-1">
+          Showing last {Number(filteredData.totalEvents ?? 0).toLocaleString()} events, newest first
+          {isPaused && <span className="text-amber-500 font-medium"> · paused</span>}
+          {hideHeartbeats && <span> · heartbeats hidden</span>}
+          {filters.topic && (
+            <span>
+              {' '}
+              · <span className="font-medium">{getTopicLabel(filters.topic)}</span>
+            </span>
+          )}
+          {filters.search && (
+            <span>
+              {' '}
+              · search: "<span className="font-medium">{filters.search}</span>"
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Event Table */}
       <DashboardRenderer
-        config={eventBusDashboardConfig}
+        config={tableConfig}
         data={filteredData}
         isLoading={connectionStatus === 'connecting'}
         onWidgetRowClick={handleEventClick}
       />
 
       {/* Event Detail Panel */}
-      <EventDetailPanel event={selectedEvent} open={isPanelOpen} onOpenChange={setIsPanelOpen} />
+      <EventDetailPanel
+        event={selectedEvent}
+        open={isPanelOpen}
+        onOpenChange={setIsPanelOpen}
+        onFilterRequest={handleFilterRequest}
+      />
     </div>
   );
 }
