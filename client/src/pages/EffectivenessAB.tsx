@@ -303,6 +303,8 @@ export default function EffectivenessAB() {
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '6px',
                   }}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.15 }}
                   formatter={(value: number) => [`${value.toFixed(1)}%`, undefined]}
                 />
                 <Legend />
@@ -352,6 +354,8 @@ export default function EffectivenessAB() {
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '6px',
                   }}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.15 }}
                   formatter={(value: number) => [`${value.toFixed(0)}ms`, 'Avg Latency']}
                 />
                 <Bar dataKey="latency" name="Avg Latency" radius={[4, 4, 0, 0]}>

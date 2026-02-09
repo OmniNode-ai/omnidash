@@ -207,6 +207,8 @@ export default function EffectivenessLatency() {
                     borderRadius: '6px',
                     fontSize: '12px',
                   }}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.15 }}
                   formatter={(value: number, name: string) => {
                     const labels: Record<string, string> = {
                       routing_avg_ms: 'Routing',
@@ -346,6 +348,8 @@ export default function EffectivenessLatency() {
                     borderRadius: '6px',
                     fontSize: '12px',
                   }}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.15 }}
                   formatter={(value: number, name: string) => {
                     const labels: Record<string, string> = {
                       treatment_p95: 'Treatment P95',

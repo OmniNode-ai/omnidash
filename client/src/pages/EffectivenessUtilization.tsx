@@ -176,6 +176,8 @@ export default function EffectivenessUtilization() {
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '6px',
                   }}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.15 }}
                   formatter={(value: number) => [value, 'Sessions']}
                 />
                 <ReferenceLine
