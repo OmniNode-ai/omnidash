@@ -53,7 +53,7 @@ router.get('/summary', async (_req, res) => {
       .from(ie);
 
     const t = totals[0] ?? { total: 0, injected: 0, treatment: 0, control: 0 };
-    const injectionRate = t.total > 0 ? t.injected / t.total : 0;
+    const injectionRate = t.treatment > 0 ? t.injected / t.treatment : 0;
 
     // Median utilization (treatment only)
     const utilResult = await db
@@ -131,7 +131,14 @@ router.get('/throttle', async (_req, res) => {
   try {
     const db = tryGetIntelligenceDb();
     if (!db) {
-      return res.json({ active: false, reason: null, injected_sessions_1h: 0 });
+      return res.json({
+        active: false,
+        reason: null,
+        latency_delta_p95_1h: null,
+        median_utilization_1h: null,
+        injected_sessions_1h: 0,
+        window_start: null,
+      } satisfies ThrottleStatus);
     }
 
     const status = await computeThrottleStatus(db);
@@ -448,13 +455,15 @@ router.get('/trend', async (_req, res) => {
       .groupBy(sql`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::text`)
       .orderBy(sql`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::text`);
 
-    const trend: EffectivenessTrendPoint[] = rows.map((r) => ({
-      date: r.bucket,
-      injection_rate: Number(r.injection_rate),
-      avg_utilization: Number(r.avg_utilization),
-      avg_accuracy: Number(r.avg_accuracy),
-      avg_latency_delta_ms: Number(r.avg_latency_delta_ms),
-    }));
+    const trend: EffectivenessTrendPoint[] = rows
+      .filter((r) => r.avg_latency_delta_ms != null)
+      .map((r) => ({
+        date: r.bucket,
+        injection_rate: Number(r.injection_rate ?? 0),
+        avg_utilization: Number(r.avg_utilization ?? 0),
+        avg_accuracy: Number(r.avg_accuracy ?? 0),
+        avg_latency_delta_ms: Number(r.avg_latency_delta_ms),
+      }));
 
     res.json(trend);
   } catch (error) {
