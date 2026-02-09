@@ -437,16 +437,16 @@ router.get('/trend', async (_req, res) => {
 
     const rows = await db
       .select({
-        bucket: sql<string>`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::date::text`,
+        bucket: sql<string>`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::text`,
         injection_rate: sql<number>`AVG(CASE WHEN ${ie.injectionOccurred} THEN 1.0 ELSE 0.0 END)`,
-        avg_utilization: sql<number>`AVG(CASE WHEN ${ie.utilizationScore} IS NOT NULL THEN ${ie.utilizationScore}::numeric ELSE 0 END)`,
-        avg_accuracy: sql<number>`AVG(CASE WHEN ${ie.agentMatchScore} IS NOT NULL THEN ${ie.agentMatchScore}::numeric ELSE 0 END)`,
-        avg_latency_delta_ms: sql<number>`AVG(CASE WHEN ${ie.userVisibleLatencyMs} IS NOT NULL THEN ${ie.userVisibleLatencyMs} ELSE 0 END)`,
+        avg_utilization: sql<number>`AVG(CASE WHEN ${ie.utilizationScore} IS NOT NULL THEN ${ie.utilizationScore}::numeric END)`,
+        avg_accuracy: sql<number>`AVG(CASE WHEN ${ie.agentMatchScore} IS NOT NULL THEN ${ie.agentMatchScore}::numeric END)`,
+        avg_latency_delta_ms: sql<number>`AVG(CASE WHEN ${ie.cohort} = 'treatment' AND ${ie.injectionOccurred} = true THEN ${ie.userVisibleLatencyMs} END) - AVG(CASE WHEN ${ie.cohort} = 'control' THEN ${ie.userVisibleLatencyMs} END)`,
       })
       .from(ie)
       .where(gte(ie.createdAt, cutoff))
-      .groupBy(sql`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::date::text`)
-      .orderBy(sql`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::date::text`);
+      .groupBy(sql`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::text`)
+      .orderBy(sql`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::text`);
 
     const trend: EffectivenessTrendPoint[] = rows.map((r) => ({
       date: r.bucket,
