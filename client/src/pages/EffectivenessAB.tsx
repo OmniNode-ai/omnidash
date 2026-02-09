@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
 import type { ABComparison, CohortComparison } from '@shared/effectiveness-types';
-import { GitCompare, ArrowLeft, RefreshCw, Users, TrendingUp, Clock } from 'lucide-react';
+import { GitCompare, RefreshCw, Users, TrendingUp, Clock, ExternalLink } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -96,10 +96,31 @@ interface CohortCardProps {
   label: string;
   borderClass: string;
   badgeClass: string;
+  deltas?: { [key: string]: number };
+}
+
+/** Format a delta badge with appropriate color and sign. */
+function DeltaBadge({ metric, value }: { metric: string; value: number }) {
+  // For latency, lower is better (negative delta = green)
+  // For utilization, accuracy, success_rate: higher is better (positive = green)
+  const isLatency = metric === 'latency';
+  const isGood = isLatency ? value < 0 : value > 0;
+  const color = isGood ? 'text-green-400' : 'text-red-400';
+  const sign = value > 0 ? '+' : '';
+  const suffix = isLatency ? 'ms' : 'pp';
+  const displayValue = isLatency ? value.toFixed(0) : value.toFixed(1);
+
+  return (
+    <span className={`text-[10px] font-mono ml-1.5 ${color}`}>
+      {sign}
+      {displayValue}
+      {suffix}
+    </span>
+  );
 }
 
 /** Renders a single cohort's metrics in a card with colored accent border. */
-function CohortCard({ cohort, label, borderClass, badgeClass }: CohortCardProps) {
+function CohortCard({ cohort, label, borderClass, badgeClass, deltas }: CohortCardProps) {
   return (
     <Card className={`border-l-4 ${borderClass}`}>
       <CardHeader className="pb-2">
@@ -116,28 +137,44 @@ function CohortCard({ cohort, label, borderClass, badgeClass }: CohortCardProps)
             <div className="text-xs text-muted-foreground uppercase">Sessions</div>
             <div className="text-2xl font-bold font-mono">{cohort.session_count}</div>
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground uppercase">Utilization</div>
-            <div className="text-2xl font-bold font-mono">
-              {cohort.median_utilization_pct.toFixed(1)}%
+          <Link href="/effectiveness/utilization" className="group block">
+            <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
+              Utilization
+              <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
             </div>
-          </div>
+            <div className="text-2xl font-bold font-mono cursor-pointer hover:text-primary transition-colors">
+              {cohort.median_utilization_pct.toFixed(1)}%
+              {deltas?.utilization != null && (
+                <DeltaBadge metric="utilization" value={deltas.utilization} />
+              )}
+            </div>
+          </Link>
           <div>
             <div className="text-xs text-muted-foreground uppercase">Accuracy</div>
             <div className="text-2xl font-bold font-mono">
               {cohort.avg_accuracy_pct.toFixed(1)}%
+              {deltas?.accuracy != null && <DeltaBadge metric="accuracy" value={deltas.accuracy} />}
             </div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground uppercase">Success Rate</div>
             <div className="text-2xl font-bold font-mono">
               {cohort.success_rate_pct.toFixed(1)}%
+              {deltas?.success_rate != null && (
+                <DeltaBadge metric="success_rate" value={deltas.success_rate} />
+              )}
             </div>
           </div>
-          <div className="col-span-2">
-            <div className="text-xs text-muted-foreground uppercase">Avg Latency</div>
-            <div className="text-2xl font-bold font-mono">{cohort.avg_latency_ms.toFixed(0)}ms</div>
-          </div>
+          <Link href="/effectiveness/latency" className="col-span-2 group block">
+            <div className="text-xs text-muted-foreground uppercase flex items-center gap-1">
+              Avg Latency
+              <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+            </div>
+            <div className="text-2xl font-bold font-mono cursor-pointer hover:text-primary transition-colors">
+              {cohort.avg_latency_ms.toFixed(0)}ms
+              {deltas?.latency != null && <DeltaBadge metric="latency" value={deltas.latency} />}
+            </div>
+          </Link>
         </div>
       </CardContent>
     </Card>
@@ -191,6 +228,17 @@ export default function EffectivenessAB() {
   const treatment = data ? findCohort(data.cohorts, 'treatment') : null;
   const control = data ? findCohort(data.cohorts, 'control') : null;
 
+  // Compute deltas for treatment card annotations
+  const deltas =
+    treatment && control
+      ? {
+          utilization: treatment.median_utilization_pct - control.median_utilization_pct,
+          accuracy: treatment.avg_accuracy_pct - control.avg_accuracy_pct,
+          success_rate: treatment.success_rate_pct - control.success_rate_pct,
+          latency: treatment.avg_latency_ms - control.avg_latency_ms,
+        }
+      : undefined;
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -200,6 +248,13 @@ export default function EffectivenessAB() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+            <Link href="/effectiveness" className="hover:text-foreground transition-colors">
+              Effectiveness
+            </Link>
+            <span>/</span>
+            <span className="text-foreground">A/B Comparison</span>
+          </div>
           <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
             <GitCompare className="w-6 h-6 text-primary" />
             A/B Comparison
@@ -214,12 +269,6 @@ export default function EffectivenessAB() {
               Demo Data
             </Badge>
           )}
-          <Link href="/effectiveness">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Back
-            </Button>
-          </Link>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4 mr-1" />
             Refresh
@@ -251,6 +300,7 @@ export default function EffectivenessAB() {
             label="Treatment"
             borderClass="border-l-blue-500"
             badgeClass="text-blue-500 border-blue-500/30"
+            deltas={deltas}
           />
           <CohortCard
             cohort={control}

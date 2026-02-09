@@ -8,13 +8,14 @@
  * @see OMN-1891 - Build Effectiveness Dashboard (R3)
  */
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
 import { MetricCard } from '@/components/MetricCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DetailSheet } from '@/components/DetailSheet';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -27,8 +28,9 @@ import {
 } from '@/components/ui/table';
 import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
-import type { LatencyDetails } from '@shared/effectiveness-types';
-import { Clock, ArrowLeft, RefreshCw, Zap, Database } from 'lucide-react';
+import type { LatencyDetails, LatencyBreakdown } from '@shared/effectiveness-types';
+import type { Payload } from 'recharts/types/component/DefaultLegendContent';
+import { Clock, RefreshCw, Zap, Database } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -103,6 +105,29 @@ export default function EffectivenessLatency() {
   };
 
   // ---------------------------------------------------------------------------
+  // Legend toggle state for trend chart
+  // ---------------------------------------------------------------------------
+
+  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+
+  const handleLegendClick = useCallback((entry: Payload) => {
+    const key = entry.dataKey != null ? String(entry.dataKey) : null;
+    if (!key) return;
+    setHiddenSeries((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Detail sheet state (percentile table drill-down)
+  // ---------------------------------------------------------------------------
+
+  const [selectedCohort, setSelectedCohort] = useState<LatencyBreakdown | null>(null);
+
+  // ---------------------------------------------------------------------------
   // Derived data for charts
   // ---------------------------------------------------------------------------
 
@@ -131,6 +156,13 @@ export default function EffectivenessLatency() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+            <Link href="/effectiveness" className="hover:text-foreground transition-colors">
+              Effectiveness
+            </Link>
+            <span>/</span>
+            <span className="text-foreground">Latency Details</span>
+          </div>
           <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
             <Clock className="w-6 h-6 text-primary" />
             Latency Details
@@ -145,12 +177,6 @@ export default function EffectivenessLatency() {
               Demo Data
             </Badge>
           )}
-          <Link href="/effectiveness">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Back
-            </Button>
-          </Link>
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="w-4 h-4 mr-1" />
             Refresh
@@ -169,6 +195,7 @@ export default function EffectivenessLatency() {
             icon={Database}
             status={data.cache.hit_rate >= 0.5 ? 'healthy' : 'warning'}
             tooltip={`${data.cache.total_hits} hits / ${data.cache.total_hits + data.cache.total_misses} total lookups`}
+            subtitle={`${data.cache.total_hits.toLocaleString()} / ${(data.cache.total_hits + data.cache.total_misses).toLocaleString()} lookups`}
           />
         </div>
       ) : null}
@@ -288,11 +315,12 @@ export default function EffectivenessLatency() {
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={
+                        className={`cursor-pointer hover:bg-muted/50 ${
                           b.cohort === 'treatment'
                             ? 'text-blue-400 border-blue-500/30'
                             : 'text-zinc-400 border-zinc-500/30'
-                        }
+                        }`}
+                        onClick={() => setSelectedCohort(b)}
                       >
                         {b.cohort.charAt(0).toUpperCase() + b.cohort.slice(1)}
                       </Badge>
@@ -364,13 +392,19 @@ export default function EffectivenessLatency() {
                   }}
                 />
                 <Legend
+                  onClick={handleLegendClick}
+                  wrapperStyle={{ cursor: 'pointer', fontSize: '12px' }}
                   formatter={(value: string) => {
                     const labels: Record<string, string> = {
                       treatment_p95: 'Treatment P95',
                       control_p95: 'Control P95',
                       delta_p95: 'Delta P95',
                     };
-                    return labels[value] ?? value;
+                    return (
+                      <span style={{ opacity: hiddenSeries.has(value) ? 0.35 : 1 }}>
+                        {labels[value] ?? value}
+                      </span>
+                    );
                   }}
                 />
                 <Line
@@ -380,6 +414,7 @@ export default function EffectivenessLatency() {
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 4 }}
+                  hide={hiddenSeries.has('treatment_p95')}
                 />
                 <Line
                   type="monotone"
@@ -388,6 +423,7 @@ export default function EffectivenessLatency() {
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 4 }}
+                  hide={hiddenSeries.has('control_p95')}
                 />
                 <Line
                   type="monotone"
@@ -397,6 +433,7 @@ export default function EffectivenessLatency() {
                   strokeDasharray="6 3"
                   dot={false}
                   activeDot={{ r: 4 }}
+                  hide={hiddenSeries.has('delta_p95')}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -407,6 +444,68 @@ export default function EffectivenessLatency() {
           )}
         </CardContent>
       </Card>
+
+      {/* Cohort Detail Sheet */}
+      <DetailSheet
+        open={!!selectedCohort}
+        onOpenChange={(open) => !open && setSelectedCohort(null)}
+        title={`${selectedCohort?.cohort === 'treatment' ? 'Treatment' : 'Control'} Cohort Details`}
+      >
+        {selectedCohort && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className="text-xs text-muted-foreground uppercase">P50</div>
+                <div className="text-lg font-mono font-bold">
+                  {selectedCohort.p50_ms.toFixed(0)}ms
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground uppercase">P95</div>
+                <div className="text-lg font-mono font-bold">
+                  {selectedCohort.p95_ms.toFixed(0)}ms
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground uppercase">P99</div>
+                <div className="text-lg font-mono font-bold">
+                  {selectedCohort.p99_ms.toFixed(0)}ms
+                </div>
+              </div>
+            </div>
+            <div className="border-t pt-4 space-y-3">
+              <div className="text-xs text-muted-foreground uppercase">Latency Breakdown</div>
+              {[
+                { label: 'Routing', value: selectedCohort.routing_avg_ms, color: 'bg-blue-500' },
+                {
+                  label: 'Retrieval',
+                  value: selectedCohort.retrieval_avg_ms,
+                  color: 'bg-purple-500',
+                },
+                {
+                  label: 'Injection',
+                  value: selectedCohort.injection_avg_ms,
+                  color: 'bg-yellow-500',
+                },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${color}`} />
+                    <span className="text-sm">{label}</span>
+                  </div>
+                  <span className="font-mono text-sm">{value.toFixed(1)}ms</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t pt-4">
+              <div className="text-xs text-muted-foreground uppercase">Sample Count</div>
+              <div className="text-lg font-mono font-bold">
+                {selectedCohort.sample_count.toLocaleString()}
+              </div>
+            </div>
+          </div>
+        )}
+      </DetailSheet>
     </div>
   );
 }

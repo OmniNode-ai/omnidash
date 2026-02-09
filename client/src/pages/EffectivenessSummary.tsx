@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
+import { cn } from '@/lib/utils';
 import type {
   EffectivenessSummary as SummaryType,
   ThrottleStatus,
@@ -83,6 +84,12 @@ export default function EffectivenessSummary() {
   }, [isConnected, subscribe]);
 
   // ---------------------------------------------------------------------------
+  // UI state
+  // ---------------------------------------------------------------------------
+  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+  const [trendDays, setTrendDays] = useState<number>(14);
+
+  // ---------------------------------------------------------------------------
   // Data fetching
   // ---------------------------------------------------------------------------
 
@@ -107,15 +114,14 @@ export default function EffectivenessSummary() {
   });
 
   const { data: trend, isLoading: trendLoading } = useQuery<EffectivenessTrendPoint[]>({
-    queryKey: queryKeys.effectiveness.trend(),
-    queryFn: () => effectivenessSource.trend(),
+    queryKey: [...queryKeys.effectiveness.trend(), trendDays],
+    queryFn: () => effectivenessSource.trend(trendDays),
     refetchInterval: 15_000,
   });
 
   // ---------------------------------------------------------------------------
-  // Legend toggle state for trend chart
+  // Legend toggle + refresh handlers
   // ---------------------------------------------------------------------------
-  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
 
   const handleLegendClick = useCallback((entry: Payload) => {
     const key = entry.dataKey != null ? String(entry.dataKey) : null;
@@ -159,6 +165,22 @@ export default function EffectivenessSummary() {
               Demo Data
             </Badge>
           )}
+          <div className="flex items-center rounded-md border border-input">
+            {[7, 14, 30].map((d) => (
+              <button
+                key={d}
+                onClick={() => setTrendDays(d)}
+                className={cn(
+                  'px-3 py-1 text-xs font-medium transition-colors',
+                  trendDays === d
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="w-4 h-4 mr-1" />
             Refresh
@@ -214,40 +236,64 @@ export default function EffectivenessSummary() {
         </div>
       ) : summary ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          <MetricCard
-            label="Injection Rate"
-            value={`${(summary.injection_rate * 100).toFixed(1)}%`}
-            icon={Zap}
-            status={summary.injection_rate >= summary.injection_rate_target ? 'healthy' : 'warning'}
-            tooltip={`Percentage of sessions with context injection (target: ${(summary.injection_rate_target * 100).toFixed(0)}%)`}
-          />
-          <MetricCard
-            label="Context Utilization"
-            value={summary.median_utilization.toFixed(2)}
-            icon={Gauge}
-            status={
-              summary.median_utilization >= summary.utilization_target ? 'healthy' : 'warning'
-            }
-            tooltip={`Median utilization score of injected patterns (target: ${summary.utilization_target})`}
-          />
-          <MetricCard
-            label="Agent Accuracy"
-            value={summary.mean_agent_accuracy.toFixed(2)}
-            icon={Target}
-            status={summary.mean_agent_accuracy >= summary.accuracy_target ? 'healthy' : 'warning'}
-            tooltip={`Mean agent-match accuracy across sessions (target: ${summary.accuracy_target})`}
-          />
-          <MetricCard
-            label="Latency Delta P95"
-            value={`${summary.latency_delta_p95_ms >= 0 ? '+' : ''}${summary.latency_delta_p95_ms.toFixed(0)}ms`}
-            icon={Clock}
-            status={
-              summary.latency_delta_p95_ms <= summary.latency_delta_target_ms
-                ? 'healthy'
-                : 'warning'
-            }
-            tooltip={`P95 latency overhead of injection vs control (target: +${summary.latency_delta_target_ms}ms)`}
-          />
+          <Link href="/effectiveness/latency" className="block cursor-pointer">
+            <div className="group">
+              <MetricCard
+                label="Injection Rate"
+                value={`${(summary.injection_rate * 100).toFixed(1)}%`}
+                icon={Zap}
+                status={
+                  summary.injection_rate >= summary.injection_rate_target ? 'healthy' : 'warning'
+                }
+                tooltip={`Percentage of sessions with context injection (target: ${(summary.injection_rate_target * 100).toFixed(0)}%)`}
+                className="group-hover:ring-1 group-hover:ring-primary/30 rounded-lg transition-all"
+              />
+            </div>
+          </Link>
+          <Link href="/effectiveness/utilization" className="block cursor-pointer">
+            <div className="group">
+              <MetricCard
+                label="Context Utilization"
+                value={summary.median_utilization.toFixed(2)}
+                icon={Gauge}
+                status={
+                  summary.median_utilization >= summary.utilization_target ? 'healthy' : 'warning'
+                }
+                tooltip={`Median utilization score of injected patterns (target: ${summary.utilization_target})`}
+                className="group-hover:ring-1 group-hover:ring-primary/30 rounded-lg transition-all"
+              />
+            </div>
+          </Link>
+          <Link href="/effectiveness/ab" className="block cursor-pointer">
+            <div className="group">
+              <MetricCard
+                label="Agent Accuracy"
+                value={summary.mean_agent_accuracy.toFixed(2)}
+                icon={Target}
+                status={
+                  summary.mean_agent_accuracy >= summary.accuracy_target ? 'healthy' : 'warning'
+                }
+                tooltip={`Mean agent-match accuracy across sessions (target: ${summary.accuracy_target})`}
+                className="group-hover:ring-1 group-hover:ring-primary/30 rounded-lg transition-all"
+              />
+            </div>
+          </Link>
+          <Link href="/effectiveness/latency" className="block cursor-pointer">
+            <div className="group">
+              <MetricCard
+                label="Latency Delta P95"
+                value={`${summary.latency_delta_p95_ms >= 0 ? '+' : ''}${summary.latency_delta_p95_ms.toFixed(0)}ms`}
+                icon={Clock}
+                status={
+                  summary.latency_delta_p95_ms <= summary.latency_delta_target_ms
+                    ? 'healthy'
+                    : 'warning'
+                }
+                tooltip={`P95 latency overhead of injection vs control (target: +${summary.latency_delta_target_ms}ms)`}
+                className="group-hover:ring-1 group-hover:ring-primary/30 rounded-lg transition-all"
+              />
+            </div>
+          </Link>
         </div>
       ) : null}
 
@@ -258,7 +304,9 @@ export default function EffectivenessSummary() {
             <Activity className="w-4 h-4 text-muted-foreground" />
             Effectiveness Trend
           </CardTitle>
-          <p className="text-xs text-muted-foreground">14-day trend of key effectiveness metrics</p>
+          <p className="text-xs text-muted-foreground">
+            {trendDays}-day trend of key effectiveness metrics
+          </p>
         </CardHeader>
         <CardContent>
           {trendLoading ? (
@@ -387,22 +435,22 @@ export default function EffectivenessSummary() {
                 </div>
                 <div className="text-2xl font-bold font-mono">{summary.total_sessions}</div>
               </div>
-              <div>
+              <Link href="/effectiveness/ab" className="block cursor-pointer group">
                 <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
                   Treatment
                 </div>
-                <div className="text-2xl font-bold font-mono text-blue-400">
+                <div className="text-2xl font-bold font-mono text-blue-400 hover:text-primary transition-colors group-hover:underline">
                   {summary.treatment_sessions}
                 </div>
-              </div>
-              <div>
+              </Link>
+              <Link href="/effectiveness/ab" className="block cursor-pointer group">
                 <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
                   Control
                 </div>
-                <div className="text-2xl font-bold font-mono text-zinc-400">
+                <div className="text-2xl font-bold font-mono text-zinc-400 hover:text-primary transition-colors group-hover:underline">
                   {summary.control_sessions}
                 </div>
-              </div>
+              </Link>
             </div>
           ) : (
             <div className="h-10 flex items-center text-muted-foreground text-sm">

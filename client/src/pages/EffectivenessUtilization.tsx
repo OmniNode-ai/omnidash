@@ -8,7 +8,7 @@
  * @see OMN-1891 - Build Effectiveness Dashboard
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
@@ -25,10 +25,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { DetailSheet } from '@/components/DetailSheet';
 import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
-import type { UtilizationDetails } from '@shared/effectiveness-types';
-import { BarChart3, ArrowLeft, RefreshCw, AlertCircle, TrendingDown } from 'lucide-react';
+import type {
+  UtilizationDetails,
+  UtilizationByMethod,
+  PatternUtilization,
+} from '@shared/effectiveness-types';
+import { BarChart3, RefreshCw, AlertCircle, TrendingDown, Copy, Check } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -47,6 +52,52 @@ import {
 /** Format a bucket range into a label like "0.0-0.1". */
 function bucketLabel(start: number, end: number): string {
   return `${start.toFixed(1)}-${end.toFixed(1)}`;
+}
+
+/** Sort direction state for a table column. */
+interface SortState {
+  key: string;
+  dir: 'asc' | 'desc';
+}
+
+/** Generic comparator for sortable table data. */
+function compareRows<T>(a: T, b: T, key: string, dir: 'asc' | 'desc'): number {
+  const av = (a as Record<string, unknown>)[key];
+  const bv = (b as Record<string, unknown>)[key];
+  let cmp = 0;
+  if (typeof av === 'number' && typeof bv === 'number') {
+    cmp = av - bv;
+  } else {
+    cmp = String(av).localeCompare(String(bv));
+  }
+  return dir === 'asc' ? cmp : -cmp;
+}
+
+/** Inline sortable column header. */
+function SortableHeader({
+  label,
+  sortKey,
+  current,
+  onSort,
+  className,
+}: {
+  label: string;
+  sortKey: string;
+  current: SortState;
+  onSort: (key: string) => void;
+  className?: string;
+}) {
+  const active = current.key === sortKey;
+  const arrow = active ? (current.dir === 'asc' ? ' \u25B2' : ' \u25BC') : '';
+  return (
+    <TableHead
+      className={`cursor-pointer select-none ${className ?? ''}`}
+      onClick={() => onSort(sortKey)}
+    >
+      {label}
+      {arrow}
+    </TableHead>
+  );
 }
 
 // ============================================================================
@@ -96,6 +147,33 @@ export default function EffectivenessUtilization() {
   });
 
   // ---------------------------------------------------------------------------
+  // Detail sheet state
+  // ---------------------------------------------------------------------------
+
+  const [selectedMethod, setSelectedMethod] = useState<UtilizationByMethod | null>(null);
+  const [selectedPattern, setSelectedPattern] = useState<PatternUtilization | null>(null);
+  const [copiedPatternId, setCopiedPatternId] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Sort state
+  // ---------------------------------------------------------------------------
+
+  const [methodSort, setMethodSort] = useState<SortState>({ key: 'median_score', dir: 'desc' });
+  const [patternSort, setPatternSort] = useState<SortState>({
+    key: 'avg_utilization',
+    dir: 'desc',
+  });
+
+  const toggleSort = useCallback(
+    (setter: React.Dispatch<React.SetStateAction<SortState>>) => (key: string) => {
+      setter((prev) =>
+        prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' }
+      );
+    },
+    []
+  );
+
+  // ---------------------------------------------------------------------------
   // Derived data
   // ---------------------------------------------------------------------------
 
@@ -105,9 +183,26 @@ export default function EffectivenessUtilization() {
     range_start: bucket.range_start,
   }));
 
-  const methodRows = data?.by_method ?? [];
-  const patternRows = (data?.pattern_rates ?? []).slice(0, 20);
+  const methodRows = useMemo(() => {
+    const rows = [...(data?.by_method ?? [])];
+    rows.sort((a, b) => compareRows(a, b, methodSort.key, methodSort.dir));
+    return rows;
+  }, [data?.by_method, methodSort]);
+
+  const patternRows = useMemo(() => {
+    const rows = [...(data?.pattern_rates ?? [])].slice(0, 20);
+    rows.sort((a, b) => compareRows(a, b, patternSort.key, patternSort.dir));
+    return rows;
+  }, [data?.pattern_rates, patternSort]);
+
   const lowSessions = data?.low_utilization_sessions ?? [];
+
+  /** Copy pattern ID to clipboard and flash check icon. */
+  const copyPatternId = useCallback((id: string) => {
+    navigator.clipboard.writeText(id);
+    setCopiedPatternId(true);
+    setTimeout(() => setCopiedPatternId(false), 1500);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -118,13 +213,12 @@ export default function EffectivenessUtilization() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Link href="/effectiveness">
-              <Button variant="ghost" size="sm" className="gap-1 -ml-2 text-muted-foreground">
-                <ArrowLeft className="w-4 h-4" />
-                Back
-              </Button>
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+            <Link href="/effectiveness" className="hover:text-foreground transition-colors">
+              Effectiveness
             </Link>
+            <span>/</span>
+            <span className="text-foreground">Utilization Analytics</span>
           </div>
           <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-primary" />
@@ -219,16 +313,39 @@ export default function EffectivenessUtilization() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Method</TableHead>
-                    <TableHead className="text-right">Median Score</TableHead>
-                    <TableHead className="text-right">Sessions</TableHead>
+                    <SortableHeader
+                      label="Method"
+                      sortKey="method"
+                      current={methodSort}
+                      onSort={toggleSort(setMethodSort)}
+                    />
+                    <SortableHeader
+                      label="Median Score"
+                      sortKey="median_score"
+                      current={methodSort}
+                      onSort={toggleSort(setMethodSort)}
+                      className="text-right"
+                    />
+                    <SortableHeader
+                      label="Sessions"
+                      sortKey="session_count"
+                      current={methodSort}
+                      onSort={toggleSort(setMethodSort)}
+                      className="text-right"
+                    />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {methodRows.map((row) => (
                     <TableRow key={row.method}>
                       <TableCell>
-                        <Badge variant="outline">{row.method}</Badge>
+                        <Badge
+                          variant="outline"
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => setSelectedMethod(row)}
+                        >
+                          {row.method}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm">
                         {row.median_score.toFixed(2)}
@@ -265,9 +382,25 @@ export default function EffectivenessUtilization() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Pattern ID</TableHead>
-                    <TableHead>Avg Utilization</TableHead>
-                    <TableHead className="text-right">Sessions</TableHead>
+                    <SortableHeader
+                      label="Pattern ID"
+                      sortKey="pattern_id"
+                      current={patternSort}
+                      onSort={toggleSort(setPatternSort)}
+                    />
+                    <SortableHeader
+                      label="Avg Utilization"
+                      sortKey="avg_utilization"
+                      current={patternSort}
+                      onSort={toggleSort(setPatternSort)}
+                    />
+                    <SortableHeader
+                      label="Sessions"
+                      sortKey="session_count"
+                      current={patternSort}
+                      onSort={toggleSort(setPatternSort)}
+                      className="text-right"
+                    />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -276,7 +409,17 @@ export default function EffectivenessUtilization() {
                     return (
                       <TableRow key={row.pattern_id}>
                         <TableCell className="font-mono text-xs">
-                          {row.pattern_id.slice(0, 8)}
+                          <span
+                            className="cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => setSelectedPattern(row)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') setSelectedPattern(row);
+                            }}
+                          >
+                            {row.pattern_id.slice(0, 8)}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -381,6 +524,83 @@ export default function EffectivenessUtilization() {
           )}
         </CardContent>
       </Card>
+
+      {/* Method Detail Sheet */}
+      <DetailSheet
+        open={selectedMethod !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedMethod(null);
+        }}
+        title={selectedMethod?.method ?? ''}
+        subtitle="Detection method details"
+      >
+        {selectedMethod && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Median Score</p>
+              <p className="text-3xl font-mono font-semibold">
+                {selectedMethod.median_score.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Session Count</p>
+              <p className="text-lg font-mono">{selectedMethod.session_count}</p>
+            </div>
+            <p className="text-sm text-muted-foreground italic">
+              Per-method distribution coming soon
+            </p>
+          </div>
+        )}
+      </DetailSheet>
+
+      {/* Pattern Detail Sheet */}
+      <DetailSheet
+        open={selectedPattern !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPattern(null);
+        }}
+        title="Pattern Details"
+      >
+        {selectedPattern && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Pattern ID</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-xs font-mono bg-muted px-3 py-2 rounded break-all">
+                  {selectedPattern.pattern_id}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => copyPatternId(selectedPattern.pattern_id)}
+                >
+                  {copiedPatternId ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span className="ml-1">{copiedPatternId ? 'Copied' : 'Copy ID'}</span>
+                </Button>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Avg Utilization</p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-purple-500"
+                    style={{ width: `${Math.round(selectedPattern.avg_utilization * 100)}%` }}
+                  />
+                </div>
+                <span className="font-mono text-sm">
+                  {Math.round(selectedPattern.avg_utilization * 100)}%
+                </span>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Session Count</p>
+              <p className="text-lg font-mono">{selectedPattern.session_count}</p>
+            </div>
+          </div>
+        )}
+      </DetailSheet>
     </div>
   );
 }

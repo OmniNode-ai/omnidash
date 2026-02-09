@@ -159,10 +159,13 @@ class EffectivenessSource {
     }
   }
 
-  async trend(options: EffectivenessFetchOptions = {}): Promise<EffectivenessTrendPoint[]> {
+  async trend(
+    days?: number,
+    options: EffectivenessFetchOptions = {}
+  ): Promise<EffectivenessTrendPoint[]> {
     const { fallbackToMock = true } = options;
     try {
-      const response = await fetch(`${this.baseUrl}/trend`);
+      const response = await fetch(`${this.baseUrl}/trend?days=${days ?? 14}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       // Fall back to mock if response is valid but has no real data
