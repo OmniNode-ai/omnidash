@@ -415,6 +415,9 @@ export const queryKeys = {
 
     /** A/B comparison */
     ab: () => [...queryKeys.effectiveness.all, 'ab'] as const,
+
+    /** Multi-metric trend */
+    trend: () => [...queryKeys.effectiveness.all, 'trend'] as const,
   },
 } as const;
 

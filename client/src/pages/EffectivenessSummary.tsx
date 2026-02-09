@@ -9,7 +9,7 @@
  * @see OMN-1891 - Build Effectiveness Dashboard
  */
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
@@ -23,7 +23,19 @@ import { Link } from 'wouter';
 import type {
   EffectivenessSummary as SummaryType,
   ThrottleStatus,
+  EffectivenessTrendPoint,
 } from '@shared/effectiveness-types';
+import {
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import type { Payload } from 'recharts/types/component/DefaultLegendContent';
 import {
   Activity,
   AlertTriangle,
@@ -93,6 +105,31 @@ export default function EffectivenessSummary() {
     queryFn: () => effectivenessSource.throttleStatus(),
     refetchInterval: 15_000,
   });
+
+  const { data: trend, isLoading: trendLoading } = useQuery<EffectivenessTrendPoint[]>({
+    queryKey: queryKeys.effectiveness.trend(),
+    queryFn: () => effectivenessSource.trend(),
+    refetchInterval: 15_000,
+  });
+
+  // ---------------------------------------------------------------------------
+  // Legend toggle state for trend chart
+  // ---------------------------------------------------------------------------
+  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+
+  const handleLegendClick = useCallback((entry: Payload) => {
+    const key = entry.dataKey != null ? String(entry.dataKey) : null;
+    if (!key) return;
+    setHiddenSeries((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
 
   const handleRefresh = () => {
     refetchSummary();
@@ -213,6 +250,123 @@ export default function EffectivenessSummary() {
           />
         </div>
       ) : null}
+
+      {/* Effectiveness Trend Chart */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="w-4 h-4 text-muted-foreground" />
+            Effectiveness Trend
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">14-day trend of key effectiveness metrics</p>
+        </CardHeader>
+        <CardContent>
+          {trendLoading ? (
+            <Skeleton className="h-[280px] w-full rounded-lg" />
+          ) : trend && trend.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <ComposedChart data={trend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fillOpacity: 0.85 }}
+                  tickFormatter={(v: string) => v.slice(5)}
+                />
+                <YAxis
+                  yAxisId="left"
+                  domain={[0, 1]}
+                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fillOpacity: 0.85 }}
+                  tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fillOpacity: 0.85 }}
+                  tickFormatter={(v: number) => `${v.toFixed(0)}ms`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                  }}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  formatter={(value: number, name: string) => {
+                    if (name === 'avg_latency_delta_ms')
+                      return [`${value.toFixed(0)}ms`, 'Latency Delta'];
+                    return [
+                      `${(value * 100).toFixed(1)}%`,
+                      name === 'injection_rate'
+                        ? 'Injection Rate'
+                        : name === 'avg_utilization'
+                          ? 'Utilization'
+                          : 'Accuracy',
+                    ];
+                  }}
+                />
+                <Legend
+                  onClick={handleLegendClick}
+                  wrapperStyle={{ cursor: 'pointer', fontSize: '12px' }}
+                  formatter={(value: string) => {
+                    const labels: Record<string, string> = {
+                      injection_rate: 'Injection Rate',
+                      avg_utilization: 'Utilization',
+                      avg_accuracy: 'Accuracy',
+                      avg_latency_delta_ms: 'Latency Delta (ms)',
+                    };
+                    return (
+                      <span style={{ opacity: hiddenSeries.has(value) ? 0.35 : 1 }}>
+                        {labels[value] ?? value}
+                      </span>
+                    );
+                  }}
+                />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="injection_rate"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  dot={false}
+                  hide={hiddenSeries.has('injection_rate')}
+                />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="avg_utilization"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  dot={false}
+                  hide={hiddenSeries.has('avg_utilization')}
+                />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="avg_accuracy"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  dot={false}
+                  hide={hiddenSeries.has('avg_accuracy')}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="avg_latency_delta_ms"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={false}
+                  hide={hiddenSeries.has('avg_latency_delta_ms')}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm">
+              No trend data available
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Session Counts */}
       <Card>

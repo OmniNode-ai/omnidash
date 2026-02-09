@@ -122,3 +122,12 @@ export interface ABComparison {
   cohorts: CohortComparison[];
   total_sessions: number;
 }
+
+/** Multi-metric trend point for the summary chart */
+export interface EffectivenessTrendPoint {
+  date: string;
+  injection_rate: number;
+  avg_utilization: number;
+  avg_accuracy: number;
+  avg_latency_delta_ms: number;
+}

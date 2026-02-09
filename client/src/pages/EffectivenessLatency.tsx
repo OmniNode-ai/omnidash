@@ -194,10 +194,12 @@ export default function EffectivenessLatency() {
                 margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="cohort" tick={{ fontSize: 12 }} className="text-muted-foreground" />
+                <XAxis
+                  dataKey="cohort"
+                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fillOpacity: 0.85 }}
+                />
                 <YAxis
-                  tick={{ fontSize: 12 }}
-                  className="text-muted-foreground"
+                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fillOpacity: 0.85 }}
                   label={{ value: 'ms', position: 'insideLeft', offset: 10, fontSize: 12 }}
                 />
                 <Tooltip
@@ -335,10 +337,12 @@ export default function EffectivenessLatency() {
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} className="text-muted-foreground" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fillOpacity: 0.85 }}
+                />
                 <YAxis
-                  tick={{ fontSize: 12 }}
-                  className="text-muted-foreground"
+                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fillOpacity: 0.85 }}
                   label={{ value: 'ms', position: 'insideLeft', offset: 10, fontSize: 12 }}
                 />
                 <Tooltip

@@ -11,6 +11,7 @@ import type {
   LatencyDetails,
   UtilizationDetails,
   ABComparison,
+  EffectivenessTrendPoint,
 } from '@shared/effectiveness-types';
 
 export function getMockSummary(): EffectivenessSummary {
@@ -144,4 +145,20 @@ export function getMockABComparison(): ABComparison {
     ],
     total_sessions: 1247,
   };
+}
+
+export function getMockEffectivenessTrend(): EffectivenessTrendPoint[] {
+  return Array.from({ length: 14 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (13 - i));
+    // Slight upward drift over the 14 days to look realistic
+    const drift = i * 0.003;
+    return {
+      date: d.toISOString().slice(0, 10),
+      injection_rate: 0.75 + drift + (Math.random() - 0.5) * 0.06,
+      avg_utilization: 0.55 + drift + (Math.random() - 0.5) * 0.08,
+      avg_accuracy: 0.72 + drift + (Math.random() - 0.5) * 0.06,
+      avg_latency_delta_ms: 110 + (Math.random() - 0.5) * 40 - i * 1.5,
+    };
+  });
 }

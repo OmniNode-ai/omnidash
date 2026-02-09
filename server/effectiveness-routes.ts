@@ -23,6 +23,7 @@ import type {
   LatencyDetails,
   UtilizationDetails,
   ABComparison,
+  EffectivenessTrendPoint,
 } from '@shared/effectiveness-types';
 
 const router = Router();
@@ -406,6 +407,60 @@ router.get('/ab', async (_req, res) => {
   } catch (error) {
     console.error('[effectiveness] Error getting A/B comparison:', error);
     res.status(500).json({ error: 'Failed to get A/B comparison' });
+  }
+});
+
+// ============================================================================
+// GET /api/effectiveness/trend
+// Multi-metric trend for summary chart
+// ============================================================================
+
+router.get('/trend', async (_req, res) => {
+  try {
+    const db = tryGetIntelligenceDb();
+    if (!db) {
+      return res.json([]);
+    }
+
+    const ie = injectionEffectiveness;
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
+    // Check how many days of data we have to pick granularity
+    const rangeResult = await db
+      .select({
+        days: sql<number>`EXTRACT(EPOCH FROM (max(${ie.createdAt}) - min(${ie.createdAt}))) / 86400`,
+      })
+      .from(ie)
+      .where(gte(ie.createdAt, cutoff));
+
+    const daySpan = Number(rangeResult[0]?.days ?? 0);
+    const truncUnit = daySpan < 3 ? 'hour' : 'day';
+
+    const rows = await db
+      .select({
+        bucket: sql<string>`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::date::text`,
+        injection_rate: sql<number>`AVG(CASE WHEN ${ie.injectionOccurred} THEN 1.0 ELSE 0.0 END)`,
+        avg_utilization: sql<number>`AVG(CASE WHEN ${ie.utilizationScore} IS NOT NULL THEN ${ie.utilizationScore}::numeric ELSE 0 END)`,
+        avg_accuracy: sql<number>`AVG(CASE WHEN ${ie.agentMatchScore} IS NOT NULL THEN ${ie.agentMatchScore}::numeric ELSE 0 END)`,
+        avg_latency_delta_ms: sql<number>`AVG(CASE WHEN ${ie.userVisibleLatencyMs} IS NOT NULL THEN ${ie.userVisibleLatencyMs} ELSE 0 END)`,
+      })
+      .from(ie)
+      .where(gte(ie.createdAt, cutoff))
+      .groupBy(sql`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::date::text`)
+      .orderBy(sql`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::date::text`);
+
+    const trend: EffectivenessTrendPoint[] = rows.map((r) => ({
+      date: r.bucket,
+      injection_rate: Number(r.injection_rate),
+      avg_utilization: Number(r.avg_utilization),
+      avg_accuracy: Number(r.avg_accuracy),
+      avg_latency_delta_ms: Number(r.avg_latency_delta_ms),
+    }));
+
+    res.json(trend);
+  } catch (error) {
+    console.error('[effectiveness] Error getting trend:', error);
+    res.json([]);
   }
 });
 
