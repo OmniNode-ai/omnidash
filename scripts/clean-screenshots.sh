@@ -1,17 +1,22 @@
 #!/bin/bash
-# Clean all Playwright screenshots
+# Clean all Playwright screenshots from repo root and .playwright-mcp/
 
-echo "🧹 Cleaning Playwright screenshots..."
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+count=0
 
 # Remove .playwright-mcp directory
-if [ -d ".playwright-mcp" ]; then
-  rm -rf .playwright-mcp
-  echo "✅ Removed .playwright-mcp directory"
+if [ -d "$REPO_ROOT/.playwright-mcp" ]; then
+  rm -rf "$REPO_ROOT/.playwright-mcp"
+  echo "Removed .playwright-mcp directory"
 fi
 
-# Remove loose screenshot files
-find . -name "page-*.png" -type f -delete
-find . -name "*-screenshot.png" -type f -delete
-find . -name "*.jpeg" -path "./.playwright-mcp/*" -delete
+# Remove all root-level .png and .jpeg files (Playwright MCP drops these)
+for f in "$REPO_ROOT"/*.png "$REPO_ROOT"/*.jpeg; do
+  [ -f "$f" ] || continue
+  rm "$f"
+  count=$((count + 1))
+done
 
-echo "✅ Screenshot cleanup complete!"
+if [ "$count" -gt 0 ]; then
+  echo "Cleaned $count screenshot(s) from repo root"
+fi
