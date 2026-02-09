@@ -393,6 +393,35 @@ export const queryKeys = {
     /** Per-repo trends */
     trends: (repo: string) => [...queryKeys.validation.all, 'trends', repo] as const,
   },
+  // ============================================================================
+  // Extraction Pipeline (OMN-1804)
+  // ============================================================================
+
+  /**
+   * Extraction pipeline query keys for pattern extraction metrics dashboard.
+   *
+   * Supports WebSocket invalidation: on EXTRACTION_INVALIDATE, invalidate
+   * `queryKeys.extraction.all` to refetch all panels.
+   */
+  extraction: {
+    /** Base key for all extraction queries */
+    all: ['extraction'] as const,
+
+    /** Summary stats (metric cards) */
+    summary: () => [...queryKeys.extraction.all, 'summary'] as const,
+
+    /** Pipeline health by stage */
+    health: () => [...queryKeys.extraction.all, 'health'] as const,
+
+    /** Latency heatmap */
+    latency: (window: string) => [...queryKeys.extraction.all, 'latency', window] as const,
+
+    /** Pattern volume over time */
+    volume: (window: string) => [...queryKeys.extraction.all, 'volume', window] as const,
+
+    /** Error rates summary */
+    errors: () => [...queryKeys.extraction.all, 'errors'] as const,
+  },
 } as const;
 
 /**

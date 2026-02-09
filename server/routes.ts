@@ -10,6 +10,7 @@ import registryRoutes from './registry-routes';
 import playbackRoutes from './playback-routes';
 import patternsRoutes from './patterns-routes';
 import validationRoutes from './validation-routes';
+import extractionRoutes from './extraction-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -47,6 +48,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount validation routes for cross-repo validation dashboard (OMN-1907)
   app.use('/api/validation', validationRoutes);
+
+  // Mount extraction routes for pattern extraction pipeline dashboard (OMN-1804)
+  app.use('/api/extraction', extractionRoutes);
 
   const httpServer = createServer(app);
 

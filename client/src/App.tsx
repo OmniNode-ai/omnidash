@@ -35,6 +35,7 @@ import ExecutionGraph from '@/pages/ExecutionGraph';
 import RegistryDiscovery from '@/pages/RegistryDiscovery';
 import IntentDashboard from '@/pages/IntentDashboard';
 import ValidationDashboard from '@/pages/ValidationDashboard';
+import ExtractionDashboard from '@/pages/ExtractionDashboard';
 
 // Preview pages
 import EnhancedAnalytics from '@/pages/preview/EnhancedAnalytics';
@@ -79,6 +80,7 @@ function Router() {
       <Route path="/discovery" component={RegistryDiscovery} />
       <Route path="/intents" component={IntentDashboard} />
       <Route path="/validation" component={ValidationDashboard} />
+      <Route path="/extraction" component={ExtractionDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

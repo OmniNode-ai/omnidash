@@ -468,6 +468,105 @@ export interface PaginatedPatternsResponse {
 }
 
 // ============================================================================
+// Pattern Extraction Pipeline Tables (OMN-1804 / OMN-1890)
+//
+// These tables track extraction pipeline observability: injection effectiveness,
+// latency breakdowns, and pattern hit rates. They exist in PostgreSQL but are
+// currently empty — the pipeline lights up when omniclaude producers start emitting.
+// ============================================================================
+
+/**
+ * Injection Effectiveness Table
+ * Tracks per-session extraction outcomes: utilization scores, agent match quality,
+ * and per-stage latency breakdowns for the inject → route → retrieve pipeline.
+ */
+export const injectionEffectiveness = pgTable(
+  'injection_effectiveness',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id').notNull(),
+    cohort: text('cohort'),
+    utilizationScore: numeric('utilization_score', { precision: 10, scale: 6 }),
+    agentMatchScore: numeric('agent_match_score', { precision: 10, scale: 6 }),
+    userVisibleLatencyMs: integer('user_visible_latency_ms'),
+    routingTimeMs: integer('routing_time_ms'),
+    retrievalTimeMs: integer('retrieval_time_ms'),
+    injectionTimeMs: integer('injection_time_ms'),
+    outcome: text('outcome').default('success'),
+    stage: text('stage'),
+    metadata: jsonb('metadata').default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_injection_effectiveness_session').on(table.sessionId),
+    index('idx_injection_effectiveness_created_at').on(table.createdAt),
+    index('idx_injection_effectiveness_outcome').on(table.outcome),
+    index('idx_injection_effectiveness_stage').on(table.stage),
+  ]
+);
+
+export const insertInjectionEffectivenessSchema = createInsertSchema(injectionEffectiveness);
+export type InjectionEffectivenessRow = typeof injectionEffectiveness.$inferSelect;
+export type InsertInjectionEffectiveness = typeof injectionEffectiveness.$inferInsert;
+
+/**
+ * Latency Breakdowns Table
+ * Per-prompt latency decomposition across the extraction pipeline stages.
+ * Supports percentile queries (P50/P95/P99) via PERCENTILE_CONT in SQL.
+ */
+export const latencyBreakdowns = pgTable(
+  'latency_breakdowns',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id').notNull(),
+    promptId: text('prompt_id'),
+    routingTimeMs: integer('routing_time_ms'),
+    retrievalTimeMs: integer('retrieval_time_ms'),
+    injectionTimeMs: integer('injection_time_ms'),
+    userVisibleLatencyMs: integer('user_visible_latency_ms'),
+    cohort: text('cohort'),
+    metadata: jsonb('metadata').default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_latency_breakdowns_session').on(table.sessionId),
+    index('idx_latency_breakdowns_created_at').on(table.createdAt),
+    index('idx_latency_breakdowns_cohort').on(table.cohort),
+  ]
+);
+
+export const insertLatencyBreakdownSchema = createInsertSchema(latencyBreakdowns);
+export type LatencyBreakdownRow = typeof latencyBreakdowns.$inferSelect;
+export type InsertLatencyBreakdown = typeof latencyBreakdowns.$inferInsert;
+
+/**
+ * Pattern Hit Rates Table
+ * Tracks which patterns were matched/utilized during extraction,
+ * with utilization scores and methods for hit-rate analysis.
+ */
+export const patternHitRates = pgTable(
+  'pattern_hit_rates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id').notNull(),
+    patternId: text('pattern_id').notNull(),
+    utilizationScore: numeric('utilization_score', { precision: 10, scale: 6 }),
+    utilizationMethod: text('utilization_method'),
+    metadata: jsonb('metadata').default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_pattern_hit_rates_session').on(table.sessionId),
+    index('idx_pattern_hit_rates_pattern').on(table.patternId),
+    index('idx_pattern_hit_rates_created_at').on(table.createdAt),
+  ]
+);
+
+export const insertPatternHitRateSchema = createInsertSchema(patternHitRates);
+export type PatternHitRateRow = typeof patternHitRates.$inferSelect;
+export type InsertPatternHitRate = typeof patternHitRates.$inferInsert;
+
+// ============================================================================
 // Cross-Repo Validation Tables (OMN-1907)
 //
 // These tables live in the intelligence database (omninode_bridge on

@@ -213,6 +213,8 @@ const VALID_TOPICS = [
   'playback',
   // Cross-repo validation events (OMN-1907)
   'validation',
+  // Extraction pipeline events (OMN-1804)
+  'extraction',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -403,6 +405,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
     // Send minimal payload - clients only need the type for query invalidation,
     // plus run_id for targeted cache updates. Full violation data stays server-side.
     broadcast('VALIDATION_EVENT', { type: data.type, run_id: data.event?.run_id }, 'validation');
+  });
+
+  // Extraction pipeline event listener (OMN-1804)
+  // Invalidation-only broadcast: tells clients to re-fetch, does NOT carry data payloads.
+  // PostgreSQL is the single source of truth; clients re-query API endpoints on invalidation.
+  registerEventListener('extraction-event', (data: { type: string }) => {
+    broadcast('EXTRACTION_INVALIDATE', { type: data.type }, 'extraction');
   });
 
   // Node Registry event listeners

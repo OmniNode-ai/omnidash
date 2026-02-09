@@ -49,6 +49,9 @@ import {
   SUFFIX_OMNICLAUDE_SESSION_STARTED,
   SUFFIX_OMNICLAUDE_SESSION_ENDED,
   SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION,
+  SUFFIX_OMNICLAUDE_AGENT_MATCH,
+  SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
   SUFFIX_VALIDATION_RUN_STARTED,
   SUFFIX_VALIDATION_VIOLATIONS_BATCH,
   SUFFIX_VALIDATION_RUN_COMPLETED,
@@ -77,6 +80,12 @@ import {
   handleValidationViolationsBatch,
   handleValidationRunCompleted,
 } from './validation-routes';
+import { ExtractionMetricsAggregator } from './extraction-aggregator';
+import {
+  isContextUtilizationEvent,
+  isAgentMatchEvent,
+  isLatencyBreakdownEvent,
+} from '@shared/extraction-types';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 const DEBUG_CANONICAL_EVENTS = process.env.DEBUG_CANONICAL_EVENTS === 'true' || isTestEnv;
@@ -755,6 +764,9 @@ export class EventConsumer extends EventEmitter {
   // Canonical ONEX node registry (event-driven state)
   private canonicalNodes = new Map<string, CanonicalOnexNode>();
 
+  // Extraction pipeline aggregator (OMN-1804)
+  private extractionAggregator = new ExtractionMetricsAggregator();
+
   // Deduplication cache for idempotency (max 10,000 entries)
   private processedEvents = new LRUCache<string, number>({ max: 10_000 });
 
@@ -1264,6 +1276,38 @@ export class EventConsumer extends EventEmitter {
                     '[validation] Dropped malformed run-completed event on topic',
                     topic
                   );
+                }
+                break;
+
+              // Extraction pipeline topics (OMN-1804)
+              case SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION:
+                if (isContextUtilizationEvent(event)) {
+                  await this.extractionAggregator.handleContextUtilization(event);
+                  if (this.extractionAggregator.shouldBroadcast()) {
+                    this.emit('extraction-event', { type: 'context-utilization' });
+                  }
+                } else {
+                  console.warn('[extraction] Dropped malformed context-utilization event');
+                }
+                break;
+              case SUFFIX_OMNICLAUDE_AGENT_MATCH:
+                if (isAgentMatchEvent(event)) {
+                  await this.extractionAggregator.handleAgentMatch(event);
+                  if (this.extractionAggregator.shouldBroadcast()) {
+                    this.emit('extraction-event', { type: 'agent-match' });
+                  }
+                } else {
+                  console.warn('[extraction] Dropped malformed agent-match event');
+                }
+                break;
+              case SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN:
+                if (isLatencyBreakdownEvent(event)) {
+                  await this.extractionAggregator.handleLatencyBreakdown(event);
+                  if (this.extractionAggregator.shouldBroadcast()) {
+                    this.emit('extraction-event', { type: 'latency-breakdown' });
+                  }
+                } else {
+                  console.warn('[extraction] Dropped malformed latency-breakdown event');
                 }
                 break;
 

@@ -7,6 +7,7 @@ import {
   Brain,
   Sparkles,
   ShieldCheck,
+  Gauge,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -52,6 +53,12 @@ const dashboards = [
     url: '/validation',
     icon: ShieldCheck,
     description: 'Cross-repo validation runs and violation trends',
+  },
+  {
+    title: 'Extraction Pipeline',
+    url: '/extraction',
+    icon: Gauge,
+    description: 'Pattern extraction metrics and pipeline health',
   },
   // Hidden: Execution Graph (/graph) - node execution visualization
   // Hidden: Demo Stream (/live-events) - superseded by Event Bus
