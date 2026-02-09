@@ -386,7 +386,6 @@ router.get('/ab', async (_req, res) => {
         avg_latency: sql<number>`avg(${ie.userVisibleLatencyMs})`,
       })
       .from(ie)
-      .where(sql`${ie.sessionOutcome} IS NOT NULL`)
       .groupBy(ie.cohort);
 
     const totalSessions = cohorts.reduce((sum, c) => sum + c.count, 0);
@@ -460,7 +459,7 @@ router.get('/trend', async (_req, res) => {
     res.json(trend);
   } catch (error) {
     console.error('[effectiveness] Error getting trend:', error);
-    res.json([]);
+    res.status(500).json({ error: 'Failed to get trend' });
   }
 });
 

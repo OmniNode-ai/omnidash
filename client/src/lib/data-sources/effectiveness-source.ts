@@ -97,7 +97,7 @@ class EffectivenessSource {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       // Fall back to mock if response is valid but has no real data
-      if (fallbackToMock && (!data.percentiles || data.percentiles.length === 0)) {
+      if (fallbackToMock && (!data.breakdowns || data.breakdowns.length === 0)) {
         this.markMock('latency');
         return getMockLatencyDetails();
       }
@@ -143,7 +143,7 @@ class EffectivenessSource {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       // Fall back to mock if response is valid but has no real data
-      if (fallbackToMock && (!data.treatment || !data.control)) {
+      if (fallbackToMock && (!data.cohorts || data.cohorts.length === 0)) {
         this.markMock('ab');
         return getMockABComparison();
       }
