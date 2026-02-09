@@ -18,7 +18,7 @@ import {
   taskCompletionMetrics,
   patternLearningArtifacts,
   type PatternLearningArtifact,
-} from '../shared/intelligence-schema';
+} from '@shared/intelligence-schema';
 import { sql, desc, asc, gte, eq, or, and, inArray } from 'drizzle-orm';
 import { checkAllServices } from './service-health';
 

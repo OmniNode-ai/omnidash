@@ -5,11 +5,11 @@ import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 import { LRUCache } from 'lru-cache';
 import { z } from 'zod';
+import type { EventBusEvent } from './event-bus-data-source';
 // Import topic constants and type utilities from shared module (single source of truth)
 import {
-  INTENT_CLASSIFIED_TOPIC as SHARED_INTENT_CLASSIFIED_TOPIC,
-  INTENT_STORED_TOPIC as SHARED_INTENT_STORED_TOPIC,
-  INTENT_QUERY_RESPONSE_TOPIC as SHARED_INTENT_QUERY_RESPONSE_TOPIC,
+  INTENT_CLASSIFIED_TOPIC,
+  INTENT_STORED_TOPIC,
   EVENT_TYPE_NAMES,
   isIntentClassifiedEvent,
   isIntentStoredEvent,
@@ -19,8 +19,40 @@ import {
 } from '@shared/intent-types';
 // Import intentEventEmitter for WebSocket broadcasting of intent events
 import { getIntentEventEmitter } from './intent-events';
-// Import env prefix utilities from server-side topics module
-import { withEnvPrefix, getTopicEnvPrefix } from './topics/onex-intent-topics';
+// Import canonical topic constants
+import {
+  buildSubscriptionTopics,
+  ENVIRONMENT_PREFIXES,
+  extractSuffix,
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_REGISTRATION,
+  SUFFIX_REQUEST_INTROSPECTION,
+  SUFFIX_NODE_BECAME_ACTIVE,
+  SUFFIX_NODE_LIVENESS_EXPIRED,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_CONTRACT_REGISTERED,
+  SUFFIX_CONTRACT_DEREGISTERED,
+  SUFFIX_NODE_REGISTRATION_INITIATED,
+  SUFFIX_NODE_REGISTRATION_ACCEPTED,
+  SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_REGISTRATION_SNAPSHOTS,
+  SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
+  SUFFIX_INTELLIGENCE_TOOL_CONTENT,
+  SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED,
+  SUFFIX_MEMORY_INTENT_STORED,
+  SUFFIX_MEMORY_INTENT_QUERY_RESPONSE,
+  SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
+  SUFFIX_OMNICLAUDE_SESSION_STARTED,
+  SUFFIX_OMNICLAUDE_SESSION_ENDED,
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_VALIDATION_RUN_STARTED,
+  SUFFIX_VALIDATION_VIOLATIONS_BATCH,
+  SUFFIX_VALIDATION_RUN_COMPLETED,
+} from '@shared/topics';
 import {
   EventEnvelopeSchema,
   NodeBecameActivePayloadSchema,
@@ -36,9 +68,6 @@ import {
   type NodeState,
 } from '@shared/schemas';
 import {
-  VALIDATION_RUN_STARTED_TOPIC,
-  VALIDATION_VIOLATIONS_BATCH_TOPIC,
-  VALIDATION_RUN_COMPLETED_TOPIC,
   isValidationRunStarted,
   isValidationViolationsBatch,
   isValidationRunCompleted,
@@ -59,68 +88,41 @@ const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
  * Extracted for maintainability and easy tuning.
  */
 const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
-const SQL_PRELOAD_ACTIONS_LIMIT = 1000;
-const SQL_PRELOAD_ROUTING_LIMIT = 1000;
-const SQL_PRELOAD_TRANSFORMATIONS_LIMIT = 500;
-const SQL_PRELOAD_METRICS_LIMIT = 100;
+const SQL_PRELOAD_LIMIT = 2000;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
 
-// Intent topics with environment prefix (ONEX canonical naming)
-// Derive canonical names from shared constants by removing the 'dev.' prefix
-const TOPIC_ENV_PREFIX = getTopicEnvPrefix();
-const extractCanonicalName = (topic: string): string => {
-  // Shared constants have format: 'dev.onex.evt...' - extract 'onex.evt...'
-  const match = topic.match(/^dev\.(.+)$/);
-  return match ? match[1] : topic;
-};
-const INTENT_STORED_TOPIC = withEnvPrefix(
-  TOPIC_ENV_PREFIX,
-  extractCanonicalName(SHARED_INTENT_STORED_TOPIC)
-);
-const INTENT_QUERY_RESPONSE_TOPIC = withEnvPrefix(
-  TOPIC_ENV_PREFIX,
-  extractCanonicalName(SHARED_INTENT_QUERY_RESPONSE_TOPIC)
-);
-const INTENT_CLASSIFIED_TOPIC = withEnvPrefix(
-  TOPIC_ENV_PREFIX,
-  extractCanonicalName(SHARED_INTENT_CLASSIFIED_TOPIC)
-);
-
-// Environment-aware ONEX topic naming for canonical node events
-const ONEX_ENV = process.env.ONEX_ENV || 'dev';
-
-/**
- * Generate canonical ONEX topic name for event subscriptions.
- * Format: {env}.onex.evt.{event-name}.v1
- */
-function onexTopic(eventName: string): string {
-  return `${ONEX_ENV}.onex.evt.${eventName}.v1`;
-}
-
-/**
- * Generate canonical ONEX topic name with namespace and message type support.
- * Format: {env}.onex.{type}.{namespace}.{event-name}.v1
- */
-function onexNamespacedTopic(type: 'cmd' | 'evt', namespace: string, eventName: string): string {
-  return `${ONEX_ENV}.onex.${type}.${namespace}.${eventName}.v1`;
-}
-
-/**
- * OmniClaude topic constants - environment-aware topic names.
- * Uses ONEX canonical naming convention with appropriate namespaces.
- */
-const OMNICLAUDE_TOPICS = {
-  /** Command topic for Claude hook events (prompt submissions from intelligence) */
-  CLAUDE_HOOK_EVENT: onexNamespacedTopic('cmd', 'omniintelligence', 'claude-hook-event'),
-  /** Event topic for prompt submission lifecycle events */
-  PROMPT_SUBMITTED: onexNamespacedTopic('evt', 'omniclaude', 'prompt-submitted'),
-  /** Event topic for session start lifecycle events */
-  SESSION_STARTED: onexNamespacedTopic('evt', 'omniclaude', 'session-started'),
-  /** Event topic for tool execution lifecycle events */
-  TOOL_EXECUTED: onexNamespacedTopic('evt', 'omniclaude', 'tool-executed'),
-  /** Event topic for session end lifecycle events */
-  SESSION_ENDED: onexNamespacedTopic('evt', 'omniclaude', 'session-ended'),
+// Canonical ONEX topic names (no env prefix).
+// Infra4 producers emit to unprefixed canonical names
+// (e.g. `onex.evt.platform.node-heartbeat.v1`).
+//
+// ⚠️ DEPLOYMENT ORDER: Node/platform topic names below use canonical ONEX format.
+// The upstream producer (omninode_bridge, omniclaude hooks) MUST be deployed
+// BEFORE or SIMULTANEOUSLY with this omnidash change. If omnidash subscribes
+// to the new canonical names before producers emit on them, node registry
+// events (introspection, heartbeat, registration, liveness) will be silently
+// lost (no error, just missing data on the Node Registry dashboard).
+const TOPIC = {
+  // Platform
+  NODE_INTROSPECTION: SUFFIX_NODE_INTROSPECTION,
+  NODE_REGISTRATION: SUFFIX_NODE_REGISTRATION,
+  REQUEST_INTROSPECTION: SUFFIX_REQUEST_INTROSPECTION,
+  NODE_BECAME_ACTIVE: SUFFIX_NODE_BECAME_ACTIVE,
+  NODE_LIVENESS_EXPIRED: SUFFIX_NODE_LIVENESS_EXPIRED,
+  NODE_HEARTBEAT: SUFFIX_NODE_HEARTBEAT,
+  CONTRACT_REGISTERED: SUFFIX_CONTRACT_REGISTERED,
+  CONTRACT_DEREGISTERED: SUFFIX_CONTRACT_DEREGISTERED,
+  NODE_REGISTRATION_INITIATED: SUFFIX_NODE_REGISTRATION_INITIATED,
+  NODE_REGISTRATION_ACCEPTED: SUFFIX_NODE_REGISTRATION_ACCEPTED,
+  NODE_REGISTRATION_REJECTED: SUFFIX_NODE_REGISTRATION_REJECTED,
+  REGISTRATION_SNAPSHOTS: SUFFIX_REGISTRATION_SNAPSHOTS,
+  // OmniClaude
+  CLAUDE_HOOK: SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
+  TOOL_CONTENT: SUFFIX_INTELLIGENCE_TOOL_CONTENT,
+  PROMPT_SUBMITTED: SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
+  SESSION_STARTED: SUFFIX_OMNICLAUDE_SESSION_STARTED,
+  SESSION_ENDED: SUFFIX_OMNICLAUDE_SESSION_ENDED,
+  TOOL_EXECUTED: SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
 } as const;
 
 // Structured logging for intent handlers
@@ -242,52 +244,6 @@ export interface TransformationEvent {
 // ============================================================================
 
 /** Row type for agent_actions table query results */
-interface AgentActionRow {
-  id: string;
-  correlation_id?: string;
-  agent_name?: string;
-  action_type?: string;
-  action_name?: string;
-  action_details?: unknown;
-  debug_mode?: boolean;
-  duration_ms?: number | string;
-  created_at: string | Date;
-}
-
-/** Row type for metrics aggregation query results */
-interface AgentMetricsRow {
-  agent?: string;
-  total_requests?: number | string;
-  avg_routing_time?: number | string;
-  avg_confidence?: number | string;
-}
-
-/** Row type for agent_routing_decisions table query results */
-interface RoutingDecisionRow {
-  id: string;
-  correlation_id?: string;
-  user_request?: string;
-  selected_agent?: string;
-  confidence_score?: number | string;
-  routing_strategy?: string;
-  alternatives?: unknown;
-  reasoning?: string;
-  routing_time_ms?: number | string;
-  created_at: string | Date;
-}
-
-/** Row type for agent_transformation_events table query results */
-interface TransformationEventRow {
-  id: string;
-  correlation_id?: string;
-  source_agent?: string;
-  target_agent?: string;
-  transformation_duration_ms?: number | string;
-  success?: boolean;
-  routing_confidence?: number | string;
-  started_at: string | Date;
-}
-
 // Node Registry Types
 export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
 
@@ -540,8 +496,8 @@ export interface RawPerformanceMetricEvent {
 
 /**
  * Raw node introspection event from Kafka (snake_case)
- * Topics: dev.omninode_bridge.onex.evt.node-introspection.v1,
- *         dev.omninode_bridge.onex.evt.registry-request-introspection.v1
+ * Topics: onex.evt.platform.node-introspection.v1,
+ *         onex.cmd.platform.request-introspection.v1
  */
 export interface RawNodeIntrospectionEvent {
   id?: string;
@@ -564,7 +520,7 @@ export interface RawNodeIntrospectionEvent {
 
 /**
  * Raw node heartbeat event from Kafka (snake_case)
- * Topic: node.heartbeat
+ * Topic: onex.evt.platform.node-heartbeat.v1
  */
 export interface RawNodeHeartbeatEvent {
   id?: string;
@@ -585,7 +541,7 @@ export interface RawNodeHeartbeatEvent {
 
 /**
  * Raw node state change event from Kafka (snake_case)
- * Topic: dev.onex.evt.registration-completed.v1
+ * Topic: onex.evt.platform.node-registration.v1
  */
 export interface RawNodeStateChangeEvent {
   id?: string;
@@ -826,6 +782,11 @@ export class EventConsumer extends EventEmitter {
   private playbackEventsInjected: number = 0;
   private playbackEventsFailed: number = 0;
 
+  // Raw event bus event rows loaded during preloadFromDatabase().
+  // Exposed via getPreloadedEventBusEvents() so WebSocket INITIAL_STATE
+  // can serve them from memory instead of re-querying PostgreSQL.
+  private preloadedEventBusEvents: EventBusEvent[] = [];
+
   // State snapshot for demo mode - stores live data while playback is active
   private stateSnapshot: {
     recentActions: AgentAction[];
@@ -871,7 +832,7 @@ export class EventConsumer extends EventEmitter {
       throw new Error(
         'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
           'Set it in .env file or export it before starting the server. ' +
-          'Example: KAFKA_BROKERS=192.168.86.200:29092'
+          'Example: KAFKA_BROKERS=host:port'
       );
     }
 
@@ -1069,132 +1030,206 @@ export class EventConsumer extends EventEmitter {
       }
 
       await this.consumer.subscribe({
-        topics: [
-          // Agent topics
-          'agent-routing-decisions',
-          'agent-transformation-events',
-          'router-performance-metrics',
-          'agent-actions',
-          // Node registry topics (legacy - actual Kafka topic names from omnibase_infra)
-          'dev.omninode_bridge.onex.evt.node-introspection.v1',
-          'dev.onex.evt.registration-completed.v1',
-          'node.heartbeat',
-          'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
-          // Intent topics
-          INTENT_STORED_TOPIC,
-          INTENT_QUERY_RESPONSE_TOPIC,
-          INTENT_CLASSIFIED_TOPIC,
-          // Canonical ONEX topics (OMN-1279)
-          onexTopic('node-became-active'),
-          onexTopic('node-liveness-expired'),
-          onexTopic('node-heartbeat'),
-          onexTopic('node-introspection'),
-          // OmniClaude hook events (prompt submissions, tool executions)
-          onexNamespacedTopic('cmd', 'omniintelligence', 'claude-hook-event'),
-          // OmniClaude lifecycle events (additional coverage)
-          onexNamespacedTopic('evt', 'omniclaude', 'prompt-submitted'),
-          onexNamespacedTopic('evt', 'omniclaude', 'session-started'),
-          onexNamespacedTopic('evt', 'omniclaude', 'tool-executed'),
-          onexNamespacedTopic('evt', 'omniclaude', 'session-ended'),
-          // Cross-repo validation topics (OMN-1907)
-          VALIDATION_RUN_STARTED_TOPIC,
-          VALIDATION_VIOLATIONS_BATCH_TOPIC,
-          VALIDATION_RUN_COMPLETED_TOPIC,
-        ],
+        topics: buildSubscriptionTopics(),
         fromBeginning: true, // Reprocess historical events to populate metrics
       });
 
       await this.consumer.run({
-        eachMessage: async ({ topic, message }) => {
+        eachMessage: async ({ topic: rawTopic, message }) => {
           try {
             const event = JSON.parse(message.value?.toString() || '{}');
+
+            // Strip legacy env prefix (e.g. "dev.onex.evt..." -> "onex.evt...")
+            // so topics match canonical names used by the switch cases below.
+            // Legacy flat topics like "agent-actions" have no dot-prefix and pass through.
+            const topic = extractSuffix(rawTopic);
+
             intentLogger.debug(`Received event from topic: ${topic}`);
 
             switch (topic) {
-              case 'agent-routing-decisions':
+              // Legacy agent topics
+              case LEGACY_AGENT_ROUTING_DECISIONS:
                 intentLogger.debug(
                   `Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`
                 );
                 this.handleRoutingDecision(event);
                 break;
-              case 'agent-actions':
+              case LEGACY_AGENT_ACTIONS:
                 intentLogger.debug(
                   `Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`
                 );
                 this.handleAgentAction(event);
                 break;
-              case 'agent-transformation-events':
+              case LEGACY_AGENT_TRANSFORMATION_EVENTS:
                 intentLogger.debug(
                   `Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`
                 );
                 this.handleTransformationEvent(event);
                 break;
-              case 'router-performance-metrics':
+              case LEGACY_ROUTER_PERFORMANCE_METRICS:
                 intentLogger.debug(
                   `Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
                 );
                 this.handlePerformanceMetric(event);
                 break;
-              case 'dev.omninode_bridge.onex.evt.node-introspection.v1':
-              case 'dev.omninode_bridge.onex.evt.registry-request-introspection.v1':
-                intentLogger.debug(
-                  `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
+
+              // Platform node topics (canonical ONEX)
+              case TOPIC.NODE_INTROSPECTION:
+              case TOPIC.REQUEST_INTROSPECTION: {
+                // Detect envelope format to route to exactly ONE handler path.
+                // Canonical envelopes carry entity_id + emitted_at + payload (per
+                // EventEnvelopeSchema); legacy events have flat fields like node_id
+                // at the top level. We check entity_id (required UUID in the
+                // envelope schema and absent from legacy events) instead of
+                // event_type which is NOT part of EventEnvelopeSchema and may be
+                // omitted by some producers.
+                const isIntrospectionEnvelope = Boolean(
+                  event.entity_id && event.emitted_at && event.payload
                 );
-                this.handleNodeIntrospection(event);
+                if (!isIntrospectionEnvelope) {
+                  intentLogger.debug(
+                    `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
+                  );
+                  this.handleNodeIntrospection(event);
+                } else {
+                  if (DEBUG_CANONICAL_EVENTS) {
+                    intentLogger.debug('Processing canonical node-introspection event');
+                  }
+                  this.handleCanonicalNodeIntrospection(message);
+                }
                 break;
-              case 'node.heartbeat':
-                intentLogger.debug(`Processing node heartbeat: ${event.node_id || event.nodeId}`);
-                this.handleNodeHeartbeat(event);
-                break;
-              case 'dev.onex.evt.registration-completed.v1':
-                intentLogger.debug(
-                  `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
+              }
+              case TOPIC.NODE_HEARTBEAT: {
+                // Detect envelope format to route to exactly ONE handler path.
+                // Uses entity_id + emitted_at (required by EventEnvelopeSchema)
+                // instead of event_type which is not part of the envelope schema.
+                const isHeartbeatEnvelope = Boolean(
+                  event.entity_id && event.emitted_at && event.payload
                 );
-                this.handleNodeStateChange(event);
+                if (!isHeartbeatEnvelope) {
+                  intentLogger.debug(`Processing node heartbeat: ${event.node_id || event.nodeId}`);
+                  this.handleNodeHeartbeat(event);
+                } else {
+                  if (DEBUG_CANONICAL_EVENTS) {
+                    intentLogger.debug('Processing canonical node-heartbeat event');
+                  }
+                  this.handleCanonicalNodeHeartbeat(message);
+                }
                 break;
-              case INTENT_CLASSIFIED_TOPIC:
+              }
+              case TOPIC.NODE_REGISTRATION: {
+                // Detect envelope format: canonical envelopes have entity_id +
+                // emitted_at + payload; legacy events have flat fields like node_id
+                // at the top level.
+                const isRegistrationEnvelope = Boolean(
+                  event.entity_id && event.emitted_at && event.payload
+                );
+                if (!isRegistrationEnvelope) {
+                  intentLogger.debug(
+                    `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
+                  );
+                  this.handleNodeStateChange(event);
+                } else {
+                  if (DEBUG_CANONICAL_EVENTS) {
+                    intentLogger.debug('Processing canonical node-registration event');
+                  }
+                  this.handleCanonicalNodeIntrospection(message);
+                }
+                break;
+              }
+              case TOPIC.NODE_BECAME_ACTIVE:
+                if (DEBUG_CANONICAL_EVENTS) {
+                  intentLogger.debug('Processing canonical node-became-active event');
+                }
+                this.handleCanonicalNodeBecameActive(message);
+                break;
+              case TOPIC.NODE_LIVENESS_EXPIRED:
+                if (DEBUG_CANONICAL_EVENTS) {
+                  intentLogger.debug('Processing canonical node-liveness-expired event');
+                }
+                this.handleCanonicalNodeLivenessExpired(message);
+                break;
+              case TOPIC.CONTRACT_REGISTERED:
+              case TOPIC.CONTRACT_DEREGISTERED: {
+                intentLogger.debug(`Processing contract lifecycle event from topic: ${topic}`);
+                this.handleCanonicalNodeIntrospection(message);
+                break;
+              }
+              case TOPIC.NODE_REGISTRATION_INITIATED:
+              case TOPIC.NODE_REGISTRATION_ACCEPTED:
+              case TOPIC.NODE_REGISTRATION_REJECTED: {
+                intentLogger.debug(
+                  `Processing node registration lifecycle event from topic: ${topic}`
+                );
+                this.handleCanonicalNodeIntrospection(message);
+                break;
+              }
+              case TOPIC.REGISTRATION_SNAPSHOTS: {
+                intentLogger.debug('Processing registration snapshot');
+                this.handleCanonicalNodeIntrospection(message);
+                break;
+              }
+
+              // Intent topics (canonical names, matched after legacy prefix stripping)
+              case SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED:
                 intentLogger.debug(
                   `Processing intent classified: ${event.intent_type || event.intentType} (confidence: ${event.confidence})`
                 );
                 this.handleIntentClassified(event);
                 break;
-              case INTENT_STORED_TOPIC:
+              case SUFFIX_MEMORY_INTENT_STORED:
                 intentLogger.debug(
                   `Processing intent stored: ${event.intent_id || event.intentId}`
                 );
                 this.handleIntentStored(event);
                 break;
-              case INTENT_QUERY_RESPONSE_TOPIC:
+              case SUFFIX_MEMORY_INTENT_QUERY_RESPONSE:
                 intentLogger.debug(
                   `Processing intent query response: ${event.query_id || event.queryId}`
                 );
                 this.handleIntentQueryResponse(event);
                 break;
-              // OmniClaude hook events (prompt submissions)
-              case 'dev.onex.cmd.omniintelligence.claude-hook-event.v1':
+
+              // OmniClaude hook events
+              case TOPIC.CLAUDE_HOOK:
                 intentLogger.debug(
                   `Processing claude hook event: ${event.event_type || event.eventType} - ${(event.payload?.prompt || '').slice(0, 50)}...`
                 );
                 this.handleClaudeHookEvent(event);
                 break;
               // OmniClaude lifecycle events
-              case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
+              case TOPIC.PROMPT_SUBMITTED:
                 intentLogger.debug(
                   `Processing prompt-submitted: ${(event.payload?.prompt_preview || '').slice(0, 50)}...`
                 );
                 this.handlePromptSubmittedEvent(event);
                 break;
-              case 'dev.onex.evt.omniclaude.session-started.v1':
-              case 'dev.onex.evt.omniclaude.session-ended.v1':
-              case 'dev.onex.evt.omniclaude.tool-executed.v1':
+              case TOPIC.SESSION_STARTED:
+              case TOPIC.SESSION_ENDED:
+              case TOPIC.TOOL_EXECUTED:
                 intentLogger.debug(
                   `Processing omniclaude event: ${event.event_type || event.eventType}`
                 );
                 this.handleOmniclaudeLifecycleEvent(event, topic);
                 break;
 
-              // Cross-repo validation topics (OMN-1907)
-              case VALIDATION_RUN_STARTED_TOPIC:
+              // Tool-content events from omniintelligence (tool execution records)
+              case TOPIC.TOOL_CONTENT:
+                intentLogger.debug(
+                  `Processing tool-content: ${(event as Record<string, string>).tool_name || 'unknown'}`
+                );
+                this.handleAgentAction({
+                  action_type: 'tool',
+                  agent_name: 'omniclaude',
+                  action_name: (event as Record<string, string>).tool_name || 'unknown',
+                  correlation_id: (event as Record<string, string>).correlation_id,
+                  duration_ms: Number((event as Record<string, unknown>).duration_ms || 0),
+                  timestamp: (event as Record<string, string>).timestamp,
+                } as RawAgentActionEvent);
+                break;
+
+              // Cross-repo validation topics (canonical names, matched after legacy prefix stripping)
+              case SUFFIX_VALIDATION_RUN_STARTED:
                 if (isValidationRunStarted(event)) {
                   intentLogger.debug(`Processing validation run started: ${event.run_id}`);
                   await handleValidationRunStarted(event);
@@ -1203,7 +1238,7 @@ export class EventConsumer extends EventEmitter {
                   console.warn('[validation] Dropped malformed run-started event on topic', topic);
                 }
                 break;
-              case VALIDATION_VIOLATIONS_BATCH_TOPIC:
+              case SUFFIX_VALIDATION_VIOLATIONS_BATCH:
                 if (isValidationViolationsBatch(event)) {
                   intentLogger.debug(
                     `Processing validation violations batch: ${event.run_id} (${event.violations.length} violations)`
@@ -1217,7 +1252,7 @@ export class EventConsumer extends EventEmitter {
                   );
                 }
                 break;
-              case VALIDATION_RUN_COMPLETED_TOPIC:
+              case SUFFIX_VALIDATION_RUN_COMPLETED:
                 if (isValidationRunCompleted(event)) {
                   intentLogger.debug(
                     `Processing validation run completed: ${event.run_id} (${event.status})`
@@ -1232,30 +1267,8 @@ export class EventConsumer extends EventEmitter {
                 }
                 break;
 
-              // Canonical ONEX topics (OMN-1279)
               default:
-                // Handle canonical ONEX topics using environment-aware routing
-                if (topic === onexTopic('node-became-active')) {
-                  if (DEBUG_CANONICAL_EVENTS) {
-                    intentLogger.debug('Processing canonical node-became-active event');
-                  }
-                  this.handleCanonicalNodeBecameActive(message);
-                } else if (topic === onexTopic('node-liveness-expired')) {
-                  if (DEBUG_CANONICAL_EVENTS) {
-                    intentLogger.debug('Processing canonical node-liveness-expired event');
-                  }
-                  this.handleCanonicalNodeLivenessExpired(message);
-                } else if (topic === onexTopic('node-heartbeat')) {
-                  if (DEBUG_CANONICAL_EVENTS) {
-                    intentLogger.debug('Processing canonical node-heartbeat event');
-                  }
-                  this.handleCanonicalNodeHeartbeat(message);
-                } else if (topic === onexTopic('node-introspection')) {
-                  if (DEBUG_CANONICAL_EVENTS) {
-                    intentLogger.debug('Processing canonical node-introspection event');
-                  }
-                  this.handleCanonicalNodeIntrospection(message);
-                }
+                intentLogger.debug(`Unhandled topic: ${topic}`);
                 break;
             }
           } catch (error) {
@@ -1305,156 +1318,116 @@ export class EventConsumer extends EventEmitter {
 
   private async preloadFromDatabase() {
     try {
-      // Load recent actions
-      const actionsResult = await getIntelligenceDb().execute(
+      // Query event_bus_events for the most recent events across ALL topics.
+      // Uses a window function to cap each topic at 200 rows, preventing any
+      // single high-volume topic (e.g. tool-content) from drowning the rest.
+      // Selects all EventBusEvent-relevant columns so preloaded rows can be
+      // served directly to WebSocket INITIAL_STATE (eliminates redundant DB query).
+      const result = await getIntelligenceDb().execute(
         sql.raw(`
-        SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
-        FROM agent_actions
-        ORDER BY created_at DESC
-        LIMIT ${SQL_PRELOAD_ACTIONS_LIMIT};
+        SELECT event_type, event_id, timestamp, tenant_id, namespace, source,
+               correlation_id, causation_id, schema_ref, payload, topic,
+               partition, "offset", processed_at, stored_at
+        FROM (
+          SELECT event_type, event_id, timestamp, tenant_id, namespace, source,
+                 correlation_id, causation_id, schema_ref, payload, topic,
+                 partition, "offset", processed_at, stored_at,
+                 ROW_NUMBER() OVER (PARTITION BY topic ORDER BY timestamp DESC) AS rn
+          FROM event_bus_events
+        ) ranked
+        WHERE rn <= 200
+        ORDER BY timestamp DESC
+        LIMIT ${SQL_PRELOAD_LIMIT};
       `)
       );
 
-      // Handle different return types from Drizzle
-      const actionsRows = Array.isArray(actionsResult)
-        ? actionsResult
-        : actionsResult?.rows || actionsResult || [];
-
-      if (Array.isArray(actionsRows)) {
-        // Collect all actions first, then slice once at the end (O(n) instead of O(n²))
-        const actions: AgentAction[] = (actionsRows as AgentActionRow[]).map((r) => ({
-          id: r.id,
-          correlationId: r.correlation_id || '',
-          agentName: r.agent_name || '',
-          actionType: r.action_type || '',
-          actionName: r.action_name || '',
-          actionDetails: r.action_details,
-          debugMode: !!r.debug_mode,
-          durationMs: Number(r.duration_ms || 0),
-          createdAt: new Date(r.created_at),
-        }));
-        // Single slice operation at the end
-        this.recentActions = actions.slice(-this.maxActions);
+      const rows = Array.isArray(result) ? result : result?.rows || result || [];
+      if (!Array.isArray(rows) || rows.length === 0) {
+        intentLogger.info('Preload: no events found in event_bus_events');
+        return;
       }
 
-      // Seed agent metrics using routing decisions + actions
-      const metricsResult = await getIntelligenceDb().execute(
-        sql.raw(`
-        SELECT COALESCE(ard.selected_agent, aa.agent_name) AS agent,
-               COUNT(aa.id) AS total_requests,
-               AVG(COALESCE(ard.routing_time_ms, aa.duration_ms, 0)) AS avg_routing_time,
-               AVG(COALESCE(ard.confidence_score, 0)) AS avg_confidence
-        FROM agent_actions aa
-        FULL OUTER JOIN agent_routing_decisions ard
-          ON aa.correlation_id = ard.correlation_id
-        WHERE (aa.created_at IS NULL OR aa.created_at >= NOW() - INTERVAL '24 hours')
-           OR (ard.created_at IS NULL OR ard.created_at >= NOW() - INTERVAL '24 hours')
-        GROUP BY COALESCE(ard.selected_agent, aa.agent_name)
-        ORDER BY total_requests DESC
-        LIMIT ${SQL_PRELOAD_METRICS_LIMIT};
-      `)
-      );
-
-      // Handle different return types from Drizzle
-      const metricsRows = Array.isArray(metricsResult)
-        ? metricsResult
-        : metricsResult?.rows || metricsResult || [];
-
-      if (Array.isArray(metricsRows)) {
-        (metricsRows as AgentMetricsRow[]).forEach((r) => {
-          const agent = r.agent || 'unknown';
-          this.agentMetrics.set(agent, {
-            count: Number(r.total_requests || 0),
-            totalRoutingTime: Number(r.avg_routing_time || 0) * Number(r.total_requests || 0),
-            totalConfidence: Number(r.avg_confidence || 0) * Number(r.total_requests || 0),
-            successCount: 0,
-            errorCount: 0,
-            lastSeen: new Date(),
+      // Store raw rows as EventBusEvent objects for INITIAL_STATE delivery.
+      // The rows are already sorted newest-first (ORDER BY timestamp DESC)
+      // which matches the order expected by the WebSocket client.
+      // Uses per-row try/catch so a single malformed payload doesn't prevent
+      // all events from being served via WebSocket INITIAL_STATE.
+      this.preloadedEventBusEvents = [];
+      for (const row of rows as Array<Record<string, unknown>>) {
+        try {
+          let parsedPayload: Record<string, any>;
+          try {
+            parsedPayload = (
+              typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload || {}
+            ) as Record<string, any>;
+          } catch {
+            parsedPayload = {};
+          }
+          this.preloadedEventBusEvents.push({
+            event_type: (row.event_type as string) || '',
+            event_id: (row.event_id as string) || '',
+            timestamp: (row.timestamp as string) || '',
+            tenant_id: (row.tenant_id as string) || '',
+            namespace: (row.namespace as string) || '',
+            source: (row.source as string) || '',
+            correlation_id: row.correlation_id as string | undefined,
+            causation_id: row.causation_id as string | undefined,
+            schema_ref: (row.schema_ref as string) || '',
+            payload: parsedPayload,
+            topic: (row.topic as string) || '',
+            partition: (row.partition as number) || 0,
+            offset: String(row.offset || '0'),
+            processed_at: row.processed_at ? new Date(row.processed_at as string) : new Date(),
+            stored_at: row.stored_at ? new Date(row.stored_at as string) : undefined,
           });
-        });
+        } catch {
+          // Skip malformed rows — don't let one bad row prevent all INITIAL_STATE events
+        }
       }
 
-      // Load routing decisions
-      const routingResult = await getIntelligenceDb().execute(
-        sql.raw(`
-        SELECT id, correlation_id, user_request, selected_agent, confidence_score,
-               routing_strategy, alternatives, reasoning, routing_time_ms, created_at
-        FROM agent_routing_decisions
-        ORDER BY created_at DESC
-        LIMIT ${SQL_PRELOAD_ROUTING_LIMIT};
-      `)
-      );
+      // Replay in chronological order (oldest first) so newest ends up on top
+      const chronological = (rows as Array<{ topic: string; payload: unknown; timestamp: string }>)
+        .slice()
+        .reverse();
 
-      const routingRows = Array.isArray(routingResult)
-        ? routingResult
-        : routingResult?.rows || routingResult || [];
+      let injected = 0;
+      const topicCounts = new Map<string, number>();
 
-      if (Array.isArray(routingRows)) {
-        const decisions: RoutingDecision[] = (routingRows as RoutingDecisionRow[]).map((r) => ({
-          id: r.id,
-          correlationId: r.correlation_id || '',
-          userRequest: r.user_request || '',
-          selectedAgent: r.selected_agent || '',
-          confidenceScore: Number(r.confidence_score || 0),
-          routingStrategy: r.routing_strategy || '',
-          alternatives: r.alternatives,
-          reasoning: r.reasoning,
-          routingTimeMs: Number(r.routing_time_ms || 0),
-          createdAt: new Date(r.created_at),
-        }));
-        this.routingDecisions = decisions.slice(0, this.maxDecisions);
+      for (const row of chronological) {
+        try {
+          const event =
+            typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload || {};
+
+          // Strip legacy env prefix (e.g. "dev.onex.evt..." -> "onex.evt...") so topics
+          // match canonical names used by injectPlaybackEvent handlers.
+          // Legacy flat topics like "agent-actions" have no prefix and pass through.
+          const topic = extractSuffix(row.topic);
+
+          this.injectPlaybackEvent(topic, event as Record<string, unknown>);
+          injected++;
+          topicCounts.set(topic, (topicCounts.get(topic) || 0) + 1);
+        } catch {
+          // Skip rows with malformed JSON or events that fail injection
+        }
       }
 
-      // Load transformation events
-      // Note: Table uses routing_confidence (not confidence_score) and started_at (not created_at)
-      const transformResult = await getIntelligenceDb().execute(
-        sql.raw(`
-        SELECT id, correlation_id, source_agent, target_agent, transformation_duration_ms,
-               success, routing_confidence, started_at
-        FROM agent_transformation_events
-        ORDER BY started_at DESC
-        LIMIT ${SQL_PRELOAD_TRANSFORMATIONS_LIMIT};
-      `)
-      );
+      // Build a concise summary grouped by topic
+      const topSummary = [...topicCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([t, n]) => `${t}(${n})`)
+        .join(', ');
 
-      const transformRows = Array.isArray(transformResult)
-        ? transformResult
-        : transformResult?.rows || transformResult || [];
-
-      if (Array.isArray(transformRows)) {
-        const transformations: TransformationEvent[] = (
-          transformRows as TransformationEventRow[]
-        ).map((r) => ({
-          id: r.id,
-          correlationId: r.correlation_id || '',
-          sourceAgent: r.source_agent || '',
-          targetAgent: r.target_agent || '',
-          transformationDurationMs: Number(r.transformation_duration_ms || 0),
-          success: !!r.success,
-          confidenceScore: Number(r.routing_confidence || 0),
-          createdAt: new Date(r.started_at),
-        }));
-        this.recentTransformations = transformations.slice(0, this.maxTransformations);
-      }
-
-      // Log preload counts
       intentLogger.info(
-        `Preloaded from database: ` +
-          `${this.recentActions.length} actions, ` +
-          `${this.routingDecisions.length} routing decisions, ` +
-          `${this.recentTransformations.length} transformations, ` +
-          `${this.agentMetrics.size} agent metrics`
+        `Preloaded ${injected}/${rows.length} events from event_bus_events — ${topSummary}`
       );
 
-      // Emit initial metric snapshot
+      // Emit initial snapshots for WebSocket clients
       this.emit('metricUpdate', this.getAgentMetrics());
-      // Emit initial actions snapshot (emit last one to trigger UI refresh)
-      const last = this.recentActions[this.recentActions.length - 1];
-      if (last) this.emit('actionUpdate', last);
-      // Emit initial routing decision snapshot
+      const lastAction = this.recentActions[this.recentActions.length - 1];
+      if (lastAction) this.emit('actionUpdate', lastAction);
       const lastRouting = this.routingDecisions[0];
       if (lastRouting) this.emit('routingUpdate', lastRouting);
-      // Emit initial transformation snapshot
       const lastTransform = this.recentTransformations[0];
       if (lastTransform) this.emit('transformationUpdate', lastTransform);
     } catch (error) {
@@ -1520,13 +1493,64 @@ export class EventConsumer extends EventEmitter {
     this.emit('routingUpdate', decision);
   }
 
+  /**
+   * Normalize actionType and agentName when upstream producers set junk values.
+   * Extracts meaningful segments from canonical actionName when raw fields are
+   * env prefixes (e.g. "dev") or "unknown".
+   */
+  private static normalizeActionFields(
+    rawActionType: string,
+    rawAgentName: string,
+    actionName: string
+  ): { actionType: string; agentName: string } {
+    const isJunkType =
+      !rawActionType ||
+      (ENVIRONMENT_PREFIXES as readonly string[]).includes(rawActionType) ||
+      /^v\d+$/.test(rawActionType) ||
+      /^\d+\.\d+(\.\d+)?$/.test(rawActionType);
+    const isJunkAgent = !rawAgentName || rawAgentName === 'unknown';
+
+    let actionType = rawActionType;
+    let agentName = rawAgentName;
+
+    // Parse canonical actionName (supports env-prefixed or suffix-only forms).
+    // Find the "onex" segment anywhere in the dot-separated name so we handle
+    // both "onex.evt.producer.event-name.v1" and "dev.onex.evt.producer.event-name.v1"
+    // without depending on ENVIRONMENT_PREFIXES being exhaustive.
+    if (isJunkType || isJunkAgent) {
+      const parts = actionName.split('.');
+      const onexIdx = parts.indexOf('onex');
+      // Format: [env].onex.<kind>.<producer>.<event-name>[.v<N>]
+      // Minimum 4 segments from onex: onex + kind + producer + event-name
+      if (onexIdx >= 0 && parts.length >= onexIdx + 4) {
+        if (isJunkType) actionType = parts[onexIdx + 3] || rawActionType; // e.g. "tool-content"
+        if (isJunkAgent) agentName = parts[onexIdx + 2] || rawAgentName; // e.g. "omniintelligence"
+      } else if (onexIdx >= 0 && parts.length === onexIdx + 3) {
+        // 3-part: onex.<kind>.<event-name> (rare, missing producer)
+        if (isJunkType) actionType = parts[onexIdx + 2] || rawActionType;
+        // No producer segment available for agentName
+      }
+    }
+
+    return { actionType, agentName };
+  }
+
   private handleAgentAction(event: RawAgentActionEvent): void {
+    const rawActionType = event.action_type || event.actionType || '';
+    const rawAgentName = event.agent_name || event.agentName || '';
+    const actionName = event.action_name || event.actionName || '';
+    const { actionType, agentName } = EventConsumer.normalizeActionFields(
+      rawActionType,
+      rawAgentName,
+      actionName
+    );
+
     const action: AgentAction = {
       id: event.id || crypto.randomUUID(),
       correlationId: event.correlation_id || event.correlationId || '',
-      agentName: event.agent_name || event.agentName || '',
-      actionType: event.action_type || event.actionType || '',
-      actionName: event.action_name || event.actionName || '',
+      agentName,
+      actionType,
+      actionName,
       actionDetails: event.action_details || event.actionDetails,
       debugMode: event.debug_mode || event.debugMode,
       durationMs: event.duration_ms || event.durationMs || 0,
@@ -2261,6 +2285,45 @@ export class EventConsumer extends EventEmitter {
   // ============================================================================
 
   /**
+   * Map a canonical OnexNodeState ('ACTIVE' | 'PENDING' | 'OFFLINE') to the
+   * legacy RegistrationState used by the registeredNodes map and WebSocket
+   * consumers.
+   */
+  private mapCanonicalState(state: OnexNodeState): RegistrationState {
+    const stateMap: Record<string, RegistrationState> = {
+      ACTIVE: 'active',
+      PENDING: 'pending_registration',
+      OFFLINE: 'liveness_expired',
+    };
+    return stateMap[state] || 'pending_registration';
+  }
+
+  /**
+   * Sync a canonical node into the legacy registeredNodes map so that
+   * getRegisteredNodes() reflects canonical state for WebSocket consumers.
+   *
+   * Preserves existing RegisteredNode data (nodeType, version, metrics,
+   * endpoints) when available, and overlays the canonical state and timestamp.
+   */
+  private syncCanonicalToRegistered(canonicalNode: CanonicalOnexNode): void {
+    const existing = this.registeredNodes.get(canonicalNode.node_id);
+
+    const node: RegisteredNode = {
+      nodeId: canonicalNode.node_id,
+      nodeType: existing?.nodeType ?? 'COMPUTE',
+      state: this.mapCanonicalState(canonicalNode.state),
+      version: existing?.version ?? '1.0.0',
+      uptimeSeconds: existing?.uptimeSeconds ?? 0,
+      lastSeen: new Date(canonicalNode.last_event_at || Date.now()),
+      memoryUsageMb: existing?.memoryUsageMb,
+      cpuUsagePercent: existing?.cpuUsagePercent,
+      endpoints: existing?.endpoints ?? {},
+    };
+
+    this.registeredNodes.set(canonicalNode.node_id, node);
+  }
+
+  /**
    * Handle canonical node-became-active events.
    * Updates the canonical node registry and emits dashboard events.
    */
@@ -2297,12 +2360,11 @@ export class EventConsumer extends EventEmitter {
       last_event_at: emittedAtMs,
     });
 
+    // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
+    this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
+
     // Emit dashboard event for WebSocket broadcast
-    this.emit('nodeRegistryUpdate', {
-      type: 'NODE_ACTIVATED',
-      payload: { node_id: payload.node_id, capabilities: payload.capabilities },
-      emitted_at: emittedAtMs,
-    });
+    this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
     if (DEBUG_CANONICAL_EVENTS) {
       intentLogger.debug(`Canonical node-became-active processed: ${payload.node_id}`);
@@ -2353,12 +2415,11 @@ export class EventConsumer extends EventEmitter {
       last_event_at: emittedAtMs,
     });
 
+    // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
+    this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
+
     // Emit dashboard event for WebSocket broadcast
-    this.emit('nodeRegistryUpdate', {
-      type: 'NODE_OFFLINE',
-      payload: { node_id: payload.node_id },
-      emitted_at: emittedAtMs,
-    });
+    this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
     if (DEBUG_CANONICAL_EVENTS) {
       intentLogger.debug(`Canonical node-liveness-expired processed: ${payload.node_id}`);
@@ -2389,12 +2450,16 @@ export class EventConsumer extends EventEmitter {
         last_event_at: emittedAtMs,
       });
 
+      // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
+      this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
+
+      // Propagate heartbeat metrics to the registered node so dashboard
+      // displays current values (syncCanonicalToRegistered only preserves
+      // existing metrics; we must overlay the payload data explicitly).
+      this.propagateHeartbeatMetrics(payload);
+
       // Emit dashboard event so newly discovered nodes appear immediately
-      this.emit('nodeRegistryUpdate', {
-        type: 'NODE_DISCOVERED',
-        payload: { node_id: payload.node_id, last_heartbeat_at: emittedAtMs },
-        emitted_at: emittedAtMs,
-      });
+      this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
       return;
     }
 
@@ -2409,11 +2474,39 @@ export class EventConsumer extends EventEmitter {
       last_event_at: emittedAtMs,
     });
 
+    // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
+    this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
+
+    // Propagate heartbeat metrics to the registered node so dashboard
+    // displays current values (syncCanonicalToRegistered only preserves
+    // existing metrics; we must overlay the payload data explicitly).
+    this.propagateHeartbeatMetrics(payload);
+
     // Emit dashboard event for WebSocket broadcast
-    this.emit('nodeRegistryUpdate', {
-      type: 'NODE_HEARTBEAT',
-      payload: { node_id: payload.node_id, last_heartbeat_at: emittedAtMs },
-      emitted_at: emittedAtMs,
+    this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
+  }
+
+  /**
+   * Propagate heartbeat payload metrics (uptime, memory, CPU) into the legacy
+   * registeredNodes map. syncCanonicalToRegistered preserves existing metric
+   * values but does not update them from the canonical payload. This method
+   * fills that gap so canonical heartbeat events update the dashboard.
+   */
+  private propagateHeartbeatMetrics(payload: {
+    node_id: string;
+    uptime_seconds?: number;
+    memory_usage_mb?: number;
+    cpu_usage_percent?: number;
+    active_operations_count?: number;
+  }): void {
+    const regNode = this.registeredNodes.get(payload.node_id);
+    if (!regNode) return;
+
+    this.registeredNodes.set(payload.node_id, {
+      ...regNode,
+      uptimeSeconds: payload.uptime_seconds ?? regNode.uptimeSeconds,
+      memoryUsageMb: payload.memory_usage_mb ?? regNode.memoryUsageMb,
+      cpuUsagePercent: payload.cpu_usage_percent ?? regNode.cpuUsagePercent,
     });
   }
 
@@ -2460,12 +2553,11 @@ export class EventConsumer extends EventEmitter {
 
     this.canonicalNodes.set(payload.node_id, node);
 
+    // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
+    this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
+
     // Emit dashboard event for WebSocket broadcast
-    this.emit('nodeRegistryUpdate', {
-      type: 'NODE_INTROSPECTION',
-      payload: { node_id: payload.node_id, capabilities: payload.capabilities },
-      emitted_at: emittedAtMs,
-    });
+    this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
     if (DEBUG_CANONICAL_EVENTS) {
       intentLogger.debug(`Canonical node-introspection processed: ${payload.node_id}`);
@@ -2740,6 +2832,20 @@ export class EventConsumer extends EventEmitter {
       return this.recentActions.slice(0, limit);
     }
     return this.recentActions;
+  }
+
+  /**
+   * Get raw event bus event rows loaded during preloadFromDatabase().
+   *
+   * Returns the full EventBusEvent objects that were loaded at startup,
+   * ordered newest-first. Used by WebSocket INITIAL_STATE to serve event
+   * bus data from memory instead of re-querying PostgreSQL on every
+   * client connection.
+   *
+   * @returns Array of EventBusEvent objects from the preload cache
+   */
+  getPreloadedEventBusEvents(): EventBusEvent[] {
+    return this.preloadedEventBusEvents;
   }
 
   /**
@@ -3281,59 +3387,71 @@ export class EventConsumer extends EventEmitter {
       this.playbackEventsInjected++;
 
       switch (topic) {
-        case 'dev.onex.evt.omniclaude.prompt-submitted.v1':
+        case TOPIC.PROMPT_SUBMITTED:
         case 'prompt-submitted':
           this.handlePromptSubmittedEvent(
             event as Parameters<typeof this.handlePromptSubmittedEvent>[0]
           );
           break;
 
-        case 'agent-routing-decisions':
+        case LEGACY_AGENT_ROUTING_DECISIONS:
         case 'routing-decision':
           this.handleRoutingDecision(event as RawRoutingDecisionEvent);
           break;
 
-        case 'agent-actions':
+        case LEGACY_AGENT_ACTIONS:
         case 'action':
           this.handleAgentAction(event as RawAgentActionEvent);
           break;
 
-        case 'agent-transformation-events':
+        case LEGACY_AGENT_TRANSFORMATION_EVENTS:
         case 'transformation':
           this.handleTransformationEvent(event as RawTransformationEvent);
           break;
 
-        case 'dev.onex.evt.omniclaude.tool-executed.v1':
+        case TOPIC.TOOL_EXECUTED:
         case 'tool-executed':
           this.handleOmniclaudeLifecycleEvent(
             event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
-            'dev.onex.evt.omniclaude.tool-executed.v1'
+            TOPIC.TOOL_EXECUTED
           );
           break;
 
-        case 'dev.onex.evt.omniclaude.session-started.v1':
+        case TOPIC.SESSION_STARTED:
         case 'session-started':
           this.handleOmniclaudeLifecycleEvent(
             event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
-            'dev.onex.evt.omniclaude.session-started.v1'
+            TOPIC.SESSION_STARTED
           );
           break;
 
-        case 'dev.onex.evt.omniclaude.session-ended.v1':
+        case TOPIC.SESSION_ENDED:
         case 'session-ended':
           this.handleOmniclaudeLifecycleEvent(
             event as Parameters<typeof this.handleOmniclaudeLifecycleEvent>[0],
-            'dev.onex.evt.omniclaude.session-ended.v1'
+            TOPIC.SESSION_ENDED
           );
           break;
 
-        case 'dev.onex.evt.omniintelligence.intent-classified.v1':
+        // Tool-content events from omniintelligence (tool execution records)
+        case TOPIC.TOOL_CONTENT:
+          this.handleAgentAction({
+            action_type: 'tool',
+            agent_name: 'omniclaude',
+            action_name: (event as Record<string, string>).tool_name || 'unknown',
+            correlation_id: (event as Record<string, string>).correlation_id,
+            duration_ms: Number((event as Record<string, unknown>).duration_ms || 0),
+            timestamp: (event as Record<string, string>).timestamp,
+          } as RawAgentActionEvent);
+          break;
+
+        case SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED:
         case 'intent-classified':
           // Route through the same handler as live Kafka events for consistent state updates
           this.handleIntentClassified(event as RawIntentClassifiedEvent);
           break;
 
-        case 'router-performance-metrics':
+        case LEGACY_ROUTER_PERFORMANCE_METRICS:
         case 'performance-metric':
           // Route through the same handler as live Kafka events for consistent state updates
           this.handlePerformanceMetric(event as RawPerformanceMetricEvent);
@@ -3470,7 +3588,8 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
         prop === 'getNodeHeartbeatEvents' ||
         prop === 'getNodeStateChangeEvents' ||
         prop === 'getRecentIntents' ||
-        prop === 'getCanonicalNodes'
+        prop === 'getCanonicalNodes' ||
+        prop === 'getPreloadedEventBusEvents'
       ) {
         return () => [];
       }

@@ -23,41 +23,22 @@ import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import * as fs from 'fs';
 import * as path from 'path';
 import 'dotenv/config';
+import { buildSubscriptionTopics, LEGACY_AGENT_MANIFEST_INJECTIONS } from '@shared/topics';
 
 // Configuration
-const KAFKA_BROKERS = (process.env.KAFKA_BOOTSTRAP_SERVERS || '192.168.86.200:29092').split(',');
+const brokersEnv = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS;
+if (!brokersEnv) {
+  console.error(
+    'Error: KAFKA_BOOTSTRAP_SERVERS or KAFKA_BROKERS environment variable is required.'
+  );
+  console.error('   Set it in .env file or export it before running this script.');
+  process.exit(1);
+}
+const KAFKA_BROKERS = brokersEnv.split(',');
 const DEFAULT_DURATION_SECONDS = 60;
 
-// Topics to record - same as event-consumer.ts
-const DEFAULT_TOPICS = [
-  // Agent topics
-  'agent-routing-decisions',
-  'agent-transformation-events',
-  'router-performance-metrics',
-  'agent-actions',
-  // Pattern learning topics
-  'agent-manifest-injections',
-  // Node registry topics (legacy)
-  'dev.omninode_bridge.onex.evt.node-introspection.v1',
-  'dev.onex.evt.registration-completed.v1',
-  'node.heartbeat',
-  'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
-  // Intent topics
-  'dev.onex.evt.omniintelligence.intent-classified.v1',
-  'dev.onex.evt.omnimemory.intent-stored.v1',
-  'dev.onex.evt.omnimemory.intent-query-response.v1',
-  // Canonical ONEX topics
-  'dev.onex.evt.node-became-active.v1',
-  'dev.onex.evt.node-liveness-expired.v1',
-  'dev.onex.evt.node-heartbeat.v1',
-  'dev.onex.evt.node-introspection.v1',
-  // OmniClaude hook events
-  'dev.onex.cmd.omniintelligence.claude-hook-event.v1',
-  'dev.onex.evt.omniclaude.prompt-submitted.v1',
-  'dev.onex.evt.omniclaude.session-started.v1',
-  'dev.onex.evt.omniclaude.tool-executed.v1',
-  'dev.onex.evt.omniclaude.session-ended.v1',
-];
+// Topics to record - same as event-consumer.ts plus pattern learning topic
+const DEFAULT_TOPICS = [...buildSubscriptionTopics(), LEGACY_AGENT_MANIFEST_INJECTIONS];
 
 interface RecordedEvent {
   timestamp: string;

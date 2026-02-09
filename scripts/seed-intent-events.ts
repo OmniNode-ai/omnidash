@@ -24,7 +24,7 @@ import {
   type IntentClassifiedEvent,
   type IntentStoredEvent,
   type IntentCategory,
-} from '../shared/intent-types';
+} from '@shared/intent-types';
 
 // ============================================================================
 // Configuration
@@ -36,7 +36,7 @@ if (!brokers) {
     '\x1b[31mError:\x1b[0m KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required.'
   );
   console.error('   Set it in .env file or export it before running this script.');
-  console.error('   Example: KAFKA_BROKERS=192.168.86.200:29092');
+  console.error('   Example: KAFKA_BROKERS=host:port');
   process.exit(1);
 }
 
