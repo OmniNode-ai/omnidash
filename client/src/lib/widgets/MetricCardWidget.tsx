@@ -149,6 +149,7 @@ export function MetricCardWidget({ widget, config, data, isLoading }: MetricCard
       status={status}
       trend={trend}
       tooltip={widget.description}
+      subtitle={widget.description}
       className="h-full"
     />
   );

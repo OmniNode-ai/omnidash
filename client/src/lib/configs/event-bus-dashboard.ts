@@ -237,7 +237,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
     {
       widget_id: 'metric-topics-loaded',
       title: 'Topics Active',
-      description: 'Number of topics with events in the current buffer',
+      description: 'Topics that emitted events in the last 5 min',
       row: 0,
       col: 0,
       width: 4,
@@ -254,7 +254,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
     {
       widget_id: 'metric-throughput',
       title: 'Events/sec',
-      description: 'Live events received per second (60-second sliding window)',
+      description: 'Average rate over the last 60 seconds',
       row: 0,
       col: 4,
       width: 4,
@@ -271,7 +271,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
     {
       widget_id: 'metric-error-rate',
       title: 'Error Rate',
-      description: 'Percentage of events sent to DLQ',
+      description: 'Failed events in the last 5 min',
       row: 0,
       col: 8,
       width: 4,

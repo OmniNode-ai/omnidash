@@ -14,6 +14,7 @@ interface MetricCardProps {
   className?: string;
   status?: 'healthy' | 'warning' | 'error' | 'offline';
   tooltip?: string;
+  subtitle?: string;
 }
 
 export function MetricCard({
@@ -24,6 +25,7 @@ export function MetricCard({
   className,
   status,
   tooltip,
+  subtitle,
 }: MetricCardProps) {
   const labelContent = (
     <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">{label}</div>
@@ -72,6 +74,9 @@ export function MetricCard({
               </div>
             )}
           </div>
+          {subtitle && (
+            <div className="text-[11px] text-muted-foreground mt-1 leading-tight">{subtitle}</div>
+          )}
         </div>
         {Icon && (
           <div
