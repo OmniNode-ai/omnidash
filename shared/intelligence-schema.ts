@@ -647,3 +647,7 @@ export type ValidationRunRow = typeof validationRuns.$inferSelect;
 export type InsertValidationRun = typeof validationRuns.$inferInsert;
 export type ValidationViolationRow = typeof validationViolations.$inferSelect;
 export type InsertValidationViolation = typeof validationViolations.$inferInsert;
+
+// NOTE: Injection Effectiveness tables (OMN-1891) are defined in the
+// Pattern Extraction Pipeline section above (OMN-1804) which shares
+// injectionEffectiveness, latencyBreakdowns, and patternHitRates.

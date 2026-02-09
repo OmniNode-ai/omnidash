@@ -8,6 +8,7 @@ import {
   Sparkles,
   ShieldCheck,
   Gauge,
+  Activity,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -59,6 +60,12 @@ const dashboards = [
     url: '/extraction',
     icon: Gauge,
     description: 'Pattern extraction metrics and pipeline health',
+  },
+  {
+    title: 'Effectiveness',
+    url: '/effectiveness',
+    icon: Activity,
+    description: 'Injection effectiveness metrics and A/B analysis',
   },
   // Hidden: Execution Graph (/graph) - node execution visualization
   // Hidden: Demo Stream (/live-events) - superseded by Event Bus

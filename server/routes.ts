@@ -11,6 +11,7 @@ import playbackRoutes from './playback-routes';
 import patternsRoutes from './patterns-routes';
 import validationRoutes from './validation-routes';
 import extractionRoutes from './extraction-routes';
+import effectivenessRoutes from './effectiveness-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -51,6 +52,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount extraction routes for pattern extraction pipeline dashboard (OMN-1804)
   app.use('/api/extraction', extractionRoutes);
+
+  // Mount effectiveness routes for injection effectiveness dashboard (OMN-1891)
+  app.use('/api/effectiveness', effectivenessRoutes);
 
   const httpServer = createServer(app);
 
