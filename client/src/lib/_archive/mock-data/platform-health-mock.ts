@@ -44,7 +44,7 @@ export class PlatformHealthMockData {
         status: kafkaHealth.status,
         latencyMs: kafkaHealth.latencyMs,
         details: {
-          brokers: ['192.168.86.200:29092'],
+          brokers: ['kafka-broker:9092'],
           topicCount: Gen.randomInt(15, 25),
         },
       },

@@ -463,6 +463,10 @@ describe('useEventBusStream', () => {
         timestampRaw: '2024-01-01T00:00:00Z',
         source: 'test',
         payload: '{}',
+        summary: 'test summary',
+        normalizedType: 'test',
+        groupKey: 'test',
+        parsedDetails: null,
       };
       expect(event.id).toBeDefined();
       expect(event.topic).toBeDefined();
@@ -473,6 +477,9 @@ describe('useEventBusStream', () => {
       expect(event.timestampRaw).toBeDefined();
       expect(event.source).toBeDefined();
       expect(event.payload).toBeDefined();
+      expect(event.summary).toBeDefined();
+      expect(event.normalizedType).toBeDefined();
+      expect(event.groupKey).toBeDefined();
     });
 
     it('ProcessedEvent supports optional correlationId', () => {
@@ -486,6 +493,10 @@ describe('useEventBusStream', () => {
         timestampRaw: '2024-01-01T00:00:00Z',
         source: 'test',
         payload: '{}',
+        summary: 'test summary',
+        normalizedType: 'test',
+        groupKey: 'test',
+        parsedDetails: null,
         correlationId: 'corr-123',
       };
       expect(eventWithCorrelation.correlationId).toBe('corr-123');
@@ -500,6 +511,10 @@ describe('useEventBusStream', () => {
         timestampRaw: '2024-01-01T00:00:00Z',
         source: 'test',
         payload: '{}',
+        summary: 'test summary',
+        normalizedType: 'test',
+        groupKey: 'test',
+        parsedDetails: null,
       };
       expect(eventWithoutCorrelation.correlationId).toBeUndefined();
     });
@@ -515,6 +530,10 @@ describe('useEventBusStream', () => {
         timestampRaw: '2024-01-01T00:00:00Z',
         source: 'test',
         payload: '{}',
+        summary: 'test summary',
+        normalizedType: 'test',
+        groupKey: 'test',
+        parsedDetails: null,
         parseError: 'Some error message',
       };
       expect(eventWithError.parseError).toBe('Some error message');

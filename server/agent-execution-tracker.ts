@@ -306,7 +306,7 @@ export class AgentExecutionTracker {
   }
 }
 
-// Initialize with mock data if no data exists
-if (agentExecutions.length === 0) {
+// Only initialize mock data if DEMO_MODE is explicitly enabled
+if (agentExecutions.length === 0 && process.env.DEMO_MODE === 'true') {
   AgentExecutionTracker.generateMockExecutions();
 }

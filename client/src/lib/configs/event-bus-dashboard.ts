@@ -4,22 +4,37 @@
  * Real-time Kafka event stream visualization dashboard.
  * Monitors agent and ONEX event topics via WebSocket connection to server.
  *
- * Topics monitored (from server/event-consumer.ts):
- * Agent topics:
- * - agent-routing-decisions
- * - agent-transformation-events
- * - router-performance-metrics
- * - agent-actions
- *
- * Node registry topics (actual Kafka topic names from omnibase_infra):
- * - dev.omninode_bridge.onex.evt.node-introspection.v1
- * - dev.onex.evt.registration-completed.v1
- * - node.heartbeat
- * - dev.omninode_bridge.onex.evt.registry-request-introspection.v1
+ * Topic constants imported from @shared/topics (single source of truth).
  */
 
 import type { DashboardConfig } from '@/lib/dashboard-schema';
 import { DashboardTheme } from '@/lib/dashboard-schema';
+import {
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+  LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_MANIFEST_INJECTIONS,
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_REGISTRATION,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_REQUEST_INTROSPECTION,
+  SUFFIX_CONTRACT_REGISTERED,
+  SUFFIX_CONTRACT_DEREGISTERED,
+  SUFFIX_NODE_REGISTRATION_INITIATED,
+  SUFFIX_NODE_REGISTRATION_ACCEPTED,
+  SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_REGISTRATION_SNAPSHOTS,
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
+  SUFFIX_OMNICLAUDE_SESSION_STARTED,
+  SUFFIX_OMNICLAUDE_SESSION_ENDED,
+  SUFFIX_INTELLIGENCE_PATTERN_SCORED,
+  SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  ENVIRONMENT_PREFIXES,
+  extractSuffix,
+} from '@shared/topics';
 
 /**
  * Event message schema from omnibase_infra Kafka events
@@ -50,23 +65,29 @@ export interface EventHeaders {
 // ============================================================================
 
 /**
- * Agent topics - core agent functionality events
+ * Agent topics - core agent functionality events (legacy flat names)
  */
 export const AGENT_TOPICS = [
-  'agent-routing-decisions',
-  'agent-transformation-events',
-  'router-performance-metrics',
-  'agent-actions',
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+  LEGACY_AGENT_ACTIONS,
 ] as const;
 
 /**
- * Node registry topics - node lifecycle and health events
+ * Node registry topics - canonical ONEX suffixes for node lifecycle and health
  */
 export const NODE_TOPICS = [
-  'dev.omninode_bridge.onex.evt.node-introspection.v1',
-  'dev.onex.evt.registration-completed.v1',
-  'node.heartbeat',
-  'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_REGISTRATION,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_REQUEST_INTROSPECTION,
+  SUFFIX_CONTRACT_REGISTERED,
+  SUFFIX_CONTRACT_DEREGISTERED,
+  SUFFIX_NODE_REGISTRATION_INITIATED,
+  SUFFIX_NODE_REGISTRATION_ACCEPTED,
+  SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_REGISTRATION_SNAPSHOTS,
 ] as const;
 
 /**
@@ -89,47 +110,77 @@ export const TOPIC_METADATA: Record<
   string,
   { label: string; description: string; category: string }
 > = {
-  // Agent topics
-  'agent-routing-decisions': {
+  // Agent topics (legacy flat names)
+  [LEGACY_AGENT_ROUTING_DECISIONS]: {
     label: 'Routing Decisions',
     description: 'Agent selection and routing decisions with confidence scores',
     category: 'routing',
   },
-  'agent-transformation-events': {
+  [LEGACY_AGENT_TRANSFORMATION_EVENTS]: {
     label: 'Transformations',
     description: 'Polymorphic agent transformation events',
     category: 'transformation',
   },
-  'router-performance-metrics': {
+  [LEGACY_ROUTER_PERFORMANCE_METRICS]: {
     label: 'Performance',
     description: 'Routing performance metrics and cache statistics',
     category: 'performance',
   },
-  'agent-actions': {
+  [LEGACY_AGENT_ACTIONS]: {
     label: 'Agent Actions',
     description: 'Tool calls, decisions, errors, and successes',
     category: 'actions',
   },
-  // Node registry topics
-  'dev.omninode_bridge.onex.evt.node-introspection.v1': {
+  // Node registry topics (canonical ONEX suffixes)
+  [SUFFIX_NODE_INTROSPECTION]: {
     label: 'Node Introspection',
     description: 'Node introspection events for debugging and monitoring',
     category: 'introspection',
   },
-  'dev.onex.evt.registration-completed.v1': {
-    label: 'Registration Completed',
-    description: 'Node registration completion events',
+  [SUFFIX_NODE_REGISTRATION]: {
+    label: 'Node Registration',
+    description: 'Node registration lifecycle events',
     category: 'lifecycle',
   },
-  'node.heartbeat': {
+  [SUFFIX_NODE_HEARTBEAT]: {
     label: 'Heartbeat',
     description: 'Node health heartbeat signals',
     category: 'health',
   },
-  'dev.omninode_bridge.onex.evt.registry-request-introspection.v1': {
+  [SUFFIX_REQUEST_INTROSPECTION]: {
     label: 'Registry Introspection Request',
     description: 'Introspection requests from registry to nodes',
     category: 'introspection',
+  },
+  [SUFFIX_CONTRACT_REGISTERED]: {
+    label: 'Contract Registered',
+    description: 'Contract registration events',
+    category: 'lifecycle',
+  },
+  [SUFFIX_CONTRACT_DEREGISTERED]: {
+    label: 'Contract Deregistered',
+    description: 'Contract deregistration events',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_INITIATED]: {
+    label: 'Registration Initiated',
+    description: 'Node registration initiation events',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_ACCEPTED]: {
+    label: 'Registration Accepted',
+    description: 'Node registration acceptance events',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_REJECTED]: {
+    label: 'Registration Rejected',
+    description: 'Node registration rejection events',
+    category: 'lifecycle',
+  },
+  [SUFFIX_REGISTRATION_SNAPSHOTS]: {
+    label: 'Registration Snapshots',
+    description: 'Point-in-time registration state snapshots',
+    category: 'snapshot',
   },
   // Error topics
   errors: {
@@ -163,8 +214,10 @@ export const eventBusDashboardConfig: DashboardConfig = {
   // Runtime configuration for event monitoring behavior
   runtime_config: {
     event_monitoring: {
-      max_events: 50,
-      max_events_options: [50, 100, 200, 500, 1000],
+      // Memory impact: ~2KB per event with parsedDetails. At 2000 events ≈ 4MB.
+      // Options above 2000 should be used sparingly on memory-constrained clients.
+      max_events: 2000,
+      max_events_options: [200, 500, 1000, 2000, 5000],
       throughput_cleanup_interval: 100,
       time_series_window_ms: 5 * 60 * 1000, // 5 minutes
       throughput_window_ms: 60 * 1000, // 1 minute
@@ -173,98 +226,38 @@ export const eventBusDashboardConfig: DashboardConfig = {
     },
   },
 
-  // Topic metadata for display labels and categorization
-  topic_metadata: {
-    // Agent topics
-    'agent-routing-decisions': {
-      label: 'Routing Decisions',
-      description: 'Agent selection and routing decisions with confidence scores',
-      category: 'routing',
-    },
-    'agent-transformation-events': {
-      label: 'Transformations',
-      description: 'Polymorphic agent transformation events',
-      category: 'transformation',
-    },
-    'router-performance-metrics': {
-      label: 'Performance',
-      description: 'Routing performance metrics and cache statistics',
-      category: 'performance',
-    },
-    'agent-actions': {
-      label: 'Agent Actions',
-      description: 'Tool calls, decisions, errors, and successes',
-      category: 'actions',
-    },
-    // Node registry topics
-    'dev.omninode_bridge.onex.evt.node-introspection.v1': {
-      label: 'Node Introspection',
-      description: 'Node introspection events for debugging and monitoring',
-      category: 'introspection',
-    },
-    'dev.onex.evt.registration-completed.v1': {
-      label: 'Registration Completed',
-      description: 'Node registration completion events',
-      category: 'lifecycle',
-    },
-    'node.heartbeat': {
-      label: 'Heartbeat',
-      description: 'Node health heartbeat signals',
-      category: 'health',
-    },
-    'dev.omninode_bridge.onex.evt.registry-request-introspection.v1': {
-      label: 'Registry Introspection Request',
-      description: 'Introspection requests from registry to nodes',
-      category: 'introspection',
-    },
-    // Error topics
-    errors: {
-      label: 'Errors',
-      description: 'System errors and failures',
-      category: 'error',
-    },
-  },
+  // Topic metadata — references the TOPIC_METADATA constant to avoid duplication.
+  topic_metadata: TOPIC_METADATA,
 
   // List of all monitored Kafka topics
-  monitored_topics: [
-    // Agent topics
-    'agent-routing-decisions',
-    'agent-transformation-events',
-    'router-performance-metrics',
-    'agent-actions',
-    // Node registry topics
-    'dev.omninode_bridge.onex.evt.node-introspection.v1',
-    'dev.onex.evt.registration-completed.v1',
-    'node.heartbeat',
-    'dev.omninode_bridge.onex.evt.registry-request-introspection.v1',
-  ],
+  monitored_topics: [...AGENT_TOPICS, ...NODE_TOPICS],
 
   widgets: [
-    // Row 1: Metric Cards (4 widgets)
+    // Row 1: Metric Cards (3 widgets)
     {
-      widget_id: 'metric-total-events',
-      title: 'Total Events',
-      description: 'Events received in the last hour',
+      widget_id: 'metric-topics-loaded',
+      title: 'Topics Active',
+      description: 'Number of topics with events in the current buffer',
       row: 0,
       col: 0,
-      width: 3,
+      width: 4,
       height: 1,
       config: {
         config_kind: 'metric_card',
-        metric_key: 'totalEvents',
-        label: 'Total Events',
+        metric_key: 'activeTopics',
+        label: 'Topics Active',
         value_format: 'number',
         precision: 0,
-        icon: 'activity',
+        icon: 'database',
       },
     },
     {
       widget_id: 'metric-throughput',
       title: 'Events/sec',
-      description: 'Events received per second (60-second sliding window)',
+      description: 'Live events received per second (60-second sliding window)',
       row: 0,
-      col: 3,
-      width: 3,
+      col: 4,
+      width: 4,
       height: 1,
       config: {
         config_kind: 'metric_card',
@@ -280,8 +273,8 @@ export const eventBusDashboardConfig: DashboardConfig = {
       title: 'Error Rate',
       description: 'Percentage of events sent to DLQ',
       row: 0,
-      col: 6,
-      width: 3,
+      col: 8,
+      width: 4,
       height: 1,
       config: {
         config_kind: 'metric_card',
@@ -297,23 +290,6 @@ export const eventBusDashboardConfig: DashboardConfig = {
         ],
       },
     },
-    {
-      widget_id: 'metric-active-topics',
-      title: 'Active Topics',
-      description: 'Number of topics with recent activity',
-      row: 0,
-      col: 9,
-      width: 3,
-      height: 1,
-      config: {
-        config_kind: 'metric_card',
-        metric_key: 'activeTopics',
-        label: 'Active Topics',
-        value_format: 'number',
-        precision: 0,
-        icon: 'database',
-      },
-    },
 
     // Row 1-2: Charts
     {
@@ -321,7 +297,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
       title: 'Event Volume Over Time',
       row: 1,
       col: 0,
-      width: 6,
+      width: 8,
       height: 2,
       config: {
         config_kind: 'chart',
@@ -335,33 +311,16 @@ export const eventBusDashboardConfig: DashboardConfig = {
       },
     },
     {
-      widget_id: 'chart-topic-breakdown',
-      title: 'Events by Topic',
-      row: 1,
-      col: 6,
-      width: 3,
-      height: 2,
-      config: {
-        config_kind: 'chart',
-        chart_type: 'donut',
-        alternate_chart_type: 'bar',
-        data_key: 'topicBreakdownData',
-        series: [{ name: 'Events', data_key: 'eventCount' }],
-        show_legend: true,
-        max_items: 7,
-      },
-    },
-    {
       widget_id: 'chart-event-type-breakdown',
       title: 'Events by Type',
       row: 1,
-      col: 9,
-      width: 3,
+      col: 8,
+      width: 4,
       height: 2,
       config: {
         config_kind: 'chart',
-        chart_type: 'donut',
-        alternate_chart_type: 'bar',
+        chart_type: 'bar',
+        alternate_chart_type: 'donut',
         data_key: 'eventTypeBreakdownData',
         series: [{ name: 'Events', data_key: 'eventCount' }],
         show_legend: true,
@@ -388,11 +347,11 @@ export const eventBusDashboardConfig: DashboardConfig = {
         striped: true,
         hover_highlight: true,
         columns: [
-          { key: 'topic', header: 'Topic', width: 200, sortable: true },
-          { key: 'eventType', header: 'Event Type', width: 150, sortable: true },
+          { key: 'topic', header: 'Topic', width: 150, sortable: true },
+          { key: 'eventType', header: 'Event Type', width: 130, sortable: true },
+          { key: 'summary', header: 'Summary', width: 250, sortable: false },
           { key: 'source', header: 'Source', width: 120, sortable: true },
-          { key: 'timestamp', header: 'Time', width: 100, sortable: true, format: 'datetime' },
-          { key: 'priority', header: 'Priority', width: 80, sortable: true, format: 'badge' },
+          { key: 'timestamp', header: 'Time', width: 100, sortable: true },
         ],
       },
     },
@@ -408,10 +367,10 @@ export const eventBusDashboardConfig: DashboardConfig = {
  * Maps raw event type strings to human-readable short labels.
  */
 export const EVENT_TYPE_METADATA: Record<string, { label: string; description?: string }> = {
-  // Agent event types
-  'agent-routing-decisions': { label: 'Routing Decision' },
-  'agent-manifest-injections': { label: 'Manifest Injection' },
-  'agent-transformation-events': { label: 'Transformation' },
+  // Agent event types (legacy flat names)
+  [LEGACY_AGENT_ROUTING_DECISIONS]: { label: 'Routing Decision' },
+  [LEGACY_AGENT_MANIFEST_INJECTIONS]: { label: 'Manifest Injection' },
+  [LEGACY_AGENT_TRANSFORMATION_EVENTS]: { label: 'Transformation' },
   routing: { label: 'Routing' },
   transformation: { label: 'Transformation' },
   performance: { label: 'Performance' },
@@ -431,24 +390,33 @@ export const EVENT_TYPE_METADATA: Record<string, { label: string; description?: 
   production: { label: 'Unknown Type' },
   test: { label: 'Unknown Type' },
 
-  // ONEX event types (full paths)
-  'dev.onex.evt.omniclaude.tool-executed.v1': { label: 'Tool Executed' },
-  'dev.onex.evt.omniclaude.prompt-submitted.v1': { label: 'Prompt Submitted' },
-  'dev.onex.evt.omniclaude.session-started.v1': { label: 'Session Started' },
-  'dev.onex.evt.omniclaude.session-ended.v1': { label: 'Session Ended' },
-  'dev.onex.evt.omniintelligence.pattern-scored.v1': { label: 'Pattern Scored' },
-  'dev.onex.evt.omniintelligence.pattern-discovered.v1': { label: 'Pattern Discovered' },
-  'dev.onex.evt.omniintelligence.pattern-learned.v1': { label: 'Pattern Learned' },
+  // ONEX event types (canonical suffixes)
+  [SUFFIX_OMNICLAUDE_TOOL_EXECUTED]: { label: 'Tool Executed' },
+  [SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED]: { label: 'Prompt Submitted' },
+  [SUFFIX_OMNICLAUDE_SESSION_STARTED]: { label: 'Session Started' },
+  [SUFFIX_OMNICLAUDE_SESSION_ENDED]: { label: 'Session Ended' },
+  [SUFFIX_INTELLIGENCE_PATTERN_SCORED]: { label: 'Pattern Scored' },
+  [SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED]: { label: 'Pattern Discovered' },
+  [SUFFIX_INTELLIGENCE_PATTERN_LEARNED]: { label: 'Pattern Learned' },
 
   // Node lifecycle event types
   introspection: { label: 'Introspection' },
   heartbeat: { label: 'Heartbeat' },
   state_change: { label: 'State Change' },
   registry_update: { label: 'Registry Update' },
-};
 
-/** Environment prefixes to skip when extracting event type labels */
-const ENVIRONMENT_PREFIXES = ['dev', 'staging', 'prod', 'production', 'test', 'local'];
+  // Canonical event-name segments (extracted from actionName by server)
+  'tool-content': { label: 'Tool Content' },
+  'claude-hook-event': { label: 'Claude Hook' },
+  'intent-classified': { label: 'Intent Classified' },
+  'intent-stored': { label: 'Intent Stored' },
+  'intent-query-response': { label: 'Intent Query' },
+  'session-outcome': { label: 'Session Outcome' },
+  'prompt-submitted': { label: 'Prompt Submitted' },
+  'session-started': { label: 'Session Started' },
+  'session-ended': { label: 'Session Ended' },
+  'tool-executed': { label: 'Tool Executed' },
+};
 
 /** Structural segments to skip (not meaningful for display) */
 const STRUCTURAL_SEGMENTS = ['evt', 'event', 'events', 'onex', 'omninode_bridge'];
@@ -469,24 +437,28 @@ function toTitleCase(str: string): string {
  * Extract a short label from an ONEX-style event type string.
  *
  * Patterns supported:
- * - dev.[namespace].evt.[source].[action].v[N] → "Action"
- * - dev.[namespace].onex.evt.[action].v[N] → "Action"
+ * - {env}.[namespace].evt.[source].[action].v[N] → "Action"
+ * - {env}.[namespace].onex.evt.[action].v[N] → "Action"
  * - Simple strings like "tool_call" → "Tool Call"
  *
  * Skips environment prefixes (dev, staging, prod) and structural segments (evt, onex).
  */
+const _envPrefixPattern = ENVIRONMENT_PREFIXES.join('|');
+const _onexRegex = new RegExp(`^(?:${_envPrefixPattern})\\.[^.]+\\.evt\\.[^.]+\\.([^.]+)\\.v\\d+$`);
+const _onexAltRegex = new RegExp(
+  `^(?:${_envPrefixPattern})\\.[^.]+\\.onex\\.evt\\.([^.]+)\\.v\\d+$`
+);
+
 function extractEventTypeLabel(eventType: string): string {
-  // Pattern: dev.*.evt.*.[action].v[N]
-  const onexPattern = /^dev\.[^.]+\.evt\.[^.]+\.([^.]+)\.v\d+$/;
-  const match = eventType.match(onexPattern);
+  // Pattern: {env}.*.evt.*.[action].v[N]
+  const match = eventType.match(_onexRegex);
 
   if (match) {
     return toTitleCase(match[1]);
   }
 
-  // Alternative pattern: dev.*.onex.evt.[action].v[N]
-  const altPattern = /^dev\.[^.]+\.onex\.evt\.([^.]+)\.v\d+$/;
-  const altMatch = eventType.match(altPattern);
+  // Alternative pattern: {env}.*.onex.evt.[action].v[N]
+  const altMatch = eventType.match(_onexAltRegex);
   if (altMatch) {
     return toTitleCase(altMatch[1]);
   }
@@ -496,7 +468,7 @@ function extractEventTypeLabel(eventType: string): string {
   const meaningfulSegments = segments.filter((seg) => {
     const lower = seg.toLowerCase();
     // Skip environment prefixes
-    if (ENVIRONMENT_PREFIXES.includes(lower)) return false;
+    if ((ENVIRONMENT_PREFIXES as readonly string[]).includes(lower)) return false;
     // Skip structural segments
     if (STRUCTURAL_SEGMENTS.includes(lower)) return false;
     // Skip version suffixes (v1, v2, etc.)
@@ -516,11 +488,79 @@ function extractEventTypeLabel(eventType: string): string {
   return eventType.length > 25 ? eventType.slice(0, 22) + '...' : eventType;
 }
 
+/** Max label length for chart axis readability */
+const MAX_LABEL_LENGTH = 14;
+
 /**
  * Get the label for an event type, with fallback to extracted label.
+ * Handles internal grouping prefixes like "route:agentName".
  */
 export function getEventTypeLabel(eventType: string): string {
-  return EVENT_TYPE_METADATA[eventType]?.label ?? extractEventTypeLabel(eventType);
+  // Direct lookup first
+  const direct = EVENT_TYPE_METADATA[eventType]?.label;
+  if (direct) return direct;
+
+  // Handle internal grouping prefixes: "route:agentName"
+  const colonIdx = eventType.indexOf(':');
+  if (colonIdx !== -1) {
+    const value = eventType.slice(colonIdx + 1).trim();
+    const label = value.charAt(0).toUpperCase() + value.slice(1);
+    return label.length > MAX_LABEL_LENGTH
+      ? label.slice(0, MAX_LABEL_LENGTH - 1) + '\u2026'
+      : label;
+  }
+
+  return extractEventTypeLabel(eventType);
+}
+
+// ============================================================================
+// Topic Matching Utilities
+// ============================================================================
+
+/**
+ * Topic matching contract:
+ * - Monitored topics are suffix-only (e.g. "onex.evt.platform.node-heartbeat.v1")
+ * - Kafka delivers env-prefixed names (e.g. "dev.onex.evt.platform.node-heartbeat.v1")
+ * - Environment prefix is dot-delimited (single segment before first relevant dot)
+ * - Matching is literal string comparison — no wildcards or regex patterns
+ * - Legacy flat topics (e.g. "agent-routing-decisions") have no prefix and match exactly
+ */
+
+/**
+ * Check whether an event's raw topic matches a monitored suffix.
+ *
+ * Handles both exact match (legacy flat topics, or suffix appearing without prefix)
+ * and env-prefixed match (e.g. "dev.onex.evt..." matching suffix "onex.evt...").
+ *
+ * Uses `endsWith("." + suffix)` to avoid false positives from partial matches
+ * (e.g. suffix "v1" will NOT match "some-topic.v12").
+ */
+export function topicMatchesSuffix(eventTopicRaw: string, monitoredSuffix: string): boolean {
+  return eventTopicRaw === monitoredSuffix || eventTopicRaw.endsWith('.' + monitoredSuffix);
+}
+
+/**
+ * Normalize a potentially env-prefixed topic name to its monitored suffix form.
+ *
+ * Used at write boundaries (e.g. when setting filter state from EventDetailPanel)
+ * so that stored filter values are always suffix-only and can be compared directly
+ * with TopicSelector row keys.
+ *
+ * Returns the original topic if no monitored suffix matches.
+ */
+export function normalizeToSuffix(
+  topic: string,
+  topics: readonly string[] = MONITORED_TOPICS
+): string {
+  // Already a monitored suffix — return as-is
+  if ((topics as readonly string[]).includes(topic)) return topic;
+
+  // Try stripping env prefix: "dev.onex.evt...." → "onex.evt...."
+  for (const suffix of topics) {
+    if (topicMatchesSuffix(topic, suffix)) return suffix;
+  }
+
+  return topic;
 }
 
 // ============================================================================
@@ -546,17 +586,51 @@ export function getEventMonitoringConfig() {
 }
 
 /**
- * Get topic metadata from the config.
- * Falls back to the TOPIC_METADATA constant for completeness.
+ * Get topic metadata from the dashboard config or the TOPIC_METADATA constant.
+ *
+ * Handles env-prefixed topic names (e.g. 'dev.onex.evt.platform.node-introspection.v1')
+ * by stripping known environment prefixes via `extractSuffix()` and retrying the lookup.
+ * Only strips the first segment when it matches a known prefix in ENVIRONMENT_PREFIXES
+ * (e.g. 'dev', 'staging', 'prod'), so canonical names like 'onex.evt...' pass through
+ * unmodified on the direct lookup.
+ *
+ * Fallback chain:
+ *   1. Direct lookup (handles legacy flat names and exact canonical matches)
+ *   2. Strip env prefix via extractSuffix(), retry lookup (handles 'dev.onex.evt...')
+ *   3. Return undefined if no match
+ *
+ * Note: eventBusDashboardConfig.topic_metadata references TOPIC_METADATA directly
+ * (no duplication). The config layer exists as an override point for future
+ * user-configurable metadata; both are checked for forward compatibility.
+ *
+ * @param topic - Raw topic name, possibly env-prefixed
+ * @returns Metadata object with label, description, and category, or undefined if not found
  */
 export function getTopicMetadata(
   topic: string
 ): { label: string; description: string; category: string } | undefined {
-  return eventBusDashboardConfig.topic_metadata?.[topic] ?? TOPIC_METADATA[topic];
+  const configMeta = eventBusDashboardConfig.topic_metadata;
+
+  // Direct lookup first (handles legacy flat names and exact suffix matches)
+  const direct = configMeta?.[topic] ?? TOPIC_METADATA[topic];
+  if (direct) return direct;
+
+  // Try stripping a known env prefix (e.g. 'dev.onex.evt...' → 'onex.evt...').
+  // extractSuffix() only strips when the first segment is in ENVIRONMENT_PREFIXES,
+  // so topics that are already canonical or use legacy flat names are returned as-is.
+  const suffix = extractSuffix(topic);
+  if (suffix !== topic) {
+    return configMeta?.[suffix] ?? TOPIC_METADATA[suffix];
+  }
+
+  return undefined;
 }
 
 /**
- * Get the label for a topic, with fallback to the topic name itself.
+ * Get the display label for a topic, with fallback to the raw topic name.
+ *
+ * @param topic - Raw or canonical topic name (may include env prefix)
+ * @returns Human-readable label from TOPIC_METADATA, or the raw topic if not found
  */
 export function getTopicLabel(topic: string): string {
   return getTopicMetadata(topic)?.label ?? topic;
@@ -599,11 +673,11 @@ export function generateEventBusMockData(): Record<string, unknown> {
     name: TOPIC_METADATA[topic]?.label || topic,
     topic,
     eventCount:
-      topic === 'node.heartbeat'
+      topic === SUFFIX_NODE_HEARTBEAT
         ? Math.floor(Math.random() * 500) + 200
-        : topic === 'agent-actions'
+        : topic === LEGACY_AGENT_ACTIONS
           ? Math.floor(Math.random() * 300) + 100
-          : topic === 'agent-routing-decisions'
+          : topic === LEGACY_AGENT_ROUTING_DECISIONS
             ? Math.floor(Math.random() * 150) + 50
             : Math.floor(Math.random() * 100) + 30,
   }));
@@ -656,9 +730,9 @@ export function generateEventBusMockData(): Record<string, unknown> {
     const eventCount = topicBreakdownData.find((t) => t.topic === topic)?.eventCount || 0;
     let status: string;
 
-    if (topic === 'node.heartbeat' || topic === 'agent-actions') {
+    if (topic === SUFFIX_NODE_HEARTBEAT || topic === LEGACY_AGENT_ACTIONS) {
       status = eventCount > 100 ? 'healthy' : eventCount > 50 ? 'warning' : 'error';
-    } else if (topic === 'agent-routing-decisions') {
+    } else if (topic === LEGACY_AGENT_ROUTING_DECISIONS) {
       status = eventCount > 50 ? 'healthy' : eventCount > 20 ? 'warning' : 'offline';
     } else {
       status = eventCount > 10 ? 'healthy' : eventCount > 0 ? 'warning' : 'offline';
@@ -700,27 +774,27 @@ export function generateEventBusMockData(): Record<string, unknown> {
 function getEventTypeForTopic(topic: string): string {
   const eventTypes: Record<string, string[]> = {
     // Agent topics
-    'agent-routing-decisions': ['routing.decision', 'agent.selected', 'confidence.evaluated'],
-    'agent-transformation-events': [
+    [LEGACY_AGENT_ROUTING_DECISIONS]: [
+      'routing.decision',
+      'agent.selected',
+      'confidence.evaluated',
+    ],
+    [LEGACY_AGENT_TRANSFORMATION_EVENTS]: [
       'transformation.started',
       'transformation.completed',
       'agent.transformed',
     ],
-    'router-performance-metrics': ['cache.hit', 'cache.miss', 'routing.timed'],
-    'agent-actions': ['tool.called', 'decision.made', 'action.completed', 'error.occurred'],
-    // Node topics
-    'dev.omninode_bridge.onex.evt.node-introspection.v1': [
+    [LEGACY_ROUTER_PERFORMANCE_METRICS]: ['cache.hit', 'cache.miss', 'routing.timed'],
+    [LEGACY_AGENT_ACTIONS]: ['tool.called', 'decision.made', 'action.completed', 'error.occurred'],
+    // Node topics (canonical ONEX suffixes)
+    [SUFFIX_NODE_INTROSPECTION]: [
       'node.introspected',
       'node.capabilities.discovered',
       'node.schema.extracted',
     ],
-    'dev.onex.evt.registration-completed.v1': [
-      'node.registered',
-      'node.validated',
-      'node.activated',
-    ],
-    'node.heartbeat': ['heartbeat.ping', 'heartbeat.pong', 'health.check'],
-    'dev.omninode_bridge.onex.evt.registry-request-introspection.v1': [
+    [SUFFIX_NODE_REGISTRATION]: ['node.registered', 'node.validated', 'node.activated'],
+    [SUFFIX_NODE_HEARTBEAT]: ['heartbeat.ping', 'heartbeat.pong', 'health.check'],
+    [SUFFIX_REQUEST_INTROSPECTION]: [
       'introspection.requested',
       'registry.polling',
       'node.discovery',
@@ -751,33 +825,33 @@ function generateCorrelationId(): string {
 function generatePayloadPreview(topic: string): string {
   const previews: Record<string, string[]> = {
     // Agent topics
-    'agent-routing-decisions': [
+    [LEGACY_AGENT_ROUTING_DECISIONS]: [
       '{"selected_agent": "api-architect", "confidence": 0.95}',
       '{"routing_time_ms": 45, "strategy": "keyword"}',
     ],
-    'agent-transformation-events': [
+    [LEGACY_AGENT_TRANSFORMATION_EVENTS]: [
       '{"source": "polymorphic", "target": "api-architect"}',
       '{"transformation_duration_ms": 120, "success": true}',
     ],
-    'router-performance-metrics': [
+    [LEGACY_ROUTER_PERFORMANCE_METRICS]: [
       '{"cache_hit": true, "candidates_evaluated": 5}',
       '{"routing_duration_ms": 23, "strategy": "semantic"}',
     ],
-    'agent-actions': [
+    [LEGACY_AGENT_ACTIONS]: [
       '{"action_type": "tool_call", "tool": "Read"}',
       '{"action_type": "decision", "agent": "debug"}',
     ],
-    // Node topics
-    'dev.omninode_bridge.onex.evt.node-introspection.v1': [
+    // Node topics (canonical ONEX suffixes)
+    [SUFFIX_NODE_INTROSPECTION]: [
       '{"node_id": "node-123", "capabilities": [...]}',
       '{"schema_version": "1.0", "fields": [...]}',
     ],
-    'dev.onex.evt.registration-completed.v1': [
+    [SUFFIX_NODE_REGISTRATION]: [
       '{"node_id": "node-456", "status": "active"}',
       '{"registration_id": "reg-789"}',
     ],
-    'node.heartbeat': ['{"node_id": "node-123", "uptime": 3600}', '{"status": "healthy"}'],
-    'dev.omninode_bridge.onex.evt.registry-request-introspection.v1': [
+    [SUFFIX_NODE_HEARTBEAT]: ['{"node_id": "node-123", "uptime": 3600}', '{"status": "healthy"}'],
+    [SUFFIX_REQUEST_INTROSPECTION]: [
       '{"node_id": "node-789", "request_type": "introspection"}',
       '{"registry_id": "reg-001", "target_nodes": [...]}',
     ],

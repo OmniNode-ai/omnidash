@@ -111,38 +111,19 @@ export class EventBusDataSource extends EventEmitter {
 
   // Event type patterns from event catalog
   private readonly EVENT_PATTERNS = [
-    // Intelligence domain
-    /^[^.]+\.omninode\.intelligence\..*\.v\d+$/,
-    // Agent domain
-    /^[^.]+\.omninode\.agent\..*\.v\d+$/,
-    // Metadata domain
-    /^[^.]+\.omninode\.metadata\..*\.v\d+$/,
-    // Code generation domain
-    /^[^.]+\.omninode\.code\..*\.v\d+$/,
-    // Registry domain
-    /^[^.]+\.omninode\.node\..*\.v\d+$/,
-    /^[^.]+\.onex\..*\.v\d+$/,
-    // Database domain
-    /^[^.]+\.omninode\.database\..*\.v\d+$/,
-    // Consul domain
-    /^[^.]+\.omninode\.consul\..*\.v\d+$/,
-    // Vault domain
-    /^[^.]+\.omninode\.vault\..*\.v\d+$/,
-    // Bridge domain
-    /^[^.]+\.omninode\.bridge\..*\.v\d+$/,
-    // Service health domain
-    /^[^.]+\.omninode\.service\..*\.v\d+$/,
-    /^[^.]+\.omninode\.kafka\..*\.v\d+$/,
-    // Logging domain
-    /^[^.]+\.omninode\.logging\..*\.v\d+$/,
-    // Token economy (planned)
-    /^[^.]+\.omninode\.token\..*\.v\d+$/,
-    // Pattern distribution (planned)
-    /^[^.]+\.omninode\.pattern\..*\.v\d+$/,
-    // P2P distribution (planned)
-    /^[^.]+\.omninode\.p2p\..*\.v\d+$/,
-    // MetaContext (planned)
-    /^[^.]+\.omninode\.metacontext\..*\.v\d+$/,
+    // ONEX canonical topics — prefix is optional (matches both dev.onex.* and onex.*)
+    /^(?:[^.]+\.)?onex\..*\.v\d+$/,
+    // omninode domain topics (prefixed: {env}.omninode.{domain}.*.v{N})
+    /^[^.]+\.omninode\.(?:intelligence|agent|metadata|code|node|database|consul|vault|bridge|service|kafka|logging|token|pattern|p2p|metacontext)\..*\.v\d+$/,
+    // omniclaude / omniintelligence / omnimemory (prefixed: {env}.omniclaude.*.v{N})
+    /^[^.]+\.omni(?:claude|intelligence|memory)\..*\.v\d+$/,
+    // archon-intelligence (prefixed: {env}.archon-intelligence.*.v{N})
+    /^[^.]+\.archon-intelligence\..*\.v\d+$/,
+    // omninode-bridge (prefixed: {env}.omninode-bridge.*.v{N})
+    /^[^.]+\.omninode-bridge\..*\.v\d+$/,
+    // Legacy flat agent topics (no dots, no prefix)
+    /^agent-(?:routing-decisions|actions|transformation-events|manifest-injections)$/,
+    /^router-performance-metrics$/,
   ];
 
   constructor() {
@@ -153,7 +134,7 @@ export class EventBusDataSource extends EventEmitter {
       throw new Error(
         'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
           'Set it in .env file or export it before starting the server. ' +
-          'Example: KAFKA_BROKERS=192.168.86.200:29092'
+          'Example: KAFKA_BROKERS=host:port'
       );
     }
 
@@ -162,8 +143,10 @@ export class EventBusDataSource extends EventEmitter {
       clientId: 'omnidash-event-bus-data-source',
     });
 
+    // Consumer group bumped to v2 for canonical topic subscription changes (OMN-1933).
+    // New group starts with no committed offsets — expects offset reset on first deploy.
     this.consumer = this.kafka.consumer({
-      groupId: 'omnidash-event-bus-datasource-v1',
+      groupId: 'omnidash-event-bus-datasource-v2',
     });
   }
 

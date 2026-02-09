@@ -20,6 +20,7 @@ export interface ParsedDetails {
   toolName?: string;
   toolResult?: string;
   toolInput?: unknown;
+  filePath?: string;
   durationMs?: number;
   agentName?: string;
   selectedAgent?: string;
@@ -29,6 +30,7 @@ export interface ParsedDetails {
   sessionId?: string;
   nodeId?: string;
   status?: string;
+  healthStatus?: string;
   error?: string;
   result?: unknown;
   metadata?: Record<string, unknown>;
@@ -281,6 +283,12 @@ export function extractParsedDetails(
         typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult, null, 2);
     }
 
+    // File path
+    const filePath = findValue(parsed, ['file_path', 'filePath', 'path', 'file']);
+    if (filePath && typeof filePath === 'string') {
+      details.filePath = filePath;
+    }
+
     // Duration
     const duration = findValue(parsed, [
       'duration_ms',
@@ -335,6 +343,12 @@ export function extractParsedDetails(
     const status = findValue(parsed, ['status', 'state']);
     if (status && typeof status === 'string') {
       details.status = status;
+    }
+
+    // Health status (for heartbeat events)
+    const healthStatus = findValue(parsed, ['health_status', 'healthStatus', 'health']);
+    if (healthStatus && typeof healthStatus === 'string') {
+      details.healthStatus = healthStatus;
     }
 
     const error = findValue(parsed, ['error', 'error_message', 'errorMessage', 'message']);
