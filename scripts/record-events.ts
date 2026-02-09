@@ -26,7 +26,15 @@ import 'dotenv/config';
 import { buildSubscriptionTopics, LEGACY_AGENT_MANIFEST_INJECTIONS } from '@shared/topics';
 
 // Configuration
-const KAFKA_BROKERS = (process.env.KAFKA_BOOTSTRAP_SERVERS || '192.168.86.200:29092').split(',');
+const brokersEnv = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS;
+if (!brokersEnv) {
+  console.error(
+    'Error: KAFKA_BOOTSTRAP_SERVERS or KAFKA_BROKERS environment variable is required.'
+  );
+  console.error('   Set it in .env file or export it before running this script.');
+  process.exit(1);
+}
+const KAFKA_BROKERS = brokersEnv.split(',');
 const DEFAULT_DURATION_SECONDS = 60;
 
 // Topics to record - same as event-consumer.ts plus pattern learning topic

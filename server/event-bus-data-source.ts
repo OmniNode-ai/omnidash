@@ -134,7 +134,7 @@ export class EventBusDataSource extends EventEmitter {
       throw new Error(
         'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
           'Set it in .env file or export it before starting the server. ' +
-          'Example: KAFKA_BROKERS=192.168.86.200:29092'
+          'Example: KAFKA_BROKERS=host:port'
       );
     }
 
