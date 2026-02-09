@@ -485,23 +485,28 @@ export const injectionEffectiveness = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     sessionId: uuid('session_id').notNull(),
-    cohort: text('cohort'),
+    correlationId: uuid('correlation_id').notNull(),
+    cohort: text('cohort').notNull(),
+    injectionOccurred: boolean('injection_occurred').notNull().default(false),
+    agentName: text('agent_name'),
+    detectionMethod: text('detection_method'),
     utilizationScore: numeric('utilization_score', { precision: 10, scale: 6 }),
+    utilizationMethod: text('utilization_method'),
     agentMatchScore: numeric('agent_match_score', { precision: 10, scale: 6 }),
     userVisibleLatencyMs: integer('user_visible_latency_ms'),
+    sessionOutcome: text('session_outcome'),
     routingTimeMs: integer('routing_time_ms'),
     retrievalTimeMs: integer('retrieval_time_ms'),
     injectionTimeMs: integer('injection_time_ms'),
-    outcome: text('outcome').default('success'),
-    stage: text('stage'),
-    metadata: jsonb('metadata').default({}),
+    patternsCount: integer('patterns_count'),
+    cacheHit: boolean('cache_hit').default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
-    index('idx_injection_effectiveness_session').on(table.sessionId),
-    index('idx_injection_effectiveness_created_at').on(table.createdAt),
-    index('idx_injection_effectiveness_outcome').on(table.outcome),
-    index('idx_injection_effectiveness_stage').on(table.stage),
+    index('idx_ie_session_id').on(table.sessionId),
+    index('idx_ie_created_at').on(table.createdAt),
+    index('idx_ie_injection_occurred').on(table.injectionOccurred),
+    index('idx_ie_cohort').on(table.cohort),
   ]
 );
 
@@ -519,19 +524,19 @@ export const latencyBreakdowns = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     sessionId: uuid('session_id').notNull(),
-    promptId: text('prompt_id'),
+    promptId: uuid('prompt_id').notNull(),
     routingTimeMs: integer('routing_time_ms'),
     retrievalTimeMs: integer('retrieval_time_ms'),
     injectionTimeMs: integer('injection_time_ms'),
     userVisibleLatencyMs: integer('user_visible_latency_ms'),
-    cohort: text('cohort'),
-    metadata: jsonb('metadata').default({}),
+    cohort: text('cohort').notNull(),
+    cacheHit: boolean('cache_hit').default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
-    index('idx_latency_breakdowns_session').on(table.sessionId),
-    index('idx_latency_breakdowns_created_at').on(table.createdAt),
-    index('idx_latency_breakdowns_cohort').on(table.cohort),
+    index('idx_lb_session_id').on(table.sessionId),
+    index('idx_lb_created_at').on(table.createdAt),
+    index('idx_lb_cohort').on(table.cohort),
   ]
 );
 
@@ -549,16 +554,14 @@ export const patternHitRates = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     sessionId: uuid('session_id').notNull(),
-    patternId: text('pattern_id').notNull(),
+    patternId: uuid('pattern_id').notNull(),
     utilizationScore: numeric('utilization_score', { precision: 10, scale: 6 }),
     utilizationMethod: text('utilization_method'),
-    metadata: jsonb('metadata').default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
-    index('idx_pattern_hit_rates_session').on(table.sessionId),
-    index('idx_pattern_hit_rates_pattern').on(table.patternId),
-    index('idx_pattern_hit_rates_created_at').on(table.createdAt),
+    index('idx_phr_session_id').on(table.sessionId),
+    index('idx_phr_pattern_id').on(table.patternId),
   ]
 );
 

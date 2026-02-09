@@ -1,7 +1,7 @@
 /**
  * Error Rates Panel (OMN-1804)
  *
- * Displays error rates by pipeline stage with recent error samples.
+ * Displays error rates by pipeline cohort with recent error samples.
  * Handles loading, error, and empty states gracefully.
  */
 
@@ -65,7 +65,7 @@ export function ErrorRatesPanel() {
             </Badge>
           )}
         </div>
-        <CardDescription className="text-xs">Failure rates by pipeline stage</CardDescription>
+        <CardDescription className="text-xs">Failure rates by cohort</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading && (
@@ -92,7 +92,7 @@ export function ErrorRatesPanel() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">Stage</TableHead>
+                <TableHead className="text-xs">Cohort</TableHead>
                 <TableHead className="text-xs text-right">Total</TableHead>
                 <TableHead className="text-xs text-right">Failures</TableHead>
                 <TableHead className="text-xs">Error Rate</TableHead>
@@ -100,8 +100,8 @@ export function ErrorRatesPanel() {
             </TableHeader>
             <TableBody>
               {data.entries.map((entry: ErrorRateEntry) => (
-                <TableRow key={entry.stage}>
-                  <TableCell className="text-xs font-mono">{entry.stage}</TableCell>
+                <TableRow key={entry.cohort}>
+                  <TableCell className="text-xs font-mono">{entry.cohort}</TableCell>
                   <TableCell className="text-xs text-right">{entry.total_events}</TableCell>
                   <TableCell className="text-xs text-right text-red-500">
                     {entry.failure_count}

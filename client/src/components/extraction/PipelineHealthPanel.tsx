@@ -1,8 +1,10 @@
 /**
  * Pipeline Health Panel (OMN-1804)
  *
- * Displays per-stage health metrics: total events, success/failure counts,
+ * Displays per-cohort health metrics: total events, success/failure counts,
  * success rate, and average latency. Handles loading, error, and empty states.
+ *
+ * Cohort represents the pipeline variant/bucket for a given run.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -20,7 +22,7 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Activity, AlertTriangle } from 'lucide-react';
-import type { PipelineStageHealth } from '@shared/extraction-types';
+import type { PipelineCohortHealth } from '@shared/extraction-types';
 
 function healthBadge(rate: number) {
   if (rate >= 0.95) {
@@ -58,7 +60,7 @@ export function PipelineHealthPanel() {
           <Activity className="w-4 h-4 text-muted-foreground" />
           <CardTitle className="text-sm font-medium">Pipeline Health</CardTitle>
         </div>
-        <CardDescription className="text-xs">Per-stage success rates and latency</CardDescription>
+        <CardDescription className="text-xs">Per-cohort success rates and latency</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading && (
@@ -76,17 +78,17 @@ export function PipelineHealthPanel() {
           </div>
         )}
 
-        {!isLoading && !error && data && data.stages.length === 0 && (
+        {!isLoading && !error && data && data.cohorts.length === 0 && (
           <div className="text-sm text-muted-foreground text-center py-8">
             No pipeline data yet. Events will appear when the extraction pipeline starts emitting.
           </div>
         )}
 
-        {!isLoading && !error && data && data.stages.length > 0 && (
+        {!isLoading && !error && data && data.cohorts.length > 0 && (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">Stage</TableHead>
+                <TableHead className="text-xs">Cohort</TableHead>
                 <TableHead className="text-xs text-right">Events</TableHead>
                 <TableHead className="text-xs text-right">Success</TableHead>
                 <TableHead className="text-xs text-right">Failures</TableHead>
@@ -95,20 +97,22 @@ export function PipelineHealthPanel() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.stages.map((stage: PipelineStageHealth) => (
-                <TableRow key={stage.stage}>
-                  <TableCell className="text-xs font-mono">{stage.stage}</TableCell>
-                  <TableCell className="text-xs text-right">{stage.total_events}</TableCell>
+              {data.cohorts.map((cohort: PipelineCohortHealth) => (
+                <TableRow key={cohort.cohort}>
+                  <TableCell className="text-xs font-mono">{cohort.cohort}</TableCell>
+                  <TableCell className="text-xs text-right">{cohort.total_events}</TableCell>
                   <TableCell className="text-xs text-right text-green-500">
-                    {stage.success_count}
+                    {cohort.success_count}
                   </TableCell>
                   <TableCell className="text-xs text-right text-red-500">
-                    {stage.failure_count}
+                    {cohort.failure_count}
                   </TableCell>
                   <TableCell className="text-xs text-right">
-                    {stage.avg_latency_ms != null ? `${Math.round(stage.avg_latency_ms)}ms` : '--'}
+                    {cohort.avg_latency_ms != null
+                      ? `${Math.round(cohort.avg_latency_ms)}ms`
+                      : '--'}
                   </TableCell>
-                  <TableCell>{healthBadge(stage.success_rate)}</TableCell>
+                  <TableCell>{healthBadge(cohort.success_rate)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

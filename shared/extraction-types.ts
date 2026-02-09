@@ -26,10 +26,11 @@ export interface ExtractionSummary {
 }
 
 /**
- * Pipeline health overview grouped by stage.
+ * Pipeline health overview grouped by cohort.
+ * Cohort represents the pipeline variant/bucket for a given run.
  */
-export interface PipelineStageHealth {
-  stage: string;
+export interface PipelineCohortHealth {
+  cohort: string;
   total_events: number;
   success_count: number;
   failure_count: number;
@@ -38,16 +39,15 @@ export interface PipelineStageHealth {
 }
 
 export interface PipelineHealthResponse {
-  stages: PipelineStageHealth[];
+  cohorts: PipelineCohortHealth[];
 }
 
 /**
- * Latency heatmap data: percentiles by stage and time bucket.
+ * Latency heatmap data: percentiles by time bucket.
  */
 export interface LatencyBucket {
   /** ISO date string for the time bucket (e.g. hour or day) */
   bucket: string;
-  stage: string;
   p50: number | null;
   p95: number | null;
   p99: number | null;
@@ -75,10 +75,10 @@ export interface PatternVolumeResponse {
 }
 
 /**
- * Error rates summary: failure counts and rates by stage.
+ * Error rates summary: failure counts and rates by cohort.
  */
 export interface ErrorRateEntry {
-  stage: string;
+  cohort: string;
   total_events: number;
   failure_count: number;
   error_rate: number;
@@ -86,7 +86,7 @@ export interface ErrorRateEntry {
   recent_errors: Array<{
     session_id: string;
     created_at: string;
-    metadata: Record<string, unknown>;
+    session_outcome: string | null;
   }>;
 }
 
@@ -106,17 +106,22 @@ export interface ErrorRatesSummaryResponse {
  */
 export interface ContextUtilizationEvent {
   session_id: string;
-  cohort?: string;
+  correlation_id: string;
+  cohort: string;
+  injection_occurred?: boolean;
+  agent_name?: string;
+  detection_method?: string;
   utilization_score?: number;
+  utilization_method?: string;
   agent_match_score?: number;
   user_visible_latency_ms?: number;
+  session_outcome?: string;
   routing_time_ms?: number;
   retrieval_time_ms?: number;
   injection_time_ms?: number;
-  outcome?: string;
-  stage?: string;
+  patterns_count?: number;
+  cache_hit?: boolean;
   timestamp?: string;
-  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -125,12 +130,13 @@ export interface ContextUtilizationEvent {
  */
 export interface AgentMatchEvent {
   session_id: string;
+  correlation_id: string;
+  cohort: string;
   agent_match_score?: number;
-  cohort?: string;
-  outcome?: string;
-  stage?: string;
+  agent_name?: string;
+  session_outcome?: string;
+  injection_occurred?: boolean;
   timestamp?: string;
-  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -139,14 +145,14 @@ export interface AgentMatchEvent {
  */
 export interface LatencyBreakdownEvent {
   session_id: string;
-  prompt_id?: string;
+  prompt_id: string;
+  cohort: string;
   routing_time_ms?: number;
   retrieval_time_ms?: number;
   injection_time_ms?: number;
   user_visible_latency_ms?: number;
-  cohort?: string;
+  cache_hit?: boolean;
   timestamp?: string;
-  metadata?: Record<string, unknown>;
 }
 
 // ============================================================================

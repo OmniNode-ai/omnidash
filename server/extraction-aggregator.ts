@@ -45,16 +45,21 @@ export class ExtractionMetricsAggregator {
     try {
       await db.insert(injectionEffectiveness).values({
         sessionId: event.session_id,
-        cohort: event.cohort ?? null,
+        correlationId: event.correlation_id,
+        cohort: event.cohort,
+        injectionOccurred: event.injection_occurred ?? false,
+        agentName: event.agent_name ?? null,
+        detectionMethod: event.detection_method ?? null,
         utilizationScore: event.utilization_score?.toString() ?? null,
+        utilizationMethod: event.utilization_method ?? null,
         agentMatchScore: event.agent_match_score?.toString() ?? null,
         userVisibleLatencyMs: event.user_visible_latency_ms ?? null,
+        sessionOutcome: event.session_outcome ?? null,
         routingTimeMs: event.routing_time_ms ?? null,
         retrievalTimeMs: event.retrieval_time_ms ?? null,
         injectionTimeMs: event.injection_time_ms ?? null,
-        outcome: event.outcome ?? 'success',
-        stage: event.stage ?? null,
-        metadata: event.metadata ?? {},
+        patternsCount: event.patterns_count ?? null,
+        cacheHit: event.cache_hit ?? false,
       });
       this.eventsSinceLastBroadcast++;
     } catch (error) {
@@ -76,11 +81,12 @@ export class ExtractionMetricsAggregator {
     try {
       await db.insert(injectionEffectiveness).values({
         sessionId: event.session_id,
-        cohort: event.cohort ?? null,
+        correlationId: event.correlation_id,
+        cohort: event.cohort,
+        injectionOccurred: event.injection_occurred ?? false,
+        agentName: event.agent_name ?? null,
         agentMatchScore: event.agent_match_score?.toString() ?? null,
-        outcome: event.outcome ?? 'success',
-        stage: event.stage ?? 'agent-match',
-        metadata: event.metadata ?? {},
+        sessionOutcome: event.session_outcome ?? null,
       });
       this.eventsSinceLastBroadcast++;
     } catch (error) {
@@ -102,13 +108,13 @@ export class ExtractionMetricsAggregator {
     try {
       await db.insert(latencyBreakdowns).values({
         sessionId: event.session_id,
-        promptId: event.prompt_id ?? null,
+        promptId: event.prompt_id,
+        cohort: event.cohort,
         routingTimeMs: event.routing_time_ms ?? null,
         retrievalTimeMs: event.retrieval_time_ms ?? null,
         injectionTimeMs: event.injection_time_ms ?? null,
         userVisibleLatencyMs: event.user_visible_latency_ms ?? null,
-        cohort: event.cohort ?? null,
-        metadata: event.metadata ?? {},
+        cacheHit: event.cache_hit ?? false,
       });
       this.eventsSinceLastBroadcast++;
     } catch (error) {

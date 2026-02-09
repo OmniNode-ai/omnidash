@@ -98,13 +98,13 @@ router.get('/summary', async (_req, res) => {
       .from(latencyBreakdowns);
     const avgLatencyMs = avgLat[0]?.avg ? parseFloat(avgLat[0].avg) : null;
 
-    // Success rate
+    // Success rate (based on session_outcome)
     let successRate: number | null = null;
     if (totalInjections > 0) {
       const succCount = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(injectionEffectiveness)
-        .where(eq(injectionEffectiveness.outcome, 'success'));
+        .where(eq(injectionEffectiveness.sessionOutcome, 'success'));
       successRate = (succCount[0]?.count ?? 0) / totalInjections;
     }
 
@@ -132,28 +132,28 @@ router.get('/summary', async (_req, res) => {
 
 /**
  * GET /api/extraction/health/pipeline
- * Pipeline health grouped by stage.
+ * Pipeline health grouped by cohort.
  */
 router.get('/health/pipeline', async (_req, res) => {
   try {
     const db = tryGetIntelligenceDb();
     if (!db) {
-      return res.json({ stages: [] } satisfies PipelineHealthResponse);
+      return res.json({ cohorts: [] } satisfies PipelineHealthResponse);
     }
 
     const rows = await db
       .select({
-        stage: injectionEffectiveness.stage,
+        cohort: injectionEffectiveness.cohort,
         total_events: sql<number>`count(*)::int`,
-        success_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.outcome} = 'success')::int`,
-        failure_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.outcome} != 'success')::int`,
+        success_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} = 'success')::int`,
+        failure_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL AND ${injectionEffectiveness.sessionOutcome} != 'success')::int`,
         avg_latency_ms: sql<string | null>`avg(${injectionEffectiveness.userVisibleLatencyMs})`,
       })
       .from(injectionEffectiveness)
-      .groupBy(injectionEffectiveness.stage);
+      .groupBy(injectionEffectiveness.cohort);
 
-    const stages = rows.map((r) => ({
-      stage: r.stage ?? 'unknown',
+    const cohorts = rows.map((r) => ({
+      cohort: r.cohort,
       total_events: r.total_events,
       success_count: r.success_count,
       failure_count: r.failure_count,
@@ -161,7 +161,7 @@ router.get('/health/pipeline', async (_req, res) => {
       avg_latency_ms: r.avg_latency_ms ? parseFloat(r.avg_latency_ms) : null,
     }));
 
-    res.json({ stages } satisfies PipelineHealthResponse);
+    res.json({ cohorts } satisfies PipelineHealthResponse);
   } catch (error) {
     console.error('[extraction] Error getting pipeline health:', error);
     res.status(500).json({ error: 'Failed to get pipeline health' });
@@ -170,7 +170,7 @@ router.get('/health/pipeline', async (_req, res) => {
 
 /**
  * GET /api/extraction/latency/heatmap?window=24h
- * Latency percentiles by stage and time bucket.
+ * Latency percentiles by time bucket.
  */
 router.get('/latency/heatmap', async (req, res) => {
   try {
@@ -210,7 +210,6 @@ router.get('/latency/heatmap', async (req, res) => {
 
     const buckets: LatencyBucket[] = rows.map((r) => ({
       bucket: r.bucket ?? '',
-      stage: 'overall',
       p50: r.p50 ? parseFloat(r.p50) : null,
       p95: r.p95 ? parseFloat(r.p95) : null,
       p99: r.p99 ? parseFloat(r.p99) : null,
@@ -293,7 +292,7 @@ router.get('/patterns/volume', async (req, res) => {
 
 /**
  * GET /api/extraction/errors/summary
- * Error rates by stage with recent error samples.
+ * Error rates by cohort with recent error samples.
  */
 router.get('/errors/summary', async (_req, res) => {
   try {
@@ -307,15 +306,15 @@ router.get('/errors/summary', async (_req, res) => {
       return res.json(empty);
     }
 
-    // Aggregate by stage
+    // Aggregate by cohort
     const rows = await db
       .select({
-        stage: injectionEffectiveness.stage,
+        cohort: injectionEffectiveness.cohort,
         total_events: sql<number>`count(*)::int`,
-        failure_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.outcome} != 'success')::int`,
+        failure_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL AND ${injectionEffectiveness.sessionOutcome} != 'success')::int`,
       })
       .from(injectionEffectiveness)
-      .groupBy(injectionEffectiveness.stage);
+      .groupBy(injectionEffectiveness.cohort);
 
     let totalErrors = 0;
     let totalEvents = 0;
@@ -326,30 +325,30 @@ router.get('/errors/summary', async (_req, res) => {
       totalErrors += r.failure_count;
       totalEvents += r.total_events;
 
-      // Get recent error samples for this stage (max 5)
-      const stageName = r.stage ?? 'unknown';
+      // Get recent error samples for this cohort (max 5)
+      const cohortName = r.cohort;
       const recentErrors = await db
         .select({
           sessionId: injectionEffectiveness.sessionId,
           createdAt: injectionEffectiveness.createdAt,
-          metadata: injectionEffectiveness.metadata,
+          sessionOutcome: injectionEffectiveness.sessionOutcome,
         })
         .from(injectionEffectiveness)
         .where(
-          sql`${injectionEffectiveness.outcome} != 'success' AND coalesce(${injectionEffectiveness.stage}, 'unknown') = ${stageName}`
+          sql`${injectionEffectiveness.sessionOutcome} IS NOT NULL AND ${injectionEffectiveness.sessionOutcome} != 'success' AND ${injectionEffectiveness.cohort} = ${cohortName}`
         )
         .orderBy(desc(injectionEffectiveness.createdAt))
         .limit(5);
 
       entries.push({
-        stage: stageName,
+        cohort: cohortName,
         total_events: r.total_events,
         failure_count: r.failure_count,
         error_rate: r.total_events > 0 ? r.failure_count / r.total_events : 0,
         recent_errors: recentErrors.map((e) => ({
           session_id: e.sessionId,
           created_at: e.createdAt?.toISOString() ?? '',
-          metadata: (e.metadata ?? {}) as Record<string, unknown>,
+          session_outcome: e.sessionOutcome,
         })),
       });
     }
