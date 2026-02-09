@@ -42,51 +42,57 @@ router.get('/summary', async (_req, res) => {
 
     const ie = injectionEffectiveness;
 
-    // Total sessions and injection rate
-    const totals = await db
-      .select({
-        total: sql<number>`count(*)::int`,
-        injected: sql<number>`count(*) FILTER (WHERE ${ie.injectionOccurred} = true)::int`,
-        treatment: sql<number>`count(*) FILTER (WHERE ${ie.cohort} = 'treatment')::int`,
-        control: sql<number>`count(*) FILTER (WHERE ${ie.cohort} = 'control')::int`,
-      })
-      .from(ie);
+    // Run all independent queries in parallel
+    const [totals, utilResult, accResult, latencyResult, throttle] = await Promise.all([
+      // Total sessions and injection rate
+      db
+        .select({
+          total: sql<number>`count(*)::int`,
+          injected: sql<number>`count(*) FILTER (WHERE ${ie.injectionOccurred} = true AND ${ie.cohort} = 'treatment')::int`,
+          treatment: sql<number>`count(*) FILTER (WHERE ${ie.cohort} = 'treatment')::int`,
+          control: sql<number>`count(*) FILTER (WHERE ${ie.cohort} = 'control')::int`,
+        })
+        .from(ie),
+
+      // Median utilization (treatment only)
+      db
+        .select({
+          median: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${ie.utilizationScore}::numeric)`,
+        })
+        .from(ie)
+        .where(and(eq(ie.cohort, 'treatment'), eq(ie.injectionOccurred, true))),
+
+      // Mean agent accuracy (treatment only)
+      db
+        .select({
+          mean: sql<number>`avg(${ie.agentMatchScore}::numeric)`,
+        })
+        .from(ie)
+        .where(and(eq(ie.cohort, 'treatment'), eq(ie.injectionOccurred, true))),
+
+      // Latency delta P95: treatment P95 (injected only) - control P95
+      db
+        .select({
+          cohort: ie.cohort,
+          p95: sql<number>`percentile_cont(0.95) WITHIN GROUP (ORDER BY ${ie.userVisibleLatencyMs})`,
+        })
+        .from(ie)
+        .where(
+          and(
+            sql`${ie.userVisibleLatencyMs} IS NOT NULL`,
+            sql`(${ie.cohort} = 'control' OR (${ie.cohort} = 'treatment' AND ${ie.injectionOccurred} = true))`
+          )
+        )
+        .groupBy(ie.cohort),
+
+      // Throttle status (windowed)
+      computeThrottleStatus(db),
+    ]);
 
     const t = totals[0] ?? { total: 0, injected: 0, treatment: 0, control: 0 };
     const injectionRate = t.treatment > 0 ? t.injected / t.treatment : 0;
-
-    // Median utilization (treatment only)
-    const utilResult = await db
-      .select({
-        median: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${ie.utilizationScore}::numeric)`,
-      })
-      .from(ie)
-      .where(and(eq(ie.cohort, 'treatment'), eq(ie.injectionOccurred, true)));
     const medianUtil = utilResult[0]?.median ?? 0;
-
-    // Mean agent accuracy (treatment only)
-    const accResult = await db
-      .select({
-        mean: sql<number>`avg(${ie.agentMatchScore}::numeric)`,
-      })
-      .from(ie)
-      .where(and(eq(ie.cohort, 'treatment'), eq(ie.injectionOccurred, true)));
     const meanAccuracy = accResult[0]?.mean ?? 0;
-
-    // Latency delta P95: treatment P95 (injected only) - control P95
-    const latencyResult = await db
-      .select({
-        cohort: ie.cohort,
-        p95: sql<number>`percentile_cont(0.95) WITHIN GROUP (ORDER BY ${ie.userVisibleLatencyMs})`,
-      })
-      .from(ie)
-      .where(
-        and(
-          sql`${ie.userVisibleLatencyMs} IS NOT NULL`,
-          sql`(${ie.cohort} = 'control' OR (${ie.cohort} = 'treatment' AND ${ie.injectionOccurred} = true))`
-        )
-      )
-      .groupBy(ie.cohort);
 
     let treatmentP95 = 0;
     let controlP95 = 0;
@@ -95,9 +101,6 @@ router.get('/summary', async (_req, res) => {
       if (row.cohort === 'control') controlP95 = row.p95;
     }
     const latencyDelta = treatmentP95 - controlP95;
-
-    // Throttle status (windowed)
-    const throttle = await computeThrottleStatus(db);
 
     const summary: EffectivenessSummary = {
       injection_rate: injectionRate,
@@ -166,35 +169,46 @@ router.get('/latency', async (_req, res) => {
     }
 
     const lb = latencyBreakdowns;
-
-    // Per-cohort percentiles
-    const breakdowns = await db
-      .select({
-        cohort: lb.cohort,
-        p50: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${lb.userVisibleLatencyMs})`,
-        p95: sql<number>`percentile_cont(0.95) WITHIN GROUP (ORDER BY ${lb.userVisibleLatencyMs})`,
-        p99: sql<number>`percentile_cont(0.99) WITHIN GROUP (ORDER BY ${lb.userVisibleLatencyMs})`,
-        routing_avg: sql<number>`avg(${lb.routingTimeMs})`,
-        retrieval_avg: sql<number>`avg(${lb.retrievalTimeMs})`,
-        injection_avg: sql<number>`avg(${lb.injectionTimeMs})`,
-        sample_count: sql<number>`count(*)::int`,
-      })
-      .from(lb)
-      .groupBy(lb.cohort);
-
-    // Latency trend (daily, last 30 days)
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const trend = await db
-      .select({
-        date: sql<string>`date_trunc('day', ${lb.createdAt})::date::text`,
-        cohort: lb.cohort,
-        p50: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${lb.userVisibleLatencyMs})`,
-        p95: sql<number>`percentile_cont(0.95) WITHIN GROUP (ORDER BY ${lb.userVisibleLatencyMs})`,
-      })
-      .from(lb)
-      .where(gte(lb.createdAt, cutoff))
-      .groupBy(sql`date_trunc('day', ${lb.createdAt})::date::text`, lb.cohort)
-      .orderBy(sql`date_trunc('day', ${lb.createdAt})::date::text`);
+
+    // Run all independent queries in parallel
+    const [breakdowns, trend, cacheResult] = await Promise.all([
+      // Per-cohort percentiles
+      db
+        .select({
+          cohort: lb.cohort,
+          p50: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${lb.userVisibleLatencyMs})`,
+          p95: sql<number>`percentile_cont(0.95) WITHIN GROUP (ORDER BY ${lb.userVisibleLatencyMs})`,
+          p99: sql<number>`percentile_cont(0.99) WITHIN GROUP (ORDER BY ${lb.userVisibleLatencyMs})`,
+          routing_avg: sql<number>`avg(${lb.routingTimeMs})`,
+          retrieval_avg: sql<number>`avg(${lb.retrievalTimeMs})`,
+          injection_avg: sql<number>`avg(${lb.injectionTimeMs})`,
+          sample_count: sql<number>`count(*)::int`,
+        })
+        .from(lb)
+        .groupBy(lb.cohort),
+
+      // Latency trend (daily, last 30 days)
+      db
+        .select({
+          date: sql<string>`date_trunc('day', ${lb.createdAt})::date::text`,
+          cohort: lb.cohort,
+          p50: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${lb.userVisibleLatencyMs})`,
+          p95: sql<number>`percentile_cont(0.95) WITHIN GROUP (ORDER BY ${lb.userVisibleLatencyMs})`,
+        })
+        .from(lb)
+        .where(gte(lb.createdAt, cutoff))
+        .groupBy(sql`date_trunc('day', ${lb.createdAt})::date::text`, lb.cohort)
+        .orderBy(sql`date_trunc('day', ${lb.createdAt})::date::text`),
+
+      // Cache hit rate
+      db
+        .select({
+          hits: sql<number>`count(*) FILTER (WHERE ${lb.cacheHit} = true)::int`,
+          misses: sql<number>`count(*) FILTER (WHERE ${lb.cacheHit} = false)::int`,
+        })
+        .from(lb),
+    ]);
 
     // Pivot trend to one row per day
     const trendMap = new Map<
@@ -221,14 +235,6 @@ router.get('/latency', async (_req, res) => {
       ...vals,
       delta_p95: vals.treatment_p95 - vals.control_p95,
     }));
-
-    // Cache hit rate
-    const cacheResult = await db
-      .select({
-        hits: sql<number>`count(*) FILTER (WHERE ${lb.cacheHit} = true)::int`,
-        misses: sql<number>`count(*) FILTER (WHERE ${lb.cacheHit} = false)::int`,
-      })
-      .from(lb);
 
     const hits = cacheResult[0]?.hits ?? 0;
     const misses = cacheResult[0]?.misses ?? 0;
@@ -278,68 +284,71 @@ router.get('/utilization', async (_req, res) => {
     }
 
     const ie = injectionEffectiveness;
+    const phr = patternHitRates;
 
-    // Histogram (10 buckets from 0.0 to 1.0)
-    const histogram = await db
-      .select({
-        bucket: sql<number>`floor(${ie.utilizationScore}::numeric * 10)::int`,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(ie)
-      .where(and(eq(ie.injectionOccurred, true), sql`${ie.utilizationScore} IS NOT NULL`))
-      .groupBy(sql`floor(${ie.utilizationScore}::numeric * 10)::int`)
-      .orderBy(sql`floor(${ie.utilizationScore}::numeric * 10)::int`);
+    // Run all independent queries in parallel
+    const [histogram, byMethod, patternRates, lowUtil] = await Promise.all([
+      // Histogram (10 buckets from 0.0 to 1.0)
+      db
+        .select({
+          bucket: sql<number>`floor(${ie.utilizationScore}::numeric * 10)::int`,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(ie)
+        .where(and(eq(ie.injectionOccurred, true), sql`${ie.utilizationScore} IS NOT NULL`))
+        .groupBy(sql`floor(${ie.utilizationScore}::numeric * 10)::int`)
+        .orderBy(sql`floor(${ie.utilizationScore}::numeric * 10)::int`),
+
+      // By detection method
+      db
+        .select({
+          method: ie.utilizationMethod,
+          median: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${ie.utilizationScore}::numeric)`,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(ie)
+        .where(and(eq(ie.injectionOccurred, true), sql`${ie.utilizationMethod} IS NOT NULL`))
+        .groupBy(ie.utilizationMethod),
+
+      // Pattern-level utilization (top 20)
+      db
+        .select({
+          pattern_id: phr.patternId,
+          avg_util: sql<number>`avg(${phr.utilizationScore}::numeric)`,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(phr)
+        .where(sql`${phr.utilizationScore} IS NOT NULL`)
+        .groupBy(phr.patternId)
+        .orderBy(desc(sql`avg(${phr.utilizationScore}::numeric)`))
+        .limit(20),
+
+      // Low utilization sessions (< 0.2)
+      db
+        .select({
+          sessionId: ie.sessionId,
+          utilizationScore: ie.utilizationScore,
+          agentName: ie.agentName,
+          detectionMethod: ie.detectionMethod,
+          createdAt: ie.createdAt,
+        })
+        .from(ie)
+        .where(
+          and(
+            eq(ie.injectionOccurred, true),
+            sql`${ie.utilizationScore}::numeric < 0.2`,
+            sql`${ie.utilizationScore} IS NOT NULL`
+          )
+        )
+        .orderBy(desc(ie.createdAt))
+        .limit(50),
+    ]);
 
     const histogramBuckets = histogram.map((h) => ({
       range_start: Math.min(h.bucket, 9) / 10,
       range_end: (Math.min(h.bucket, 9) + 1) / 10,
       count: h.count,
     }));
-
-    // By detection method
-    const byMethod = await db
-      .select({
-        method: ie.utilizationMethod,
-        median: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${ie.utilizationScore}::numeric)`,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(ie)
-      .where(and(eq(ie.injectionOccurred, true), sql`${ie.utilizationMethod} IS NOT NULL`))
-      .groupBy(ie.utilizationMethod);
-
-    // Pattern-level utilization (top 20)
-    const phr = patternHitRates;
-    const patternRates = await db
-      .select({
-        pattern_id: phr.patternId,
-        avg_util: sql<number>`avg(${phr.utilizationScore}::numeric)`,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(phr)
-      .where(sql`${phr.utilizationScore} IS NOT NULL`)
-      .groupBy(phr.patternId)
-      .orderBy(desc(sql`avg(${phr.utilizationScore}::numeric)`))
-      .limit(20);
-
-    // Low utilization sessions (< 0.2)
-    const lowUtil = await db
-      .select({
-        sessionId: ie.sessionId,
-        utilizationScore: ie.utilizationScore,
-        agentName: ie.agentName,
-        detectionMethod: ie.detectionMethod,
-        createdAt: ie.createdAt,
-      })
-      .from(ie)
-      .where(
-        and(
-          eq(ie.injectionOccurred, true),
-          sql`${ie.utilizationScore}::numeric < 0.2`,
-          sql`${ie.utilizationScore} IS NOT NULL`
-        )
-      )
-      .orderBy(desc(ie.createdAt))
-      .limit(50);
 
     const result: UtilizationDetails = {
       histogram: histogramBuckets,
@@ -507,33 +516,37 @@ async function computeThrottleStatus(
   const ie = injectionEffectiveness;
   const windowStart = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
 
-  // Get injected sessions in the last hour
-  const windowData = await db
-    .select({
-      count: sql<number>`count(*)::int`,
-      latency_p95: sql<number>`percentile_cont(0.95) WITHIN GROUP (ORDER BY ${ie.userVisibleLatencyMs})`,
-      median_util: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${ie.utilizationScore}::numeric)`,
-    })
-    .from(ie)
-    .where(and(eq(ie.injectionOccurred, true), gte(ie.createdAt, windowStart)));
+  // Get injected sessions and control P95 in parallel (independent queries)
+  const [windowData, controlP95Result] = await Promise.all([
+    db
+      .select({
+        count: sql<number>`count(*)::int`,
+        latency_p95: sql<number>`percentile_cont(0.95) WITHIN GROUP (ORDER BY ${ie.userVisibleLatencyMs})`,
+        median_util: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${ie.utilizationScore}::numeric)`,
+      })
+      .from(ie)
+      .where(and(eq(ie.injectionOccurred, true), gte(ie.createdAt, windowStart))),
+
+    db
+      .select({
+        p95: sql<number>`percentile_cont(0.95) WITHIN GROUP (ORDER BY ${ie.userVisibleLatencyMs})`,
+      })
+      .from(ie)
+      .where(
+        and(
+          eq(ie.cohort, 'control'),
+          gte(ie.createdAt, windowStart),
+          sql`${ie.userVisibleLatencyMs} IS NOT NULL`
+        )
+      ),
+  ]);
 
   const w = windowData[0] ?? { count: 0, latency_p95: null, median_util: null };
 
-  // Also get control P95 for delta computation
-  const controlP95Result = await db
-    .select({
-      p95: sql<number>`percentile_cont(0.95) WITHIN GROUP (ORDER BY ${ie.userVisibleLatencyMs})`,
-    })
-    .from(ie)
-    .where(
-      and(
-        eq(ie.cohort, 'control'),
-        gte(ie.createdAt, windowStart),
-        sql`${ie.userVisibleLatencyMs} IS NOT NULL`
-      )
-    );
-
-  const controlP95 = Number(controlP95Result[0]?.p95 ?? 0);
+  // Guard: if no control sessions exist, controlP95 is null — skip latency-delta throttle
+  const rawControlP95 = controlP95Result[0]?.p95;
+  const hasControlBaseline = rawControlP95 != null;
+  const controlP95 = Number(rawControlP95 ?? 0);
   const latencyDelta = Number(w.latency_p95 ?? 0) - controlP95;
   const medianUtil = Number(w.median_util ?? 0);
 
@@ -549,8 +562,8 @@ async function computeThrottleStatus(
     };
   }
 
-  // Check throttle conditions
-  if (latencyDelta > 200) {
+  // Check throttle conditions (only check latency delta when control baseline exists)
+  if (hasControlBaseline && latencyDelta > 200) {
     return {
       active: true,
       reason: `P95 latency delta ${Math.round(latencyDelta)}ms exceeds 200ms threshold (${w.count} sessions in 1h)`,
