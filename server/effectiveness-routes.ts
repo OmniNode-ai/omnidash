@@ -454,7 +454,7 @@ router.get('/trend', async (_req, res) => {
     const rows = await db
       .select({
         bucket: sql<string>`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::text`,
-        injection_rate: sql<number>`AVG(CASE WHEN ${ie.injectionOccurred} THEN 1.0 ELSE 0.0 END)`,
+        injection_rate: sql<number>`AVG(CASE WHEN ${ie.cohort} = 'treatment' AND ${ie.injectionOccurred} THEN 1.0 WHEN ${ie.cohort} = 'treatment' THEN 0.0 END)`,
         avg_utilization: sql<number>`AVG(CASE WHEN ${ie.utilizationScore} IS NOT NULL THEN ${ie.utilizationScore}::numeric END)`,
         avg_accuracy: sql<number>`AVG(CASE WHEN ${ie.agentMatchScore} IS NOT NULL THEN ${ie.agentMatchScore}::numeric END)`,
         avg_latency_delta_ms: sql<number>`AVG(CASE WHEN ${ie.cohort} = 'treatment' AND ${ie.injectionOccurred} = true THEN ${ie.userVisibleLatencyMs} END) - AVG(CASE WHEN ${ie.cohort} = 'control' THEN ${ie.userVisibleLatencyMs} END)`,
