@@ -170,7 +170,7 @@ class MockEventGenerator {
       throw new Error(
         'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
           'Set it in .env file or export it before running mock generator. ' +
-          'Example: KAFKA_BROKERS=192.168.86.200:29092'
+          'Example: KAFKA_BROKERS=host:port'
       );
     }
     this.kafka = new Kafka({

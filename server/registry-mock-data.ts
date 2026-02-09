@@ -233,9 +233,10 @@ class MockDataStore {
   private lastRefresh: Date | null = null;
 
   /**
-   * Get cached nodes (generates on first access)
+   * Get cached nodes (generates on first access, only in DEMO_MODE)
    */
   getNodes(): RegistryNodeView[] {
+    if (process.env.DEMO_MODE !== 'true') return [];
     if (!this.nodes) {
       this.nodes = this.generateNodes();
       this.lastRefresh = new Date();
@@ -248,9 +249,10 @@ class MockDataStore {
   }
 
   /**
-   * Get cached instances (generates on first access)
+   * Get cached instances (generates on first access, only in DEMO_MODE)
    */
   getInstances(): RegistryInstanceView[] {
+    if (process.env.DEMO_MODE !== 'true') return [];
     // Ensure nodes are generated first
     const nodes = this.getNodes();
 

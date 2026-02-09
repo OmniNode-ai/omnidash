@@ -8,6 +8,8 @@
  * ~/.claude/plans/typed-honking-nygaard.md
  */
 
+import type { ParsedDetails } from '@/components/event-bus/eventDetailUtils';
+
 // ============================================================================
 // Wire Types (server format - never used in UI directly)
 // ============================================================================
@@ -120,6 +122,14 @@ export interface ProcessedEvent {
   payload: string;
   /** Parse error if normalization failed */
   parseError?: string;
+  /** One-line human-readable description of the event */
+  summary: string;
+  /** Normalized type for chart grouping (e.g., "Edit" instead of "tool-content") */
+  normalizedType: string;
+  /** Key for grouping/collapsing similar events (e.g., "Edit:trigger_matching.py:true") */
+  groupKey: string;
+  /** Pre-parsed payload details (computed once, not on render) */
+  parsedDetails: ParsedDetails | null;
 }
 
 /**

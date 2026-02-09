@@ -105,7 +105,7 @@ async function checkKafka(): Promise<ServiceHealthCheck> {
       latencyMs: Date.now() - startTime,
       error: 'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable not configured',
       details: {
-        message: 'Set KAFKA_BROKERS in .env file (e.g., KAFKA_BROKERS=192.168.86.200:29092)',
+        message: 'Set KAFKA_BROKERS in .env file (e.g., KAFKA_BROKERS=host:port)',
       },
     };
   }

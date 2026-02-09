@@ -22,6 +22,12 @@ import {
   getEventTypeLabel,
   getEventMonitoringConfig,
 } from '@/lib/configs/event-bus-dashboard';
+import {
+  LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+} from '@shared/topics';
 import type {
   WireEventMessage,
   WireEventData,
@@ -227,9 +233,13 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       // Add to pending buffer
       pendingEventsRef.current.push(event);
 
-      // Update timestamps for throughput
+      // Update timestamps for throughput (exclude heartbeats — they're health pings, not traffic)
       const now = Date.now();
-      timestampsRef.current.push(now);
+      const isHeartbeat =
+        event.topicRaw.includes('heartbeat') || event.eventType.toLowerCase().includes('heartbeat');
+      if (!isHeartbeat) {
+        timestampsRef.current.push(now);
+      }
 
       /**
        * Enforce timestamp array cap with 50% retention strategy.
@@ -369,20 +379,62 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     (state: WireInitialState): void => {
       const now = Date.now();
 
-      // Process all events from initial state
-      const recentActions = (state.recentActions || []).map((a) =>
-        processEvent(a.actionType || 'action', a, 'agent-actions')
-      );
-      const routingDecisions = (state.routingDecisions || []).map((d) =>
-        processEvent('routing', d, 'agent-routing-decisions')
-      );
-      const recentTransformations = (state.recentTransformations || []).map((t) =>
-        processEvent('transformation', t, 'agent-transformation-events')
-      );
+      // Prefer eventBusEvents (raw events with correct topic info) over legacy arrays
+      const rawBusEvents = (state as unknown as Record<string, unknown>).eventBusEvents as
+        | Array<{
+            event_type: string;
+            topic: string;
+            payload: unknown;
+            timestamp?: string;
+            source?: string;
+            correlation_id?: string;
+            event_id?: string;
+          }>
+        | undefined;
 
-      // Combine and filter successful results (no time filter - show all historical data)
-      // Note: We don't slice here - maxItems is enforced by the trim effect when it changes
-      const allResults = [...recentActions, ...routingDecisions, ...recentTransformations];
+      let allResults: EventIngestResult[];
+
+      if (rawBusEvents && rawBusEvents.length > 0) {
+        // Process raw event bus events with correct topic names
+        allResults = rawBusEvents.flatMap((e) => {
+          let payloadRaw: unknown;
+          try {
+            payloadRaw = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload;
+          } catch {
+            log('Skipping event with malformed JSON payload:', e.event_type);
+            return [];
+          }
+          // Guard: JSON.parse may return null, undefined, a number, a string,
+          // or other primitives. Spreading those into an object would throw.
+          // Normalize to a safe Record: preserve primitives under a 'value' key.
+          const payload: Record<string, unknown> =
+            payloadRaw != null && typeof payloadRaw === 'object' && !Array.isArray(payloadRaw)
+              ? (payloadRaw as Record<string, unknown>)
+              : { value: payloadRaw };
+          const data: WireEventData = {
+            ...payload,
+            timestamp: e.timestamp,
+            source: e.source,
+            correlationId: e.correlation_id,
+            id: e.event_id,
+          };
+          return [processEvent(e.event_type, data, e.topic)];
+        });
+      } else {
+        // Fallback: legacy arrays (recentActions, routingDecisions, transformations)
+        const recentActions = (state.recentActions || []).map((a) =>
+          processEvent(a.actionType || 'action', a, LEGACY_AGENT_ACTIONS)
+        );
+        const routingDecisions = (state.routingDecisions || []).map((d) =>
+          processEvent('routing', d, LEGACY_AGENT_ROUTING_DECISIONS)
+        );
+        const recentTransformations = (state.recentTransformations || []).map((t) =>
+          processEvent('transformation', t, LEGACY_AGENT_TRANSFORMATION_EVENTS)
+        );
+        allResults = [...recentActions, ...routingDecisions, ...recentTransformations];
+      }
+
+      // Filter successful results, sort newest first
       const processed = allResults
         .filter((r): r is { status: 'success'; event: ProcessedEvent } => r.status === 'success')
         .map((r) => r.event)
@@ -391,9 +443,13 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       // Rebuild seenIds from hydrated events
       seenIdsRef.current = new Set(processed.map((e) => e.id));
 
-      // Populate timestamps for throughput (only recent events count toward throughput)
+      // Populate timestamps for throughput (exclude heartbeats, only recent events)
       const throughputCutoff = now - throughputWindowMs;
       const recentTimestamps = processed
+        .filter(
+          (e) =>
+            !e.topicRaw.includes('heartbeat') && !e.eventType.toLowerCase().includes('heartbeat')
+        )
         .map((e) => e.timestamp.getTime())
         .filter((t) => t > throughputCutoff);
       timestampsRef.current = recentTimestamps.slice(-MAX_TIMESTAMP_ENTRIES);
@@ -434,33 +490,36 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
           break;
 
         case 'AGENT_ACTION': {
-          const action = wireMessage.data as WireEventData;
-          if (action) {
-            processAndIngest(action.actionType || 'action', action, 'agent-actions');
+          const action = wireMessage.data as WireEventData | undefined;
+          if (action !== undefined) {
+            processAndIngest(action.actionType || 'action', action, LEGACY_AGENT_ACTIONS);
           }
           break;
         }
 
         case 'ROUTING_DECISION': {
-          const decision = wireMessage.data as WireEventData;
-          if (decision) {
-            processAndIngest('routing', decision, 'agent-routing-decisions');
+          const decision = wireMessage.data as WireEventData | undefined;
+          if (decision !== undefined) {
+            processAndIngest('routing', decision, LEGACY_AGENT_ROUTING_DECISIONS);
           }
           break;
         }
 
         case 'AGENT_TRANSFORMATION': {
-          const transformation = wireMessage.data as WireEventData;
-          if (transformation) {
-            processAndIngest('transformation', transformation, 'agent-transformation-events');
+          const transformation = wireMessage.data as WireEventData | undefined;
+          if (transformation !== undefined) {
+            processAndIngest('transformation', transformation, LEGACY_AGENT_TRANSFORMATION_EVENTS);
           }
           break;
         }
 
         case 'PERFORMANCE_METRIC': {
-          const { metric } = (wireMessage.data as WirePerformanceMetricData) || {};
-          if (metric) {
-            processAndIngest('performance', metric, 'router-performance-metrics');
+          const perfData = wireMessage.data as WirePerformanceMetricData | undefined;
+          if (perfData !== undefined) {
+            const { metric } = perfData;
+            if (metric !== undefined) {
+              processAndIngest('performance', metric, LEGACY_ROUTER_PERFORMANCE_METRICS);
+            }
           }
           break;
         }
@@ -469,8 +528,8 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
         case 'NODE_HEARTBEAT':
         case 'NODE_STATE_CHANGE':
         case 'NODE_REGISTRY_UPDATE': {
-          const nodeData = wireMessage.data as WireEventData;
-          if (nodeData) {
+          const nodeData = wireMessage.data as WireEventData | undefined;
+          if (nodeData !== undefined) {
             const topic = NODE_TOPIC_MAP[wireMessage.type] || 'node.events';
             const eventType = wireMessage.type.toLowerCase().replace('node_', '');
             processAndIngest(eventType, nodeData, topic);
@@ -687,10 +746,11 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
   const eventsPerSecond = useMemo(() => {
     const now = Date.now();
     const cutoff = now - throughputWindowMs;
+    // Use timestampsRef (lightweight number[]) instead of filtering full events array.
+    // Heartbeats are already excluded at insertion time in ingestEvent/handleInitialState.
     const recentCount = timestampsRef.current.filter((t) => t > cutoff).length;
     const windowSeconds = throughputWindowMs / 1000;
     return Math.round((recentCount / windowSeconds) * 10) / 10;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- events triggers recalc (see comment above)
   }, [events, throughputWindowMs]);
 
   /**
