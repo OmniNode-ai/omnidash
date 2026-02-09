@@ -397,19 +397,20 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       if (rawBusEvents && rawBusEvents.length > 0) {
         // Process raw event bus events with correct topic names
         allResults = rawBusEvents.flatMap((e) => {
-          let payload: Record<string, unknown>;
+          let payloadRaw: unknown;
           try {
-            const parsed = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload;
-            // Guard: JSON.parse may return null, a number, or a string.
-            // Only use it if the result is a non-null object.
-            payload =
-              parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
-                ? (parsed as Record<string, unknown>)
-                : {};
+            payloadRaw = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload;
           } catch {
             log('Skipping event with malformed JSON payload:', e.event_type);
             return [];
           }
+          // Guard: JSON.parse may return null, undefined, a number, a string,
+          // or other primitives. Spreading those into an object would throw.
+          // Normalize to a safe Record: preserve primitives under a 'value' key.
+          const payload: Record<string, unknown> =
+            payloadRaw != null && typeof payloadRaw === 'object' && !Array.isArray(payloadRaw)
+              ? (payloadRaw as Record<string, unknown>)
+              : { value: payloadRaw };
           const data: WireEventData = {
             ...payload,
             timestamp: e.timestamp,

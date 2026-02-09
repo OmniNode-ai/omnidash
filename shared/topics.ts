@@ -12,8 +12,8 @@
  *   kind:     evt | cmd | intent | snapshot | dlq
  *   producer: platform | omniclaude | omniintelligence | omnimemory | validation
  *
- * @see omnibase_infra topic_resolver.py (sibling repo — canonical topic resolution)
- * @see omnibase_infra platform_topic_suffixes.py (sibling repo — suffix constants)
+ * @see omnibase_infra: src/omnibase_infra/topics/topic_resolver.py
+ * @see omnibase_infra: src/omnibase_infra/topics/platform_topic_suffixes.py
  */
 
 // ============================================================================

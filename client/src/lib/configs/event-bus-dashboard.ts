@@ -33,6 +33,7 @@ import {
   SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
   ENVIRONMENT_PREFIXES,
+  extractSuffix,
 } from '@shared/topics';
 
 /**
@@ -588,8 +589,19 @@ export function getEventMonitoringConfig() {
  * Get topic metadata from the dashboard config or the TOPIC_METADATA constant.
  *
  * Handles env-prefixed topic names (e.g. 'dev.onex.evt.platform.node-introspection.v1')
- * by stripping the leading env segment and retrying against suffix-keyed metadata.
- * Only strips the prefix when the remainder starts with 'onex.' to avoid false matches.
+ * by stripping known environment prefixes via `extractSuffix()` and retrying the lookup.
+ * Only strips the first segment when it matches a known prefix in ENVIRONMENT_PREFIXES
+ * (e.g. 'dev', 'staging', 'prod'), so canonical names like 'onex.evt...' pass through
+ * unmodified on the direct lookup.
+ *
+ * Fallback chain:
+ *   1. Direct lookup (handles legacy flat names and exact canonical matches)
+ *   2. Strip env prefix via extractSuffix(), retry lookup (handles 'dev.onex.evt...')
+ *   3. Return undefined if no match
+ *
+ * Note: eventBusDashboardConfig.topic_metadata references TOPIC_METADATA directly
+ * (no duplication). The config layer exists as an override point for future
+ * user-configurable metadata; both are checked for forward compatibility.
  *
  * @param topic - Raw topic name, possibly env-prefixed
  * @returns Metadata object with label, description, and category, or undefined if not found
@@ -597,23 +609,18 @@ export function getEventMonitoringConfig() {
 export function getTopicMetadata(
   topic: string
 ): { label: string; description: string; category: string } | undefined {
+  const configMeta = eventBusDashboardConfig.topic_metadata;
+
   // Direct lookup first (handles legacy flat names and exact suffix matches)
-  const direct = eventBusDashboardConfig.topic_metadata?.[topic] ?? TOPIC_METADATA[topic];
+  const direct = configMeta?.[topic] ?? TOPIC_METADATA[topic];
   if (direct) return direct;
 
-  // Try stripping known env prefixes only when followed by "onex." — the
-  // canonical ONEX prefix.  This prevents accidental matches for topic names
-  // that happen to start with an env prefix (e.g. "production.errors" should
-  // NOT strip to "errors").  Legacy flat topics (e.g. "agent-routing-decisions")
-  // never carry an env prefix so this guard is safe.
-  for (const prefix of ENVIRONMENT_PREFIXES) {
-    const prefixDot = prefix + '.';
-    if (topic.startsWith(prefixDot)) {
-      const suffix = topic.slice(prefixDot.length);
-      if (suffix.startsWith('onex.')) {
-        return eventBusDashboardConfig.topic_metadata?.[suffix] ?? TOPIC_METADATA[suffix];
-      }
-    }
+  // Try stripping a known env prefix (e.g. 'dev.onex.evt...' → 'onex.evt...').
+  // extractSuffix() only strips when the first segment is in ENVIRONMENT_PREFIXES,
+  // so topics that are already canonical or use legacy flat names are returned as-is.
+  const suffix = extractSuffix(topic);
+  if (suffix !== topic) {
+    return configMeta?.[suffix] ?? TOPIC_METADATA[suffix];
   }
 
   return undefined;

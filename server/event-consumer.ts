@@ -831,7 +831,7 @@ export class EventConsumer extends EventEmitter {
       throw new Error(
         'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
           'Set it in .env file or export it before starting the server. ' +
-          'Example: KAFKA_BROKERS=192.168.86.200:29092'
+          'Example: KAFKA_BROKERS=192.168.86.200:9092'
       );
     }
 
@@ -1525,29 +1525,21 @@ export class EventConsumer extends EventEmitter {
     let actionType = rawActionType;
     let agentName = rawAgentName;
 
-    // Strip legacy env prefix from actionName if present
-    // (e.g. "dev.onex.evt.producer.event.v1" -> "onex.evt.producer.event.v1")
-    let canonicalActionName = actionName;
-    const dotIdx = actionName.indexOf('.');
-    if (dotIdx > 0) {
-      const prefix = actionName.slice(0, dotIdx);
-      if ((ENVIRONMENT_PREFIXES as readonly string[]).includes(prefix)) {
-        canonicalActionName = actionName.slice(dotIdx + 1);
-      }
-    }
-
-    // Parse canonical actionName (e.g. "onex.cmd.omniintelligence.tool-content.v1")
-    if ((isJunkType || isJunkAgent) && canonicalActionName.startsWith('onex.')) {
-      const parts = canonicalActionName.split('.');
-      // Strip trailing version suffix (e.g. "v1", "v2")
-      const stripped = /^v\d+$/.test(parts[parts.length - 1]) ? parts.slice(0, -1) : parts;
-      // 4-part: onex.<kind>.<producer>.<event-name>
-      // 3-part: onex.<kind>.<event-name> (rare, missing producer)
-      if (stripped.length >= 4) {
-        if (isJunkType) actionType = stripped[3] || rawActionType; // e.g. "tool-content"
-        if (isJunkAgent) agentName = stripped[2] || rawAgentName; // e.g. "omniintelligence"
-      } else if (stripped.length === 3) {
-        if (isJunkType) actionType = stripped[2] || rawActionType; // e.g. "registration-completed"
+    // Parse canonical actionName (supports env-prefixed or suffix-only forms).
+    // Find the "onex" segment anywhere in the dot-separated name so we handle
+    // both "onex.evt.producer.event-name.v1" and "dev.onex.evt.producer.event-name.v1"
+    // without depending on ENVIRONMENT_PREFIXES being exhaustive.
+    if (isJunkType || isJunkAgent) {
+      const parts = actionName.split('.');
+      const onexIdx = parts.indexOf('onex');
+      // Format: [env].onex.<kind>.<producer>.<event-name>[.v<N>]
+      // Minimum 4 segments from onex: onex + kind + producer + event-name
+      if (onexIdx >= 0 && parts.length >= onexIdx + 4) {
+        if (isJunkType) actionType = parts[onexIdx + 3] || rawActionType; // e.g. "tool-content"
+        if (isJunkAgent) agentName = parts[onexIdx + 2] || rawAgentName; // e.g. "omniintelligence"
+      } else if (onexIdx >= 0 && parts.length === onexIdx + 3) {
+        // 3-part: onex.<kind>.<event-name> (rare, missing producer)
+        if (isJunkType) actionType = parts[onexIdx + 2] || rawActionType;
         // No producer segment available for agentName
       }
     }

@@ -137,11 +137,9 @@ Dashboard renders with historical data
 **File**: `server/event-consumer.ts`
 **Status**: Fixed in this PR. A `case TOPIC.TOOL_CONTENT` branch was added to the live `eachMessage` handler, routing tool-content events through `handleAgentAction()` with the tool name extracted from the payload.
 
-### 3. Redundant database query in fetchRealEventsForInitialState
-**File**: `server/websocket.ts` lines 170-198
-**Issue**: `fetchRealEventsForInitialState()` queries `event_bus_events` separately (1000 rows) even though `EventConsumer.preloadFromDatabase()` already loaded events into memory from the same table. The WebSocket could use EventConsumer's in-memory data instead of querying the DB again.
-**Impact**: Redundant DB query on every WebSocket connection. Performance cost is low (single query, indexed) but it's unnecessary work.
-**Fix**: Have `EventConsumer` expose a `getPreloadedEvents()` method that returns the raw event bus rows, and use that in the WebSocket INITIAL_STATE instead of re-querying.
+### 3. ~~Redundant database query in fetchRealEventsForInitialState~~ FIXED
+**File**: `server/websocket.ts`, `server/event-consumer.ts`
+**Status**: Fixed in this PR. `EventConsumer` now exposes `getPreloadedEventBusEvents()` which returns the in-memory preloaded event bus rows. `fetchRealEventsForInitialState()` in the WebSocket server uses this method instead of re-querying PostgreSQL, eliminating the redundant DB query on every WebSocket connection.
 
 ### 4. No active Kafka producers running
 **Issue**: Heartbeat, session, and tool events have stopped being produced. The Kafka topics have no new messages. This is an upstream infrastructure issue (producers in omninode_bridge / omniclaude are not currently running), not an omnidash bug.
