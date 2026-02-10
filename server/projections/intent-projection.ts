@@ -85,9 +85,6 @@ export class IntentProjectionView implements ProjectionView<IntentPayload> {
   /** Last event timestamp for stats. */
   private _lastEventTimeMs: number | null = null;
 
-  /** Total intents ever applied (including evicted). */
-  private _totalApplied = 0;
-
   // --------------------------------------------------------------------------
   // ProjectionView interface
   // --------------------------------------------------------------------------
@@ -142,8 +139,8 @@ export class IntentProjectionView implements ProjectionView<IntentPayload> {
       this._cursor = event.ingestSeq;
     }
 
-    // Track last event time
-    if (event.eventTimeMs > 0) {
+    // Track last event time (max to prevent regression on out-of-order events)
+    if (event.eventTimeMs > (this._lastEventTimeMs ?? 0)) {
       this._lastEventTimeMs = event.eventTimeMs;
     }
 
@@ -170,7 +167,6 @@ export class IntentProjectionView implements ProjectionView<IntentPayload> {
 
     // Track for getEventsSince
     this.appliedEvents.push(event);
-    this._totalApplied++;
 
     // Trim appliedEvents if too large (keep last MAX_BUFFER * 2)
     if (this.appliedEvents.length > MAX_BUFFER * 2) {
@@ -186,7 +182,6 @@ export class IntentProjectionView implements ProjectionView<IntentPayload> {
     this.appliedEvents = [];
     this._cursor = 0;
     this._lastEventTimeMs = null;
-    this._totalApplied = 0;
   }
 
   // --------------------------------------------------------------------------
