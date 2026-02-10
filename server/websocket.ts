@@ -685,14 +685,16 @@ export function setupWebSocket(httpServer: HTTPServer) {
     // Entire async body wrapped in try/catch: EventEmitter does NOT await the async
     // connection handler, so any uncaught throw becomes an unhandled promise rejection.
     try {
-      // Send welcome message
-      ws.send(
-        JSON.stringify({
-          type: 'CONNECTED',
-          message: 'Connected to Omnidash real-time event stream',
-          timestamp: new Date().toISOString(),
-        })
-      );
+      // Send welcome message (guard readyState in case socket closes between connect and here)
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(
+          JSON.stringify({
+            type: 'CONNECTED',
+            message: 'Connected to Omnidash real-time event stream',
+            timestamp: new Date().toISOString(),
+          })
+        );
+      }
 
       // Send initial state by querying PostgreSQL for latest events across ALL topics.
       // This ensures events from EventBusDataSource's 197+ topics persist across reloads.

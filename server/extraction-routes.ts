@@ -111,6 +111,9 @@ router.get('/summary', async (_req, res) => {
         (SELECT count(*)::int FROM ${injectionEffectiveness}
          WHERE ${injectionEffectiveness.sessionOutcome} = 'success'
            AND ${injectionEffectiveness.createdAt} >= ${cutoff90d}) AS success_count,
+        (SELECT count(*)::int FROM ${injectionEffectiveness}
+         WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL
+           AND ${injectionEffectiveness.createdAt} >= ${cutoff90d}) AS total_with_outcome,
         (SELECT max(${injectionEffectiveness.createdAt}) FROM ${injectionEffectiveness}
          WHERE ${injectionEffectiveness.createdAt} >= ${cutoff90d}) AS last_event_at
     `);
@@ -123,7 +126,10 @@ router.get('/summary', async (_req, res) => {
     const rawAvgLat = row.avg_latency_ms;
     const avgLatencyMs = rawAvgLat != null ? parseFloat(String(rawAvgLat)) : null;
     const successCount = (row.success_count as number) ?? 0;
-    const successRate = totalInjections > 0 ? successCount / totalInjections : null;
+    // Use total_with_outcome (excludes NULL) as denominator so pending/unknown
+    // sessions don't deflate the success rate.
+    const totalWithOutcome = (row.total_with_outcome as number) ?? 0;
+    const successRate = totalWithOutcome > 0 ? successCount / totalWithOutcome : null;
     const lastEventAt = row.last_event_at != null ? String(row.last_event_at) : null;
 
     const summary: ExtractionSummary = {
@@ -326,10 +332,12 @@ router.get('/errors/summary', async (_req, res) => {
     // Aggregate by cohort (time-bound to 90 days to prevent full-table scans)
     const cutoff90d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
+    // Exclude NULL outcomes from total_events so error_rate denominator
+    // only includes rows with a definitive success/failure outcome.
     const rows = await db
       .select({
         cohort: injectionEffectiveness.cohort,
-        total_events: sql<number>`count(*)::int`,
+        total_events: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL)::int`,
         failure_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL AND ${injectionEffectiveness.sessionOutcome} != 'success')::int`,
       })
       .from(injectionEffectiveness)
