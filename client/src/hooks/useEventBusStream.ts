@@ -9,7 +9,13 @@
  * - Memory-bounded storage with threshold-based cleanup
  * - Ref buffering for backpressure handling
  * - Derived metrics computed via useMemo
+ * - Burst/spike detection with cooldown gating
  * - Debug logging (off by default)
+ *
+ * Performance note: Several useMemo hooks (burstInfo, eventsPerSecond, metrics,
+ * timeSeries) each iterate the full events array. At max_events=5000 this is
+ * ~20K iterations per render cycle — negligible for modern browsers but worth
+ * noting if the cap is ever raised significantly.
  *
  * Part of Event Bus Monitor refactor - see plan at:
  * ~/.claude/plans/typed-honking-nygaard.md
@@ -876,7 +882,13 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
   const [lastBurstTriggeredAt, setLastBurstTriggeredAt] = useState(0);
   const [lastErrorSpikeTriggeredAt, setLastErrorSpikeTriggeredAt] = useState(0);
 
-  /** Periodic tick forces burstInfo to recompute when cooldown may expire during low activity */
+  /**
+   * Periodic tick forces burstInfo to recompute when cooldown may expire during
+   * low activity. We use a state counter (not a ref) because useMemo cannot
+   * depend on refs — a ref mutation would not trigger re-evaluation.
+   * Overflow safety: at one increment per 15 s, reaching Number.MAX_SAFE_INTEGER
+   * (~9e15) would take ~4.3 billion years.
+   */
   const [burstTick, setBurstTick] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setBurstTick((t) => t + 1), eventConfig.burst_cooldown_ms);
@@ -969,6 +981,12 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
   // Keep burst trigger timestamps current while burst is active.
   // Including `events` ensures the timestamp refreshes on each event batch,
   // so cooldown correctly starts from the LAST active moment (not burst start).
+  //
+  // This creates an intentional useMemo→useEffect→setState→useMemo cascade:
+  // events change → burstInfo recalcs → this effect fires → setState →
+  // burstInfo recalcs again. The second pass is bounded (max 2 recalcs)
+  // because the re-evaluated burst flags are identical, producing no further
+  // state changes.
   useEffect(() => {
     const now = Date.now();
     if (burstInfo.rawThroughputBurst) setLastBurstTriggeredAt(now);
