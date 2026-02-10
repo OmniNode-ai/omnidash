@@ -10,6 +10,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import type { ProjectionService } from './projection-service';
+import { MAX_BUFFER_SIZE } from './projections/event-bus-projection';
 
 export function createProjectionRouter(projectionService: ProjectionService): Router {
   const router = Router();
@@ -25,7 +26,10 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
   router.get('/:viewId/snapshot', (req: Request, res: Response) => {
     const { viewId } = req.params;
     const rawLimit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
-    const limit = rawLimit !== undefined && !isNaN(rawLimit) && rawLimit > 0 ? rawLimit : undefined;
+    const limit =
+      rawLimit !== undefined && !isNaN(rawLimit) && rawLimit > 0
+        ? Math.min(rawLimit, MAX_BUFFER_SIZE)
+        : undefined;
 
     const view = projectionService.getView(viewId);
     if (!view) {
@@ -62,12 +66,12 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
     const { viewId } = req.params;
     const sinceCursor = parseInt(req.query.since_cursor as string, 10);
     const rawLimit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
-    const limit = !isNaN(rawLimit) && rawLimit > 0 ? rawLimit : 50;
+    const limit = !isNaN(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, MAX_BUFFER_SIZE) : 50;
 
-    if (isNaN(sinceCursor)) {
+    if (isNaN(sinceCursor) || sinceCursor < 0) {
       return res.status(400).json({
         error: 'bad_request',
-        message: 'since_cursor query parameter is required and must be a number',
+        message: 'since_cursor query parameter is required and must be a non-negative number',
       });
     }
 

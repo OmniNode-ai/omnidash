@@ -2,8 +2,12 @@
  * EventBusProjection — Server-Side Materialized View (OMN-2095)
  *
  * Replaces the 1020-line useEventBusStream client hook with a server-side
- * materialized view. All aggregates maintained incrementally — O(1) per
- * insert/evict, O(1) per snapshot read.
+ * materialized view. Aggregates maintained incrementally.
+ *
+ * Complexity (n = buffer size, capped at MAX_BUFFER_SIZE = 500):
+ * - insert:   O(log n) binary search + O(n) splice shift
+ * - evict:    O(1) pop + O(1) counter updates
+ * - snapshot: O(k) Map-to-object serialization + O(m log m) timeSeries sort
  *
  * Maintained state:
  * - events:             Bounded buffer (500 max), binary insert by (eventTimeMs DESC, ingestSeq DESC)
@@ -153,9 +157,18 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     this.incrementCounters(event);
 
     // Track ingest time for EPS calculation
-    this.rollingWindow.push(Date.now());
+    const now = Date.now();
+    this.rollingWindow.push(now);
+
+    // Prune inline if cap exceeded — use time-based cutoff (not arbitrary halving)
+    // to avoid including stale entries that would skew EPS readings.
     if (this.rollingWindow.length > ROLLING_WINDOW_MAX_ENTRIES) {
-      this.rollingWindow = this.rollingWindow.slice(-ROLLING_WINDOW_MAX_ENTRIES / 2);
+      const cutoff = now - ROLLING_WINDOW_MS;
+      let pruneIdx = 0;
+      while (pruneIdx < this.rollingWindow.length && this.rollingWindow[pruneIdx] < cutoff) {
+        pruneIdx++;
+      }
+      this.rollingWindow = pruneIdx > 0 ? this.rollingWindow.slice(pruneIdx) : this.rollingWindow;
     }
 
     // Evict oldest if over capacity

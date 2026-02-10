@@ -632,7 +632,7 @@ export default function EventBusMonitor() {
   // Derived State
   // ============================================================================
 
-  const hasActiveFilters = filters.priority || filters.search || hideHeartbeats;
+  const hasActiveFilters = filters.topic || filters.priority || filters.search || hideHeartbeats;
 
   // Staleness detection
   const stalenessInfo = useMemo(() => {

@@ -39,6 +39,9 @@ projectionService.registerView(eventBusProjection);
 export function wireProjectionSources(): void {
   // Ring-buffer deduplication: O(1) per add, no periodic pruning spikes.
   // Tracks event IDs from EventBusDataSource so EventConsumer doesn't double-count.
+  // Trade-off: if an ID is evicted from the ring before EventConsumer delivers
+  // the same event, a rare double-count can occur. At DEDUP_CAPACITY=5000 and
+  // typical inter-source latency <1s, this is negligible.
   const DEDUP_CAPACITY = 5000;
   const dedupRing: string[] = new Array(DEDUP_CAPACITY);
   const dedupSet = new Set<string>();
