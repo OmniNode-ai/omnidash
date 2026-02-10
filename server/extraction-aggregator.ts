@@ -67,9 +67,10 @@ export class ExtractionMetricsAggregator {
           injectionOccurred: event.injection_occurred ?? false,
           agentName: event.agent_name ?? null,
           detectionMethod: event.detection_method ?? null,
-          utilizationScore: event.utilization_score?.toString() ?? null,
+          utilizationScore:
+            event.utilization_score != null ? String(event.utilization_score) : null,
           utilizationMethod: event.utilization_method ?? null,
-          agentMatchScore: event.agent_match_score?.toString() ?? null,
+          agentMatchScore: event.agent_match_score != null ? String(event.agent_match_score) : null,
           userVisibleLatencyMs: event.user_visible_latency_ms ?? null,
           sessionOutcome: event.session_outcome ?? null,
           routingTimeMs: event.routing_time_ms ?? null,

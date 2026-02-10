@@ -1105,6 +1105,8 @@ export class EventConsumer extends EventEmitter {
       // DEPLOYMENT NOTE: For a fresh consumer group (no committed offsets),
       // KafkaJS defaults to 'latest', skipping messages produced while the
       // consumer was down. This is intentional — the DB preload covers history.
+      // TRADE-OFF: If downtime exceeds PRELOAD_WINDOW_MINUTES, events in the
+      // gap (after preload cutoff but before consumer reconnects) will be missed.
       await this.consumer.subscribe({
         topics: buildSubscriptionTopics(),
         fromBeginning: false,
@@ -1502,10 +1504,11 @@ export class EventConsumer extends EventEmitter {
 
       this.liveEventBusEvents.push(liveEvent);
 
-      // Cap the buffer to prevent unbounded memory growth
+      // Cap the buffer to prevent unbounded memory growth.
+      // splice(0, excess) removes oldest entries in-place, avoiding O(n) array copies.
       if (this.liveEventBusEvents.length > MAX_LIVE_EVENT_BUS_EVENTS) {
-        // Remove oldest events (front of array) to stay within budget
-        this.liveEventBusEvents = this.liveEventBusEvents.slice(-MAX_LIVE_EVENT_BUS_EVENTS);
+        const excess = this.liveEventBusEvents.length - MAX_LIVE_EVENT_BUS_EVENTS;
+        this.liveEventBusEvents.splice(0, excess);
       }
     } catch {
       // Non-critical — don't let capture failures affect event processing

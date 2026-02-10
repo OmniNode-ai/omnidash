@@ -401,7 +401,8 @@ export function setupWebSocket(httpServer: HTTPServer) {
     // Query PostgreSQL for full event set (same path as connection handler) so all 197+ topics
     // are included, not just EventConsumer's ~30 topic in-memory buffer.
     // Async callback is intentional; the inner try/catch prevents unhandled promise rejections.
-    setTimeout(async () => {
+
+    void setTimeout(async () => {
       try {
         console.log('[WebSocket] Demo mode: broadcasting restored INITIAL_STATE');
         const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
@@ -424,7 +425,11 @@ export function setupWebSocket(httpServer: HTTPServer) {
           'all'
         );
       } catch (error) {
-        console.error('[WebSocket] Error broadcasting restored INITIAL_STATE:', error);
+        try {
+          console.error('[WebSocket] Error broadcasting restored INITIAL_STATE:', error);
+        } catch {
+          /* prevent double-fault */
+        }
       }
     }, 100); // Small delay to ensure DEMO_STATE_RESTORED is processed first
   });
@@ -675,20 +680,20 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     clients.set(ws, clientData);
 
-    // Send welcome message
-    ws.send(
-      JSON.stringify({
-        type: 'CONNECTED',
-        message: 'Connected to Omnidash real-time event stream',
-        timestamp: new Date().toISOString(),
-      })
-    );
-
-    // Send initial state by querying PostgreSQL for latest events across ALL topics.
-    // This ensures events from EventBusDataSource's 197+ topics persist across reloads.
-    // Wrapped in try/catch: the async handler is not awaited by EventEmitter,
-    // so unhandled rejections here would crash the process.
+    // Entire async body wrapped in try/catch: EventEmitter does NOT await the async
+    // connection handler, so any uncaught throw becomes an unhandled promise rejection.
     try {
+      // Send welcome message
+      ws.send(
+        JSON.stringify({
+          type: 'CONNECTED',
+          message: 'Connected to Omnidash real-time event stream',
+          timestamp: new Date().toISOString(),
+        })
+      );
+
+      // Send initial state by querying PostgreSQL for latest events across ALL topics.
+      // This ensures events from EventBusDataSource's 197+ topics persist across reloads.
       const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
 
       // Get legacy data for backward compatibility with other dashboards
@@ -719,7 +724,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
         );
       }
     } catch (error) {
-      console.error('[WebSocket] Error sending initial state to new client:', error);
+      console.error('[WebSocket] Error during client connection setup:', error);
     }
 
     // Handle pong responses

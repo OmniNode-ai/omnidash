@@ -198,7 +198,9 @@ router.get('/latency/heatmap', async (req, res) => {
       return res.json({ buckets: [], window: windowParam } satisfies LatencyHeatmapResponse);
     }
 
-    // Determine date_trunc precision based on window size (safe SQL fragments, no sql.raw)
+    // Determine date_trunc precision based on window size (safe SQL fragments, no sql.raw).
+    // For 'd' windows use day-level buckets; everything else (including invalid formats
+    // that fall through to parseWindow's 24h default) uses hour-level buckets.
     const trunc = windowParam.endsWith('d') ? TRUNC_DAY : TRUNC_HOUR;
     const bucketExpr = sql`${trunc}, ${latencyBreakdowns.createdAt})`;
 

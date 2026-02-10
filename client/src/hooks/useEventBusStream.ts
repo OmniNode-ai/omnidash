@@ -28,9 +28,6 @@ import {
   LEGACY_AGENT_TRANSFORMATION_EVENTS,
   LEGACY_ROUTER_PERFORMANCE_METRICS,
 } from '@shared/topics';
-
-/** Known benign WebSocket message types that don't need event processing. */
-const KNOWN_IGNORED_TYPES = new Set(['pong', 'heartbeat', 'HEARTBEAT', 'PING', 'ACK']);
 import type {
   WireEventMessage,
   WireEventData,
@@ -72,6 +69,9 @@ export {
   getEventId,
   processEvent,
 } from './useEventBusStream.utils';
+
+/** Known benign WebSocket message types that don't need event processing. */
+const KNOWN_IGNORED_TYPES = new Set(['pong', 'heartbeat', 'HEARTBEAT', 'PING', 'ACK']);
 
 // ============================================================================
 // Hook Implementation
