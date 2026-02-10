@@ -30,11 +30,32 @@ vi.mock('../websocket', () => ({
   setupWebSocket: setupWebSocketMock,
 }));
 
+vi.mock('../projection-service', () => ({
+  ProjectionService: vi.fn().mockImplementation(() => ({
+    registerView: vi.fn(),
+    on: vi.fn(),
+  })),
+}));
+
+vi.mock('../projections/node-registry-projection', () => ({
+  NodeRegistryProjection: vi.fn(),
+}));
+
+vi.mock('../projection-routes', () => ({
+  default: vi.fn(),
+  setProjectionService: vi.fn(),
+}));
+
+const eventConsumerOnMock = vi.fn().mockReturnThis();
+const getRegisteredNodesMock = vi.fn().mockReturnValue([]);
+
 vi.mock('../event-consumer', () => ({
   eventConsumer: {
     validateConnection: validateConnectionMock,
     start: startMock,
     stop: stopMock,
+    on: eventConsumerOnMock,
+    getRegisteredNodes: getRegisteredNodesMock,
   },
 }));
 
@@ -116,7 +137,10 @@ describe('server/index bootstrap', () => {
     expect(registerRoutesMock).toHaveBeenCalledTimes(1);
     expect(validateConnectionMock).toHaveBeenCalledTimes(1);
     expect(startMock).toHaveBeenCalledTimes(1);
-    expect(setupWebSocketMock).toHaveBeenCalledWith(mockServer);
+    expect(setupWebSocketMock).toHaveBeenCalledWith(
+      mockServer,
+      expect.objectContaining({ projectionService: expect.anything() })
+    );
     expect(setupViteMock).toHaveBeenCalledWith(expect.anything(), mockServer);
     expect(serveStaticMock).not.toHaveBeenCalled();
     expect(mockServer.listen).toHaveBeenCalledWith(4001, '0.0.0.0', expect.any(Function));
@@ -158,7 +182,10 @@ describe('server/index bootstrap', () => {
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       '   Intelligence endpoints will not receive real-time data'
     );
-    expect(setupWebSocketMock).toHaveBeenCalledWith(mockServer);
+    expect(setupWebSocketMock).toHaveBeenCalledWith(
+      mockServer,
+      expect.objectContaining({ projectionService: expect.anything() })
+    );
 
     consoleErrorSpy.mockRestore();
   });

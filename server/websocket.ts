@@ -274,7 +274,11 @@ interface ClientData {
   missedPings: number;
 }
 
-export function setupWebSocket(httpServer: HTTPServer) {
+interface SetupWebSocketOptions {
+  projectionService?: import('./projection-service').ProjectionService;
+}
+
+export function setupWebSocket(httpServer: HTTPServer, options?: SetupWebSocketOptions) {
   console.log('Initializing WebSocket server...');
 
   const wss = new WebSocketServer({
@@ -491,6 +495,24 @@ export function setupWebSocket(httpServer: HTTPServer) {
     const data = transformNodesToSnakeCase(nodes);
     broadcast('NODE_REGISTRY_UPDATE', data, 'node-registry');
   });
+
+  // Projection invalidation listener (OMN-2097)
+  // Broadcasts invalidation signals so clients using useProjectionStream can re-fetch.
+  if (options?.projectionService) {
+    const projectionInvalidateHandler = (info: { viewId: string; cursor: number }) => {
+      broadcast(
+        'PROJECTION_INVALIDATE',
+        { viewId: info.viewId, cursor: info.cursor },
+        `projection:${info.viewId}`
+      );
+    };
+    options.projectionService.on('projection-invalidate', projectionInvalidateHandler);
+    // Track for cleanup
+    eventListeners.push({
+      event: 'projection-invalidate',
+      handler: projectionInvalidateHandler,
+    });
+  }
 
   // Intent classification event listeners (OMN-1516)
   // Note: Intent events are emitted from intentEventEmitter, NOT eventConsumer

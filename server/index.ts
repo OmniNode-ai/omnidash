@@ -16,6 +16,9 @@ import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
 import { runtimeIdentity } from './runtime-identity';
+import { ProjectionService } from './projection-service';
+import { NodeRegistryProjection } from './projections/node-registry-projection';
+import { setProjectionService } from './projection-routes';
 
 const app = express();
 
@@ -122,9 +125,56 @@ app.use((req, res, next) => {
     console.error('   Application will continue with limited functionality');
   }
 
+  // --------------------------------------------------------------------------
+  // Projection Service (OMN-2097)
+  // --------------------------------------------------------------------------
+  const projectionService = new ProjectionService();
+  const nodeRegistryView = new NodeRegistryProjection();
+  projectionService.registerView(nodeRegistryView);
+  setProjectionService(projectionService);
+
+  // Bridge EventConsumer node events → ProjectionService
+  eventConsumer.on('nodeIntrospectionUpdate', (event) => {
+    projectionService.ingest({
+      type: 'node-introspection',
+      source: 'event-consumer',
+      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
+      payload: event,
+    });
+  });
+
+  eventConsumer.on('nodeHeartbeatUpdate', (event) => {
+    projectionService.ingest({
+      type: 'node-heartbeat',
+      source: 'event-consumer',
+      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
+      payload: event,
+    });
+  });
+
+  eventConsumer.on('nodeStateChangeUpdate', (event) => {
+    projectionService.ingest({
+      type: 'node-state-change',
+      source: 'event-consumer',
+      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
+      payload: event,
+    });
+  });
+
+  // Seed projection with existing nodes from EventConsumer (survives server restart)
+  const existingNodes = eventConsumer.getRegisteredNodes();
+  if (existingNodes.length > 0) {
+    projectionService.ingest({
+      type: 'node-registry-seed',
+      source: 'event-consumer',
+      payload: { nodes: existingNodes },
+    });
+    log(`Seeded node-registry projection with ${existingNodes.length} existing nodes`);
+  }
+
   // Setup WebSocket for real-time events
   if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
-    setupWebSocket(server);
+    setupWebSocket(server, { projectionService });
   }
 
   // Demo mode: start ALL mock data generators (fake heartbeats, events, registry)

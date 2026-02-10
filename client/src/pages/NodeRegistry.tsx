@@ -1,30 +1,30 @@
 /**
- * Node Registry Dashboard Page
+ * Node Registry Dashboard Page (OMN-2097)
  *
  * Real-time visualization of 2-way node registration events from omnibase_infra.
  * Displays node introspection, heartbeat, and registration state transitions.
  *
- * Data flows: Kafka -> EventConsumer -> WebSocket -> Dashboard
+ * Data flow: Kafka → EventConsumer → ProjectionService → REST snapshot → Dashboard
+ *            ProjectionService → WebSocket invalidation → re-fetch snapshot
  *
- * When connected to WebSocket, receives real-time updates from:
- * - NODE_INTROSPECTION: Node introspection events
- * - NODE_HEARTBEAT: Heartbeat events with health metrics
- * - NODE_STATE_CHANGE: Registration state transitions
- *
- * Falls back to mock data when WebSocket is not available.
+ * Uses the server-side NodeRegistryProjection for materialized state,
+ * with useProjectionStream for Snapshot + Invalidation delivery.
+ * Falls back to mock data when the projection has no nodes.
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { DashboardRenderer } from '@/lib/widgets';
 import {
   nodeRegistryDashboardConfig,
   generateNodeRegistryMockData,
   type RegisteredNode,
   type RegistrationEvent,
-  type NodeType,
-  type RegistrationState,
 } from '@/lib/configs/node-registry-dashboard';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useProjectionStream } from '@/hooks/useProjectionStream';
+import {
+  transformNodeRegistryPayload,
+  type NodeRegistryPayload,
+} from '@/lib/data-sources/node-registry-projection-source';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { SUFFIX_NODE_INTROSPECTION, resolveTopicName } from '@shared/topics';
 import { Badge } from '@/components/ui/badge';
@@ -32,356 +32,57 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Wifi, WifiOff, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-interface NodeRegistryState {
-  nodes: Map<string, RegisteredNode>;
-  events: RegistrationEvent[];
-}
-
-interface WebSocketMessage {
-  type: string;
-  data?: unknown;
-  message?: string;
-  timestamp: string;
-}
-
-interface NodeIntrospectionData {
-  node_id: string;
-  node_type: NodeType;
-  node_version: string;
-  endpoints: Record<string, string>;
-  current_state: RegistrationState;
-  reason: 'STARTUP' | 'HEARTBEAT' | 'REQUESTED';
-  correlation_id: string;
-}
-
-interface NodeHeartbeatData {
-  node_id: string;
-  uptime_seconds: number;
-  active_operations_count: number;
-  memory_usage_mb: number;
-  cpu_usage_percent: number;
-}
-
-interface NodeStateChangeData {
-  node_id: string;
-  previous_state: RegistrationState;
-  new_state: RegistrationState;
-}
-
-interface InitialStateData {
-  registeredNodes?: RegisteredNode[];
-  nodeRegistryStats?: {
-    totalNodes: number;
-    activeNodes: number;
-    pendingNodes: number;
-    failedNodes: number;
-    typeDistribution: Record<NodeType, number>;
-  };
-}
-
-/**
- * Convert registration state to status grid color
- */
-function stateToStatus(state: RegistrationState): 'healthy' | 'warning' | 'error' {
-  switch (state) {
-    case 'active':
-      return 'healthy';
-    case 'pending_registration':
-    case 'accepted':
-    case 'awaiting_ack':
-    case 'ack_received':
-      return 'warning';
-    case 'rejected':
-    case 'ack_timed_out':
-    case 'liveness_expired':
-      return 'error';
-    default:
-      return 'warning';
-  }
-}
-
-/**
- * Convert state to severity for event feed
- */
-function stateToSeverity(state: RegistrationState): 'info' | 'success' | 'warning' | 'error' {
-  switch (state) {
-    case 'active':
-      return 'success';
-    case 'pending_registration':
-    case 'accepted':
-    case 'awaiting_ack':
-    case 'ack_received':
-      return 'info';
-    case 'rejected':
-    case 'ack_timed_out':
-    case 'liveness_expired':
-      return 'error';
-    default:
-      return 'warning';
-  }
-}
-
 export default function NodeRegistry() {
-  // State management for nodes and events
-  const [registryState, setRegistryState] = useState<NodeRegistryState>({
-    nodes: new Map(),
-    events: [],
-  });
-  const [eventCount, setEventCount] = useState(0);
-  const [useMockData, setUseMockData] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  // Server-side projection stream: fetches snapshot, re-fetches on invalidation
+  const { data, cursor, isLoading, error, isConnected, refresh } =
+    useProjectionStream<NodeRegistryPayload>('node-registry');
 
-  // Initialize with mock data
-  useEffect(() => {
-    if (useMockData) {
-      const mockData = generateNodeRegistryMockData();
-      const nodes = new Map<string, RegisteredNode>();
-      (mockData.registeredNodes as RegisteredNode[]).forEach((node) => {
-        nodes.set(node.node_id, node);
-      });
-      setRegistryState({
-        nodes,
-        events: mockData.registrationEvents as RegistrationEvent[],
-      });
-      setLastUpdate(new Date());
-    }
-  }, [useMockData]);
+  // Determine if we have real data from the projection
+  const hasProjectionData = data !== null && data.nodes.length > 0;
 
-  // Handle incoming WebSocket messages
-  const handleMessage = useCallback((message: WebSocketMessage) => {
-    const timestamp = message.timestamp || new Date().toISOString();
-
-    switch (message.type) {
-      case 'INITIAL_STATE': {
-        // Initial state from server - contains full state object
-        const data = message.data as InitialStateData;
-        const initialNodes = data?.registeredNodes;
-        if (Array.isArray(initialNodes) && initialNodes.length > 0) {
-          const nodes = new Map<string, RegisteredNode>();
-          initialNodes.forEach((node) => {
-            nodes.set(node.node_id, node);
-          });
-          setRegistryState((prev) => ({
-            nodes,
-            events: prev.events,
-          }));
-          setUseMockData(false);
-          setLastUpdate(new Date());
-        }
-        break;
-      }
-
-      case 'NODE_REGISTRY_UPDATE': {
-        // Full registry update from server
-        const nodes = message.data as RegisteredNode[] | undefined;
-        if (Array.isArray(nodes) && nodes.length > 0) {
-          const nodeMap = new Map<string, RegisteredNode>();
-          nodes.forEach((node) => {
-            nodeMap.set(node.node_id, node);
-          });
-          setRegistryState((prev) => ({
-            nodes: nodeMap,
-            events: prev.events,
-          }));
-          setUseMockData(false);
-          setLastUpdate(new Date());
-        }
-        break;
-      }
-
-      case 'NODE_INTROSPECTION': {
-        const data = message.data as NodeIntrospectionData;
-        if (!data?.node_id) break;
-
-        setRegistryState((prev) => {
-          const nodes = new Map(prev.nodes);
-          const existingNode = nodes.get(data.node_id);
-
-          nodes.set(data.node_id, {
-            node_id: data.node_id,
-            node_type: data.node_type,
-            state: data.current_state,
-            version: data.node_version,
-            uptime_seconds: existingNode?.uptime_seconds || 0,
-            last_seen: timestamp,
-            memory_usage_mb: existingNode?.memory_usage_mb,
-            cpu_usage_percent: existingNode?.cpu_usage_percent,
-          });
-
-          const newEvent: RegistrationEvent = {
-            type: 'introspection',
-            node_id: data.node_id,
-            message: `Introspection from ${data.node_id} (${data.reason})`,
-            severity: 'info',
-            timestamp,
-          };
-
-          return {
-            nodes,
-            events: [newEvent, ...prev.events].slice(0, 50),
-          };
-        });
-        setEventCount((c) => c + 1);
-        setLastUpdate(new Date());
-        setUseMockData(false);
-        break;
-      }
-
-      case 'NODE_HEARTBEAT': {
-        const data = message.data as NodeHeartbeatData;
-        if (!data?.node_id) break;
-
-        setRegistryState((prev) => {
-          const nodes = new Map(prev.nodes);
-          const existingNode = nodes.get(data.node_id);
-
-          if (existingNode) {
-            nodes.set(data.node_id, {
-              ...existingNode,
-              uptime_seconds: data.uptime_seconds,
-              last_seen: timestamp,
-              memory_usage_mb: data.memory_usage_mb,
-              cpu_usage_percent: data.cpu_usage_percent,
-            });
-          }
-
-          const severity =
-            data.cpu_usage_percent > 80
-              ? 'warning'
-              : data.memory_usage_mb > 900
-                ? 'warning'
-                : 'success';
-
-          const newEvent: RegistrationEvent = {
-            type: 'heartbeat',
-            node_id: data.node_id,
-            message: `Heartbeat from ${data.node_id} (CPU: ${data.cpu_usage_percent}%, Mem: ${data.memory_usage_mb}MB)`,
-            severity,
-            timestamp,
-          };
-
-          return {
-            nodes,
-            events: [newEvent, ...prev.events].slice(0, 50),
-          };
-        });
-        setEventCount((c) => c + 1);
-        setLastUpdate(new Date());
-        setUseMockData(false);
-        break;
-      }
-
-      case 'NODE_STATE_CHANGE': {
-        const data = message.data as NodeStateChangeData;
-        if (!data?.node_id) break;
-
-        setRegistryState((prev) => {
-          const nodes = new Map(prev.nodes);
-          const existingNode = nodes.get(data.node_id);
-
-          if (existingNode) {
-            nodes.set(data.node_id, {
-              ...existingNode,
-              state: data.new_state,
-              last_seen: timestamp,
-            });
-          }
-
-          const newEvent: RegistrationEvent = {
-            type: 'state_change',
-            node_id: data.node_id,
-            message: `${data.node_id}: ${data.previous_state} -> ${data.new_state}`,
-            severity: stateToSeverity(data.new_state),
-            timestamp,
-          };
-
-          return {
-            nodes,
-            events: [newEvent, ...prev.events].slice(0, 50),
-          };
-        });
-        setEventCount((c) => c + 1);
-        setLastUpdate(new Date());
-        setUseMockData(false);
-        break;
-      }
-
-      case 'CONNECTED': {
-        // WebSocket connected - wait for INITIAL_STATE with real data
-        break;
-      }
-    }
-  }, []);
-
-  // WebSocket connection
-  const { isConnected, connectionStatus, subscribe } = useWebSocket({
-    onMessage: handleMessage,
-    onOpen: () => {
-      // Subscribe to node registry events
-      subscribe(['node-introspection', 'node-heartbeat', 'node-state-change', 'node-registry']);
-    },
-    debug: false,
-  });
-
-  // Transform state to dashboard data format
+  // Transform projection payload → DashboardData, or fall back to mock
   const dashboardData: DashboardData = useMemo(() => {
-    const nodesArray = Array.from(registryState.nodes.values());
-
-    const activeNodes = nodesArray.filter((n) => n.state === 'active').length;
-    const pendingNodes = nodesArray.filter((n) =>
-      ['pending_registration', 'awaiting_ack', 'ack_received', 'accepted'].includes(n.state)
-    ).length;
-    const failedNodes = nodesArray.filter((n) =>
-      ['rejected', 'liveness_expired', 'ack_timed_out'].includes(n.state)
-    ).length;
-
-    // Node statuses for status grid
-    const nodeStatuses = nodesArray.map((n) => ({
-      node_id: n.node_id,
-      status: stateToStatus(n.state),
-    }));
-
-    // Node type distribution for pie chart
-    const typeCounts = nodesArray.reduce(
-      (acc, n) => {
-        acc[n.node_type] = (acc[n.node_type] || 0) + 1;
-        return acc;
-      },
-      {} as Record<NodeType, number>
-    );
-
-    const nodeTypeDistribution = Object.entries(typeCounts).map(([name, value]) => ({
-      name,
-      value,
-    }));
-
-    return {
-      totalNodes: nodesArray.length,
-      activeNodes,
-      pendingNodes,
-      failedNodes,
-      nodeStatuses,
-      nodeTypeDistribution,
-      registeredNodes: nodesArray,
-      registrationEvents: registryState.events,
-    };
-  }, [registryState]);
-
-  // Refresh mock data
-  const handleRefresh = useCallback(() => {
-    if (useMockData) {
-      const mockData = generateNodeRegistryMockData();
-      const nodes = new Map<string, RegisteredNode>();
-      (mockData.registeredNodes as RegisteredNode[]).forEach((node) => {
-        nodes.set(node.node_id, node);
-      });
-      setRegistryState({
-        nodes,
-        events: mockData.registrationEvents as RegistrationEvent[],
-      });
-      setLastUpdate(new Date());
+    if (hasProjectionData) {
+      return transformNodeRegistryPayload(data);
     }
-  }, [useMockData]);
+
+    // Fallback to mock data when projection is empty
+    const mockData = generateNodeRegistryMockData();
+    return {
+      totalNodes: (mockData.registeredNodes as RegisteredNode[]).length,
+      activeNodes: (mockData.registeredNodes as RegisteredNode[]).filter(
+        (n) => n.state === 'active'
+      ).length,
+      pendingNodes: (mockData.registeredNodes as RegisteredNode[]).filter((n) =>
+        ['pending_registration', 'awaiting_ack', 'ack_received', 'accepted'].includes(n.state)
+      ).length,
+      failedNodes: (mockData.registeredNodes as RegisteredNode[]).filter((n) =>
+        ['rejected', 'liveness_expired', 'ack_timed_out'].includes(n.state)
+      ).length,
+      nodeStatuses: (mockData.registeredNodes as RegisteredNode[]).map((n) => ({
+        node_id: n.node_id,
+        status:
+          n.state === 'active'
+            ? ('healthy' as const)
+            : ['rejected', 'liveness_expired', 'ack_timed_out'].includes(n.state)
+              ? ('error' as const)
+              : ('warning' as const),
+      })),
+      nodeTypeDistribution: Object.entries(
+        (mockData.registeredNodes as RegisteredNode[]).reduce(
+          (acc, n) => {
+            acc[n.node_type] = (acc[n.node_type] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>
+        )
+      ).map(([name, value]) => ({ name, value })),
+      registeredNodes: mockData.registeredNodes,
+      registrationEvents: mockData.registrationEvents as RegistrationEvent[],
+    };
+  }, [data, hasProjectionData]);
+
+  const connectionStatus = isLoading ? 'connecting' : isConnected ? 'connected' : 'disconnected';
 
   return (
     <div className="space-y-6">
@@ -393,14 +94,16 @@ export default function NodeRegistry() {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Event counter */}
-          <div className="text-sm text-muted-foreground">
-            Events: <span className="font-mono">{eventCount}</span>
-          </div>
+          {/* Cursor position */}
+          {hasProjectionData && (
+            <div className="text-sm text-muted-foreground">
+              Cursor: <span className="font-mono">{cursor}</span>
+            </div>
+          )}
 
           {/* Data source badge */}
-          <Badge variant={useMockData ? 'secondary' : 'default'}>
-            {useMockData ? 'Mock Data' : 'Live Data'}
+          <Badge variant={hasProjectionData ? 'default' : 'secondary'}>
+            {hasProjectionData ? 'Live Data' : 'Mock Data'}
           </Badge>
 
           {/* Connection status */}
@@ -411,7 +114,7 @@ export default function NodeRegistry() {
                   className={`h-2 w-2 rounded-full transition-colors duration-300 ${
                     isConnected
                       ? 'bg-green-500'
-                      : connectionStatus === 'connecting'
+                      : isLoading
                         ? 'bg-yellow-500 animate-pulse'
                         : 'bg-red-500'
                   }`}
@@ -425,22 +128,16 @@ export default function NodeRegistry() {
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>WebSocket: {connectionStatus}</p>
-              {lastUpdate && (
-                <p className="text-xs text-muted-foreground">
-                  Last update: {lastUpdate.toLocaleTimeString()}
-                </p>
-              )}
+              <p>Projection: {connectionStatus}</p>
+              {error && <p className="text-xs text-destructive">{error}</p>}
             </TooltipContent>
           </Tooltip>
 
-          {/* Refresh button (only for mock data) */}
-          {useMockData && (
-            <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
-          )}
+          {/* Refresh button */}
+          <Button variant="outline" size="sm" onClick={refresh} className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
         </div>
       </div>
 
@@ -488,7 +185,7 @@ export default function NodeRegistry() {
       <DashboardRenderer
         config={nodeRegistryDashboardConfig}
         data={dashboardData}
-        isLoading={connectionStatus === 'connecting' && registryState.nodes.size === 0}
+        isLoading={isLoading}
       />
     </div>
   );
