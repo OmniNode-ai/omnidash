@@ -2,7 +2,7 @@
  * Extraction Dashboard Data Source (OMN-1804)
  *
  * Fetches extraction pipeline metrics from API endpoints.
- * Returns empty-safe defaults when database is unavailable.
+ * Throws on non-OK responses; callers should handle empty/error states.
  *
  * PostgreSQL is the single source of truth for all data.
  */

@@ -11,7 +11,6 @@ import { useQuery } from '@tanstack/react-query';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -22,29 +21,15 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Activity, AlertTriangle } from 'lucide-react';
+import { StatusBadge } from '@/components/HealthStatusBadge';
+import type { HealthStatus } from '@shared/schemas';
 import type { PipelineCohortHealth } from '@shared/extraction-types';
 import { CohortDetailSheet, fromPipelineHealth, type CohortDetail } from './CohortDetailSheet';
 
-function healthBadge(rate: number) {
-  if (rate >= 0.95) {
-    return (
-      <Badge variant="outline" className="text-green-500 border-green-500/30">
-        Healthy
-      </Badge>
-    );
-  }
-  if (rate >= 0.8) {
-    return (
-      <Badge variant="outline" className="text-yellow-500 border-yellow-500/30">
-        Degraded
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="outline" className="text-red-500 border-red-500/30">
-      Unhealthy
-    </Badge>
-  );
+function successRateToHealth(rate: number): HealthStatus {
+  if (rate >= 0.95) return 'healthy';
+  if (rate >= 0.8) return 'degraded';
+  return 'unhealthy';
 }
 
 export function PipelineHealthPanel() {
@@ -126,7 +111,9 @@ export function PipelineHealthPanel() {
                         ? `${Math.round(cohort.avg_latency_ms)}ms`
                         : '--'}
                     </TableCell>
-                    <TableCell>{healthBadge(cohort.success_rate)}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={successRateToHealth(cohort.success_rate)} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

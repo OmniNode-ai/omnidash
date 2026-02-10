@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +16,7 @@ interface MetricCardProps {
   status?: 'healthy' | 'warning' | 'error' | 'offline';
   tooltip?: string;
   subtitle?: string;
+  isLoading?: boolean;
 }
 
 export function MetricCard({
@@ -26,6 +28,7 @@ export function MetricCard({
   status,
   tooltip,
   subtitle,
+  isLoading,
 }: MetricCardProps) {
   const labelContent = (
     <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">{label}</div>
@@ -60,20 +63,24 @@ export function MetricCard({
           ) : (
             labelContent
           )}
-          <div className="flex items-baseline gap-2">
-            <div className="text-2xl font-bold font-mono">{value}</div>
-            {trend && (
-              <div
-                className={cn(
-                  'text-xs font-medium',
-                  trend.isPositive ? 'text-status-healthy' : 'text-status-error'
-                )}
-              >
-                {trend.isPositive ? '+' : ''}
-                {trend.value}%
-              </div>
-            )}
-          </div>
+          {isLoading ? (
+            <Skeleton className="h-7 w-20" />
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <div className="text-2xl font-bold font-mono">{value}</div>
+              {trend && (
+                <div
+                  className={cn(
+                    'text-xs font-medium',
+                    trend.isPositive ? 'text-status-healthy' : 'text-status-error'
+                  )}
+                >
+                  {trend.isPositive ? '+' : ''}
+                  {trend.value}%
+                </div>
+              )}
+            </div>
+          )}
           {subtitle && (
             <div className="text-[11px] text-muted-foreground mt-1 leading-tight">{subtitle}</div>
           )}

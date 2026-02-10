@@ -46,6 +46,7 @@ export function ToggleableLegend({ legend, labels, payload }: ToggleableLegendPr
           <button
             key={key}
             type="button"
+            aria-pressed={active}
             className="flex items-center gap-1.5 cursor-pointer select-none transition-opacity"
             style={{ opacity: active ? 1 : 0.35 }}
             onClick={() => legend.toggle(key)}

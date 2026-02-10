@@ -562,6 +562,7 @@ export const patternHitRates = pgTable(
   (table) => [
     index('idx_phr_session_id').on(table.sessionId),
     index('idx_phr_pattern_id').on(table.patternId),
+    index('idx_phr_created_at').on(table.createdAt),
   ]
 );
 

@@ -19,14 +19,13 @@ import 'dotenv/config';
 import { Kafka, logLevel } from 'kafkajs';
 import {
   buildSubscriptionTopics,
-  ENVIRONMENT_PREFIXES as _ENVIRONMENT_PREFIXES,
   SUFFIX_INTELLIGENCE_TOOL_CONTENT,
   SUFFIX_OMNICLAUDE_SESSION_STARTED,
   SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
   SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
   SUFFIX_OMNICLAUDE_SESSION_ENDED,
   SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
-} from '../shared/topics';
+} from '@shared/topics';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -172,6 +171,7 @@ async function readLatest(topic: string): Promise<{ timestamp: number; keys: str
     return null;
   } finally {
     try {
+      await consumer.stop();
       await consumer.disconnect();
     } catch {
       // best-effort

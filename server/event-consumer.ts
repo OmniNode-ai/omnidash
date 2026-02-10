@@ -118,10 +118,19 @@ const SQL_PRELOAD_LIMIT = 2000;
  * BACKFILL_MAX_EVENTS — Cap for the backfill query when ENABLE_BACKFILL is true.
  *   Override via env: BACKFILL_MAX_EVENTS (default: 2000).
  */
-const PRELOAD_WINDOW_MINUTES = parseInt(process.env.PRELOAD_WINDOW_MINUTES || '60', 10);
-const MAX_PRELOAD_EVENTS = parseInt(process.env.MAX_PRELOAD_EVENTS || '5000', 10);
+const parsedPreloadWindow = parseInt(process.env.PRELOAD_WINDOW_MINUTES || '60', 10);
+const PRELOAD_WINDOW_MINUTES =
+  Number.isFinite(parsedPreloadWindow) && parsedPreloadWindow >= 0 ? parsedPreloadWindow : 60;
+
+const parsedMaxPreload = parseInt(process.env.MAX_PRELOAD_EVENTS || '5000', 10);
+const MAX_PRELOAD_EVENTS =
+  Number.isFinite(parsedMaxPreload) && parsedMaxPreload >= 0 ? parsedMaxPreload : 5000;
+
 const ENABLE_BACKFILL = process.env.ENABLE_BACKFILL === 'true'; // default false
-const BACKFILL_MAX_EVENTS = parseInt(process.env.BACKFILL_MAX_EVENTS || '2000', 10);
+
+const parsedBackfillMax = parseInt(process.env.BACKFILL_MAX_EVENTS || '2000', 10);
+const BACKFILL_MAX_EVENTS =
+  Number.isFinite(parsedBackfillMax) && parsedBackfillMax >= 0 ? parsedBackfillMax : 2000;
 
 /**
  * Maximum number of live (Kafka-consumed) events to retain in the

@@ -10,20 +10,23 @@ import { useQuery } from '@tanstack/react-query';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { useToggleableLegend } from '@/hooks/useToggleableLegend';
 import { ToggleableLegend } from '@/components/ToggleableLegend';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+
+const chartConfig = {
+  injections: {
+    label: 'Injections',
+    color: 'hsl(var(--primary))',
+  },
+  patterns_matched: {
+    label: 'Patterns Matched',
+    color: 'hsl(142 76% 36%)',
+  },
+} satisfies ChartConfig;
 
 function formatBucketLabel(bucket: string): string {
   try {
@@ -85,7 +88,7 @@ export function PatternVolumeChart({ window: timeWindow = '24h' }: PatternVolume
         )}
 
         {!isLoading && !error && chartData && chartData.length > 0 && (
-          <ResponsiveContainer width="100%" height={200}>
+          <ChartContainer config={chartConfig} className="h-[200px] w-full">
             <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="label" tick={{ fontSize: 10 }} className="text-muted-foreground" />
@@ -108,8 +111,8 @@ export function PatternVolumeChart({ window: timeWindow = '24h' }: PatternVolume
                 type="monotone"
                 dataKey="injections"
                 name="Injections"
-                stroke="hsl(var(--primary))"
-                fill="hsl(var(--primary))"
+                stroke="var(--color-injections)"
+                fill="var(--color-injections)"
                 fillOpacity={0.15}
                 strokeWidth={1.5}
                 hide={!legend.isActive('injections')}
@@ -118,14 +121,14 @@ export function PatternVolumeChart({ window: timeWindow = '24h' }: PatternVolume
                 type="monotone"
                 dataKey="patterns_matched"
                 name="Patterns Matched"
-                stroke="hsl(142 76% 36%)"
-                fill="hsl(142 76% 36%)"
+                stroke="var(--color-patterns_matched)"
+                fill="var(--color-patterns_matched)"
                 fillOpacity={0.15}
                 strokeWidth={1.5}
                 hide={!legend.isActive('patterns_matched')}
               />
             </AreaChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         )}
       </CardContent>
     </Card>

@@ -16,7 +16,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { queryKeys } from '@/lib/query-keys';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -24,44 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Activity, Clock, Zap, AlertTriangle } from 'lucide-react';
+import { MetricCard } from '@/components/MetricCard';
 import { PipelineHealthPanel } from '@/components/extraction/PipelineHealthPanel';
 import { LatencyHeatmap } from '@/components/extraction/LatencyHeatmap';
 import { PatternVolumeChart } from '@/components/extraction/PatternVolumeChart';
 import { ErrorRatesPanel } from '@/components/extraction/ErrorRatesPanel';
 import type { ExtractionSummary as _ExtractionSummary } from '@shared/extraction-types';
-
-// ============================================================================
-// Metric Card Component
-// ============================================================================
-
-interface MetricCardProps {
-  title: string;
-  value: string;
-  subtitle?: string;
-  icon: React.ReactNode;
-  isLoading?: boolean;
-}
-
-function MetricCard({ title, value, subtitle, icon, isLoading }: MetricCardProps) {
-  return (
-    <Card>
-      <CardContent className="pt-4 pb-3 px-4">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-muted-foreground">{title}</span>
-          <span className="text-muted-foreground">{icon}</span>
-        </div>
-        {isLoading ? (
-          <Skeleton className="h-7 w-20" />
-        ) : (
-          <div className="text-xl font-semibold tabular-nums">{value}</div>
-        )}
-        {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
-      </CardContent>
-    </Card>
-  );
-}
 
 // ============================================================================
 // Dashboard Page
@@ -151,35 +119,35 @@ export default function ExtractionDashboard() {
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Total Injections"
+          label="Total Injections"
           value={formatNumber(summary?.total_injections)}
           subtitle="Unique sessions with pattern injection"
-          icon={<Zap className="w-4 h-4" />}
+          icon={Zap}
           isLoading={summaryLoading}
         />
         <MetricCard
-          title="Patterns Matched"
+          label="Patterns Matched"
           value={formatNumber(summary?.total_patterns_matched)}
           subtitle="Distinct patterns matched across all sessions"
-          icon={<Activity className="w-4 h-4" />}
+          icon={Activity}
           isLoading={summaryLoading}
         />
         <MetricCard
-          title="Avg Latency"
+          label="Avg Latency"
           value={formatMs(summary?.avg_latency_ms)}
           subtitle="End-to-end injection latency, all cohorts"
-          icon={<Clock className="w-4 h-4" />}
+          icon={Clock}
           isLoading={summaryLoading}
         />
         <MetricCard
-          title="Success Rate"
+          label="Success Rate"
           value={formatPercent(summary?.success_rate)}
           subtitle={
             summary?.last_event_at
               ? `Last event: ${new Date(summary.last_event_at).toLocaleString()}`
               : undefined
           }
-          icon={<AlertTriangle className="w-4 h-4" />}
+          icon={AlertTriangle}
           isLoading={summaryLoading}
         />
       </div>

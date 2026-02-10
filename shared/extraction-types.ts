@@ -159,24 +159,35 @@ export interface LatencyBreakdownEvent {
 // Type Guards
 // ============================================================================
 
+/** Narrow an unknown Kafka payload to a ContextUtilizationEvent. */
 export function isContextUtilizationEvent(e: unknown): e is ContextUtilizationEvent {
   return (
     typeof e === 'object' &&
     e !== null &&
-    typeof (e as ContextUtilizationEvent).session_id === 'string'
+    typeof (e as ContextUtilizationEvent).session_id === 'string' &&
+    typeof (e as ContextUtilizationEvent).correlation_id === 'string' &&
+    typeof (e as ContextUtilizationEvent).cohort === 'string'
   );
 }
 
+/** Narrow an unknown Kafka payload to an AgentMatchEvent. */
 export function isAgentMatchEvent(e: unknown): e is AgentMatchEvent {
   return (
-    typeof e === 'object' && e !== null && typeof (e as AgentMatchEvent).session_id === 'string'
+    typeof e === 'object' &&
+    e !== null &&
+    typeof (e as AgentMatchEvent).session_id === 'string' &&
+    typeof (e as AgentMatchEvent).correlation_id === 'string' &&
+    typeof (e as AgentMatchEvent).cohort === 'string'
   );
 }
 
+/** Narrow an unknown Kafka payload to a LatencyBreakdownEvent. */
 export function isLatencyBreakdownEvent(e: unknown): e is LatencyBreakdownEvent {
   return (
     typeof e === 'object' &&
     e !== null &&
-    typeof (e as LatencyBreakdownEvent).session_id === 'string'
+    typeof (e as LatencyBreakdownEvent).session_id === 'string' &&
+    typeof (e as LatencyBreakdownEvent).prompt_id === 'string' &&
+    typeof (e as LatencyBreakdownEvent).cohort === 'string'
   );
 }

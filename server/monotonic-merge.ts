@@ -120,7 +120,12 @@ export class MonotonicMergeTracker {
 /**
  * Extract an epoch-ms timestamp from a raw event object.
  * Looks for common timestamp field names in order of preference.
- * Returns Date.now() as fallback if no valid timestamp is found.
+ *
+ * Returns `0` (Unix epoch) as fallback if no valid timestamp is found.
+ * This treats events without timestamps as the oldest possible, which
+ * prevents them from blocking newer events in monotonic merge ordering.
+ * Using `Date.now()` as a fallback would incorrectly make timestamp-less
+ * events appear as the newest, violating the monotonic guarantee.
  */
 export function extractEventTimeMs(event: Record<string, unknown>): number {
   // Try common timestamp fields in priority order
@@ -143,7 +148,9 @@ export function extractEventTimeMs(event: Record<string, unknown>): number {
     }
   }
 
-  return Date.now();
+  // Events without timestamps are treated as oldest (epoch 0) to avoid
+  // blocking newer events in the monotonic merge tracker.
+  return 0;
 }
 
 /**

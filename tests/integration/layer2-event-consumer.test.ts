@@ -414,7 +414,9 @@ describe('Layer 2: EventConsumer Processing', () => {
 
     const apiDecisions = consumer.getRoutingDecisions({ agent: 'api-architect' });
     expect(apiDecisions).toHaveLength(2);
-    apiDecisions.forEach((d) => expect(d.selectedAgent).toBe('api-architect'));
+    apiDecisions.forEach((d) => {
+      expect(d.selectedAgent).toBe('api-architect');
+    });
 
     const debugDecisions = consumer.getRoutingDecisions({ agent: 'debug' });
     expect(debugDecisions).toHaveLength(1);

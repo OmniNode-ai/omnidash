@@ -1,3 +1,10 @@
+/**
+ * Monotonic Merge Tests
+ *
+ * Verifies event-time ordering, per-key tracking, tie-break by seq,
+ * rejection counting, and the extractEventTimeMs / parseOffsetAsSeq helpers.
+ */
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   shouldApplyEvent,
@@ -180,32 +187,22 @@ describe('extractEventTimeMs', () => {
     );
   });
 
-  it('should fall back to Date.now() for events with no valid timestamp', () => {
-    const before = Date.now();
-    const result = extractEventTimeMs({});
-    const after = Date.now();
-    expect(result).toBeGreaterThanOrEqual(before);
-    expect(result).toBeLessThanOrEqual(after);
+  it('should return 0 (epoch) for events with no valid timestamp', () => {
+    // Events without timestamps are treated as oldest to avoid blocking
+    // newer events in the monotonic merge tracker.
+    expect(extractEventTimeMs({})).toBe(0);
   });
 
-  it('should fall back to Date.now() for invalid timestamp strings', () => {
-    const before = Date.now();
-    const result = extractEventTimeMs({ timestamp: 'not-a-date' });
-    const after = Date.now();
-    expect(result).toBeGreaterThanOrEqual(before);
-    expect(result).toBeLessThanOrEqual(after);
+  it('should return 0 (epoch) for invalid timestamp strings', () => {
+    expect(extractEventTimeMs({ timestamp: 'not-a-date' })).toBe(0);
   });
 
   it('should handle numeric timestamp field', () => {
     expect(extractEventTimeMs({ timestamp: 1700000000000 })).toBe(1700000000000);
   });
 
-  it('should skip empty string fields', () => {
-    const before = Date.now();
-    const result = extractEventTimeMs({ timestamp: '', created_at: '' });
-    const after = Date.now();
-    expect(result).toBeGreaterThanOrEqual(before);
-    expect(result).toBeLessThanOrEqual(after);
+  it('should return 0 (epoch) for empty string fields', () => {
+    expect(extractEventTimeMs({ timestamp: '', created_at: '' })).toBe(0);
   });
 });
 

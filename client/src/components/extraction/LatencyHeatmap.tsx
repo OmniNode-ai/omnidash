@@ -11,9 +11,16 @@ import { useQuery } from '@tanstack/react-query';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Clock } from 'lucide-react';
 import type { LatencyBucket } from '@shared/extraction-types';
+
+const heatmapConfig = {
+  p50: { label: 'P50', color: 'hsl(142 76% 36%)' },
+  p95: { label: 'P95', color: 'hsl(47 100% 50%)' },
+  p99: { label: 'P99', color: 'hsl(0 84% 60%)' },
+} satisfies ChartConfig;
 
 const PERCENTILE_LABELS = ['P50', 'P95', 'P99'] as const;
 
@@ -82,76 +89,82 @@ export function LatencyHeatmap({ window: timeWindow = '24h' }: LatencyHeatmapPro
         )}
 
         {!isLoading && !error && data && data.buckets.length > 0 && (
-          <div className="overflow-x-auto">
-            {/* Header row: time bucket labels */}
-            <div
-              className="grid gap-1 mb-1"
-              style={{
-                gridTemplateColumns: `4rem repeat(${data.buckets.length}, minmax(3rem, 1fr))`,
-              }}
-            >
-              <div className="text-xs text-muted-foreground" />
-              {data.buckets.map((b: LatencyBucket) => (
-                <div
-                  key={b.bucket}
-                  className="text-[10px] text-muted-foreground text-center truncate"
-                  title={b.bucket}
-                >
-                  {formatBucketLabel(b.bucket)}
-                </div>
-              ))}
-            </div>
-
-            {/* Percentile rows */}
-            {PERCENTILE_LABELS.map((label) => {
-              const key = label.toLowerCase() as 'p50' | 'p95' | 'p99';
-              return (
-                <div
-                  key={label}
-                  className="grid gap-1 mb-1"
-                  style={{
-                    gridTemplateColumns: `4rem repeat(${data.buckets.length}, minmax(3rem, 1fr))`,
-                  }}
-                >
-                  <div className="text-xs font-mono text-muted-foreground flex items-center">
-                    {label}
+          <ChartContainer
+            config={heatmapConfig}
+            className="aspect-auto h-auto w-full [&>div]:!h-auto"
+          >
+            {/* Custom CSS grid heatmap (no Recharts chart; ChartContainer provides theming wrapper) */}
+            <div className="overflow-x-auto">
+              {/* Header row: time bucket labels */}
+              <div
+                className="grid gap-1 mb-1"
+                style={{
+                  gridTemplateColumns: `4rem repeat(${data.buckets.length}, minmax(3rem, 1fr))`,
+                }}
+              >
+                <div className="text-xs text-muted-foreground" />
+                {data.buckets.map((b: LatencyBucket) => (
+                  <div
+                    key={b.bucket}
+                    className="text-[10px] text-muted-foreground text-center truncate"
+                    title={b.bucket}
+                  >
+                    {formatBucketLabel(b.bucket)}
                   </div>
-                  {data.buckets.map((b: LatencyBucket) => {
-                    const val = b[key];
-                    return (
-                      <div
-                        key={`${label}-${b.bucket}`}
-                        className={`rounded px-1 py-1 text-center text-[10px] font-mono ${latencyColor(val)}`}
-                        title={val != null ? `${Math.round(val)}ms` : 'No data'}
-                      >
-                        {val != null ? `${Math.round(val)}` : '--'}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
+                ))}
+              </div>
 
-            {/* Legend */}
-            <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground">
-              <span>Latency (ms):</span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-green-500/20" /> &lt;50
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-green-500/40" /> 50-100
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-yellow-500/30" /> 100-200
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-orange-500/30" /> 200-500
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-red-500/30" /> &gt;500
-              </span>
+              {/* Percentile rows */}
+              {PERCENTILE_LABELS.map((label) => {
+                const key = label.toLowerCase() as 'p50' | 'p95' | 'p99';
+                return (
+                  <div
+                    key={label}
+                    className="grid gap-1 mb-1"
+                    style={{
+                      gridTemplateColumns: `4rem repeat(${data.buckets.length}, minmax(3rem, 1fr))`,
+                    }}
+                  >
+                    <div className="text-xs font-mono text-muted-foreground flex items-center">
+                      {label}
+                    </div>
+                    {data.buckets.map((b: LatencyBucket) => {
+                      const val = b[key];
+                      return (
+                        <div
+                          key={`${label}-${b.bucket}`}
+                          className={`rounded px-1 py-1 text-center text-[10px] font-mono ${latencyColor(val)}`}
+                          title={val != null ? `${Math.round(val)}ms` : 'No data'}
+                        >
+                          {val != null ? `${Math.round(val)}` : '--'}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+
+              {/* Legend */}
+              <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground">
+                <span>Latency (ms):</span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-green-500/20" /> &lt;50
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-green-500/40" /> 50-100
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-yellow-500/30" /> 100-200
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-orange-500/30" /> 200-500
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-red-500/30" /> &gt;500
+                </span>
+              </div>
             </div>
-          </div>
+          </ChartContainer>
         )}
       </CardContent>
     </Card>

@@ -10,9 +10,13 @@ if [ -d "$REPO_ROOT/.playwright-mcp" ]; then
   echo "Removed .playwright-mcp directory"
 fi
 
-# Remove all root-level .png and .jpeg files (Playwright MCP drops these)
+# Remove untracked root-level .png and .jpeg files (Playwright MCP drops these)
 for f in "$REPO_ROOT"/*.png "$REPO_ROOT"/*.jpeg; do
   [ -f "$f" ] || continue
+  rel="${f#"$REPO_ROOT"/}"
+  if git -C "$REPO_ROOT" ls-files --error-unmatch -- "$rel" >/dev/null 2>&1; then
+    continue
+  fi
   rm "$f"
   count=$((count + 1))
 done

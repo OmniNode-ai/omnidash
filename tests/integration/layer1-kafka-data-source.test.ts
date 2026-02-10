@@ -18,11 +18,9 @@ import {
   SUFFIX_OMNICLAUDE_SESSION_STARTED,
   SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
   SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
-  SUFFIX_OMNICLAUDE_SESSION_ENDED as _SUFFIX_OMNICLAUDE_SESSION_ENDED,
   SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
   SUFFIX_INTELLIGENCE_TOOL_CONTENT,
-  LEGACY_AGENT_TOPICS as _LEGACY_AGENT_TOPICS,
-} from '../../shared/topics';
+} from '@shared/topics';
 
 // ---------------------------------------------------------------------------
 // Kafka connection config
@@ -99,8 +97,8 @@ async function probeTopic(admin: Admin, topic: string): Promise<TopicProbe> {
       return result;
     }
 
-    // Read latest message via a short-lived consumer
-    const latestMsg = await readLatestMessage(topic);
+    // Read latest message via a short-lived consumer (reuse existing admin)
+    const latestMsg = await readLatestMessage(topic, admin);
     if (latestMsg) {
       result.latestTimestamp = latestMsg.timestamp;
       result.latestValue = latestMsg.value;
@@ -119,7 +117,8 @@ async function probeTopic(admin: Admin, topic: string): Promise<TopicProbe> {
  * minus one offset. Returns null if no messages are available.
  */
 async function readLatestMessage(
-  topic: string
+  topic: string,
+  existingAdmin?: Admin
 ): Promise<{ timestamp: number; value: unknown } | null> {
   const groupId = `omnidash-layer1-probe-${topic}-${Date.now()}`;
   const consumer = kafka.consumer({ groupId, maxWaitTimeInMs: 5_000 });
@@ -128,11 +127,20 @@ async function readLatestMessage(
     await consumer.connect();
     await consumer.subscribe({ topic, fromBeginning: false });
 
-    // Fetch the high watermark so we know where to seek
-    const admin = kafka.admin();
-    await admin.connect();
+    // Fetch the high watermark — reuse caller's admin connection if available
+    let admin: Admin;
+    let ownAdmin = false;
+    if (existingAdmin) {
+      admin = existingAdmin;
+    } else {
+      admin = kafka.admin();
+      await admin.connect();
+      ownAdmin = true;
+    }
     const offsets = await admin.fetchTopicOffsets(topic);
-    await admin.disconnect();
+    if (ownAdmin) {
+      await admin.disconnect();
+    }
 
     // Find partition 0 high watermark
     const p0 = offsets.find((o) => o.partition === 0);

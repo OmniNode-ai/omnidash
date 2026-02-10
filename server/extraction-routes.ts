@@ -319,37 +319,72 @@ router.get('/errors/summary', async (_req, res) => {
     let totalErrors = 0;
     let totalEvents = 0;
 
+    // Fetch recent errors for ALL cohorts in a single query using a window
+    // function to rank errors per cohort, then filter to top 5 per cohort.
+    // This replaces the previous N+1 pattern (one query per cohort).
+    const cohortNames = rows.map((r) => r.cohort);
+    const recentErrorsByCohort = new Map<
+      string,
+      Array<{ session_id: string; created_at: string; session_outcome: string | null }>
+    >();
+
+    if (cohortNames.length > 0) {
+      const rankedErrors = await db.execute(sql`
+        SELECT session_id, created_at, session_outcome, cohort
+        FROM (
+          SELECT
+            ${injectionEffectiveness.sessionId} AS session_id,
+            ${injectionEffectiveness.createdAt} AS created_at,
+            ${injectionEffectiveness.sessionOutcome} AS session_outcome,
+            ${injectionEffectiveness.cohort} AS cohort,
+            ROW_NUMBER() OVER (
+              PARTITION BY ${injectionEffectiveness.cohort}
+              ORDER BY ${injectionEffectiveness.createdAt} DESC
+            ) AS rn
+          FROM ${injectionEffectiveness}
+          WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL
+            AND ${injectionEffectiveness.sessionOutcome} != 'success'
+            AND ${injectionEffectiveness.cohort} IN (${sql.join(
+              cohortNames.map((c) => sql`${c}`),
+              sql`, `
+            )})
+        ) ranked
+        WHERE rn <= 5
+        ORDER BY cohort, created_at DESC
+      `);
+
+      for (const row of rankedErrors.rows as Array<{
+        session_id: string;
+        created_at: string | Date | null;
+        session_outcome: string | null;
+        cohort: string;
+      }>) {
+        const cohort = row.cohort;
+        if (!recentErrorsByCohort.has(cohort)) {
+          recentErrorsByCohort.set(cohort, []);
+        }
+        const ts =
+          row.created_at instanceof Date ? row.created_at.toISOString() : (row.created_at ?? '');
+        recentErrorsByCohort.get(cohort)!.push({
+          session_id: row.session_id,
+          created_at: typeof ts === 'string' ? ts : '',
+          session_outcome: row.session_outcome,
+        });
+      }
+    }
+
     const entries: ErrorRateEntry[] = [];
 
     for (const r of rows) {
       totalErrors += r.failure_count;
       totalEvents += r.total_events;
 
-      // Get recent error samples for this cohort (max 5)
-      const cohortName = r.cohort;
-      const recentErrors = await db
-        .select({
-          sessionId: injectionEffectiveness.sessionId,
-          createdAt: injectionEffectiveness.createdAt,
-          sessionOutcome: injectionEffectiveness.sessionOutcome,
-        })
-        .from(injectionEffectiveness)
-        .where(
-          sql`${injectionEffectiveness.sessionOutcome} IS NOT NULL AND ${injectionEffectiveness.sessionOutcome} != 'success' AND ${injectionEffectiveness.cohort} = ${cohortName}`
-        )
-        .orderBy(desc(injectionEffectiveness.createdAt))
-        .limit(5);
-
       entries.push({
-        cohort: cohortName,
+        cohort: r.cohort,
         total_events: r.total_events,
         failure_count: r.failure_count,
         error_rate: r.total_events > 0 ? r.failure_count / r.total_events : 0,
-        recent_errors: recentErrors.map((e) => ({
-          session_id: e.sessionId,
-          created_at: e.createdAt?.toISOString() ?? '',
-          session_outcome: e.sessionOutcome,
-        })),
+        recent_errors: recentErrorsByCohort.get(r.cohort) ?? [],
       });
     }
 

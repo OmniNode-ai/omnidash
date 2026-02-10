@@ -55,6 +55,7 @@ export class ExtractionMetricsAggregator {
     }
 
     try {
+      const createdAt = event.timestamp ? new Date(event.timestamp) : undefined;
       await db.insert(injectionEffectiveness).values({
         sessionId: event.session_id,
         correlationId: event.correlation_id,
@@ -72,6 +73,7 @@ export class ExtractionMetricsAggregator {
         injectionTimeMs: event.injection_time_ms ?? null,
         patternsCount: event.patterns_count ?? null,
         cacheHit: event.cache_hit ?? false,
+        ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
       });
       this.eventsSinceLastBroadcast++;
     } catch (error) {
@@ -97,6 +99,7 @@ export class ExtractionMetricsAggregator {
     }
 
     try {
+      const createdAt = event.timestamp ? new Date(event.timestamp) : undefined;
       await db.insert(injectionEffectiveness).values({
         sessionId: event.session_id,
         correlationId: event.correlation_id,
@@ -105,6 +108,7 @@ export class ExtractionMetricsAggregator {
         agentName: event.agent_name ?? null,
         agentMatchScore: event.agent_match_score?.toString() ?? null,
         sessionOutcome: event.session_outcome ?? null,
+        ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
       });
       this.eventsSinceLastBroadcast++;
     } catch (error) {
@@ -130,6 +134,7 @@ export class ExtractionMetricsAggregator {
     }
 
     try {
+      const createdAt = event.timestamp ? new Date(event.timestamp) : undefined;
       await db.insert(latencyBreakdowns).values({
         sessionId: event.session_id,
         promptId: event.prompt_id,
@@ -139,6 +144,7 @@ export class ExtractionMetricsAggregator {
         injectionTimeMs: event.injection_time_ms ?? null,
         userVisibleLatencyMs: event.user_visible_latency_ms ?? null,
         cacheHit: event.cache_hit ?? false,
+        ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
       });
       this.eventsSinceLastBroadcast++;
     } catch (error) {

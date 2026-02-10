@@ -22,29 +22,15 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, XCircle } from 'lucide-react';
+import { StatusBadge } from '@/components/HealthStatusBadge';
+import type { HealthStatus } from '@shared/schemas';
 import type { ErrorRateEntry } from '@shared/extraction-types';
 import { CohortDetailSheet, fromErrorRate, type CohortDetail } from './CohortDetailSheet';
 
-function errorRateBadge(rate: number) {
-  if (rate === 0) {
-    return (
-      <Badge variant="outline" className="text-green-500 border-green-500/30 text-[10px]">
-        0%
-      </Badge>
-    );
-  }
-  if (rate < 0.05) {
-    return (
-      <Badge variant="outline" className="text-yellow-500 border-yellow-500/30 text-[10px]">
-        {(rate * 100).toFixed(1)}%
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="outline" className="text-red-500 border-red-500/30 text-[10px]">
-      {(rate * 100).toFixed(1)}%
-    </Badge>
-  );
+function errorRateToHealth(rate: number): HealthStatus {
+  if (rate === 0) return 'healthy';
+  if (rate < 0.05) return 'degraded';
+  return 'unhealthy';
 }
 
 export function ErrorRatesPanel() {
@@ -120,7 +106,12 @@ export function ErrorRatesPanel() {
                     <TableCell className="text-xs text-right text-red-500">
                       {entry.failure_count}
                     </TableCell>
-                    <TableCell>{errorRateBadge(entry.error_rate)}</TableCell>
+                    <TableCell>
+                      <StatusBadge
+                        status={errorRateToHealth(entry.error_rate)}
+                        className="text-[10px]"
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
