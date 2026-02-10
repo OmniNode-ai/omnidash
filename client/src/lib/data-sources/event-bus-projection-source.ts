@@ -6,32 +6,9 @@
  */
 
 import type { ProjectionResponse } from '@/hooks/useProjectionStream.types';
+import type { EventBusPayload } from '@shared/event-bus-payload';
 
-/**
- * Snapshot payload from the event-bus projection.
- * SYNC: Must match server/projections/event-bus-projection.ts → EventBusPayload
- */
-export interface EventBusPayload {
-  events: Array<{
-    id: string;
-    eventTimeMs: number;
-    ingestSeq: number;
-    topic: string;
-    type: string;
-    source: string;
-    severity: 'info' | 'warning' | 'error' | 'critical';
-    payload: Record<string, unknown>;
-    eventTimeMissing?: boolean;
-    error?: { message: string; stack?: string };
-  }>;
-  topicBreakdown: Record<string, number>;
-  eventTypeBreakdown: Record<string, number>;
-  timeSeries: Array<{ bucketKey: number; count: number }>;
-  eventsPerSecond: number;
-  errorCount: number;
-  activeTopics: number;
-  totalEventsIngested: number;
-}
+export type { EventBusPayload };
 
 /**
  * Fetch event-bus projection snapshot from the server.

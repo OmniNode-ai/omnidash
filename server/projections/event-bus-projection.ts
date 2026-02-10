@@ -24,6 +24,9 @@ import type {
   ProjectionResponse,
   ProjectionEventsResponse,
 } from '../projection-service';
+import type { EventBusPayload } from '@shared/event-bus-payload';
+
+export type { EventBusPayload };
 
 // ============================================================================
 // Constants
@@ -34,26 +37,6 @@ export const TIME_SERIES_BUCKET_MS = 15_000; // 15 seconds
 export const TIME_SERIES_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const ROLLING_WINDOW_MS = 60_000; // 60 seconds for EPS
 const ROLLING_WINDOW_MAX_ENTRIES = 10_000;
-
-// ============================================================================
-// Types
-// ============================================================================
-
-/**
- * Snapshot payload returned by getSnapshot().
- * All aggregates are pre-computed — no O(n) scans on read.
- * SYNC: Must match client/src/lib/data-sources/event-bus-projection-source.ts → EventBusPayload
- */
-export interface EventBusPayload {
-  events: ProjectionEvent[];
-  topicBreakdown: Record<string, number>;
-  eventTypeBreakdown: Record<string, number>;
-  timeSeries: Array<{ bucketKey: number; count: number }>;
-  eventsPerSecond: number;
-  errorCount: number;
-  activeTopics: number;
-  totalEventsIngested: number;
-}
 
 // ============================================================================
 // Implementation

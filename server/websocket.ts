@@ -658,8 +658,45 @@ export function setupWebSocket(httpServer: HTTPServer) {
   // When a projection view applies an event, broadcast PROJECTION_INVALIDATE so
   // clients using useProjectionStream can invalidate their TanStack Query cache
   // instead of waiting for the next polling interval.
+  //
+  // Throttled: at high throughput (50+ events/sec from 197 topics), emitting every
+  // event is wasteful. Leading-edge fires immediately for low latency; trailing-edge
+  // coalesces bursts. Client polls every 2s as a fallback regardless.
+  const PROJECTION_THROTTLE_MS = 150;
+  const projectionThrottleState = new Map<
+    string,
+    { timer: NodeJS.Timeout; leadingCursor: number; latestCursor: number }
+  >();
+
   const projectionInvalidateHandler = (data: { viewId: string; cursor: number }) => {
+    const state = projectionThrottleState.get(data.viewId);
+
+    if (state) {
+      // Within throttle window — track latest cursor, timer handles trailing edge
+      state.latestCursor = Math.max(state.latestCursor, data.cursor);
+      return;
+    }
+
+    // Leading edge: broadcast immediately
     broadcast('PROJECTION_INVALIDATE', data, 'projections');
+
+    // Open throttle window
+    const entry = {
+      leadingCursor: data.cursor,
+      latestCursor: data.cursor,
+      timer: setTimeout(() => {
+        projectionThrottleState.delete(data.viewId);
+        // Trailing edge: if cursor advanced during window, send one final update
+        if (entry.latestCursor > entry.leadingCursor) {
+          broadcast(
+            'PROJECTION_INVALIDATE',
+            { viewId: data.viewId, cursor: entry.latestCursor },
+            'projections'
+          );
+        }
+      }, PROJECTION_THROTTLE_MS),
+    };
+    projectionThrottleState.set(data.viewId, entry);
   };
   projectionService.on('projection-invalidate', projectionInvalidateHandler);
 
@@ -1001,6 +1038,12 @@ export function setupWebSocket(httpServer: HTTPServer) {
       emitter.removeListener(event, handler);
     });
     projectionListeners.length = 0;
+
+    // Clear projection throttle timers
+    for (const state of projectionThrottleState.values()) {
+      clearTimeout(state.timer);
+    }
+    projectionThrottleState.clear();
 
     // Remove playback data source listeners (OMN-1885)
     console.log(`Removing ${playbackDataSourceListeners.length} playback data source listeners...`);

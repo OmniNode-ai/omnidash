@@ -65,7 +65,12 @@ export function wireProjectionSources(): void {
   if (typeof eventBusDataSource.on === 'function') {
     eventBusDataSource.on('event', (event: Record<string, unknown>) => {
       const eventId = event.event_id as string | undefined;
-      if (eventId) trackEventId(eventId);
+      // Track for dedup: use event_id if present, otherwise derive a key from
+      // topic + type + timestamp to avoid double-counting when the same event
+      // arrives through both EventBusDataSource and EventConsumer.
+      const dedupKey =
+        eventId || `${event.topic || ''}:${event.event_type || ''}:${event.timestamp || ''}`;
+      trackEventId(dedupKey);
 
       let payload: Record<string, unknown>;
       const rawPayload = event.payload;
@@ -111,9 +116,13 @@ export function wireProjectionSources(): void {
 
     for (const eventName of consumerEventNames) {
       eventConsumer.on(eventName, (data: Record<string, unknown>) => {
-        // Skip if already ingested via EventBusDataSource
+        // Skip if already ingested via EventBusDataSource.
+        // Use same fallback key derivation as EventBusDataSource for events without id.
         const id = data.id as string | undefined;
-        if (id && dedupSet.has(id)) return;
+        const dedupKey =
+          id ||
+          `${data.topic || ''}:${data.actionType || data.type || ''}:${data.timestamp || data.createdAt || ''}`;
+        if (dedupSet.has(dedupKey)) return;
 
         const raw: RawEventInput = {
           id,

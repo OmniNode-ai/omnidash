@@ -560,10 +560,13 @@ export default function EventBusMonitor() {
     const effectiveTimeSeries =
       timeSeriesData.length > 0 ? timeSeriesData : (chartSnapshotRef.current?.timeSeriesData ?? []);
 
+    // Error rate: count both 'critical' and 'high' priority (maps from 'error' severity),
+    // matching the server's errorCount which tracks severity 'error' + 'critical'.
     const errorRate =
       displayedEvents.length > 0
         ? Math.round(
-            (displayedEvents.filter((e) => e.priority === 'critical').length /
+            (displayedEvents.filter((e) => e.priority === 'critical' || e.priority === 'high')
+              .length /
               displayedEvents.length) *
               10000
           ) / 100
