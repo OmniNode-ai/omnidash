@@ -33,8 +33,11 @@ class InsightsSource {
 
   async summary(options: InsightsFetchOptions = {}): Promise<InsightsSummary> {
     const { fallbackToMock = true } = options;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     try {
-      const response = await fetch(`${this.baseUrl}/summary`);
+      const response = await fetch(`${this.baseUrl}/summary`, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (fallbackToMock && (!Array.isArray(data.insights) || data.insights.length === 0)) {
@@ -44,6 +47,7 @@ class InsightsSource {
       this.markReal('summary');
       return data;
     } catch (error) {
+      clearTimeout(timeoutId);
       if (fallbackToMock) {
         console.warn('[InsightsSource] API unavailable for summary, using demo data');
         this.markMock('summary');
@@ -55,8 +59,11 @@ class InsightsSource {
 
   async trend(options: InsightsFetchOptions = {}): Promise<InsightsTrendPoint[]> {
     const { fallbackToMock = true } = options;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     try {
-      const response = await fetch(`${this.baseUrl}/trend`);
+      const response = await fetch(`${this.baseUrl}/trend`, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (fallbackToMock && (!Array.isArray(data) || data.length === 0)) {
@@ -66,6 +73,7 @@ class InsightsSource {
       this.markReal('trend');
       return data;
     } catch (error) {
+      clearTimeout(timeoutId);
       if (fallbackToMock) {
         console.warn('[InsightsSource] API unavailable for trend, using demo data');
         this.markMock('trend');

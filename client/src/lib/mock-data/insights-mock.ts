@@ -193,17 +193,36 @@ export function getMockInsightsSummary(): InsightsSummary {
   };
 }
 
+// Pre-computed trend values so getMockInsightsTrend() is deterministic.
+// Each entry: [new_insights, cumulative_offset, confidence_offset, sessions_analyzed]
+const TREND_SEEDS: [number, number, number, number][] = [
+  [2, 1.2, 0.04, 22],
+  [1, 0.5, 0.08, 19],
+  [3, 1.8, 0.02, 28],
+  [1, 0.3, 0.06, 20],
+  [2, 1.5, 0.09, 25],
+  [3, 0.9, 0.03, 27],
+  [1, 1.1, 0.07, 21],
+  [2, 0.7, 0.05, 24],
+  [4, 1.6, 0.01, 29],
+  [1, 0.4, 0.08, 18],
+  [3, 1.9, 0.06, 26],
+  [2, 0.8, 0.04, 23],
+  [1, 1.3, 0.09, 20],
+  [3, 1.0, 0.03, 27],
+];
+
 export function getMockInsightsTrend(): InsightsTrendPoint[] {
-  return Array.from({ length: 14 }, (_, i) => {
+  return TREND_SEEDS.map(([newIns, cumOff, confOff, sessions], i) => {
     const d = new Date();
     d.setDate(d.getDate() - (13 - i));
     const base = 6 + i * 0.5;
     return {
       date: d.toISOString().slice(0, 10),
-      new_insights: Math.max(0, Math.round(1 + Math.random() * 3)),
-      cumulative_insights: Math.round(base + Math.random() * 2),
-      avg_confidence: 0.85 + Math.random() * 0.1,
-      sessions_analyzed: Math.round(18 + Math.random() * 12),
+      new_insights: newIns,
+      cumulative_insights: Math.round(base + cumOff),
+      avg_confidence: parseFloat((0.85 + confOff).toFixed(2)),
+      sessions_analyzed: sessions,
     };
   });
 }

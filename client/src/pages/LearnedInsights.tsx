@@ -100,7 +100,14 @@ function ConfidenceBar({ confidence }: { confidence: number }) {
   const pct = Math.round(confidence * 100);
   return (
     <div className="flex items-center gap-2">
-      <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+      <div
+        className="w-16 h-1.5 rounded-full bg-muted overflow-hidden"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Confidence: ${pct}%`}
+      >
         <div
           className={cn(
             'h-full rounded-full transition-all',
@@ -143,6 +150,15 @@ function InsightCard({
         isExpanded && 'ring-1 ring-primary/30'
       )}
       onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-expanded={isExpanded}
     >
       <CardContent className="py-3 px-4">
         <div className="flex items-start gap-3">
@@ -434,7 +450,7 @@ export default function LearnedInsights() {
           <button
             onClick={() => setTypeFilter('all')}
             className={cn(
-              'px-3 py-1 text-xs font-medium transition-colors',
+              'px-3 py-1 text-xs font-medium transition-colors rounded-l-md',
               typeFilter === 'all'
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
@@ -442,12 +458,13 @@ export default function LearnedInsights() {
           >
             All
           </button>
-          {(Object.keys(INSIGHT_LABELS) as InsightType[]).map((type) => (
+          {(Object.keys(INSIGHT_LABELS) as InsightType[]).map((type, idx, arr) => (
             <button
               key={type}
               onClick={() => setTypeFilter(type)}
               className={cn(
                 'px-3 py-1 text-xs font-medium transition-colors',
+                idx === arr.length - 1 && 'rounded-r-md',
                 typeFilter === type
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'
