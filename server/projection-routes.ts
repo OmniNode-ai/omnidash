@@ -14,13 +14,20 @@ import type { ProjectionService } from './projection-service';
 
 const router = Router();
 
+/** Only allow alphanumeric characters, hyphens, and underscores in view IDs */
+const VIEW_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
 let projectionService: ProjectionService | null = null;
 
 /**
  * Inject the ProjectionService instance. Called once from server/index.ts
  * after the service is created and views are registered.
+ * Throws if called more than once to prevent accidental service swaps.
  */
 export function setProjectionService(service: ProjectionService): void {
+  if (projectionService !== null) {
+    throw new Error('ProjectionService already initialized — cannot reinitialize');
+  }
   projectionService = service;
 }
 
@@ -37,6 +44,11 @@ router.get('/:viewId/snapshot', (req: Request, res: Response) => {
   }
 
   const { viewId } = req.params;
+  if (!VIEW_ID_PATTERN.test(viewId)) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid viewId format — use alphanumeric, hyphens, or underscores' });
+  }
   const view = projectionService.getView(viewId);
 
   if (!view) {
@@ -66,6 +78,11 @@ router.get('/:viewId/events', (req: Request, res: Response) => {
   }
 
   const { viewId } = req.params;
+  if (!VIEW_ID_PATTERN.test(viewId)) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid viewId format — use alphanumeric, hyphens, or underscores' });
+  }
   const view = projectionService.getView(viewId);
 
   if (!view) {

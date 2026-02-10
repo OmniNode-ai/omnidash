@@ -11,10 +11,11 @@
 import type { DashboardData } from '@/lib/dashboard-schema';
 
 // ============================================================================
-// Types (mirror server-side NodeRegistryPayload)
 // Types mirror server-side NodeRegistryPayload (server/projections/node-registry-projection.ts).
 // Intentionally duplicated to avoid importing server code into the client bundle.
 // Keep in sync manually when the server types change.
+// TODO(OMN-2097): Consider extracting shared types to shared/projection-types.ts
+// to enable compile-time drift detection via the @shared/ path alias.
 // ============================================================================
 
 export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';

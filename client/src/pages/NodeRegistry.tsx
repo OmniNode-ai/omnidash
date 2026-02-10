@@ -12,7 +12,7 @@
  * Falls back to mock data when the projection has no nodes.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { DashboardRenderer } from '@/lib/widgets';
 import {
   nodeRegistryDashboardConfig,
@@ -40,15 +40,23 @@ export default function NodeRegistry() {
   // Determine if we have real data from the projection
   const hasProjectionData = data !== null && data.nodes.length > 0;
 
-  // Transform projection payload → DashboardData, or fall back to mock
+  // Stable mock data — generated once and reused across re-renders to prevent
+  // flickering when TanStack Query refetches return new object references.
+  const stableMockRef = useRef<DashboardData | null>(null);
+
+  // Transform projection payload → DashboardData, or fall back to stable mock
   const dashboardData: DashboardData = useMemo(() => {
     if (hasProjectionData) {
       return transformNodeRegistryPayload(data);
     }
 
-    // Fallback to mock data when projection is empty
+    // Reuse previously generated mock data to avoid regenerating on every poll cycle
+    if (stableMockRef.current) {
+      return stableMockRef.current;
+    }
+
     const mockData = generateNodeRegistryMockData();
-    return {
+    const mockDashboard: DashboardData = {
       totalNodes: (mockData.registeredNodes as RegisteredNode[]).length,
       activeNodes: (mockData.registeredNodes as RegisteredNode[]).filter(
         (n) => n.state === 'active'
@@ -80,6 +88,8 @@ export default function NodeRegistry() {
       registeredNodes: mockData.registeredNodes,
       registrationEvents: mockData.registrationEvents as RegistrationEvent[],
     };
+    stableMockRef.current = mockDashboard;
+    return mockDashboard;
   }, [data, hasProjectionData]);
 
   const connectionStatus = isLoading ? 'connecting' : isConnected ? 'connected' : 'disconnected';

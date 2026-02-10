@@ -107,23 +107,39 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
   // --------------------------------------------------------------------------
 
   /** Returns a defensive copy of the current node registry state, stats, and recent state changes. */
-  getSnapshot(_options?: { limit?: number }): ProjectionResponse<NodeRegistryPayload> {
+  getSnapshot(options?: { limit?: number }): ProjectionResponse<NodeRegistryPayload> {
+    const allNodes = Array.from(this.nodes.values()).map((n) => ({ ...n }));
+    const nodes = options?.limit ? allNodes.slice(0, options.limit) : allNodes;
+
     return {
       viewId: this.viewId,
       cursor: this.cursor,
       snapshotTimeMs: Date.now(),
       payload: {
-        nodes: Array.from(this.nodes.values()).map((n) => ({ ...n })),
+        nodes,
         recentStateChanges: this.recentStateChanges.map((e) => ({ ...e })),
         stats: { ...this.stats, byState: { ...this.stats.byState } },
       },
     };
   }
 
-  /** Returns applied events with ingestSeq > cursor (exclusive). Cursor advances to view position on empty results. */
+  /** Returns applied events with ingestSeq > cursor (exclusive). Uses binary search for O(log n) lookup. */
   getEventsSince(cursor: number, limit?: number): ProjectionEventsResponse {
-    const events = this.appliedEvents.filter((e) => e.ingestSeq > cursor);
-    const sliced = limit ? events.slice(0, limit) : events;
+    // Binary search for the first event with ingestSeq > cursor.
+    // appliedEvents are appended in ingestSeq order, so binary search is valid.
+    let lo = 0;
+    let hi = this.appliedEvents.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (this.appliedEvents[mid].ingestSeq <= cursor) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+
+    const effectiveLimit = limit ?? this.appliedEvents.length;
+    const sliced = this.appliedEvents.slice(lo, lo + effectiveLimit);
     return {
       viewId: this.viewId,
       cursor:

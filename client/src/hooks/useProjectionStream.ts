@@ -2,9 +2,13 @@
  * useProjectionStream — Client hook for Snapshot + Invalidation projections (OMN-2097)
  *
  * Fetches an initial snapshot via REST using TanStack Query, then subscribes to
- * WebSocket invalidation events. On each invalidation, the query cache is
- * invalidated which triggers a re-fetch. When the WebSocket disconnects,
- * TanStack Query's refetchInterval provides automatic polling fallback.
+ * WebSocket invalidation events via the shared useWebSocket hook. On each
+ * invalidation, the query cache is invalidated which triggers a re-fetch.
+ * When the WebSocket disconnects, TanStack Query's refetchInterval provides
+ * automatic polling fallback.
+ *
+ * Uses the existing useWebSocket hook internally to share a single /ws
+ * connection across all components rather than opening a separate connection.
  *
  * Usage:
  * ```tsx
@@ -15,7 +19,8 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import type { ProjectionResponse } from '@/hooks/useProjectionStream.types';
 
 export type { ProjectionResponse };
@@ -55,11 +60,38 @@ export function useProjectionStream<T>(
   options?: UseProjectionStreamOptions
 ): UseProjectionStreamReturn<T> {
   const queryClient = useQueryClient();
-  const [isConnected, setIsConnected] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
 
   const pollingIntervalMs = options?.pollingIntervalMs ?? 10_000;
   const disablePolling = options?.disablePolling ?? false;
+
+  // Use a ref to track whether we've subscribed to avoid duplicate subscribe calls
+  const subscribedRef = useRef(false);
+
+  // Reuse the shared useWebSocket hook to avoid opening a separate /ws connection.
+  // Uses the project's established reconnection pattern (stabilization, anti-flicker).
+  // reconnectInterval: 1000ms for fast initial reconnect on transient disconnects.
+  const { isConnected, subscribe } = useWebSocket({
+    onMessage: useCallback(
+      (message: { type: string; data?: { viewId?: string } }) => {
+        if (message.type === 'PROJECTION_INVALIDATE' && message.data?.viewId === viewId) {
+          queryClient.invalidateQueries({ queryKey: ['projection', viewId, 'snapshot'] });
+        }
+      },
+      [viewId, queryClient]
+    ),
+    reconnectInterval: 1000,
+  });
+
+  // Subscribe to the projection topic when connected
+  useEffect(() => {
+    if (isConnected && !subscribedRef.current) {
+      subscribe([`projection:${viewId}`]);
+      subscribedRef.current = true;
+    }
+    if (!isConnected) {
+      subscribedRef.current = false;
+    }
+  }, [isConnected, subscribe, viewId]);
 
   const {
     data: snapshot,
@@ -73,71 +105,6 @@ export function useProjectionStream<T>(
     refetchInterval: !isConnected && !disablePolling ? pollingIntervalMs : false,
     staleTime: 5_000, // Treat data as fresh for 5s to avoid redundant fetches
   });
-
-  // WebSocket connection for invalidation events
-  useEffect(() => {
-    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
-
-    let reconnectTimeout: ReturnType<typeof setTimeout> | undefined;
-    let reconnectAttempts = 0;
-    const MAX_RECONNECT_ATTEMPTS = 10;
-    let mounted = true;
-
-    const connect = () => {
-      if (!mounted) return;
-
-      const ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        if (!mounted) return;
-        setIsConnected(true);
-        reconnectAttempts = 0;
-        ws.send(JSON.stringify({ action: 'subscribe', topics: [`projection:${viewId}`] }));
-      };
-
-      ws.onmessage = (event) => {
-        if (!mounted) return;
-        try {
-          const message = JSON.parse(event.data);
-          if (message.type === 'PROJECTION_INVALIDATE' && message.data?.viewId === viewId) {
-            queryClient.invalidateQueries({ queryKey: ['projection', viewId, 'snapshot'] });
-          }
-        } catch {
-          // Ignore parse errors
-        }
-      };
-
-      ws.onclose = () => {
-        if (!mounted) return;
-        setIsConnected(false);
-
-        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-          const delay = Math.min(5000 * Math.pow(1.5, reconnectAttempts), 30000);
-          reconnectTimeout = setTimeout(() => {
-            reconnectAttempts++;
-            connect();
-          }, delay);
-        }
-      };
-
-      ws.onerror = () => {
-        // onclose will fire after this
-      };
-
-      wsRef.current = ws;
-    };
-
-    connect();
-
-    return () => {
-      mounted = false;
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-    };
-  }, [viewId, queryClient]);
 
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['projection', viewId, 'snapshot'] });
