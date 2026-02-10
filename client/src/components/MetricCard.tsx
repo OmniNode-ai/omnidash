@@ -81,9 +81,11 @@ export function MetricCard({
               )}
             </div>
           )}
-          {subtitle && (
+          {isLoading ? (
+            <Skeleton className="h-3 w-32 mt-1" />
+          ) : subtitle ? (
             <div className="text-[11px] text-muted-foreground mt-1 leading-tight">{subtitle}</div>
-          )}
+          ) : null}
         </div>
         {Icon && (
           <div

@@ -163,40 +163,47 @@ export interface LatencyBreakdownEvent {
 // ============================================================================
 
 /**
+ * Helper: check that a value is a non-empty string.
+ */
+function isNonEmptyString(v: unknown): v is string {
+  return typeof v === 'string' && v.length > 0;
+}
+
+/**
  * Base structural check shared by all extraction event type guards.
- * Validates that the payload is a non-null object with a string `session_id`
- * and `cohort`. Callers add type-specific field checks on top.
+ * Validates that the payload is a non-null object with non-empty string
+ * `session_id` and `cohort` — the two fields required by every extraction
+ * event interface. Callers add type-specific field checks on top.
  */
 function isExtractionBaseEvent(e: unknown): e is { session_id: string; cohort: string } {
-  return (
-    typeof e === 'object' &&
-    e !== null &&
-    typeof (e as Record<string, unknown>).session_id === 'string' &&
-    typeof (e as Record<string, unknown>).cohort === 'string'
-  );
+  if (typeof e !== 'object' || e === null) return false;
+  const obj = e as Record<string, unknown>;
+  return isNonEmptyString(obj.session_id) && isNonEmptyString(obj.cohort);
 }
 
 /**
  * Narrow an unknown Kafka payload to a ContextUtilizationEvent.
  *
- * Validates base fields plus `correlation_id` (required for this event type).
- * Optional fields like `utilization_score` are NOT required — the caller
- * discriminates event types via topic-specific switch cases, so the type guard
- * only needs to validate structural correctness.
+ * Validates all required fields: `session_id`, `cohort` (via base),
+ * and `correlation_id`. Optional fields like `utilization_score` are
+ * NOT required — the caller discriminates event types via topic-specific
+ * switch cases, so the type guard only needs to validate structural
+ * correctness of the required interface fields.
  */
 export function isContextUtilizationEvent(e: unknown): e is ContextUtilizationEvent {
   return (
-    isExtractionBaseEvent(e) && typeof (e as Record<string, unknown>).correlation_id === 'string'
+    isExtractionBaseEvent(e) && isNonEmptyString((e as Record<string, unknown>).correlation_id)
   );
 }
 
 /**
  * Narrow an unknown Kafka payload to an AgentMatchEvent.
  *
- * Validates base fields plus `correlation_id` and `agent_match_score`.
- * Only `agent_match_score` (not `agent_name`) is used for discrimination
- * because ContextUtilizationEvent also carries an optional `agent_name`,
- * which would cause false positives if used as a discriminator.
+ * Validates all required fields: `session_id`, `cohort` (via base),
+ * and `correlation_id`. Also checks `agent_match_score` (optional in the
+ * interface but used for discrimination) because ContextUtilizationEvent
+ * also carries an optional `agent_name`, which would cause false positives
+ * if used as a discriminator.
  *
  * NOTE: This guard is NOT a standalone discriminator — the caller MUST
  * dispatch by Kafka topic first (see event-consumer.ts switch/case).
@@ -204,15 +211,16 @@ export function isContextUtilizationEvent(e: unknown): e is ContextUtilizationEv
 export function isAgentMatchEvent(e: unknown): e is AgentMatchEvent {
   if (!isExtractionBaseEvent(e)) return false;
   const obj = e as Record<string, unknown>;
-  return typeof obj.correlation_id === 'string' && typeof obj.agent_match_score === 'number';
+  return isNonEmptyString(obj.correlation_id) && typeof obj.agent_match_score === 'number';
 }
 
 /**
  * Narrow an unknown Kafka payload to a LatencyBreakdownEvent.
  *
- * Validates base fields plus `prompt_id` (unique to latency events,
- * distinguishing from context-utilization and agent-match events).
+ * Validates all required fields: `session_id`, `cohort` (via base),
+ * and `prompt_id` (unique to latency events, distinguishing from
+ * context-utilization and agent-match events).
  */
 export function isLatencyBreakdownEvent(e: unknown): e is LatencyBreakdownEvent {
-  return isExtractionBaseEvent(e) && typeof (e as Record<string, unknown>).prompt_id === 'string';
+  return isExtractionBaseEvent(e) && isNonEmptyString((e as Record<string, unknown>).prompt_id);
 }

@@ -20,10 +20,8 @@ import {
   SUFFIX_OMNICLAUDE_SESSION_STARTED,
   SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
   SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
-  SUFFIX_OMNICLAUDE_SESSION_ENDED as _SUFFIX_OMNICLAUDE_SESSION_ENDED,
   SUFFIX_NODE_HEARTBEAT,
   SUFFIX_NODE_INTROSPECTION,
-  SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED as _SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED,
   SUFFIX_VALIDATION_RUN_STARTED,
   LEGACY_AGENT_ACTIONS,
   LEGACY_AGENT_ROUTING_DECISIONS,
@@ -44,18 +42,6 @@ const FIXTURE_SESSION_STARTED = {
   payload: {
     cwd: '/workspace/omnidash',
     model: 'claude-opus-4-6',
-  },
-};
-
-/** Sample prompt-submitted event (OmniClaude lifecycle) */
-const _FIXTURE_PROMPT_SUBMITTED = {
-  session_id: 'test-session-001',
-  correlation_id: 'corr-prompt-001',
-  timestamp_utc: new Date().toISOString(),
-  event_type: 'prompt_submitted',
-  payload: {
-    prompt: 'Create a Layer 2 integration test for the EventConsumer',
-    prompt_length: 55,
   },
 };
 
@@ -676,7 +662,7 @@ const INTEGRATION_ENABLED = process.env.INTEGRATION_TESTS === 'true';
 
 describe.skipIf(!INTEGRATION_ENABLED)('Layer 2: EventConsumer Kafka Integration', () => {
   // These tests require a running Kafka broker at the address specified
-  // in KAFKA_BROKERS (defaults to 192.168.86.200:9092 per project .env).
+  // in KAFKA_BROKERS / KAFKA_BOOTSTRAP_SERVERS (defaults to localhost:9092).
   // Run with: INTEGRATION_TESTS=true npx vitest run tests/integration/layer2-event-consumer.test.ts
 
   let EventConsumer: typeof import('../../server/event-consumer').EventConsumer;
@@ -693,12 +679,10 @@ describe.skipIf(!INTEGRATION_ENABLED)('Layer 2: EventConsumer Kafka Integration'
   });
 
   afterEach(async () => {
-    if (consumer) {
-      try {
-        await consumer.stop();
-      } catch {
-        // Ignore stop errors during cleanup
-      }
+    try {
+      await consumer.stop();
+    } catch {
+      // Ignore stop errors during cleanup
     }
     delete process.env.ENABLE_EVENT_PRELOAD;
     delete process.env.LOG_LEVEL;
@@ -725,7 +709,7 @@ describe.skipIf(!INTEGRATION_ENABLED)('Layer 2: EventConsumer Kafka Integration'
     const brokers = (
       process.env.KAFKA_BROKERS ||
       process.env.KAFKA_BOOTSTRAP_SERVERS ||
-      '192.168.86.200:9092'
+      'localhost:9092'
     ).split(',');
 
     const kafka = new Kafka({
@@ -776,7 +760,7 @@ describe.skipIf(!INTEGRATION_ENABLED)('Layer 2: EventConsumer Kafka Integration'
     const brokers = (
       process.env.KAFKA_BROKERS ||
       process.env.KAFKA_BOOTSTRAP_SERVERS ||
-      '192.168.86.200:9092'
+      'localhost:9092'
     ).split(',');
 
     const kafka = new Kafka({

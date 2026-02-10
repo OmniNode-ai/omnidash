@@ -756,10 +756,15 @@ export class EventConsumer extends EventEmitter {
   // Data retention configuration (configurable via environment variables)
   // INTENT_RETENTION_HOURS: Number of hours to retain intent data (default: 24)
   // PRUNE_INTERVAL_HOURS: How often to run pruning in hours (default: 1)
-  private readonly DATA_RETENTION_MS =
-    (parseInt(process.env.INTENT_RETENTION_HOURS || '24', 10) || 24) * 60 * 60 * 1000;
-  private readonly PRUNE_INTERVAL_MS =
-    (parseInt(process.env.PRUNE_INTERVAL_HOURS || '1', 10) || 1) * 60 * 60 * 1000;
+  // Uses Number.isFinite guard to prevent NaN from reaching interval calculations.
+  private readonly DATA_RETENTION_MS = (() => {
+    const parsed = parseInt(process.env.INTENT_RETENTION_HOURS || '24', 10);
+    return (Number.isFinite(parsed) && parsed > 0 ? parsed : 24) * 60 * 60 * 1000;
+  })();
+  private readonly PRUNE_INTERVAL_MS = (() => {
+    const parsed = parseInt(process.env.PRUNE_INTERVAL_HOURS || '1', 10);
+    return (Number.isFinite(parsed) && parsed > 0 ? parsed : 1) * 60 * 60 * 1000;
+  })();
   private pruneTimer?: NodeJS.Timeout;
   private canonicalNodeCleanupInterval?: NodeJS.Timeout;
 
@@ -1163,32 +1168,46 @@ export class EventConsumer extends EventEmitter {
               return; // stale event — already logged at debug level by the tracker
             }
 
-            intentLogger.debug(`Received event from topic: ${topic}`);
+            // Gate verbose per-event debug logging behind log level check.
+            // This avoids template string evaluation overhead on every Kafka
+            // message when debug logging is disabled (the common production case).
+            const isDebug = currentLogLevel <= LOG_LEVELS.debug;
+            if (isDebug) {
+              intentLogger.debug(`Received event from topic: ${topic}`);
+            }
 
             switch (topic) {
               // Legacy agent topics
               case LEGACY_AGENT_ROUTING_DECISIONS:
-                intentLogger.debug(
-                  `Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`
+                  );
+                }
                 this.handleRoutingDecision(event);
                 break;
               case LEGACY_AGENT_ACTIONS:
-                intentLogger.debug(
-                  `Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`
+                  );
+                }
                 this.handleAgentAction(event);
                 break;
               case LEGACY_AGENT_TRANSFORMATION_EVENTS:
-                intentLogger.debug(
-                  `Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`
+                  );
+                }
                 this.handleTransformationEvent(event);
                 break;
               case LEGACY_ROUTER_PERFORMANCE_METRICS:
-                intentLogger.debug(
-                  `Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
+                  );
+                }
                 this.handlePerformanceMetric(event);
                 break;
 
@@ -1206,9 +1225,11 @@ export class EventConsumer extends EventEmitter {
                   event.entity_id && event.emitted_at && event.payload
                 );
                 if (!isIntrospectionEnvelope) {
-                  intentLogger.debug(
-                    `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
-                  );
+                  if (isDebug) {
+                    intentLogger.debug(
+                      `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
+                    );
+                  }
                   this.handleNodeIntrospection(event);
                 } else {
                   if (DEBUG_CANONICAL_EVENTS) {
@@ -1226,7 +1247,11 @@ export class EventConsumer extends EventEmitter {
                   event.entity_id && event.emitted_at && event.payload
                 );
                 if (!isHeartbeatEnvelope) {
-                  intentLogger.debug(`Processing node heartbeat: ${event.node_id || event.nodeId}`);
+                  if (isDebug) {
+                    intentLogger.debug(
+                      `Processing node heartbeat: ${event.node_id || event.nodeId}`
+                    );
+                  }
                   this.handleNodeHeartbeat(event);
                 } else {
                   if (DEBUG_CANONICAL_EVENTS) {
@@ -1244,9 +1269,11 @@ export class EventConsumer extends EventEmitter {
                   event.entity_id && event.emitted_at && event.payload
                 );
                 if (!isRegistrationEnvelope) {
-                  intentLogger.debug(
-                    `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
-                  );
+                  if (isDebug) {
+                    intentLogger.debug(
+                      `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
+                    );
+                  }
                   this.handleNodeStateChange(event);
                 } else {
                   if (DEBUG_CANONICAL_EVENTS) {
@@ -1270,73 +1297,93 @@ export class EventConsumer extends EventEmitter {
                 break;
               case TOPIC.CONTRACT_REGISTERED:
               case TOPIC.CONTRACT_DEREGISTERED: {
-                intentLogger.debug(`Processing contract lifecycle event from topic: ${topic}`);
+                if (isDebug) {
+                  intentLogger.debug(`Processing contract lifecycle event from topic: ${topic}`);
+                }
                 this.handleCanonicalNodeIntrospection(message);
                 break;
               }
               case TOPIC.NODE_REGISTRATION_INITIATED:
               case TOPIC.NODE_REGISTRATION_ACCEPTED:
               case TOPIC.NODE_REGISTRATION_REJECTED: {
-                intentLogger.debug(
-                  `Processing node registration lifecycle event from topic: ${topic}`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing node registration lifecycle event from topic: ${topic}`
+                  );
+                }
                 this.handleCanonicalNodeIntrospection(message);
                 break;
               }
               case TOPIC.REGISTRATION_SNAPSHOTS: {
-                intentLogger.debug('Processing registration snapshot');
+                if (isDebug) {
+                  intentLogger.debug('Processing registration snapshot');
+                }
                 this.handleCanonicalNodeIntrospection(message);
                 break;
               }
 
               // Intent topics (canonical names, matched after legacy prefix stripping)
               case SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED:
-                intentLogger.debug(
-                  `Processing intent classified: ${event.intent_type || event.intentType} (confidence: ${event.confidence})`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing intent classified: ${event.intent_type || event.intentType} (confidence: ${event.confidence})`
+                  );
+                }
                 this.handleIntentClassified(event);
                 break;
               case SUFFIX_MEMORY_INTENT_STORED:
-                intentLogger.debug(
-                  `Processing intent stored: ${event.intent_id || event.intentId}`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing intent stored: ${event.intent_id || event.intentId}`
+                  );
+                }
                 this.handleIntentStored(event);
                 break;
               case SUFFIX_MEMORY_INTENT_QUERY_RESPONSE:
-                intentLogger.debug(
-                  `Processing intent query response: ${event.query_id || event.queryId}`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing intent query response: ${event.query_id || event.queryId}`
+                  );
+                }
                 this.handleIntentQueryResponse(event);
                 break;
 
               // OmniClaude hook events
               case TOPIC.CLAUDE_HOOK:
-                intentLogger.debug(
-                  `Processing claude hook event: ${event.event_type || event.eventType} - ${(event.payload?.prompt || '').slice(0, 50)}...`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing claude hook event: ${event.event_type || event.eventType} - ${(event.payload?.prompt || '').slice(0, 50)}...`
+                  );
+                }
                 this.handleClaudeHookEvent(event);
                 break;
               // OmniClaude lifecycle events
               case TOPIC.PROMPT_SUBMITTED:
-                intentLogger.debug(
-                  `Processing prompt-submitted: ${(event.payload?.prompt_preview || '').slice(0, 50)}...`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing prompt-submitted: ${(event.payload?.prompt_preview || '').slice(0, 50)}...`
+                  );
+                }
                 this.handlePromptSubmittedEvent(event);
                 break;
               case TOPIC.SESSION_STARTED:
               case TOPIC.SESSION_ENDED:
               case TOPIC.TOOL_EXECUTED:
-                intentLogger.debug(
-                  `Processing omniclaude event: ${event.event_type || event.eventType}`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing omniclaude event: ${event.event_type || event.eventType}`
+                  );
+                }
                 this.handleOmniclaudeLifecycleEvent(event, topic);
                 break;
 
               // Tool-content events from omniintelligence (tool execution records)
               case TOPIC.TOOL_CONTENT:
-                intentLogger.debug(
-                  `Processing tool-content: ${(event as Record<string, string>).tool_name || 'unknown'}`
-                );
+                if (isDebug) {
+                  intentLogger.debug(
+                    `Processing tool-content: ${(event as Record<string, string>).tool_name || 'unknown'}`
+                  );
+                }
                 this.handleAgentAction({
                   action_type: 'tool',
                   agent_name: 'omniclaude',
@@ -1350,7 +1397,9 @@ export class EventConsumer extends EventEmitter {
               // Cross-repo validation topics (canonical names, matched after legacy prefix stripping)
               case SUFFIX_VALIDATION_RUN_STARTED:
                 if (isValidationRunStarted(event)) {
-                  intentLogger.debug(`Processing validation run started: ${event.run_id}`);
+                  if (isDebug) {
+                    intentLogger.debug(`Processing validation run started: ${event.run_id}`);
+                  }
                   await handleValidationRunStarted(event);
                   this.emit('validation-event', { type: 'run-started', event });
                 } else {
@@ -1359,9 +1408,11 @@ export class EventConsumer extends EventEmitter {
                 break;
               case SUFFIX_VALIDATION_VIOLATIONS_BATCH:
                 if (isValidationViolationsBatch(event)) {
-                  intentLogger.debug(
-                    `Processing validation violations batch: ${event.run_id} (${event.violations.length} violations)`
-                  );
+                  if (isDebug) {
+                    intentLogger.debug(
+                      `Processing validation violations batch: ${event.run_id} (${event.violations.length} violations)`
+                    );
+                  }
                   await handleValidationViolationsBatch(event);
                   this.emit('validation-event', { type: 'violations-batch', event });
                 } else {
@@ -1373,9 +1424,11 @@ export class EventConsumer extends EventEmitter {
                 break;
               case SUFFIX_VALIDATION_RUN_COMPLETED:
                 if (isValidationRunCompleted(event)) {
-                  intentLogger.debug(
-                    `Processing validation run completed: ${event.run_id} (${event.status})`
-                  );
+                  if (isDebug) {
+                    intentLogger.debug(
+                      `Processing validation run completed: ${event.run_id} (${event.status})`
+                    );
+                  }
                   await handleValidationRunCompleted(event);
                   this.emit('validation-event', { type: 'run-completed', event });
                 } else {
@@ -1484,13 +1537,12 @@ export class EventConsumer extends EventEmitter {
   ): void {
     try {
       const now = new Date();
-      const rawTs = event.timestamp;
+      // Use extractEventTimeMs which checks emitted_at (canonical envelopes),
+      // timestamp, created_at, and createdAt in priority order. This ensures
+      // canonical ONEX envelopes get their actual event time rather than now().
+      const eventTimeMs = extractEventTimeMs(event);
       const eventTimestamp =
-        typeof rawTs === 'number'
-          ? new Date(rawTs).toISOString()
-          : typeof rawTs === 'string' && rawTs.length > 0
-            ? rawTs
-            : now.toISOString();
+        eventTimeMs > 0 ? new Date(eventTimeMs).toISOString() : now.toISOString();
 
       let parsedPayload: Record<string, any>;
       if (event.payload && typeof event.payload === 'object') {
@@ -3132,9 +3184,11 @@ export class EventConsumer extends EventEmitter {
    * @returns Array of EventBusEvent objects, newest-first, up to SQL_PRELOAD_LIMIT
    */
   getPreloadedEventBusEvents(): EventBusEvent[] {
-    // If no live events, return preloaded as-is (fast path for startup)
+    // If no live events, return preloaded capped at SQL_PRELOAD_LIMIT
+    // (fast path for startup). The preloaded buffer can be as large as
+    // MAX_PRELOAD_EVENTS (5000), but this method's contract caps at SQL_PRELOAD_LIMIT (2000).
     if (this.liveEventBusEvents.length === 0) {
-      return this.preloadedEventBusEvents;
+      return this.preloadedEventBusEvents.slice(0, SQL_PRELOAD_LIMIT);
     }
 
     // Merge and deduplicate by event_id across both buffers.
@@ -3656,8 +3710,9 @@ export class EventConsumer extends EventEmitter {
    *
    * This method gracefully shuts down the consumer by:
    * 1. Clearing the periodic pruning timer
-   * 2. Disconnecting from Kafka
-   * 3. Emitting a 'disconnected' event
+   * 2. Stopping the consumer (finishes in-flight messages)
+   * 3. Disconnecting from Kafka
+   * 4. Emitting a 'disconnected' event
    *
    * @returns Promise that resolves when the consumer is stopped
    *
@@ -3691,12 +3746,26 @@ export class EventConsumer extends EventEmitter {
         this.canonicalNodeCleanupInterval = undefined;
       }
 
+      // Stop the consumer first to finish processing in-flight messages,
+      // then disconnect the underlying client. This ordering prevents
+      // unhandled rejections from disconnect racing with message processing.
+      if (typeof this.consumer.stop === 'function') {
+        try {
+          await this.consumer.stop();
+        } catch (stopError) {
+          // Log but continue to disconnect — stop() may fail if consumer
+          // was never fully started (e.g., subscription failed).
+          console.warn('[EventConsumer] consumer.stop() failed:', stopError);
+        }
+      }
+
       await this.consumer.disconnect();
       this.isRunning = false;
       intentLogger.info('Event consumer stopped');
       this.emit('disconnected'); // Emit disconnected event
     } catch (error) {
-      console.error('Error disconnecting Kafka consumer:', error);
+      console.error('Error stopping Kafka consumer:', error);
+      this.isRunning = false;
       this.emit('error', error); // Emit error event
     }
   }

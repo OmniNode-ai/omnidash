@@ -1,5 +1,14 @@
 #!/bin/bash
-# Clean all Playwright screenshots from repo root and .playwright-mcp/
+# clean-screenshots.sh
+#
+# Removes Playwright MCP screenshot artifacts from the repository root.
+# Runs automatically as a pre-push hook via Husky.
+#
+# Targets:
+#   - .playwright-mcp/ directory (MCP screenshot cache)
+#   - Untracked *.png and *.jpeg files in the repo root
+#
+# Safety: git-tracked images are never deleted (checked via git ls-files).
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 count=0

@@ -98,7 +98,7 @@ describe('EventConsumer', () => {
   });
 
   describe('validateConnection', () => {
-    it('should throw error when KAFKA_BROKERS is not configured', async () => {
+    it('should require KAFKA_BROKERS to be configured before validating', async () => {
       delete process.env.KAFKA_BOOTSTRAP_SERVERS;
       delete process.env.KAFKA_BROKERS;
 

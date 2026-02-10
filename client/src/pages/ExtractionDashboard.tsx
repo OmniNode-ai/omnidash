@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Activity, Clock, Zap, AlertTriangle } from 'lucide-react';
+import { formatRelativeTime } from '@/lib/date-utils';
 import { MetricCard } from '@/components/MetricCard';
 import { PipelineHealthPanel } from '@/components/extraction/PipelineHealthPanel';
 import { LatencyHeatmap } from '@/components/extraction/LatencyHeatmap';
@@ -55,7 +56,7 @@ export default function ExtractionDashboard() {
     [queryClient]
   );
 
-  const { isConnected, subscribe } = useWebSocket({
+  const { isConnected, subscribe, unsubscribe } = useWebSocket({
     onMessage: handleWebSocketMessage,
   });
 
@@ -63,7 +64,10 @@ export default function ExtractionDashboard() {
     if (isConnected) {
       subscribe(['extraction']);
     }
-  }, [isConnected, subscribe]);
+    return () => {
+      unsubscribe(['extraction']);
+    };
+  }, [isConnected, subscribe, unsubscribe]);
 
   // Format helpers
   const formatNumber = (n: number | null | undefined): string => {
@@ -143,7 +147,7 @@ export default function ExtractionDashboard() {
           value={formatPercent(summary?.success_rate)}
           subtitle={
             summary?.last_event_at
-              ? `Last event: ${new Date(summary.last_event_at).toLocaleString()}`
+              ? `Last event: ${formatRelativeTime(summary.last_event_at)}`
               : undefined
           }
           icon={AlertTriangle}

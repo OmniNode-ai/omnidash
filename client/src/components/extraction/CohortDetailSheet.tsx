@@ -70,7 +70,7 @@ export function CohortDetailSheet({
           <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Summary
           </h4>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {detail.facts.map((fact) => (
               <div key={fact.label}>
                 <span className="text-[10px] text-muted-foreground">{fact.label}</span>

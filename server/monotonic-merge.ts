@@ -13,13 +13,35 @@
  */
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/**
+ * Sentinel timestamp for events with no valid timestamp.
+ *
+ * Convention: events with missing timestamps are assigned epoch 0 (1970-01-01),
+ * making them the OLDEST possible events. This ensures they:
+ *   - Never overwrite events that have real timestamps (monotonic merge rejects them)
+ *   - Are always overwritten by any event with a real timestamp
+ *   - Sort to the beginning (oldest end) in any time-ordered collection
+ *
+ * The alternative — using Date.now() — would incorrectly treat timestamp-less
+ * events as the NEWEST, allowing them to block future events with real (but
+ * slightly earlier) timestamps from being applied. This violates the monotonic
+ * guarantee and causes data loss.
+ */
+export const MISSING_TIMESTAMP_SENTINEL_MS = 0;
+
+// ============================================================================
 // Types
 // ============================================================================
 
 /**
  * Position of an event in the total ordering.
  *
- * @property eventTime - Epoch milliseconds from the event's own timestamp
+ * @property eventTime - Epoch milliseconds from the event's own timestamp.
+ *   Events with no valid timestamp use {@link MISSING_TIMESTAMP_SENTINEL_MS} (epoch 0),
+ *   which treats them as the oldest possible event. See the constant's doc for rationale.
  * @property seq       - Tie-breaker: Kafka offset, DB row id, or monotonic counter
  */
 export interface EventPosition {
@@ -34,6 +56,18 @@ export interface EventPosition {
 /**
  * Determine whether an incoming event should be applied (is newer) or
  * rejected (is older or equal to the last applied event).
+ *
+ * Missing-timestamp handling: events without a valid timestamp should have
+ * eventTime set to {@link MISSING_TIMESTAMP_SENTINEL_MS} (epoch 0) by the
+ * caller (see {@link extractEventTimeMs}). This means:
+ *   - A timestamp-less event will be accepted as the first event for a key
+ *   - A timestamp-less event will be REJECTED if any event with a real
+ *     timestamp (or even another epoch-0 event with higher seq) was already applied
+ *   - A real-timestamped event will always overwrite a previously applied
+ *     timestamp-less event (since any real timestamp > 0)
+ *
+ * This is the correct behavior: timestamp-less events should never block
+ * or overwrite events that have real timestamps.
  *
  * @param lastApplied - Position of the most recently applied event (null = first event)
  * @param incoming    - Position of the event being evaluated
@@ -143,11 +177,20 @@ export class MonotonicMergeTracker {
  * Extract an epoch-ms timestamp from a raw event object.
  * Looks for common timestamp field names in order of preference.
  *
- * Returns `0` (Unix epoch) as fallback if no valid timestamp is found.
- * This treats events without timestamps as the oldest possible, which
- * prevents them from blocking newer events in monotonic merge ordering.
- * Using `Date.now()` as a fallback would incorrectly make timestamp-less
- * events appear as the newest, violating the monotonic guarantee.
+ * Returns {@link MISSING_TIMESTAMP_SENTINEL_MS} (epoch 0) if no valid
+ * timestamp is found. This treats events without timestamps as the OLDEST
+ * possible, which prevents them from blocking newer events in monotonic
+ * merge ordering.
+ *
+ * WARNING: Using `Date.now()` as a fallback would be INCORRECT — it would
+ * make timestamp-less events appear as the NEWEST, causing them to:
+ *   1. Win the monotonic merge gate against all prior events
+ *   2. Block future events with real (but slightly earlier) timestamps
+ *   3. Violate the event-time-wins ordering guarantee
+ *
+ * Callers that need to persist a timestamp for DB rows should handle the
+ * epoch-0 sentinel separately (e.g., fall back to Kafka message.timestamp
+ * or Date.now() with a warning). See extraction-aggregator.ts for an example.
  */
 export function extractEventTimeMs(event: Record<string, unknown>): number {
   // Try common timestamp fields in priority order
@@ -170,9 +213,14 @@ export function extractEventTimeMs(event: Record<string, unknown>): number {
     }
   }
 
-  // Events without timestamps are treated as oldest (epoch 0) to avoid
-  // blocking newer events in the monotonic merge tracker.
-  return 0;
+  // No valid timestamp found — return sentinel (epoch 0 = oldest possible).
+  // This is intentional: timestamp-less events must NOT be treated as newest.
+  // Debug-level log: missing timestamps are common during tests and playback.
+  console.debug(
+    '[monotonic] Event has no valid timestamp field; assigning sentinel epoch 0 (oldest). ' +
+      'Fields checked: emitted_at, timestamp, created_at, createdAt'
+  );
+  return MISSING_TIMESTAMP_SENTINEL_MS;
 }
 
 /**

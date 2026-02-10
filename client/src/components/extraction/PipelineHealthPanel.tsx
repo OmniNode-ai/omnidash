@@ -95,8 +95,16 @@ export function PipelineHealthPanel() {
                 {data.cohorts.map((cohort: PipelineCohortHealth) => (
                   <TableRow
                     key={cohort.cohort}
-                    className="cursor-pointer hover:bg-muted/50"
+                    className="cursor-pointer hover:bg-muted/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                    tabIndex={0}
+                    role="button"
                     onClick={() => handleRowClick(cohort)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleRowClick(cohort);
+                      }
+                    }}
                   >
                     <TableCell className="text-xs font-mono">{cohort.cohort}</TableCell>
                     <TableCell className="text-xs text-right">{cohort.total_events}</TableCell>

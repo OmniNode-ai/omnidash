@@ -20,6 +20,7 @@ class ExtractionSource {
 
   /**
    * Get summary stats for the metric cards row.
+   * @throws {Error} on non-OK HTTP responses
    */
   async summary(): Promise<ExtractionSummary> {
     const response = await fetch(`${this.baseUrl}/summary`);
@@ -29,6 +30,7 @@ class ExtractionSource {
 
   /**
    * Get pipeline health grouped by stage.
+   * @throws {Error} on non-OK HTTP responses
    */
   async pipelineHealth(): Promise<PipelineHealthResponse> {
     const response = await fetch(`${this.baseUrl}/health/pipeline`);
@@ -38,6 +40,7 @@ class ExtractionSource {
 
   /**
    * Get latency heatmap data for a time window.
+   * @throws {Error} on non-OK HTTP responses
    */
   async latencyHeatmap(window: string = '24h'): Promise<LatencyHeatmapResponse> {
     const response = await fetch(
@@ -49,6 +52,7 @@ class ExtractionSource {
 
   /**
    * Get pattern volume over time.
+   * @throws {Error} on non-OK HTTP responses
    */
   async patternVolume(window: string = '24h'): Promise<PatternVolumeResponse> {
     const response = await fetch(
@@ -60,6 +64,7 @@ class ExtractionSource {
 
   /**
    * Get error rates summary.
+   * @throws {Error} on non-OK HTTP responses
    */
   async errorsSummary(): Promise<ErrorRatesSummaryResponse> {
     const response = await fetch(`${this.baseUrl}/errors/summary`);

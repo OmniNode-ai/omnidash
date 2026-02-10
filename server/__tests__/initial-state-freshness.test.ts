@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { EventEmitter } from 'events';
 
 /**
  * Tests for INITIAL_STATE freshness fixes.
@@ -69,8 +68,6 @@ vi.mock('kafkajs', () => ({
   })),
 }));
 
-// Track SQL queries executed during preload
-const capturedSqlStrings: string[] = [];
 const mockDb = {
   execute: vi.fn(() => {
     // Return empty result set
@@ -82,11 +79,7 @@ vi.mock('../storage', () => ({
   getIntelligenceDb: vi.fn(() => mockDb),
 }));
 
-import { sql } from 'drizzle-orm';
 import { EventConsumer } from '../event-consumer';
-
-// Spy on sql.raw to capture the actual SQL template strings
-const sqlRawSpy = vi.spyOn(sql, 'raw');
 
 describe('INITIAL_STATE freshness', () => {
   let consumer: InstanceType<typeof EventConsumer>;
@@ -94,7 +87,6 @@ describe('INITIAL_STATE freshness', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
-    capturedSqlStrings.length = 0;
 
     process.env.KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092';
     process.env.ENABLE_EVENT_PRELOAD = 'false';

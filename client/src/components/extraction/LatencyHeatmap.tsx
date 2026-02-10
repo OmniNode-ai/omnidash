@@ -82,7 +82,7 @@ export function LatencyHeatmap({ timeWindow = '24h' }: LatencyHeatmapProps) {
         )}
 
         {!isLoading && !error && data && data.buckets.length > 0 && (
-          <div className="w-full">
+          <div className="w-full text-xs" data-chart="latency-heatmap">
             <div className="overflow-x-auto">
               {/* Header row: time bucket labels */}
               <div

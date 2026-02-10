@@ -27,7 +27,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const BROKER =
-  process.env.KAFKA_BROKERS ?? process.env.KAFKA_BOOTSTRAP_SERVERS ?? '192.168.86.200:29092';
+  process.env.KAFKA_BROKERS ?? process.env.KAFKA_BOOTSTRAP_SERVERS ?? 'localhost:29092';
 
 const kafka = new Kafka({
   brokers: BROKER.split(','),
@@ -196,11 +196,6 @@ describe.skipIf(!shouldRun)('Layer 1: Kafka Data Source', () => {
   }, 15_000);
 
   afterAll(async () => {
-    if (!shouldRun) {
-      await admin.disconnect();
-      return;
-    }
-
     console.log('\n====================================================');
     console.log('  LAYER 1 KAFKA DATA SOURCE - SUMMARY');
     console.log('====================================================');
@@ -412,8 +407,8 @@ describe.skipIf(!shouldRun)('Layer 1: Kafka Data Source', () => {
       );
     }
 
-    // This test is diagnostic -- it always passes but reports the state
-    expect(true).toBe(true);
+    // All dev-prefixed topics should decompose into ONEX or other categories
+    expect(devOnexTopics.length + devOtherTopics.length).toBe(devPrefixedTopics.length);
   }, 60_000);
 
   // -----------------------------------------------------------------------
@@ -485,8 +480,8 @@ describe.skipIf(!shouldRun)('Layer 1: Kafka Data Source', () => {
     // Check for correlation_id (should be a UUID-like string)
     if ('correlation_id' in payload) {
       const corrId = payload.correlation_id as string;
-      const isUuidLike = /^[0-9a-f-]{36}$/i.test(corrId);
-      console.log(`  correlation_id: ${corrId} (UUID format: ${isUuidLike})`);
+      expect(corrId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      console.log(`  correlation_id: ${corrId} (UUID format: valid)`);
     }
 
     // Check for schema_version

@@ -98,8 +98,16 @@ export function ErrorRatesPanel() {
                 {data.entries.map((entry: ErrorRateEntry) => (
                   <TableRow
                     key={entry.cohort}
-                    className="cursor-pointer hover:bg-muted/50"
+                    className="cursor-pointer hover:bg-muted/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                    tabIndex={0}
+                    role="button"
                     onClick={() => handleRowClick(entry)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleRowClick(entry);
+                      }
+                    }}
                   >
                     <TableCell className="text-xs font-mono">{entry.cohort}</TableCell>
                     <TableCell className="text-xs text-right">{entry.total_events}</TableCell>
