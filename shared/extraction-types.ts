@@ -159,7 +159,15 @@ export interface LatencyBreakdownEvent {
 // Type Guards
 // ============================================================================
 
-/** Narrow an unknown Kafka payload to a ContextUtilizationEvent. */
+/**
+ * Narrow an unknown Kafka payload to a ContextUtilizationEvent.
+ *
+ * NOTE: This guard overlaps with `isAgentMatchEvent` because both event types
+ * share the same base fields (session_id, correlation_id, cohort). In production
+ * these guards are always used inside topic-discriminated switch cases
+ * (event-consumer.ts), so there is no ambiguity. Do NOT use these guards alone
+ * to distinguish between the two event types without topic context.
+ */
 export function isContextUtilizationEvent(e: unknown): e is ContextUtilizationEvent {
   return (
     typeof e === 'object' &&
@@ -172,8 +180,12 @@ export function isContextUtilizationEvent(e: unknown): e is ContextUtilizationEv
 
 /**
  * Narrow an unknown Kafka payload to an AgentMatchEvent.
- * Requires `agent_match_score` to distinguish from ContextUtilizationEvent,
+ * Requires `agent_match_score` (number) to distinguish from ContextUtilizationEvent,
  * which shares the same base fields (session_id, correlation_id, cohort).
+ *
+ * NOTE: ContextUtilizationEvent also has an optional `agent_match_score` field,
+ * so a ContextUtilizationEvent with that field set would also pass this guard.
+ * Always use topic context for reliable discrimination (see isContextUtilizationEvent).
  */
 export function isAgentMatchEvent(e: unknown): e is AgentMatchEvent {
   return (

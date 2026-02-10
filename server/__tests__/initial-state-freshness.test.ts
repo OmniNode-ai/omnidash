@@ -140,7 +140,9 @@ describe('INITIAL_STATE freshness', () => {
       const serialised = JSON.stringify(sqlObj);
 
       expect(serialised).toContain('event_bus_events');
-      expect(serialised).toContain('minutes');
+      // The preload query computes the cutoff as a JS Date object and passes
+      // it as a parameterized value (ISO-8601 string in queryChunks).
+      expect(serialised).toMatch(/\d{4}-\d{2}-\d{2}T/); // ISO date parameter
       expect(serialised).toContain('ORDER BY');
 
       try {

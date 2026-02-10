@@ -1138,8 +1138,11 @@ export class EventConsumer extends EventEmitter {
             // counter when offset is missing (tests, playback injection).
             const kafkaOffset = parseOffsetAsSeq(message.offset);
             const incomingSeq = kafkaOffset > 0 ? kafkaOffset : ++this.arrivalSeq;
+            // Key includes partition because Kafka offsets are per-partition,
+            // not global. Without partition, two events from different partitions
+            // with the same timestamp and offset would incorrectly collide.
             if (
-              !this.monotonicMerge.checkAndUpdate(topic, {
+              !this.monotonicMerge.checkAndUpdate(`${topic}:${partition}`, {
                 eventTime: incomingEventTime,
                 seq: incomingSeq,
               })
@@ -1518,12 +1521,13 @@ export class EventConsumer extends EventEmitter {
       // Uses parameterized interval to prevent SQL injection, a stable
       // tie-break (id DESC) for deterministic ordering when timestamps
       // collide, and caps results at MAX_PRELOAD_EVENTS.
+      const cutoffDate = new Date(Date.now() - PRELOAD_WINDOW_MINUTES * 60 * 1000);
       const result = await getIntelligenceDb().execute(
         sql`SELECT event_type, event_id, timestamp, tenant_id, namespace, source,
                correlation_id, causation_id, schema_ref, payload, topic,
                partition, "offset", processed_at, stored_at
         FROM event_bus_events
-        WHERE timestamp >= NOW() - (${String(PRELOAD_WINDOW_MINUTES)} || ' minutes')::interval
+        WHERE timestamp >= ${cutoffDate}
         ORDER BY timestamp DESC, id DESC
         LIMIT ${MAX_PRELOAD_EVENTS}`
       );
@@ -1558,7 +1562,7 @@ export class EventConsumer extends EventEmitter {
                  correlation_id, causation_id, schema_ref, payload, topic,
                  partition, "offset", processed_at, stored_at
           FROM event_bus_events
-          WHERE timestamp < NOW() - (${String(PRELOAD_WINDOW_MINUTES)} || ' minutes')::interval
+          WHERE timestamp < ${cutoffDate}
           ORDER BY timestamp DESC, id DESC
           LIMIT ${remainingCapacity}`
         );

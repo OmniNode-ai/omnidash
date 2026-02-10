@@ -10,6 +10,7 @@ import {
   jsonb,
   timestamp,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 
@@ -500,6 +501,7 @@ export const injectionEffectiveness = pgTable(
     injectionTimeMs: integer('injection_time_ms'),
     patternsCount: integer('patterns_count'),
     cacheHit: boolean('cache_hit').default(false),
+    eventType: text('event_type'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
@@ -507,6 +509,11 @@ export const injectionEffectiveness = pgTable(
     index('idx_ie_created_at').on(table.createdAt),
     index('idx_ie_injection_occurred').on(table.injectionOccurred),
     index('idx_ie_cohort').on(table.cohort),
+    uniqueIndex('uq_ie_session_correlation_type').on(
+      table.sessionId,
+      table.correlationId,
+      table.eventType
+    ),
   ]
 );
 

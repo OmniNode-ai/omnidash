@@ -45,10 +45,11 @@ export class ExtractionMetricsAggregator {
    * @param event - The parsed event payload
    */
   async handleContextUtilization(event: ContextUtilizationEvent): Promise<void> {
-    // No monotonic merge gate: these are INSERT operations (append-only),
-    // not upserts. Each event creates a new row with a UUID PK. Kafka
-    // consumer-group offset tracking prevents replays; concurrent sessions
-    // with interleaved timestamps must all be persisted.
+    // Idempotency: ON CONFLICT DO NOTHING on the unique index
+    // (session_id, correlation_id, event_type) prevents duplicate rows
+    // from Kafka consumer rebalancing replays. Each (session, correlation,
+    // event_type) triple is inserted at most once; repeated deliveries
+    // are silently dropped by PostgreSQL.
     const db = tryGetIntelligenceDb();
     if (!db) {
       console.warn('[extraction] Database not available, dropping context-utilization event');
@@ -57,25 +58,29 @@ export class ExtractionMetricsAggregator {
 
     try {
       const createdAt = event.timestamp ? new Date(event.timestamp) : undefined;
-      await db.insert(injectionEffectiveness).values({
-        sessionId: event.session_id,
-        correlationId: event.correlation_id,
-        cohort: event.cohort,
-        injectionOccurred: event.injection_occurred ?? false,
-        agentName: event.agent_name ?? null,
-        detectionMethod: event.detection_method ?? null,
-        utilizationScore: event.utilization_score?.toString() ?? null,
-        utilizationMethod: event.utilization_method ?? null,
-        agentMatchScore: event.agent_match_score?.toString() ?? null,
-        userVisibleLatencyMs: event.user_visible_latency_ms ?? null,
-        sessionOutcome: event.session_outcome ?? null,
-        routingTimeMs: event.routing_time_ms ?? null,
-        retrievalTimeMs: event.retrieval_time_ms ?? null,
-        injectionTimeMs: event.injection_time_ms ?? null,
-        patternsCount: event.patterns_count ?? null,
-        cacheHit: event.cache_hit ?? false,
-        ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
-      });
+      await db
+        .insert(injectionEffectiveness)
+        .values({
+          sessionId: event.session_id,
+          correlationId: event.correlation_id,
+          cohort: event.cohort,
+          injectionOccurred: event.injection_occurred ?? false,
+          agentName: event.agent_name ?? null,
+          detectionMethod: event.detection_method ?? null,
+          utilizationScore: event.utilization_score?.toString() ?? null,
+          utilizationMethod: event.utilization_method ?? null,
+          agentMatchScore: event.agent_match_score?.toString() ?? null,
+          userVisibleLatencyMs: event.user_visible_latency_ms ?? null,
+          sessionOutcome: event.session_outcome ?? null,
+          routingTimeMs: event.routing_time_ms ?? null,
+          retrievalTimeMs: event.retrieval_time_ms ?? null,
+          injectionTimeMs: event.injection_time_ms ?? null,
+          patternsCount: event.patterns_count ?? null,
+          cacheHit: event.cache_hit ?? false,
+          eventType: 'context_utilization',
+          ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
+        })
+        .onConflictDoNothing();
       this.eventsSinceLastBroadcast++;
     } catch (error) {
       console.error('[extraction] Error persisting context-utilization event:', error);
@@ -97,16 +102,20 @@ export class ExtractionMetricsAggregator {
 
     try {
       const createdAt = event.timestamp ? new Date(event.timestamp) : undefined;
-      await db.insert(injectionEffectiveness).values({
-        sessionId: event.session_id,
-        correlationId: event.correlation_id,
-        cohort: event.cohort,
-        injectionOccurred: event.injection_occurred ?? false,
-        agentName: event.agent_name ?? null,
-        agentMatchScore: event.agent_match_score?.toString() ?? null,
-        sessionOutcome: event.session_outcome ?? null,
-        ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
-      });
+      await db
+        .insert(injectionEffectiveness)
+        .values({
+          sessionId: event.session_id,
+          correlationId: event.correlation_id,
+          cohort: event.cohort,
+          injectionOccurred: event.injection_occurred ?? false,
+          agentName: event.agent_name ?? null,
+          agentMatchScore: event.agent_match_score?.toString() ?? null,
+          sessionOutcome: event.session_outcome ?? null,
+          eventType: 'agent_match',
+          ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
+        })
+        .onConflictDoNothing();
       this.eventsSinceLastBroadcast++;
     } catch (error) {
       console.error('[extraction] Error persisting agent-match event:', error);
