@@ -1369,7 +1369,7 @@ export class EventConsumer extends EventEmitter {
               // Extraction pipeline topics (OMN-1804)
               case SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION:
                 if (isContextUtilizationEvent(event)) {
-                  await this.extractionAggregator.handleContextUtilization(event);
+                  await this.extractionAggregator.handleContextUtilization(event, incomingSeq);
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'context-utilization' });
                   }
@@ -1379,7 +1379,7 @@ export class EventConsumer extends EventEmitter {
                 break;
               case SUFFIX_OMNICLAUDE_AGENT_MATCH:
                 if (isAgentMatchEvent(event)) {
-                  await this.extractionAggregator.handleAgentMatch(event);
+                  await this.extractionAggregator.handleAgentMatch(event, incomingSeq);
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'agent-match' });
                   }
@@ -1389,7 +1389,7 @@ export class EventConsumer extends EventEmitter {
                 break;
               case SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN:
                 if (isLatencyBreakdownEvent(event)) {
-                  await this.extractionAggregator.handleLatencyBreakdown(event);
+                  await this.extractionAggregator.handleLatencyBreakdown(event, incomingSeq);
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'latency-breakdown' });
                   }

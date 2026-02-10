@@ -170,14 +170,19 @@ export function isContextUtilizationEvent(e: unknown): e is ContextUtilizationEv
   );
 }
 
-/** Narrow an unknown Kafka payload to an AgentMatchEvent. */
+/**
+ * Narrow an unknown Kafka payload to an AgentMatchEvent.
+ * Requires `agent_match_score` to distinguish from ContextUtilizationEvent,
+ * which shares the same base fields (session_id, correlation_id, cohort).
+ */
 export function isAgentMatchEvent(e: unknown): e is AgentMatchEvent {
   return (
     typeof e === 'object' &&
     e !== null &&
     typeof (e as AgentMatchEvent).session_id === 'string' &&
     typeof (e as AgentMatchEvent).correlation_id === 'string' &&
-    typeof (e as AgentMatchEvent).cohort === 'string'
+    typeof (e as AgentMatchEvent).cohort === 'string' &&
+    typeof (e as AgentMatchEvent).agent_match_score === 'number'
   );
 }
 

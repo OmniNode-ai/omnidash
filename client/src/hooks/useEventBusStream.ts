@@ -448,6 +448,9 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       // Use functional setState to correctly chain with any pending flush updates.
       // If the flush interval just called setEvents() but React hasn't rendered yet,
       // the functional form receives the post-flush state as `prev`, preventing loss.
+      //
+      // Note: seenIdsRef is updated OUTSIDE the updater to avoid ref mutation inside
+      // setState, which React Strict Mode may double-invoke.
       setEvents((prev) => {
         const mergedIds = new Set<string>();
         const merged: ProcessedEvent[] = [];
@@ -471,12 +474,17 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
         merged.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
         const capped = merged.length > maxItems ? merged.slice(0, maxItems) : merged;
 
-        // Rebuild seenIds from the full merged set (not just INITIAL_STATE).
-        // This is a ref mutation inside a setState updater — intentionally idempotent.
-        seenIdsRef.current = new Set(capped.map((e) => e.id));
-
         return capped;
       });
+
+      // Rebuild seenIds outside the setState updater to avoid ref mutation
+      // inside a function that React Strict Mode may double-invoke.
+      // Build from all sources: processed events, pending buffer, and current events.
+      const allIds = new Set<string>();
+      for (const e of processed) allIds.add(e.id);
+      for (const e of pendingEvents) allIds.add(e.id);
+      for (const e of eventsRef.current) allIds.add(e.id);
+      seenIdsRef.current = allIds;
 
       // Merge timestamps: keep existing real-time timestamps, add INITIAL_STATE ones
       const throughputCutoff = now - throughputWindowMs;
@@ -677,9 +685,19 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
           // The server will send INITIAL_STATE with restored data
           break;
 
-        default:
-          // Always warn — silent drops here have caused real bugs (EVENT_BUS_EVENT was missing)
-          console.warn('[EventBusStream] Unhandled WebSocket message type:', wireMessage.type);
+        default: {
+          // Known benign types that may arrive but don't need event processing.
+          // Use debug level to avoid noisy production logs.
+          const KNOWN_IGNORED_TYPES = new Set(['pong', 'heartbeat', 'HEARTBEAT', 'PING', 'ACK']);
+          if (KNOWN_IGNORED_TYPES.has(wireMessage.type)) {
+            // eslint-disable-next-line no-console
+            console.debug('[EventBusStream] Ignored known message type:', wireMessage.type);
+          } else {
+            // Truly unexpected types still warn — silent drops have caused real bugs
+            console.warn('[EventBusStream] Unhandled WebSocket message type:', wireMessage.type);
+          }
+          break;
+        }
       }
     },
     [handleInitialState, processAndIngest, log]

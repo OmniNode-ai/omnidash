@@ -33,6 +33,10 @@ const router = Router();
 // Helpers
 // ============================================================================
 
+/** Maximum allowed window sizes to prevent expensive full-table scans. */
+const MAX_WINDOW_DAYS = 365;
+const MAX_WINDOW_HOURS = 8760; // 365 days in hours
+
 /** Parse a time window string (e.g. '24h', '7d') into a Date cutoff. */
 function parseWindow(window: string): Date {
   const now = Date.now();
@@ -43,9 +47,25 @@ function parseWindow(window: string): Date {
   }
   const value = parseInt(match[1], 10);
   const unit = match[2];
+
+  // Enforce maximum bounds to prevent expensive full-table scans
+  if (unit === 'd' && value > MAX_WINDOW_DAYS) {
+    return new Date(now - MAX_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  }
+  if (unit === 'h' && value > MAX_WINDOW_HOURS) {
+    return new Date(now - MAX_WINDOW_HOURS * 60 * 60 * 1000);
+  }
+
   const ms = unit === 'd' ? value * 24 * 60 * 60 * 1000 : value * 60 * 60 * 1000;
   return new Date(now - ms);
 }
+
+/**
+ * Predefined SQL date_trunc precision fragments.
+ * Avoids sql.raw() interpolation for bucket intervals.
+ */
+const TRUNC_DAY = sql`date_trunc('day'`;
+const TRUNC_HOUR = sql`date_trunc('hour'`;
 
 // ============================================================================
 // Routes
@@ -182,12 +202,13 @@ router.get('/latency/heatmap', async (req, res) => {
       return res.json({ buckets: [], window: windowParam } satisfies LatencyHeatmapResponse);
     }
 
-    // Determine bucket interval based on window size
-    const bucketInterval = windowParam.endsWith('d') ? '1 day' : '1 hour';
+    // Determine date_trunc precision based on window size (safe SQL fragments, no sql.raw)
+    const trunc = windowParam.endsWith('d') ? TRUNC_DAY : TRUNC_HOUR;
+    const bucketExpr = sql`${trunc}, ${latencyBreakdowns.createdAt})`;
 
     const rows = await db
       .select({
-        bucket: sql<string>`date_trunc(${sql.raw(`'${bucketInterval === '1 day' ? 'day' : 'hour'}'`)}, ${latencyBreakdowns.createdAt})::text`,
+        bucket: sql<string>`${bucketExpr}::text`,
         p50: sql<
           string | null
         >`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${latencyBreakdowns.userVisibleLatencyMs})`,
@@ -201,12 +222,8 @@ router.get('/latency/heatmap', async (req, res) => {
       })
       .from(latencyBreakdowns)
       .where(gte(latencyBreakdowns.createdAt, cutoff))
-      .groupBy(
-        sql`date_trunc(${sql.raw(`'${bucketInterval === '1 day' ? 'day' : 'hour'}'`)}, ${latencyBreakdowns.createdAt})`
-      )
-      .orderBy(
-        sql`date_trunc(${sql.raw(`'${bucketInterval === '1 day' ? 'day' : 'hour'}'`)}, ${latencyBreakdowns.createdAt})`
-      );
+      .groupBy(bucketExpr)
+      .orderBy(bucketExpr);
 
     const buckets: LatencyBucket[] = rows.map((r) => ({
       bucket: r.bucket ?? '',
@@ -237,33 +254,32 @@ router.get('/patterns/volume', async (req, res) => {
       return res.json({ points: [], window: windowParam } satisfies PatternVolumeResponse);
     }
 
-    const bucketInterval = windowParam.endsWith('d') ? 'day' : 'hour';
+    // Determine date_trunc precision (safe SQL fragments, no sql.raw)
+    const trunc = windowParam.endsWith('d') ? TRUNC_DAY : TRUNC_HOUR;
+    const patternBucket = sql`${trunc}, ${patternHitRates.createdAt})`;
+    const injectionBucket = sql`${trunc}, ${injectionEffectiveness.createdAt})`;
 
     // Pattern hits per bucket
     const patternRows = await db
       .select({
-        bucket: sql<string>`date_trunc(${sql.raw(`'${bucketInterval}'`)}, ${patternHitRates.createdAt})::text`,
+        bucket: sql<string>`${patternBucket}::text`,
         patterns_matched: sql<number>`count(DISTINCT ${patternHitRates.patternId})::int`,
       })
       .from(patternHitRates)
       .where(gte(patternHitRates.createdAt, cutoff))
-      .groupBy(sql`date_trunc(${sql.raw(`'${bucketInterval}'`)}, ${patternHitRates.createdAt})`)
-      .orderBy(sql`date_trunc(${sql.raw(`'${bucketInterval}'`)}, ${patternHitRates.createdAt})`);
+      .groupBy(patternBucket)
+      .orderBy(patternBucket);
 
     // Injections per bucket
     const injectionRows = await db
       .select({
-        bucket: sql<string>`date_trunc(${sql.raw(`'${bucketInterval}'`)}, ${injectionEffectiveness.createdAt})::text`,
+        bucket: sql<string>`${injectionBucket}::text`,
         injections: sql<number>`count(*)::int`,
       })
       .from(injectionEffectiveness)
       .where(gte(injectionEffectiveness.createdAt, cutoff))
-      .groupBy(
-        sql`date_trunc(${sql.raw(`'${bucketInterval}'`)}, ${injectionEffectiveness.createdAt})`
-      )
-      .orderBy(
-        sql`date_trunc(${sql.raw(`'${bucketInterval}'`)}, ${injectionEffectiveness.createdAt})`
-      );
+      .groupBy(injectionBucket)
+      .orderBy(injectionBucket);
 
     // Merge by bucket
     const bucketMap = new Map<string, PatternVolumePoint>();
@@ -322,7 +338,18 @@ router.get('/errors/summary', async (_req, res) => {
     // Fetch recent errors for ALL cohorts in a single query using a window
     // function to rank errors per cohort, then filter to top 5 per cohort.
     // This replaces the previous N+1 pattern (one query per cohort).
-    const cohortNames = rows.map((r) => r.cohort);
+    // Cap cohort count to prevent unbounded IN-clause expansion.
+    const MAX_COHORTS_IN_CLAUSE = 100;
+    const allCohortNames = rows.map((r) => r.cohort);
+    const cohortsTruncated = allCohortNames.length > MAX_COHORTS_IN_CLAUSE;
+    const cohortNames = cohortsTruncated
+      ? allCohortNames.slice(0, MAX_COHORTS_IN_CLAUSE)
+      : allCohortNames;
+    if (cohortsTruncated) {
+      console.warn(
+        `[extraction] Cohort count (${allCohortNames.length}) exceeds cap (${MAX_COHORTS_IN_CLAUSE}), using first ${MAX_COHORTS_IN_CLAUSE}`
+      );
+    }
     const recentErrorsByCohort = new Map<
       string,
       Array<{ session_id: string; created_at: string; session_outcome: string | null }>

@@ -40,11 +40,16 @@ export class ExtractionMetricsAggregator {
   /**
    * Handle a context-utilization event.
    * Persists to injection_effectiveness table.
+   *
+   * @param event       - The parsed event payload
+   * @param kafkaOffset - Kafka message offset used as seq for monotonic merge tie-breaking
    */
-  async handleContextUtilization(event: ContextUtilizationEvent): Promise<void> {
+  async handleContextUtilization(event: ContextUtilizationEvent, kafkaOffset = 0): Promise<void> {
     // Monotonic merge gate: reject events older than the last applied
     const eventTime = extractEventTimeMs(event as unknown as Record<string, unknown>);
-    if (!this.monotonicMerge.checkAndUpdate('context-utilization', { eventTime, seq: 0 })) {
+    if (
+      !this.monotonicMerge.checkAndUpdate('context-utilization', { eventTime, seq: kafkaOffset })
+    ) {
       return; // stale event — logged at debug level by the tracker
     }
 
@@ -84,11 +89,14 @@ export class ExtractionMetricsAggregator {
   /**
    * Handle an agent-match event.
    * Persists to injection_effectiveness table with agent match specifics.
+   *
+   * @param event       - The parsed event payload
+   * @param kafkaOffset - Kafka message offset used as seq for monotonic merge tie-breaking
    */
-  async handleAgentMatch(event: AgentMatchEvent): Promise<void> {
+  async handleAgentMatch(event: AgentMatchEvent, kafkaOffset = 0): Promise<void> {
     // Monotonic merge gate: reject events older than the last applied
     const eventTime = extractEventTimeMs(event as unknown as Record<string, unknown>);
-    if (!this.monotonicMerge.checkAndUpdate('agent-match', { eventTime, seq: 0 })) {
+    if (!this.monotonicMerge.checkAndUpdate('agent-match', { eventTime, seq: kafkaOffset })) {
       return; // stale event — logged at debug level by the tracker
     }
 
@@ -119,11 +127,14 @@ export class ExtractionMetricsAggregator {
   /**
    * Handle a latency-breakdown event.
    * Persists to latency_breakdowns table.
+   *
+   * @param event       - The parsed event payload
+   * @param kafkaOffset - Kafka message offset used as seq for monotonic merge tie-breaking
    */
-  async handleLatencyBreakdown(event: LatencyBreakdownEvent): Promise<void> {
+  async handleLatencyBreakdown(event: LatencyBreakdownEvent, kafkaOffset = 0): Promise<void> {
     // Monotonic merge gate: reject events older than the last applied
     const eventTime = extractEventTimeMs(event as unknown as Record<string, unknown>);
-    if (!this.monotonicMerge.checkAndUpdate('latency-breakdown', { eventTime, seq: 0 })) {
+    if (!this.monotonicMerge.checkAndUpdate('latency-breakdown', { eventTime, seq: kafkaOffset })) {
       return; // stale event — logged at debug level by the tracker
     }
 

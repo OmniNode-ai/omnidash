@@ -133,7 +133,6 @@ async function readLatest(topic: string): Promise<{ timestamp: number; keys: str
   try {
     await admin.connect();
     const offsets = await admin.fetchTopicOffsets(topic);
-    await admin.disconnect();
 
     const p0 = offsets.find((o) => o.partition === 0);
     if (!p0 || parseInt(p0.high, 10) === 0) return null;
@@ -174,7 +173,18 @@ async function readLatest(topic: string): Promise<{ timestamp: number; keys: str
       await consumer.stop();
       await consumer.disconnect();
     } catch {
-      // best-effort
+      // best-effort consumer cleanup
+    }
+    try {
+      // Clean up the ephemeral consumer group to avoid leaking groups on the broker
+      await admin.deleteGroups([groupId]);
+    } catch {
+      // best-effort group cleanup — group may already be gone
+    }
+    try {
+      await admin.disconnect();
+    } catch {
+      // best-effort admin cleanup
     }
   }
 }
