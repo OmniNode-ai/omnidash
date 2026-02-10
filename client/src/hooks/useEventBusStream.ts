@@ -1109,6 +1109,8 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     timestampsRef.current = [];
     setErrors([]);
     setLastError(null);
+    setLastBurstTriggeredAt(0);
+    setLastErrorSpikeTriggeredAt(0);
     setStats({
       totalReceived: 0,
       totalDeduped: 0,
