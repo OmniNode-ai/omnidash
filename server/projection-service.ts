@@ -294,7 +294,11 @@ export class ProjectionService extends EventEmitter {
    */
   reset(newInitialSeq?: number): void {
     for (const view of this.views.values()) {
-      view.reset();
+      try {
+        view.reset();
+      } catch (err) {
+        console.error(`[projection] View "${view.viewId}" threw during reset:`, err);
+      }
     }
     this.ingestSeqCounter = newInitialSeq ?? 1;
   }

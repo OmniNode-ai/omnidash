@@ -531,7 +531,7 @@ describe('ProjectionService', () => {
       expect(service.currentSeq).toBe(1); // no sequences assigned
     });
 
-    it('should not throw if a view applyEvent throws', () => {
+    it('should not throw if a view applyEvent throws and should emit projection-error', () => {
       const badView: ProjectionView<unknown> = {
         viewId: 'bad-view',
         getSnapshot: () => ({ viewId: 'bad-view', cursor: 0, snapshotTimeMs: 0, payload: null }),
@@ -544,8 +544,19 @@ describe('ProjectionService', () => {
 
       service.registerView(badView);
 
+      const errorHandler = vi.fn();
+      service.on('projection-error', errorHandler);
+
       // The service should catch the error and continue (fault isolation)
       expect(() => service.ingest(rawEvent())).not.toThrow();
+
+      // Should also emit projection-error for observability
+      expect(errorHandler).toHaveBeenCalledOnce();
+      expect(errorHandler).toHaveBeenCalledWith({
+        viewId: 'bad-view',
+        ingestSeq: 1,
+        error: 'boom',
+      });
     });
 
     it('should continue routing to remaining views after one throws', () => {
@@ -580,6 +591,30 @@ describe('ProjectionService', () => {
       expect(acceptor.appliedCount).toBe(1);
     });
 
+    it('should continue resetting remaining views if one throws during reset', () => {
+      const badView: ProjectionView<unknown> = {
+        viewId: 'reset-boom',
+        getSnapshot: () => ({ viewId: 'reset-boom', cursor: 0, snapshotTimeMs: 0, payload: null }),
+        getEventsSince: () => ({ viewId: 'reset-boom', cursor: 0, snapshotTimeMs: 0, events: [] }),
+        applyEvent: () => true,
+        reset: () => {
+          throw new Error('reset-failure');
+        },
+      };
+      const goodView = new TestView('reset-ok');
+
+      service.registerView(badView);
+      service.registerView(goodView);
+
+      service.ingest(rawEvent());
+      expect(goodView.appliedCount).toBe(1);
+
+      // reset should not throw even when one view fails
+      expect(() => service.reset()).not.toThrow();
+      expect(goodView.appliedCount).toBe(0);
+      expect(service.currentSeq).toBe(1);
+    });
+
     it('should maintain view registry across resets', () => {
       service.registerView(new TestView('persistent'));
       service.reset();
@@ -597,6 +632,14 @@ describe('ProjectionService', () => {
     it('should not set eventTimeMissing when eventTimeMs is provided', () => {
       const event = service.ingest({ eventTimeMs: 1700000000000 });
       expect(event.eventTimeMissing).toBeUndefined();
+    });
+
+    it('should not set eventTimeMissing when eventTimeMs is explicitly 0', () => {
+      // eventTimeMs: 0 is a valid caller-provided timestamp (epoch)
+      // Should NOT be treated as missing — caller explicitly set it
+      const event = service.ingest({ eventTimeMs: 0 });
+      expect(event.eventTimeMissing).toBeUndefined();
+      expect(event.eventTimeMs).toBe(0);
     });
 
     it('should not set eventTimeMissing when payload contains a timestamp', () => {
