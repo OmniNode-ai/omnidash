@@ -368,7 +368,8 @@ router.get('/errors/summary', async (_req, res) => {
               ORDER BY ${injectionEffectiveness.createdAt} DESC
             ) AS rn
           FROM ${injectionEffectiveness}
-          WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL
+          WHERE ${injectionEffectiveness.createdAt} >= ${cutoff90d}
+            AND ${injectionEffectiveness.sessionOutcome} IS NOT NULL
             AND ${injectionEffectiveness.sessionOutcome} != 'success'
             AND ${injectionEffectiveness.cohort} IN (${sql.join(
               cohortNames.map((c) => sql`${c}`),
