@@ -29,6 +29,24 @@ import { playbackEventEmitter, type PlaybackWSMessage } from './playback-events'
 import { ENVIRONMENT_PREFIXES } from '@shared/topics';
 
 /**
+ * Wrap an async function so that rejections are caught and logged.
+ * Node's EventEmitter does NOT await async handlers — a thrown error
+ * becomes an unhandled promise rejection. This wrapper guarantees
+ * that errors are caught even if future edits accidentally move code
+ * outside of an inner try/catch.
+ */
+function safeAsyncHandler<T extends unknown[]>(
+  label: string,
+  fn: (...args: T) => Promise<void>
+): (...args: T) => void {
+  return (...args: T) => {
+    fn(...args).catch((err) => {
+      console.error(`[WebSocket] Unhandled error in ${label}:`, err);
+    });
+  };
+}
+
+/**
  * Structural tokens to strip when extracting action from ONEX canonical topics.
  * These appear in the topic path but don't carry semantic meaning for display.
  */
@@ -400,12 +418,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
     // After notifying clients to clear their state, send fresh initial state with restored data.
     // Query PostgreSQL for full event set (same path as connection handler) so all 197+ topics
     // are included, not just EventConsumer's ~30 topic in-memory buffer.
-    //
-    // Pattern: void setTimeout(async () => { try { ... } catch { ... } })
-    // setTimeout discards the async return value; `void` suppresses the no-floating-promises lint.
-    // The entire async body MUST be wrapped in try/catch to prevent unhandled rejections.
-    void setTimeout(async () => {
-      try {
+    // Small delay (100ms) ensures DEMO_STATE_RESTORED is processed first.
+    void setTimeout(
+      safeAsyncHandler('demo-restore', async () => {
         console.log('[WebSocket] Demo mode: broadcasting restored INITIAL_STATE');
         const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
         const legacyActions = eventConsumer.getRecentActions();
@@ -426,14 +441,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
           },
           'all'
         );
-      } catch (error) {
-        try {
-          console.error('[WebSocket] Error broadcasting restored INITIAL_STATE:', error);
-        } catch {
-          /* prevent double-fault */
-        }
-      }
-    }, 100); // Small delay to ensure DEMO_STATE_RESTORED is processed first
+      }),
+      100
+    );
   });
 
   registerEventListener('stateSnapshotted', () => {
@@ -668,175 +678,183 @@ export function setupWebSocket(httpServer: HTTPServer) {
   console.log('[WebSocket] PlaybackDataSource listener registered for demo playback');
 
   // Handle WebSocket connections
-  wss.on('connection', async (ws: WebSocket, request: IncomingMessage) => {
-    console.log('WebSocket client connected from', request.socket.remoteAddress);
+  wss.on(
+    'connection',
+    safeAsyncHandler('connection', async (ws: WebSocket, request: IncomingMessage) => {
+      console.log('WebSocket client connected from', request.socket.remoteAddress);
 
-    // Initialize client data
-    const clientData: ClientData = {
-      ws,
-      subscriptions: new Set(['all']), // Subscribe to all by default
-      lastPing: new Date(),
-      isAlive: true,
-      missedPings: 0,
-    };
+      // Initialize client data
+      const clientData: ClientData = {
+        ws,
+        subscriptions: new Set(['all']), // Subscribe to all by default
+        lastPing: new Date(),
+        isAlive: true,
+        missedPings: 0,
+      };
 
-    clients.set(ws, clientData);
+      clients.set(ws, clientData);
 
-    // Entire async body wrapped in try/catch: EventEmitter does NOT await the async
-    // connection handler, so any uncaught throw becomes an unhandled promise rejection.
-    try {
-      // Send welcome message (guard readyState in case socket closes between connect and here)
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(
-          JSON.stringify({
-            type: 'CONNECTED',
-            message: 'Connected to Omnidash real-time event stream',
-            timestamp: new Date().toISOString(),
-          })
-        );
-      }
-
-      // Send initial state by querying PostgreSQL for latest events across ALL topics.
-      // This ensures events from EventBusDataSource's 197+ topics persist across reloads.
-      const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
-
-      // Get legacy data for backward compatibility with other dashboards
-      const legacyActions = eventConsumer.getRecentActions();
-      const legacyRouting = eventConsumer.getRoutingDecisions();
-
-      // Combine real actions with legacy actions (real events take priority)
-      // Real events are more recent and accurate for Event Bus Monitor
-      const combinedActions = realActions.length > 0 ? realActions : legacyActions;
-
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(
-          JSON.stringify({
-            type: 'INITIAL_STATE',
-            data: {
-              metrics: eventConsumer.getAgentMetrics(),
-              recentActions: combinedActions,
-              routingDecisions: legacyRouting,
-              recentTransformations: eventConsumer.getRecentTransformations(),
-              performanceStats: eventConsumer.getPerformanceStats(),
-              health: eventConsumer.getHealthStatus(),
-              registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
-              nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-              eventBusEvents: eventBusEvents,
-            },
-            timestamp: new Date().toISOString(),
-          })
-        );
-      }
-    } catch (error) {
-      console.error('[WebSocket] Error during client connection setup:', error);
-    }
-
-    // Handle pong responses
-    ws.on('pong', () => {
-      const client = clients.get(ws);
-      if (client) {
-        client.isAlive = true;
-        client.lastPing = new Date();
-      }
-    });
-
-    // Handle client messages (for subscriptions/filtering)
-    // Async handler's promise is not awaited by EventEmitter; the outer try/catch prevents unhandled rejections.
-    ws.on('message', async (data: WebSocket.Data) => {
+      // Entire async body wrapped in try/catch: EventEmitter does NOT await the async
+      // connection handler, so any uncaught throw becomes an unhandled promise rejection.
       try {
-        const rawMessage = JSON.parse(data.toString());
-
-        // Validate message against schema
-        const parseResult = WebSocketMessageSchema.safeParse(rawMessage);
-
-        if (!parseResult.success) {
-          const errorMessage = parseResult.error.errors
-            .map((e) => `${e.path.join('.')}: ${e.message}`)
-            .join('; ');
-          console.warn('Invalid WebSocket message received:', errorMessage);
+        // Send welcome message (guard readyState in case socket closes between connect and here)
+        if (ws.readyState === WebSocket.OPEN) {
           ws.send(
             JSON.stringify({
-              type: 'ERROR',
-              message: `Invalid message: ${errorMessage}`,
-              validActions: ['subscribe', 'unsubscribe', 'ping', 'getState'],
-              validTopics: VALID_TOPICS,
+              type: 'CONNECTED',
+              message: 'Connected to Omnidash real-time event stream',
               timestamp: new Date().toISOString(),
             })
           );
-          return;
         }
 
-        const message = parseResult.data;
+        // Send initial state by querying PostgreSQL for latest events across ALL topics.
+        // This ensures events from EventBusDataSource's 197+ topics persist across reloads.
+        const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
 
-        switch (message.action) {
-          case 'subscribe':
-            handleSubscription(ws, message.topics);
-            break;
-          case 'unsubscribe':
-            handleUnsubscription(ws, message.topics);
-            break;
-          case 'ping':
-            ws.send(JSON.stringify({ type: 'PONG', timestamp: new Date().toISOString() }));
-            break;
-          case 'getState': {
-            // Send current state on demand by querying PostgreSQL
-            const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
+        // Get legacy data for backward compatibility with other dashboards
+        const legacyActions = eventConsumer.getRecentActions();
+        const legacyRouting = eventConsumer.getRoutingDecisions();
 
-            const legacyActions = eventConsumer.getRecentActions();
-            const combinedActions = realActions.length > 0 ? realActions : legacyActions;
+        // Combine real actions with legacy actions (real events take priority)
+        // Real events are more recent and accurate for Event Bus Monitor
+        const combinedActions = realActions.length > 0 ? realActions : legacyActions;
 
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({
+              type: 'INITIAL_STATE',
+              data: {
+                metrics: eventConsumer.getAgentMetrics(),
+                recentActions: combinedActions,
+                routingDecisions: legacyRouting,
+                recentTransformations: eventConsumer.getRecentTransformations(),
+                performanceStats: eventConsumer.getPerformanceStats(),
+                health: eventConsumer.getHealthStatus(),
+                registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
+                nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+                eventBusEvents: eventBusEvents,
+              },
+              timestamp: new Date().toISOString(),
+            })
+          );
+        }
+      } catch (error) {
+        console.error('[WebSocket] Error during client connection setup:', error);
+      }
+
+      // Handle pong responses
+      ws.on('pong', () => {
+        const client = clients.get(ws);
+        if (client) {
+          client.isAlive = true;
+          client.lastPing = new Date();
+        }
+      });
+
+      // Handle client messages (for subscriptions/filtering)
+      ws.on(
+        'message',
+        safeAsyncHandler('message', async (data: WebSocket.Data) => {
+          try {
+            const rawMessage = JSON.parse(data.toString());
+
+            // Validate message against schema
+            const parseResult = WebSocketMessageSchema.safeParse(rawMessage);
+
+            if (!parseResult.success) {
+              const errorMessage = parseResult.error.errors
+                .map((e) => `${e.path.join('.')}: ${e.message}`)
+                .join('; ');
+              console.warn('Invalid WebSocket message received:', errorMessage);
+              ws.send(
+                JSON.stringify({
+                  type: 'ERROR',
+                  message: `Invalid message: ${errorMessage}`,
+                  validActions: ['subscribe', 'unsubscribe', 'ping', 'getState'],
+                  validTopics: VALID_TOPICS,
+                  timestamp: new Date().toISOString(),
+                })
+              );
+              return;
+            }
+
+            const message = parseResult.data;
+
+            switch (message.action) {
+              case 'subscribe':
+                handleSubscription(ws, message.topics);
+                break;
+              case 'unsubscribe':
+                handleUnsubscription(ws, message.topics);
+                break;
+              case 'ping':
+                ws.send(JSON.stringify({ type: 'PONG', timestamp: new Date().toISOString() }));
+                break;
+              case 'getState': {
+                // Send current state on demand by querying PostgreSQL
+                const { recentActions: realActions, eventBusEvents } =
+                  await getEventsForInitialState();
+
+                const legacyActions = eventConsumer.getRecentActions();
+                const combinedActions = realActions.length > 0 ? realActions : legacyActions;
+
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(
+                    JSON.stringify({
+                      type: 'CURRENT_STATE',
+                      data: {
+                        metrics: eventConsumer.getAgentMetrics(),
+                        recentActions: combinedActions,
+                        routingDecisions: eventConsumer.getRoutingDecisions(),
+                        recentTransformations: eventConsumer.getRecentTransformations(),
+                        performanceStats: eventConsumer.getPerformanceStats(),
+                        health: eventConsumer.getHealthStatus(),
+                        registeredNodes: transformNodesToSnakeCase(
+                          eventConsumer.getRegisteredNodes()
+                        ),
+                        nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+                        eventBusEvents: eventBusEvents,
+                      },
+                      timestamp: new Date().toISOString(),
+                    })
+                  );
+                }
+                break;
+              }
+            }
+          } catch (error) {
+            const errorMessage =
+              error instanceof SyntaxError
+                ? 'Invalid JSON format'
+                : `WebSocket message handler error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            console.error('[WebSocket] Message handler error:', error);
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(
                 JSON.stringify({
-                  type: 'CURRENT_STATE',
-                  data: {
-                    metrics: eventConsumer.getAgentMetrics(),
-                    recentActions: combinedActions,
-                    routingDecisions: eventConsumer.getRoutingDecisions(),
-                    recentTransformations: eventConsumer.getRecentTransformations(),
-                    performanceStats: eventConsumer.getPerformanceStats(),
-                    health: eventConsumer.getHealthStatus(),
-                    registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
-                    nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-                    eventBusEvents: eventBusEvents,
-                  },
+                  type: 'ERROR',
+                  message: errorMessage,
                   timestamp: new Date().toISOString(),
                 })
               );
             }
-            break;
           }
-        }
-      } catch (error) {
-        const errorMessage =
-          error instanceof SyntaxError
-            ? 'Invalid JSON format'
-            : `WebSocket message handler error: ${error instanceof Error ? error.message : 'Unknown error'}`;
-        console.error('[WebSocket] Message handler error:', error);
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(
-            JSON.stringify({
-              type: 'ERROR',
-              message: errorMessage,
-              timestamp: new Date().toISOString(),
-            })
-          );
-        }
-      }
-    });
+        })
+      );
 
-    // Handle client disconnection
-    ws.on('close', () => {
-      console.log('WebSocket client disconnected');
-      clients.delete(ws);
-    });
+      // Handle client disconnection
+      ws.on('close', () => {
+        console.log('WebSocket client disconnected');
+        clients.delete(ws);
+      });
 
-    // Handle errors
-    ws.on('error', (error: Error) => {
-      console.error('WebSocket client error:', error);
-      clients.delete(ws);
-    });
-  });
+      // Handle errors
+      ws.on('error', (error: Error) => {
+        console.error('WebSocket client error:', error);
+        clients.delete(ws);
+      });
+    })
+  );
 
   // Handle subscription updates
   function handleSubscription(ws: WebSocket, topics: ValidTopic | ValidTopic[] | undefined) {

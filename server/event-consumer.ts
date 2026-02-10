@@ -1093,7 +1093,15 @@ export class EventConsumer extends EventEmitter {
           await this.preloadFromDatabase();
           intentLogger.info('Preloaded historical data from PostgreSQL');
         } catch (e) {
-          console.warn('[EventConsumer] Preload skipped due to error:', e);
+          // IMPORTANT: With fromBeginning: false, a fresh consumer group defaults
+          // to 'latest' and skips all historical events. If the DB preload also
+          // fails, the dashboard will show zero events until new Kafka messages
+          // arrive. This is a known trade-off — logging at error level to ensure
+          // visibility in production monitoring.
+          console.error(
+            '[EventConsumer] DB preload failed — dashboard may show no historical data until new Kafka events arrive:',
+            e
+          );
         }
       }
 
@@ -1519,8 +1527,11 @@ export class EventConsumer extends EventEmitter {
         const excess = this.liveEventBusEvents.length - MAX_LIVE_EVENT_BUS_EVENTS;
         this.liveEventBusEvents.splice(0, excess);
       }
-    } catch {
-      // Non-critical — don't let capture failures affect event processing
+    } catch (err) {
+      // Non-critical — don't let capture failures affect event processing.
+      // Log at debug level so systematic issues (e.g. serialization bugs)
+      // are visible in diagnostic output without flooding production logs.
+      console.debug('[EventConsumer] captureLiveEventBusEvent failed:', err);
     }
   }
 

@@ -160,49 +160,56 @@ export interface LatencyBreakdownEvent {
 // ============================================================================
 
 /**
- * Narrow an unknown Kafka payload to a ContextUtilizationEvent.
- *
- * Validates the required base fields (session_id, correlation_id, cohort).
- * Optional fields like `utilization_score` are NOT required here — the caller
- * discriminates event types via topic-specific switch cases, so the type guard
- * only needs to validate structural correctness. Requiring optional fields
- * would silently drop valid events that omit them.
+ * Base structural check shared by all extraction event type guards.
+ * Validates that the payload is a non-null object with a string `session_id`
+ * and `cohort`. Callers add type-specific field checks on top.
  */
-export function isContextUtilizationEvent(e: unknown): e is ContextUtilizationEvent {
+function isExtractionBaseEvent(e: unknown): e is { session_id: string; cohort: string } {
   return (
     typeof e === 'object' &&
     e !== null &&
-    typeof (e as ContextUtilizationEvent).session_id === 'string' &&
-    typeof (e as ContextUtilizationEvent).correlation_id === 'string' &&
-    typeof (e as ContextUtilizationEvent).cohort === 'string'
+    typeof (e as Record<string, unknown>).session_id === 'string' &&
+    typeof (e as Record<string, unknown>).cohort === 'string'
+  );
+}
+
+/**
+ * Narrow an unknown Kafka payload to a ContextUtilizationEvent.
+ *
+ * Validates base fields plus `correlation_id` (required for this event type).
+ * Optional fields like `utilization_score` are NOT required — the caller
+ * discriminates event types via topic-specific switch cases, so the type guard
+ * only needs to validate structural correctness.
+ */
+export function isContextUtilizationEvent(e: unknown): e is ContextUtilizationEvent {
+  return (
+    isExtractionBaseEvent(e) && typeof (e as Record<string, unknown>).correlation_id === 'string'
   );
 }
 
 /**
  * Narrow an unknown Kafka payload to an AgentMatchEvent.
  *
- * Validates the required base fields (session_id, correlation_id, cohort).
- * Optional fields like `agent_match_score` are NOT required — the caller
- * discriminates via topic-specific switch cases, so the guard only validates
- * structural correctness. Requiring optional fields would silently drop events.
+ * Validates base fields plus `correlation_id`. Additionally checks for
+ * `agent_match_score` or `agent_name` to discriminate from
+ * ContextUtilizationEvent, which shares the same base fields.
+ * At least one agent-match-specific field must be present.
  */
 export function isAgentMatchEvent(e: unknown): e is AgentMatchEvent {
+  if (!isExtractionBaseEvent(e)) return false;
+  const obj = e as Record<string, unknown>;
   return (
-    typeof e === 'object' &&
-    e !== null &&
-    typeof (e as AgentMatchEvent).session_id === 'string' &&
-    typeof (e as AgentMatchEvent).correlation_id === 'string' &&
-    typeof (e as AgentMatchEvent).cohort === 'string'
+    typeof obj.correlation_id === 'string' &&
+    (typeof obj.agent_match_score === 'number' || typeof obj.agent_name === 'string')
   );
 }
 
-/** Narrow an unknown Kafka payload to a LatencyBreakdownEvent. */
+/**
+ * Narrow an unknown Kafka payload to a LatencyBreakdownEvent.
+ *
+ * Validates base fields plus `prompt_id` (unique to latency events,
+ * distinguishing from context-utilization and agent-match events).
+ */
 export function isLatencyBreakdownEvent(e: unknown): e is LatencyBreakdownEvent {
-  return (
-    typeof e === 'object' &&
-    e !== null &&
-    typeof (e as LatencyBreakdownEvent).session_id === 'string' &&
-    typeof (e as LatencyBreakdownEvent).prompt_id === 'string' &&
-    typeof (e as LatencyBreakdownEvent).cohort === 'string'
-  );
+  return isExtractionBaseEvent(e) && typeof (e as Record<string, unknown>).prompt_id === 'string';
 }

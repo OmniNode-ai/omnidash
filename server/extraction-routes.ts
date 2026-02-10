@@ -42,7 +42,9 @@ function parseWindow(window: string): Date {
   const now = Date.now();
   const match = window.match(/^(\d+)(h|d)$/);
   if (!match) {
-    // Default to 24 hours
+    console.warn(
+      `[extraction] Unrecognized time window format "${window}", defaulting to 24h. Supported: <number>h or <number>d`
+    );
     return new Date(now - 24 * 60 * 60 * 1000);
   }
   const value = parseInt(match[1], 10);
@@ -351,7 +353,7 @@ router.get('/errors/summary', async (_req, res) => {
     // function to rank errors per cohort, then filter to top 5 per cohort.
     // This replaces the previous N+1 pattern (one query per cohort).
     // Cap cohort count to prevent unbounded IN-clause expansion.
-    const MAX_COHORTS_IN_CLAUSE = 100;
+    const MAX_COHORTS_IN_CLAUSE = 50;
     const allCohortNames = rows.map((r) => r.cohort);
     const cohortsTruncated = allCohortNames.length > MAX_COHORTS_IN_CLAUSE;
     const cohortNames = cohortsTruncated

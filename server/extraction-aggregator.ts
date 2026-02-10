@@ -7,13 +7,16 @@
  * Responsibilities:
  * - Persist incoming Kafka events into 3 PostgreSQL tables
  * - Maintain lightweight in-memory counters for WebSocket invalidation
- * - Enforce monotonic merge: older events cannot overwrite newer state
+ * - Idempotent writes via ON CONFLICT DO NOTHING (prevents duplicate rows)
  *
  * Design:
  * - PostgreSQL is the single source of truth (API endpoints query DB directly)
  * - In-memory state is only used for WebSocket invalidation signals
  * - On server restart, in-memory counters reset to zero (DB is unaffected)
- * - Monotonic merge prevents stale replayed events from being persisted twice
+ * - Monotonic merge (preventing stale replayed events from overwriting newer
+ *   state) is enforced upstream by MonotonicMergeTracker in EventConsumer,
+ *   NOT by this class. This class relies on PostgreSQL unique constraints
+ *   for idempotency only.
  */
 
 import { tryGetIntelligenceDb } from './storage';
