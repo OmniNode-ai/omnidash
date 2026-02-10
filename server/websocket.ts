@@ -164,26 +164,47 @@ function transformEventToClientAction(event: EventBusEvent): ClientAction {
 }
 
 /**
- * Get real events from EventConsumer's in-memory preload cache for initial state.
- * Returns both transformed client actions and raw events for the Event Bus Monitor.
+ * Get real events for WebSocket INITIAL_STATE by querying PostgreSQL directly.
  *
- * Previously this queried PostgreSQL (event_bus_events) on every WebSocket connection,
- * which was redundant because EventConsumer.preloadFromDatabase() already loaded the
- * same data into memory at startup. Now reads directly from EventConsumer's cache.
+ * EventBusDataSource writes events from 197+ Kafka topics to the DB, while
+ * EventConsumer's in-memory buffer only covers ~30 topics. Querying the DB
+ * ensures INITIAL_STATE includes ALL event types — not just those EventConsumer
+ * tracks — so events persist across page reloads.
+ *
+ * Falls back to EventConsumer's in-memory buffer if the DB query fails.
  */
-function getEventsForInitialState(): {
+async function getEventsForInitialState(): Promise<{
   recentActions: ClientAction[];
   eventBusEvents: EventBusEvent[];
-} {
-  const events = eventConsumer.getPreloadedEventBusEvents();
+}> {
+  // Primary path: query PostgreSQL for latest events across ALL topics
+  const dataSource = getEventBusDataSource();
+  if (dataSource) {
+    try {
+      const events = await dataSource.queryEvents({
+        limit: 200,
+        order_by: 'timestamp',
+        order_direction: 'desc',
+      });
 
+      if (events.length > 0) {
+        const recentActions = events.map(transformEventToClientAction);
+        return { recentActions, eventBusEvents: events };
+      }
+    } catch (error) {
+      console.error(
+        '[WebSocket] Failed to query DB for initial state, falling back to in-memory:',
+        error
+      );
+    }
+  }
+
+  // Fallback: use EventConsumer's in-memory buffer (covers only ~30 topics)
+  const events = eventConsumer.getPreloadedEventBusEvents();
   if (events.length === 0) {
     return { recentActions: [], eventBusEvents: [] };
   }
-
-  // Transform to client format
   const recentActions = events.map(transformEventToClientAction);
-
   return { recentActions, eventBusEvents: events };
 }
 
@@ -376,17 +397,27 @@ export function setupWebSocket(httpServer: HTTPServer) {
     console.log('[WebSocket] Demo mode: state restored - broadcasting DEMO_STATE_RESTORED');
     broadcast('DEMO_STATE_RESTORED', { timestamp: Date.now() }, 'all');
 
-    // After notifying clients to clear their state, send fresh initial state with restored data
-    // This allows the UI to immediately show the live data that was snapshotted before demo
-    setTimeout(() => {
+    // After notifying clients to clear their state, send fresh initial state with restored data.
+    // Query PostgreSQL for full event set (same path as connection handler) so all 197+ topics
+    // are included, not just EventConsumer's ~30 topic in-memory buffer.
+    setTimeout(async () => {
       console.log('[WebSocket] Demo mode: broadcasting restored INITIAL_STATE');
+      const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
+      const legacyActions = eventConsumer.getRecentActions();
+      const combinedActions = realActions.length > 0 ? realActions : legacyActions;
+
       broadcast(
         'INITIAL_STATE',
         {
           metrics: eventConsumer.getAgentMetrics(),
-          recentActions: eventConsumer.getRecentActions(),
+          recentActions: combinedActions,
           routingDecisions: eventConsumer.getRoutingDecisions(),
           recentTransformations: eventConsumer.getRecentTransformations(),
+          performanceStats: eventConsumer.getPerformanceStats(),
+          health: eventConsumer.getHealthStatus(),
+          registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
+          nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+          eventBusEvents: eventBusEvents,
         },
         'all'
       );
@@ -625,7 +656,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
   console.log('[WebSocket] PlaybackDataSource listener registered for demo playback');
 
   // Handle WebSocket connections
-  wss.on('connection', (ws: WebSocket, request: IncomingMessage) => {
+  wss.on('connection', async (ws: WebSocket, request: IncomingMessage) => {
     console.log('WebSocket client connected from', request.socket.remoteAddress);
 
     // Initialize client data
@@ -648,10 +679,10 @@ export function setupWebSocket(httpServer: HTTPServer) {
       })
     );
 
-    // Send initial state from EventConsumer's in-memory cache (no database query).
-    // All data comes from preloadFromDatabase() which ran at startup.
+    // Send initial state by querying PostgreSQL for latest events across ALL topics.
+    // This ensures events from EventBusDataSource's 197+ topics persist across reloads.
     {
-      const { recentActions: realActions, eventBusEvents } = getEventsForInitialState();
+      const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
 
       // Get legacy data for backward compatibility with other dashboards
       const legacyActions = eventConsumer.getRecentActions();
@@ -692,7 +723,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
     });
 
     // Handle client messages (for subscriptions/filtering)
-    ws.on('message', (data: WebSocket.Data) => {
+    ws.on('message', async (data: WebSocket.Data) => {
       try {
         const rawMessage = JSON.parse(data.toString());
 
@@ -729,8 +760,8 @@ export function setupWebSocket(httpServer: HTTPServer) {
             ws.send(JSON.stringify({ type: 'PONG', timestamp: new Date().toISOString() }));
             break;
           case 'getState': {
-            // Send current state on demand from EventConsumer's in-memory cache
-            const { recentActions: realActions, eventBusEvents } = getEventsForInitialState();
+            // Send current state on demand by querying PostgreSQL
+            const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
 
             const legacyActions = eventConsumer.getRecentActions();
             const combinedActions = realActions.length > 0 ? realActions : legacyActions;

@@ -24,7 +24,9 @@ import {
 import { cn } from '@/lib/utils';
 
 // Dashboards ordered by priority - core monitoring dashboards first
+// Ordered by functional group: Infrastructure → Pattern Lifecycle → Quality & Intelligence
 const dashboards = [
+  // -- Infrastructure --
   {
     title: 'Event Bus',
     url: '/events',
@@ -32,28 +34,17 @@ const dashboards = [
     description: 'Real-time Kafka event stream visualization',
   },
   {
-    title: 'Pattern Learning',
-    url: '/patterns',
-    icon: Sparkles,
-    description: 'Code pattern discovery and learning analytics',
-  },
-  {
     title: 'Registry Discovery',
     url: '/discovery',
     icon: Globe,
     description: 'Contract-driven node and service discovery',
   },
+  // -- Pattern Lifecycle (discover → extract → measure) --
   {
-    title: 'Intent Dashboard',
-    url: '/intents',
-    icon: Brain,
-    description: 'Real-time intent classification and analysis',
-  },
-  {
-    title: 'Validation',
-    url: '/validation',
-    icon: ShieldCheck,
-    description: 'Cross-repo validation runs and violation trends',
+    title: 'Pattern Learning',
+    url: '/patterns',
+    icon: Sparkles,
+    description: 'Code pattern discovery and learning analytics',
   },
   {
     title: 'Extraction Pipeline',
@@ -66,6 +57,19 @@ const dashboards = [
     url: '/effectiveness',
     icon: Activity,
     description: 'Injection effectiveness metrics and A/B analysis',
+  },
+  // -- Quality & Intelligence --
+  {
+    title: 'Validation',
+    url: '/validation',
+    icon: ShieldCheck,
+    description: 'Cross-repo validation runs and violation trends',
+  },
+  {
+    title: 'Intent Dashboard',
+    url: '/intents',
+    icon: Brain,
+    description: 'Real-time intent classification and analysis',
   },
   // Hidden: Execution Graph (/graph) - node execution visualization
   // Hidden: Demo Stream (/live-events) - superseded by Event Bus

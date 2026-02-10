@@ -3,6 +3,7 @@
  *
  * Area chart showing pattern matches and injections over time.
  * Uses Recharts for visualization with Carbon Design color tokens.
+ * Legend items are click-to-toggle via the shared ToggleableLegend primitive.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -11,6 +12,8 @@ import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
+import { useToggleableLegend } from '@/hooks/useToggleableLegend';
+import { ToggleableLegend } from '@/components/ToggleableLegend';
 import {
   AreaChart,
   Area,
@@ -31,11 +34,18 @@ function formatBucketLabel(bucket: string): string {
   }
 }
 
+const SERIES_LABELS: Record<string, string> = {
+  injections: 'Injections',
+  patterns_matched: 'Patterns Matched',
+};
+
 interface PatternVolumeChartProps {
   window?: string;
 }
 
 export function PatternVolumeChart({ window: timeWindow = '24h' }: PatternVolumeChartProps) {
+  const legend = useToggleableLegend();
+
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.extraction.volume(timeWindow),
     queryFn: () => extractionSource.patternVolume(timeWindow),
@@ -91,8 +101,9 @@ export function PatternVolumeChart({ window: timeWindow = '24h' }: PatternVolume
                   borderRadius: '6px',
                   fontSize: '12px',
                 }}
+                labelStyle={{ color: 'hsl(var(--foreground))' }}
               />
-              <Legend wrapperStyle={{ fontSize: '11px' }} />
+              <Legend content={<ToggleableLegend legend={legend} labels={SERIES_LABELS} />} />
               <Area
                 type="monotone"
                 dataKey="injections"
@@ -101,6 +112,7 @@ export function PatternVolumeChart({ window: timeWindow = '24h' }: PatternVolume
                 fill="hsl(var(--primary))"
                 fillOpacity={0.15}
                 strokeWidth={1.5}
+                hide={!legend.isActive('injections')}
               />
               <Area
                 type="monotone"
@@ -110,6 +122,7 @@ export function PatternVolumeChart({ window: timeWindow = '24h' }: PatternVolume
                 fill="hsl(142 76% 36%)"
                 fillOpacity={0.15}
                 strokeWidth={1.5}
+                hide={!legend.isActive('patterns_matched')}
               />
             </AreaChart>
           </ResponsiveContainer>

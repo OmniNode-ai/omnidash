@@ -30,7 +30,7 @@ import { PipelineHealthPanel } from '@/components/extraction/PipelineHealthPanel
 import { LatencyHeatmap } from '@/components/extraction/LatencyHeatmap';
 import { PatternVolumeChart } from '@/components/extraction/PatternVolumeChart';
 import { ErrorRatesPanel } from '@/components/extraction/ErrorRatesPanel';
-import type { ExtractionSummary } from '@shared/extraction-types';
+import type { ExtractionSummary as _ExtractionSummary } from '@shared/extraction-types';
 
 // ============================================================================
 // Metric Card Component
@@ -153,18 +153,21 @@ export default function ExtractionDashboard() {
         <MetricCard
           title="Total Injections"
           value={formatNumber(summary?.total_injections)}
+          subtitle="Unique sessions with pattern injection"
           icon={<Zap className="w-4 h-4" />}
           isLoading={summaryLoading}
         />
         <MetricCard
           title="Patterns Matched"
           value={formatNumber(summary?.total_patterns_matched)}
+          subtitle="Distinct patterns matched across all sessions"
           icon={<Activity className="w-4 h-4" />}
           isLoading={summaryLoading}
         />
         <MetricCard
           title="Avg Latency"
           value={formatMs(summary?.avg_latency_ms)}
+          subtitle="End-to-end injection latency, all cohorts"
           icon={<Clock className="w-4 h-4" />}
           isLoading={summaryLoading}
         />
