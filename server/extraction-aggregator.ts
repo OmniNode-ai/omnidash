@@ -7,11 +7,13 @@
  * Responsibilities:
  * - Persist incoming Kafka events into 3 PostgreSQL tables
  * - Maintain lightweight in-memory counters for WebSocket invalidation
+ * - Enforce monotonic merge: older events cannot overwrite newer state
  *
  * Design:
  * - PostgreSQL is the single source of truth (API endpoints query DB directly)
  * - In-memory state is only used for WebSocket invalidation signals
  * - On server restart, in-memory counters reset to zero (DB is unaffected)
+ * - Monotonic merge prevents stale replayed events from being persisted twice
  */
 
 import { tryGetIntelligenceDb } from './storage';
@@ -25,17 +27,27 @@ import type {
   AgentMatchEvent,
   LatencyBreakdownEvent,
 } from '@shared/extraction-types';
+import { MonotonicMergeTracker, extractEventTimeMs } from './monotonic-merge';
 
 export class ExtractionMetricsAggregator {
   /** Lightweight counter for WebSocket invalidation decisions */
   private eventsSinceLastBroadcast = 0;
   private static readonly BROADCAST_THRESHOLD = 1;
 
+  /** Monotonic merge tracker for extraction event types */
+  private monotonicMerge = new MonotonicMergeTracker();
+
   /**
    * Handle a context-utilization event.
    * Persists to injection_effectiveness table.
    */
   async handleContextUtilization(event: ContextUtilizationEvent): Promise<void> {
+    // Monotonic merge gate: reject events older than the last applied
+    const eventTime = extractEventTimeMs(event as unknown as Record<string, unknown>);
+    if (!this.monotonicMerge.checkAndUpdate('context-utilization', { eventTime, seq: 0 })) {
+      return; // stale event — logged at debug level by the tracker
+    }
+
     const db = tryGetIntelligenceDb();
     if (!db) {
       console.warn('[extraction] Database not available, dropping context-utilization event');
@@ -72,6 +84,12 @@ export class ExtractionMetricsAggregator {
    * Persists to injection_effectiveness table with agent match specifics.
    */
   async handleAgentMatch(event: AgentMatchEvent): Promise<void> {
+    // Monotonic merge gate: reject events older than the last applied
+    const eventTime = extractEventTimeMs(event as unknown as Record<string, unknown>);
+    if (!this.monotonicMerge.checkAndUpdate('agent-match', { eventTime, seq: 0 })) {
+      return; // stale event — logged at debug level by the tracker
+    }
+
     const db = tryGetIntelligenceDb();
     if (!db) {
       console.warn('[extraction] Database not available, dropping agent-match event');
@@ -99,6 +117,12 @@ export class ExtractionMetricsAggregator {
    * Persists to latency_breakdowns table.
    */
   async handleLatencyBreakdown(event: LatencyBreakdownEvent): Promise<void> {
+    // Monotonic merge gate: reject events older than the last applied
+    const eventTime = extractEventTimeMs(event as unknown as Record<string, unknown>);
+    if (!this.monotonicMerge.checkAndUpdate('latency-breakdown', { eventTime, seq: 0 })) {
+      return; // stale event — logged at debug level by the tracker
+    }
+
     const db = tryGetIntelligenceDb();
     if (!db) {
       console.warn('[extraction] Database not available, dropping latency-breakdown event');
@@ -132,5 +156,15 @@ export class ExtractionMetricsAggregator {
       return true;
     }
     return false;
+  }
+
+  /** Number of stale events rejected by the monotonic merge tracker. */
+  get rejectedCount(): number {
+    return this.monotonicMerge.rejectedCount;
+  }
+
+  /** Reset the monotonic merge tracker (e.g. for demo mode). */
+  resetMergeTracker(): void {
+    this.monotonicMerge.reset();
   }
 }

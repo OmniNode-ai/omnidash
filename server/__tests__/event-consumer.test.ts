@@ -149,7 +149,7 @@ describe('EventConsumer', () => {
       expect(mockConsumerConnect).toHaveBeenCalled();
       // Verify subscription topics match the shared builder output
       const call = mockConsumerSubscribe.mock.calls[0][0];
-      expect(call.fromBeginning).toBe(true);
+      expect(call.fromBeginning).toBe(false);
       const expectedTopics = buildSubscriptionTopics();
       expect(call.topics).toEqual(expectedTopics);
       expect(mockConsumerRun).toHaveBeenCalled();
@@ -749,6 +749,16 @@ describe('EventConsumer', () => {
     });
 
     it('should prune old actions after 24 hours', async () => {
+      // Add old action FIRST (25 hours ago) - chronological order matters
+      // for monotonic merge (newer events always win)
+      const oldAction = {
+        id: 'action-old',
+        agent_name: 'agent-test',
+        action_type: 'tool_call',
+        action_name: 'write_file',
+        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      };
+
       // Add recent action (current time)
       const recentAction = {
         id: 'action-recent',
@@ -758,23 +768,14 @@ describe('EventConsumer', () => {
         timestamp: new Date().toISOString(),
       };
 
-      // Add old action (25 hours ago)
-      const oldAction = {
-        id: 'action-old',
-        agent_name: 'agent-test',
-        action_type: 'tool_call',
-        action_name: 'write_file',
-        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-      };
-
       await eachMessageHandler({
         topic: 'agent-actions',
-        message: { value: Buffer.from(JSON.stringify(recentAction)) },
+        message: { value: Buffer.from(JSON.stringify(oldAction)) },
       });
 
       await eachMessageHandler({
         topic: 'agent-actions',
-        message: { value: Buffer.from(JSON.stringify(oldAction)) },
+        message: { value: Buffer.from(JSON.stringify(recentAction)) },
       });
 
       // Verify both actions are present
@@ -791,6 +792,15 @@ describe('EventConsumer', () => {
     });
 
     it('should prune old routing decisions after 24 hours', async () => {
+      // Add old decision FIRST (25 hours ago) - chronological order matters
+      // for monotonic merge (newer events always win)
+      const oldDecision = {
+        id: 'decision-old',
+        selected_agent: 'agent-api',
+        confidence_score: 0.85,
+        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      };
+
       // Add recent decision
       const recentDecision = {
         id: 'decision-recent',
@@ -799,22 +809,14 @@ describe('EventConsumer', () => {
         timestamp: new Date().toISOString(),
       };
 
-      // Add old decision (25 hours ago)
-      const oldDecision = {
-        id: 'decision-old',
-        selected_agent: 'agent-api',
-        confidence_score: 0.85,
-        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-      };
-
       await eachMessageHandler({
         topic: 'agent-routing-decisions',
-        message: { value: Buffer.from(JSON.stringify(recentDecision)) },
+        message: { value: Buffer.from(JSON.stringify(oldDecision)) },
       });
 
       await eachMessageHandler({
         topic: 'agent-routing-decisions',
-        message: { value: Buffer.from(JSON.stringify(oldDecision)) },
+        message: { value: Buffer.from(JSON.stringify(recentDecision)) },
       });
 
       // Verify both decisions are present
@@ -831,6 +833,16 @@ describe('EventConsumer', () => {
     });
 
     it('should prune old transformations after 24 hours', async () => {
+      // Add old transformation FIRST (25 hours ago) - chronological order matters
+      // for monotonic merge (newer events always win)
+      const oldTransformation = {
+        id: 'trans-old',
+        source_agent: 'agent-c',
+        target_agent: 'agent-d',
+        success: true,
+        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      };
+
       // Add recent transformation
       const recentTransformation = {
         id: 'trans-recent',
@@ -840,23 +852,14 @@ describe('EventConsumer', () => {
         timestamp: new Date().toISOString(),
       };
 
-      // Add old transformation (25 hours ago)
-      const oldTransformation = {
-        id: 'trans-old',
-        source_agent: 'agent-c',
-        target_agent: 'agent-d',
-        success: true,
-        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-      };
-
       await eachMessageHandler({
         topic: 'agent-transformation-events',
-        message: { value: Buffer.from(JSON.stringify(recentTransformation)) },
+        message: { value: Buffer.from(JSON.stringify(oldTransformation)) },
       });
 
       await eachMessageHandler({
         topic: 'agent-transformation-events',
-        message: { value: Buffer.from(JSON.stringify(oldTransformation)) },
+        message: { value: Buffer.from(JSON.stringify(recentTransformation)) },
       });
 
       // Verify both transformations are present
@@ -873,6 +876,16 @@ describe('EventConsumer', () => {
     });
 
     it('should prune old performance metrics after 24 hours', async () => {
+      // Add old metric FIRST (25 hours ago) - chronological order matters
+      // for monotonic merge (newer events always win)
+      const oldMetric = {
+        id: 'metric-old',
+        query_text: 'old query',
+        routing_duration_ms: 150,
+        cache_hit: false,
+        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      };
+
       // Add recent metric
       const recentMetric = {
         id: 'metric-recent',
@@ -882,23 +895,14 @@ describe('EventConsumer', () => {
         timestamp: new Date().toISOString(),
       };
 
-      // Add old metric (25 hours ago)
-      const oldMetric = {
-        id: 'metric-old',
-        query_text: 'old query',
-        routing_duration_ms: 150,
-        cache_hit: false,
-        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-      };
-
       await eachMessageHandler({
         topic: 'router-performance-metrics',
-        message: { value: Buffer.from(JSON.stringify(recentMetric)) },
+        message: { value: Buffer.from(JSON.stringify(oldMetric)) },
       });
 
       await eachMessageHandler({
         topic: 'router-performance-metrics',
-        message: { value: Buffer.from(JSON.stringify(oldMetric)) },
+        message: { value: Buffer.from(JSON.stringify(recentMetric)) },
       });
 
       // Verify both metrics are present

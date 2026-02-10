@@ -86,6 +86,7 @@ import {
   isAgentMatchEvent,
   isLatencyBreakdownEvent,
 } from '@shared/extraction-types';
+import { MonotonicMergeTracker, extractEventTimeMs, parseOffsetAsSeq } from './monotonic-merge';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 const DEBUG_CANONICAL_EVENTS = process.env.DEBUG_CANONICAL_EVENTS === 'true' || isTestEnv;
@@ -98,6 +99,36 @@ const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
  */
 const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 const SQL_PRELOAD_LIMIT = 2000;
+
+/**
+ * Phase 0 hydration configuration.
+ *
+ * PRELOAD_WINDOW_MINUTES — Only preload events younger than this from PostgreSQL.
+ *   Prevents stale events (3-7 day Kafka retention) from overwriting fresh data.
+ *   Override via env: PRELOAD_WINDOW_MINUTES (default: 60).
+ *
+ * MAX_PRELOAD_EVENTS — Hard cap on the number of events loaded in the fresh window.
+ *   Override via env: MAX_PRELOAD_EVENTS (default: 5000).
+ *
+ * ENABLE_BACKFILL — When true, after the fresh preload, a second query loads older
+ *   events to fill remaining capacity (up to BACKFILL_MAX_EVENTS).
+ *   Off by default to avoid the exact staleness problem this fix addresses.
+ *   Override via env: ENABLE_BACKFILL=true.
+ *
+ * BACKFILL_MAX_EVENTS — Cap for the backfill query when ENABLE_BACKFILL is true.
+ *   Override via env: BACKFILL_MAX_EVENTS (default: 2000).
+ */
+const PRELOAD_WINDOW_MINUTES = parseInt(process.env.PRELOAD_WINDOW_MINUTES || '60', 10);
+const MAX_PRELOAD_EVENTS = parseInt(process.env.MAX_PRELOAD_EVENTS || '5000', 10);
+const ENABLE_BACKFILL = process.env.ENABLE_BACKFILL === 'true'; // default false
+const BACKFILL_MAX_EVENTS = parseInt(process.env.BACKFILL_MAX_EVENTS || '2000', 10);
+
+/**
+ * Maximum number of live (Kafka-consumed) events to retain in the
+ * in-memory buffer. Prevents unbounded memory growth while ensuring
+ * new WebSocket clients see recent events in INITIAL_STATE.
+ */
+const MAX_LIVE_EVENT_BUS_EVENTS = 2000;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
 
@@ -767,6 +798,16 @@ export class EventConsumer extends EventEmitter {
   // Extraction pipeline aggregator (OMN-1804)
   private extractionAggregator = new ExtractionMetricsAggregator();
 
+  // Monotonic merge tracker: ensures newer event_time always wins,
+  // preventing stale DB-preloaded or Kafka-replayed events from
+  // overwriting fresher state. Tracks per-topic positions.
+  private monotonicMerge = new MonotonicMergeTracker();
+
+  // Monotonic arrival counter: used as a fallback seq when Kafka offset
+  // is missing (e.g. in tests or playback). Ensures events received in
+  // order are never rejected when they share the same millisecond timestamp.
+  private arrivalSeq = 0;
+
   // Deduplication cache for idempotency (max 10,000 entries)
   private processedEvents = new LRUCache<string, number>({ max: 10_000 });
 
@@ -798,6 +839,12 @@ export class EventConsumer extends EventEmitter {
   // Exposed via getPreloadedEventBusEvents() so WebSocket INITIAL_STATE
   // can serve them from memory instead of re-querying PostgreSQL.
   private preloadedEventBusEvents: EventBusEvent[] = [];
+
+  // Live event bus events accumulated from Kafka eachMessage handler
+  // since server startup. Combined with preloadedEventBusEvents in
+  // getPreloadedEventBusEvents() so new WebSocket clients always see
+  // both historical (DB) and recent (Kafka) events in INITIAL_STATE.
+  private liveEventBusEvents: EventBusEvent[] = [];
 
   // State snapshot for demo mode - stores live data while playback is active
   private stateSnapshot: {
@@ -1041,13 +1088,20 @@ export class EventConsumer extends EventEmitter {
         }
       }
 
+      // Phase B: Subscribe at committed consumer-group offsets, NOT from the
+      // beginning. Historical data is already covered by the Phase A DB preload.
+      // Using fromBeginning: true would replay 3-7 days of Kafka retention,
+      // causing old events to overwrite fresh dashboard state.
       await this.consumer.subscribe({
         topics: buildSubscriptionTopics(),
-        fromBeginning: true, // Reprocess historical events to populate metrics
+        fromBeginning: false,
       });
+      intentLogger.info(
+        'Phase B: Kafka subscription started at committed group offsets (not from beginning)'
+      );
 
       await this.consumer.run({
-        eachMessage: async ({ topic: rawTopic, message }) => {
+        eachMessage: async ({ topic: rawTopic, partition, message }) => {
           try {
             const event = JSON.parse(message.value?.toString() || '{}');
 
@@ -1055,6 +1109,30 @@ export class EventConsumer extends EventEmitter {
             // so topics match canonical names used by the switch cases below.
             // Legacy flat topics like "agent-actions" have no dot-prefix and pass through.
             const topic = extractSuffix(rawTopic);
+
+            // Capture every Kafka event into the live event bus buffer so new
+            // WebSocket clients receive recent events in INITIAL_STATE, not just
+            // the stale DB snapshot from server startup.
+            this.captureLiveEventBusEvent(event, rawTopic, partition, message);
+
+            // Monotonic merge gate: reject events whose timestamp is older than
+            // the last applied event for this topic. This prevents DB-preloaded
+            // or Kafka-replayed events from overwriting fresher dashboard state.
+            // Note: we still capture into the live buffer above (it has its own
+            // dedup/sort), but we skip handler processing for stale events.
+            const incomingEventTime = extractEventTimeMs(event);
+            // Use Kafka offset as primary seq; fall back to a monotonic arrival
+            // counter when offset is missing (tests, playback injection).
+            const kafkaOffset = parseOffsetAsSeq(message.offset);
+            const incomingSeq = kafkaOffset > 0 ? kafkaOffset : ++this.arrivalSeq;
+            if (
+              !this.monotonicMerge.checkAndUpdate(topic, {
+                eventTime: incomingEventTime,
+                seq: incomingSeq,
+              })
+            ) {
+              return; // stale event — already logged at debug level by the tracker
+            }
 
             intentLogger.debug(`Received event from topic: ${topic}`);
 
@@ -1360,44 +1438,138 @@ export class EventConsumer extends EventEmitter {
     }
   }
 
+  /**
+   * Capture a live Kafka event into the in-memory buffer so it appears in
+   * INITIAL_STATE for new WebSocket clients. This bridges the gap between
+   * the one-time DB preload (which may be stale) and real-time Kafka events
+   * (which previously were only broadcast to already-connected clients).
+   *
+   * The buffer is capped at MAX_LIVE_EVENT_BUS_EVENTS and pruned periodically
+   * by pruneOldData() to prevent unbounded memory growth.
+   */
+  private captureLiveEventBusEvent(
+    event: Record<string, unknown>,
+    rawTopic: string,
+    partition: number,
+    message: KafkaMessage
+  ): void {
+    try {
+      const now = new Date();
+      const eventTimestamp = (event.timestamp as string) || now.toISOString();
+
+      let parsedPayload: Record<string, any>;
+      if (event.payload && typeof event.payload === 'object') {
+        parsedPayload = event.payload as Record<string, any>;
+      } else {
+        // For flat events (legacy format), the entire event IS the payload
+        parsedPayload = event as Record<string, any>;
+      }
+
+      const liveEvent: EventBusEvent = {
+        event_type: (event.event_type as string) || (event.eventType as string) || rawTopic,
+        event_id: (event.event_id as string) || (event.eventId as string) || crypto.randomUUID(),
+        timestamp: eventTimestamp,
+        tenant_id: (event.tenant_id as string) || (event.tenantId as string) || '',
+        namespace: (event.namespace as string) || '',
+        source: (event.source as string) || '',
+        correlation_id:
+          (event.correlation_id as string) || (event.correlationId as string) || undefined,
+        causation_id: (event.causation_id as string) || (event.causationId as string) || undefined,
+        schema_ref: (event.schema_ref as string) || (event.schemaRef as string) || '',
+        payload: parsedPayload,
+        topic: rawTopic,
+        partition,
+        offset: message.offset || '0',
+        processed_at: now,
+        stored_at: now,
+      };
+
+      this.liveEventBusEvents.push(liveEvent);
+
+      // Cap the buffer to prevent unbounded memory growth
+      if (this.liveEventBusEvents.length > MAX_LIVE_EVENT_BUS_EVENTS) {
+        // Remove oldest events (front of array) to stay within budget
+        this.liveEventBusEvents = this.liveEventBusEvents.slice(-MAX_LIVE_EVENT_BUS_EVENTS);
+      }
+    } catch {
+      // Non-critical — don't let capture failures affect event processing
+    }
+  }
+
   private async preloadFromDatabase() {
     try {
-      // Query event_bus_events for the most recent events across ALL topics.
-      // Uses a window function to cap each topic at 200 rows, preventing any
-      // single high-volume topic (e.g. tool-content) from drowning the rest.
-      // Selects all EventBusEvent-relevant columns so preloaded rows can be
-      // served directly to WebSocket INITIAL_STATE (eliminates redundant DB query).
+      const preloadStart = Date.now();
+
+      // ── Phase A: Fresh preload ─────────────────────────────────────────
+      // Query event_bus_events for events within the configured time window.
+      // Uses parameterized interval to prevent SQL injection, a stable
+      // tie-break (id DESC) for deterministic ordering when timestamps
+      // collide, and caps results at MAX_PRELOAD_EVENTS.
       const result = await getIntelligenceDb().execute(
-        sql.raw(`
-        SELECT event_type, event_id, timestamp, tenant_id, namespace, source,
+        sql`SELECT event_type, event_id, timestamp, tenant_id, namespace, source,
                correlation_id, causation_id, schema_ref, payload, topic,
                partition, "offset", processed_at, stored_at
-        FROM (
-          SELECT event_type, event_id, timestamp, tenant_id, namespace, source,
-                 correlation_id, causation_id, schema_ref, payload, topic,
-                 partition, "offset", processed_at, stored_at,
-                 ROW_NUMBER() OVER (PARTITION BY topic ORDER BY timestamp DESC) AS rn
-          FROM event_bus_events
-        ) ranked
-        WHERE rn <= 200
-        ORDER BY timestamp DESC
-        LIMIT ${SQL_PRELOAD_LIMIT};
-      `)
+        FROM event_bus_events
+        WHERE timestamp >= NOW() - (${String(PRELOAD_WINDOW_MINUTES)} || ' minutes')::interval
+        ORDER BY timestamp DESC, id DESC
+        LIMIT ${MAX_PRELOAD_EVENTS}`
       );
 
       const rows = Array.isArray(result) ? result : result?.rows || result || [];
       if (!Array.isArray(rows) || rows.length === 0) {
-        intentLogger.info('Preload: no events found in event_bus_events');
+        intentLogger.info(
+          `Phase A: Preload returned 0 events (window=${PRELOAD_WINDOW_MINUTES}min, limit=${MAX_PRELOAD_EVENTS})`
+        );
         return;
       }
 
+      // ── Phase A logging: Timestamp range diagnostics ───────────────────
+      const timestamps = (rows as Array<Record<string, unknown>>)
+        .map((r) => r.timestamp as string)
+        .filter(Boolean);
+      const oldest = timestamps[timestamps.length - 1] || 'N/A';
+      const newest = timestamps[0] || 'N/A';
+      intentLogger.info(
+        `Phase A: Preload loaded ${rows.length} events, oldest=${oldest}, newest=${newest}, window=${PRELOAD_WINDOW_MINUTES}min`
+      );
+
+      // ── Optional backfill of older events ──────────────────────────────
+      // When ENABLE_BACKFILL=true, load older events beyond the fresh
+      // window to fill remaining capacity. Off by default to avoid the
+      // exact staleness problem this fix addresses.
+      let backfillRows: Array<Record<string, unknown>> = [];
+      if (ENABLE_BACKFILL && rows.length < MAX_PRELOAD_EVENTS) {
+        const remainingCapacity = Math.min(BACKFILL_MAX_EVENTS, MAX_PRELOAD_EVENTS - rows.length);
+        const backfillResult = await getIntelligenceDb().execute(
+          sql`SELECT event_type, event_id, timestamp, tenant_id, namespace, source,
+                 correlation_id, causation_id, schema_ref, payload, topic,
+                 partition, "offset", processed_at, stored_at
+          FROM event_bus_events
+          WHERE timestamp < NOW() - (${String(PRELOAD_WINDOW_MINUTES)} || ' minutes')::interval
+          ORDER BY timestamp DESC, id DESC
+          LIMIT ${remainingCapacity}`
+        );
+        const rawBackfill = Array.isArray(backfillResult)
+          ? backfillResult
+          : backfillResult?.rows || backfillResult || [];
+        if (Array.isArray(rawBackfill)) {
+          backfillRows = rawBackfill as Array<Record<string, unknown>>;
+        }
+        intentLogger.info(
+          `Phase A (backfill): Loaded ${backfillRows.length} older events (cap=${remainingCapacity})`
+        );
+      }
+
+      // Combine fresh + backfill rows (fresh first, already newest-to-oldest)
+      const allRows = [...(rows as Array<Record<string, unknown>>), ...backfillRows];
+
       // Store raw rows as EventBusEvent objects for INITIAL_STATE delivery.
-      // The rows are already sorted newest-first (ORDER BY timestamp DESC)
+      // The rows are already sorted newest-first (ORDER BY timestamp DESC, id DESC)
       // which matches the order expected by the WebSocket client.
       // Uses per-row try/catch so a single malformed payload doesn't prevent
       // all events from being served via WebSocket INITIAL_STATE.
       this.preloadedEventBusEvents = [];
-      for (const row of rows as Array<Record<string, unknown>>) {
+      for (const row of allRows) {
         try {
           let parsedPayload: Record<string, any>;
           try {
@@ -1430,7 +1602,9 @@ export class EventConsumer extends EventEmitter {
       }
 
       // Replay in chronological order (oldest first) so newest ends up on top
-      const chronological = (rows as Array<{ topic: string; payload: unknown; timestamp: string }>)
+      const chronological = (
+        allRows as Array<{ topic: string; payload: unknown; timestamp: string }>
+      )
         .slice()
         .reverse();
 
@@ -1462,8 +1636,9 @@ export class EventConsumer extends EventEmitter {
         .map(([t, n]) => `${t}(${n})`)
         .join(', ');
 
+      const preloadMs = Date.now() - preloadStart;
       intentLogger.info(
-        `Preloaded ${injected}/${rows.length} events from event_bus_events — ${topSummary}`
+        `Phase A complete: Injected ${injected}/${allRows.length} events in ${preloadMs}ms — ${topSummary}`
       );
 
       // Emit initial snapshots for WebSocket clients
@@ -2692,6 +2867,22 @@ export class EventConsumer extends EventEmitter {
     }
     const nodesRemoved = nodesBefore - this.registeredNodes.size;
 
+    // Prune live event bus events (used for INITIAL_STATE freshness)
+    const liveEventsBefore = this.liveEventBusEvents.length;
+    this.liveEventBusEvents = this.liveEventBusEvents.filter((event) => {
+      const timestamp = new Date(event.timestamp).getTime();
+      return timestamp > cutoff;
+    });
+    const liveEventsRemoved = liveEventsBefore - this.liveEventBusEvents.length;
+
+    // Also prune stale preloaded events so INITIAL_STATE stays fresh
+    const preloadedBefore = this.preloadedEventBusEvents.length;
+    this.preloadedEventBusEvents = this.preloadedEventBusEvents.filter((event) => {
+      const timestamp = new Date(event.timestamp).getTime();
+      return timestamp > cutoff;
+    });
+    const preloadedEventsRemoved = preloadedBefore - this.preloadedEventBusEvents.length;
+
     // Prune intent events
     const intentsBefore = this.recentIntents.length;
     this.recentIntents = this.recentIntents.filter((intent) => {
@@ -2732,11 +2923,13 @@ export class EventConsumer extends EventEmitter {
       heartbeatRemoved +
       stateChangeRemoved +
       nodesRemoved +
+      liveEventsRemoved +
+      preloadedEventsRemoved +
       intentsRemoved +
       distributionEntriesPruned;
     if (totalRemoved > 0) {
       intentLogger.info(
-        `Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes, ${intentsRemoved} intents, ${distributionEntriesPruned} distribution entries (total: ${totalRemoved})`
+        `Pruned old data: ${actionsRemoved} actions, ${decisionsRemoved} decisions, ${transformationsRemoved} transformations, ${metricsRemoved} metrics, ${introspectionRemoved + heartbeatRemoved + stateChangeRemoved} node events, ${nodesRemoved} stale nodes, ${liveEventsRemoved + preloadedEventsRemoved} event bus events, ${intentsRemoved} intents, ${distributionEntriesPruned} distribution entries (total: ${totalRemoved})`
       );
     }
   }
@@ -2879,17 +3072,52 @@ export class EventConsumer extends EventEmitter {
   }
 
   /**
-   * Get raw event bus event rows loaded during preloadFromDatabase().
+   * Get combined event bus events from both the DB preload AND live Kafka
+   * consumption since server startup.
    *
-   * Returns the full EventBusEvent objects that were loaded at startup,
-   * ordered newest-first. Used by WebSocket INITIAL_STATE to serve event
-   * bus data from memory instead of re-querying PostgreSQL on every
-   * client connection.
+   * Merges preloaded (historical) and live (real-time) events, deduplicates
+   * by event_id, sorts newest-first, and caps at SQL_PRELOAD_LIMIT.
+   * This ensures new WebSocket clients always receive fresh INITIAL_STATE
+   * that reflects the CURRENT state of the system, not just a stale DB snapshot.
    *
-   * @returns Array of EventBusEvent objects from the preload cache
+   * @returns Array of EventBusEvent objects, newest-first, up to SQL_PRELOAD_LIMIT
    */
   getPreloadedEventBusEvents(): EventBusEvent[] {
-    return this.preloadedEventBusEvents;
+    // If no live events, return preloaded as-is (fast path for startup)
+    if (this.liveEventBusEvents.length === 0) {
+      return this.preloadedEventBusEvents;
+    }
+
+    // Merge and deduplicate by event_id across both buffers.
+    // Live events take priority (iterated first) over preloaded ones.
+    const seen = new Set<string>();
+    const merged: EventBusEvent[] = [];
+
+    for (const event of this.liveEventBusEvents) {
+      if (!seen.has(event.event_id)) {
+        seen.add(event.event_id);
+        merged.push(event);
+      }
+    }
+
+    for (const event of this.preloadedEventBusEvents) {
+      if (!seen.has(event.event_id)) {
+        seen.add(event.event_id);
+        merged.push(event);
+      }
+    }
+
+    // Sort newest-first with stable tie-break by offset (seq) DESC.
+    // This ensures deterministic ordering when multiple events share the
+    // same timestamp (common during batch preload or burst ingestion).
+    merged.sort((a, b) => {
+      const timeDiff = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      if (timeDiff !== 0) return timeDiff;
+      // Stable tie-break: higher offset = newer
+      return parseInt(b.offset || '0', 10) - parseInt(a.offset || '0', 10);
+    });
+
+    return merged.slice(0, SQL_PRELOAD_LIMIT);
   }
 
   /**
@@ -3084,6 +3312,8 @@ export class EventConsumer extends EventEmitter {
       eventsProcessed: this.agentMetrics.size,
       recentActionsCount: this.recentActions.length,
       registeredNodesCount: this.registeredNodes.size,
+      monotonicMergeRejections: this.monotonicMerge.rejectedCount,
+      monotonicMergeTrackedTopics: this.monotonicMerge.trackedKeyCount,
       timestamp: new Date().toISOString(),
     };
   }
@@ -3233,6 +3463,10 @@ export class EventConsumer extends EventEmitter {
     // Reset playback counters for fresh demo state
     this.playbackEventsInjected = 0;
     this.playbackEventsFailed = 0;
+
+    // Reset monotonic merge tracker and arrival counter so replayed events are accepted from scratch
+    this.monotonicMerge.reset();
+    this.arrivalSeq = 0;
 
     intentLogger.info(
       `State reset for demo mode. Cleared: ` +
@@ -3427,6 +3661,22 @@ export class EventConsumer extends EventEmitter {
     intentLogger.debug(`[Playback] Injecting event for topic: ${topic}`);
 
     try {
+      // Monotonic merge gate: reject events older than the last applied for this topic.
+      // This prevents DB-preloaded events replayed in chronological order from
+      // overwriting state that was already advanced by a newer Kafka event.
+      const incomingEventTime = extractEventTimeMs(event);
+      // DB rows and playback events don't have Kafka offsets; use arrival counter
+      // so events with the same timestamp (common in batch preload) are accepted
+      // in arrival order.
+      if (
+        !this.monotonicMerge.checkAndUpdate(topic, {
+          eventTime: incomingEventTime,
+          seq: ++this.arrivalSeq,
+        })
+      ) {
+        return; // stale event — already logged at debug level by the tracker
+      }
+
       // Track successful injection attempts for observability
       this.playbackEventsInjected++;
 
