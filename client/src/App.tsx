@@ -35,6 +35,7 @@ import ExecutionGraph from '@/pages/ExecutionGraph';
 import RegistryDiscovery from '@/pages/RegistryDiscovery';
 import IntentDashboard from '@/pages/IntentDashboard';
 import ValidationDashboard from '@/pages/ValidationDashboard';
+import ExtractionDashboard from '@/pages/ExtractionDashboard';
 import EffectivenessSummary from '@/pages/EffectivenessSummary';
 import EffectivenessLatency from '@/pages/EffectivenessLatency';
 import EffectivenessUtilization from '@/pages/EffectivenessUtilization';
@@ -83,6 +84,7 @@ function Router() {
       <Route path="/discovery" component={RegistryDiscovery} />
       <Route path="/intents" component={IntentDashboard} />
       <Route path="/validation" component={ValidationDashboard} />
+      <Route path="/extraction" component={ExtractionDashboard} />
 
       {/* Effectiveness dashboard routes (OMN-1891) */}
       <Route path="/effectiveness" component={EffectivenessSummary} />

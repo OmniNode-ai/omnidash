@@ -37,6 +37,10 @@ test-results/
 page-*.png
 *-screenshot.png
 
+# Root-level screenshots (Playwright MCP browser tool drops these)
+/*.png
+/*.jpeg
+
 # Backup files
 *.bak
 *.backup
