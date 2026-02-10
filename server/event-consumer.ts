@@ -1623,7 +1623,12 @@ export class EventConsumer extends EventEmitter {
 
       // Replay in chronological order (oldest first) so newest ends up on top
       const chronological = (
-        allRows as Array<{ topic: string; payload: unknown; timestamp: string }>
+        allRows as Array<{
+          topic: string;
+          payload: unknown;
+          timestamp: string;
+          partition: number | null;
+        }>
       )
         .slice()
         .reverse();
@@ -1641,7 +1646,11 @@ export class EventConsumer extends EventEmitter {
           // Legacy flat topics like "agent-actions" have no prefix and pass through.
           const topic = extractSuffix(row.topic);
 
-          this.injectPlaybackEvent(topic, event as Record<string, unknown>);
+          this.injectPlaybackEvent(
+            topic,
+            event as Record<string, unknown>,
+            row.partition ?? undefined
+          );
           injected++;
           topicCounts.set(topic, (topicCounts.get(topic) || 0) + 1);
         } catch {
@@ -3677,19 +3686,25 @@ export class EventConsumer extends EventEmitter {
    * This allows recorded events to flow through the same handlers as live Kafka events,
    * ensuring the dashboard sees playback events identically to live events.
    */
-  public injectPlaybackEvent(topic: string, event: Record<string, unknown>): void {
+  public injectPlaybackEvent(
+    topic: string,
+    event: Record<string, unknown>,
+    partition?: number
+  ): void {
     intentLogger.debug(`[Playback] Injecting event for topic: ${topic}`);
 
     try {
-      // Monotonic merge gate: reject events older than the last applied for this topic.
-      // This prevents DB-preloaded events replayed in chronological order from
-      // overwriting state that was already advanced by a newer Kafka event.
+      // Monotonic merge gate: reject events older than the last applied.
+      // Use topic:partition key to match the live Kafka key space so that
+      // preloaded events and live events share the same merge cursors.
+      // When partition is unavailable (demo playback), fall back to topic-only.
       const incomingEventTime = extractEventTimeMs(event);
+      const mergeKey = partition != null ? `${topic}:${partition}` : topic;
       // DB rows and playback events don't have Kafka offsets; use arrival counter
       // so events with the same timestamp (common in batch preload) are accepted
       // in arrival order.
       if (
-        !this.monotonicMerge.checkAndUpdate(topic, {
+        !this.monotonicMerge.checkAndUpdate(mergeKey, {
           eventTime: incomingEventTime,
           seq: ++this.arrivalSeq,
         })

@@ -160,7 +160,9 @@ export class ExtractionMetricsAggregator {
 
   /**
    * Check if there are pending events that should trigger a WebSocket broadcast.
-   * Resets the counter after check.
+   * Resets the counter after check. Callers must only invoke this after a
+   * successful event handler — a failed insert that didn't increment the counter
+   * will not produce a false positive because the counter stays at 0.
    */
   shouldBroadcast(): boolean {
     if (this.eventsSinceLastBroadcast >= ExtractionMetricsAggregator.BROADCAST_THRESHOLD) {

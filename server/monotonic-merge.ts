@@ -60,6 +60,9 @@ export function shouldApplyEvent(
  * Also tracks rejection counts for operational visibility.
  */
 export class MonotonicMergeTracker {
+  /** Defensive cap to prevent unbounded growth if topics proliferate. */
+  private static readonly MAX_TRACKED_KEYS = 5000;
+
   private positions = new Map<string, EventPosition>();
   private _rejectedCount = 0;
 
@@ -77,6 +80,22 @@ export class MonotonicMergeTracker {
 
     if (shouldApplyEvent(lastApplied, incoming)) {
       this.positions.set(key, incoming);
+
+      // Evict oldest entries if the map exceeds the defensive cap.
+      // In practice the map is bounded by topic:partition cardinality (~800),
+      // but this prevents runaway growth if topics proliferate unexpectedly.
+      if (this.positions.size > MonotonicMergeTracker.MAX_TRACKED_KEYS) {
+        let oldestKey: string | null = null;
+        let oldestTime = Infinity;
+        for (const [k, pos] of this.positions) {
+          if (pos.eventTime < oldestTime) {
+            oldestTime = pos.eventTime;
+            oldestKey = k;
+          }
+        }
+        if (oldestKey) this.positions.delete(oldestKey);
+      }
+
       return true;
     }
 

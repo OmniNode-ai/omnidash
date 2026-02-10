@@ -483,6 +483,8 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       // Rebuild seenIds outside the setState updater to avoid ref mutation
       // inside a function that React Strict Mode may double-invoke.
       // Build from all sources: processed events, pending buffer, and current events.
+      // Note: eventsRef.current may be one render behind setEvents due to React batching,
+      // but seenIds is rebuilt on every flush cycle so any missed IDs are captured next cycle.
       const allIds = new Set<string>();
       for (const e of processed) allIds.add(e.id);
       for (const e of pendingEvents) allIds.add(e.id);

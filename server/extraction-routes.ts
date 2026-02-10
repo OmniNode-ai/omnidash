@@ -156,10 +156,13 @@ router.get('/health/pipeline', async (_req, res) => {
     // Time-bound to 90 days to prevent full-table scans as the table grows
     const cutoff90d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
+    // total_events only counts rows with a known outcome (success or failure).
+    // Rows with NULL session_outcome are excluded to avoid inflating the denominator
+    // and producing misleading success_rate values.
     const rows = await db
       .select({
         cohort: injectionEffectiveness.cohort,
-        total_events: sql<number>`count(*)::int`,
+        total_events: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL)::int`,
         success_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} = 'success')::int`,
         failure_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL AND ${injectionEffectiveness.sessionOutcome} != 'success')::int`,
         avg_latency_ms: sql<string | null>`avg(${injectionEffectiveness.userVisibleLatencyMs})`,

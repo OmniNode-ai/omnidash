@@ -400,8 +400,10 @@ export function setupWebSocket(httpServer: HTTPServer) {
     // After notifying clients to clear their state, send fresh initial state with restored data.
     // Query PostgreSQL for full event set (same path as connection handler) so all 197+ topics
     // are included, not just EventConsumer's ~30 topic in-memory buffer.
-    // Async callback is intentional; the inner try/catch prevents unhandled promise rejections.
-
+    //
+    // Pattern: void setTimeout(async () => { try { ... } catch { ... } })
+    // setTimeout discards the async return value; `void` suppresses the no-floating-promises lint.
+    // The entire async body MUST be wrapped in try/catch to prevent unhandled rejections.
     void setTimeout(async () => {
       try {
         console.log('[WebSocket] Demo mode: broadcasting restored INITIAL_STATE');
