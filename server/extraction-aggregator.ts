@@ -137,17 +137,20 @@ export class ExtractionMetricsAggregator {
 
     try {
       const createdAt = event.timestamp ? new Date(event.timestamp) : undefined;
-      await db.insert(latencyBreakdowns).values({
-        sessionId: event.session_id,
-        promptId: event.prompt_id,
-        cohort: event.cohort,
-        routingTimeMs: event.routing_time_ms ?? null,
-        retrievalTimeMs: event.retrieval_time_ms ?? null,
-        injectionTimeMs: event.injection_time_ms ?? null,
-        userVisibleLatencyMs: event.user_visible_latency_ms ?? null,
-        cacheHit: event.cache_hit ?? false,
-        ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
-      });
+      await db
+        .insert(latencyBreakdowns)
+        .values({
+          sessionId: event.session_id,
+          promptId: event.prompt_id,
+          cohort: event.cohort,
+          routingTimeMs: event.routing_time_ms ?? null,
+          retrievalTimeMs: event.retrieval_time_ms ?? null,
+          injectionTimeMs: event.injection_time_ms ?? null,
+          userVisibleLatencyMs: event.user_visible_latency_ms ?? null,
+          cacheHit: event.cache_hit ?? false,
+          ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
+        })
+        .onConflictDoNothing();
       this.eventsSinceLastBroadcast++;
     } catch (error) {
       console.error('[extraction] Error persisting latency-breakdown event:', error);

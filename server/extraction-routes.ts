@@ -111,7 +111,8 @@ router.get('/summary', async (_req, res) => {
         (SELECT count(*)::int FROM ${injectionEffectiveness}
          WHERE ${injectionEffectiveness.sessionOutcome} = 'success'
            AND ${injectionEffectiveness.createdAt} >= ${cutoff90d}) AS success_count,
-        (SELECT max(${injectionEffectiveness.createdAt}) FROM ${injectionEffectiveness}) AS last_event_at
+        (SELECT max(${injectionEffectiveness.createdAt}) FROM ${injectionEffectiveness}
+         WHERE ${injectionEffectiveness.createdAt} >= ${cutoff90d}) AS last_event_at
     `);
 
     const row = (rows.rows as Record<string, unknown>[])[0] ?? {};

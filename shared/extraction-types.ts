@@ -162,11 +162,10 @@ export interface LatencyBreakdownEvent {
 /**
  * Narrow an unknown Kafka payload to a ContextUtilizationEvent.
  *
- * NOTE: This guard overlaps with `isAgentMatchEvent` because both event types
- * share the same base fields (session_id, correlation_id, cohort). In production
- * these guards are always used inside topic-discriminated switch cases
- * (event-consumer.ts), so there is no ambiguity. Do NOT use these guards alone
- * to distinguish between the two event types without topic context.
+ * Discriminated from AgentMatchEvent by requiring `utilization_score` (number),
+ * a field unique to ContextUtilizationEvent. Both event types share the same
+ * base fields (session_id, correlation_id, cohort), so the discriminator is
+ * necessary to avoid ambiguity when used outside topic-discriminated switch cases.
  */
 export function isContextUtilizationEvent(e: unknown): e is ContextUtilizationEvent {
   return (
@@ -174,18 +173,17 @@ export function isContextUtilizationEvent(e: unknown): e is ContextUtilizationEv
     e !== null &&
     typeof (e as ContextUtilizationEvent).session_id === 'string' &&
     typeof (e as ContextUtilizationEvent).correlation_id === 'string' &&
-    typeof (e as ContextUtilizationEvent).cohort === 'string'
+    typeof (e as ContextUtilizationEvent).cohort === 'string' &&
+    typeof (e as ContextUtilizationEvent).utilization_score === 'number'
   );
 }
 
 /**
  * Narrow an unknown Kafka payload to an AgentMatchEvent.
- * Requires `agent_match_score` (number) to distinguish from ContextUtilizationEvent,
- * which shares the same base fields (session_id, correlation_id, cohort).
- *
- * NOTE: ContextUtilizationEvent also has an optional `agent_match_score` field,
- * so a ContextUtilizationEvent with that field set would also pass this guard.
- * Always use topic context for reliable discrimination (see isContextUtilizationEvent).
+ * Discriminated from ContextUtilizationEvent by requiring `agent_match_score` (number),
+ * the primary field that distinguishes agent-match payloads. Both event types share the
+ * same base fields (session_id, correlation_id, cohort), so the discriminator prevents
+ * ambiguity when used outside topic-discriminated switch cases.
  */
 export function isAgentMatchEvent(e: unknown): e is AgentMatchEvent {
   return (
