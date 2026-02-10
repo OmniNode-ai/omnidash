@@ -254,16 +254,25 @@ const VALID_TOPICS = [
   'validation',
   // Extraction pipeline events (OMN-1804)
   'extraction',
-  // Projection invalidation events (OMN-2097)
-  'projection:node-registry',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
 
+/**
+ * Validates a topic string. Accepts static VALID_TOPICS entries or any
+ * topic matching `projection:<viewId>` for dynamic projection views (OMN-2097).
+ */
+const PROJECTION_TOPIC_PATTERN = /^projection:[a-zA-Z0-9_-]+$/;
+
+const validTopicSchema = z.union([
+  z.enum(VALID_TOPICS),
+  z.string().regex(PROJECTION_TOPIC_PATTERN),
+]);
+
 // Zod schema for validating WebSocket client messages
 const WebSocketMessageSchema = z.object({
   action: z.enum(['subscribe', 'unsubscribe', 'ping', 'getState']),
-  topics: z.union([z.enum(VALID_TOPICS), z.array(z.enum(VALID_TOPICS))]).optional(),
+  topics: z.union([validTopicSchema, z.array(validTopicSchema)]).optional(),
 });
 
 type _WebSocketMessage = z.infer<typeof WebSocketMessageSchema>;
@@ -889,7 +898,7 @@ export function setupWebSocket(httpServer: HTTPServer, options?: SetupWebSocketO
   );
 
   // Handle subscription updates
-  function handleSubscription(ws: WebSocket, topics: ValidTopic | ValidTopic[] | undefined) {
+  function handleSubscription(ws: WebSocket, topics: string | string[] | undefined) {
     const client = clients.get(ws);
     if (!client) return;
 
@@ -915,7 +924,7 @@ export function setupWebSocket(httpServer: HTTPServer, options?: SetupWebSocketO
   }
 
   // Handle unsubscription
-  function handleUnsubscription(ws: WebSocket, topics: ValidTopic | ValidTopic[] | undefined) {
+  function handleUnsubscription(ws: WebSocket, topics: string | string[] | undefined) {
     const client = clients.get(ws);
     if (!client) return;
 

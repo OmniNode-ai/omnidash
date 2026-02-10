@@ -85,14 +85,19 @@ export function useProjectionStream<T>(
     reconnectInterval: 1000,
   });
 
-  // Subscribe to the projection topic when connected
+  // Track the viewId that subscribedRef corresponds to
+  const subscribedViewIdRef = useRef<string | null>(null);
+
+  // Subscribe to the projection topic when connected (or when viewId changes)
   useEffect(() => {
-    if (isConnected && !subscribedRef.current) {
+    if (isConnected && (!subscribedRef.current || subscribedViewIdRef.current !== viewId)) {
       subscribe([`projection:${viewId}`]);
       subscribedRef.current = true;
+      subscribedViewIdRef.current = viewId;
     }
     if (!isConnected) {
       subscribedRef.current = false;
+      subscribedViewIdRef.current = null;
     }
   }, [isConnected, subscribe, viewId]);
 
