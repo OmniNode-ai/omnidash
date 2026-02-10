@@ -544,6 +544,7 @@ export const latencyBreakdowns = pgTable(
     index('idx_lb_session_id').on(table.sessionId),
     index('idx_lb_created_at').on(table.createdAt),
     index('idx_lb_cohort').on(table.cohort),
+    uniqueIndex('uq_lb_session_prompt_cohort').on(table.sessionId, table.promptId, table.cohort),
   ]
 );
 
@@ -572,6 +573,7 @@ export const patternHitRates = pgTable(
     index('idx_phr_session_id').on(table.sessionId),
     index('idx_phr_pattern_id').on(table.patternId),
     index('idx_phr_created_at').on(table.createdAt),
+    uniqueIndex('uq_phr_session_pattern').on(table.sessionId, table.patternId),
   ]
 );
 

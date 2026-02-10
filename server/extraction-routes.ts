@@ -191,7 +191,7 @@ router.get('/health/pipeline', async (_req, res) => {
 router.get('/latency/heatmap', async (req, res) => {
   try {
     const db = tryGetIntelligenceDb();
-    const windowParam = (req.query.window as string) || '24h';
+    const windowParam = typeof req.query.window === 'string' ? req.query.window : '24h';
     const cutoff = parseWindow(windowParam);
 
     if (!db) {
@@ -243,7 +243,7 @@ router.get('/latency/heatmap', async (req, res) => {
 router.get('/patterns/volume', async (req, res) => {
   try {
     const db = tryGetIntelligenceDb();
-    const windowParam = (req.query.window as string) || '24h';
+    const windowParam = typeof req.query.window === 'string' ? req.query.window : '24h';
     const cutoff = parseWindow(windowParam);
 
     if (!db) {

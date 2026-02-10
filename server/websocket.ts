@@ -799,14 +799,20 @@ export function setupWebSocket(httpServer: HTTPServer) {
           }
         }
       } catch (error) {
-        console.error('Error parsing client message:', error);
-        ws.send(
-          JSON.stringify({
-            type: 'ERROR',
-            message: 'Invalid JSON format',
-            timestamp: new Date().toISOString(),
-          })
-        );
+        const errorMessage =
+          error instanceof SyntaxError
+            ? 'Invalid JSON format'
+            : `WebSocket message handler error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        console.error('[WebSocket] Message handler error:', error);
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({
+              type: 'ERROR',
+              message: errorMessage,
+              timestamp: new Date().toISOString(),
+            })
+          );
+        }
       }
     });
 
