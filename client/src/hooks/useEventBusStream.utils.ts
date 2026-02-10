@@ -47,7 +47,7 @@ export const DEFAULT_FLUSH_INTERVAL_MS = 100;
 export const DEDUPE_SET_CLEANUP_MULTIPLIER = 5;
 
 /** Maximum timestamp entries for throughput calculation */
-export const MAX_TIMESTAMP_ENTRIES = 10000;
+export const MAX_TIMESTAMP_ENTRIES = 30000;
 
 /** Maximum errors to keep in ring buffer */
 export const MAX_ERRORS = 50;

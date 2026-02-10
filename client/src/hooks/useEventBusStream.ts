@@ -255,8 +255,8 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       /**
        * Enforce timestamp array cap with 50% retention strategy.
        *
-       * When timestamps exceed MAX_TIMESTAMP_ENTRIES (10,000), we keep only
-       * the most recent 50% (5,000 entries) rather than trimming to exactly
+       * When timestamps exceed MAX_TIMESTAMP_ENTRIES (30,000), we keep only
+       * the most recent 50% (15,000 entries) rather than trimming to exactly
        * the limit. This design choice balances two concerns:
        *
        * 1. Memory efficiency: Prevents unbounded growth of the timestamps array
@@ -264,9 +264,10 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
        *    calculation across the monitoring window (default 5 minutes)
        *
        * Why 50% (half) instead of another fraction:
-       * - Aggressive enough: Reduces 10K to 5K entries per cleanup
-       * - Conservative enough: At 100 events/sec, 5K entries = 50 seconds of
-       *   history, far exceeding the 5-minute monitoring window
+       * - Aggressive enough: Reduces 30K to 15K entries per cleanup
+       * - Conservative enough: At 100 events/sec, 15K entries = 150 seconds of
+       *   history — comfortably covers the 30-second burst window, and the
+       *   full 5-minute monitoring window needs only ~30K entries at peak rate
        * - Amortizes cleanup cost: Fewer cleanup operations vs trimming to exact limit
        */
       if (timestampsRef.current.length > MAX_TIMESTAMP_ENTRIES) {

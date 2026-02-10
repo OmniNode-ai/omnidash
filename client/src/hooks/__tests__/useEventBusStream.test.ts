@@ -436,7 +436,7 @@ describe('useEventBusStream', () => {
     it('MAX_TIMESTAMP_ENTRIES is reasonable for throughput tracking', () => {
       expect(MAX_TIMESTAMP_ENTRIES).toBeGreaterThan(0);
       expect(MAX_TIMESTAMP_ENTRIES).toBeLessThanOrEqual(100000);
-      expect(MAX_TIMESTAMP_ENTRIES).toBe(10000); // Current value
+      expect(MAX_TIMESTAMP_ENTRIES).toBe(30000); // 100 ev/s * 300s = 30K for 5-min window
     });
 
     it('MAX_ERRORS caps error buffer reasonably', () => {
@@ -836,6 +836,137 @@ describe('useEventBusStream', () => {
       expect(computeErrorRate(windowedEvents)).toBe(0);
       // But whole-buffer error rate would be 50% (2/4) — this was the old bug
       expect(computeErrorRate(allEvents)).toBe(50);
+    });
+  });
+
+  // ============================================================================
+  // Burst Detection Integration
+  // ============================================================================
+
+  describe('burst detection integration', () => {
+    // Config defaults from getEventMonitoringConfig()
+    const MONITORING_WINDOW_MS = 5 * 60 * 1000;
+    const BURST_WINDOW_MS = 30 * 1000;
+    const BURST_THROUGHPUT_MULTIPLIER = 3;
+    const BURST_THROUGHPUT_MIN_RATE = 5;
+    const BURST_ERROR_MULTIPLIER = 2;
+    const BURST_ERROR_ABSOLUTE_THRESHOLD = 5;
+    const BURST_ERROR_MIN_EVENTS = 50;
+
+    /** Create a minimal ProcessedEvent for burst integration testing */
+    const makeEvent = (
+      id: string,
+      timestamp: Date,
+      priority: 'critical' | 'high' | 'normal' | 'low' = 'normal'
+    ): ProcessedEvent => ({
+      id,
+      topic: 'test',
+      topicRaw: 'test',
+      eventType: 'action',
+      priority,
+      timestamp,
+      timestampRaw: timestamp.toISOString(),
+      source: 'system',
+      payload: '{}',
+      summary: 'test',
+      normalizedType: 'test',
+      groupKey: 'test',
+      parsedDetails: null,
+    });
+
+    /** Generate N events spread evenly across a time window ending at `now` */
+    function generateEvents(
+      count: number,
+      windowMs: number,
+      now: number,
+      priority: 'critical' | 'high' | 'normal' | 'low' = 'normal'
+    ): ProcessedEvent[] {
+      const step = count > 1 ? windowMs / (count - 1) : 0;
+      return Array.from({ length: count }, (_, i) =>
+        makeEvent(`gen-${priority}-${i}`, new Date(now - windowMs + step * i + 1), priority)
+      );
+    }
+
+    it('detects throughput burst when short window rate >= 3x baseline and above min rate', () => {
+      const now = Date.now();
+      // Baseline only (outside burst window): 60 events spread over 5 min = ~0.2 ev/s
+      const oldEvents = generateEvents(60, MONITORING_WINDOW_MS, now - BURST_WINDOW_MS);
+      // Short window: 200 events in 30s = ~6.7 ev/s
+      const burstEvents = generateEvents(200, BURST_WINDOW_MS, now);
+      const allEvents = [...oldEvents, ...burstEvents];
+
+      const baselineCutoff = getWindowCutoff(now, MONITORING_WINDOW_MS);
+      const baselineFiltered = filterEventsInWindow(allEvents, baselineCutoff);
+      const baselineRate = computeRate(baselineFiltered.length, MONITORING_WINDOW_MS);
+
+      const shortCutoff = getWindowCutoff(now, BURST_WINDOW_MS);
+      const shortFiltered = filterEventsInWindow(allEvents, shortCutoff);
+      const shortRate = computeRate(shortFiltered.length, BURST_WINDOW_MS);
+
+      expect(shortRate).toBeGreaterThanOrEqual(BURST_THROUGHPUT_MIN_RATE);
+      expect(baselineRate).toBeGreaterThan(0);
+      expect(shortRate).toBeGreaterThanOrEqual(baselineRate * BURST_THROUGHPUT_MULTIPLIER);
+    });
+
+    it('does NOT flag throughput burst when short rate below min rate', () => {
+      const now = Date.now();
+      // Very few events: 3 in 30s = 0.1 ev/s (below min 5)
+      const events = generateEvents(3, BURST_WINDOW_MS, now);
+
+      const shortCutoff = getWindowCutoff(now, BURST_WINDOW_MS);
+      const shortFiltered = filterEventsInWindow(events, shortCutoff);
+      const shortRate = computeRate(shortFiltered.length, BURST_WINDOW_MS);
+
+      expect(shortRate).toBeLessThan(BURST_THROUGHPUT_MIN_RATE);
+    });
+
+    it('detects error spike via absolute threshold (>5% errors)', () => {
+      const now = Date.now();
+      // 50 normal + 10 critical in burst window = 60 events, ~16.7% error rate
+      const normalEvents = generateEvents(50, BURST_WINDOW_MS, now, 'normal');
+      const critEvents = generateEvents(10, BURST_WINDOW_MS, now, 'critical');
+      const allEvents = [...normalEvents, ...critEvents];
+
+      const shortCutoff = getWindowCutoff(now, BURST_WINDOW_MS);
+      const shortFiltered = filterEventsInWindow(allEvents, shortCutoff);
+      const errorRate = computeErrorRate(shortFiltered);
+
+      expect(shortFiltered.length).toBeGreaterThanOrEqual(BURST_ERROR_MIN_EVENTS);
+      expect(errorRate).toBeGreaterThan(BURST_ERROR_ABSOLUTE_THRESHOLD);
+    });
+
+    it('detects error spike via relative threshold (>=2x baseline error rate)', () => {
+      const now = Date.now();
+      // Baseline: 300 events, 6 critical = 2% error rate
+      const baseNormal = generateEvents(294, MONITORING_WINDOW_MS, now - BURST_WINDOW_MS, 'normal');
+      const baseCrit = generateEvents(6, MONITORING_WINDOW_MS, now - BURST_WINDOW_MS, 'critical');
+      // Short window: 54 normal + 6 critical = 60 events, 10% error rate (5x baseline)
+      const shortNormal = generateEvents(54, BURST_WINDOW_MS, now, 'normal');
+      const shortCrit = generateEvents(6, BURST_WINDOW_MS, now, 'critical');
+      const allEvents = [...baseNormal, ...baseCrit, ...shortNormal, ...shortCrit];
+
+      const baselineCutoff = getWindowCutoff(now, MONITORING_WINDOW_MS);
+      const baselineFiltered = filterEventsInWindow(allEvents, baselineCutoff);
+      const baselineErrorRate = computeErrorRate(baselineFiltered);
+
+      const shortCutoff = getWindowCutoff(now, BURST_WINDOW_MS);
+      const shortFiltered = filterEventsInWindow(allEvents, shortCutoff);
+      const shortErrorRate = computeErrorRate(shortFiltered);
+
+      expect(shortFiltered.length).toBeGreaterThanOrEqual(BURST_ERROR_MIN_EVENTS);
+      expect(baselineErrorRate).toBeGreaterThan(0);
+      expect(shortErrorRate).toBeGreaterThanOrEqual(baselineErrorRate * BURST_ERROR_MULTIPLIER);
+    });
+
+    it('does NOT flag error spike with fewer than min events in short window', () => {
+      const now = Date.now();
+      // Only 10 critical events (below 50 minimum)
+      const events = generateEvents(10, BURST_WINDOW_MS, now, 'critical');
+
+      const shortCutoff = getWindowCutoff(now, BURST_WINDOW_MS);
+      const shortFiltered = filterEventsInWindow(events, shortCutoff);
+
+      expect(shortFiltered.length).toBeLessThan(BURST_ERROR_MIN_EVENTS);
     });
   });
 });

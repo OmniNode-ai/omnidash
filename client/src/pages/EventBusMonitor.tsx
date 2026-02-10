@@ -638,7 +638,7 @@ export default function EventBusMonitor() {
       newestTopic: newest.topic,
       newestTimestamp: newest.timestamp.toLocaleString(),
     } as const;
-  }, [sourceData.events]);
+  }, [sourceData.events, eventConfig.staleness_threshold_ms]);
 
   // ============================================================================
   // Split dashboard config: KPIs, Charts, Table
