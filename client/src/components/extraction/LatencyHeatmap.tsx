@@ -11,16 +11,9 @@ import { useQuery } from '@tanstack/react-query';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Clock } from 'lucide-react';
 import type { LatencyBucket } from '@shared/extraction-types';
-
-const heatmapConfig = {
-  p50: { label: 'P50', color: 'hsl(142 76% 36%)' },
-  p95: { label: 'P95', color: 'hsl(47 100% 50%)' },
-  p99: { label: 'P99', color: 'hsl(0 84% 60%)' },
-} satisfies ChartConfig;
 
 const PERCENTILE_LABELS = ['P50', 'P95', 'P99'] as const;
 
@@ -89,11 +82,7 @@ export function LatencyHeatmap({ timeWindow = '24h' }: LatencyHeatmapProps) {
         )}
 
         {!isLoading && !error && data && data.buckets.length > 0 && (
-          <ChartContainer
-            config={heatmapConfig}
-            className="aspect-auto h-auto w-full [&>div]:!h-auto"
-          >
-            {/* Custom CSS grid heatmap (no Recharts chart; ChartContainer provides theming wrapper) */}
+          <div className="w-full">
             <div className="overflow-x-auto">
               {/* Header row: time bucket labels */}
               <div
@@ -164,7 +153,7 @@ export function LatencyHeatmap({ timeWindow = '24h' }: LatencyHeatmapProps) {
                 </span>
               </div>
             </div>
-          </ChartContainer>
+          </div>
         )}
       </CardContent>
     </Card>

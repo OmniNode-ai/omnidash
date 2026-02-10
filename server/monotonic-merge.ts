@@ -84,6 +84,9 @@ export class MonotonicMergeTracker {
       // Evict oldest entries if the map exceeds the defensive cap.
       // In practice the map is bounded by topic:partition cardinality (~800),
       // but this prevents runaway growth if topics proliferate unexpectedly.
+      //
+      // Performance: O(n) linear scan over all entries. Acceptable for ~800
+      // keys but would need an LRU or min-heap if key count grows past ~5K.
       if (this.positions.size > MonotonicMergeTracker.MAX_TRACKED_KEYS) {
         let oldestKey: string | null = null;
         let oldestTime = Infinity;

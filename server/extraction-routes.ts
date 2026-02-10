@@ -33,9 +33,13 @@ const router = Router();
 // Helpers
 // ============================================================================
 
-/** Maximum allowed window sizes to prevent expensive full-table scans. */
-const MAX_WINDOW_DAYS = 365;
-const MAX_WINDOW_HOURS = 8760; // 365 days in hours
+/**
+ * Maximum allowed window sizes to prevent expensive full-table scans.
+ * Capped at 90 days to match the hardcoded cutoffs used by the summary,
+ * pipeline-health, and errors endpoints.
+ */
+const MAX_WINDOW_DAYS = 90;
+const MAX_WINDOW_HOURS = 2160; // 90 days in hours
 
 /** Parse a time window string (e.g. '24h', '7d') into a Date cutoff. */
 function parseWindow(window: string): Date {
@@ -173,20 +177,35 @@ router.get('/health/pipeline', async (_req, res) => {
         total_events: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL)::int`,
         success_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} = 'success')::int`,
         failure_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL AND ${injectionEffectiveness.sessionOutcome} != 'success')::int`,
-        avg_latency_ms: sql<string | null>`avg(${injectionEffectiveness.userVisibleLatencyMs})`,
       })
       .from(injectionEffectiveness)
       .where(gte(injectionEffectiveness.createdAt, cutoff90d))
       .groupBy(injectionEffectiveness.cohort);
 
-    const cohorts = rows.map((r) => ({
-      cohort: r.cohort,
-      total_events: r.total_events,
-      success_count: r.success_count,
-      failure_count: r.failure_count,
-      success_rate: r.total_events > 0 ? r.success_count / r.total_events : 0,
-      avg_latency_ms: r.avg_latency_ms ? parseFloat(r.avg_latency_ms) : null,
-    }));
+    // Latency sourced from latencyBreakdowns (the dedicated latency table)
+    // for consistency with the summary endpoint and latency heatmap panel.
+    const latencyRows = await db
+      .select({
+        cohort: latencyBreakdowns.cohort,
+        avg_latency_ms: sql<string | null>`avg(${latencyBreakdowns.userVisibleLatencyMs})`,
+      })
+      .from(latencyBreakdowns)
+      .where(gte(latencyBreakdowns.createdAt, cutoff90d))
+      .groupBy(latencyBreakdowns.cohort);
+
+    const latencyByCohort = new Map(latencyRows.map((r) => [r.cohort, r.avg_latency_ms]));
+
+    const cohorts = rows.map((r) => {
+      const rawLat = latencyByCohort.get(r.cohort);
+      return {
+        cohort: r.cohort,
+        total_events: r.total_events,
+        success_count: r.success_count,
+        failure_count: r.failure_count,
+        success_rate: r.total_events > 0 ? r.success_count / r.total_events : 0,
+        avg_latency_ms: rawLat ? parseFloat(rawLat) : null,
+      };
+    });
 
     res.json({ cohorts } satisfies PipelineHealthResponse);
   } catch (error) {
@@ -434,6 +453,7 @@ router.get('/errors/summary', async (_req, res) => {
       entries,
       total_errors: totalErrors,
       overall_error_rate: totalEvents > 0 ? totalErrors / totalEvents : null,
+      ...(cohortsTruncated ? { truncated: true } : {}),
     };
 
     res.json(result);

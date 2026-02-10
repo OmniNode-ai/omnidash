@@ -614,18 +614,13 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
 
         case 'EVENT_BUS_EVENT': {
           // Real-time events from EventBusDataSource (mirrors INITIAL_STATE hydration)
-          const ebEvent = wireMessage.data as
-            | {
-                id?: string;
-                event_type?: string;
-                timestamp?: string;
-                source?: string;
-                correlation_id?: string;
-                payload?: unknown;
-                topic?: string;
-              }
-            | undefined;
-          if (ebEvent?.event_type && ebEvent.topic) {
+          const ebEvent = wireMessage.data as Record<string, unknown> | undefined;
+          if (
+            ebEvent != null &&
+            typeof ebEvent === 'object' &&
+            typeof ebEvent.event_type === 'string' &&
+            typeof ebEvent.topic === 'string'
+          ) {
             let payloadRaw: unknown;
             try {
               payloadRaw =
@@ -640,12 +635,12 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
                 : { value: payloadRaw };
             const data: WireEventData = {
               ...payload,
-              timestamp: ebEvent.timestamp,
-              source: ebEvent.source,
-              correlationId: ebEvent.correlation_id,
-              id: ebEvent.id,
+              timestamp: ebEvent.timestamp as string | undefined,
+              source: ebEvent.source as string | undefined,
+              correlationId: ebEvent.correlation_id as string | undefined,
+              id: ebEvent.id as string | undefined,
             };
-            processAndIngest(ebEvent.event_type, data, ebEvent.topic);
+            processAndIngest(ebEvent.event_type as string, data, ebEvent.topic as string);
           }
           break;
         }
@@ -691,12 +686,10 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
           break;
 
         default: {
-          if (KNOWN_IGNORED_TYPES.has(wireMessage.type)) {
-            // eslint-disable-next-line no-console
-            console.debug('[EventBusStream] Ignored known message type:', wireMessage.type);
-          } else {
-            // Truly unexpected types still warn — silent drops have caused real bugs
-            console.warn('[EventBusStream] Unhandled WebSocket message type:', wireMessage.type);
+          // Both known-ignored and truly unexpected types use debug logging.
+          // Production console noise is avoided; enable `debug: true` to surface.
+          if (!KNOWN_IGNORED_TYPES.has(wireMessage.type)) {
+            log('Unhandled WebSocket message type:', wireMessage.type);
           }
           break;
         }

@@ -130,6 +130,7 @@ async function readLatest(topic: string): Promise<{ timestamp: number; keys: str
   const groupId = `health-probe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const consumer = kafka.consumer({ groupId, maxWaitTimeInMs: 5_000 });
   const admin = kafka.admin();
+  let consumerConnected = false;
 
   try {
     await admin.connect();
@@ -141,6 +142,7 @@ async function readLatest(topic: string): Promise<{ timestamp: number; keys: str
     const seekOffset = Math.max(0, parseInt(p0.high, 10) - 1);
 
     await consumer.connect();
+    consumerConnected = true;
     await consumer.subscribe({ topic, fromBeginning: false });
 
     return await new Promise<{ timestamp: number; keys: string[] } | null>((resolve) => {
@@ -171,14 +173,19 @@ async function readLatest(topic: string): Promise<{ timestamp: number; keys: str
     return null;
   } finally {
     try {
-      await consumer.stop();
-      await consumer.disconnect();
+      if (consumerConnected) {
+        await consumer.stop();
+        await consumer.disconnect();
+      }
     } catch {
       // best-effort consumer cleanup
     }
     try {
-      // Clean up the ephemeral consumer group to avoid leaking groups on the broker
-      await admin.deleteGroups([groupId]);
+      // Clean up the ephemeral consumer group to avoid leaking groups on the broker.
+      // Only attempt if the consumer was connected (group may not exist otherwise).
+      if (consumerConnected) {
+        await admin.deleteGroups([groupId]);
+      }
     } catch {
       // best-effort group cleanup — group may already be gone
     }

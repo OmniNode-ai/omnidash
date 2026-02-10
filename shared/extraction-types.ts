@@ -20,6 +20,7 @@ export interface ExtractionSummary {
   total_patterns_matched: number;
   avg_utilization_score: number | null;
   avg_latency_ms: number | null;
+  /** Ratio 0–1 (NOT percentage). Multiply by 100 for display. */
   success_rate: number | null;
   /** ISO timestamp of last recorded event */
   last_event_at: string | null;
@@ -94,6 +95,8 @@ export interface ErrorRatesSummaryResponse {
   entries: ErrorRateEntry[];
   total_errors: number;
   overall_error_rate: number | null;
+  /** True when cohort count exceeded the IN-clause cap and some entries may lack recent_errors. */
+  truncated?: boolean;
 }
 
 // ============================================================================
@@ -190,18 +193,18 @@ export function isContextUtilizationEvent(e: unknown): e is ContextUtilizationEv
 /**
  * Narrow an unknown Kafka payload to an AgentMatchEvent.
  *
- * Validates base fields plus `correlation_id`. Additionally checks for
- * `agent_match_score` or `agent_name` to discriminate from
- * ContextUtilizationEvent, which shares the same base fields.
- * At least one agent-match-specific field must be present.
+ * Validates base fields plus `correlation_id` and `agent_match_score`.
+ * Only `agent_match_score` (not `agent_name`) is used for discrimination
+ * because ContextUtilizationEvent also carries an optional `agent_name`,
+ * which would cause false positives if used as a discriminator.
+ *
+ * NOTE: This guard is NOT a standalone discriminator — the caller MUST
+ * dispatch by Kafka topic first (see event-consumer.ts switch/case).
  */
 export function isAgentMatchEvent(e: unknown): e is AgentMatchEvent {
   if (!isExtractionBaseEvent(e)) return false;
   const obj = e as Record<string, unknown>;
-  return (
-    typeof obj.correlation_id === 'string' &&
-    (typeof obj.agent_match_score === 'number' || typeof obj.agent_name === 'string')
-  );
+  return typeof obj.correlation_id === 'string' && typeof obj.agent_match_score === 'number';
 }
 
 /**

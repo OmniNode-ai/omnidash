@@ -175,6 +175,11 @@ export class ExtractionMetricsAggregator {
    * Resets the counter after check. The counter only increments when a row is
    * actually inserted (via `.returning()`), so duplicate events suppressed by
    * onConflictDoNothing do not produce false-positive broadcasts.
+   *
+   * Thread safety: Node.js is single-threaded. Although the async handler
+   * methods yield at `await db.insert(...)`, the `counter++` and this
+   * check-and-reset are synchronous operations within the same microtask,
+   * so they cannot interleave with another handler's check-and-reset.
    */
   shouldBroadcast(): boolean {
     if (this.eventsSinceLastBroadcast >= ExtractionMetricsAggregator.BROADCAST_THRESHOLD) {
