@@ -1,0 +1,78 @@
+/**
+ * Projection Service Singleton (OMN-2096)
+ *
+ * Creates and configures the global ProjectionService instance.
+ * Registers all projection views and wires EventConsumer events
+ * into the projection pipeline.
+ *
+ * Import this module to get the configured service instance.
+ */
+
+import { ProjectionService } from './projection-service';
+import { IntentProjectionView } from './projections/intent-projection';
+import { eventConsumer } from './event-consumer';
+
+// ============================================================================
+// Singleton
+// ============================================================================
+
+export const projectionService = new ProjectionService();
+
+// ============================================================================
+// View Registration
+// ============================================================================
+
+const intentView = new IntentProjectionView();
+projectionService.registerView(intentView);
+
+// ============================================================================
+// EventConsumer → ProjectionService wiring
+// ============================================================================
+
+/**
+ * Route intent events from EventConsumer into the projection pipeline.
+ * EventConsumer emits 'intent-event' for both classified and stored intents.
+ * We convert these to RawEventInput and pass to ProjectionService.ingest().
+ */
+eventConsumer.on(
+  'intent-event',
+  (event: { topic: string; payload: Record<string, unknown>; timestamp: string }) => {
+    projectionService.ingest({
+      id: (event.payload.id as string) ?? (event.payload.intent_id as string) ?? undefined,
+      topic: event.topic,
+      type: (event.payload.event_type as string) ?? event.topic,
+      source: 'event-consumer',
+      severity: 'info',
+      payload: event.payload,
+      eventTimeMs: extractTimestampMs(event),
+    });
+  }
+);
+
+/**
+ * Extract a millisecond timestamp from an intent event.
+ */
+function extractTimestampMs(event: {
+  payload: Record<string, unknown>;
+  timestamp: string;
+}): number | undefined {
+  const payload = event.payload;
+
+  // Try payload timestamp fields
+  for (const field of ['timestamp', 'created_at', 'stored_at', 'createdAt']) {
+    const val = payload[field];
+    if (typeof val === 'number' && val > 0) return val;
+    if (typeof val === 'string' && val.length > 0) {
+      const parsed = new Date(val).getTime();
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+  }
+
+  // Fall back to event envelope timestamp
+  if (event.timestamp) {
+    const parsed = new Date(event.timestamp).getTime();
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+
+  return undefined; // Let ProjectionService use extractEventTimeMs fallback
+}

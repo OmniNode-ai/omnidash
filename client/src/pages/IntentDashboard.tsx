@@ -1,5 +1,5 @@
 /**
- * Intent Dashboard Page (OMN-1458)
+ * Intent Dashboard Page (OMN-1458, OMN-2096)
  *
  * Real-time Intent Classification Dashboard that combines:
  * - IntentDistribution: Bar chart showing category distribution (time-range filtered)
@@ -7,11 +7,12 @@
  * - SessionTimeline: Chronological timeline visualization (live, unfiltered)
  *
  * Features:
- * - WebSocket-based live updates
+ * - Server-side projection snapshots via useProjectionStream (OMN-2096 r4)
+ * - WebSocket invalidation triggers re-fetch (no polling)
  * - Animated connection status indicator
  * - Responsive grid layout
  * - Time range selector (affects IntentDistribution only)
- * - Stats summary cards
+ * - Stats summary cards derived from projection snapshot
  *
  * Time Range Behavior:
  * The time-range selector only affects IntentDistribution. This is intentional:
@@ -26,7 +27,7 @@
 
 import { useState, useMemo } from 'react';
 import { IntentDistribution, RecentIntents, SessionTimeline } from '@/components/intent';
-import { useIntentStream } from '@/hooks/useIntentStream';
+import { useProjectionStream } from '@/hooks/useProjectionStream';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,28 @@ const TIME_RANGE_OPTIONS = [
 ] as const;
 
 type TimeRangeHours = (typeof TIME_RANGE_OPTIONS)[number]['value'];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Projection Payload Types (OMN-2096)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Server-side intent projection snapshot payload.
+ * This is the contract returned by the intent projection's snapshot endpoint.
+ */
+interface IntentPayload {
+  recentIntents: Array<{
+    id: string;
+    eventTimeMs: number;
+    ingestSeq: number;
+    type: string;
+    payload: Record<string, unknown>;
+  }>;
+  distribution: Array<{ category: string; count: number; percentage: number }>;
+  totalIntents: number;
+  categoryCount: number;
+  lastEventTimeMs: number | null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Error Boundary Component
@@ -248,40 +271,37 @@ export default function IntentDashboard() {
   const [timeRange, setTimeRange] = useState<TimeRangeHours>('24');
   const [selectedIntent, setSelectedIntent] = useState<IntentItem | null>(null);
 
-  // Use the intent stream for live connection status and data
-  // Note: stats.byCategory and distribution contain identical data; we use stats.byCategory
-  // to avoid redundant destructuring. Consider consolidating in useIntentStream if needed.
-  const { intents, isConnected, connectionStatus, stats, clearIntents } = useIntentStream({
-    maxItems: 100,
-    autoConnect: true,
-  });
+  // Server-side projection snapshot (OMN-2096 r4)
+  // Fetches on mount, then re-fetches when WebSocket invalidation arrives.
+  const { snapshot, isConnected, connectionStatus, refresh } = useProjectionStream<IntentPayload>(
+    'intent',
+    { limit: 100 }
+  );
 
-  // Compute derived stats using stats.byCategory (equivalent to distribution)
-  const categoryCount = useMemo(() => Object.keys(stats.byCategory).length, [stats.byCategory]);
+  // Derive stat card values from the projection snapshot
+  const categoryCount = snapshot?.categoryCount ?? 0;
 
   const avgConfidence = useMemo(() => {
-    if (intents.length === 0) return 0;
-    const total = intents.reduce((sum, intent) => sum + intent.confidence, 0);
-    return total / intents.length;
-  }, [intents]);
+    if (!snapshot?.recentIntents?.length) return 0;
+    const confidences = snapshot.recentIntents
+      .map((e) => (e.payload.confidence as number) ?? 0)
+      .filter((c) => c > 0);
+    if (confidences.length === 0) return 0;
+    return confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
+  }, [snapshot]);
 
   const lastEventTimeStr = useMemo(() => {
-    if (!stats.lastEventTime) return 'No events yet';
-    return stats.lastEventTime.toLocaleTimeString('en-US', {
+    if (!snapshot?.lastEventTimeMs) return 'No events yet';
+    return new Date(snapshot.lastEventTimeMs).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
     });
-  }, [stats.lastEventTime]);
+  }, [snapshot]);
 
   // Handlers
   const handleIntentClick = (intent: IntentItem) => {
     setSelectedIntent(intent);
-  };
-
-  const handleClearIntents = () => {
-    clearIntents();
-    setSelectedIntent(null);
   };
 
   const timeRangeHours = parseInt(timeRange, 10);
@@ -295,7 +315,7 @@ export default function IntentDashboard() {
           description="Real-time classification of user intents across sessions"
           isConnected={isConnected}
           connectionStatus={connectionStatus}
-          lastUpdated={stats.lastEventTime}
+          lastUpdated={snapshot?.lastEventTimeMs ? new Date(snapshot.lastEventTimeMs) : null}
           actions={
             <div className="flex items-center gap-2">
               {/* Time Range Selector - affects IntentDistribution only (see module docstring) */}
@@ -313,10 +333,10 @@ export default function IntentDashboard() {
                 </SelectContent>
               </Select>
 
-              {/* Clear Button */}
-              <Button variant="outline" size="sm" onClick={handleClearIntents} className="gap-2">
+              {/* Refresh Button */}
+              <Button variant="outline" size="sm" onClick={refresh} className="gap-2">
                 <RefreshCw className="h-4 w-4" />
-                <span className="hidden sm:inline">Clear</span>
+                <span className="hidden sm:inline">Refresh</span>
               </Button>
             </div>
           }
@@ -326,10 +346,10 @@ export default function IntentDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             title="Total Intents"
-            value={stats.totalReceived}
-            description="Since page load"
+            value={snapshot?.totalIntents ?? 0}
+            description="Total classified intents"
             icon={Brain}
-            trend={stats.totalReceived > 0 ? 'up' : 'neutral'}
+            trend={(snapshot?.totalIntents ?? 0) > 0 ? 'up' : 'neutral'}
           />
           <StatCard
             title="Categories"

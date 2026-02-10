@@ -23,6 +23,7 @@ import {
   type IntentSessionEventPayload,
   type IntentRecentEventPayload,
 } from './intent-events';
+import { projectionService } from './projection-instance';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
 import { playbackEventEmitter, type PlaybackWSMessage } from './playback-events';
@@ -254,6 +255,8 @@ const VALID_TOPICS = [
   'validation',
   // Extraction pipeline events (OMN-1804)
   'extraction',
+  // Projection invalidation events (OMN-2096)
+  'projection-invalidate',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -516,6 +519,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
   intentEventEmitter.on('intentSession', intentSessionHandler);
   intentEventEmitter.on('intentRecent', intentRecentHandler);
 
+  // Projection invalidation listener (OMN-2096)
+  // Broadcasts projection-invalidate to clients subscribed to 'projection-invalidate'
+  const projectionInvalidateHandler = (data: { viewId: string; cursor: number }) => {
+    broadcast('PROJECTION_INVALIDATE', data, 'projection-invalidate');
+  };
+  projectionService.on('projection-invalidate', projectionInvalidateHandler);
+
   // Playback event listener (OMN-1843)
   // Broadcasts playback lifecycle and progress events to clients subscribed to 'playback' topic
   const playbackHandler = (message: PlaybackWSMessage) => {
@@ -574,6 +584,15 @@ export function setupWebSocket(httpServer: HTTPServer) {
     },
     { emitter: intentEventEmitter, event: 'intentSession', handler: intentSessionHandler },
     { emitter: intentEventEmitter, event: 'intentRecent', handler: intentRecentHandler },
+  ];
+
+  // Track projection listeners for cleanup (OMN-2096)
+  const projectionListeners = [
+    {
+      emitter: projectionService,
+      event: 'projection-invalidate',
+      handler: projectionInvalidateHandler,
+    },
   ];
 
   // Event Bus data source listeners (real-time Kafka events for Event Bus Monitor)
@@ -957,6 +976,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
       emitter.removeListener(event, handler);
     });
     intentListeners.length = 0;
+
+    // Remove projection event listeners (OMN-2096)
+    console.log(`Removing ${projectionListeners.length} projection event listeners...`);
+    projectionListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    projectionListeners.length = 0;
 
     // Remove playback event listeners (OMN-1843)
     console.log(`Removing ${playbackListeners.length} playback event listeners...`);
