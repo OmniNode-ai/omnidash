@@ -29,7 +29,6 @@ import { PipelineHealthPanel } from '@/components/extraction/PipelineHealthPanel
 import { LatencyHeatmap } from '@/components/extraction/LatencyHeatmap';
 import { PatternVolumeChart } from '@/components/extraction/PatternVolumeChart';
 import { ErrorRatesPanel } from '@/components/extraction/ErrorRatesPanel';
-import type { ExtractionSummary as _ExtractionSummary } from '@shared/extraction-types';
 
 // ============================================================================
 // Dashboard Page
@@ -155,8 +154,8 @@ export default function ExtractionDashboard() {
       {/* 2x2 Panel Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <PipelineHealthPanel />
-        <LatencyHeatmap window={timeWindow} />
-        <PatternVolumeChart window={timeWindow} />
+        <LatencyHeatmap timeWindow={timeWindow} />
+        <PatternVolumeChart timeWindow={timeWindow} />
         <ErrorRatesPanel />
       </div>
     </div>

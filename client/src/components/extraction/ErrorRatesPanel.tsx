@@ -124,7 +124,7 @@ export function ErrorRatesPanel() {
         detail={selectedDetail}
         open={selectedDetail !== null}
         onOpenChange={(open) => !open && setSelectedDetail(null)}
-        initialTab="errors"
+        showErrors
       />
     </>
   );

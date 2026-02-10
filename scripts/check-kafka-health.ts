@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// Requires `tsx` (TypeScript Execute) -- listed in devDependencies of package.json.
 
 /* eslint-disable no-console */
 

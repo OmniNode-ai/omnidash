@@ -47,10 +47,10 @@ function formatBucketLabel(bucket: string): string {
 }
 
 interface LatencyHeatmapProps {
-  window?: string;
+  timeWindow?: string;
 }
 
-export function LatencyHeatmap({ window: timeWindow = '24h' }: LatencyHeatmapProps) {
+export function LatencyHeatmap({ timeWindow = '24h' }: LatencyHeatmapProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.extraction.latency(timeWindow),
     queryFn: () => extractionSource.latencyHeatmap(timeWindow),

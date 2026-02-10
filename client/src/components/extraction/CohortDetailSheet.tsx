@@ -3,7 +3,7 @@
  *
  * Both panels share the same grouping dimension (cohort), so one component
  * serves both. The caller passes a normalized CohortDetail payload and an
- * optional initialTab to control which section is focused on open.
+ * optional showErrors flag to force the errors section visible on open.
  */
 
 import { DetailSheet } from '@/components/DetailSheet';
@@ -35,8 +35,6 @@ export interface CohortDetail {
   }>;
 }
 
-export type CohortDetailTab = 'overview' | 'errors';
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -45,14 +43,15 @@ interface CohortDetailSheetProps {
   detail: CohortDetail | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialTab?: CohortDetailTab;
+  /** When true, the errors section is shown even if there are no recent errors. */
+  showErrors?: boolean;
 }
 
 export function CohortDetailSheet({
   detail,
   open,
   onOpenChange,
-  initialTab = 'overview',
+  showErrors = false,
 }: CohortDetailSheetProps) {
   if (!detail) return null;
 
@@ -82,7 +81,7 @@ export function CohortDetailSheet({
         </div>
 
         {/* Errors section */}
-        {(initialTab === 'errors' || hasErrors) && (
+        {(showErrors || hasErrors) && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">

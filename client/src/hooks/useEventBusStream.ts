@@ -861,7 +861,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     const recentCount = timestampsRef.current.filter((t) => t > cutoff).length;
     const windowSeconds = throughputWindowMs / 1000;
     return Math.round((recentCount / windowSeconds) * 10) / 10;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- events triggers recalc; timestampsRef is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- throughput only depends on event count changes (not content); events.length is a proxy trigger for timestampsRef updates
   }, [events.length, throughputWindowMs]);
 
   /**

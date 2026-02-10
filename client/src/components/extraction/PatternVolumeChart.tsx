@@ -43,10 +43,10 @@ const SERIES_LABELS: Record<string, string> = {
 };
 
 interface PatternVolumeChartProps {
-  window?: string;
+  timeWindow?: string;
 }
 
-export function PatternVolumeChart({ window: timeWindow = '24h' }: PatternVolumeChartProps) {
+export function PatternVolumeChart({ timeWindow = '24h' }: PatternVolumeChartProps) {
   const legend = useToggleableLegend();
 
   const { data, isLoading, error } = useQuery({

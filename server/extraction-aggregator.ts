@@ -32,6 +32,11 @@ import { MonotonicMergeTracker, extractEventTimeMs } from './monotonic-merge';
 export class ExtractionMetricsAggregator {
   /** Lightweight counter for WebSocket invalidation decisions */
   private eventsSinceLastBroadcast = 0;
+  /**
+   * Broadcast after every single event for real-time dashboard updates.
+   * Increase this value to batch WebSocket invalidation signals under high
+   * event throughput (e.g., set to 10 to broadcast every 10th event).
+   */
   private static readonly BROADCAST_THRESHOLD = 1;
 
   /** Monotonic merge tracker for extraction event types */
