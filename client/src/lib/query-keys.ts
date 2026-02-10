@@ -448,6 +448,21 @@ export const queryKeys = {
     /** Multi-metric trend */
     trend: () => [...queryKeys.effectiveness.all, 'trend'] as const,
   },
+
+  // ============================================================================
+  // Learned Insights (OMN-1407)
+  // ============================================================================
+
+  insights: {
+    /** Base key for all insights queries */
+    all: ['insights'] as const,
+
+    /** Insights summary with full insight list */
+    summary: () => [...queryKeys.insights.all, 'summary'] as const,
+
+    /** Insight discovery trend */
+    trend: () => [...queryKeys.insights.all, 'trend'] as const,
+  },
 } as const;
 
 /**
