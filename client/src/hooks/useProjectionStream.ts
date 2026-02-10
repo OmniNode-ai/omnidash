@@ -59,9 +59,11 @@ export function useProjectionStream<T>(
   });
 
   // Track cursor from latest snapshot
-  if (data?.cursor) {
-    cursorRef.current = data.cursor;
-  }
+  useEffect(() => {
+    if (data?.cursor != null && data.cursor > 0) {
+      cursorRef.current = data.cursor;
+    }
+  }, [data?.cursor]);
 
   // WebSocket listener for PROJECTION_INVALIDATE messages
   // When the server signals that a view has new data and the cursor

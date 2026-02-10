@@ -41,17 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Activity,
-  RefreshCw,
-  Filter,
-  X,
-  Pause,
-  Play,
-  Eye,
-  EyeOff,
-  AlertTriangle,
-} from 'lucide-react';
+import { Activity, Filter, X, Pause, Play, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import {
   EventDetailPanel,
   type EventDetailPanelProps,
@@ -768,13 +758,6 @@ export default function EventBusMonitor() {
               </>
             )}
           </Button>
-
-          {!isConnected && connectionStatus !== 'connecting' && (
-            <Button variant="outline" size="sm" className="gap-2" disabled>
-              <RefreshCw className="h-4 w-4" />
-              Reconnect
-            </Button>
-          )}
         </div>
       </div>
 

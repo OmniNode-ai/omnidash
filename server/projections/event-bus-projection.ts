@@ -38,6 +38,7 @@ const ROLLING_WINDOW_MAX_ENTRIES = 10_000;
 /**
  * Snapshot payload returned by getSnapshot().
  * All aggregates are pre-computed — no O(n) scans on read.
+ * SYNC: Must match client/src/lib/data-sources/event-bus-projection-source.ts → EventBusPayload
  */
 export interface EventBusPayload {
   events: ProjectionEvent[];

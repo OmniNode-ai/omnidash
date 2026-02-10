@@ -7,7 +7,10 @@
 
 import type { ProjectionResponse } from '@/hooks/useProjectionStream.types';
 
-/** Snapshot payload from the event-bus projection */
+/**
+ * Snapshot payload from the event-bus projection.
+ * SYNC: Must match server/projections/event-bus-projection.ts → EventBusPayload
+ */
 export interface EventBusPayload {
   events: Array<{
     id: string;

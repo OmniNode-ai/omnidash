@@ -27,6 +27,7 @@ import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-sour
 import { getPlaybackDataSource } from './playback-data-source';
 import { playbackEventEmitter, type PlaybackWSMessage } from './playback-events';
 import { ENVIRONMENT_PREFIXES } from '@shared/topics';
+import { projectionService } from './projection-bootstrap';
 
 /**
  * Wrap an async function so that rejections are caught and logged.
@@ -650,6 +651,24 @@ export function setupWebSocket(httpServer: HTTPServer) {
     );
   }
 
+  // Projection invalidation bridge (OMN-2095)
+  // Bridges the server-side ProjectionService EventEmitter to WebSocket clients.
+  // When a projection view applies an event, broadcast PROJECTION_INVALIDATE so
+  // clients using useProjectionStream can invalidate their TanStack Query cache
+  // instead of waiting for the next polling interval.
+  const projectionInvalidateHandler = (data: { viewId: string; cursor: number }) => {
+    broadcast('PROJECTION_INVALIDATE', data, 'all');
+  };
+  projectionService.on('projection-invalidate', projectionInvalidateHandler);
+
+  const projectionListeners = [
+    {
+      emitter: projectionService,
+      event: 'projection-invalidate' as string,
+      handler: projectionInvalidateHandler,
+    },
+  ];
+
   // PlaybackDataSource listener (works without Kafka for demo playback)
   const playbackDataSource = getPlaybackDataSource();
 
@@ -973,6 +992,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
       }
     });
     eventBusListeners.length = 0;
+
+    // Remove projection event listeners (OMN-2095)
+    console.log(`Removing ${projectionListeners.length} projection event listeners...`);
+    projectionListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    projectionListeners.length = 0;
 
     // Remove playback data source listeners (OMN-1885)
     console.log(`Removing ${playbackDataSourceListeners.length} playback data source listeners...`);
