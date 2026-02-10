@@ -1139,7 +1139,10 @@ export class EventConsumer extends EventEmitter {
             // Use Kafka offset as primary seq; fall back to a monotonic arrival
             // counter when offset is missing (tests, playback injection).
             const kafkaOffset = parseOffsetAsSeq(message.offset);
-            const incomingSeq = kafkaOffset > 0 ? kafkaOffset : ++this.arrivalSeq;
+            // Use Kafka offset when a real offset string is present (including valid '0');
+            // fall back to arrival counter only when offset is missing (tests, playback).
+            const hasKafkaOffset = message.offset != null && message.offset !== '';
+            const incomingSeq = hasKafkaOffset ? kafkaOffset : ++this.arrivalSeq;
             // Key includes partition because Kafka offsets are per-partition,
             // not global. Without partition, two events from different partitions
             // with the same timestamp and offset would incorrectly collide.
@@ -1473,7 +1476,13 @@ export class EventConsumer extends EventEmitter {
   ): void {
     try {
       const now = new Date();
-      const eventTimestamp = (event.timestamp as string) || now.toISOString();
+      const rawTs = event.timestamp;
+      const eventTimestamp =
+        typeof rawTs === 'number'
+          ? new Date(rawTs).toISOString()
+          : typeof rawTs === 'string' && rawTs.length > 0
+            ? rawTs
+            : now.toISOString();
 
       let parsedPayload: Record<string, any>;
       if (event.payload && typeof event.payload === 'object') {

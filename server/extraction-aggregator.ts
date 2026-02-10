@@ -58,7 +58,7 @@ export class ExtractionMetricsAggregator {
 
     try {
       const createdAt = event.timestamp ? new Date(event.timestamp) : undefined;
-      await db
+      const inserted = await db
         .insert(injectionEffectiveness)
         .values({
           sessionId: event.session_id,
@@ -81,8 +81,11 @@ export class ExtractionMetricsAggregator {
           eventType: 'context_utilization',
           ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
         })
-        .onConflictDoNothing();
-      this.eventsSinceLastBroadcast++;
+        .onConflictDoNothing()
+        .returning({ id: injectionEffectiveness.id });
+      if (inserted.length > 0) {
+        this.eventsSinceLastBroadcast++;
+      }
     } catch (error) {
       console.error('[extraction] Error persisting context-utilization event:', error);
     }
@@ -103,7 +106,7 @@ export class ExtractionMetricsAggregator {
 
     try {
       const createdAt = event.timestamp ? new Date(event.timestamp) : undefined;
-      await db
+      const inserted = await db
         .insert(injectionEffectiveness)
         .values({
           sessionId: event.session_id,
@@ -116,8 +119,11 @@ export class ExtractionMetricsAggregator {
           eventType: 'agent_match',
           ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
         })
-        .onConflictDoNothing();
-      this.eventsSinceLastBroadcast++;
+        .onConflictDoNothing()
+        .returning({ id: injectionEffectiveness.id });
+      if (inserted.length > 0) {
+        this.eventsSinceLastBroadcast++;
+      }
     } catch (error) {
       console.error('[extraction] Error persisting agent-match event:', error);
     }
@@ -138,7 +144,7 @@ export class ExtractionMetricsAggregator {
 
     try {
       const createdAt = event.timestamp ? new Date(event.timestamp) : undefined;
-      await db
+      const inserted = await db
         .insert(latencyBreakdowns)
         .values({
           sessionId: event.session_id,
@@ -151,8 +157,11 @@ export class ExtractionMetricsAggregator {
           cacheHit: event.cache_hit ?? false,
           ...(createdAt && !isNaN(createdAt.getTime()) ? { createdAt } : {}),
         })
-        .onConflictDoNothing();
-      this.eventsSinceLastBroadcast++;
+        .onConflictDoNothing()
+        .returning({ id: latencyBreakdowns.id });
+      if (inserted.length > 0) {
+        this.eventsSinceLastBroadcast++;
+      }
     } catch (error) {
       console.error('[extraction] Error persisting latency-breakdown event:', error);
     }
@@ -160,9 +169,9 @@ export class ExtractionMetricsAggregator {
 
   /**
    * Check if there are pending events that should trigger a WebSocket broadcast.
-   * Resets the counter after check. Callers must only invoke this after a
-   * successful event handler — a failed insert that didn't increment the counter
-   * will not produce a false positive because the counter stays at 0.
+   * Resets the counter after check. The counter only increments when a row is
+   * actually inserted (via `.returning()`), so duplicate events suppressed by
+   * onConflictDoNothing do not produce false-positive broadcasts.
    */
   shouldBroadcast(): boolean {
     if (this.eventsSinceLastBroadcast >= ExtractionMetricsAggregator.BROADCAST_THRESHOLD) {
