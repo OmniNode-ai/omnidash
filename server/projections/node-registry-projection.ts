@@ -208,7 +208,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         existing?.version ??
         '1.0.0') as string,
       uptimeSeconds: existing?.uptimeSeconds ?? 0,
-      lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
+      lastSeen: new Date(event.eventTimeMs ?? Date.now()).toISOString(),
       memoryUsageMb: existing?.memoryUsageMb,
       cpuUsagePercent: existing?.cpuUsagePercent,
       endpoints: (payload.endpoints ?? existing?.endpoints) as Record<string, string> | undefined,
@@ -243,7 +243,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         state: 'active',
         version: '1.0.0',
         uptimeSeconds: (payload.uptimeSeconds ?? payload.uptime_seconds ?? 0) as number,
-        lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
+        lastSeen: new Date(event.eventTimeMs ?? Date.now()).toISOString(),
         memoryUsageMb: (payload.memoryUsageMb ?? payload.memory_usage_mb) as number | undefined,
         cpuUsagePercent: (payload.cpuUsagePercent ?? payload.cpu_usage_percent) as
           | number
@@ -259,7 +259,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       uptimeSeconds: (payload.uptimeSeconds ??
         payload.uptime_seconds ??
         existing.uptimeSeconds) as number,
-      lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
+      lastSeen: new Date(event.eventTimeMs ?? Date.now()).toISOString(),
       memoryUsageMb: (payload.memoryUsageMb ??
         payload.memory_usage_mb ??
         existing.memoryUsageMb) as number | undefined,
@@ -295,7 +295,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       this.nodes.set(nodeId, {
         ...existing,
         state: newState,
-        lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
+        lastSeen: new Date(event.eventTimeMs ?? Date.now()).toISOString(),
       });
     }
 

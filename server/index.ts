@@ -161,7 +161,10 @@ app.use((req, res, next) => {
     });
   });
 
-  // Seed projection with existing nodes from EventConsumer (survives server restart)
+  // Seed projection with existing nodes from EventConsumer (survives server restart).
+  // Seed has no eventTimeMs — represents current EventConsumer snapshot, not a
+  // timestamped Kafka event. ProjectionService assigns sentinel (epoch 0), so
+  // MonotonicMergeTracker accepts any future event with a real timestamp.
   const existingNodes = eventConsumer.getRegisteredNodes();
   if (existingNodes.length > 0) {
     projectionService.ingest({

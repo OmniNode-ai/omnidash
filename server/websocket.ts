@@ -254,6 +254,8 @@ const VALID_TOPICS = [
   'validation',
   // Extraction pipeline events (OMN-1804)
   'extraction',
+  // Projection invalidation events (OMN-2097)
+  'projection:node-registry',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];

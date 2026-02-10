@@ -170,10 +170,8 @@ export function useProjectionStream<T>(
 
     connect();
 
-    // Start polling fallback immediately (will be cleared when WS connects)
-    if (!disablePolling) {
-      pollingRef.current = setInterval(fetchSnapshot, pollingIntervalMs);
-    }
+    // Polling starts in ws.onclose handler, not here — avoids duplicate
+    // intervals when WebSocket connects quickly then disconnects.
 
     return () => {
       mountedRef.current = false;
