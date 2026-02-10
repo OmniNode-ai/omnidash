@@ -30,6 +30,7 @@ import type {
   TopicBreakdownItem,
   EventTypeBreakdownItem,
   TimeSeriesItem,
+  BurstInfo,
 } from '@/hooks/useEventBusStream.types';
 import { TIME_SERIES_BUCKET_MS } from '@/hooks/useEventBusStream.utils';
 import type { DashboardData } from '@/lib/dashboard-schema';
@@ -54,6 +55,7 @@ import {
   Eye,
   EyeOff,
   AlertTriangle,
+  Zap,
 } from 'lucide-react';
 import {
   EventDetailPanel,
@@ -81,6 +83,7 @@ interface PausedSnapshot {
   eventsPerSecond: number;
   errorRate: number;
   activeTopics: number;
+  burstInfo: BurstInfo;
 }
 
 // ============================================================================
@@ -224,6 +227,7 @@ export default function EventBusMonitor() {
     timeSeries,
     connectionStatus,
     stats,
+    burstInfo,
     connect,
   } = useEventBusStream({
     maxItems: maxEvents,
@@ -265,6 +269,7 @@ export default function EventBusMonitor() {
         eventsPerSecond: metrics.eventsPerSecond,
         errorRate: metrics.errorRate,
         activeTopics: metrics.activeTopics,
+        burstInfo,
       };
       wasPausedRef.current = true;
     } else if (!isPaused && wasPausedRef.current) {
@@ -272,7 +277,7 @@ export default function EventBusMonitor() {
       pausedSnapshotRef.current = null;
       wasPausedRef.current = false;
     }
-  }, [isPaused, events, topicBreakdown, eventTypeBreakdown, timeSeries, metrics]);
+  }, [isPaused, events, topicBreakdown, eventTypeBreakdown, timeSeries, metrics, burstInfo]);
 
   // Use paused snapshot or live data
   const sourceData = useMemo(() => {
@@ -288,8 +293,9 @@ export default function EventBusMonitor() {
       eventsPerSecond: metrics.eventsPerSecond,
       errorRate: metrics.errorRate,
       activeTopics: metrics.activeTopics,
+      burstInfo,
     };
-  }, [isPaused, events, topicBreakdown, eventTypeBreakdown, timeSeries, metrics]);
+  }, [isPaused, events, topicBreakdown, eventTypeBreakdown, timeSeries, metrics, burstInfo]);
 
   // Last update time for display
   const lastUpdate = useMemo(() => {
@@ -319,7 +325,7 @@ export default function EventBusMonitor() {
     void statusTick;
 
     const now = Date.now();
-    const FIVE_MINUTES_MS = 5 * 60 * 1000;
+    const MONITORING_WINDOW_MS = eventConfig.monitoring_window_ms;
     const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
     const statusRows = monitoredTopics.map((topic) => {
@@ -341,7 +347,7 @@ export default function EventBusMonitor() {
       }
 
       let status: 'active' | 'silent' | 'error';
-      if (lastEventAt && now - new Date(lastEventAt).getTime() <= FIVE_MINUTES_MS) {
+      if (lastEventAt && now - new Date(lastEventAt).getTime() <= MONITORING_WINDOW_MS) {
         status = 'active';
       } else {
         status = 'silent';
@@ -596,7 +602,7 @@ export default function EventBusMonitor() {
 
   // Staleness detection — computed from ALL events (unfiltered), excluding heartbeats
   const stalenessInfo = useMemo(() => {
-    const STALENESS_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+    const STALENESS_THRESHOLD_MS = eventConfig.staleness_threshold_ms;
     const now = Date.now();
     const allEvents = sourceData.events;
 
@@ -730,26 +736,68 @@ export default function EventBusMonitor() {
         </div>
       </div>
 
-      {/* Staleness Warning Banner */}
-      {stalenessInfo.stale && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-200">
-          <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0" />
-          <span className="text-sm">
-            {stalenessInfo.hasOnlyHeartbeats ? (
-              'Only heartbeats detected — no application events in the buffer'
-            ) : (
-              <>
-                No new non-heartbeat events in{' '}
-                <span className="font-semibold">{stalenessInfo.ageStr}</span>
-                {' — '}producers may not be emitting.
-                <span className="text-amber-300/70 ml-2">
-                  Newest: {stalenessInfo.newestTimestamp} ({stalenessInfo.newestTopic})
-                </span>
-              </>
-            )}
-          </span>
-        </div>
-      )}
+      {/* Priority Banners: Staleness > Error Spike > Throughput Burst */}
+      {(() => {
+        const activeBurst = sourceData.burstInfo;
+        const burstLabel = `${Math.round(eventConfig.burst_window_ms / 1000)}s`;
+        const monitoringLabel = `${Math.round(eventConfig.monitoring_window_ms / 60000)}-min`;
+
+        if (stalenessInfo.stale) {
+          return (
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0" />
+              <span className="text-sm">
+                {stalenessInfo.hasOnlyHeartbeats ? (
+                  'Only heartbeats detected — no application events in the buffer'
+                ) : (
+                  <>
+                    No new non-heartbeat events in{' '}
+                    <span className="font-semibold">{stalenessInfo.ageStr}</span>
+                    {' — '}producers may not be emitting.
+                    <span className="text-amber-300/70 ml-2">
+                      Newest: {stalenessInfo.newestTimestamp} ({stalenessInfo.newestTopic})
+                    </span>
+                  </>
+                )}
+              </span>
+            </div>
+          );
+        }
+
+        if (activeBurst.errorSpike) {
+          return (
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-200">
+              <AlertTriangle className="h-4 w-4 text-red-400 flex-shrink-0" />
+              <span className="text-sm">
+                Error spike detected:{' '}
+                <span className="font-semibold">
+                  {activeBurst.shortWindowErrorRate.toFixed(1)}%
+                </span>{' '}
+                error rate in the last {burstLabel} ({monitoringLabel} avg:{' '}
+                {activeBurst.baselineErrorRate.toFixed(1)}%)
+              </span>
+            </div>
+          );
+        }
+
+        if (activeBurst.throughputBurst) {
+          return (
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-200">
+              <Zap className="h-4 w-4 text-cyan-400 flex-shrink-0" />
+              <span className="text-sm">
+                Burst detected:{' '}
+                <span className="font-semibold">
+                  {activeBurst.shortWindowRate.toFixed(1)} events/sec
+                </span>{' '}
+                in the last {burstLabel} ({monitoringLabel} avg:{' '}
+                {activeBurst.baselineRate.toFixed(1)}/sec)
+              </span>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
 
       {/* Filters */}
       <Card className="p-3">

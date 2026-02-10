@@ -384,9 +384,10 @@ export interface DashboardConfig {
  *   max_events: 100,
  *   max_events_options: [50, 100, 200, 500],
  *   throughput_cleanup_interval: 100,
- *   time_series_window_ms: 300000, // 5 minutes
- *   throughput_window_ms: 60000,   // 1 minute
+ *   monitoring_window_ms: 300000,      // 5 minutes — unified for all metrics
+ *   staleness_threshold_ms: 600000,    // 10 minutes — independent
  *   max_breakdown_items: 50,
+ *   burst_window_ms: 30000,            // 30s burst detection
  * };
  * ```
  */
@@ -413,18 +414,20 @@ export interface EventMonitoringConfig {
   throughput_cleanup_interval: number;
 
   /**
-   * Time series display window in milliseconds.
-   * Determines how far back the time series chart shows data.
+   * Unified monitoring window in milliseconds.
+   * Used for all steady-state metrics: throughput, time series chart, error rate, topic active/silent.
+   * Replaces the previous separate time_series_window_ms and throughput_window_ms.
    * @default 300000 (5 minutes)
    */
-  time_series_window_ms: number;
+  monitoring_window_ms: number;
 
   /**
-   * Throughput calculation window in milliseconds.
-   * Used to compute events/second over this rolling window.
-   * @default 60000 (1 minute)
+   * Staleness threshold in milliseconds.
+   * Independent of monitoring_window_ms — deriving as 2x breaks at extreme values.
+   * When no non-heartbeat events arrive within this window, the staleness banner shows.
+   * @default 600000 (10 minutes)
    */
-  throughput_window_ms: number;
+  staleness_threshold_ms: number;
 
   /**
    * Maximum number of topics/event types to track before pruning.
@@ -440,6 +443,55 @@ export interface EventMonitoringConfig {
    * @default 10000 (10 seconds)
    */
   periodic_cleanup_interval_ms: number;
+
+  // ── Burst / Spike Detection ──────────────────────────────────────────
+
+  /**
+   * Short detection window in milliseconds for burst/spike detection.
+   * Compared against the longer monitoring_window_ms baseline.
+   * @default 30000 (30 seconds)
+   */
+  burst_window_ms: number;
+
+  /**
+   * Throughput burst multiplier. Short-window rate must be >= this * baseline rate.
+   * @default 3
+   */
+  burst_throughput_multiplier: number;
+
+  /**
+   * Minimum absolute events/sec in the burst window to trigger a throughput burst.
+   * Prevents noise at low baselines (e.g. 0.5 ev/s × 3 = 1.5 would be meaningless).
+   * @default 5
+   */
+  burst_throughput_min_rate: number;
+
+  /**
+   * Error spike multiplier. Short-window error rate must be >= this * baseline error rate.
+   * @default 2
+   */
+  burst_error_multiplier: number;
+
+  /**
+   * Absolute error rate threshold (%). If short-window error rate exceeds this,
+   * an error spike is flagged regardless of the multiplier.
+   * @default 5
+   */
+  burst_error_absolute_threshold: number;
+
+  /**
+   * Minimum events in the burst window required for a meaningful error rate sample.
+   * Prevents false positives from e.g. 1 error in 2 events = 50%.
+   * @default 50
+   */
+  burst_error_min_events: number;
+
+  /**
+   * Cooldown in milliseconds after a burst/spike is detected.
+   * Banner stays visible for at least this long after conditions subside.
+   * @default 15000 (15 seconds)
+   */
+  burst_cooldown_ms: number;
 }
 
 /**
@@ -460,8 +512,8 @@ export interface EventMonitoringConfig {
  *       max_events: 200,
  *       max_events_options: [100, 200, 500],
  *       throughput_cleanup_interval: 50,
- *       time_series_window_ms: 600000,
- *       throughput_window_ms: 30000,
+ *       monitoring_window_ms: 300000,
+ *       staleness_threshold_ms: 600000,
  *       max_breakdown_items: 100,
  *     },
  *   },

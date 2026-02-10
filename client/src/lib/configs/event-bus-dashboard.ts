@@ -219,10 +219,18 @@ export const eventBusDashboardConfig: DashboardConfig = {
       max_events: 2000,
       max_events_options: [200, 500, 1000, 2000, 5000],
       throughput_cleanup_interval: 100,
-      time_series_window_ms: 5 * 60 * 1000, // 5 minutes
-      throughput_window_ms: 60 * 1000, // 1 minute
+      monitoring_window_ms: 5 * 60 * 1000, // 5 minutes — unified for all metrics
+      staleness_threshold_ms: 10 * 60 * 1000, // 10 minutes — independent
       max_breakdown_items: 50,
       periodic_cleanup_interval_ms: 10 * 1000, // 10 seconds - for responsive UX
+      // Burst / Spike Detection
+      burst_window_ms: 30 * 1000, // 30 seconds
+      burst_throughput_multiplier: 3,
+      burst_throughput_min_rate: 5,
+      burst_error_multiplier: 2,
+      burst_error_absolute_threshold: 5,
+      burst_error_min_events: 50,
+      burst_cooldown_ms: 15 * 1000, // 15 seconds
     },
   },
 
@@ -254,7 +262,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
     {
       widget_id: 'metric-throughput',
       title: 'Events/sec',
-      description: 'Average rate over the last 60 seconds',
+      description: 'Avg rate over the last 5 min',
       row: 0,
       col: 4,
       width: 4,
@@ -578,10 +586,18 @@ export function getEventMonitoringConfig() {
     max_events: config?.max_events ?? 50,
     max_events_options: config?.max_events_options ?? [50, 100, 200, 500, 1000],
     throughput_cleanup_interval: config?.throughput_cleanup_interval ?? 100,
-    time_series_window_ms: config?.time_series_window_ms ?? 5 * 60 * 1000,
-    throughput_window_ms: config?.throughput_window_ms ?? 60 * 1000,
+    monitoring_window_ms: config?.monitoring_window_ms ?? 5 * 60 * 1000,
+    staleness_threshold_ms: config?.staleness_threshold_ms ?? 10 * 60 * 1000,
     max_breakdown_items: config?.max_breakdown_items ?? 50,
     periodic_cleanup_interval_ms: config?.periodic_cleanup_interval_ms ?? 10 * 1000,
+    // Burst / Spike Detection
+    burst_window_ms: config?.burst_window_ms ?? 30 * 1000,
+    burst_throughput_multiplier: config?.burst_throughput_multiplier ?? 3,
+    burst_throughput_min_rate: config?.burst_throughput_min_rate ?? 5,
+    burst_error_multiplier: config?.burst_error_multiplier ?? 2,
+    burst_error_absolute_threshold: config?.burst_error_absolute_threshold ?? 5,
+    burst_error_min_events: config?.burst_error_min_events ?? 50,
+    burst_cooldown_ms: config?.burst_cooldown_ms ?? 15 * 1000,
   };
 }
 

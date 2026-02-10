@@ -72,6 +72,34 @@ export const NODE_TOPIC_MAP: Record<string, string> = {
 };
 
 // ============================================================================
+// Shared Windowing Helpers
+// ============================================================================
+
+/** Get cutoff timestamp for a given window */
+export function getWindowCutoff(now: number, windowMs: number): number {
+  return now - windowMs;
+}
+
+/** Filter events to those within the window (timestamp >= cutoff) */
+export function filterEventsInWindow(events: ProcessedEvent[], cutoff: number): ProcessedEvent[] {
+  return events.filter((e) => e.timestamp.getTime() >= cutoff);
+}
+
+/** Compute events/sec rate from a count and window duration */
+export function computeRate(count: number, windowMs: number): number {
+  const windowSeconds = windowMs / 1000;
+  if (windowSeconds <= 0) return 0;
+  return Math.round((count / windowSeconds) * 10) / 10;
+}
+
+/** Compute error rate (%) from windowed events */
+export function computeErrorRate(windowedEvents: ProcessedEvent[]): number {
+  if (windowedEvents.length === 0) return 0;
+  const errorCount = windowedEvents.filter((e) => e.priority === 'critical').length;
+  return Math.round((errorCount / windowedEvents.length) * 100 * 100) / 100;
+}
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 

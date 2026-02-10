@@ -20,6 +20,10 @@ import {
   MAX_TIMESTAMP_ENTRIES,
   MAX_ERRORS,
   TIME_SERIES_BUCKET_MS,
+  getWindowCutoff,
+  filterEventsInWindow,
+  computeRate,
+  computeErrorRate,
 } from '../useEventBusStream';
 import type { ProcessedEvent, WireEventData } from '../useEventBusStream.types';
 
@@ -39,10 +43,17 @@ vi.mock('@/lib/configs/event-bus-dashboard', () => ({
     max_events: 50,
     max_events_options: [50, 100, 200, 500, 1000],
     throughput_cleanup_interval: 100,
-    time_series_window_ms: 5 * 60 * 1000,
-    throughput_window_ms: 60 * 1000,
+    monitoring_window_ms: 5 * 60 * 1000,
+    staleness_threshold_ms: 10 * 60 * 1000,
     max_breakdown_items: 50,
     periodic_cleanup_interval_ms: 10 * 1000,
+    burst_window_ms: 30 * 1000,
+    burst_throughput_multiplier: 3,
+    burst_throughput_min_rate: 5,
+    burst_error_multiplier: 2,
+    burst_error_absolute_threshold: 5,
+    burst_error_min_events: 50,
+    burst_cooldown_ms: 15 * 1000,
   }),
 }));
 
@@ -636,6 +647,195 @@ describe('useEventBusStream', () => {
       const id2 = getEventId(event2, 'topic', 'type');
 
       expect(id1).toBe(id2);
+    });
+  });
+
+  // ============================================================================
+  // Shared Windowing Helpers Tests
+  // ============================================================================
+
+  describe('getWindowCutoff', () => {
+    it('returns now minus window duration', () => {
+      const now = 1000000;
+      expect(getWindowCutoff(now, 60000)).toBe(940000);
+    });
+
+    it('returns 0 when window equals now', () => {
+      expect(getWindowCutoff(5000, 5000)).toBe(0);
+    });
+  });
+
+  describe('filterEventsInWindow', () => {
+    const makeEvent = (timestampMs: number): ProcessedEvent => ({
+      id: `evt-${timestampMs}`,
+      topic: 'test',
+      topicRaw: 'test',
+      eventType: 'action',
+      priority: 'normal',
+      timestamp: new Date(timestampMs),
+      timestampRaw: new Date(timestampMs).toISOString(),
+      source: 'system',
+      payload: '{}',
+      summary: 'test',
+      normalizedType: 'test',
+      groupKey: 'test',
+      parsedDetails: null,
+    });
+
+    it('filters events to those within the window', () => {
+      const events = [makeEvent(100), makeEvent(200), makeEvent(300)];
+      const result = filterEventsInWindow(events, 150);
+      expect(result).toHaveLength(2);
+      expect(result.map((e) => e.id)).toEqual(['evt-200', 'evt-300']);
+    });
+
+    it('returns empty array when no events in window', () => {
+      const events = [makeEvent(100), makeEvent(200)];
+      const result = filterEventsInWindow(events, 300);
+      expect(result).toHaveLength(0);
+    });
+
+    it('returns all events when cutoff is 0', () => {
+      const events = [makeEvent(100), makeEvent(200)];
+      const result = filterEventsInWindow(events, 0);
+      expect(result).toHaveLength(2);
+    });
+  });
+
+  describe('computeRate', () => {
+    it('computes events per second correctly', () => {
+      // 100 events in 60 seconds = 1.7 ev/s (rounded to 1 decimal)
+      expect(computeRate(100, 60000)).toBe(1.7);
+    });
+
+    it('returns 0 for zero-duration window', () => {
+      expect(computeRate(100, 0)).toBe(0);
+    });
+
+    it('returns 0 for zero count', () => {
+      expect(computeRate(0, 60000)).toBe(0);
+    });
+
+    it('handles small counts correctly', () => {
+      // 1 event in 300 seconds = 0.0 (rounded)
+      expect(computeRate(1, 300000)).toBe(0);
+    });
+  });
+
+  describe('computeErrorRate', () => {
+    const makeEvent = (priority: 'normal' | 'critical', ts = Date.now()): ProcessedEvent => ({
+      id: `evt-${ts}-${Math.random()}`,
+      topic: 'test',
+      topicRaw: 'test',
+      eventType: 'action',
+      priority,
+      timestamp: new Date(ts),
+      timestampRaw: new Date(ts).toISOString(),
+      source: 'system',
+      payload: '{}',
+      summary: 'test',
+      normalizedType: 'test',
+      groupKey: 'test',
+      parsedDetails: null,
+    });
+
+    it('computes error rate from windowed events', () => {
+      const events = [
+        makeEvent('critical'),
+        makeEvent('normal'),
+        makeEvent('normal'),
+        makeEvent('normal'),
+      ];
+      // 1/4 = 25%
+      expect(computeErrorRate(events)).toBe(25);
+    });
+
+    it('returns 0 for empty array', () => {
+      expect(computeErrorRate([])).toBe(0);
+    });
+
+    it('returns 100 when all events are errors', () => {
+      const events = [makeEvent('critical'), makeEvent('critical')];
+      expect(computeErrorRate(events)).toBe(100);
+    });
+
+    it('returns 0 when no events are errors', () => {
+      const events = [makeEvent('normal'), makeEvent('normal')];
+      expect(computeErrorRate(events)).toBe(0);
+    });
+  });
+
+  // ============================================================================
+  // Burst Detection Edge Cases
+  // ============================================================================
+
+  describe('burst detection edge cases', () => {
+    it('computeRate below burst_throughput_min_rate should not trigger burst', () => {
+      // 2 events in 30 seconds = 0.1 ev/s — below min rate of 5
+      const rate = computeRate(2, 30000);
+      expect(rate).toBeLessThan(5);
+    });
+
+    it('computeErrorRate with insufficient sample should not be meaningful', () => {
+      // 1 error in 2 events = 50% — but only 2 events, below min_events of 50
+      const makeEvt = (priority: 'normal' | 'critical'): ProcessedEvent => ({
+        id: `evt-${Math.random()}`,
+        topic: 'test',
+        topicRaw: 'test',
+        eventType: 'action',
+        priority,
+        timestamp: new Date(),
+        timestampRaw: new Date().toISOString(),
+        source: 'system',
+        payload: '{}',
+        summary: 'test',
+        normalizedType: 'test',
+        groupKey: 'test',
+        parsedDetails: null,
+      });
+      const events = [makeEvt('critical'), makeEvt('normal')];
+      const errorRate = computeErrorRate(events);
+      // Rate is 50% but sample size is only 2 — hook should gate on burst_error_min_events
+      expect(errorRate).toBe(50);
+      expect(events.length).toBeLessThan(50); // Below min_events threshold
+    });
+
+    it('error rate uses windowed events not entire buffer', () => {
+      const makeEvt = (priority: 'normal' | 'critical', ts: number): ProcessedEvent => ({
+        id: `evt-${ts}-${Math.random()}`,
+        topic: 'test',
+        topicRaw: 'test',
+        eventType: 'action',
+        priority,
+        timestamp: new Date(ts),
+        timestampRaw: new Date(ts).toISOString(),
+        source: 'system',
+        payload: '{}',
+        summary: 'test',
+        normalizedType: 'test',
+        groupKey: 'test',
+        parsedDetails: null,
+      });
+
+      const now = Date.now();
+      const windowMs = 5 * 60 * 1000;
+      const cutoff = getWindowCutoff(now, windowMs);
+
+      // Old errors outside window
+      const oldErrors = [
+        makeEvt('critical', now - 10 * 60 * 1000),
+        makeEvt('critical', now - 15 * 60 * 1000),
+      ];
+      // Recent normal events inside window
+      const recentNormal = [makeEvt('normal', now - 1000), makeEvt('normal', now - 2000)];
+
+      const allEvents = [...oldErrors, ...recentNormal];
+      const windowedEvents = filterEventsInWindow(allEvents, cutoff);
+
+      // Windowed error rate should be 0% (only normal events in window)
+      expect(computeErrorRate(windowedEvents)).toBe(0);
+      // But whole-buffer error rate would be 50% (2/4) — this was the old bug
+      expect(computeErrorRate(allEvents)).toBe(50);
     });
   });
 });

@@ -225,16 +225,10 @@ export interface UseEventBusStreamOptions {
   autoConnect?: boolean;
 
   /**
-   * Time window for time series chart data (ms).
+   * Unified monitoring window for all steady-state metrics (ms).
    * @default 300000 (5 minutes)
    */
-  timeSeriesWindowMs?: number;
-
-  /**
-   * Time window for throughput calculation (ms).
-   * @default 60000 (60 seconds)
-   */
-  throughputWindowMs?: number;
+  monitoringWindowMs?: number;
 
   /**
    * Interval for flushing pending events to state (ms).
@@ -286,6 +280,25 @@ export interface EventBusStreamMetrics {
 export type EventBusConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
 
 /**
+ * Burst/spike detection info returned from the hook.
+ * Used by EventBusMonitor to render burst/error spike banners.
+ */
+export interface BurstInfo {
+  /** Whether a throughput burst is currently detected */
+  throughputBurst: boolean;
+  /** Whether an error spike is currently detected */
+  errorSpike: boolean;
+  /** Events/sec in the burst (short) window */
+  shortWindowRate: number;
+  /** Events/sec in the monitoring (baseline) window */
+  baselineRate: number;
+  /** Error rate (%) in the burst (short) window */
+  shortWindowErrorRate: number;
+  /** Error rate (%) in the monitoring (baseline) window */
+  baselineErrorRate: number;
+}
+
+/**
  * Return type for useEventBusStream hook.
  */
 export interface UseEventBusStreamReturn {
@@ -315,6 +328,9 @@ export interface UseEventBusStreamReturn {
 
   /** Recent errors (bounded ring buffer) */
   errors: ProcessedStreamError[];
+
+  /** Burst/spike detection info for banner rendering */
+  burstInfo: BurstInfo;
 
   /** Connect to WebSocket */
   connect: () => void;

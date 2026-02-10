@@ -44,6 +44,7 @@ import type {
   EventBusStreamStats,
   EventBusStreamMetrics,
   EventBusConnectionStatus,
+  BurstInfo,
 } from './useEventBusStream.types';
 
 // Import utilities and constants from separate module
@@ -56,6 +57,10 @@ import {
   TIME_SERIES_BUCKET_MS,
   NODE_TOPIC_MAP,
   processEvent,
+  getWindowCutoff,
+  filterEventsInWindow,
+  computeRate,
+  computeErrorRate,
 } from './useEventBusStream.utils';
 
 // Re-export utilities and constants for public API
@@ -68,6 +73,10 @@ export {
   TIME_SERIES_BUCKET_MS,
   getEventId,
   processEvent,
+  getWindowCutoff,
+  filterEventsInWindow,
+  computeRate,
+  computeErrorRate,
 } from './useEventBusStream.utils';
 
 /** Known benign WebSocket message types that don't need event processing. */
@@ -107,8 +116,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     maxItems = DEFAULT_MAX_ITEMS,
     maxDedupIds = maxItems * DEDUPE_SET_CLEANUP_MULTIPLIER,
     autoConnect = true,
-    timeSeriesWindowMs = eventConfig.time_series_window_ms,
-    throughputWindowMs = eventConfig.throughput_window_ms,
+    monitoringWindowMs = eventConfig.monitoring_window_ms,
     flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS,
     debug = false,
   } = options;
@@ -376,7 +384,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
    * database should be displayed regardless of age. Time-based filtering
    * is only applied to:
    * - Time series chart data (in timeSeries useMemo)
-   * - Throughput calculation (using throughputWindowMs)
+   * - Throughput calculation (using monitoringWindowMs)
    */
   const handleInitialState = useCallback(
     (state: WireInitialState): void => {
@@ -492,22 +500,22 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       seenIdsRef.current = allIds;
 
       // Merge timestamps: keep existing real-time timestamps, add INITIAL_STATE ones
-      const throughputCutoff = now - throughputWindowMs;
-      const existingTimestamps = timestampsRef.current.filter((t) => t > throughputCutoff);
+      const throughputCutoff = getWindowCutoff(now, monitoringWindowMs);
+      const existingTimestamps = timestampsRef.current.filter((t) => t >= throughputCutoff);
       const initialStateTimestamps = processed
         .filter(
           (e) =>
             !e.topicRaw.includes('heartbeat') && !e.eventType.toLowerCase().includes('heartbeat')
         )
         .map((e) => e.timestamp.getTime())
-        .filter((t) => t > throughputCutoff);
+        .filter((t) => t >= throughputCutoff);
       const allTimestamps = [...new Set([...existingTimestamps, ...initialStateTimestamps])].sort(
         (a, b) => a - b
       );
       timestampsRef.current = allTimestamps.slice(-MAX_TIMESTAMP_ENTRIES);
 
       // Populate time series with initial data so charts show historical data
-      // The timeSeries useMemo will filter by timeSeriesWindowMs when computing
+      // The timeSeries useMemo will filter by monitoringWindowMs when computing
 
       // Stats: count the new INITIAL_STATE events added
       const newestProcessedAt = processed.reduce(
@@ -530,7 +538,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
         'existing'
       );
     },
-    [throughputWindowMs, maxItems, log]
+    [monitoringWindowMs, maxItems, log]
   );
 
   /**
@@ -799,7 +807,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       const now = Date.now();
-      const cutoff = now - throughputWindowMs;
+      const cutoff = getWindowCutoff(now, monitoringWindowMs);
 
       // Clean stale timestamps for accurate throughput calculation
       if (timestampsRef.current.length > 0) {
@@ -826,7 +834,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     }, eventConfig.periodic_cleanup_interval_ms); // From config
 
     return () => clearInterval(cleanupInterval);
-  }, [throughputWindowMs, maxDedupIds, log, eventConfig.periodic_cleanup_interval_ms]);
+  }, [monitoringWindowMs, maxDedupIds, log, eventConfig.periodic_cleanup_interval_ms]);
 
   // ============================================================================
   // Derived Data (useMemo for performance)
@@ -850,14 +858,76 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
    */
   const eventsPerSecond = useMemo(() => {
     const now = Date.now();
-    const cutoff = now - throughputWindowMs;
+    const cutoff = getWindowCutoff(now, monitoringWindowMs);
     // Use timestampsRef (lightweight number[]) instead of filtering full events array.
     // Heartbeats are already excluded at insertion time in ingestEvent/handleInitialState.
-    const recentCount = timestampsRef.current.filter((t) => t > cutoff).length;
-    const windowSeconds = throughputWindowMs / 1000;
-    return Math.round((recentCount / windowSeconds) * 10) / 10;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- throughput only depends on event count changes (not content); events.length is a proxy trigger for timestampsRef updates
-  }, [events.length, throughputWindowMs]);
+    const recentCount = timestampsRef.current.filter((t) => t >= cutoff).length;
+    return computeRate(recentCount, monitoringWindowMs);
+  }, [events, monitoringWindowMs]);
+
+  // ============================================================================
+  // Burst / Spike Detection
+  // ============================================================================
+
+  /** Track when burst conditions were last met for cooldown */
+  const lastBurstTriggeredAtRef = useRef<number>(0);
+  const lastErrorSpikeTriggeredAtRef = useRef<number>(0);
+
+  const burstInfo = useMemo((): BurstInfo => {
+    const now = Date.now();
+    const burstCutoff = getWindowCutoff(now, eventConfig.burst_window_ms);
+    const baselineCutoff = getWindowCutoff(now, monitoringWindowMs);
+
+    const burstEvents = filterEventsInWindow(events, burstCutoff);
+    const baselineEvents = filterEventsInWindow(events, baselineCutoff);
+
+    const shortWindowRate = computeRate(burstEvents.length, eventConfig.burst_window_ms);
+    const baselineRate = computeRate(baselineEvents.length, monitoringWindowMs);
+    const shortWindowErrorRate = computeErrorRate(burstEvents);
+    const baselineErrorRate = computeErrorRate(baselineEvents);
+
+    // Throughput burst: all 3 conditions
+    const rawThroughputBurst =
+      shortWindowRate >= eventConfig.burst_throughput_min_rate &&
+      baselineRate > 0 &&
+      shortWindowRate >= baselineRate * eventConfig.burst_throughput_multiplier;
+
+    // Error spike: either condition, with sample gate
+    const rawErrorSpike =
+      burstEvents.length >= eventConfig.burst_error_min_events &&
+      (shortWindowErrorRate > eventConfig.burst_error_absolute_threshold ||
+        (baselineErrorRate > 0 &&
+          shortWindowErrorRate > baselineErrorRate * eventConfig.burst_error_multiplier));
+
+    // Update trigger timestamps
+    if (rawThroughputBurst) lastBurstTriggeredAtRef.current = now;
+    if (rawErrorSpike) lastErrorSpikeTriggeredAtRef.current = now;
+
+    // Apply cooldown
+    const throughputBurst =
+      rawThroughputBurst || now - lastBurstTriggeredAtRef.current < eventConfig.burst_cooldown_ms;
+    const errorSpike =
+      rawErrorSpike || now - lastErrorSpikeTriggeredAtRef.current < eventConfig.burst_cooldown_ms;
+
+    return {
+      throughputBurst,
+      errorSpike,
+      shortWindowRate,
+      baselineRate,
+      shortWindowErrorRate,
+      baselineErrorRate,
+    };
+  }, [
+    events,
+    monitoringWindowMs,
+    eventConfig.burst_window_ms,
+    eventConfig.burst_throughput_min_rate,
+    eventConfig.burst_throughput_multiplier,
+    eventConfig.burst_error_min_events,
+    eventConfig.burst_error_absolute_threshold,
+    eventConfig.burst_error_multiplier,
+    eventConfig.burst_cooldown_ms,
+  ]);
 
   /**
    * Topic breakdown computed from current events.
@@ -909,7 +979,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     }
 
     const now = Date.now();
-    const defaultCutoff = now - timeSeriesWindowMs;
+    const defaultCutoff = getWindowCutoff(now, monitoringWindowMs);
 
     // First, check if any events fall within the default time window
     const hasRecentEvents = events.some((e) => e.timestamp.getTime() > defaultCutoff);
@@ -947,22 +1017,25 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
         };
       })
       .sort((a, b) => a.time - b.time);
-  }, [events, timeSeriesWindowMs]);
+  }, [events, monitoringWindowMs]);
 
   /**
    * Computed metrics.
    */
   const metrics = useMemo((): EventBusStreamMetrics => {
-    const errorCount = events.filter((e) => e.priority === 'critical').length;
-    const errorRate = events.length > 0 ? (errorCount / events.length) * 100 : 0;
+    // Fix: window the error rate to monitoringWindowMs instead of entire buffer
+    const now = Date.now();
+    const cutoff = getWindowCutoff(now, monitoringWindowMs);
+    const windowedEvents = filterEventsInWindow(events, cutoff);
+    const errorRate = computeErrorRate(windowedEvents);
 
     return {
       totalEvents: events.length,
       eventsPerSecond,
-      errorRate: Math.round(errorRate * 100) / 100,
+      errorRate,
       activeTopics: topicBreakdown.length,
     };
-  }, [events, eventsPerSecond, topicBreakdown.length]);
+  }, [events, eventsPerSecond, topicBreakdown.length, monitoringWindowMs]);
 
   // ============================================================================
   // Controls
@@ -1025,6 +1098,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     lastError,
     stats,
     errors,
+    burstInfo,
     connect,
     disconnect,
     clearEvents,
