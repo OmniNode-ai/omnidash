@@ -284,10 +284,14 @@ export type EventBusConnectionStatus = 'idle' | 'connecting' | 'connected' | 'er
  * Used by EventBusMonitor to render burst/error spike banners.
  */
 export interface BurstInfo {
-  /** Whether a throughput burst is currently detected */
+  /** Whether a throughput burst is currently detected (includes cooldown) */
   throughputBurst: boolean;
-  /** Whether an error spike is currently detected */
+  /** Whether an error spike is currently detected (includes cooldown) */
   errorSpike: boolean;
+  /** Raw throughput burst flag before cooldown (used for ref sync in useEffect) */
+  rawThroughputBurst: boolean;
+  /** Raw error spike flag before cooldown (used for ref sync in useEffect) */
+  rawErrorSpike: boolean;
   /** Events/sec in the burst (short) window */
   shortWindowRate: number;
   /** Events/sec in the monitoring (baseline) window */
