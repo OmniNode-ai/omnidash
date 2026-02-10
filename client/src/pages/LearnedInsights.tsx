@@ -34,8 +34,10 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from 'recharts';
+import type { Payload } from 'recharts/types/component/DefaultLegendContent';
 import {
   Brain,
   ChevronDown,
@@ -252,6 +254,7 @@ export default function LearnedInsights() {
   // ---------------------------------------------------------------------------
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
+  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
 
   // ---------------------------------------------------------------------------
   // Data fetching
@@ -282,6 +285,20 @@ export default function LearnedInsights() {
   );
 
   const handleRefresh = () => refetchSummary();
+
+  const handleLegendClick = useCallback((entry: Payload) => {
+    const key = entry.dataKey != null ? String(entry.dataKey) : null;
+    if (!key) return;
+    setHiddenSeries((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Filtered insights
@@ -397,6 +414,21 @@ export default function LearnedInsights() {
                   }}
                   labelStyle={{ color: 'hsl(var(--foreground))' }}
                 />
+                <Legend
+                  onClick={handleLegendClick}
+                  wrapperStyle={{ cursor: 'pointer', fontSize: '12px' }}
+                  formatter={(value: string) => {
+                    const labels: Record<string, string> = {
+                      cumulative_insights: 'Cumulative',
+                      new_insights: 'New',
+                    };
+                    return (
+                      <span style={{ opacity: hiddenSeries.has(value) ? 0.35 : 1 }}>
+                        {labels[value] ?? value}
+                      </span>
+                    );
+                  }}
+                />
                 <Area
                   type="monotone"
                   dataKey="cumulative_insights"
@@ -405,6 +437,7 @@ export default function LearnedInsights() {
                   fill="#3b82f6"
                   fillOpacity={0.1}
                   strokeWidth={2}
+                  hide={hiddenSeries.has('cumulative_insights')}
                 />
                 <Area
                   type="monotone"
@@ -414,6 +447,7 @@ export default function LearnedInsights() {
                   fill="#22c55e"
                   fillOpacity={0.15}
                   strokeWidth={2}
+                  hide={hiddenSeries.has('new_insights')}
                 />
               </AreaChart>
             </ResponsiveContainer>
