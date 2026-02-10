@@ -876,7 +876,16 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
   const [lastBurstTriggeredAt, setLastBurstTriggeredAt] = useState(0);
   const [lastErrorSpikeTriggeredAt, setLastErrorSpikeTriggeredAt] = useState(0);
 
+  /** Periodic tick forces burstInfo to recompute when cooldown may expire during low activity */
+  const [burstTick, setBurstTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setBurstTick((t) => t + 1), eventConfig.burst_cooldown_ms);
+    return () => clearInterval(timer);
+  }, [eventConfig.burst_cooldown_ms]);
+
   const burstInfo = useMemo((): BurstInfo => {
+    // burstTick forces periodic re-evaluation so cooldown dismisses during low activity
+    void burstTick;
     const now = Date.now();
 
     // Single pass: compute all counts for both windows simultaneously.
@@ -890,6 +899,9 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     let shortErrorCount = 0;
 
     for (const e of events) {
+      // Exclude heartbeats from burst detection (consistent with eventsPerSecond)
+      if (e.topicRaw.includes('heartbeat') || e.eventType.toLowerCase().includes('heartbeat'))
+        continue;
       const t = e.timestamp.getTime();
       if (t >= baselineCutoff) {
         baselineCount++;
@@ -944,6 +956,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     monitoringWindowMs,
     lastBurstTriggeredAt,
     lastErrorSpikeTriggeredAt,
+    burstTick,
     eventConfig.burst_window_ms,
     eventConfig.burst_throughput_min_rate,
     eventConfig.burst_throughput_multiplier,
@@ -953,12 +966,14 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     eventConfig.burst_cooldown_ms,
   ]);
 
-  // Synchronize burst trigger timestamps when raw burst/spike state changes.
+  // Keep burst trigger timestamps current while burst is active.
+  // Including `events` ensures the timestamp refreshes on each event batch,
+  // so cooldown correctly starts from the LAST active moment (not burst start).
   useEffect(() => {
     const now = Date.now();
     if (burstInfo.rawThroughputBurst) setLastBurstTriggeredAt(now);
     if (burstInfo.rawErrorSpike) setLastErrorSpikeTriggeredAt(now);
-  }, [burstInfo.rawThroughputBurst, burstInfo.rawErrorSpike]);
+  }, [burstInfo.rawThroughputBurst, burstInfo.rawErrorSpike, events]);
 
   /**
    * Topic breakdown computed from current events.
