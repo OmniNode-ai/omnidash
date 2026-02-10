@@ -152,6 +152,9 @@ router.get('/health/pipeline', async (_req, res) => {
       return res.json({ cohorts: [] } satisfies PipelineHealthResponse);
     }
 
+    // Time-bound to 90 days to prevent full-table scans as the table grows
+    const cutoff90d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
     const rows = await db
       .select({
         cohort: injectionEffectiveness.cohort,
@@ -161,6 +164,7 @@ router.get('/health/pipeline', async (_req, res) => {
         avg_latency_ms: sql<string | null>`avg(${injectionEffectiveness.userVisibleLatencyMs})`,
       })
       .from(injectionEffectiveness)
+      .where(gte(injectionEffectiveness.createdAt, cutoff90d))
       .groupBy(injectionEffectiveness.cohort);
 
     const cohorts = rows.map((r) => ({
@@ -313,7 +317,9 @@ router.get('/errors/summary', async (_req, res) => {
       return res.json(empty);
     }
 
-    // Aggregate by cohort
+    // Aggregate by cohort (time-bound to 90 days to prevent full-table scans)
+    const cutoff90d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
     const rows = await db
       .select({
         cohort: injectionEffectiveness.cohort,
@@ -321,6 +327,7 @@ router.get('/errors/summary', async (_req, res) => {
         failure_count: sql<number>`count(*) FILTER (WHERE ${injectionEffectiveness.sessionOutcome} IS NOT NULL AND ${injectionEffectiveness.sessionOutcome} != 'success')::int`,
       })
       .from(injectionEffectiveness)
+      .where(gte(injectionEffectiveness.createdAt, cutoff90d))
       .groupBy(injectionEffectiveness.cohort);
 
     let totalErrors = 0;
