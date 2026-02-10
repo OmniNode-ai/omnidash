@@ -161,6 +161,7 @@ export class ProjectionService extends EventEmitter {
 
   constructor(options?: ProjectionServiceOptions) {
     super();
+    this.setMaxListeners(50);
     this.ingestSeqCounter = options?.initialSeq ?? 1;
   }
 
@@ -265,12 +266,19 @@ export class ProjectionService extends EventEmitter {
    */
   private routeToViews(event: ProjectionEvent): void {
     for (const view of this.views.values()) {
-      const applied = view.applyEvent(event);
-      if (applied) {
-        this.emit('projection-invalidate', {
-          viewId: view.viewId,
-          cursor: event.ingestSeq,
-        });
+      try {
+        const applied = view.applyEvent(event);
+        if (applied) {
+          this.emit('projection-invalidate', {
+            viewId: view.viewId,
+            cursor: event.ingestSeq,
+          });
+        }
+      } catch (err) {
+        console.error(
+          `[projection] View "${view.viewId}" threw during applyEvent for seq=${event.ingestSeq}:`,
+          err
+        );
       }
     }
   }

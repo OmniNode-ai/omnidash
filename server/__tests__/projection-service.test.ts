@@ -543,8 +543,29 @@ describe('ProjectionService', () => {
 
       service.registerView(badView);
 
-      // The service should propagate the error (views must be well-behaved)
-      expect(() => service.ingest(rawEvent())).toThrow('boom');
+      // The service should catch the error and continue (fault isolation)
+      expect(() => service.ingest(rawEvent())).not.toThrow();
+    });
+
+    it('should continue routing to remaining views after one throws', () => {
+      const badView: ProjectionView<unknown> = {
+        viewId: 'bad-view',
+        getSnapshot: () => ({ viewId: 'bad-view', cursor: 0, snapshotTimeMs: 0, payload: null }),
+        getEventsSince: () => ({ viewId: 'bad-view', cursor: 0, snapshotTimeMs: 0, events: [] }),
+        applyEvent: () => {
+          throw new Error('boom');
+        },
+        reset: () => {},
+      };
+      const goodView = new TestView('good-view');
+
+      service.registerView(badView);
+      service.registerView(goodView);
+
+      service.ingest(rawEvent());
+
+      // The good view should still receive the event despite bad view throwing
+      expect(goodView.appliedCount).toBe(1);
     });
 
     it('should still route to remaining views after one rejects', () => {
