@@ -29,7 +29,7 @@ import { extractEventTimeMs, MISSING_TIMESTAMP_SENTINEL_MS } from './monotonic-m
  * before being routed to views.
  */
 export interface ProjectionEvent {
-  /** Unique event identifier (from source or generated) */
+  /** Unique event identifier (from source, or `proj-{ingestSeq}` fallback) */
   id: string;
   /** Event timestamp in epoch milliseconds (producer-assigned) */
   eventTimeMs: number;
@@ -146,15 +146,19 @@ export interface ProjectionServiceOptions {
  * - 'projection-invalidate': { viewId: string, cursor: number }
  *   Fired after a view successfully applies an event. Downstream
  *   consumers (WebSocket server) listen for this to push updates.
+ * - 'projection-reset': { newSeq: number }
+ *   Fired after reset() rewinds the sequence counter. Downstream
+ *   consumers should discard held cursors.
  */
 export class ProjectionService extends EventEmitter {
   private ingestSeqCounter: number;
-  private views = new Map<string, ProjectionView<unknown>>();
+  private views: Map<string, ProjectionView<unknown>>;
 
   constructor(options?: ProjectionServiceOptions) {
     super();
     this.setMaxListeners(50);
     this.ingestSeqCounter = options?.initialSeq ?? 1;
+    this.views = new Map();
   }
 
   // --------------------------------------------------------------------------
@@ -164,6 +168,9 @@ export class ProjectionService extends EventEmitter {
   /**
    * Assign the next ingestSeq. Each call returns a unique, monotonically
    * increasing integer. Thread-safe in single-threaded Node.js runtime.
+   *
+   * Note: uses JS Number counter; safe up to Number.MAX_SAFE_INTEGER
+   * (~9 quadrillion). Not a practical concern at dashboard event rates.
    */
   private assignSeq(): number {
     return this.ingestSeqCounter++;
@@ -222,6 +229,7 @@ export class ProjectionService extends EventEmitter {
    */
   ingest(raw: RawEventInput): ProjectionEvent {
     const ingestSeq = this.assignSeq();
+    // Safe on untrusted payload: extractEventTimeMs returns sentinel for invalid input
     const eventTimeMs = raw.eventTimeMs ?? extractEventTimeMs(raw.payload ?? {});
 
     const eventTimeMissing =
@@ -301,6 +309,7 @@ export class ProjectionService extends EventEmitter {
       }
     }
     this.ingestSeqCounter = newInitialSeq ?? 1;
+    this.emit('projection-reset', { newSeq: this.ingestSeqCounter });
   }
 
   /** Number of registered views. */

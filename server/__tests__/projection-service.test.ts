@@ -75,9 +75,10 @@ class TestView implements ProjectionView<ProjectionEvent[]> {
 }
 
 /** Create a minimal raw event for testing */
+let rawEventCounter = 0;
 function rawEvent(overrides: Partial<RawEventInput> = {}): RawEventInput {
   return {
-    id: `test-${Math.random().toString(36).slice(2, 8)}`,
+    id: `test-${++rawEventCounter}`,
     eventTimeMs: Date.now(),
     topic: 'test-topic',
     type: 'test-event',
@@ -96,6 +97,7 @@ describe('ProjectionService', () => {
 
   beforeEach(() => {
     service = new ProjectionService();
+    rawEventCounter = 0;
   });
 
   // --------------------------------------------------------------------------
@@ -507,6 +509,27 @@ describe('ProjectionService', () => {
       expect(event.ingestSeq).toBe(100);
     });
 
+    it('should emit projection-reset event with new sequence', () => {
+      service.ingestBatch([rawEvent(), rawEvent()]);
+      const handler = vi.fn();
+      service.on('projection-reset', handler);
+
+      service.reset(100);
+
+      expect(handler).toHaveBeenCalledOnce();
+      expect(handler).toHaveBeenCalledWith({ newSeq: 100 });
+    });
+
+    it('should emit projection-reset with default seq of 1', () => {
+      service.ingest(rawEvent());
+      const handler = vi.fn();
+      service.on('projection-reset', handler);
+
+      service.reset();
+
+      expect(handler).toHaveBeenCalledWith({ newSeq: 1 });
+    });
+
     it('should allow re-ingestion after reset', () => {
       const view = new TestView('reset-view');
       service.registerView(view);
@@ -647,30 +670,39 @@ describe('ProjectionService', () => {
       expect(event.eventTimeMissing).toBeUndefined();
     });
 
-    it('should emit projection-error when a view throws during applyEvent', () => {
+    it('should handle non-Error throwables in applyEvent', () => {
       const badView: ProjectionView<unknown> = {
-        viewId: 'error-view',
-        getSnapshot: () => ({ viewId: 'error-view', cursor: 0, snapshotTimeMs: 0, payload: null }),
-        getEventsSince: () => ({ viewId: 'error-view', cursor: 0, snapshotTimeMs: 0, events: [] }),
+        viewId: 'string-thrower',
+        getSnapshot: () => ({
+          viewId: 'string-thrower',
+          cursor: 0,
+          snapshotTimeMs: 0,
+          payload: null,
+        }),
+        getEventsSince: () => ({
+          viewId: 'string-thrower',
+          cursor: 0,
+          snapshotTimeMs: 0,
+          events: [],
+        }),
         applyEvent: () => {
-          throw new Error('view-failure');
+          throw 'not an Error object';
         },
         reset: () => {},
       };
-
       service.registerView(badView);
-
       const handler = vi.fn();
       service.on('projection-error', handler);
-
-      service.ingest(rawEvent());
-
-      expect(handler).toHaveBeenCalledOnce();
+      expect(() => service.ingest(rawEvent())).not.toThrow();
       expect(handler).toHaveBeenCalledWith({
-        viewId: 'error-view',
+        viewId: 'string-thrower',
         ingestSeq: 1,
-        error: 'view-failure',
+        error: 'not an Error object',
       });
+    });
+
+    it('should set maxListeners to 50 to support many downstream consumers', () => {
+      expect(service.getMaxListeners()).toBe(50);
     });
 
     it('should return the correct view from getView', () => {
