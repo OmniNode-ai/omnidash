@@ -108,7 +108,10 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
 
   /** Returns a defensive deep copy of the current node registry state, stats, and recent state changes. */
   getSnapshot(options?: { limit?: number }): ProjectionResponse<NodeRegistryPayload> {
-    const allNodes = Array.from(this.nodes.values()).map((n) => ({ ...n }));
+    const allNodes = Array.from(this.nodes.values()).map((n) => ({
+      ...n,
+      endpoints: n.endpoints ? { ...n.endpoints } : undefined,
+    }));
     const nodes = options?.limit ? allNodes.slice(0, options.limit) : allNodes;
 
     return {

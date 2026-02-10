@@ -102,32 +102,36 @@ app.use((req, res, next) => {
 
   // Bridge EventConsumer node events → ProjectionService
   // MUST be registered BEFORE eventConsumer.start() to avoid missing events
-  eventConsumer.on('nodeIntrospectionUpdate', (event) => {
-    projectionService.ingest({
-      type: 'node-introspection',
-      source: 'event-consumer',
-      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
-      payload: event,
-    });
-  });
-
-  eventConsumer.on('nodeHeartbeatUpdate', (event) => {
-    projectionService.ingest({
-      type: 'node-heartbeat',
-      source: 'event-consumer',
-      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
-      payload: event,
-    });
-  });
-
-  eventConsumer.on('nodeStateChangeUpdate', (event) => {
-    projectionService.ingest({
-      type: 'node-state-change',
-      source: 'event-consumer',
-      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
-      payload: event,
-    });
-  });
+  // Listeners stored for cleanup during graceful shutdown
+  const projectionBridgeListeners = {
+    nodeIntrospectionUpdate: (event: Record<string, unknown>) => {
+      projectionService.ingest({
+        type: 'node-introspection',
+        source: 'event-consumer',
+        eventTimeMs: event.createdAt ? new Date(event.createdAt as string).getTime() : undefined,
+        payload: event,
+      });
+    },
+    nodeHeartbeatUpdate: (event: Record<string, unknown>) => {
+      projectionService.ingest({
+        type: 'node-heartbeat',
+        source: 'event-consumer',
+        eventTimeMs: event.createdAt ? new Date(event.createdAt as string).getTime() : undefined,
+        payload: event,
+      });
+    },
+    nodeStateChangeUpdate: (event: Record<string, unknown>) => {
+      projectionService.ingest({
+        type: 'node-state-change',
+        source: 'event-consumer',
+        eventTimeMs: event.createdAt ? new Date(event.createdAt as string).getTime() : undefined,
+        payload: event,
+      });
+    },
+  };
+  eventConsumer.on('nodeIntrospectionUpdate', projectionBridgeListeners.nodeIntrospectionUpdate);
+  eventConsumer.on('nodeHeartbeatUpdate', projectionBridgeListeners.nodeHeartbeatUpdate);
+  eventConsumer.on('nodeStateChangeUpdate', projectionBridgeListeners.nodeStateChangeUpdate);
 
   // Validate and start Kafka event consumer
   try {
@@ -244,8 +248,24 @@ app.use((req, res, next) => {
   });
 
   // Graceful shutdown
+  const cleanupProjectionBridge = () => {
+    eventConsumer.removeListener(
+      'nodeIntrospectionUpdate',
+      projectionBridgeListeners.nodeIntrospectionUpdate
+    );
+    eventConsumer.removeListener(
+      'nodeHeartbeatUpdate',
+      projectionBridgeListeners.nodeHeartbeatUpdate
+    );
+    eventConsumer.removeListener(
+      'nodeStateChangeUpdate',
+      projectionBridgeListeners.nodeStateChangeUpdate
+    );
+  };
+
   process.on('SIGTERM', async () => {
     log('SIGTERM received, shutting down gracefully');
+    cleanupProjectionBridge();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();
@@ -258,6 +278,7 @@ app.use((req, res, next) => {
 
   process.on('SIGINT', async () => {
     log('SIGINT received, shutting down gracefully');
+    cleanupProjectionBridge();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();

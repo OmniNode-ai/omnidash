@@ -90,7 +90,9 @@ export default function NodeRegistry() {
     };
     stableMockRef.current = mockDashboard;
     return mockDashboard;
-  }, [data, hasProjectionData]);
+    // hasProjectionData is derived from data, so only data is needed here
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   const connectionStatus = isLoading ? 'connecting' : isConnected ? 'connected' : 'disconnected';
 
