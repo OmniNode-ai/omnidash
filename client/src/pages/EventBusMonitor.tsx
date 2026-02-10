@@ -1,15 +1,13 @@
 /**
- * Event Bus Monitor Dashboard
+ * Event Bus Monitor Dashboard (OMN-2095)
  *
  * Real-time Kafka event stream visualization for ONEX platform.
- * Uses useEventBusStream hook for live event streaming and displays
- * events through the contract-driven dashboard renderer.
+ * Uses server-side projection for event aggregation and the
+ * useProjectionStream hook for efficient data fetching.
  *
- * Features:
- * - Real-time event streaming via WebSocket
- * - Topic health monitoring
- * - Event filtering and search
- * - Throughput and error rate metrics
+ * Architecture: pure renderer — all buffering, deduplication, sorting,
+ * and time-series computation happen server-side in EventBusProjection.
+ * The client handles UI concerns: filtering, pausing, search, display.
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -24,14 +22,13 @@ import {
   topicMatchesSuffix,
   normalizeToSuffix,
 } from '@/lib/configs/event-bus-dashboard';
-import { useEventBusStream } from '@/hooks/useEventBusStream';
-import type {
-  ProcessedEvent,
-  TopicBreakdownItem,
-  EventTypeBreakdownItem,
-  TimeSeriesItem,
-} from '@/hooks/useEventBusStream.types';
-import { TIME_SERIES_BUCKET_MS } from '@/hooks/useEventBusStream.utils';
+import { useProjectionStream } from '@/hooks/useProjectionStream';
+import type { ProjectionEvent } from '@/hooks/useProjectionStream.types';
+import {
+  fetchEventBusSnapshot,
+  type EventBusPayload,
+} from '@/lib/data-sources/event-bus-projection-source';
+import { extractParsedDetails, type ParsedDetails } from '@/components/event-bus/eventDetailUtils';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -72,15 +69,32 @@ interface FilterState {
   search: string;
 }
 
+/** Display-oriented event derived from ProjectionEvent */
+interface DisplayEvent {
+  id: string;
+  topic: string;
+  topicRaw: string;
+  eventType: string;
+  priority: 'critical' | 'high' | 'normal' | 'low';
+  timestamp: Date;
+  timestampRaw: string;
+  source: string;
+  correlationId?: string;
+  payload: string;
+  summary: string;
+  normalizedType: string;
+  parsedDetails: ParsedDetails | null;
+}
+
 interface PausedSnapshot {
-  events: ProcessedEvent[];
-  topicBreakdown: TopicBreakdownItem[];
-  eventTypeBreakdown: EventTypeBreakdownItem[];
-  timeSeries: TimeSeriesItem[];
-  totalEvents: number;
+  events: DisplayEvent[];
+  topicBreakdown: Record<string, number>;
+  eventTypeBreakdown: Record<string, number>;
+  timeSeries: Array<{ bucketKey: number; count: number }>;
   eventsPerSecond: number;
-  errorRate: number;
+  errorCount: number;
   activeTopics: number;
+  totalEvents: number;
 }
 
 // ============================================================================
@@ -89,15 +103,124 @@ interface PausedSnapshot {
 
 const eventConfig = getEventMonitoringConfig();
 const monitoredTopics = getMonitoredTopics();
+const TIME_SERIES_BUCKET_MS = 15_000;
+
+// ============================================================================
+// Mapping: ProjectionEvent → DisplayEvent
+// ============================================================================
+
+function mapSeverityToPriority(
+  severity: ProjectionEvent['severity']
+): 'critical' | 'high' | 'normal' | 'low' {
+  switch (severity) {
+    case 'critical':
+      return 'critical';
+    case 'error':
+      return 'high';
+    case 'warning':
+      return 'normal';
+    case 'info':
+      return 'low';
+  }
+}
+
+function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
+  const payloadStr = JSON.stringify(event.payload);
+  const parsedDetails = extractParsedDetails(payloadStr, event.type);
+  const normalizedType = computeNormalizedType(event.type, parsedDetails);
+  const timestampRaw =
+    event.eventTimeMs > 0 ? new Date(event.eventTimeMs).toISOString() : new Date().toISOString();
+
+  return {
+    id: event.id,
+    topic: getTopicLabel(event.topic),
+    topicRaw: event.topic,
+    eventType: event.type,
+    priority: mapSeverityToPriority(event.severity),
+    timestamp: new Date(event.eventTimeMs > 0 ? event.eventTimeMs : Date.now()),
+    timestampRaw,
+    source: event.source || 'system',
+    correlationId: event.payload?.correlationId as string | undefined,
+    payload: payloadStr,
+    summary: generateSummary(event.type, parsedDetails, event),
+    normalizedType,
+    parsedDetails,
+  };
+}
+
+function computeNormalizedType(eventType: string, details: ParsedDetails | null): string {
+  if (details?.toolName) return details.toolName;
+  if (details?.selectedAgent) return `route:${details.selectedAgent}`;
+  if (/^v\d+$/.test(eventType)) {
+    return details?.toolName || details?.actionName || details?.actionType || 'unknown';
+  }
+  return eventType;
+}
+
+function generateSummary(
+  eventType: string,
+  details: ParsedDetails | null,
+  event: ProjectionEvent
+): string {
+  if (!details) {
+    const actionName = event.payload?.actionType || event.payload?.action_type;
+    if (actionName && typeof actionName === 'string') {
+      return actionName.length > 60 ? actionName.slice(0, 57) + '...' : actionName;
+    }
+    return eventType.length > 60 ? eventType.slice(0, 57) + '...' : eventType;
+  }
+
+  if (details.toolName) {
+    const filePath = findFilePath(event.payload);
+    if (filePath) {
+      return `${details.toolName} ${filePath.split('/').pop() || filePath}`;
+    }
+    return details.toolName;
+  }
+
+  if (details.nodeId) {
+    return `${details.nodeId} — ${details.healthStatus || details.status || 'healthy'}`;
+  }
+
+  if (details.selectedAgent) {
+    const conf = details.confidence;
+    const confStr = typeof conf === 'number' ? ` (${Math.round(conf * 100)}%)` : '';
+    return `Selected ${details.selectedAgent}${confStr}`;
+  }
+
+  if (details.error) {
+    const errorType = details.actionType || 'Error';
+    const msg = details.error.length > 50 ? details.error.slice(0, 47) + '...' : details.error;
+    return `${errorType}: ${msg}`;
+  }
+
+  if (details.actionName) {
+    return details.actionName.length > 60
+      ? details.actionName.slice(0, 57) + '...'
+      : details.actionName;
+  }
+
+  return eventType.length > 60 ? eventType.slice(0, 57) + '...' : eventType;
+}
+
+function findFilePath(payload: Record<string, unknown>): string | undefined {
+  if (typeof payload.file_path === 'string') return payload.file_path;
+  if (typeof payload.filePath === 'string') return payload.filePath;
+  for (const key of ['content', 'details', 'data']) {
+    const nested = payload[key];
+    if (nested && typeof nested === 'object') {
+      const n = nested as Record<string, unknown>;
+      if (typeof n.file_path === 'string') return n.file_path;
+      if (typeof n.filePath === 'string') return n.filePath;
+    }
+  }
+  return undefined;
+}
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
-/**
- * Format a timestamp as a relative time string (e.g., "5s ago", "2m ago").
- * Falls back to absolute date for events older than 24 hours.
- */
 function formatRelativeTime(timestamp: string | Date): string {
   const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
   const now = Date.now();
@@ -111,9 +234,6 @@ function formatRelativeTime(timestamp: string | Date): string {
   return date.toLocaleDateString();
 }
 
-/**
- * Map event priority to UI type for EventFeed display.
- */
 function mapPriorityToType(priority: string): 'info' | 'success' | 'warning' | 'error' {
   switch (priority) {
     case 'critical':
@@ -129,10 +249,7 @@ function mapPriorityToType(priority: string): 'info' | 'success' | 'warning' | '
   }
 }
 
-/**
- * Convert ProcessedEvent to live event format for EventFeed widget.
- */
-function toLiveEvent(event: ProcessedEvent) {
+function toLiveEvent(event: DisplayEvent) {
   return {
     id: event.id,
     timestamp: event.timestampRaw,
@@ -147,10 +264,7 @@ function toLiveEvent(event: ProcessedEvent) {
   };
 }
 
-/**
- * Convert ProcessedEvent to recent event format for table.
- */
-function toRecentEvent(event: ProcessedEvent) {
+function toRecentEvent(event: DisplayEvent) {
   return {
     id: event.id,
     topic: event.topic,
@@ -170,15 +284,9 @@ function toRecentEvent(event: ProcessedEvent) {
 // Chart Bucketing
 // ============================================================================
 
-/** Minimum share (0..1) for an event type to avoid being collapsed into "Other" */
 const OTHER_THRESHOLD_SHARE = 0.03;
-/** Minimum absolute count for an event type to avoid being collapsed into "Other" */
 const OTHER_THRESHOLD_COUNT = 2;
 
-/**
- * Aggregate small event-type slices into an "Other" bucket.
- * Types with <3% share OR <2 events get merged, unless that would merge everything.
- */
 function bucketSmallTypes(
   items: Array<{ name: string; eventType: string; eventCount: number }>
 ): Array<{ name: string; eventType: string; eventCount: number }> {
@@ -197,7 +305,6 @@ function bucketSmallTypes(
     }
   }
 
-  // If everything collapsed, just return original — don't show a single "Other" bar
   if (kept.length === 0) return items;
 
   if (otherCount > 0) {
@@ -212,22 +319,30 @@ function bucketSmallTypes(
 // ============================================================================
 
 export default function EventBusMonitor() {
-  // Max events state - controls how many events the hook retains
   const [maxEvents, setMaxEvents] = useState(eventConfig.max_events);
 
-  // Stream hook provides events, metrics, and connection management
-  const {
-    events,
-    metrics,
-    topicBreakdown,
-    eventTypeBreakdown,
-    timeSeries,
-    connectionStatus,
-    stats,
-    connect,
-  } = useEventBusStream({
-    maxItems: maxEvents,
-  });
+  // Server-side projection replaces useEventBusStream
+  const { data: snapshot, isLoading } = useProjectionStream<EventBusPayload>(
+    'event-bus',
+    fetchEventBusSnapshot,
+    { limit: maxEvents, refetchInterval: 2000 }
+  );
+
+  // Map ProjectionEvents to display format (memoized)
+  const displayEvents = useMemo((): DisplayEvent[] => {
+    if (!snapshot?.payload?.events) return [];
+    return snapshot.payload.events.map(toDisplayEvent);
+  }, [snapshot?.payload?.events]);
+
+  // Extract aggregates from snapshot
+  const snapshotPayload = snapshot?.payload;
+  const eventsPerSecond = snapshotPayload?.eventsPerSecond ?? 0;
+  const errorCount = snapshotPayload?.errorCount ?? 0;
+  const activeTopicsCount = snapshotPayload?.activeTopics ?? 0;
+
+  // Determine connection status from snapshot availability
+  const connectionStatus = isLoading ? 'connecting' : snapshot ? 'connected' : 'idle';
+  const isConnected = connectionStatus === 'connected';
 
   // UI state
   const [filters, setFilters] = useState<FilterState>({
@@ -240,73 +355,65 @@ export default function EventBusMonitor() {
   const [isPaused, setIsPaused] = useState(false);
   const [hideHeartbeats, setHideHeartbeats] = useState(false);
 
-  // Paused snapshot - captures state when pausing
+  // Paused snapshot
   const pausedSnapshotRef = useRef<PausedSnapshot | null>(null);
-  // Track previous pause state to detect transitions
   const wasPausedRef = useRef(false);
 
-  // Chart snapshot — prevents blank charts when old events expire from the
-  // bounded buffer while a topic filter is active. Cleared on filter change.
+  // Chart snapshot cache
   const chartSnapshotRef = useRef<{
     eventTypeBreakdownData: Array<{ name: string; eventType: string; eventCount: number }>;
     timeSeriesData: Array<{ time: number; timestamp: string; name: string; events: number }>;
   } | null>(null);
 
-  // Capture snapshot only on transition from unpaused -> paused
+  // Capture snapshot on pause transition
   useEffect(() => {
     if (isPaused && !wasPausedRef.current) {
-      // Transition: unpaused -> paused - capture snapshot once
       pausedSnapshotRef.current = {
-        events,
-        topicBreakdown,
-        eventTypeBreakdown,
-        timeSeries,
-        totalEvents: metrics.totalEvents,
-        eventsPerSecond: metrics.eventsPerSecond,
-        errorRate: metrics.errorRate,
-        activeTopics: metrics.activeTopics,
+        events: displayEvents,
+        topicBreakdown: snapshotPayload?.topicBreakdown ?? {},
+        eventTypeBreakdown: snapshotPayload?.eventTypeBreakdown ?? {},
+        timeSeries: snapshotPayload?.timeSeries ?? [],
+        eventsPerSecond,
+        errorCount,
+        activeTopics: activeTopicsCount,
+        totalEvents: displayEvents.length,
       };
       wasPausedRef.current = true;
     } else if (!isPaused && wasPausedRef.current) {
-      // Transition: paused -> unpaused - clear snapshot
       pausedSnapshotRef.current = null;
       wasPausedRef.current = false;
     }
-  }, [isPaused, events, topicBreakdown, eventTypeBreakdown, timeSeries, metrics]);
+  }, [isPaused, displayEvents, snapshotPayload, eventsPerSecond, errorCount, activeTopicsCount]);
 
-  // Use paused snapshot or live data
+  // Source data (paused or live)
   const sourceData = useMemo(() => {
     if (isPaused && pausedSnapshotRef.current) {
       return pausedSnapshotRef.current;
     }
     return {
-      events,
-      topicBreakdown,
-      eventTypeBreakdown,
-      timeSeries,
-      totalEvents: metrics.totalEvents,
-      eventsPerSecond: metrics.eventsPerSecond,
-      errorRate: metrics.errorRate,
-      activeTopics: metrics.activeTopics,
+      events: displayEvents,
+      topicBreakdown: snapshotPayload?.topicBreakdown ?? {},
+      eventTypeBreakdown: snapshotPayload?.eventTypeBreakdown ?? {},
+      timeSeries: snapshotPayload?.timeSeries ?? [],
+      eventsPerSecond,
+      errorCount,
+      activeTopics: activeTopicsCount,
+      totalEvents: displayEvents.length,
     };
-  }, [isPaused, events, topicBreakdown, eventTypeBreakdown, timeSeries, metrics]);
+  }, [isPaused, displayEvents, snapshotPayload, eventsPerSecond, errorCount, activeTopicsCount]);
 
-  // Last update time for display
+  // Last update time
   const lastUpdate = useMemo(() => {
-    if (stats.lastEventAt) {
-      return new Date(stats.lastEventAt);
+    if (snapshot?.snapshotTimeMs) {
+      return new Date(snapshot.snapshotTimeMs);
     }
     return new Date();
-  }, [stats.lastEventAt]);
+  }, [snapshot?.snapshotTimeMs]);
 
   // ============================================================================
   // Topic Status Data
   // ============================================================================
 
-  // Tick counter forces topicStatusData to recompute every 30 seconds so that
-  // topic statuses properly decay from "active" to "silent" even when no new
-  // events arrive.  Without this, the useMemo only runs when sourceData.events
-  // changes, leaving stale "active" badges indefinitely.
   const [statusTick, setStatusTick] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setStatusTick((t) => t + 1), 30_000);
@@ -314,8 +421,6 @@ export default function EventBusMonitor() {
   }, []);
 
   const topicStatusData = useMemo(() => {
-    // statusTick is read here so the linter keeps it in the dep array; the
-    // actual value is unused — it just forces a periodic recomputation.
     void statusTick;
 
     const now = Date.now();
@@ -358,7 +463,6 @@ export default function EventBusMonitor() {
       };
     });
 
-    // Sort: active first, then silent; within each group, by eventCount desc
     statusRows.sort((a, b) => {
       if (a.status === 'active' && b.status !== 'active') return -1;
       if (a.status !== 'active' && b.status === 'active') return 1;
@@ -368,8 +472,7 @@ export default function EventBusMonitor() {
     return statusRows;
   }, [sourceData.events, statusTick]);
 
-  // Derive Topics Loaded KPI — count of topics with any events in the current buffer
-  const activeTopicsCount = useMemo(
+  const topicsLoadedCount = useMemo(
     () => topicStatusData.filter((t) => t.eventCount > 0).length,
     [topicStatusData]
   );
@@ -381,98 +484,44 @@ export default function EventBusMonitor() {
   const filteredData = useMemo((): DashboardData => {
     const { events: srcEvents } = sourceData;
 
-    // Quick path: no filters active - but still compute charts from displayed events
-    if (!filters.topic && !filters.priority && !filters.search && !hideHeartbeats) {
-      const displayedEvents = srcEvents.slice(0, maxEvents);
-      const liveEvents = displayedEvents.map(toLiveEvent);
-      const recentEvents = displayedEvents.map(toRecentEvent);
+    // Apply filters
+    const filtered =
+      !filters.topic && !filters.priority && !filters.search && !hideHeartbeats
+        ? srcEvents
+        : srcEvents.filter((event) => {
+            if (
+              hideHeartbeats &&
+              (event.topicRaw.includes('heartbeat') ||
+                event.eventType.toLowerCase().includes('heartbeat'))
+            )
+              return false;
+            if (filters.topic && !topicMatchesSuffix(event.topicRaw, filters.topic)) return false;
+            if (filters.priority && event.priority !== filters.priority) return false;
+            if (filters.search) {
+              const searchLower = filters.search.toLowerCase();
+              const matchesSearch =
+                event.eventType.toLowerCase().includes(searchLower) ||
+                event.source.toLowerCase().includes(searchLower) ||
+                event.topic.toLowerCase().includes(searchLower) ||
+                event.summary.toLowerCase().includes(searchLower) ||
+                (event.parsedDetails?.toolName?.toLowerCase().includes(searchLower) ?? false) ||
+                (event.parsedDetails?.nodeId?.toLowerCase().includes(searchLower) ?? false) ||
+                (event.parsedDetails?.selectedAgent?.toLowerCase().includes(searchLower) ??
+                  false) ||
+                (event.parsedDetails?.actionName?.toLowerCase().includes(searchLower) ?? false);
+              if (!matchesSearch) return false;
+            }
+            return true;
+          });
 
-      // Compute chart data from displayed events (respects maxEvents)
-      const topicCounts: Record<string, number> = {};
-      const eventTypeCounts: Record<string, number> = {};
-      const timeBuckets: Record<number, number> = {};
+    const displayedEvents = filtered.slice(0, maxEvents);
 
-      for (const event of displayedEvents) {
-        topicCounts[event.topicRaw] = (topicCounts[event.topicRaw] || 0) + 1;
-        eventTypeCounts[event.normalizedType] = (eventTypeCounts[event.normalizedType] || 0) + 1;
-        const bucketTime =
-          Math.floor(event.timestamp.getTime() / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
-        timeBuckets[bucketTime] = (timeBuckets[bucketTime] || 0) + 1;
-      }
-
-      const topicBreakdownData = Object.entries(topicCounts).map(([topic, count]) => ({
-        name: getTopicLabel(topic),
-        topic,
-        eventCount: count,
-      }));
-
-      const eventTypeBreakdownRaw = Object.entries(eventTypeCounts).map(([eventType, count]) => ({
-        name: getEventTypeLabel(eventType),
-        eventType,
-        eventCount: count,
-      }));
-      const eventTypeBreakdownData = bucketSmallTypes(eventTypeBreakdownRaw);
-
-      const timeSeriesData = Object.entries(timeBuckets)
-        .map(([time, count]) => {
-          const date = new Date(Number(time));
-          const formattedTime = `${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
-          return {
-            time: Number(time),
-            timestamp: formattedTime,
-            name: formattedTime,
-            events: count,
-          };
-        })
-        .sort((a, b) => a.time - b.time);
-
-      return {
-        totalEvents: displayedEvents.length,
-        eventsPerSecond: sourceData.eventsPerSecond,
-        errorRate: sourceData.errorRate,
-        activeTopics: activeTopicsCount,
-        dlqCount: displayedEvents.filter((e) => e.priority === 'critical').length,
-        recentEvents,
-        liveEvents,
-        topicBreakdownData,
-        eventTypeBreakdownData,
-        timeSeriesData,
-        topicHealth: [],
-      };
-    }
-
-    // Filter events
-    const filtered = srcEvents.filter((event) => {
-      if (
-        hideHeartbeats &&
-        (event.topicRaw.includes('heartbeat') ||
-          event.eventType.toLowerCase().includes('heartbeat'))
-      )
-        return false;
-      if (filters.topic && !topicMatchesSuffix(event.topicRaw, filters.topic)) return false;
-      if (filters.priority && event.priority !== filters.priority) return false;
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const matchesSearch =
-          event.eventType.toLowerCase().includes(searchLower) ||
-          event.source.toLowerCase().includes(searchLower) ||
-          event.topic.toLowerCase().includes(searchLower) ||
-          event.summary.toLowerCase().includes(searchLower) ||
-          (event.parsedDetails?.toolName?.toLowerCase().includes(searchLower) ?? false) ||
-          (event.parsedDetails?.nodeId?.toLowerCase().includes(searchLower) ?? false) ||
-          (event.parsedDetails?.selectedAgent?.toLowerCase().includes(searchLower) ?? false) ||
-          (event.parsedDetails?.actionName?.toLowerCase().includes(searchLower) ?? false);
-        if (!matchesSearch) return false;
-      }
-      return true;
-    });
-
-    // Recalculate breakdowns from filtered events
+    // Compute chart data from displayed events
     const topicCounts: Record<string, number> = {};
     const eventTypeCounts: Record<string, number> = {};
     const timeBuckets: Record<number, number> = {};
 
-    for (const event of filtered) {
+    for (const event of displayedEvents) {
       topicCounts[event.topicRaw] = (topicCounts[event.topicRaw] || 0) + 1;
       eventTypeCounts[event.normalizedType] = (eventTypeCounts[event.normalizedType] || 0) + 1;
       const bucketTime =
@@ -480,22 +529,20 @@ export default function EventBusMonitor() {
       timeBuckets[bucketTime] = (timeBuckets[bucketTime] || 0) + 1;
     }
 
-    const filteredTopicBreakdown = Object.entries(topicCounts).map(([topic, count]) => ({
+    const topicBreakdownData = Object.entries(topicCounts).map(([topic, count]) => ({
       name: getTopicLabel(topic),
       topic,
       eventCount: count,
     }));
 
-    const filteredEventTypeBreakdownRaw = Object.entries(eventTypeCounts).map(
-      ([eventType, count]) => ({
-        name: getEventTypeLabel(eventType),
-        eventType,
-        eventCount: count,
-      })
-    );
-    const filteredEventTypeBreakdown = bucketSmallTypes(filteredEventTypeBreakdownRaw);
+    const eventTypeBreakdownRaw = Object.entries(eventTypeCounts).map(([eventType, count]) => ({
+      name: getEventTypeLabel(eventType),
+      eventType,
+      eventCount: count,
+    }));
+    const eventTypeBreakdownData = bucketSmallTypes(eventTypeBreakdownRaw);
 
-    const filteredTimeSeries = Object.entries(timeBuckets)
+    const timeSeriesData = Object.entries(timeBuckets)
       .map(([time, count]) => {
         const date = new Date(Number(time));
         const formattedTime = `${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
@@ -508,41 +555,46 @@ export default function EventBusMonitor() {
       })
       .sort((a, b) => a.time - b.time);
 
-    // Cache non-empty chart data so charts don't go blank when old events
-    // expire from the bounded buffer while a topic filter is active.
-    if (filteredEventTypeBreakdown.length > 0) {
+    // Chart snapshot cache
+    if (eventTypeBreakdownData.length > 0) {
       chartSnapshotRef.current = {
-        eventTypeBreakdownData: filteredEventTypeBreakdown,
-        timeSeriesData: filteredTimeSeries,
+        eventTypeBreakdownData,
+        timeSeriesData,
       };
     }
 
-    // Fall back to cached chart data when current computation yields nothing
     const effectiveBreakdown =
-      filteredEventTypeBreakdown.length > 0
-        ? filteredEventTypeBreakdown
+      eventTypeBreakdownData.length > 0
+        ? eventTypeBreakdownData
         : (chartSnapshotRef.current?.eventTypeBreakdownData ?? []);
     const effectiveTimeSeries =
-      filteredTimeSeries.length > 0
-        ? filteredTimeSeries
-        : (chartSnapshotRef.current?.timeSeriesData ?? []);
+      timeSeriesData.length > 0 ? timeSeriesData : (chartSnapshotRef.current?.timeSeriesData ?? []);
+
+    const errorRate =
+      displayedEvents.length > 0
+        ? Math.round(
+            (displayedEvents.filter((e) => e.priority === 'critical').length /
+              displayedEvents.length) *
+              10000
+          ) / 100
+        : 0;
 
     return {
-      totalEvents: filtered.length,
+      totalEvents: displayedEvents.length,
       eventsPerSecond: sourceData.eventsPerSecond,
-      errorRate: sourceData.errorRate,
-      activeTopics: activeTopicsCount,
-      dlqCount: filtered.filter((e) => e.priority === 'critical').length,
-      recentEvents: filtered.slice(0, maxEvents).map(toRecentEvent),
-      liveEvents: filtered.slice(0, maxEvents).map(toLiveEvent),
-      topicBreakdownData: filteredTopicBreakdown,
+      errorRate,
+      activeTopics: topicsLoadedCount,
+      dlqCount: displayedEvents.filter((e) => e.priority === 'critical').length,
+      recentEvents: displayedEvents.map(toRecentEvent),
+      liveEvents: displayedEvents.map(toLiveEvent),
+      topicBreakdownData,
       eventTypeBreakdownData: effectiveBreakdown,
       timeSeriesData: effectiveTimeSeries,
       topicHealth: [],
     };
-  }, [sourceData, filters, maxEvents, hideHeartbeats, activeTopicsCount]);
+  }, [sourceData, filters, maxEvents, hideHeartbeats, topicsLoadedCount]);
 
-  // Clear chart snapshot when topic filter changes so stale data doesn't linger
+  // Clear chart snapshot when topic filter changes
   useEffect(() => {
     chartSnapshotRef.current = null;
   }, [filters.topic]);
@@ -558,7 +610,6 @@ export default function EventBusMonitor() {
   const handleFilterRequest = useCallback((filter: FilterRequest) => {
     switch (filter.type) {
       case 'topic':
-        // Normalize env-prefixed topic to suffix so TopicSelector highlight matches
         setFilters((prev) => ({ ...prev, topic: normalizeToSuffix(filter.value) }));
         break;
       case 'source':
@@ -592,11 +643,10 @@ export default function EventBusMonitor() {
   // ============================================================================
 
   const hasActiveFilters = filters.priority || filters.search || hideHeartbeats;
-  const isConnected = connectionStatus === 'connected';
 
-  // Staleness detection — computed from ALL events (unfiltered), excluding heartbeats
+  // Staleness detection
   const stalenessInfo = useMemo(() => {
-    const STALENESS_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+    const STALENESS_THRESHOLD_MS = 10 * 60 * 1000;
     const now = Date.now();
     const allEvents = sourceData.events;
 
@@ -610,7 +660,6 @@ export default function EventBusMonitor() {
     if (hasNoEvents) return { stale: false, hasOnlyHeartbeats: false } as const;
     if (hasOnlyHeartbeats) return { stale: true, hasOnlyHeartbeats: true } as const;
 
-    // Find the newest non-heartbeat event
     const newest = nonHeartbeatEvents.reduce(
       (latest, e) => (e.timestamp.getTime() > latest.timestamp.getTime() ? e : latest),
       nonHeartbeatEvents[0]
@@ -619,7 +668,6 @@ export default function EventBusMonitor() {
 
     if (ageMs <= STALENESS_THRESHOLD_MS) return { stale: false, hasOnlyHeartbeats: false } as const;
 
-    // Format the age
     let ageStr: string;
     if (ageMs < 3600000) ageStr = `${Math.floor(ageMs / 60000)}m`;
     else if (ageMs < 86400000) ageStr = `${Math.floor(ageMs / 3600000)}h`;
@@ -635,7 +683,7 @@ export default function EventBusMonitor() {
   }, [sourceData.events]);
 
   // ============================================================================
-  // Split dashboard config: KPIs, Charts, Table
+  // Dashboard config splits
   // ============================================================================
 
   const kpiConfig = useMemo(
@@ -722,7 +770,7 @@ export default function EventBusMonitor() {
           </Button>
 
           {!isConnected && connectionStatus !== 'connecting' && (
-            <Button variant="outline" size="sm" onClick={connect} className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2" disabled>
               <RefreshCw className="h-4 w-4" />
               Reconnect
             </Button>
@@ -827,13 +875,9 @@ export default function EventBusMonitor() {
       </Card>
 
       {/* KPI Metric Cards */}
-      <DashboardRenderer
-        config={kpiConfig}
-        data={filteredData}
-        isLoading={connectionStatus === 'connecting'}
-      />
+      <DashboardRenderer config={kpiConfig} data={filteredData} isLoading={isLoading} />
 
-      {/* Topics + Charts — single row, fixed height so neither child can overflow */}
+      {/* Topics + Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4 h-[340px]">
         <TopicSelector
           topics={topicStatusData}
@@ -841,11 +885,7 @@ export default function EventBusMonitor() {
           onSelectTopic={(topic) => setFilters((prev) => ({ ...prev, topic: topic }))}
         />
 
-        <DashboardRenderer
-          config={chartsConfig}
-          data={filteredData}
-          isLoading={connectionStatus === 'connecting'}
-        />
+        <DashboardRenderer config={chartsConfig} data={filteredData} isLoading={isLoading} />
       </div>
 
       {/* Context line + active filter banner */}
@@ -892,7 +932,7 @@ export default function EventBusMonitor() {
       <DashboardRenderer
         config={tableConfig}
         data={filteredData}
-        isLoading={connectionStatus === 'connecting'}
+        isLoading={isLoading}
         onWidgetRowClick={handleEventClick}
       />
 

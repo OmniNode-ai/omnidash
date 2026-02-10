@@ -16,6 +16,7 @@ import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
 import { runtimeIdentity } from './runtime-identity';
+import { wireProjectionSources } from './projection-bootstrap';
 
 const app = express();
 
@@ -121,6 +122,9 @@ app.use((req, res, next) => {
     console.error('   Event querying endpoints will not be available');
     console.error('   Application will continue with limited functionality');
   }
+
+  // Wire projection event sources (after EventConsumer and EventBusDataSource are started)
+  wireProjectionSources();
 
   // Setup WebSocket for real-time events
   if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
