@@ -14,6 +14,7 @@ import extractionRoutes from './extraction-routes';
 import effectivenessRoutes from './effectiveness-routes';
 import { createProjectionRouter } from './projection-routes';
 import { projectionService } from './projection-bootstrap';
+import insightsRoutes from './insights-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -60,6 +61,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount projection routes for server-side materialized views (OMN-2095)
   app.use('/api/projections', createProjectionRouter(projectionService));
+
+  // Mount insights routes for learned insights dashboard (OMN-1407)
+  app.use('/api/insights', insightsRoutes);
 
   const httpServer = createServer(app);
 
