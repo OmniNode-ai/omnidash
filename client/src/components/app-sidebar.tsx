@@ -8,6 +8,7 @@ import {
   Sparkles,
   ShieldCheck,
   Activity,
+  Lightbulb,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -53,6 +54,12 @@ const dashboards = [
     url: '/validation',
     icon: ShieldCheck,
     description: 'Cross-repo validation runs and violation trends',
+  },
+  {
+    title: 'Learned Insights',
+    url: '/insights',
+    icon: Lightbulb,
+    description: 'Patterns and conventions from OmniClaude sessions',
   },
   {
     title: 'Effectiveness',

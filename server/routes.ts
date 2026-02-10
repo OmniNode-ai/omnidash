@@ -11,6 +11,7 @@ import playbackRoutes from './playback-routes';
 import patternsRoutes from './patterns-routes';
 import validationRoutes from './validation-routes';
 import effectivenessRoutes from './effectiveness-routes';
+import insightsRoutes from './insights-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -51,6 +52,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount effectiveness routes for injection effectiveness dashboard (OMN-1891)
   app.use('/api/effectiveness', effectivenessRoutes);
+
+  // Mount insights routes for learned insights dashboard (OMN-1407)
+  app.use('/api/insights', insightsRoutes);
 
   const httpServer = createServer(app);
 
