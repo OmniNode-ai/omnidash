@@ -70,6 +70,9 @@ export {
   processEvent,
 } from './useEventBusStream.utils';
 
+/** Known benign WebSocket message types that don't need event processing. */
+const KNOWN_IGNORED_TYPES = new Set(['pong', 'heartbeat', 'HEARTBEAT', 'PING', 'ACK']);
+
 // ============================================================================
 // Hook Implementation
 // ============================================================================
@@ -434,40 +437,100 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
         allResults = [...recentActions, ...routingDecisions, ...recentTransformations];
       }
 
-      // Filter successful results, sort newest first
+      // Filter successful results (sorting happens after merge below)
       const processed = allResults
         .filter((r): r is { status: 'success'; event: ProcessedEvent } => r.status === 'success')
-        .map((r) => r.event)
-        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+        .map((r) => r.event);
 
-      // Rebuild seenIds from hydrated events
-      seenIdsRef.current = new Set(processed.map((e) => e.id));
+      // --- Merge with existing real-time events instead of replacing ---
+      // Real-time events may have arrived between WS connect and INITIAL_STATE.
+      // Drain pending buffer so those events are included in the merge.
+      const pendingEvents = pendingEventsRef.current;
+      pendingEventsRef.current = [];
 
-      // Populate timestamps for throughput (exclude heartbeats, only recent events)
+      // Use functional setState to correctly chain with any pending flush updates.
+      // If the flush interval just called setEvents() but React hasn't rendered yet,
+      // the functional form receives the post-flush state as `prev`, preventing loss.
+      //
+      // Note: seenIdsRef is updated OUTSIDE the updater to avoid ref mutation inside
+      // setState, which React Strict Mode may double-invoke.
+      setEvents((prev) => {
+        const mergedIds = new Set<string>();
+        const merged: ProcessedEvent[] = [];
+
+        // Real-time events (pending buffer + already-flushed state) take priority
+        for (const event of [...pendingEvents, ...prev]) {
+          if (!mergedIds.has(event.id)) {
+            mergedIds.add(event.id);
+            merged.push(event);
+          }
+        }
+        // Then add INITIAL_STATE events (older, from DB preload)
+        for (const event of processed) {
+          if (!mergedIds.has(event.id)) {
+            mergedIds.add(event.id);
+            merged.push(event);
+          }
+        }
+
+        // Sort newest first, cap at maxItems
+        merged.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+        const capped = merged.length > maxItems ? merged.slice(0, maxItems) : merged;
+
+        return capped;
+      });
+
+      // Rebuild seenIds outside the setState updater to avoid ref mutation
+      // inside a function that React Strict Mode may double-invoke.
+      // Build from all sources: processed events, pending buffer, and current events.
+      // Note: eventsRef.current may be one render behind setEvents due to React batching,
+      // but seenIds is rebuilt on every flush cycle so any missed IDs are captured next cycle.
+      const allIds = new Set<string>();
+      for (const e of processed) allIds.add(e.id);
+      for (const e of pendingEvents) allIds.add(e.id);
+      for (const e of eventsRef.current) allIds.add(e.id);
+      seenIdsRef.current = allIds;
+
+      // Merge timestamps: keep existing real-time timestamps, add INITIAL_STATE ones
       const throughputCutoff = now - throughputWindowMs;
-      const recentTimestamps = processed
+      const existingTimestamps = timestampsRef.current.filter((t) => t > throughputCutoff);
+      const initialStateTimestamps = processed
         .filter(
           (e) =>
             !e.topicRaw.includes('heartbeat') && !e.eventType.toLowerCase().includes('heartbeat')
         )
         .map((e) => e.timestamp.getTime())
         .filter((t) => t > throughputCutoff);
-      timestampsRef.current = recentTimestamps.slice(-MAX_TIMESTAMP_ENTRIES);
+      const allTimestamps = [...new Set([...existingTimestamps, ...initialStateTimestamps])].sort(
+        (a, b) => a - b
+      );
+      timestampsRef.current = allTimestamps.slice(-MAX_TIMESTAMP_ENTRIES);
 
       // Populate time series with initial data so charts show historical data
       // The timeSeries useMemo will filter by timeSeriesWindowMs when computing
 
-      // Single state commit
-      setEvents(processed);
+      // Stats: count the new INITIAL_STATE events added
+      const newestProcessedAt = processed.reduce(
+        (max, e) => Math.max(max, e.timestamp.getTime()),
+        0
+      );
       setStats((prev) => ({
         ...prev,
         totalReceived: prev.totalReceived + processed.length,
-        lastEventAt: processed.length > 0 ? processed[0].timestamp.getTime() : prev.lastEventAt,
+        lastEventAt: Math.max(prev.lastEventAt ?? 0, newestProcessedAt) || null,
       }));
 
-      log('INITIAL_STATE hydrated', processed.length, 'events');
+      log(
+        'INITIAL_STATE hydrated',
+        processed.length,
+        'events, merged with',
+        pendingEvents.length,
+        'pending +',
+        eventsRef.current.length,
+        'existing'
+      );
     },
-    [throughputWindowMs, log]
+    [throughputWindowMs, maxItems, log]
   );
 
   /**
@@ -549,6 +612,44 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
           break;
         }
 
+        case 'EVENT_BUS_EVENT': {
+          // Real-time events from EventBusDataSource (mirrors INITIAL_STATE hydration)
+          const ebEvent = wireMessage.data as Record<string, unknown> | undefined;
+          if (
+            ebEvent != null &&
+            typeof ebEvent === 'object' &&
+            typeof ebEvent.event_type === 'string' &&
+            typeof ebEvent.topic === 'string'
+          ) {
+            let payloadRaw: unknown;
+            try {
+              payloadRaw =
+                typeof ebEvent.payload === 'string' ? JSON.parse(ebEvent.payload) : ebEvent.payload;
+            } catch {
+              log('EVENT_BUS_EVENT: skipping malformed payload');
+              break;
+            }
+            const payload: Record<string, unknown> =
+              payloadRaw != null && typeof payloadRaw === 'object' && !Array.isArray(payloadRaw)
+                ? (payloadRaw as Record<string, unknown>)
+                : { value: payloadRaw };
+            const data: WireEventData = {
+              ...payload,
+              timestamp: ebEvent.timestamp as string | undefined,
+              source: ebEvent.source as string | undefined,
+              correlationId: ebEvent.correlation_id as string | undefined,
+              id: ebEvent.id as string | undefined,
+            };
+            processAndIngest(ebEvent.event_type as string, data, ebEvent.topic as string);
+          }
+          break;
+        }
+
+        // Status messages from EventBusDataSource — not discrete events
+        case 'EVENT_BUS_STATUS':
+        case 'EVENT_BUS_ERROR':
+          break;
+
         // Demo mode state management - clear/restore UI state
         case 'DEMO_STATE_RESET':
           // Demo mode started - clear all events for clean playback
@@ -584,13 +685,17 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
           // The server will send INITIAL_STATE with restored data
           break;
 
-        default:
-          if (debug) {
-            log('Unknown message type:', wireMessage.type);
+        default: {
+          // Both known-ignored and truly unexpected types use debug logging.
+          // Production console noise is avoided; enable `debug: true` to surface.
+          if (!KNOWN_IGNORED_TYPES.has(wireMessage.type)) {
+            log('Unhandled WebSocket message type:', wireMessage.type);
           }
+          break;
+        }
       }
     },
-    [handleInitialState, processAndIngest, debug, log]
+    [handleInitialState, processAndIngest, log]
   );
 
   /**
@@ -751,7 +856,8 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     const recentCount = timestampsRef.current.filter((t) => t > cutoff).length;
     const windowSeconds = throughputWindowMs / 1000;
     return Math.round((recentCount / windowSeconds) * 10) / 10;
-  }, [events, throughputWindowMs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- throughput only depends on event count changes (not content); events.length is a proxy trigger for timestampsRef updates
+  }, [events.length, throughputWindowMs]);
 
   /**
    * Topic breakdown computed from current events.

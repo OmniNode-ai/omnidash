@@ -350,7 +350,9 @@ export class PostgresAdapter {
       // 'error_events': schema.errorEvents, // TODO: Add errorEvents table to schema when needed
       pattern_lineage_nodes: schema.patternLineageNodes,
       pattern_lineage_edges: schema.patternLineageEdges,
-      // Add more tables as needed
+      injection_effectiveness: schema.injectionEffectiveness,
+      latency_breakdowns: schema.latencyBreakdowns,
+      pattern_hit_rates: schema.patternHitRates,
     };
 
     return tableMap[tableName];

@@ -34,7 +34,10 @@ export type WireMessageType =
   | 'CONSUMER_STATUS'
   | 'AGENT_METRIC_UPDATE'
   | 'DEMO_STATE_RESET'
-  | 'DEMO_STATE_RESTORED';
+  | 'DEMO_STATE_RESTORED'
+  | 'EVENT_BUS_EVENT'
+  | 'EVENT_BUS_STATUS'
+  | 'EVENT_BUS_ERROR';
 
 /**
  * Raw WebSocket event message from server.

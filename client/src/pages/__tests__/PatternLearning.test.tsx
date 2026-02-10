@@ -756,8 +756,8 @@ describe('PatternLearning page', () => {
       // Now only 25 patterns should be visible
       await waitFor(() => {
         expect(screen.getAllByText('Pattern 25').length).toBeGreaterThan(0);
+        expect(screen.queryAllByText('Pattern 26')).toHaveLength(0);
       });
-      expect(screen.queryAllByText('Pattern 26')).toHaveLength(0);
 
       result.unmount();
     });
