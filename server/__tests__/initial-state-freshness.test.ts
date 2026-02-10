@@ -59,6 +59,13 @@ vi.mock('kafkajs', () => ({
       disconnect: mockConsumerDisconnect,
       subscribe: mockConsumerSubscribe,
       run: mockConsumerRun,
+      on: vi.fn(),
+      events: {
+        CRASH: 'consumer.crash',
+        GROUP_JOIN: 'consumer.group_join',
+        REBALANCING: 'consumer.rebalancing',
+        FETCH_START: 'consumer.fetch_start',
+      },
     }),
     admin: vi.fn().mockReturnValue({
       connect: mockAdminConnect,

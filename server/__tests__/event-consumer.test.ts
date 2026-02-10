@@ -1278,7 +1278,7 @@ describe('EventConsumer', () => {
   });
 
   describe('fromBeginning behavior', () => {
-    it('should subscribe with fromBeginning: true', async () => {
+    it('should subscribe with fromBeginning: false to avoid replaying full retention', async () => {
       mockConsumerConnect.mockResolvedValueOnce(undefined);
       mockConsumerSubscribe.mockResolvedValueOnce(undefined);
       mockConsumerRun.mockResolvedValueOnce(undefined);
@@ -1286,7 +1286,7 @@ describe('EventConsumer', () => {
       await consumer.start();
 
       const subscribeCall = mockConsumerSubscribe.mock.calls[0][0];
-      expect(subscribeCall.fromBeginning).toBe(true);
+      expect(subscribeCall.fromBeginning).toBe(false);
     });
   });
 });
