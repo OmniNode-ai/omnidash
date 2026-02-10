@@ -75,9 +75,14 @@ export const NODE_TOPIC_MAP: Record<string, string> = {
 // Shared Windowing Helpers
 // ============================================================================
 
-/** Get cutoff timestamp for a given window */
+/**
+ * Get cutoff timestamp for a given window.
+ * All computation sites should use this instead of inline `now - windowMs`.
+ * Returns 0 when windowMs exceeds now (e.g., app just started with a large window)
+ * so that all events pass the subsequent filter.
+ */
 export function getWindowCutoff(now: number, windowMs: number): number {
-  return now - windowMs;
+  return Math.max(0, now - windowMs);
 }
 
 /** Filter events to those within the window (timestamp >= cutoff) */

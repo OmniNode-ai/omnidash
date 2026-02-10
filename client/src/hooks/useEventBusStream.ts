@@ -261,12 +261,12 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
        *
        * 1. Memory efficiency: Prevents unbounded growth of the timestamps array
        * 2. Throughput accuracy: Retains enough history for accurate events/sec
-       *    calculation across the throughput window (default 5 seconds)
+       *    calculation across the monitoring window (default 5 minutes)
        *
        * Why 50% (half) instead of another fraction:
        * - Aggressive enough: Reduces 10K to 5K entries per cleanup
        * - Conservative enough: At 100 events/sec, 5K entries = 50 seconds of
-       *   history, far exceeding the 5-second throughput window
+       *   history, far exceeding the 5-minute monitoring window
        * - Amortizes cleanup cost: Fewer cleanup operations vs trimming to exact limit
        */
       if (timestampsRef.current.length > MAX_TIMESTAMP_ENTRIES) {
@@ -875,16 +875,36 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
 
   const burstInfo = useMemo((): BurstInfo => {
     const now = Date.now();
+
+    // Single pass: compute all counts for both windows simultaneously.
+    // burst_window_ms (30s) is always a subset of monitoringWindowMs (5min),
+    // so events in the short window are also in the baseline window.
     const burstCutoff = getWindowCutoff(now, eventConfig.burst_window_ms);
     const baselineCutoff = getWindowCutoff(now, monitoringWindowMs);
+    let baselineCount = 0;
+    let baselineErrorCount = 0;
+    let shortCount = 0;
+    let shortErrorCount = 0;
 
-    const burstEvents = filterEventsInWindow(events, burstCutoff);
-    const baselineEvents = filterEventsInWindow(events, baselineCutoff);
+    for (const e of events) {
+      const t = e.timestamp.getTime();
+      if (t > baselineCutoff) {
+        baselineCount++;
+        if (e.priority === 'critical') baselineErrorCount++;
+        if (t > burstCutoff) {
+          shortCount++;
+          if (e.priority === 'critical') shortErrorCount++;
+        }
+      }
+    }
 
-    const shortWindowRate = computeRate(burstEvents.length, eventConfig.burst_window_ms);
-    const baselineRate = computeRate(baselineEvents.length, monitoringWindowMs);
-    const shortWindowErrorRate = computeErrorRate(burstEvents);
-    const baselineErrorRate = computeErrorRate(baselineEvents);
+    const shortWindowRate = computeRate(shortCount, eventConfig.burst_window_ms);
+    const baselineRate = computeRate(baselineCount, monitoringWindowMs);
+    // Match computeErrorRate formula: (criticalCount / totalCount) * 100
+    const shortWindowErrorRate =
+      shortCount > 0 ? (shortErrorCount / shortCount) * 100 : 0;
+    const baselineErrorRate =
+      baselineCount > 0 ? (baselineErrorCount / baselineCount) * 100 : 0;
 
     // Throughput burst: all 3 conditions
     const rawThroughputBurst =
@@ -894,7 +914,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
 
     // Error spike: either condition, with sample gate
     const rawErrorSpike =
-      burstEvents.length >= eventConfig.burst_error_min_events &&
+      shortCount >= eventConfig.burst_error_min_events &&
       (shortWindowErrorRate > eventConfig.burst_error_absolute_threshold ||
         (baselineErrorRate > 0 &&
           shortWindowErrorRate > baselineErrorRate * eventConfig.burst_error_multiplier));
@@ -916,6 +936,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
       baselineRate,
       shortWindowErrorRate,
       baselineErrorRate,
+      shortEventCount: shortCount,
     };
   }, [
     events,

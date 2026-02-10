@@ -296,6 +296,8 @@ export interface BurstInfo {
   shortWindowErrorRate: number;
   /** Error rate (%) in the monitoring (baseline) window */
   baselineErrorRate: number;
+  /** Number of events in the burst (short) window */
+  shortEventCount: number;
 }
 
 /**

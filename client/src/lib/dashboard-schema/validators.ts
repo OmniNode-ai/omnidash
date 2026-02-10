@@ -209,90 +209,98 @@ export const EVENT_MONITORING_BURST_COOLDOWN_MS_DEFAULT = 15000;
  * Validates runtime settings for the Event Bus Monitor dashboard.
  * All fields have sensible defaults for typical usage patterns.
  */
-export const eventMonitoringConfigSchema = z.object({
-  /** Maximum events to retain in memory (10-10000) */
-  max_events: z.number().int().min(10).max(10000).default(EVENT_MONITORING_MAX_EVENTS_DEFAULT),
+export const eventMonitoringConfigSchema = z
+  .object({
+    /** Maximum events to retain in memory (10-10000) */
+    max_events: z.number().int().min(10).max(10000).default(EVENT_MONITORING_MAX_EVENTS_DEFAULT),
 
-  /** Available options for max events dropdown */
-  max_events_options: z
-    .array(z.number().int().positive())
-    .min(1)
-    .default(EVENT_MONITORING_MAX_EVENTS_OPTIONS_DEFAULT),
+    /** Available options for max events dropdown */
+    max_events_options: z
+      .array(z.number().int().positive())
+      .min(1)
+      .default(EVENT_MONITORING_MAX_EVENTS_OPTIONS_DEFAULT),
 
-  /** Events between throughput cleanups (min 10) */
-  throughput_cleanup_interval: z
-    .number()
-    .int()
-    .min(10)
-    .default(EVENT_MONITORING_THROUGHPUT_CLEANUP_INTERVAL_DEFAULT),
+    /** Events between throughput cleanups (min 10) */
+    throughput_cleanup_interval: z
+      .number()
+      .int()
+      .min(10)
+      .default(EVENT_MONITORING_THROUGHPUT_CLEANUP_INTERVAL_DEFAULT),
 
-  /** Unified monitoring window in ms (min 30 seconds, default 5 minutes) */
-  monitoring_window_ms: z
-    .number()
-    .int()
-    .min(30000)
-    .default(EVENT_MONITORING_MONITORING_WINDOW_MS_DEFAULT),
+    /** Unified monitoring window in ms (min 30 seconds, default 5 minutes) */
+    monitoring_window_ms: z
+      .number()
+      .int()
+      .min(30000)
+      .default(EVENT_MONITORING_MONITORING_WINDOW_MS_DEFAULT),
 
-  /** Staleness threshold in ms (min 30 seconds, default 10 minutes) */
-  staleness_threshold_ms: z
-    .number()
-    .int()
-    .min(30000)
-    .default(EVENT_MONITORING_STALENESS_THRESHOLD_MS_DEFAULT),
+    /** Staleness threshold in ms (min 1 minute, default 10 minutes) */
+    staleness_threshold_ms: z
+      .number()
+      .int()
+      .min(60000)
+      .default(EVENT_MONITORING_STALENESS_THRESHOLD_MS_DEFAULT),
 
-  /** Maximum breakdown items before pruning (min 5) */
-  max_breakdown_items: z
-    .number()
-    .int()
-    .min(5)
-    .default(EVENT_MONITORING_MAX_BREAKDOWN_ITEMS_DEFAULT),
+    /** Maximum breakdown items before pruning (min 5) */
+    max_breakdown_items: z
+      .number()
+      .int()
+      .min(5)
+      .default(EVENT_MONITORING_MAX_BREAKDOWN_ITEMS_DEFAULT),
 
-  /** Periodic cleanup interval in ms (min 1 second, default 10 seconds) */
-  periodic_cleanup_interval_ms: z
-    .number()
-    .int()
-    .min(1000)
-    .default(EVENT_MONITORING_PERIODIC_CLEANUP_INTERVAL_MS_DEFAULT),
+    /** Periodic cleanup interval in ms (min 1 second, default 10 seconds) */
+    periodic_cleanup_interval_ms: z
+      .number()
+      .int()
+      .min(1000)
+      .default(EVENT_MONITORING_PERIODIC_CLEANUP_INTERVAL_MS_DEFAULT),
 
-  // Burst / Spike Detection
+    /** Burst detection window in ms (min 5 seconds, default 30 seconds) */
+    burst_window_ms: z.number().int().min(5000).default(EVENT_MONITORING_BURST_WINDOW_MS_DEFAULT),
 
-  /** Burst detection window in ms (min 5 seconds, default 30 seconds) */
-  burst_window_ms: z.number().int().min(5000).default(EVENT_MONITORING_BURST_WINDOW_MS_DEFAULT),
+    /** Throughput burst multiplier (min 1.5) */
+    burst_throughput_multiplier: z
+      .number()
+      .min(1.5)
+      .default(EVENT_MONITORING_BURST_THROUGHPUT_MULTIPLIER_DEFAULT),
 
-  /** Throughput burst multiplier (min 1.5, default 3) */
-  burst_throughput_multiplier: z
-    .number()
-    .min(1.5)
-    .default(EVENT_MONITORING_BURST_THROUGHPUT_MULTIPLIER_DEFAULT),
+    /** Minimum absolute events/sec for throughput burst (min 1) */
+    burst_throughput_min_rate: z
+      .number()
+      .min(1)
+      .default(EVENT_MONITORING_BURST_THROUGHPUT_MIN_RATE_DEFAULT),
 
-  /** Minimum absolute rate to trigger burst (min 1, default 5) */
-  burst_throughput_min_rate: z
-    .number()
-    .min(1)
-    .default(EVENT_MONITORING_BURST_THROUGHPUT_MIN_RATE_DEFAULT),
+    /** Error spike multiplier (min 1.5) */
+    burst_error_multiplier: z
+      .number()
+      .min(1.5)
+      .default(EVENT_MONITORING_BURST_ERROR_MULTIPLIER_DEFAULT),
 
-  /** Error spike multiplier (min 1.5, default 2) */
-  burst_error_multiplier: z
-    .number()
-    .min(1.5)
-    .default(EVENT_MONITORING_BURST_ERROR_MULTIPLIER_DEFAULT),
+    /** Absolute error rate threshold in % (min 1) */
+    burst_error_absolute_threshold: z
+      .number()
+      .min(1)
+      .default(EVENT_MONITORING_BURST_ERROR_ABSOLUTE_THRESHOLD_DEFAULT),
 
-  /** Absolute error rate threshold in % (min 1, default 5) */
-  burst_error_absolute_threshold: z
-    .number()
-    .min(1)
-    .default(EVENT_MONITORING_BURST_ERROR_ABSOLUTE_THRESHOLD_DEFAULT),
+    /** Minimum events in burst window for error rate (min 5) */
+    burst_error_min_events: z
+      .number()
+      .int()
+      .min(5)
+      .default(EVENT_MONITORING_BURST_ERROR_MIN_EVENTS_DEFAULT),
 
-  /** Minimum events in burst window for meaningful error rate (min 5, default 50) */
-  burst_error_min_events: z
-    .number()
-    .int()
-    .min(5)
-    .default(EVENT_MONITORING_BURST_ERROR_MIN_EVENTS_DEFAULT),
-
-  /** Burst cooldown in ms (min 1 second, default 15 seconds) */
-  burst_cooldown_ms: z.number().int().min(1000).default(EVENT_MONITORING_BURST_COOLDOWN_MS_DEFAULT),
-});
+    /** Burst cooldown in ms (min 1 second, default 15 seconds) */
+    burst_cooldown_ms: z
+      .number()
+      .int()
+      .min(1000)
+      .default(EVENT_MONITORING_BURST_COOLDOWN_MS_DEFAULT),
+  })
+  .refine((data) => data.burst_window_ms < data.monitoring_window_ms, {
+    message:
+      'burst_window_ms must be less than monitoring_window_ms for meaningful burst detection',
+    path: ['burst_window_ms'],
+  });
 
 /**
  * Dashboard Runtime Configuration Schema
