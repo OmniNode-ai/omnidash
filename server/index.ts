@@ -164,11 +164,13 @@ app.use((req, res, next) => {
     console.error('   Application will continue with limited functionality');
   }
 
-  // Seed projection with existing nodes from EventConsumer (survives server restart).
-  // Seed has no eventTimeMs — represents current EventConsumer snapshot, not a
+  // Seed projection with any nodes already tracked by EventConsumer from prior runs.
+  // Seed has no eventTimeMs — represents in-memory EventConsumer state, not a
   // timestamped Kafka event. ProjectionService assigns sentinel (epoch 0), so
   // MonotonicMergeTracker accepts any future event with a real timestamp.
-  // NOTE: Must be AFTER eventConsumer.start() so getRegisteredNodes() has data.
+  // NOTE: Called after eventConsumer.start(), but start() is async — the consumer
+  // may not have received new messages yet. This seeds only previously cached nodes;
+  // new nodes will arrive via the event bridge listeners registered above.
   const existingNodes = eventConsumer.getRegisteredNodes();
   if (existingNodes.length > 0) {
     projectionService.ingest({

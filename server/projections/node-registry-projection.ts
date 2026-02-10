@@ -176,7 +176,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       this.cursor = Math.max(this.cursor, event.ingestSeq);
       this.appliedEvents.push(event);
       if (this.appliedEvents.length > MAX_APPLIED_EVENTS) {
-        this.appliedEvents.splice(0, this.appliedEvents.length - MAX_APPLIED_EVENTS);
+        this.appliedEvents = this.appliedEvents.slice(-MAX_APPLIED_EVENTS);
       }
     }
 

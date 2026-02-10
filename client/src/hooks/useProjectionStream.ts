@@ -2,13 +2,16 @@
  * useProjectionStream — Client hook for Snapshot + Invalidation projections (OMN-2097)
  *
  * Fetches an initial snapshot via REST using TanStack Query, then subscribes to
- * WebSocket invalidation events via the shared useWebSocket hook. On each
- * invalidation, the query cache is invalidated which triggers a re-fetch.
- * When the WebSocket disconnects, TanStack Query's refetchInterval provides
- * automatic polling fallback.
+ * WebSocket invalidation events via useWebSocket. On each invalidation, the
+ * query cache is invalidated which triggers a re-fetch. When the WebSocket
+ * disconnects, TanStack Query's refetchInterval provides automatic polling fallback.
  *
- * Uses the existing useWebSocket hook internally to share a single /ws
- * connection across all components rather than opening a separate connection.
+ * NOTE: Each useProjectionStream instance creates its own useWebSocket hook call,
+ * which opens a dedicated /ws connection. This is consistent with how other
+ * pages use useWebSocket (one connection per hook instance). For the current
+ * single-consumer usage in NodeRegistry, this is fine. If multiple projection
+ * consumers are needed on the same page, consider extracting a shared
+ * WebSocket context provider.
  *
  * Usage:
  * ```tsx
@@ -67,8 +70,8 @@ export function useProjectionStream<T>(
   // Use a ref to track whether we've subscribed to avoid duplicate subscribe calls
   const subscribedRef = useRef(false);
 
-  // Reuse the shared useWebSocket hook to avoid opening a separate /ws connection.
-  // Uses the project's established reconnection pattern (stabilization, anti-flicker).
+  // Uses the project's established useWebSocket pattern for reconnection, stabilization,
+  // and anti-flicker. Each hook instance opens its own /ws connection (see module comment).
   // reconnectInterval: 1000ms for fast initial reconnect on transient disconnects.
   const { isConnected, subscribe } = useWebSocket({
     onMessage: useCallback(
