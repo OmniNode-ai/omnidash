@@ -61,6 +61,7 @@ import {
   filterEventsInWindow,
   computeRate,
   computeErrorRate,
+  errorRatePercent,
 } from './useEventBusStream.utils';
 
 // Re-export utilities and constants for public API
@@ -77,6 +78,7 @@ export {
   filterEventsInWindow,
   computeRate,
   computeErrorRate,
+  errorRatePercent,
 } from './useEventBusStream.utils';
 
 /** Known benign WebSocket message types that don't need event processing. */
@@ -812,7 +814,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
 
       // Clean stale timestamps for accurate throughput calculation
       if (timestampsRef.current.length > 0) {
-        timestampsRef.current = timestampsRef.current.filter((t) => t > cutoff);
+        timestampsRef.current = timestampsRef.current.filter((t) => t >= cutoff);
       }
 
       /**
@@ -870,9 +872,9 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
   // Burst / Spike Detection
   // ============================================================================
 
-  /** Track when burst conditions were last met for cooldown */
-  const lastBurstTriggeredAtRef = useRef<number>(0);
-  const lastErrorSpikeTriggeredAtRef = useRef<number>(0);
+  /** Track when burst conditions were last met for cooldown (state for React purity in useMemo) */
+  const [lastBurstTriggeredAt, setLastBurstTriggeredAt] = useState(0);
+  const [lastErrorSpikeTriggeredAt, setLastErrorSpikeTriggeredAt] = useState(0);
 
   const burstInfo = useMemo((): BurstInfo => {
     const now = Date.now();
@@ -889,10 +891,10 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
 
     for (const e of events) {
       const t = e.timestamp.getTime();
-      if (t > baselineCutoff) {
+      if (t >= baselineCutoff) {
         baselineCount++;
         if (e.priority === 'critical') baselineErrorCount++;
-        if (t > burstCutoff) {
+        if (t >= burstCutoff) {
           shortCount++;
           if (e.priority === 'critical') shortErrorCount++;
         }
@@ -901,11 +903,8 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
 
     const shortWindowRate = computeRate(shortCount, eventConfig.burst_window_ms);
     const baselineRate = computeRate(baselineCount, monitoringWindowMs);
-    // Match computeErrorRate rounding: round to 2 decimal places
-    const shortWindowErrorRate =
-      shortCount > 0 ? Math.round((shortErrorCount / shortCount) * 100 * 100) / 100 : 0;
-    const baselineErrorRate =
-      baselineCount > 0 ? Math.round((baselineErrorCount / baselineCount) * 100 * 100) / 100 : 0;
+    const shortWindowErrorRate = errorRatePercent(shortErrorCount, shortCount);
+    const baselineErrorRate = errorRatePercent(baselineErrorCount, baselineCount);
 
     // Throughput burst: all 3 conditions
     const rawThroughputBurst =
@@ -920,11 +919,11 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
         (baselineErrorRate > 0 &&
           shortWindowErrorRate > baselineErrorRate * eventConfig.burst_error_multiplier));
 
-    // Apply cooldown using last-known trigger timestamps (read-only in memo)
+    // Apply cooldown using last-known trigger timestamps (state, not refs, for useMemo purity)
     const throughputBurst =
-      rawThroughputBurst || now - lastBurstTriggeredAtRef.current < eventConfig.burst_cooldown_ms;
+      rawThroughputBurst || now - lastBurstTriggeredAt < eventConfig.burst_cooldown_ms;
     const errorSpike =
-      rawErrorSpike || now - lastErrorSpikeTriggeredAtRef.current < eventConfig.burst_cooldown_ms;
+      rawErrorSpike || now - lastErrorSpikeTriggeredAt < eventConfig.burst_cooldown_ms;
 
     return {
       throughputBurst,
@@ -943,6 +942,8 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
   }, [
     events,
     monitoringWindowMs,
+    lastBurstTriggeredAt,
+    lastErrorSpikeTriggeredAt,
     eventConfig.burst_window_ms,
     eventConfig.burst_throughput_min_rate,
     eventConfig.burst_throughput_multiplier,
@@ -952,12 +953,11 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     eventConfig.burst_cooldown_ms,
   ]);
 
-  // Synchronize burst trigger timestamps as a side effect (not inside useMemo).
-  // This keeps useMemo pure while still tracking cooldown state.
+  // Synchronize burst trigger timestamps when raw burst/spike state changes.
   useEffect(() => {
     const now = Date.now();
-    if (burstInfo.rawThroughputBurst) lastBurstTriggeredAtRef.current = now;
-    if (burstInfo.rawErrorSpike) lastErrorSpikeTriggeredAtRef.current = now;
+    if (burstInfo.rawThroughputBurst) setLastBurstTriggeredAt(now);
+    if (burstInfo.rawErrorSpike) setLastErrorSpikeTriggeredAt(now);
   }, [burstInfo.rawThroughputBurst, burstInfo.rawErrorSpike]);
 
   /**
@@ -1013,7 +1013,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     const defaultCutoff = getWindowCutoff(now, monitoringWindowMs);
 
     // First, check if any events fall within the default time window
-    const hasRecentEvents = events.some((e) => e.timestamp.getTime() > defaultCutoff);
+    const hasRecentEvents = events.some((e) => e.timestamp.getTime() >= defaultCutoff);
 
     // If no recent events, expand window to include all events (historical data)
     // Use the oldest event timestamp as the cutoff
@@ -1029,7 +1029,7 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
     const buckets: Record<number, number> = {};
     for (const event of events) {
       const eventTime = event.timestamp.getTime();
-      if (eventTime > cutoff) {
+      if (eventTime >= cutoff) {
         const bucketTime = Math.floor(eventTime / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
         buckets[bucketTime] = (buckets[bucketTime] || 0) + 1;
       }

@@ -97,11 +97,17 @@ export function computeRate(count: number, windowMs: number): number {
   return Math.round((count / windowSeconds) * 10) / 10;
 }
 
+/** Compute error-rate percentage with consistent 2-decimal rounding */
+export function errorRatePercent(errorCount: number, totalCount: number): number {
+  if (totalCount === 0) return 0;
+  return Math.round((errorCount / totalCount) * 100 * 100) / 100;
+}
+
 /** Compute error rate (%) from windowed events */
 export function computeErrorRate(windowedEvents: ProcessedEvent[]): number {
   if (windowedEvents.length === 0) return 0;
   const errorCount = windowedEvents.filter((e) => e.priority === 'critical').length;
-  return Math.round((errorCount / windowedEvents.length) * 100 * 100) / 100;
+  return errorRatePercent(errorCount, windowedEvents.length);
 }
 
 // ============================================================================
