@@ -17,21 +17,11 @@
  */
 
 import { EventEmitter } from 'events';
-import { extractEventTimeMs } from './monotonic-merge';
+import { extractEventTimeMs, MISSING_TIMESTAMP_SENTINEL_MS } from './monotonic-merge';
 
 // ============================================================================
 // Contracts (locked per OMN-2094)
 // ============================================================================
-
-/**
- * Position of an event in the projection's total ordering.
- * Distinct from monotonic-merge's EventPosition: this carries the
- * projection-assigned ingestSeq rather than a Kafka offset.
- */
-export interface ProjectionEventPosition {
-  eventTimeMs: number;
-  ingestSeq: number;
-}
 
 /**
  * Canonical event shape flowing through projections.
@@ -55,6 +45,8 @@ export interface ProjectionEvent {
   severity: 'info' | 'warning' | 'error' | 'critical';
   /** Event payload (domain-specific data) */
   payload: Record<string, unknown>;
+  /** True when no timestamp could be extracted — eventTimeMs is the sentinel (0) */
+  eventTimeMissing?: boolean;
   /** Error details, if this is an error event */
   error?: { message: string; stack?: string };
 }
@@ -173,7 +165,7 @@ export class ProjectionService extends EventEmitter {
    * Assign the next ingestSeq. Each call returns a unique, monotonically
    * increasing integer. Thread-safe in single-threaded Node.js runtime.
    */
-  assignSeq(): number {
+  private assignSeq(): number {
     return this.ingestSeqCounter++;
   }
 
@@ -232,6 +224,9 @@ export class ProjectionService extends EventEmitter {
     const ingestSeq = this.assignSeq();
     const eventTimeMs = raw.eventTimeMs ?? extractEventTimeMs(raw.payload ?? {});
 
+    const eventTimeMissing =
+      raw.eventTimeMs == null && eventTimeMs === MISSING_TIMESTAMP_SENTINEL_MS;
+
     const projectionEvent: ProjectionEvent = {
       id: raw.id ?? `proj-${ingestSeq}`,
       eventTimeMs,
@@ -241,6 +236,7 @@ export class ProjectionService extends EventEmitter {
       source: raw.source ?? '',
       severity: raw.severity ?? 'info',
       payload: raw.payload ?? {},
+      ...(eventTimeMissing && { eventTimeMissing: true }),
       error: raw.error,
     };
 
@@ -279,6 +275,11 @@ export class ProjectionService extends EventEmitter {
           `[projection] View "${view.viewId}" threw during applyEvent for seq=${event.ingestSeq}:`,
           err
         );
+        this.emit('projection-error', {
+          viewId: view.viewId,
+          ingestSeq: event.ingestSeq,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
   }

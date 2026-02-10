@@ -116,11 +116,12 @@ describe('ProjectionService', () => {
     });
 
     it('should assign monotonically increasing sequences', () => {
-      const seqs: number[] = [];
+      const events: ReturnType<typeof service.ingest>[] = [];
       for (let i = 0; i < 100; i++) {
-        seqs.push(service.assignSeq());
+        events.push(service.ingest(rawEvent()));
       }
 
+      const seqs = events.map((e) => e.ingestSeq);
       for (let i = 1; i < seqs.length; i++) {
         expect(seqs[i]).toBe(seqs[i - 1] + 1);
       }
@@ -585,6 +586,62 @@ describe('ProjectionService', () => {
 
       expect(service.viewCount).toBe(1);
       expect(service.viewIds).toEqual(['persistent']);
+    });
+
+    it('should set eventTimeMissing when no timestamp is available', () => {
+      const event = service.ingest({ payload: { data: 'no-time' } });
+      expect(event.eventTimeMissing).toBe(true);
+      expect(event.eventTimeMs).toBe(0);
+    });
+
+    it('should not set eventTimeMissing when eventTimeMs is provided', () => {
+      const event = service.ingest({ eventTimeMs: 1700000000000 });
+      expect(event.eventTimeMissing).toBeUndefined();
+    });
+
+    it('should not set eventTimeMissing when payload contains a timestamp', () => {
+      const event = service.ingest({ payload: { emitted_at: 1700000000000 } });
+      expect(event.eventTimeMissing).toBeUndefined();
+    });
+
+    it('should emit projection-error when a view throws during applyEvent', () => {
+      const badView: ProjectionView<unknown> = {
+        viewId: 'error-view',
+        getSnapshot: () => ({ viewId: 'error-view', cursor: 0, snapshotTimeMs: 0, payload: null }),
+        getEventsSince: () => ({ viewId: 'error-view', cursor: 0, snapshotTimeMs: 0, events: [] }),
+        applyEvent: () => {
+          throw new Error('view-failure');
+        },
+        reset: () => {},
+      };
+
+      service.registerView(badView);
+
+      const handler = vi.fn();
+      service.on('projection-error', handler);
+
+      service.ingest(rawEvent());
+
+      expect(handler).toHaveBeenCalledOnce();
+      expect(handler).toHaveBeenCalledWith({
+        viewId: 'error-view',
+        ingestSeq: 1,
+        error: 'view-failure',
+      });
+    });
+
+    it('should return the correct view from getView', () => {
+      const view = new TestView('typed-view');
+      service.registerView(view);
+
+      const retrieved = service.getView<ProjectionEvent[]>('typed-view');
+      expect(retrieved).toBe(view);
+      expect(retrieved?.viewId).toBe('typed-view');
+    });
+
+    it('should return undefined from getView for non-existent ID', () => {
+      const retrieved = service.getView<unknown>('missing');
+      expect(retrieved).toBeUndefined();
     });
   });
 });
