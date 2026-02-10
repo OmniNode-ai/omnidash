@@ -617,6 +617,34 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
           break;
         }
 
+        case 'EVENT_BUS_EVENT': {
+          const raw = wireMessage.data as Record<string, unknown> | undefined;
+          if (raw) {
+            const payload: Record<string, unknown> =
+              raw.payload != null && typeof raw.payload === 'object' && !Array.isArray(raw.payload)
+                ? (raw.payload as Record<string, unknown>)
+                : { value: raw.payload };
+            const data: WireEventData = {
+              ...payload,
+              timestamp: raw.timestamp as string,
+              source: raw.source as string,
+              correlationId: raw.correlation_id as string,
+              id: raw.id as string,
+            };
+            processAndIngest(
+              (raw.event_type as string) || 'event',
+              data,
+              (raw.topic as string) || 'event-bus'
+            );
+          }
+          break;
+        }
+
+        case 'EVENT_BUS_STATUS':
+        case 'EVENT_BUS_ERROR':
+          // Connection status updates - not discrete events
+          break;
+
         case 'AGENT_METRIC_UPDATE':
           // Metrics update - not a discrete event, skip
           break;

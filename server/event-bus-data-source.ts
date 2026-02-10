@@ -145,8 +145,13 @@ export class EventBusDataSource extends EventEmitter {
 
     // Consumer group bumped to v2 for canonical topic subscription changes (OMN-1933).
     // New group starts with no committed offsets — expects offset reset on first deploy.
+    // Tuned timeouts to reduce rebalance delay (KafkaJS defaults: 30s session, 60s rebalance).
     this.consumer = this.kafka.consumer({
       groupId: 'omnidash-event-bus-datasource-v2',
+      sessionTimeout: 15_000,
+      rebalanceTimeout: 20_000,
+      heartbeatInterval: 3_000,
+      maxWaitTimeInMs: 1_000,
     });
   }
 
@@ -297,6 +302,29 @@ export class EventBusDataSource extends EventEmitter {
         await this.consumer.subscribe({ topics: eventTopics, fromBeginning: false });
       }
 
+      // KafkaJS diagnostic event listeners
+      const { GROUP_JOIN, REBALANCING, CRASH } = this.consumer.events;
+      this.consumer.on(
+        GROUP_JOIN,
+        (e: { payload: { memberAssignment: Record<string, number[]> } }) => {
+          const topicCount = Object.keys(e.payload.memberAssignment).length;
+          console.log(
+            `[EventBusDataSource] GROUP_JOIN: assigned ${topicCount} topics, ready to consume`
+          );
+        }
+      );
+      this.consumer.on(REBALANCING, () => {
+        console.log('[EventBusDataSource] REBALANCING: consumer group rebalancing...');
+      });
+      this.consumer.on(CRASH, (e: { payload: { error: Error; restart: boolean } }) => {
+        console.error(
+          '[EventBusDataSource] CRASH:',
+          e.payload.error.message,
+          'restart:',
+          e.payload.restart
+        );
+      });
+
       // Start consuming messages
       await this.consumer.run({
         eachMessage: async (payload: EachMessagePayload) => {
@@ -370,11 +398,11 @@ export class EventBusDataSource extends EventEmitter {
       // Emit event for real-time processing
       this.emit('event', normalizedEvent);
 
-      // Store event in database
-      await this.storeEvent(normalizedEvent);
-
-      // Emit stored event
-      this.emit('event:stored', normalizedEvent);
+      // Store event in database — only emit 'event:stored' on success
+      const stored = await this.storeEvent(normalizedEvent);
+      if (stored) {
+        this.emit('event:stored', normalizedEvent);
+      }
     } catch (error) {
       console.error('[EventBusDataSource] Error handling message:', error);
       this.emit('error', error);
@@ -385,7 +413,7 @@ export class EventBusDataSource extends EventEmitter {
    * Store event in PostgreSQL
    * Public method to allow mock generators to inject events
    */
-  async storeEvent(event: EventBusEvent): Promise<void> {
+  async storeEvent(event: EventBusEvent): Promise<boolean> {
     try {
       await getIntelligenceDb().execute(sql`
         INSERT INTO event_bus_events (
@@ -411,9 +439,11 @@ export class EventBusDataSource extends EventEmitter {
         )
         ON CONFLICT (event_id) DO NOTHING
       `);
+      return true;
     } catch (error) {
       console.error('[EventBusDataSource] Error storing event:', error);
       // Don't throw - continue processing even if storage fails
+      return false;
     }
   }
 
@@ -667,11 +697,11 @@ export class EventBusDataSource extends EventEmitter {
     // Emit for real-time processing
     this.emit('event', event);
 
-    // Store in database
-    await this.storeEvent(event);
-
-    // Emit stored event
-    this.emit('event:stored', event);
+    // Store in database — only emit 'event:stored' on success
+    const stored = await this.storeEvent(event);
+    if (stored) {
+      this.emit('event:stored', event);
+    }
   }
 }
 

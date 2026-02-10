@@ -49,6 +49,14 @@ class MockEventConsumer extends EventEmitter {
     ];
   }
 
+  getRecentTransformations() {
+    return [];
+  }
+
+  getPerformanceStats() {
+    return {};
+  }
+
   getHealthStatus() {
     return {
       status: 'healthy',
@@ -56,6 +64,18 @@ class MockEventConsumer extends EventEmitter {
       recentActionsCount: 10,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  getRegisteredNodes() {
+    return [];
+  }
+
+  getNodeRegistryStats() {
+    return { totalNodes: 0, activeNodes: 0, inactiveNodes: 0 };
+  }
+
+  getPreloadedEventBusEvents() {
+    return [];
   }
 }
 
@@ -361,7 +381,7 @@ describe.skip('WebSocket Server', () => {
     // Should receive error message
     const errorMessage = messages.find((m) => m.type === 'ERROR');
     expect(errorMessage).toBeDefined();
-    expect(errorMessage.message).toContain('Invalid message format');
+    expect(errorMessage.message).toContain('Invalid JSON format');
 
     // Connection should remain open
     expect(ws.readyState).toBe(WebSocket.OPEN);

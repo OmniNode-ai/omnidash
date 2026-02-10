@@ -915,7 +915,14 @@ export class EventConsumer extends EventEmitter {
     });
 
     this.consumer = this.kafka.consumer({
-      groupId: 'omnidash-consumers-v2', // Changed to force reading from beginning
+      groupId: 'omnidash-consumers-v2',
+      // Tune session/rebalance timeouts for faster partition assignment after
+      // restart. KafkaJS defaults are 30s session / 60s rebalance which causes
+      // a ~22s gap where eachMessage doesn't fire while the group rebalances.
+      sessionTimeout: 15_000, // 15s (default 30s) - broker detects dead consumer faster
+      rebalanceTimeout: 20_000, // 20s (default 60s) - faster rebalance completion
+      heartbeatInterval: 3_000, // 3s (default 3s) - keep default, must be < sessionTimeout/3
+      maxWaitTimeInMs: 1_000, // 1s (default 5s) - faster first fetch after assignment
     });
   }
 
@@ -1088,6 +1095,28 @@ export class EventConsumer extends EventEmitter {
     }
 
     try {
+      // Wire up KafkaJS consumer-level event listeners for diagnostics.
+      // These fire on the internal KafkaJS Consumer, NOT on our EventEmitter.
+      const { CRASH, GROUP_JOIN, REBALANCING, FETCH_START } = this.consumer.events;
+      this.consumer.on(GROUP_JOIN, (e) => {
+        intentLogger.info(
+          `Consumer joined group (member=${e.payload.memberId}, ` +
+            `partitions=${JSON.stringify(e.payload.memberAssignment)})`
+        );
+      });
+      this.consumer.on(REBALANCING, () => {
+        intentLogger.info('Consumer group rebalancing...');
+      });
+      this.consumer.on(FETCH_START, () => {
+        intentLogger.debug('Fetch cycle starting');
+      });
+      this.consumer.on(CRASH, (e) => {
+        console.error('[EventConsumer] Consumer CRASH event:', e.payload.error);
+        if (!e.payload.restart) {
+          this.emit('error', e.payload.error);
+        }
+      });
+
       await this.connectWithRetry();
       intentLogger.info('Kafka consumer connected');
       this.emit('connected'); // Emit connected event

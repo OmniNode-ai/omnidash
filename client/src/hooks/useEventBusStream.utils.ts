@@ -192,15 +192,15 @@ export function extractPriority(data: WireEventData): EventPriority {
  * Extract source from event data with fallbacks.
  */
 export function extractSource(data: WireEventData): string {
+  const d = data as Record<string, unknown>;
   const payload = (data.payload ?? data) as Record<string, unknown>;
   return (
     data.agentName ||
     data.sourceAgent ||
     data.selectedAgent ||
+    (typeof d.source === 'string' && d.source ? d.source : undefined) ||
     (typeof payload.node_id === 'string' ? payload.node_id : undefined) ||
-    (typeof (data as Record<string, unknown>).node_id === 'string'
-      ? ((data as Record<string, unknown>).node_id as string)
-      : undefined) ||
+    (typeof d.node_id === 'string' ? d.node_id : undefined) ||
     'system'
   );
 }

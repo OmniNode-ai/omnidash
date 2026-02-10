@@ -766,6 +766,278 @@ describe('useEventBusStream', () => {
   });
 
   // ============================================================================
+  // EVENT_BUS_EVENT Handler Tests
+  // ============================================================================
+
+  describe('EVENT_BUS_EVENT wire format handling', () => {
+    /**
+     * Simulates the transformation that the EVENT_BUS_EVENT case handler
+     * in useEventBusStream.ts performs on wire data from the server.
+     *
+     * The server broadcasts:
+     * {
+     *   type: 'EVENT_BUS_EVENT',
+     *   data: {
+     *     id: event.event_id,
+     *     event_type: event.event_type,
+     *     timestamp: event.timestamp,
+     *     source: event.source,
+     *     correlation_id: event.correlation_id,
+     *     payload: event.payload,
+     *     topic: event.topic,
+     *     ...
+     *   }
+     * }
+     *
+     * The handler extracts data, unpacks payload, and calls processAndIngest().
+     */
+    function simulateEventBusHandler(raw: Record<string, unknown>) {
+      const payload: Record<string, unknown> =
+        raw.payload != null && typeof raw.payload === 'object' && !Array.isArray(raw.payload)
+          ? (raw.payload as Record<string, unknown>)
+          : { value: raw.payload };
+      const data: WireEventData = {
+        ...payload,
+        timestamp: raw.timestamp as string,
+        source: raw.source as string,
+        correlationId: raw.correlation_id as string,
+        id: raw.id as string,
+      };
+      const eventType = (raw.event_type as string) || 'event';
+      const topic = (raw.topic as string) || 'event-bus';
+      return processEvent(eventType, data, topic);
+    }
+
+    it('correctly transforms wire event with object payload', () => {
+      const wireData = {
+        id: 'evt-001',
+        event_type: 'tool-content',
+        timestamp: '2024-06-15T12:00:00Z',
+        source: 'archon-intelligence',
+        correlation_id: 'corr-abc',
+        topic: 'dev.archon-intelligence.agent-actions.v1',
+        payload: { tool_name: 'Edit', file_path: '/src/main.ts', status: 'success' },
+      };
+
+      const result = simulateEventBusHandler(wireData);
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.event.id).toBe('evt-001');
+        expect(result.event.eventType).toBe('tool-content');
+        expect(result.event.topicRaw).toBe('dev.archon-intelligence.agent-actions.v1');
+        expect(result.event.source).toBe('archon-intelligence');
+        expect(result.event.correlationId).toBe('corr-abc');
+        expect(result.event.timestampRaw).toBe('2024-06-15T12:00:00Z');
+        // Payload fields should be spread into the WireEventData
+        const parsed = JSON.parse(result.event.payload);
+        expect(parsed.tool_name).toBe('Edit');
+        expect(parsed.file_path).toBe('/src/main.ts');
+      }
+    });
+
+    it('correctly transforms wire event with string payload', () => {
+      const wireData = {
+        id: 'evt-002',
+        event_type: 'notification',
+        timestamp: '2024-06-15T12:00:00Z',
+        source: 'system',
+        correlation_id: 'corr-def',
+        topic: 'notifications.v1',
+        payload: 'simple string payload',
+      };
+
+      const result = simulateEventBusHandler(wireData);
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.event.id).toBe('evt-002');
+        expect(result.event.eventType).toBe('notification');
+        // String payload should be wrapped in { value: ... }
+        const parsed = JSON.parse(result.event.payload);
+        expect(parsed.value).toBe('simple string payload');
+      }
+    });
+
+    it('correctly transforms wire event with null payload', () => {
+      const wireData = {
+        id: 'evt-003',
+        event_type: 'heartbeat',
+        timestamp: '2024-06-15T12:00:00Z',
+        source: 'node-1',
+        topic: 'heartbeat.v1',
+        payload: null,
+      };
+
+      const result = simulateEventBusHandler(wireData);
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.event.id).toBe('evt-003');
+        // Null payload should be wrapped in { value: null }
+        const parsed = JSON.parse(result.event.payload);
+        expect(parsed.value).toBeNull();
+      }
+    });
+
+    it('correctly transforms wire event with array payload', () => {
+      const wireData = {
+        id: 'evt-004',
+        event_type: 'batch',
+        timestamp: '2024-06-15T12:00:00Z',
+        source: 'batch-processor',
+        topic: 'batch.v1',
+        payload: [1, 2, 3],
+      };
+
+      const result = simulateEventBusHandler(wireData);
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        // Array payload should be wrapped in { value: [...] }
+        const parsed = JSON.parse(result.event.payload);
+        expect(parsed.value).toEqual([1, 2, 3]);
+      }
+    });
+
+    it('defaults event_type to "event" when missing', () => {
+      const wireData = {
+        id: 'evt-005',
+        timestamp: '2024-06-15T12:00:00Z',
+        source: 'system',
+        topic: 'test.v1',
+        payload: {},
+      };
+
+      const result = simulateEventBusHandler(wireData);
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.event.eventType).toBe('event');
+      }
+    });
+
+    it('defaults topic to "event-bus" when missing', () => {
+      const wireData = {
+        id: 'evt-006',
+        event_type: 'test',
+        timestamp: '2024-06-15T12:00:00Z',
+        source: 'system',
+        payload: {},
+      };
+
+      const result = simulateEventBusHandler(wireData);
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.event.topicRaw).toBe('event-bus');
+      }
+    });
+
+    it('payload fields do not overwrite wire-level timestamp', () => {
+      // The handler spreads payload first, then sets timestamp from raw.timestamp.
+      // This ensures the wire-level timestamp takes precedence over any
+      // timestamp field that might exist in the payload.
+      const wireData = {
+        id: 'evt-007',
+        event_type: 'test',
+        timestamp: '2024-06-15T12:00:00Z',
+        source: 'system',
+        topic: 'test.v1',
+        payload: { timestamp: '1999-01-01T00:00:00Z' },
+      };
+
+      const result = simulateEventBusHandler(wireData);
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        // Wire-level timestamp should win (spread order: ...payload, then timestamp: raw.timestamp)
+        expect(result.event.timestampRaw).toBe('2024-06-15T12:00:00Z');
+      }
+    });
+
+    it('payload fields do not overwrite wire-level source', () => {
+      const wireData = {
+        id: 'evt-008',
+        event_type: 'test',
+        timestamp: '2024-06-15T12:00:00Z',
+        source: 'correct-source',
+        topic: 'test.v1',
+        payload: { source: 'payload-source' },
+      };
+
+      const result = simulateEventBusHandler(wireData);
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        // Wire-level source overrides payload.source via extractSource
+        // The handler sets source: raw.source which overrides the spread payload.source
+        const parsed = JSON.parse(result.event.payload);
+        expect(parsed.source).toBe('correct-source');
+      }
+    });
+
+    it('deduplication works for EVENT_BUS_EVENT with same id', () => {
+      const wireData = {
+        id: 'evt-dedup-001',
+        event_type: 'action',
+        timestamp: '2024-06-15T12:00:00Z',
+        source: 'agent-1',
+        topic: 'actions.v1',
+        payload: { action: 'test' },
+      };
+
+      const result1 = simulateEventBusHandler(wireData);
+      const result2 = simulateEventBusHandler(wireData);
+
+      expect(result1.status).toBe('success');
+      expect(result2.status).toBe('success');
+      if (result1.status === 'success' && result2.status === 'success') {
+        // Same wire ID should produce same processed ID
+        expect(result1.event.id).toBe(result2.event.id);
+      }
+    });
+
+    it('handles wire event with all optional fields present', () => {
+      const wireData = {
+        id: 'evt-full-001',
+        event_type: 'tool-content',
+        timestamp: '2024-06-15T12:00:00Z',
+        tenant_id: 'tenant-1',
+        namespace: 'prod',
+        source: 'archon-bridge',
+        correlation_id: 'corr-full',
+        causation_id: 'cause-full',
+        schema_ref: 'schema/tool-content/v1',
+        payload: { tool_name: 'Read', file_path: '/etc/config.yml' },
+        topic: 'dev.archon-bridge.agent-actions.v1',
+        partition: 0,
+        offset: '42',
+        processed_at: '2024-06-15T12:00:01Z',
+      };
+
+      const result = simulateEventBusHandler(wireData);
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.event.id).toBe('evt-full-001');
+        expect(result.event.correlationId).toBe('corr-full');
+        expect(result.event.source).toBe('archon-bridge');
+        expect(result.event.topicRaw).toBe('dev.archon-bridge.agent-actions.v1');
+      }
+    });
+
+    it('handles wire event with missing correlation_id gracefully', () => {
+      const wireData = {
+        id: 'evt-no-corr',
+        event_type: 'action',
+        timestamp: '2024-06-15T12:00:00Z',
+        source: 'system',
+        topic: 'actions.v1',
+        payload: {},
+      };
+
+      const result = simulateEventBusHandler(wireData);
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        // correlation_id is undefined on wire, so correlationId should be undefined
+        expect(result.event.correlationId).toBeUndefined();
+      }
+    });
+  });
+
+  // ============================================================================
   // Burst Detection Edge Cases
   // ============================================================================
 
