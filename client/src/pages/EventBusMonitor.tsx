@@ -142,7 +142,7 @@ function computeNormalizedType(eventType: string, details: ParsedDetails | null)
   if (details?.toolName) return details.toolName;
   if (details?.selectedAgent) return `route:${details.selectedAgent}`;
   if (/^v\d+$/.test(eventType)) {
-    return details?.toolName || details?.actionName || details?.actionType || 'unknown';
+    return details?.actionName || details?.actionType || 'unknown';
   }
   return eventType;
 }
