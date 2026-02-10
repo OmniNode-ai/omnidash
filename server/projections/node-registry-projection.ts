@@ -24,7 +24,7 @@ import type {
   ProjectionEventsResponse,
   ProjectionEvent,
 } from '../projection-service';
-import { MonotonicMergeTracker } from '../monotonic-merge';
+import { MonotonicMergeTracker, MISSING_TIMESTAMP_SENTINEL_MS } from '../monotonic-merge';
 
 // ============================================================================
 // Types
@@ -106,30 +106,34 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
   // ProjectionView interface
   // --------------------------------------------------------------------------
 
+  /** Returns a defensive copy of the current node registry state, stats, and recent state changes. */
   getSnapshot(_options?: { limit?: number }): ProjectionResponse<NodeRegistryPayload> {
     return {
       viewId: this.viewId,
       cursor: this.cursor,
       snapshotTimeMs: Date.now(),
       payload: {
-        nodes: Array.from(this.nodes.values()),
-        recentStateChanges: this.recentStateChanges,
+        nodes: Array.from(this.nodes.values()).map((n) => ({ ...n })),
+        recentStateChanges: this.recentStateChanges.map((e) => ({ ...e })),
         stats: { ...this.stats, byState: { ...this.stats.byState } },
       },
     };
   }
 
+  /** Returns applied events with ingestSeq > cursor (exclusive). Cursor advances to view position on empty results. */
   getEventsSince(cursor: number, limit?: number): ProjectionEventsResponse {
     const events = this.appliedEvents.filter((e) => e.ingestSeq > cursor);
     const sliced = limit ? events.slice(0, limit) : events;
     return {
       viewId: this.viewId,
-      cursor: sliced.length > 0 ? sliced[sliced.length - 1].ingestSeq : cursor,
+      cursor:
+        sliced.length > 0 ? sliced[sliced.length - 1].ingestSeq : Math.max(cursor, this.cursor),
       snapshotTimeMs: Date.now(),
       events: sliced,
     };
   }
 
+  /** Routes an event to the appropriate handler and advances the cursor on success. */
   applyEvent(event: ProjectionEvent): boolean {
     if (!HANDLED_EVENT_TYPES.has(event.type)) {
       return false;
@@ -156,13 +160,14 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       this.cursor = Math.max(this.cursor, event.ingestSeq);
       this.appliedEvents.push(event);
       if (this.appliedEvents.length > MAX_APPLIED_EVENTS) {
-        this.appliedEvents = this.appliedEvents.slice(-MAX_APPLIED_EVENTS);
+        this.appliedEvents.splice(0, this.appliedEvents.length - MAX_APPLIED_EVENTS);
       }
     }
 
     return applied;
   }
 
+  /** Clears all nodes, stats, applied events, recent state changes, and resets the merge tracker and cursor. */
   reset(): void {
     this.nodes.clear();
     this.recentStateChanges = [];
@@ -297,14 +302,25 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         state: newState,
         lastSeen: new Date(event.eventTimeMs ?? Date.now()).toISOString(),
       });
+    } else {
+      // State change for unknown node — create a minimal entry so the
+      // transition is actually tracked (mirrors handleHeartbeat behavior)
+      this.nodes.set(nodeId, {
+        nodeId,
+        nodeType: 'COMPUTE',
+        state: newState,
+        version: '1.0.0',
+        uptimeSeconds: 0,
+        lastSeen: new Date(event.eventTimeMs ?? Date.now()).toISOString(),
+      });
     }
 
-    this.updateStats(oldState, newState, false);
+    this.updateStats(oldState, newState, !existing);
 
     // Track in recentStateChanges
     this.recentStateChanges.unshift(event);
     if (this.recentStateChanges.length > MAX_RECENT_STATE_CHANGES) {
-      this.recentStateChanges = this.recentStateChanges.slice(0, MAX_RECENT_STATE_CHANGES);
+      this.recentStateChanges.splice(MAX_RECENT_STATE_CHANGES);
     }
 
     return true;
@@ -322,6 +338,17 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
     for (const raw of nodes) {
       const nodeId = (raw.nodeId ?? raw.node_id) as string;
       if (!nodeId) continue;
+
+      // Seed events have no real timestamp — use sentinel epoch 0 so that
+      // any node already tracked with a real-timestamped event is not overwritten.
+      if (
+        !this.mergeTracker.checkAndUpdate(nodeId, {
+          eventTime: MISSING_TIMESTAMP_SENTINEL_MS,
+          seq: event.ingestSeq,
+        })
+      ) {
+        continue; // Node already has fresher data — skip seed entry
+      }
 
       const node: NodeState = {
         nodeId,
@@ -363,14 +390,14 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       this.stats.totalNodes++;
     }
 
-    // Decrement old state counter
+    // Decrement old state counter (guarded against negative from out-of-order events)
     if (oldState) {
-      this.stats.byState[oldState] = (this.stats.byState[oldState] ?? 0) - 1;
+      this.stats.byState[oldState] = Math.max(0, (this.stats.byState[oldState] ?? 0) - 1);
       if (this.stats.byState[oldState] <= 0) {
         delete this.stats.byState[oldState];
       }
       if (oldState === 'active') {
-        this.stats.activeNodes--;
+        this.stats.activeNodes = Math.max(0, this.stats.activeNodes - 1);
       }
     }
 

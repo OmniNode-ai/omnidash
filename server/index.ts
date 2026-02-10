@@ -90,6 +90,45 @@ app.use((req, res, next) => {
 
   const server = await registerRoutes(app);
 
+  // --------------------------------------------------------------------------
+  // Projection Service (OMN-2097)
+  // Must be created and listeners registered BEFORE EventConsumer starts
+  // to avoid missing events emitted between start() and registration.
+  // --------------------------------------------------------------------------
+  const projectionService = new ProjectionService();
+  const nodeRegistryView = new NodeRegistryProjection();
+  projectionService.registerView(nodeRegistryView);
+  setProjectionService(projectionService);
+
+  // Bridge EventConsumer node events → ProjectionService
+  // MUST be registered BEFORE eventConsumer.start() to avoid missing events
+  eventConsumer.on('nodeIntrospectionUpdate', (event) => {
+    projectionService.ingest({
+      type: 'node-introspection',
+      source: 'event-consumer',
+      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
+      payload: event,
+    });
+  });
+
+  eventConsumer.on('nodeHeartbeatUpdate', (event) => {
+    projectionService.ingest({
+      type: 'node-heartbeat',
+      source: 'event-consumer',
+      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
+      payload: event,
+    });
+  });
+
+  eventConsumer.on('nodeStateChangeUpdate', (event) => {
+    projectionService.ingest({
+      type: 'node-state-change',
+      source: 'event-consumer',
+      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
+      payload: event,
+    });
+  });
+
   // Validate and start Kafka event consumer
   try {
     // First validate that Kafka broker is reachable
@@ -125,46 +164,11 @@ app.use((req, res, next) => {
     console.error('   Application will continue with limited functionality');
   }
 
-  // --------------------------------------------------------------------------
-  // Projection Service (OMN-2097)
-  // --------------------------------------------------------------------------
-  const projectionService = new ProjectionService();
-  const nodeRegistryView = new NodeRegistryProjection();
-  projectionService.registerView(nodeRegistryView);
-  setProjectionService(projectionService);
-
-  // Bridge EventConsumer node events → ProjectionService
-  eventConsumer.on('nodeIntrospectionUpdate', (event) => {
-    projectionService.ingest({
-      type: 'node-introspection',
-      source: 'event-consumer',
-      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
-      payload: event,
-    });
-  });
-
-  eventConsumer.on('nodeHeartbeatUpdate', (event) => {
-    projectionService.ingest({
-      type: 'node-heartbeat',
-      source: 'event-consumer',
-      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
-      payload: event,
-    });
-  });
-
-  eventConsumer.on('nodeStateChangeUpdate', (event) => {
-    projectionService.ingest({
-      type: 'node-state-change',
-      source: 'event-consumer',
-      eventTimeMs: event.createdAt ? new Date(event.createdAt).getTime() : undefined,
-      payload: event,
-    });
-  });
-
   // Seed projection with existing nodes from EventConsumer (survives server restart).
   // Seed has no eventTimeMs — represents current EventConsumer snapshot, not a
   // timestamped Kafka event. ProjectionService assigns sentinel (epoch 0), so
   // MonotonicMergeTracker accepts any future event with a real timestamp.
+  // NOTE: Must be AFTER eventConsumer.start() so getRegisteredNodes() has data.
   const existingNodes = eventConsumer.getRegisteredNodes();
   if (existingNodes.length > 0) {
     projectionService.ingest({

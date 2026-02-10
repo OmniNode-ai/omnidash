@@ -1,10 +1,10 @@
 /**
  * useProjectionStream — Client hook for Snapshot + Invalidation projections (OMN-2097)
  *
- * Fetches an initial snapshot via REST, then subscribes to WebSocket invalidation
- * events. On each invalidation, the snapshot is re-fetched (not incrementally patched).
- * This keeps the client implementation simple while the server handles all
- * materialization and merge ordering.
+ * Fetches an initial snapshot via REST using TanStack Query, then subscribes to
+ * WebSocket invalidation events. On each invalidation, the query cache is
+ * invalidated which triggers a re-fetch. When the WebSocket disconnects,
+ * TanStack Query's refetchInterval provides automatic polling fallback.
  *
  * Usage:
  * ```tsx
@@ -14,8 +14,9 @@
  * ```
  */
 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { ProjectionResponse } from './useProjectionStream.types';
+import type { ProjectionResponse } from '@/hooks/useProjectionStream.types';
 
 export type { ProjectionResponse };
 
@@ -41,101 +42,65 @@ interface UseProjectionStreamReturn<T> {
   refresh: () => void;
 }
 
+async function fetchSnapshot<T>(viewId: string): Promise<ProjectionResponse<T>> {
+  const response = await fetch(`/api/projections/${viewId}/snapshot`);
+  if (!response.ok) {
+    throw new Error(`Snapshot fetch failed: ${response.status} ${response.statusText}`);
+  }
+  return response.json();
+}
+
 export function useProjectionStream<T>(
   viewId: string,
   options?: UseProjectionStreamOptions
 ): UseProjectionStreamReturn<T> {
-  const [data, setData] = useState<T | null>(null);
-  const [cursor, setCursor] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
-
-  const mountedRef = useRef(true);
   const wsRef = useRef<WebSocket | null>(null);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const fetchInFlightRef = useRef(false);
 
-  const pollingIntervalMs = options?.pollingIntervalMs ?? 10000;
+  const pollingIntervalMs = options?.pollingIntervalMs ?? 10_000;
   const disablePolling = options?.disablePolling ?? false;
 
-  // Fetch snapshot from REST API
-  const fetchSnapshot = useCallback(async () => {
-    if (fetchInFlightRef.current) return;
-    fetchInFlightRef.current = true;
-
-    try {
-      const response = await fetch(`/api/projections/${viewId}/snapshot`);
-      if (!response.ok) {
-        throw new Error(`Snapshot fetch failed: ${response.status} ${response.statusText}`);
-      }
-
-      const snapshot: ProjectionResponse<T> = await response.json();
-
-      if (mountedRef.current) {
-        setData(snapshot.payload);
-        setCursor(snapshot.cursor);
-        setError(null);
-        setIsLoading(false);
-      }
-    } catch (err) {
-      if (mountedRef.current) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch snapshot');
-        setIsLoading(false);
-      }
-    } finally {
-      fetchInFlightRef.current = false;
-    }
-  }, [viewId]);
+  const {
+    data: snapshot,
+    isLoading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ['projection', viewId, 'snapshot'],
+    queryFn: () => fetchSnapshot<T>(viewId),
+    // When WebSocket is connected, don't poll — invalidation triggers refetch.
+    // When disconnected, fall back to interval polling.
+    refetchInterval: !isConnected && !disablePolling ? pollingIntervalMs : false,
+    staleTime: 5_000, // Treat data as fresh for 5s to avoid redundant fetches
+  });
 
   // WebSocket connection for invalidation events
   useEffect(() => {
-    mountedRef.current = true;
-
-    // Initial fetch
-    fetchSnapshot();
-
-    // Connect to WebSocket
     const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
     let reconnectTimeout: ReturnType<typeof setTimeout> | undefined;
     let reconnectAttempts = 0;
     const MAX_RECONNECT_ATTEMPTS = 10;
+    let mounted = true;
 
     const connect = () => {
-      if (!mountedRef.current) return;
+      if (!mounted) return;
 
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        if (!mountedRef.current) return;
+        if (!mounted) return;
         setIsConnected(true);
         reconnectAttempts = 0;
-
-        // Subscribe to this projection's invalidation events
-        ws.send(
-          JSON.stringify({
-            action: 'subscribe',
-            topics: [`projection:${viewId}`],
-          })
-        );
-
-        // Stop polling when connected
-        if (pollingRef.current) {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-        }
+        ws.send(JSON.stringify({ action: 'subscribe', topics: [`projection:${viewId}`] }));
       };
 
       ws.onmessage = (event) => {
-        if (!mountedRef.current) return;
-
+        if (!mounted) return;
         try {
           const message = JSON.parse(event.data);
-
           if (message.type === 'PROJECTION_INVALIDATE' && message.data?.viewId === viewId) {
-            // Re-fetch snapshot on invalidation
-            fetchSnapshot();
+            queryClient.invalidateQueries({ queryKey: ['projection', viewId, 'snapshot'] });
           }
         } catch {
           // Ignore parse errors
@@ -143,15 +108,9 @@ export function useProjectionStream<T>(
       };
 
       ws.onclose = () => {
-        if (!mountedRef.current) return;
+        if (!mounted) return;
         setIsConnected(false);
 
-        // Start polling fallback
-        if (!disablePolling && !pollingRef.current) {
-          pollingRef.current = setInterval(fetchSnapshot, pollingIntervalMs);
-        }
-
-        // Reconnect with backoff
         if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
           const delay = Math.min(5000 * Math.pow(1.5, reconnectAttempts), 30000);
           reconnectTimeout = setTimeout(() => {
@@ -170,26 +129,30 @@ export function useProjectionStream<T>(
 
     connect();
 
-    // Polling starts in ws.onclose handler, not here — avoids duplicate
-    // intervals when WebSocket connects quickly then disconnects.
-
     return () => {
-      mountedRef.current = false;
+      mounted = false;
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      if (pollingRef.current) clearInterval(pollingRef.current);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
       }
     };
-  }, [viewId, fetchSnapshot, disablePolling, pollingIntervalMs]);
+  }, [viewId, queryClient]);
+
+  const refresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['projection', viewId, 'snapshot'] });
+  }, [queryClient, viewId]);
 
   return {
-    data,
-    cursor,
+    data: snapshot?.payload ?? null,
+    cursor: snapshot?.cursor ?? 0,
     isLoading,
-    error,
+    error: queryError
+      ? queryError instanceof Error
+        ? queryError.message
+        : 'Failed to fetch snapshot'
+      : null,
     isConnected,
-    refresh: fetchSnapshot,
+    refresh,
   };
 }

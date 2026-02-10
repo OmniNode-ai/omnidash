@@ -12,6 +12,9 @@ import type { DashboardData } from '@/lib/dashboard-schema';
 
 // ============================================================================
 // Types (mirror server-side NodeRegistryPayload)
+// Types mirror server-side NodeRegistryPayload (server/projections/node-registry-projection.ts).
+// Intentionally duplicated to avoid importing server code into the client bundle.
+// Keep in sync manually when the server types change.
 // ============================================================================
 
 export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
@@ -69,6 +72,24 @@ function stateToStatus(state: RegistrationState): 'healthy' | 'warning' | 'error
     case 'awaiting_ack':
     case 'ack_received':
       return 'warning';
+    case 'rejected':
+    case 'ack_timed_out':
+    case 'liveness_expired':
+      return 'error';
+    default:
+      return 'warning';
+  }
+}
+
+function stateToSeverity(state: RegistrationState): 'info' | 'success' | 'warning' | 'error' {
+  switch (state) {
+    case 'active':
+      return 'success';
+    case 'pending_registration':
+    case 'accepted':
+    case 'awaiting_ack':
+    case 'ack_received':
+      return 'info';
     case 'rejected':
     case 'ack_timed_out':
     case 'liveness_expired':
@@ -139,7 +160,7 @@ export function transformNodeRegistryPayload(payload: NodeRegistryPayload): Dash
       node_id: nodeId,
       message: `${nodeId}: ${previousState} -> ${newState}`,
       severity: stateToSeverity(newState as RegistrationState),
-      timestamp: new Date(change.eventTimeMs || Date.now()).toISOString(),
+      timestamp: new Date(change.eventTimeMs ?? Date.now()).toISOString(),
     };
   });
 
@@ -153,22 +174,4 @@ export function transformNodeRegistryPayload(payload: NodeRegistryPayload): Dash
     registeredNodes,
     registrationEvents,
   };
-}
-
-function stateToSeverity(state: RegistrationState): 'info' | 'success' | 'warning' | 'error' {
-  switch (state) {
-    case 'active':
-      return 'success';
-    case 'pending_registration':
-    case 'accepted':
-    case 'awaiting_ack':
-    case 'ack_received':
-      return 'info';
-    case 'rejected':
-    case 'ack_timed_out':
-    case 'liveness_expired':
-      return 'error';
-    default:
-      return 'warning';
-  }
 }

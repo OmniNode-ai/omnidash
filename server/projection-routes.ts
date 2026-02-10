@@ -43,7 +43,9 @@ router.get('/:viewId/snapshot', (req: Request, res: Response) => {
     return res.status(404).json({ error: `Projection view "${viewId}" not found` });
   }
 
-  const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : undefined;
+  const rawLimit = req.query.limit ? parseInt(String(req.query.limit), 10) : undefined;
+  const limit =
+    rawLimit !== undefined && Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : undefined;
   const snapshot = view.getSnapshot(limit ? { limit } : undefined);
 
   return res.json(snapshot);
@@ -70,8 +72,11 @@ router.get('/:viewId/events', (req: Request, res: Response) => {
     return res.status(404).json({ error: `Projection view "${viewId}" not found` });
   }
 
-  const cursor = req.query.cursor ? parseInt(String(req.query.cursor), 10) : 0;
-  const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 100;
+  const rawCursor = req.query.cursor ? parseInt(String(req.query.cursor), 10) : 0;
+  const cursor = Number.isFinite(rawCursor) && rawCursor >= 0 ? rawCursor : 0;
+
+  const rawLimit = req.query.limit ? parseInt(String(req.query.limit), 10) : 100;
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 100;
 
   const events = view.getEventsSince(cursor, limit);
   return res.json(events);

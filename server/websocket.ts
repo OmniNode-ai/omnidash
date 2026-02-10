@@ -314,6 +314,13 @@ export function setupWebSocket(httpServer: HTTPServer, options?: SetupWebSocketO
    */
   const eventListeners: Array<{ event: string; handler: (...args: any[]) => void }> = [];
 
+  // Projection service listeners tracked separately (different emitter than eventConsumer)
+  const projectionListeners: Array<{
+    emitter: import('./projection-service').ProjectionService;
+    event: string;
+    handler: (...args: any[]) => void;
+  }> = [];
+
   // Heartbeat interval (30 seconds) with tolerance for missed pings
   const HEARTBEAT_INTERVAL_MS = 30000;
   const MAX_MISSED_PINGS = 2; // Allow 2 missed pings before terminating (60s total)
@@ -509,8 +516,9 @@ export function setupWebSocket(httpServer: HTTPServer, options?: SetupWebSocketO
       );
     };
     options.projectionService.on('projection-invalidate', projectionInvalidateHandler);
-    // Track for cleanup
-    eventListeners.push({
+    // Track for cleanup (NOT in eventListeners — that array is for eventConsumer only)
+    projectionListeners.push({
+      emitter: options.projectionService,
       event: 'projection-invalidate',
       handler: projectionInvalidateHandler,
     });
@@ -1004,6 +1012,13 @@ export function setupWebSocket(httpServer: HTTPServer, options?: SetupWebSocketO
       emitter.removeListener(event, handler);
     });
     playbackDataSourceListeners.length = 0;
+
+    // Remove projection service listeners (OMN-2097)
+    console.log(`Removing ${projectionListeners.length} projection service listeners...`);
+    projectionListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    projectionListeners.length = 0;
 
     // Terminate all client connections
     console.log(`Terminating ${clients.size} client connections...`);
