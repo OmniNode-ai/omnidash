@@ -27,7 +27,6 @@ import type {
   AgentMatchEvent,
   LatencyBreakdownEvent,
 } from '@shared/extraction-types';
-import { MonotonicMergeTracker, extractEventTimeMs } from './monotonic-merge';
 
 export class ExtractionMetricsAggregator {
   /** Lightweight counter for WebSocket invalidation decisions */
@@ -39,25 +38,17 @@ export class ExtractionMetricsAggregator {
    */
   private static readonly BROADCAST_THRESHOLD = 1;
 
-  /** Monotonic merge tracker for extraction event types */
-  private monotonicMerge = new MonotonicMergeTracker();
-
   /**
    * Handle a context-utilization event.
    * Persists to injection_effectiveness table.
    *
-   * @param event       - The parsed event payload
-   * @param kafkaOffset - Kafka message offset used as seq for monotonic merge tie-breaking
+   * @param event - The parsed event payload
    */
-  async handleContextUtilization(event: ContextUtilizationEvent, kafkaOffset = 0): Promise<void> {
-    // Monotonic merge gate: reject events older than the last applied
-    const eventTime = extractEventTimeMs(event as unknown as Record<string, unknown>);
-    if (
-      !this.monotonicMerge.checkAndUpdate('context-utilization', { eventTime, seq: kafkaOffset })
-    ) {
-      return; // stale event — logged at debug level by the tracker
-    }
-
+  async handleContextUtilization(event: ContextUtilizationEvent): Promise<void> {
+    // No monotonic merge gate: these are INSERT operations (append-only),
+    // not upserts. Each event creates a new row with a UUID PK. Kafka
+    // consumer-group offset tracking prevents replays; concurrent sessions
+    // with interleaved timestamps must all be persisted.
     const db = tryGetIntelligenceDb();
     if (!db) {
       console.warn('[extraction] Database not available, dropping context-utilization event');
@@ -95,16 +86,9 @@ export class ExtractionMetricsAggregator {
    * Handle an agent-match event.
    * Persists to injection_effectiveness table with agent match specifics.
    *
-   * @param event       - The parsed event payload
-   * @param kafkaOffset - Kafka message offset used as seq for monotonic merge tie-breaking
+   * @param event - The parsed event payload
    */
-  async handleAgentMatch(event: AgentMatchEvent, kafkaOffset = 0): Promise<void> {
-    // Monotonic merge gate: reject events older than the last applied
-    const eventTime = extractEventTimeMs(event as unknown as Record<string, unknown>);
-    if (!this.monotonicMerge.checkAndUpdate('agent-match', { eventTime, seq: kafkaOffset })) {
-      return; // stale event — logged at debug level by the tracker
-    }
-
+  async handleAgentMatch(event: AgentMatchEvent): Promise<void> {
     const db = tryGetIntelligenceDb();
     if (!db) {
       console.warn('[extraction] Database not available, dropping agent-match event');
@@ -133,16 +117,9 @@ export class ExtractionMetricsAggregator {
    * Handle a latency-breakdown event.
    * Persists to latency_breakdowns table.
    *
-   * @param event       - The parsed event payload
-   * @param kafkaOffset - Kafka message offset used as seq for monotonic merge tie-breaking
+   * @param event - The parsed event payload
    */
-  async handleLatencyBreakdown(event: LatencyBreakdownEvent, kafkaOffset = 0): Promise<void> {
-    // Monotonic merge gate: reject events older than the last applied
-    const eventTime = extractEventTimeMs(event as unknown as Record<string, unknown>);
-    if (!this.monotonicMerge.checkAndUpdate('latency-breakdown', { eventTime, seq: kafkaOffset })) {
-      return; // stale event — logged at debug level by the tracker
-    }
-
+  async handleLatencyBreakdown(event: LatencyBreakdownEvent): Promise<void> {
     const db = tryGetIntelligenceDb();
     if (!db) {
       console.warn('[extraction] Database not available, dropping latency-breakdown event');
@@ -178,15 +155,5 @@ export class ExtractionMetricsAggregator {
       return true;
     }
     return false;
-  }
-
-  /** Number of stale events rejected by the monotonic merge tracker. */
-  get rejectedCount(): number {
-    return this.monotonicMerge.rejectedCount;
-  }
-
-  /** Reset the monotonic merge tracker (e.g. for demo mode). */
-  resetMergeTracker(): void {
-    this.monotonicMerge.reset();
   }
 }

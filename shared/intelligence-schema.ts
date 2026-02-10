@@ -559,6 +559,8 @@ export const patternHitRates = pgTable(
     utilizationMethod: text('utilization_method'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
+  // DEPLOYMENT: These indexes require `npm run db:push` against the intelligence DB.
+  // Drizzle's push will skip indexes that already exist.
   (table) => [
     index('idx_phr_session_id').on(table.sessionId),
     index('idx_phr_pattern_id').on(table.patternId),

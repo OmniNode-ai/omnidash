@@ -28,6 +28,9 @@ import {
   LEGACY_AGENT_TRANSFORMATION_EVENTS,
   LEGACY_ROUTER_PERFORMANCE_METRICS,
 } from '@shared/topics';
+
+/** Known benign WebSocket message types that don't need event processing. */
+const KNOWN_IGNORED_TYPES = new Set(['pong', 'heartbeat', 'HEARTBEAT', 'PING', 'ACK']);
 import type {
   WireEventMessage,
   WireEventData,
@@ -686,9 +689,6 @@ export function useEventBusStream(options: UseEventBusStreamOptions = {}): UseEv
           break;
 
         default: {
-          // Known benign types that may arrive but don't need event processing.
-          // Use debug level to avoid noisy production logs.
-          const KNOWN_IGNORED_TYPES = new Set(['pong', 'heartbeat', 'HEARTBEAT', 'PING', 'ACK']);
           if (KNOWN_IGNORED_TYPES.has(wireMessage.type)) {
             // eslint-disable-next-line no-console
             console.debug('[EventBusStream] Ignored known message type:', wireMessage.type);

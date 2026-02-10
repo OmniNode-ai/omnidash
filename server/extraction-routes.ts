@@ -9,7 +9,7 @@
  */
 
 import { Router } from 'express';
-import { sql, desc, gte, eq } from 'drizzle-orm';
+import { sql, gte } from 'drizzle-orm';
 import { tryGetIntelligenceDb } from './storage';
 import {
   injectionEffectiveness,
@@ -47,6 +47,11 @@ function parseWindow(window: string): Date {
   }
   const value = parseInt(match[1], 10);
   const unit = match[2];
+
+  // Reject zero/negative values — they produce a cutoff of "now" returning zero rows
+  if (value <= 0) {
+    return new Date(now - 24 * 60 * 60 * 1000);
+  }
 
   // Enforce maximum bounds to prevent expensive full-table scans
   if (unit === 'd' && value > MAX_WINDOW_DAYS) {
@@ -90,49 +95,35 @@ router.get('/summary', async (_req, res) => {
       return res.json(empty);
     }
 
-    // Total injections
-    const injCount = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(injectionEffectiveness);
-    const totalInjections = injCount[0]?.count ?? 0;
+    // Single query using subselects to avoid 5 sequential round-trips.
+    // Time-bounded to last 90 days to prevent full-table scans as tables grow.
+    const cutoff90d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const rows = await db.execute(sql`
+      SELECT
+        (SELECT count(*)::int FROM ${injectionEffectiveness}
+         WHERE ${injectionEffectiveness.createdAt} >= ${cutoff90d}) AS total_injections,
+        (SELECT count(DISTINCT ${patternHitRates.patternId})::int FROM ${patternHitRates}
+         WHERE ${patternHitRates.createdAt} >= ${cutoff90d}) AS total_patterns_matched,
+        (SELECT avg(${injectionEffectiveness.utilizationScore}) FROM ${injectionEffectiveness}
+         WHERE ${injectionEffectiveness.createdAt} >= ${cutoff90d}) AS avg_utilization_score,
+        (SELECT avg(${latencyBreakdowns.userVisibleLatencyMs}) FROM ${latencyBreakdowns}
+         WHERE ${latencyBreakdowns.createdAt} >= ${cutoff90d}) AS avg_latency_ms,
+        (SELECT count(*)::int FROM ${injectionEffectiveness}
+         WHERE ${injectionEffectiveness.sessionOutcome} = 'success'
+           AND ${injectionEffectiveness.createdAt} >= ${cutoff90d}) AS success_count,
+        (SELECT max(${injectionEffectiveness.createdAt}) FROM ${injectionEffectiveness}) AS last_event_at
+    `);
 
-    // Total distinct patterns matched
-    const patCount = await db
-      .select({ count: sql<number>`count(DISTINCT ${patternHitRates.patternId})::int` })
-      .from(patternHitRates);
-    const totalPatternsMatched = patCount[0]?.count ?? 0;
-
-    // Avg utilization score
-    const avgUtil = await db
-      .select({
-        avg: sql<string | null>`avg(${injectionEffectiveness.utilizationScore})`,
-      })
-      .from(injectionEffectiveness);
-    const avgUtilizationScore = avgUtil[0]?.avg ? parseFloat(avgUtil[0].avg) : null;
-
-    // Avg latency
-    const avgLat = await db
-      .select({
-        avg: sql<string | null>`avg(${latencyBreakdowns.userVisibleLatencyMs})`,
-      })
-      .from(latencyBreakdowns);
-    const avgLatencyMs = avgLat[0]?.avg ? parseFloat(avgLat[0].avg) : null;
-
-    // Success rate (based on session_outcome)
-    let successRate: number | null = null;
-    if (totalInjections > 0) {
-      const succCount = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(injectionEffectiveness)
-        .where(eq(injectionEffectiveness.sessionOutcome, 'success'));
-      successRate = (succCount[0]?.count ?? 0) / totalInjections;
-    }
-
-    // Last event timestamp
-    const lastEvt = await db
-      .select({ ts: sql<string | null>`max(${injectionEffectiveness.createdAt})` })
-      .from(injectionEffectiveness);
-    const lastEventAt = lastEvt[0]?.ts ?? null;
+    const row = (rows.rows as Record<string, unknown>[])[0] ?? {};
+    const totalInjections = (row.total_injections as number) ?? 0;
+    const totalPatternsMatched = (row.total_patterns_matched as number) ?? 0;
+    const rawAvgUtil = row.avg_utilization_score;
+    const avgUtilizationScore = rawAvgUtil != null ? parseFloat(String(rawAvgUtil)) : null;
+    const rawAvgLat = row.avg_latency_ms;
+    const avgLatencyMs = rawAvgLat != null ? parseFloat(String(rawAvgLat)) : null;
+    const successCount = (row.success_count as number) ?? 0;
+    const successRate = totalInjections > 0 ? successCount / totalInjections : null;
+    const lastEventAt = row.last_event_at != null ? String(row.last_event_at) : null;
 
     const summary: ExtractionSummary = {
       total_injections: totalInjections,

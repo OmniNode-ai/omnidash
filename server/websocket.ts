@@ -401,26 +401,30 @@ export function setupWebSocket(httpServer: HTTPServer) {
     // Query PostgreSQL for full event set (same path as connection handler) so all 197+ topics
     // are included, not just EventConsumer's ~30 topic in-memory buffer.
     setTimeout(async () => {
-      console.log('[WebSocket] Demo mode: broadcasting restored INITIAL_STATE');
-      const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
-      const legacyActions = eventConsumer.getRecentActions();
-      const combinedActions = realActions.length > 0 ? realActions : legacyActions;
+      try {
+        console.log('[WebSocket] Demo mode: broadcasting restored INITIAL_STATE');
+        const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
+        const legacyActions = eventConsumer.getRecentActions();
+        const combinedActions = realActions.length > 0 ? realActions : legacyActions;
 
-      broadcast(
-        'INITIAL_STATE',
-        {
-          metrics: eventConsumer.getAgentMetrics(),
-          recentActions: combinedActions,
-          routingDecisions: eventConsumer.getRoutingDecisions(),
-          recentTransformations: eventConsumer.getRecentTransformations(),
-          performanceStats: eventConsumer.getPerformanceStats(),
-          health: eventConsumer.getHealthStatus(),
-          registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
-          nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-          eventBusEvents: eventBusEvents,
-        },
-        'all'
-      );
+        broadcast(
+          'INITIAL_STATE',
+          {
+            metrics: eventConsumer.getAgentMetrics(),
+            recentActions: combinedActions,
+            routingDecisions: eventConsumer.getRoutingDecisions(),
+            recentTransformations: eventConsumer.getRecentTransformations(),
+            performanceStats: eventConsumer.getPerformanceStats(),
+            health: eventConsumer.getHealthStatus(),
+            registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
+            nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+            eventBusEvents: eventBusEvents,
+          },
+          'all'
+        );
+      } catch (error) {
+        console.error('[WebSocket] Error broadcasting restored INITIAL_STATE:', error);
+      }
     }, 100); // Small delay to ensure DEMO_STATE_RESTORED is processed first
   });
 
@@ -681,7 +685,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Send initial state by querying PostgreSQL for latest events across ALL topics.
     // This ensures events from EventBusDataSource's 197+ topics persist across reloads.
-    {
+    // Wrapped in try/catch: the async handler is not awaited by EventEmitter,
+    // so unhandled rejections here would crash the process.
+    try {
       const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
 
       // Get legacy data for backward compatibility with other dashboards
@@ -711,6 +717,8 @@ export function setupWebSocket(httpServer: HTTPServer) {
           })
         );
       }
+    } catch (error) {
+      console.error('[WebSocket] Error sending initial state to new client:', error);
     }
 
     // Handle pong responses

@@ -1101,6 +1101,10 @@ export class EventConsumer extends EventEmitter {
       // beginning. Historical data is already covered by the Phase A DB preload.
       // Using fromBeginning: true would replay 3-7 days of Kafka retention,
       // causing old events to overwrite fresh dashboard state.
+      //
+      // DEPLOYMENT NOTE: For a fresh consumer group (no committed offsets),
+      // KafkaJS defaults to 'latest', skipping messages produced while the
+      // consumer was down. This is intentional — the DB preload covers history.
       await this.consumer.subscribe({
         topics: buildSubscriptionTopics(),
         fromBeginning: false,
@@ -1369,7 +1373,7 @@ export class EventConsumer extends EventEmitter {
               // Extraction pipeline topics (OMN-1804)
               case SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION:
                 if (isContextUtilizationEvent(event)) {
-                  await this.extractionAggregator.handleContextUtilization(event, incomingSeq);
+                  await this.extractionAggregator.handleContextUtilization(event);
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'context-utilization' });
                   }
@@ -1379,7 +1383,7 @@ export class EventConsumer extends EventEmitter {
                 break;
               case SUFFIX_OMNICLAUDE_AGENT_MATCH:
                 if (isAgentMatchEvent(event)) {
-                  await this.extractionAggregator.handleAgentMatch(event, incomingSeq);
+                  await this.extractionAggregator.handleAgentMatch(event);
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'agent-match' });
                   }
@@ -1389,7 +1393,7 @@ export class EventConsumer extends EventEmitter {
                 break;
               case SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN:
                 if (isLatencyBreakdownEvent(event)) {
-                  await this.extractionAggregator.handleLatencyBreakdown(event, incomingSeq);
+                  await this.extractionAggregator.handleLatencyBreakdown(event);
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'latency-breakdown' });
                   }
