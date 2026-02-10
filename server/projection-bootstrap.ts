@@ -37,51 +37,57 @@ projectionService.registerView(eventBusProjection);
  * to avoid double-counting when the same event arrives through both sources.
  */
 export function wireProjectionSources(): void {
-  const ingestedEventIds = new Set<string>();
-  const MAX_TRACKED_IDS = 5000;
+  // Ring-buffer deduplication: O(1) per add, no periodic pruning spikes.
+  // Tracks event IDs from EventBusDataSource so EventConsumer doesn't double-count.
+  const DEDUP_CAPACITY = 5000;
+  const dedupRing: string[] = new Array(DEDUP_CAPACITY);
+  const dedupSet = new Set<string>();
+  let dedupIdx = 0;
+
+  function trackEventId(id: string): void {
+    // Evict oldest entry if ring is full
+    const evicted = dedupRing[dedupIdx];
+    if (evicted !== undefined) dedupSet.delete(evicted);
+    dedupRing[dedupIdx] = id;
+    dedupSet.add(id);
+    dedupIdx = (dedupIdx + 1) % DEDUP_CAPACITY;
+  }
+
+  const sources: string[] = [];
 
   // --------------------------------------------------------------------------
   // EventBusDataSource: full 197-topic coverage
   // --------------------------------------------------------------------------
 
-  if (typeof eventBusDataSource.on !== 'function') {
-    console.warn('[projection] EventBusDataSource.on not available — skipping wiring');
-    return;
-  }
+  if (typeof eventBusDataSource.on === 'function') {
+    eventBusDataSource.on('event', (event: Record<string, unknown>) => {
+      const eventId = event.event_id as string | undefined;
+      if (eventId) trackEventId(eventId);
 
-  eventBusDataSource.on('event', (event: Record<string, unknown>) => {
-    const eventId = event.event_id as string | undefined;
-    if (eventId) ingestedEventIds.add(eventId);
-
-    // Cap tracked IDs to prevent unbounded growth
-    if (ingestedEventIds.size > MAX_TRACKED_IDS) {
-      const entries = Array.from(ingestedEventIds);
-      ingestedEventIds.clear();
-      for (let i = entries.length - MAX_TRACKED_IDS / 2; i < entries.length; i++) {
-        ingestedEventIds.add(entries[i]);
+      let payload: Record<string, unknown>;
+      const rawPayload = event.payload;
+      if (rawPayload != null && typeof rawPayload === 'object' && !Array.isArray(rawPayload)) {
+        payload = rawPayload as Record<string, unknown>;
+      } else {
+        payload = { value: rawPayload };
       }
-    }
 
-    let payload: Record<string, unknown>;
-    const rawPayload = event.payload;
-    if (rawPayload != null && typeof rawPayload === 'object' && !Array.isArray(rawPayload)) {
-      payload = rawPayload as Record<string, unknown>;
-    } else {
-      payload = { value: rawPayload };
-    }
+      const raw: RawEventInput = {
+        id: eventId,
+        topic: (event.topic as string) || '',
+        type: (event.event_type as string) || '',
+        source: (event.source as string) || '',
+        severity: mapSeverity(payload),
+        payload,
+        eventTimeMs: extractTimestamp(event),
+      };
 
-    const raw: RawEventInput = {
-      id: eventId,
-      topic: (event.topic as string) || '',
-      type: (event.event_type as string) || '',
-      source: (event.source as string) || '',
-      severity: mapSeverity(payload),
-      payload,
-      eventTimeMs: extractTimestamp(event),
-    };
-
-    projectionService.ingest(raw);
-  });
+      projectionService.ingest(raw);
+    });
+    sources.push('EventBusDataSource');
+  } else {
+    console.warn('[projection] EventBusDataSource.on not available — skipping wiring');
+  }
 
   // --------------------------------------------------------------------------
   // EventConsumer: enriched legacy agent events
@@ -89,51 +95,51 @@ export function wireProjectionSources(): void {
 
   if (typeof eventConsumer.on !== 'function') {
     console.warn('[projection] EventConsumer.on not available — skipping consumer wiring');
+  } else {
+    const consumerEventNames = [
+      'actionUpdate',
+      'routingUpdate',
+      'transformationUpdate',
+      'performanceUpdate',
+      'nodeIntrospectionUpdate',
+      'nodeHeartbeatUpdate',
+      'nodeStateChangeUpdate',
+    ] as const;
+
+    for (const eventName of consumerEventNames) {
+      eventConsumer.on(eventName, (data: Record<string, unknown>) => {
+        // Skip if already ingested via EventBusDataSource
+        const id = data.id as string | undefined;
+        if (id && dedupSet.has(id)) return;
+
+        const raw: RawEventInput = {
+          id,
+          topic: (data.topic as string) || eventName,
+          type: (data.actionType as string) || (data.type as string) || eventName,
+          source:
+            (data.agentName as string) ||
+            (data.sourceAgent as string) ||
+            (data.node_id as string) ||
+            'system',
+          severity: mapSeverity(data),
+          payload: data,
+          eventTimeMs: extractTimestamp(data),
+        };
+
+        projectionService.ingest(raw);
+      });
+    }
+    sources.push('EventConsumer');
+  }
+
+  if (sources.length > 0) {
     console.log(
-      '[projection] Wired to EventBusDataSource only. Views:',
+      `[projection] Wired to ${sources.join(' + ')}. Views:`,
       projectionService.viewIds.join(', ')
     );
-    return;
+  } else {
+    console.warn('[projection] No event sources available — projections will be empty');
   }
-
-  const consumerEventNames = [
-    'actionUpdate',
-    'routingUpdate',
-    'transformationUpdate',
-    'performanceUpdate',
-    'nodeIntrospectionUpdate',
-    'nodeHeartbeatUpdate',
-    'nodeStateChangeUpdate',
-  ] as const;
-
-  for (const eventName of consumerEventNames) {
-    eventConsumer.on(eventName, (data: Record<string, unknown>) => {
-      // Skip if already ingested via EventBusDataSource
-      const id = data.id as string | undefined;
-      if (id && ingestedEventIds.has(id)) return;
-
-      const raw: RawEventInput = {
-        id,
-        topic: (data.topic as string) || eventName,
-        type: (data.actionType as string) || (data.type as string) || eventName,
-        source:
-          (data.agentName as string) ||
-          (data.sourceAgent as string) ||
-          (data.node_id as string) ||
-          'system',
-        severity: mapSeverity(data),
-        payload: data,
-        eventTimeMs: extractTimestamp(data),
-      };
-
-      projectionService.ingest(raw);
-    });
-  }
-
-  console.log(
-    '[projection] Wired to EventBusDataSource + EventConsumer. Views:',
-    projectionService.viewIds.join(', ')
-  );
 }
 
 // ============================================================================

@@ -255,6 +255,8 @@ const VALID_TOPICS = [
   'validation',
   // Extraction pipeline events (OMN-1804)
   'extraction',
+  // Projection invalidation events (OMN-2095)
+  'projections',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -657,7 +659,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
   // clients using useProjectionStream can invalidate their TanStack Query cache
   // instead of waiting for the next polling interval.
   const projectionInvalidateHandler = (data: { viewId: string; cursor: number }) => {
-    broadcast('PROJECTION_INVALIDATE', data, 'all');
+    broadcast('PROJECTION_INVALIDATE', data, 'projections');
   };
   projectionService.on('projection-invalidate', projectionInvalidateHandler);
 

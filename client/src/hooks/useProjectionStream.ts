@@ -3,6 +3,10 @@
  *
  * TanStack Query for snapshot polling + WebSocket-driven invalidation.
  *
+ * Note: Each hook instance creates its own WebSocket connection via useWebSocket.
+ * If multiple components consume projections simultaneously, consider lifting
+ * the WebSocket connection to a shared context to avoid duplicate connections.
+ *
  * Usage:
  *   const { data, isLoading, error, cursor } = useProjectionStream<EventBusPayload>(
  *     'event-bus',
