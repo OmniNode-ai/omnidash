@@ -73,12 +73,6 @@ const dashboards = [
     description: 'Patterns and conventions from OmniClaude sessions',
   },
   {
-    title: 'Effectiveness',
-    url: '/effectiveness',
-    icon: Activity,
-    description: 'Injection effectiveness metrics and A/B analysis',
-  },
-  {
     title: 'Intent Dashboard',
     url: '/intents',
     icon: Brain,
