@@ -145,9 +145,17 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
       },
     };
 
-    // Cache for subsequent reads between events
+    // Cache for subsequent reads between events.
+    // Return a copy with sliced payload arrays so callers cannot mutate the cache.
     this._cachedSnapshot = { limit, response };
-    return response;
+    return {
+      ...response,
+      payload: {
+        ...response.payload,
+        recentIntents: response.payload.recentIntents.slice(),
+        distribution: response.payload.distribution.slice(),
+      },
+    };
   }
 
   getEventsSince(cursor: number, limit?: number): ProjectionEventsResponse {
