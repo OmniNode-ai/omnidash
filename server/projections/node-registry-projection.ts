@@ -343,6 +343,8 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
     const nodes = payload.nodes as Array<Record<string, unknown>> | undefined;
     if (!Array.isArray(nodes) || nodes.length === 0) return false;
 
+    let seeded = 0;
+
     for (const raw of nodes) {
       const nodeId = (raw.nodeId ?? raw.node_id) as string;
       if (!nodeId) continue;
@@ -375,7 +377,10 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       };
 
       this.nodes.set(nodeId, node);
+      seeded++;
     }
+
+    if (seeded === 0) return false;
 
     this.rebuildStats();
     return true;

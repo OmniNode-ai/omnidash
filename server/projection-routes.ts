@@ -108,7 +108,7 @@ router.get('/:viewId/events', (req: Request, res: Response) => {
   const cursor = Number.isFinite(rawCursor) && rawCursor >= 0 ? rawCursor : 0;
 
   const rawLimit = req.query.limit ? parseInt(String(req.query.limit), 10) : 100;
-  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 100;
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 1000) : 100;
 
   const events = view.getEventsSince(cursor, limit);
   return res.json(events);
