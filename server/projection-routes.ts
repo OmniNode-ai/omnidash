@@ -31,9 +31,16 @@ export function setProjectionService(service: ProjectionService): void {
   projectionService = service;
 }
 
-/** Reset for integration tests. No-op in production. */
+/**
+ * Reset the singleton for integration tests. Throws in non-test environments.
+ *
+ * Guard checks NODE_ENV, VITEST, and JEST_WORKER_ID to cover common test
+ * runners. If your runner sets a different variable, extend the guard below.
+ */
 export function resetProjectionServiceForTest(): void {
-  if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+  const isTestEnv =
+    process.env.NODE_ENV === 'test' || !!process.env.VITEST || !!process.env.JEST_WORKER_ID;
+  if (!isTestEnv) {
     throw new Error('resetProjectionServiceForTest() is only available in test environments');
   }
   projectionService = null;

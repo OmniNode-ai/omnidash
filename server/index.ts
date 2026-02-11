@@ -106,8 +106,10 @@ app.use((req, res, next) => {
 
   /** Safely parse createdAt into epoch-ms, returning undefined if invalid to let ProjectionService use its own extraction. */
   function extractBridgeTimestamp(event: Record<string, unknown>): number | undefined {
-    if (!event.createdAt) return undefined;
-    const ts = new Date(event.createdAt as string).getTime();
+    const raw = event.createdAt;
+    if (raw == null) return undefined;
+    // Handle numeric timestamps (epoch-ms) directly; coerce everything else via Date parsing
+    const ts = typeof raw === 'number' ? raw : new Date(String(raw)).getTime();
     return Number.isFinite(ts) ? ts : undefined;
   }
 

@@ -58,6 +58,13 @@ async function fetchSnapshot<T>(viewId: string): Promise<ProjectionResponse<T>> 
   return response.json();
 }
 
+/**
+ * Subscribe to a server-side projection view with automatic refresh.
+ *
+ * **Important**: Each call opens its own WebSocket connection. If you need
+ * multiple projection streams on the same page, consider extracting a shared
+ * WebSocket context provider to avoid redundant connections.
+ */
 export function useProjectionStream<T>(
   viewId: string,
   options?: UseProjectionStreamOptions
