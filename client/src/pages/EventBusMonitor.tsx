@@ -540,6 +540,10 @@ export default function EventBusMonitor() {
   // Filtered Data
   // ============================================================================
 
+  // Whether we're in paused state with a frozen snapshot.
+  // Declared here (above filteredData useMemo) to avoid temporal dead zone.
+  const paused = isPaused && pausedSnapshotRef.current;
+
   const filteredData = useMemo((): DashboardData => {
     const { events: srcEvents } = sourceData;
 
@@ -662,7 +666,15 @@ export default function EventBusMonitor() {
       timeSeriesData: effectiveTimeSeries,
       topicHealth: [],
     };
-  }, [sourceData, filters, maxEvents, hideHeartbeats, topicsLoadedCount]);
+  }, [
+    sourceData,
+    filters,
+    maxEvents,
+    hideHeartbeats,
+    topicsLoadedCount,
+    paused,
+    snapshotPayload?.windowedErrorRate,
+  ]);
 
   // Clear chart snapshot when topic filter changes
   useEffect(() => {
@@ -716,7 +728,7 @@ export default function EventBusMonitor() {
 
   // Staleness / burst state: respect pause by reading from frozen paused snapshot.
   // When paused, banners stay consistent with the frozen event table/charts.
-  const paused = isPaused && pausedSnapshotRef.current;
+  // Note: `paused` is defined above (before filteredData useMemo) to avoid TDZ issues.
   const activeBurstInfo = paused
     ? pausedSnapshotRef.current!.burstInfo
     : (snapshotPayload?.burstInfo ?? null);
@@ -888,11 +900,7 @@ export default function EventBusMonitor() {
               {(activeBurstInfo.baselineRate * 100).toFixed(1)}%
             </span>{' '}
             <span className="text-red-300/70">
-              (
-              {Number.isFinite(activeBurstInfo.multiplier)
-                ? `${activeBurstInfo.multiplier}x`
-                : 'new'}
-              )
+              ({activeBurstInfo.multiplier != null ? `${activeBurstInfo.multiplier}x` : 'new'})
             </span>
           </span>
         </div>

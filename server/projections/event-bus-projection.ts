@@ -65,7 +65,8 @@ export interface EventBusProjectionConfig {
   burstCooldownMs?: number;
 }
 
-const DEFAULT_CONFIG = {
+/** Default burst detection configuration — single source of truth for server-side defaults. */
+export const DEFAULT_BURST_CONFIG = {
   monitoringWindowMs: 5 * 60 * 1000,
   stalenessThresholdMs: 10 * 60 * 1000,
   burstWindowMs: 30 * 1000,
@@ -113,7 +114,7 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
   private _burstInfo: BurstInfo | null = null;
 
   constructor(config?: EventBusProjectionConfig) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.config = { ...DEFAULT_BURST_CONFIG, ...config };
   }
 
   // --------------------------------------------------------------------------
@@ -545,15 +546,16 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     if (!exceedsMultiplier && !exceedsAbsolute) return null;
 
     // When baseline is zero, the multiplier concept is meaningless.
-    // Use Infinity to signal "new errors from zero baseline" — the client
-    // can render this as "new" or "N/A" rather than a misleading "50x".
-    const multiplier = baselineErrorRate > 0 ? shortErrorRate / baselineErrorRate : Infinity;
+    // Use null to signal "new errors from zero baseline" — the client
+    // renders this as "new" rather than a misleading "50x".
+    // Note: null is JSON-safe (unlike Infinity which serializes to null implicitly).
+    const multiplier = baselineErrorRate > 0 ? shortErrorRate / baselineErrorRate : null;
 
     return {
       type: 'error_spike',
       shortWindowRate: Math.round(shortErrorRate * 1000) / 1000,
       baselineRate: Math.round(baselineErrorRate * 1000) / 1000,
-      multiplier: Number.isFinite(multiplier) ? Math.round(multiplier * 10) / 10 : Infinity,
+      multiplier: multiplier != null ? Math.round(multiplier * 10) / 10 : null,
       detectedAt: now,
       cooldownUntil: now + cfg.burstCooldownMs,
     };

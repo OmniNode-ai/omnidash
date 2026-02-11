@@ -30,8 +30,8 @@ export interface BurstInfo {
   shortWindowRate: number;
   /** Rate in the baseline/monitoring window */
   baselineRate: number;
-  /** Actual multiplier: shortWindowRate / baselineRate */
-  multiplier: number;
+  /** Actual multiplier: shortWindowRate / baselineRate. Null when baseline is zero (new errors). */
+  multiplier: number | null;
   /** Epoch ms when the burst was first detected */
   detectedAt: number;
   /** Epoch ms when the cooldown expires */
