@@ -12,9 +12,8 @@
  * - Edge cases: unknown node heartbeat, unknown node state change, missing nodeId
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { NodeRegistryProjection } from '../projections/node-registry-projection';
-import { ProjectionService } from '../projection-service';
 import type { ProjectionEvent } from '@shared/projection-types';
 
 // ============================================================================
