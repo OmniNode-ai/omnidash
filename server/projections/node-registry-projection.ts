@@ -129,8 +129,9 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       }
     }
 
-    // Default to full buffer — safe because appliedEvents is bounded
-    // by MAX_APPLIED_EVENTS + APPLIED_EVENTS_TRIM_MARGIN (600 max)
+    // Default to full buffer — safe because appliedEvents is bounded:
+    // applyEvent() trims synchronously when length exceeds 600, slicing to 500.
+    // Since JS is single-threaded, no external caller can observe > 600 entries.
     const effectiveLimit = limit ?? MAX_APPLIED_EVENTS + APPLIED_EVENTS_TRIM_MARGIN;
     const sliced = this.appliedEvents.slice(lo, lo + effectiveLimit);
     return {
@@ -352,14 +353,22 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
    */
   private handleSeed(event: ProjectionEvent): boolean {
     const payload = event.payload;
-    const nodes = payload.nodes as Array<Record<string, unknown>> | undefined;
-    if (!Array.isArray(nodes) || nodes.length === 0) return false;
+    const rawNodes = payload.nodes as Array<Record<string, unknown>> | undefined;
+    if (!Array.isArray(rawNodes) || rawNodes.length === 0) return false;
+
+    // Deduplicate by nodeId — if upstream data contains duplicate nodeIds in a
+    // single seed batch, keep the last occurrence for deterministic last-write-wins
+    // behavior (Map insertion order is stable per spec).
+    const deduped = new Map<string, Record<string, unknown>>();
+    for (const raw of rawNodes) {
+      const nid = (raw.nodeId ?? raw.node_id) as string;
+      if (nid) deduped.set(nid, raw);
+    }
 
     let seeded = 0;
 
-    for (const raw of nodes) {
+    for (const raw of deduped.values()) {
       const nodeId = (raw.nodeId ?? raw.node_id) as string;
-      if (!nodeId) continue;
 
       // Seed events have no real timestamp — use sentinel epoch 0 so that
       // any node already tracked with a real-timestamped event is not overwritten.

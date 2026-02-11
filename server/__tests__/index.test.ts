@@ -41,9 +41,10 @@ vi.mock('../projections/node-registry-projection', () => ({
   NodeRegistryProjection: vi.fn(),
 }));
 
+const setProjectionServiceMock = vi.fn();
 vi.mock('../projection-routes', () => ({
   default: vi.fn(),
-  setProjectionService: vi.fn(),
+  setProjectionService: setProjectionServiceMock,
 }));
 
 const eventConsumerOnMock = vi.fn().mockReturnThis();
@@ -193,5 +194,26 @@ describe('server/index bootstrap', () => {
     );
 
     consoleErrorSpy.mockRestore();
+  });
+
+  it('calls registerRoutes before setProjectionService (startup ordering invariant)', async () => {
+    process.env.NODE_ENV = 'development';
+
+    const callOrder: string[] = [];
+    registerRoutesMock.mockImplementation(async () => {
+      callOrder.push('registerRoutes');
+      return mockServer;
+    });
+    setProjectionServiceMock.mockImplementation(() => {
+      callOrder.push('setProjectionService');
+    });
+
+    await importIndex();
+
+    const routesIdx = callOrder.indexOf('registerRoutes');
+    const projIdx = callOrder.indexOf('setProjectionService');
+    expect(routesIdx).toBeGreaterThanOrEqual(0);
+    expect(projIdx).toBeGreaterThanOrEqual(0);
+    expect(routesIdx).toBeLessThan(projIdx);
   });
 });

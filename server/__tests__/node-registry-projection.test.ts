@@ -383,6 +383,27 @@ describe('NodeRegistryProjection', () => {
       expect(snapshot.payload.nodes[0].nodeId).toBe('valid');
     });
 
+    it('should deduplicate seed entries with the same nodeId (last-write-wins)', () => {
+      projection.applyEvent(
+        seedEvent([
+          { nodeId: 'dup', nodeType: 'COMPUTE', state: 'pending_registration', version: '1.0.0' },
+          { nodeId: 'dup', nodeType: 'EFFECT', state: 'active', version: '2.0.0' },
+          { nodeId: 'unique', nodeType: 'COMPUTE', state: 'active', version: '1.0.0' },
+        ])
+      );
+
+      const snapshot = projection.getSnapshot();
+      expect(snapshot.payload.nodes).toHaveLength(2);
+      expect(snapshot.payload.stats.totalNodes).toBe(2);
+
+      const dupNode = snapshot.payload.nodes.find((n) => n.nodeId === 'dup');
+      expect(dupNode).toBeDefined();
+      // Last occurrence wins — nodeType should be EFFECT, not COMPUTE
+      expect(dupNode!.nodeType).toBe('EFFECT');
+      expect(dupNode!.state).toBe('active');
+      expect(dupNode!.version).toBe('2.0.0');
+    });
+
     it('should handle snake_case fields in seed data', () => {
       projection.applyEvent(
         seedEvent([
