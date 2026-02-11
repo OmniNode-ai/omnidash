@@ -121,6 +121,10 @@ export class IntentProjectionView implements ProjectionView<IntentPayload> {
   }
 
   getEventsSince(cursor: number, limit?: number): ProjectionEventsResponse {
+    // Detect if appliedEvents has been trimmed past the requested cursor
+    const oldestAvailable = this.appliedEvents.length > 0 ? this.appliedEvents[0].ingestSeq : 0;
+    const truncated = cursor > 0 && cursor < oldestAvailable;
+
     const filtered = this.appliedEvents.filter((e) => e.ingestSeq > cursor);
     const result = limit ? filtered.slice(0, limit) : filtered;
     return {
@@ -128,6 +132,7 @@ export class IntentProjectionView implements ProjectionView<IntentPayload> {
       cursor: result.length > 0 ? result[result.length - 1].ingestSeq : cursor,
       snapshotTimeMs: Date.now(),
       events: result,
+      ...(truncated ? { truncated: true } : {}),
     };
   }
 
@@ -205,7 +210,7 @@ export class IntentProjectionView implements ProjectionView<IntentPayload> {
 
   /**
    * Insert event into buffer maintaining (eventTimeMs DESC, ingestSeq DESC) order.
-   * Binary search for O(log n) position finding.
+   * Binary search for O(log n) position finding; O(n) total due to splice/unshift.
    */
   private insertSorted(event: ProjectionEvent): void {
     if (this.buffer.length === 0) {

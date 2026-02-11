@@ -72,8 +72,12 @@ export function useProjectionStream<T>(
   const cursorRef = useRef(0);
   const fetchInFlightRef = useRef(false);
   const mountedRef = useRef(true);
+  const viewIdRef = useRef(viewId);
   const hasSubscribed = useRef(false);
   const isConnectedRef = useRef(false);
+
+  // Keep viewIdRef in sync so fetchSnapshot can detect stale responses
+  viewIdRef.current = viewId;
 
   const log = useCallback(
     (...args: unknown[]) => {
@@ -107,6 +111,12 @@ export function useProjectionStream<T>(
       const data: ProjectionSnapshot<T> = await response.json();
 
       if (!mountedRef.current) return;
+
+      // Guard against stale response from a previous viewId
+      if (data.viewId !== viewIdRef.current) {
+        log('Stale viewId response ignored, expected:', viewIdRef.current, 'got:', data.viewId);
+        return;
+      }
 
       // Only apply if cursor advanced (or first fetch)
       if (data.cursor >= cursorRef.current) {
@@ -188,7 +198,16 @@ export function useProjectionStream<T>(
     };
   }, [isConnected, subscribe, unsubscribe, log]);
 
-  // Initial fetch on mount
+  // Reset state when viewId changes to prevent stale data cross-contamination
+  useEffect(() => {
+    cursorRef.current = 0;
+    setCursor(0);
+    setSnapshot(null);
+    setError(null);
+    fetchInFlightRef.current = false;
+  }, [viewId]);
+
+  // Initial fetch on mount (and when viewId/limit changes via fetchSnapshot dep)
   useEffect(() => {
     mountedRef.current = true;
     if (fetchOnMount) {

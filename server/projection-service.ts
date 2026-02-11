@@ -74,6 +74,8 @@ export interface ProjectionEventsResponse {
   cursor: number;
   snapshotTimeMs: number;
   events: ProjectionEvent[];
+  /** True when internal event log was trimmed and events after the requested cursor may be missing. Clients should re-fetch the full snapshot. */
+  truncated?: boolean;
 }
 
 // ============================================================================
