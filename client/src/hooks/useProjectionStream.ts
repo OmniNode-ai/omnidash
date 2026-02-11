@@ -1,13 +1,13 @@
 /**
- * useProjectionStream — Generic Projection Polling Hook (OMN-2095)
+ * useProjectionStream — Generic Projection Polling Hook (OMN-2095 / OMN-2097)
  *
  * TanStack Query for snapshot polling + WebSocket-driven invalidation.
  *
  * WARNING: Each hook instance creates its own WebSocket connection via useWebSocket.
- * Currently only EventBusMonitor uses this hook — a single connection is fine.
- * Before adding a second consumer, lift the WebSocket connection to a shared
- * React context (e.g. ProjectionWebSocketProvider) to avoid duplicate connections
- * and redundant PROJECTION_INVALIDATE handling.
+ * Currently EventBusMonitor and NodeRegistry each use this hook on separate pages —
+ * a single connection per page is fine. Before adding a second consumer on the same
+ * page, lift the WebSocket connection to a shared React context
+ * (e.g. ProjectionWebSocketProvider) to avoid duplicate connections.
  *
  * Mount/unmount lifecycle: on unmount, useWebSocket's cleanup effect closes the
  * connection (after a 3-second stabilization delay for rapid navigation). On
@@ -15,6 +15,12 @@
  * TanStack Query's refetchInterval ensures data continuity — no events are lost.
  *
  * Usage:
+ *   // Simple (auto-fetches from /api/projections/:viewId/snapshot):
+ *   const { data, isLoading, error, cursor } = useProjectionStream<NodeRegistryPayload>(
+ *     'node-registry'
+ *   );
+ *
+ *   // Custom fetcher:
  *   const { data, isLoading, error, cursor } = useProjectionStream<EventBusPayload>(
  *     'event-bus',
  *     (params) => fetchEventBusSnapshot(params),
@@ -50,23 +56,36 @@ export interface UseProjectionStreamReturn<T> {
   cursor: number;
   /** Whether the WebSocket connection is active */
   isConnected: boolean;
+  /** Manually trigger a re-fetch */
+  refresh: () => void;
 }
 
 type SnapshotFetcher<T> = (params: { limit?: number }) => Promise<ProjectionResponse<T>>;
 
+/** Default fetcher that calls the standard projection REST endpoint. */
+function createDefaultFetcher<T>(viewId: string): SnapshotFetcher<T> {
+  return async (params: { limit?: number }) => {
+    const qs = params?.limit != null ? `?limit=${params.limit}` : '';
+    const res = await fetch(`/api/projections/${encodeURIComponent(viewId)}/snapshot${qs}`);
+    if (!res.ok) throw new Error(`Snapshot fetch failed: ${res.status} ${res.statusText}`);
+    return res.json();
+  };
+}
+
 export function useProjectionStream<T>(
   viewId: string,
-  fetcher: SnapshotFetcher<T>,
+  fetcher?: SnapshotFetcher<T>,
   options: UseProjectionStreamOptions = {}
 ): UseProjectionStreamReturn<T> {
   const { limit, refetchInterval = 2000, enabled = true } = options;
   const queryClient = useQueryClient();
   const cursorRef = useRef(0);
+  const resolvedFetcher = fetcher ?? createDefaultFetcher<T>(viewId);
 
   // TanStack Query for snapshot polling
   const { data, isLoading, error } = useQuery<ProjectionResponse<T>, Error>({
     queryKey: queryKeys.projections.snapshot(viewId, limit),
-    queryFn: () => fetcher({ limit }),
+    queryFn: () => resolvedFetcher({ limit }),
     refetchInterval,
     enabled,
   });
@@ -129,11 +148,19 @@ export function useProjectionStream<T>(
     cursorRef.current = 0;
   }, [viewId]);
 
+  // Manual refresh: invalidate the query cache to trigger immediate re-fetch
+  const refresh = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.projections.snapshot(viewId, limit),
+    });
+  }, [queryClient, viewId, limit]);
+
   return {
     data,
     isLoading,
     error: error ?? null,
     cursor: data?.cursor ?? 0,
     isConnected,
+    refresh,
   };
 }

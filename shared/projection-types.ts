@@ -1,9 +1,10 @@
 /**
- * Shared Projection Types (OMN-2095)
+ * Shared Projection Types (OMN-2095 / OMN-2097)
  *
  * Single source of truth for projection types shared between server and client.
- * Both server (ProjectionService, EventBusProjection) and client (useProjectionStream,
- * EventBusMonitor) import from here to prevent type drift.
+ * Both server (ProjectionService, EventBusProjection, NodeRegistryProjection)
+ * and client (useProjectionStream, EventBusMonitor, NodeRegistry) import from
+ * here to prevent type drift.
  */
 
 /**
@@ -61,4 +62,52 @@ export interface ProjectionEventsResponse {
   cursor: number;
   snapshotTimeMs: number;
   events: ProjectionEvent[];
+  /** True when earlier events were trimmed from the buffer — client should fetch a full snapshot instead of relying on incremental catch-up */
+  truncated?: boolean;
+}
+
+// ============================================================================
+// Node Registry domain types (OMN-2097)
+// ============================================================================
+
+export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
+
+/**
+ * Registration state values use lowercase. Canonical event handlers in EventConsumer
+ * use uppercase states ('ACTIVE', 'OFFLINE', 'PENDING') internally but convert them
+ * to these lowercase values via mapCanonicalState() before emitting to consumers.
+ * If bypassing EventConsumer (e.g., direct Kafka bridging), ensure the mapping is applied.
+ */
+export type RegistrationState =
+  | 'pending_registration'
+  | 'accepted'
+  | 'awaiting_ack'
+  | 'ack_received'
+  | 'active'
+  | 'rejected'
+  | 'ack_timed_out'
+  | 'liveness_expired';
+
+export interface NodeState {
+  nodeId: string;
+  nodeType: NodeType;
+  state: RegistrationState;
+  version: string;
+  uptimeSeconds: number;
+  lastSeen: string;
+  memoryUsageMb?: number;
+  cpuUsagePercent?: number;
+  endpoints?: Record<string, string>;
+}
+
+export interface NodeRegistryStats {
+  totalNodes: number;
+  activeNodes: number;
+  byState: Record<string, number>;
+}
+
+export interface NodeRegistryPayload {
+  nodes: NodeState[];
+  recentStateChanges: ProjectionEvent[];
+  stats: NodeRegistryStats;
 }

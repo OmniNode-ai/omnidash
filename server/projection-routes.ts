@@ -1,5 +1,5 @@
 /**
- * Projection Routes — REST API for Projection Snapshots (OMN-2095)
+ * Projection Routes — REST API for Projection Snapshots (OMN-2095 / OMN-2097)
  *
  * Standardized envelope responses for all projection views.
  *
