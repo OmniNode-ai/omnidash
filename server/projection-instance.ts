@@ -66,7 +66,7 @@ eventConsumer.on('intent-event', handleIntentEvent);
  * duplicate listeners in hot-reload scenarios.
  */
 export function teardownProjectionListeners(): void {
-  eventConsumer.off('intent-event', handleIntentEvent);
+  eventConsumer.removeListener('intent-event', handleIntentEvent);
 }
 
 /**

@@ -179,12 +179,21 @@ export function useProjectionStream<T>(
     isConnectedRef.current = isConnected;
   }, [isConnected]);
 
-  // Subscribe to projection-invalidate topic when connected
+  // Subscribe to projection-invalidate topic when connected.
+  // On reconnection, re-fetch the snapshot to catch up on any events
+  // that arrived while the WebSocket was disconnected.
   useEffect(() => {
     if (isConnected && !hasSubscribed.current) {
-      log('Subscribing to projection-invalidate');
+      const isReconnect = cursorRef.current > 0;
+      log('Subscribing to projection-invalidate', isReconnect ? '(reconnect)' : '(initial)');
       subscribe(['projection-invalidate']);
       hasSubscribed.current = true;
+
+      // Catch-up fetch on reconnect to bridge the disconnect gap
+      if (isReconnect) {
+        log('Reconnect detected, fetching latest snapshot');
+        fetchSnapshot();
+      }
     }
 
     if (!isConnected) {
@@ -197,7 +206,7 @@ export function useProjectionStream<T>(
         hasSubscribed.current = false;
       }
     };
-  }, [isConnected, subscribe, unsubscribe, log]);
+  }, [isConnected, subscribe, unsubscribe, log, fetchSnapshot]);
 
   // Reset state and fetch. State is only reset when viewId changes (not on
   // limit-only changes) to prevent a flash of empty content. The effect still
