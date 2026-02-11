@@ -261,10 +261,21 @@ const VALID_TOPICS = [
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
 
+/**
+ * Validates a topic string. Accepts static VALID_TOPICS entries or any
+ * topic matching `projection:<viewId>` for dynamic projection views (OMN-2097).
+ */
+const PROJECTION_TOPIC_PATTERN = /^projection:[a-zA-Z0-9_-]+$/;
+
+const validTopicSchema = z.union([
+  z.enum(VALID_TOPICS),
+  z.string().regex(PROJECTION_TOPIC_PATTERN),
+]);
+
 // Zod schema for validating WebSocket client messages
 const WebSocketMessageSchema = z.object({
   action: z.enum(['subscribe', 'unsubscribe', 'ping', 'getState']),
-  topics: z.union([z.enum(VALID_TOPICS), z.array(z.enum(VALID_TOPICS))]).optional(),
+  topics: z.union([validTopicSchema, z.array(validTopicSchema)]).optional(),
 });
 
 type _WebSocketMessage = z.infer<typeof WebSocketMessageSchema>;
@@ -677,8 +688,11 @@ export function setupWebSocket(httpServer: HTTPServer) {
       return;
     }
 
-    // Leading edge: broadcast immediately
-    broadcast('PROJECTION_INVALIDATE', data, 'projections');
+    // Leading edge: broadcast immediately.
+    // Broadcast only to the per-view topic — avoids duplicate delivery to
+    // clients subscribed to 'all' (which would match both 'projections' and
+    // 'projection:<viewId>' broadcast calls).
+    broadcast('PROJECTION_INVALIDATE', data, `projection:${data.viewId}`);
 
     // Open throttle window
     const entry = {
@@ -688,11 +702,8 @@ export function setupWebSocket(httpServer: HTTPServer) {
         projectionThrottleState.delete(data.viewId);
         // Trailing edge: if cursor advanced during window, send one final update
         if (entry.latestCursor > entry.leadingCursor) {
-          broadcast(
-            'PROJECTION_INVALIDATE',
-            { viewId: data.viewId, cursor: entry.latestCursor },
-            'projections'
-          );
+          const trailingData = { viewId: data.viewId, cursor: entry.latestCursor };
+          broadcast('PROJECTION_INVALIDATE', trailingData, `projection:${data.viewId}`);
         }
       }, PROJECTION_THROTTLE_MS),
     };
@@ -915,7 +926,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
   );
 
   // Handle subscription updates
-  function handleSubscription(ws: WebSocket, topics: ValidTopic | ValidTopic[] | undefined) {
+  function handleSubscription(ws: WebSocket, topics: string | string[] | undefined) {
     const client = clients.get(ws);
     if (!client) return;
 
@@ -941,7 +952,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
   }
 
   // Handle unsubscription
-  function handleUnsubscription(ws: WebSocket, topics: ValidTopic | ValidTopic[] | undefined) {
+  function handleUnsubscription(ws: WebSocket, topics: string | string[] | undefined) {
     const client = clients.get(ws);
     if (!client) return;
 

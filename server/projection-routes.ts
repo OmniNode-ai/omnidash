@@ -1,14 +1,13 @@
 /**
- * Projection Routes (OMN-2095 / OMN-2096)
+ * Projection Routes — REST API for Projection Snapshots (OMN-2095 / OMN-2096 / OMN-2097)
  *
  * REST endpoints for querying projection view snapshots.
  * Each registered ProjectionView gets a standardized snapshot endpoint.
  *
- * Routes:
- *   GET /api/projections/:viewId/snapshot?limit=N
- *     → ProjectionResponse<T>
- *   GET /api/projections/:viewId/events?cursor=N&limit=50
- *     → ProjectionEventsResponse
+ * Endpoints:
+ *   GET /api/projections                              — list registered views
+ *   GET /api/projections/:viewId/snapshot?limit=N     → ProjectionResponse<T>
+ *   GET /api/projections/:viewId/events?cursor=N&limit=50 → ProjectionEventsResponse
  */
 
 import { Router } from 'express';
@@ -46,6 +45,15 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 export function createProjectionRoutes(projectionService: ProjectionService): Router {
   const router = Router();
+
+  /**
+   * GET /api/projections
+   *
+   * Discovery endpoint: returns the list of registered projection view IDs.
+   */
+  router.get('/', (_req, res) => {
+    return res.json({ views: projectionService.viewIds });
+  });
 
   /**
    * GET /api/projections/:viewId/snapshot?limit=N

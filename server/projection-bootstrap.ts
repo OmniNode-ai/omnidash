@@ -29,6 +29,8 @@ export const projectionService = new ProjectionService();
  * by the `/api/projections/event-bus` endpoint and the EventBusMonitor page.
  * Registered into projectionService at module load time.
  */
+// Uses DEFAULT_BURST_CONFIG from event-bus-projection.ts (single source of truth).
+// No config override needed — the exported defaults are canonical.
 export const eventBusProjection = new EventBusProjection();
 
 // Register views (runs at import time — module-level side effect).

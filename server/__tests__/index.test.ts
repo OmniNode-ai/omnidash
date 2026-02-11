@@ -30,13 +30,32 @@ vi.mock('../websocket', () => ({
   setupWebSocket: setupWebSocketMock,
 }));
 
+vi.mock('../projections/node-registry-projection', () => ({
+  NodeRegistryProjection: vi.fn().mockImplementation(() => ({
+    viewId: 'node-registry',
+  })),
+}));
+
+vi.mock('../projection-routes', () => ({
+  createProjectionRoutes: vi.fn(),
+}));
+
+vi.mock('../projection-instance', () => ({
+  initProjectionListeners: vi.fn(),
+  teardownProjectionListeners: vi.fn(),
+}));
+
+const eventConsumerOnMock = vi.fn().mockReturnThis();
+const getRegisteredNodesMock = vi.fn().mockReturnValue([]);
+
 vi.mock('../event-consumer', () => ({
   eventConsumer: {
     validateConnection: validateConnectionMock,
     start: startMock,
     stop: stopMock,
-    on: vi.fn(),
+    on: eventConsumerOnMock,
     removeListener: vi.fn(),
+    getRegisteredNodes: getRegisteredNodesMock,
   },
 }));
 
@@ -57,15 +76,16 @@ vi.mock('../event-bus-mock-generator', () => ({
   },
 }));
 
+const projectionServiceMock = {
+  registerView: vi.fn(),
+  getView: vi.fn().mockReturnValue(undefined),
+  ingest: vi.fn(),
+  on: vi.fn(),
+};
+
 vi.mock('../projection-bootstrap', () => ({
   wireProjectionSources: vi.fn(),
-  projectionService: {
-    getView: vi.fn().mockReturnValue(undefined),
-    registerView: vi.fn(),
-    on: vi.fn(),
-    removeListener: vi.fn(),
-    ingest: vi.fn(),
-  },
+  projectionService: projectionServiceMock,
 }));
 
 describe('server/index bootstrap', () => {
@@ -148,6 +168,7 @@ describe('server/index bootstrap', () => {
     await importIndex();
 
     expect(startMock).not.toHaveBeenCalled();
+    // WebSocket only set up when ENABLE_REAL_TIME_EVENTS=true
     expect(setupWebSocketMock).not.toHaveBeenCalled();
     expect(setupViteMock).not.toHaveBeenCalled();
     expect(serveStaticMock).toHaveBeenCalledWith(expect.anything());
@@ -174,5 +195,26 @@ describe('server/index bootstrap', () => {
     expect(setupWebSocketMock).toHaveBeenCalledWith(mockServer);
 
     consoleErrorSpy.mockRestore();
+  });
+
+  it('registers NodeRegistryProjection before registerRoutes', async () => {
+    process.env.NODE_ENV = 'development';
+
+    const callOrder: string[] = [];
+    projectionServiceMock.registerView.mockImplementation(() => {
+      callOrder.push('registerView');
+    });
+    registerRoutesMock.mockImplementation(async () => {
+      callOrder.push('registerRoutes');
+      return mockServer;
+    });
+
+    await importIndex();
+
+    const viewIdx = callOrder.indexOf('registerView');
+    const routesIdx = callOrder.indexOf('registerRoutes');
+    expect(viewIdx).toBeGreaterThanOrEqual(0);
+    expect(routesIdx).toBeGreaterThanOrEqual(0);
+    expect(viewIdx).toBeLessThan(routesIdx);
   });
 });

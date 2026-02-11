@@ -1,13 +1,13 @@
 /**
- * useProjectionStream — Generic Projection Polling Hook (OMN-2095)
+ * useProjectionStream — Generic Projection Polling Hook (OMN-2095 / OMN-2097 / OMN-2098)
  *
  * TanStack Query for snapshot polling + WebSocket-driven invalidation.
  *
  * WARNING: Each hook instance creates its own WebSocket connection via useWebSocket.
- * Currently only EventBusMonitor uses this hook — a single connection is fine.
- * Before adding a second consumer, lift the WebSocket connection to a shared
- * React context (e.g. ProjectionWebSocketProvider) to avoid duplicate connections
- * and redundant PROJECTION_INVALIDATE handling.
+ * Currently EventBusMonitor and NodeRegistry each use this hook on separate pages —
+ * a single connection per page is fine. Before adding a second consumer on the same
+ * page, lift the WebSocket connection to a shared React context
+ * (e.g. ProjectionWebSocketProvider) to avoid duplicate connections.
  *
  * Mount/unmount lifecycle: on unmount, useWebSocket's cleanup effect closes the
  * connection (after a 3-second stabilization delay for rapid navigation). On
@@ -15,6 +15,12 @@
  * TanStack Query's refetchInterval ensures data continuity — no events are lost.
  *
  * Usage:
+ *   // Simple (auto-fetches from /api/projections/:viewId/snapshot):
+ *   const { data, isLoading, error, cursor } = useProjectionStream<NodeRegistryPayload>(
+ *     'node-registry'
+ *   );
+ *
+ *   // Custom fetcher:
  *   const { data, isLoading, error, cursor } = useProjectionStream<EventBusPayload>(
  *     'event-bus',
  *     (params) => fetchEventBusSnapshot(params),
@@ -50,23 +56,36 @@ export interface UseProjectionStreamReturn<T> {
   cursor: number;
   /** Whether the WebSocket connection is active */
   isConnected: boolean;
+  /** Manually trigger a re-fetch */
+  refresh: () => void;
 }
 
 type SnapshotFetcher<T> = (params: { limit?: number }) => Promise<ProjectionResponse<T>>;
 
+/** Default fetcher that calls the standard projection REST endpoint. */
+function createDefaultFetcher<T>(viewId: string): SnapshotFetcher<T> {
+  return async (params: { limit?: number }) => {
+    const qs = params?.limit != null ? `?limit=${params.limit}` : '';
+    const res = await fetch(`/api/projections/${encodeURIComponent(viewId)}/snapshot${qs}`);
+    if (!res.ok) throw new Error(`Snapshot fetch failed: ${res.status} ${res.statusText}`);
+    return res.json();
+  };
+}
+
 export function useProjectionStream<T>(
   viewId: string,
-  fetcher: SnapshotFetcher<T>,
+  fetcher?: SnapshotFetcher<T>,
   options: UseProjectionStreamOptions = {}
 ): UseProjectionStreamReturn<T> {
   const { limit, refetchInterval = 2000, enabled = true } = options;
   const queryClient = useQueryClient();
   const cursorRef = useRef(0);
+  const resolvedFetcher = fetcher ?? createDefaultFetcher<T>(viewId);
 
   // TanStack Query for snapshot polling
   const { data, isLoading, error } = useQuery<ProjectionResponse<T>, Error>({
     queryKey: queryKeys.projections.snapshot(viewId, limit),
-    queryFn: () => fetcher({ limit }),
+    queryFn: () => resolvedFetcher({ limit }),
     refetchInterval,
     enabled,
   });
@@ -107,27 +126,50 @@ export function useProjectionStream<T>(
     [viewId, limit, queryClient]
   );
 
-  // WebSocket connection with explicit subscription to 'projections' topic.
+  // WebSocket connection with per-view topic subscription (OMN-2098).
   // The server uses a subscription model — clients must subscribe to receive
   // messages for a given topic. onOpen fires after each (re)connection.
   //
-  // Note: The subscription topic is always ['projections'] regardless of viewId.
-  // PROJECTION_INVALIDATE messages include a viewId field that handleProjectionMessage
-  // filters on, so a single subscription covers all views. If viewId or limit changes
-  // after the WebSocket connects, onOpen won't re-fire, but this is safe because the
-  // subscription topic is static. Only handleProjectionMessage (updated via ref) needs
-  // the current viewId, and useWebSocket reads callbacks from refs.
-  const { isConnected, subscribe } = useWebSocket({
+  // Each hook instance subscribes to `projection:${viewId}` so the server only
+  // delivers PROJECTION_INVALIDATE messages relevant to this view. The
+  // handleProjectionMessage callback still filters by viewId as defense-in-depth.
+  //
+  // If viewId changes while the WebSocket is already connected, onOpen won't
+  // re-fire. The useEffect below handles re-subscription in that case by
+  // unsubscribing from the old topic and subscribing to the new one.
+  const { isConnected, subscribe, unsubscribe } = useWebSocket({
     onOpen: () => {
-      subscribe(['projections']);
+      subscribe([`projection:${viewId}`]);
     },
     onMessage: handleProjectionMessage,
   });
+
+  // Re-subscribe when viewId changes on an already-open connection.
+  // On first mount, onOpen handles the initial subscription; this effect
+  // only acts when viewId transitions while connected.
+  //
+  // No cleanup return needed: on unmount, useWebSocket's cleanup effect
+  // closes the connection, which implicitly drops all server-side subscriptions.
+  const prevViewIdRef = useRef(viewId);
+  useEffect(() => {
+    if (prevViewIdRef.current !== viewId && isConnected) {
+      unsubscribe([`projection:${prevViewIdRef.current}`]);
+      subscribe([`projection:${viewId}`]);
+    }
+    prevViewIdRef.current = viewId;
+  }, [viewId, isConnected, subscribe, unsubscribe]);
 
   // Reset cursor when viewId changes
   useEffect(() => {
     cursorRef.current = 0;
   }, [viewId]);
+
+  // Manual refresh: invalidate the query cache to trigger immediate re-fetch
+  const refresh = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.projections.snapshot(viewId, limit),
+    });
+  }, [queryClient, viewId, limit]);
 
   return {
     data,
@@ -135,5 +177,6 @@ export function useProjectionStream<T>(
     error: error ?? null,
     cursor: data?.cursor ?? 0,
     isConnected,
+    refresh,
   };
 }
