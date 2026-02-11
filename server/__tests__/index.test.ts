@@ -55,6 +55,10 @@ vi.mock('../event-bus-mock-generator', () => ({
   },
 }));
 
+vi.mock('../projection-bootstrap', () => ({
+  wireProjectionSources: vi.fn(),
+}));
+
 describe('server/index bootstrap', () => {
   let originalEnv: NodeJS.ProcessEnv;
   let processOnSpy: ReturnType<typeof vi.spyOn>;

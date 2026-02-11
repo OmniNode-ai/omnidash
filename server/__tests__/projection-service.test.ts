@@ -13,14 +13,12 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  ProjectionService,
-  type ProjectionView,
-  type ProjectionEvent,
-  type ProjectionResponse,
-  type ProjectionEventsResponse,
-  type RawEventInput,
-} from '../projection-service';
+import { ProjectionService, type ProjectionView, type RawEventInput } from '../projection-service';
+import type {
+  ProjectionEvent,
+  ProjectionResponse,
+  ProjectionEventsResponse,
+} from '@shared/projection-types';
 
 // ============================================================================
 // Test Helpers
@@ -326,7 +324,7 @@ describe('ProjectionService', () => {
   // --------------------------------------------------------------------------
 
   describe('invalidation emission', () => {
-    it('should emit projection-invalidate when a view applies an event', () => {
+    it('should emit projection-invalidate when a view applies an event', async () => {
       const view = new TestView('my-view');
       service.registerView(view);
 
@@ -334,6 +332,7 @@ describe('ProjectionService', () => {
       service.on('projection-invalidate', handler);
 
       service.ingest(rawEvent());
+      await Promise.resolve(); // flush microtask-coalesced invalidation
 
       expect(handler).toHaveBeenCalledOnce();
       expect(handler).toHaveBeenCalledWith({
@@ -354,7 +353,7 @@ describe('ProjectionService', () => {
       expect(handler).not.toHaveBeenCalled();
     });
 
-    it('should emit once per view that accepts the event', () => {
+    it('should emit once per view that accepts the event', async () => {
       const acceptor = new TestView('acceptor');
       const rejecter = new TestView('rejecter', false);
       service.registerView(acceptor);
@@ -364,6 +363,7 @@ describe('ProjectionService', () => {
       service.on('projection-invalidate', handler);
 
       service.ingest(rawEvent());
+      await Promise.resolve(); // flush microtask-coalesced invalidation
 
       expect(handler).toHaveBeenCalledOnce();
       expect(handler).toHaveBeenCalledWith({
@@ -372,7 +372,7 @@ describe('ProjectionService', () => {
       });
     });
 
-    it('should emit with correct cursor for each event in a batch', () => {
+    it('should emit with correct cursor for each event in a batch', async () => {
       const view = new TestView('batch-view');
       service.registerView(view);
 
@@ -380,14 +380,15 @@ describe('ProjectionService', () => {
       service.on('projection-invalidate', (data) => invalidations.push(data));
 
       service.ingestBatch([rawEvent(), rawEvent(), rawEvent()]);
+      await Promise.resolve(); // flush microtask-coalesced invalidation
 
-      expect(invalidations).toHaveLength(3);
-      expect(invalidations[0].cursor).toBe(1);
-      expect(invalidations[1].cursor).toBe(2);
-      expect(invalidations[2].cursor).toBe(3);
+      // Coalescing: a synchronous batch emits ONE invalidation per view
+      // with the max cursor (last event's ingestSeq)
+      expect(invalidations).toHaveLength(1);
+      expect(invalidations[0]).toEqual({ viewId: 'batch-view', cursor: 3 });
     });
 
-    it('should emit for multiple views independently', () => {
+    it('should emit for multiple views independently', async () => {
       service.registerView(new TestView('view-a'));
       service.registerView(new TestView('view-b'));
 
@@ -395,6 +396,7 @@ describe('ProjectionService', () => {
       service.on('projection-invalidate', (data) => invalidations.push(data));
 
       service.ingest(rawEvent());
+      await Promise.resolve(); // flush microtask-coalesced invalidation
 
       expect(invalidations).toHaveLength(2);
       const viewIds = invalidations.map((i) => i.viewId);

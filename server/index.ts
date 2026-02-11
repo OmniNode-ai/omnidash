@@ -16,6 +16,7 @@ import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
 import { runtimeIdentity } from './runtime-identity';
+import { wireProjectionSources } from './projection-bootstrap';
 
 const app = express();
 
@@ -122,6 +123,16 @@ app.use((req, res, next) => {
     console.error('   Application will continue with limited functionality');
   }
 
+  // Wire projection event sources (after EventConsumer and EventBusDataSource are started)
+  let cleanupProjectionSources: (() => void) | undefined;
+  try {
+    cleanupProjectionSources = wireProjectionSources();
+  } catch (error) {
+    console.error('❌ Failed to wire projection sources:', error);
+    console.error('   Projections will remain empty until next restart');
+    console.error('   Application will continue with limited functionality');
+  }
+
   // Setup WebSocket for real-time events
   if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
     setupWebSocket(server);
@@ -187,6 +198,7 @@ app.use((req, res, next) => {
   // Graceful shutdown
   process.on('SIGTERM', async () => {
     log('SIGTERM received, shutting down gracefully');
+    cleanupProjectionSources?.();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();
@@ -199,6 +211,7 @@ app.use((req, res, next) => {
 
   process.on('SIGINT', async () => {
     log('SIGINT received, shutting down gracefully');
+    cleanupProjectionSources?.();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();
