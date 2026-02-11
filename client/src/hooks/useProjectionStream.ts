@@ -1,5 +1,5 @@
 /**
- * useProjectionStream — Generic Projection Polling Hook (OMN-2095 / OMN-2097)
+ * useProjectionStream — Generic Projection Polling Hook (OMN-2095 / OMN-2097 / OMN-2098)
  *
  * TanStack Query for snapshot polling + WebSocket-driven invalidation.
  *
@@ -147,6 +147,9 @@ export function useProjectionStream<T>(
   // Re-subscribe when viewId changes on an already-open connection.
   // On first mount, onOpen handles the initial subscription; this effect
   // only acts when viewId transitions while connected.
+  //
+  // No cleanup return needed: on unmount, useWebSocket's cleanup effect
+  // closes the connection, which implicitly drops all server-side subscriptions.
   const prevViewIdRef = useRef(viewId);
   useEffect(() => {
     if (prevViewIdRef.current !== viewId && isConnected) {
