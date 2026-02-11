@@ -94,6 +94,9 @@ export function wireProjectionSources(): void {
   // EventBusDataSource: full 197-topic coverage
   // --------------------------------------------------------------------------
 
+  // Duck-type check: eventBusDataSource may not extend EventEmitter in all
+  // environments (e.g. test mocks, alternative implementations). Checking for
+  // .on as a function is the standard Node.js pattern for optional listeners.
   if (typeof eventBusDataSource.on === 'function') {
     eventBusDataSource.on('event', (event: Record<string, unknown>) => {
       try {
