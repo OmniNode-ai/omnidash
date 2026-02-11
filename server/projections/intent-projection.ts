@@ -250,10 +250,9 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     // Track for getEventsSince
     this.appliedEvents.push(event);
 
-    // Trim appliedEvents if too large — keep 1.5x buffer to retain recent
-    // history overlap and reduce the chance of getEventsSince() missing events.
+    // Trim appliedEvents if too large (keep last MAX_BUFFER * 2)
     if (this.appliedEvents.length > MAX_BUFFER * 2) {
-      this.appliedEvents = this.appliedEvents.slice(-Math.floor(MAX_BUFFER * 1.5));
+      this.appliedEvents = this.appliedEvents.slice(-MAX_BUFFER * 2);
     }
 
     return true;

@@ -744,7 +744,7 @@ describe('IntentProjectionView', () => {
   // --------------------------------------------------------------------------
 
   describe('applied events trimming', () => {
-    it('should trim appliedEvents to 1.5x MAX_BUFFER when exceeding 2x MAX_BUFFER', () => {
+    it('should trim appliedEvents to MAX_BUFFER * 2 when exceeding that threshold', () => {
       // Insert 1001 events (MAX_BUFFER * 2 = 1000 triggers trim)
       for (let i = 1; i <= 1001; i++) {
         view.applyEvent(
@@ -756,12 +756,12 @@ describe('IntentProjectionView', () => {
         );
       }
 
-      // After trim, appliedEvents should retain 750 (1.5 * MAX_BUFFER=500)
-      // events-since from 0 should return those 750 events
+      // After trim, appliedEvents should retain 1000 (MAX_BUFFER * 2)
+      // events-since from 0 should return those 1000 events
       const response = view.getEventsSince(0);
-      expect(response.events).toHaveLength(750);
-      // Oldest retained event: 1001 - 750 + 1 = 252
-      expect(response.events[0].ingestSeq).toBe(252);
+      expect(response.events).toHaveLength(1000);
+      // Oldest retained event: 1001 - 1000 + 1 = 2
+      expect(response.events[0].ingestSeq).toBe(2);
       expect(response.events[response.events.length - 1].ingestSeq).toBe(1001);
     });
   });
