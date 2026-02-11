@@ -34,6 +34,8 @@ const EventsQuerySchema = z.object({
  * Create projection routes bound to a ProjectionService instance.
  * Called during server startup after views are registered.
  */
+const isDev = process.env.NODE_ENV !== 'production';
+
 export function createProjectionRoutes(projectionService: ProjectionService): Router {
   const router = Router();
 
@@ -54,7 +56,7 @@ export function createProjectionRoutes(projectionService: ProjectionService): Ro
     if (!view) {
       return res.status(404).json({
         error: `Projection view "${viewId}" not found`,
-        availableViews: projectionService.viewIds,
+        ...(isDev ? { availableViews: projectionService.viewIds } : {}),
       });
     }
 
@@ -98,7 +100,7 @@ export function createProjectionRoutes(projectionService: ProjectionService): Ro
     if (!view) {
       return res.status(404).json({
         error: `Projection view "${viewId}" not found`,
-        availableViews: projectionService.viewIds,
+        ...(isDev ? { availableViews: projectionService.viewIds } : {}),
       });
     }
 

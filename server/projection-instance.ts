@@ -21,24 +21,11 @@ import { eventConsumer } from './event-consumer';
 export { projectionService };
 
 // ============================================================================
-// View Registration
-// ============================================================================
-
-// Guard for idempotent registration — prevents "already registered" throw
-// when test runners (vi.resetModules) or HMR re-import this module while
-// projectionService still holds the previous registration.
-// Also avoids constructing a new IntentProjectionView that would be
-// immediately discarded (wasteful and risks future state divergence).
-if (!projectionService.getView(INTENT_VIEW_ID)) {
-  projectionService.registerView(new IntentProjectionView());
-}
-
-// ============================================================================
 // EventConsumer → ProjectionService wiring
 // ============================================================================
 
-/** Guard flag to prevent duplicate listener registration under Vite HMR. */
-let listenerRegistered = false;
+/** Guard flag to prevent duplicate view registration and listener wiring under Vite HMR. */
+let initialized = false;
 
 /**
  * Route intent events from EventConsumer into the projection pipeline.
@@ -70,13 +57,23 @@ function handleIntentEvent(event: {
 }
 
 /**
- * Register the EventConsumer → ProjectionService listener.
+ * Register the IntentProjectionView and wire the EventConsumer listener.
  * Safe to call multiple times (idempotent via guard flag).
  * Call once during server startup after EventConsumer is ready.
+ *
+ * View registration is intentionally deferred to this function (rather than
+ * running at module-import time) so that test files importing this module
+ * do not silently mutate projectionService state as a side effect.
  */
 export function initProjectionListeners(): void {
-  if (listenerRegistered) return;
-  listenerRegistered = true;
+  if (initialized) return;
+  initialized = true;
+
+  // Register view (idempotent guard in case another code path already registered)
+  if (!projectionService.getView(INTENT_VIEW_ID)) {
+    projectionService.registerView(new IntentProjectionView());
+  }
+
   eventConsumer.on('intent-event', handleIntentEvent);
 }
 
@@ -88,7 +85,7 @@ export function initProjectionListeners(): void {
  */
 export function teardownProjectionListeners(): void {
   eventConsumer.removeListener('intent-event', handleIntentEvent);
-  listenerRegistered = false;
+  initialized = false;
 }
 
 /**

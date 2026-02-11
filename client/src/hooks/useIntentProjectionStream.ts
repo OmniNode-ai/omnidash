@@ -125,7 +125,10 @@ export function useIntentProjectionStream<T>(
         return;
       }
 
-      // Only apply if cursor advanced (or first fetch)
+      // Apply if cursor advanced OR equal (>= not >). The equality case handles
+      // the initial fetch where both local and server cursors are 0 (empty view).
+      // WS invalidation already gates on strict > (line ~161), so duplicate
+      // re-application of an identical cursor only occurs on the first mount fetch.
       if (data.cursor >= cursorRef.current) {
         cursorRef.current = data.cursor;
         setCursor(data.cursor);
