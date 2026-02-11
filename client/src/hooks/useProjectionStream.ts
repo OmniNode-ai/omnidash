@@ -51,7 +51,7 @@ interface UseProjectionStreamReturn<T> {
 }
 
 async function fetchSnapshot<T>(viewId: string): Promise<ProjectionResponse<T>> {
-  const response = await fetch(`/api/projections/${viewId}/snapshot`);
+  const response = await fetch(`/api/projections/${encodeURIComponent(viewId)}/snapshot`);
   if (!response.ok) {
     throw new Error(`Snapshot fetch failed: ${response.status} ${response.statusText}`);
   }
