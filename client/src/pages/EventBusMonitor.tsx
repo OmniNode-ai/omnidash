@@ -912,7 +912,9 @@ export default function EventBusMonitor() {
             <span className="font-semibold">{activeBurstInfo.shortWindowRate} evt/s</span> vs{' '}
             {formatDuration(activeMonitoringWindowMs)} baseline{' '}
             <span className="font-semibold">{activeBurstInfo.baselineRate} evt/s</span>{' '}
-            <span className="text-blue-300/70">({activeBurstInfo.multiplier}x)</span>
+            <span className="text-blue-300/70">
+              ({activeBurstInfo.multiplier != null ? `${activeBurstInfo.multiplier}x` : 'new'})
+            </span>
           </span>
         </div>
       ) : null}
