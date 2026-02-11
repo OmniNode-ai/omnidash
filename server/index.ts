@@ -88,26 +88,22 @@ app.use((req, res, next) => {
     log(`Running in standalone mode (no runtime supervision)`);
   }
 
-  const server = await registerRoutes(app);
-
   // --------------------------------------------------------------------------
   // Projection Service (OMN-2097)
-  // Must be created and listeners registered BEFORE EventConsumer starts
-  // to avoid missing events emitted between start() and registration.
+  // Must be created and injected BEFORE routes are registered so that
+  // projection REST endpoints never see a null service (no 503 window).
+  // Listeners registered BEFORE EventConsumer starts to avoid missing events.
   // --------------------------------------------------------------------------
   const projectionService = new ProjectionService();
   const nodeRegistryView = new NodeRegistryProjection();
   projectionService.registerView(nodeRegistryView);
   setProjectionService(projectionService);
 
+  const server = await registerRoutes(app);
+
   // Bridge EventConsumer node events → ProjectionService
   // MUST be registered BEFORE eventConsumer.start() to avoid missing events
   // Listeners stored for cleanup during graceful shutdown
-  //
-  // NOTE on startup ordering: setProjectionService() above injects the service
-  // into projection-routes.ts. Routes are registered in registerRoutes() (line 91)
-  // which runs BEFORE this point, so there is a brief window where routes exist
-  // but the service is null — the routes return 503 during this window.
 
   /** Safely parse createdAt into epoch-ms, returning undefined if invalid to let ProjectionService use its own extraction. */
   function extractBridgeTimestamp(event: Record<string, unknown>): number | undefined {

@@ -196,7 +196,7 @@ describe('server/index bootstrap', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('calls registerRoutes before setProjectionService (startup ordering invariant)', async () => {
+  it('calls setProjectionService before registerRoutes (no 503 window on startup)', async () => {
     process.env.NODE_ENV = 'development';
 
     const callOrder: string[] = [];
@@ -214,6 +214,6 @@ describe('server/index bootstrap', () => {
     const projIdx = callOrder.indexOf('setProjectionService');
     expect(routesIdx).toBeGreaterThanOrEqual(0);
     expect(projIdx).toBeGreaterThanOrEqual(0);
-    expect(routesIdx).toBeLessThan(projIdx);
+    expect(projIdx).toBeLessThan(routesIdx);
   });
 });

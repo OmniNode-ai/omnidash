@@ -34,23 +34,17 @@ export function setProjectionService(service: ProjectionService): void {
 /**
  * Reset the singleton for integration tests. Throws in non-test environments.
  *
- * Guard checks NODE_ENV, VITEST, JEST_WORKER_ID, and CI to cover common test
- * runners and CI pipelines. If your runner sets a different variable, extend
- * the guard below.
- *
- * Note: vitest sets VITEST automatically; jest sets JEST_WORKER_ID; most CI
- * providers set CI=true. NODE_ENV=test is the universal fallback.
+ * Guard checks NODE_ENV, VITEST, and JEST_WORKER_ID to cover common test
+ * runners. CI is intentionally excluded — production CI/CD pipelines (GitHub
+ * Actions, Jenkins) set CI=true during deployments, not just during tests.
  */
 export function resetProjectionServiceForTest(): void {
   const isTestEnv =
-    process.env.NODE_ENV === 'test' ||
-    !!process.env.VITEST ||
-    !!process.env.JEST_WORKER_ID ||
-    !!process.env.CI;
+    process.env.NODE_ENV === 'test' || !!process.env.VITEST || !!process.env.JEST_WORKER_ID;
   if (!isTestEnv) {
     throw new Error(
       'resetProjectionServiceForTest() is only available in test environments. ' +
-        'Set NODE_ENV=test, VITEST=true, JEST_WORKER_ID, or CI=true to enable.'
+        'Set NODE_ENV=test, VITEST=true, or JEST_WORKER_ID to enable.'
     );
   }
   projectionService = null;

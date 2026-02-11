@@ -26,7 +26,7 @@ import {
   type NodeRegistryPayload,
 } from '@/lib/data-sources/node-registry-projection-source';
 import type { DashboardData } from '@/lib/dashboard-schema';
-import { SUFFIX_NODE_INTROSPECTION, resolveTopicName } from '@shared/topics';
+import { SUFFIX_NODE_INTROSPECTION } from '@shared/topics';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Wifi, WifiOff, Info } from 'lucide-react';
@@ -44,16 +44,18 @@ export default function NodeRegistry() {
   // flickering when TanStack Query refetches return new object references.
   const stableMockRef = useRef<DashboardData | null>(null);
 
-  // Transform projection payload → DashboardData, or fall back to stable mock
-  const dashboardData: DashboardData = useMemo(() => {
-    if (hasProjectionData) {
-      return transformNodeRegistryPayload(data);
-    }
+  // Transform real projection payload → DashboardData (only runs when data changes)
+  const projectionDashboardData: DashboardData | null = useMemo(() => {
+    if (!data || data.nodes.length === 0) return null;
+    return transformNodeRegistryPayload(data);
+  }, [data]);
+
+  // Final dashboard data: use projection data if available, else stable mock
+  const dashboardData: DashboardData = (() => {
+    if (projectionDashboardData) return projectionDashboardData;
 
     // Reuse previously generated mock data to avoid regenerating on every poll cycle
-    if (stableMockRef.current) {
-      return stableMockRef.current;
-    }
+    if (stableMockRef.current) return stableMockRef.current;
 
     const mockData = generateNodeRegistryMockData();
     const mockDashboard: DashboardData = {
@@ -90,9 +92,7 @@ export default function NodeRegistry() {
     };
     stableMockRef.current = mockDashboard;
     return mockDashboard;
-    // hasProjectionData is derived from data, so only data is needed here
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  })();
 
   const connectionStatus = isLoading ? 'connecting' : isConnected ? 'connected' : 'disconnected';
 
@@ -184,9 +184,7 @@ export default function NodeRegistry() {
               </div>
               <div>
                 <span className="font-medium">Kafka Topics:</span>
-                <div className="text-muted-foreground mt-1">
-                  {resolveTopicName(SUFFIX_NODE_INTROSPECTION)}
-                </div>
+                <div className="text-muted-foreground mt-1">{SUFFIX_NODE_INTROSPECTION}</div>
               </div>
             </div>
           </div>
