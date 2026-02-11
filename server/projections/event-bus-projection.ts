@@ -29,10 +29,52 @@ import type {
   ProjectionResponse,
   ProjectionEventsResponse,
 } from '@shared/projection-types';
-import { TIME_SERIES_BUCKET_MS, type EventBusPayload } from '@shared/event-bus-payload';
+import {
+  TIME_SERIES_BUCKET_MS,
+  type EventBusPayload,
+  type BurstInfo,
+} from '@shared/event-bus-payload';
+import { computeRate, computeErrorRate, countEventsInWindow } from '../lib/windowing-helpers';
 
-export type { EventBusPayload };
+export type { EventBusPayload, BurstInfo };
 export { TIME_SERIES_BUCKET_MS };
+
+// ============================================================================
+// Burst Detection Config (OMN-2158)
+// ============================================================================
+
+export interface EventBusProjectionConfig {
+  /** Unified monitoring window for baseline computation (default 5 min) */
+  monitoringWindowMs?: number;
+  /** Staleness threshold — independent from monitoring window (default 10 min) */
+  stalenessThresholdMs?: number;
+  /** Short window for burst detection (default 30s) */
+  burstWindowMs?: number;
+  /** Short-window rate must be >= this multiplier of baseline (default 3x) */
+  burstThroughputMultiplier?: number;
+  /** Min absolute events/sec to trigger throughput burst (default 5) */
+  burstThroughputMinRate?: number;
+  /** Short-window error rate must be >= this multiplier of baseline (default 2x) */
+  burstErrorMultiplier?: number;
+  /** Absolute error rate threshold — spike if exceeded (default 0.05 = 5%) */
+  burstErrorAbsoluteThreshold?: number;
+  /** Min events in short window to compute error rate (default 10) */
+  burstErrorMinEvents?: number;
+  /** Cooldown after burst detection to prevent flapping (default 15s) */
+  burstCooldownMs?: number;
+}
+
+const DEFAULT_CONFIG = {
+  monitoringWindowMs: 5 * 60 * 1000,
+  stalenessThresholdMs: 10 * 60 * 1000,
+  burstWindowMs: 30 * 1000,
+  burstThroughputMultiplier: 3,
+  burstThroughputMinRate: 5,
+  burstErrorMultiplier: 2,
+  burstErrorAbsoluteThreshold: 0.05,
+  burstErrorMinEvents: 10,
+  burstCooldownMs: 15 * 1000,
+} as const;
 
 // ============================================================================
 // Constants
@@ -64,6 +106,14 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
   private _cursor = 0;
   private _totalIngested = 0;
   private _errorCount = 0;
+
+  // ── Burst detection state (OMN-2158) ─────────────────────────────
+  private readonly config: Required<EventBusProjectionConfig>;
+  private _burstInfo: BurstInfo | null = null;
+
+  constructor(config?: EventBusProjectionConfig) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+  }
 
   // --------------------------------------------------------------------------
   // ProjectionView interface
@@ -104,10 +154,27 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     }
     timeSeries.sort((a, b) => a.bucketKey - b.bucketKey);
 
+    // ── Burst detection (OMN-2158) ──────────────────────────────────
+    const now = Date.now();
+    const timeExtractor = (e: ProjectionEvent) => e.eventTimeMs;
+    const isError = (e: ProjectionEvent) => e.severity === 'error' || e.severity === 'critical';
+
+    // Windowed error rate (fixes latent whole-buffer bug)
+    const windowedErrorRate = computeErrorRate(
+      this.events,
+      this.config.monitoringWindowMs,
+      timeExtractor,
+      isError,
+      now
+    );
+
+    // Burst detection with cooldown
+    this._burstInfo = this.detectBurst(now, timeExtractor, isError);
+
     return {
       viewId: this.viewId,
       cursor: this._cursor,
-      snapshotTimeMs: Date.now(),
+      snapshotTimeMs: now,
       payload: {
         events: this.events.slice(0, limit),
         topicBreakdown,
@@ -117,6 +184,12 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
         errorCount: this._errorCount,
         activeTopics: this.topicCounts.size,
         totalEventsIngested: this._totalIngested,
+        // Burst detection (OMN-2158)
+        monitoringWindowMs: this.config.monitoringWindowMs,
+        stalenessThresholdMs: this.config.stalenessThresholdMs,
+        burstWindowMs: this.config.burstWindowMs,
+        windowedErrorRate,
+        burstInfo: this._burstInfo,
       },
     };
   }
@@ -215,7 +288,7 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     return true;
   }
 
-  /** Clear all state — buffer, counters, time series, and rolling window. */
+  /** Clear all state — buffer, counters, time series, rolling window, and burst state. */
   reset(): void {
     this.events = [];
     this.topicCounts.clear();
@@ -225,6 +298,7 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     this._cursor = 0;
     this._totalIngested = 0;
     this._errorCount = 0;
+    this._burstInfo = null;
   }
 
   // --------------------------------------------------------------------------
@@ -356,6 +430,122 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     if (low > 0) {
       this.rollingWindow = this.rollingWindow.slice(low);
     }
+  }
+
+  // --------------------------------------------------------------------------
+  // Burst Detection (OMN-2158)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Detect throughput bursts and error spikes with cooldown.
+   *
+   * Priority: error spike > throughput burst (staleness is handled client-side).
+   *
+   * Cooldown behavior: once a burst is detected, the burstInfo persists until
+   * cooldownUntil expires — even if the instantaneous rate drops back to normal.
+   * This prevents the banner from flapping on/off within seconds.
+   */
+  private detectBurst(
+    now: number,
+    timeExtractor: (e: ProjectionEvent) => number,
+    isError: (e: ProjectionEvent) => boolean
+  ): BurstInfo | null {
+    // If we're in cooldown from a previous burst, keep showing it
+    if (this._burstInfo && now < this._burstInfo.cooldownUntil) {
+      return this._burstInfo;
+    }
+
+    // Check error spike first (higher priority than throughput burst)
+    const errorSpike = this.detectErrorSpike(now, timeExtractor, isError);
+    if (errorSpike) return errorSpike;
+
+    // Check throughput burst
+    const throughputBurst = this.detectThroughputBurst(now, timeExtractor);
+    if (throughputBurst) return throughputBurst;
+
+    // No burst detected — clear any expired burst info
+    return null;
+  }
+
+  private detectThroughputBurst(
+    now: number,
+    timeExtractor: (e: ProjectionEvent) => number
+  ): BurstInfo | null {
+    const cfg = this.config;
+
+    const shortRate = computeRate(this.events, cfg.burstWindowMs, timeExtractor, now);
+    const baselineRate = computeRate(this.events, cfg.monitoringWindowMs, timeExtractor, now);
+
+    // Guard: short-window rate must meet minimum absolute threshold
+    if (shortRate < cfg.burstThroughputMinRate) return null;
+
+    // Guard: baseline must be > 0 to compute meaningful multiplier
+    if (baselineRate <= 0) return null;
+
+    const multiplier = shortRate / baselineRate;
+    if (multiplier < cfg.burstThroughputMultiplier) return null;
+
+    return {
+      type: 'throughput',
+      shortWindowRate: Math.round(shortRate * 10) / 10,
+      baselineRate: Math.round(baselineRate * 10) / 10,
+      multiplier: Math.round(multiplier * 10) / 10,
+      detectedAt: now,
+      cooldownUntil: now + cfg.burstCooldownMs,
+    };
+  }
+
+  private detectErrorSpike(
+    now: number,
+    timeExtractor: (e: ProjectionEvent) => number,
+    isError: (e: ProjectionEvent) => boolean
+  ): BurstInfo | null {
+    const cfg = this.config;
+
+    // Sample size gate: need enough events in the short window
+    const shortWindowCount = countEventsInWindow(
+      this.events,
+      cfg.burstWindowMs,
+      timeExtractor,
+      now
+    );
+    if (shortWindowCount < cfg.burstErrorMinEvents) return null;
+
+    const shortErrorRate = computeErrorRate(
+      this.events,
+      cfg.burstWindowMs,
+      timeExtractor,
+      isError,
+      now
+    );
+    const baselineErrorRate = computeErrorRate(
+      this.events,
+      cfg.monitoringWindowMs,
+      timeExtractor,
+      isError,
+      now
+    );
+
+    // Two trigger conditions (OR):
+    // 1. Short-window error rate >= multiplier of baseline
+    // 2. Short-window error rate >= absolute threshold
+    const exceedsMultiplier =
+      baselineErrorRate > 0 && shortErrorRate / baselineErrorRate >= cfg.burstErrorMultiplier;
+    const exceedsAbsolute = shortErrorRate >= cfg.burstErrorAbsoluteThreshold;
+
+    if (!exceedsMultiplier && !exceedsAbsolute) return null;
+
+    const multiplier =
+      baselineErrorRate > 0 ? shortErrorRate / baselineErrorRate : shortErrorRate / 0.001;
+
+    return {
+      type: 'error_spike',
+      shortWindowRate: Math.round(shortErrorRate * 1000) / 1000,
+      baselineRate: Math.round(baselineErrorRate * 1000) / 1000,
+      multiplier: Math.round(multiplier * 10) / 10,
+      detectedAt: now,
+      cooldownUntil: now + cfg.burstCooldownMs,
+    };
   }
 
   // --------------------------------------------------------------------------

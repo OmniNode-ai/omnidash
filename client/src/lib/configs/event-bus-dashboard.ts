@@ -223,6 +223,17 @@ export const eventBusDashboardConfig: DashboardConfig = {
       throughput_window_ms: 60 * 1000, // 1 minute
       max_breakdown_items: 50,
       periodic_cleanup_interval_ms: 10 * 1000, // 10 seconds - for responsive UX
+
+      // Burst detection (OMN-2158)
+      monitoring_window_ms: 5 * 60 * 1000, // 5 min — unified baseline for all windowed metrics
+      staleness_threshold_ms: 10 * 60 * 1000, // 10 min — independent from monitoring window
+      burst_window_ms: 30 * 1000, // 30s short window
+      burst_throughput_multiplier: 3, // 3x baseline
+      burst_throughput_min_rate: 5, // min 5 events/sec absolute
+      burst_error_multiplier: 2, // 2x baseline
+      burst_error_absolute_threshold: 0.05, // 5%
+      burst_error_min_events: 10, // min 10 events for error rate
+      burst_cooldown_ms: 15 * 1000, // 15s cooldown
     },
   },
 
@@ -237,7 +248,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
     {
       widget_id: 'metric-topics-loaded',
       title: 'Topics Active',
-      description: 'Topics that emitted events in the last 5 min',
+      description: 'Topics that emitted events in the monitoring window',
       row: 0,
       col: 0,
       width: 4,
@@ -271,7 +282,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
     {
       widget_id: 'metric-error-rate',
       title: 'Error Rate',
-      description: 'Failed events in the last 5 min',
+      description: 'Error rate within the monitoring window',
       row: 0,
       col: 8,
       width: 4,
@@ -582,6 +593,16 @@ export function getEventMonitoringConfig() {
     throughput_window_ms: config?.throughput_window_ms ?? 60 * 1000,
     max_breakdown_items: config?.max_breakdown_items ?? 50,
     periodic_cleanup_interval_ms: config?.periodic_cleanup_interval_ms ?? 10 * 1000,
+    // Burst detection (OMN-2158)
+    monitoring_window_ms: config?.monitoring_window_ms ?? 5 * 60 * 1000,
+    staleness_threshold_ms: config?.staleness_threshold_ms ?? 10 * 60 * 1000,
+    burst_window_ms: config?.burst_window_ms ?? 30 * 1000,
+    burst_throughput_multiplier: config?.burst_throughput_multiplier ?? 3,
+    burst_throughput_min_rate: config?.burst_throughput_min_rate ?? 5,
+    burst_error_multiplier: config?.burst_error_multiplier ?? 2,
+    burst_error_absolute_threshold: config?.burst_error_absolute_threshold ?? 0.05,
+    burst_error_min_events: config?.burst_error_min_events ?? 10,
+    burst_cooldown_ms: config?.burst_cooldown_ms ?? 15 * 1000,
   };
 }
 
