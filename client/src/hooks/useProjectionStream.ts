@@ -102,6 +102,13 @@ export function useProjectionStream<T>(
   // WebSocket connection with explicit subscription to 'projections' topic.
   // The server uses a subscription model — clients must subscribe to receive
   // messages for a given topic. onOpen fires after each (re)connection.
+  //
+  // Note: The subscription topic is always ['projections'] regardless of viewId.
+  // PROJECTION_INVALIDATE messages include a viewId field that handleProjectionMessage
+  // filters on, so a single subscription covers all views. If viewId or limit changes
+  // after the WebSocket connects, onOpen won't re-fire, but this is safe because the
+  // subscription topic is static. Only handleProjectionMessage (updated via ref) needs
+  // the current viewId, and useWebSocket reads callbacks from refs.
   const { isConnected, subscribe } = useWebSocket({
     onOpen: () => {
       subscribe(['projections']);

@@ -12,7 +12,7 @@ import { Router, type Request, type Response } from 'express';
 import type { ProjectionService } from './projection-service';
 import { MAX_BUFFER_SIZE } from './projections/event-bus-projection';
 
-/** Sanitize viewId for inclusion in error messages (defense-in-depth). */
+/** Sanitize viewId: truncate + strip non-alphanumeric (defense-in-depth for Map lookup and log output). */
 function sanitizeViewId(raw: string): string {
   // Truncate and strip anything outside [a-zA-Z0-9_-]
   return raw.slice(0, 64).replace(/[^a-zA-Z0-9_-]/g, '');
@@ -37,11 +37,12 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
         ? Math.min(rawLimit, MAX_BUFFER_SIZE)
         : undefined;
 
-    const view = projectionService.getView(viewId);
+    const safeViewId = sanitizeViewId(viewId);
+    const view = projectionService.getView(safeViewId);
     if (!view) {
       return res.status(404).json({
         error: 'not_found',
-        message: `Projection view "${sanitizeViewId(viewId)}" not found`,
+        message: `Projection view "${safeViewId}" not found`,
         availableViews: projectionService.viewIds,
       });
     }
@@ -50,10 +51,7 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
       const snapshot = view.getSnapshot(limit !== undefined ? { limit } : undefined);
       return res.json(snapshot);
     } catch (err) {
-      console.error(
-        `[projection-routes] Error getting snapshot for "${sanitizeViewId(viewId)}":`,
-        err
-      );
+      console.error(`[projection-routes] Error getting snapshot for "${safeViewId}":`, err);
       return res.status(500).json({
         error: 'internal_error',
         message: 'An internal error occurred while processing the projection request',
@@ -87,11 +85,12 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
       });
     }
 
-    const view = projectionService.getView(viewId);
+    const safeViewId = sanitizeViewId(viewId);
+    const view = projectionService.getView(safeViewId);
     if (!view) {
       return res.status(404).json({
         error: 'not_found',
-        message: `Projection view "${sanitizeViewId(viewId)}" not found`,
+        message: `Projection view "${safeViewId}" not found`,
         availableViews: projectionService.viewIds,
       });
     }
@@ -100,10 +99,7 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
       const response = view.getEventsSince(sinceCursor, limit);
       return res.json(response);
     } catch (err) {
-      console.error(
-        `[projection-routes] Error getting events for "${sanitizeViewId(viewId)}":`,
-        err
-      );
+      console.error(`[projection-routes] Error getting events for "${safeViewId}":`, err);
       return res.status(500).json({
         error: 'internal_error',
         message: 'An internal error occurred while processing the projection request',

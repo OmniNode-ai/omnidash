@@ -1,30 +1,16 @@
 /**
  * Shared types for useProjectionStream hook (OMN-2095)
  *
- * ProjectionResponse<T> lives in @shared/projection-types (single source of
- * truth for both server and client). Projection-specific client types remain here.
+ * All canonical types live in @shared/projection-types (single source of
+ * truth for both server and client). Re-exported here for convenience.
  */
 
-export type { ProjectionResponse } from '@shared/projection-types';
+export type { ProjectionResponse, ProjectionEvent } from '@shared/projection-types';
 
 /** Response envelope for events-since queries */
 export interface ProjectionEventsResponse {
   viewId: string;
   cursor: number;
   snapshotTimeMs: number;
-  events: ProjectionEvent[];
-}
-
-/** Client-side mirror of the server ProjectionEvent */
-export interface ProjectionEvent {
-  id: string;
-  eventTimeMs: number;
-  ingestSeq: number;
-  topic: string;
-  type: string;
-  source: string;
-  severity: 'info' | 'warning' | 'error' | 'critical';
-  payload: Record<string, unknown>;
-  eventTimeMissing?: boolean;
-  error?: { message: string; stack?: string };
+  events: import('@shared/projection-types').ProjectionEvent[];
 }

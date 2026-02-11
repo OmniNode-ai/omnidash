@@ -6,25 +6,16 @@
  * (event-bus-projection-source fetcher).
  */
 
+import type { ProjectionEvent } from './projection-types';
+
 /** Time-series bucket width used by both server and client for chart alignment */
 export const TIME_SERIES_BUCKET_MS = 15_000; // 15 seconds
 
 /**
  * Event shape within the projection snapshot.
- * Mirrors ProjectionEvent but defined here to avoid importing server modules.
+ * Alias of ProjectionEvent from shared/projection-types (single source of truth).
  */
-export interface EventBusSnapshotEvent {
-  id: string;
-  eventTimeMs: number;
-  ingestSeq: number;
-  topic: string;
-  type: string;
-  source: string;
-  severity: 'info' | 'warning' | 'error' | 'critical';
-  payload: Record<string, unknown>;
-  eventTimeMissing?: boolean;
-  error?: { message: string; stack?: string };
-}
+export type EventBusSnapshotEvent = ProjectionEvent;
 
 /**
  * Snapshot payload returned by the event-bus projection.

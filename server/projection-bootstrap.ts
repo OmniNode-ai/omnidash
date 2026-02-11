@@ -32,9 +32,20 @@ export const projectionService = new ProjectionService();
 export const eventBusProjection = new EventBusProjection();
 
 // Register views (runs at import time — module-level side effect).
+//
 // Idempotent guard: if the module is re-evaluated (e.g. test runner
 // resetModules with the same singleton in scope), skip re-registration
 // instead of throwing "already registered".
+//
+// Module-caching dependency: This pattern relies on Node.js evaluating the
+// module once and caching the result. All importers (routes.ts, websocket.ts,
+// index.ts) receive the same `projectionService` and `eventBusProjection`
+// instances. If module caching breaks (symlink aliasing, path mismatches, or
+// test runners with `resetModules`), separate instances could be created.
+// The idempotent guard above prevents duplicate registration errors but does
+// NOT prevent the scenario where a second `projectionService` instance exists
+// with no views. Importers should always use the exports from this module
+// rather than constructing their own instances.
 if (!projectionService.getView(eventBusProjection.viewId)) {
   projectionService.registerView(eventBusProjection);
 }
