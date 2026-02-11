@@ -37,7 +37,12 @@ vi.mock('../projections/node-registry-projection', () => ({
 }));
 
 vi.mock('../projection-routes', () => ({
-  createProjectionRouter: vi.fn(),
+  createProjectionRoutes: vi.fn(),
+}));
+
+vi.mock('../projection-instance', () => ({
+  initProjectionListeners: vi.fn(),
+  teardownProjectionListeners: vi.fn(),
 }));
 
 const eventConsumerOnMock = vi.fn().mockReturnThis();

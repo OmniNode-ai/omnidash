@@ -12,7 +12,7 @@ import patternsRoutes from './patterns-routes';
 import validationRoutes from './validation-routes';
 import extractionRoutes from './extraction-routes';
 import effectivenessRoutes from './effectiveness-routes';
-import { createProjectionRouter } from './projection-routes';
+import { createProjectionRoutes } from './projection-routes';
 import { projectionService } from './projection-bootstrap';
 import insightsRoutes from './insights-routes';
 
@@ -59,8 +59,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mount effectiveness routes for injection effectiveness dashboard (OMN-1891)
   app.use('/api/effectiveness', effectivenessRoutes);
 
-  // Mount projection routes for server-side materialized views (OMN-2095 / OMN-2097)
-  app.use('/api/projections', createProjectionRouter(projectionService));
+  // Mount projection routes for server-side materialized views (OMN-2095 / OMN-2096 / OMN-2097)
+  app.use('/api/projections', createProjectionRoutes(projectionService));
 
   // Mount insights routes for learned insights dashboard (OMN-1407)
   app.use('/api/insights', insightsRoutes);

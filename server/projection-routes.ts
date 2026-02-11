@@ -1,25 +1,49 @@
 /**
- * Projection Routes — REST API for Projection Snapshots (OMN-2095 / OMN-2097 / OMN-2098)
+ * Projection Routes — REST API for Projection Snapshots (OMN-2095 / OMN-2096 / OMN-2097)
  *
- * Standardized envelope responses for all projection views.
+ * REST endpoints for querying projection view snapshots.
+ * Each registered ProjectionView gets a standardized snapshot endpoint.
  *
  * Endpoints:
  *   GET /api/projections                              — list registered views
- *   GET /api/projections/:viewId/snapshot?limit=200
- *   GET /api/projections/:viewId/events?since_cursor=X&limit=50
+ *   GET /api/projections/:viewId/snapshot?limit=N     → ProjectionResponse<T>
+ *   GET /api/projections/:viewId/events?cursor=N&limit=50 → ProjectionEventsResponse
  */
 
-import { Router, type Request, type Response } from 'express';
+import { Router } from 'express';
+import { z } from 'zod';
 import type { ProjectionService } from './projection-service';
-import { MAX_BUFFER_SIZE } from './projections/event-bus-projection';
 
-/** Sanitize viewId: truncate + strip non-alphanumeric (defense-in-depth for Map lookup and log output). */
-function sanitizeViewId(raw: string): string {
-  // Truncate and strip anything outside [a-zA-Z0-9_-]
-  return raw.slice(0, 64).replace(/[^a-zA-Z0-9_-]/g, '');
-}
+/** Zod schema for viewId path parameter: alphanumeric, hyphens, underscores, max 64 chars. */
+const ViewIdSchema = z
+  .string()
+  .max(64)
+  .regex(/^[a-zA-Z0-9_-]+$/);
 
-export function createProjectionRouter(projectionService: ProjectionService): Router {
+/** Zod schema for `GET .../snapshot` query params. Defaults limit to 100, max 500. */
+const SnapshotQuerySchema = z.object({
+  limit: z.coerce.number().finite().int().min(1).max(500).optional().default(100),
+});
+
+/** Zod schema for `GET .../events` query params. Cursor defaults to 0, limit to 50. */
+const EventsQuerySchema = z.object({
+  // .min(0) rejects negative cursors at the validation layer (Zod returns a
+  // 400 error before the value reaches getEventsSince), so no additional
+  // Math.max(cursor, 0) clamp is needed downstream.
+  cursor: z.coerce.number().finite().int().min(0).optional().default(0),
+  limit: z.coerce.number().finite().int().min(1).max(500).optional().default(50),
+});
+
+/**
+ * Create an Express router with projection snapshot and events endpoints.
+ * Mount at `/api/projections` during server startup after views are registered.
+ *
+ * @param projectionService - The service instance holding registered views
+ * @returns Express Router with `/:viewId/snapshot` and `/:viewId/events` routes
+ */
+const isDev = process.env.NODE_ENV !== 'production';
+
+export function createProjectionRoutes(projectionService: ProjectionService): Router {
   const router = Router();
 
   /**
@@ -27,40 +51,47 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
    *
    * Discovery endpoint: returns the list of registered projection view IDs.
    */
-  router.get('/', (_req: Request, res: Response) => {
+  router.get('/', (_req, res) => {
     return res.json({ views: projectionService.viewIds });
   });
 
   /**
-   * GET /api/projections/:viewId/snapshot
+   * GET /api/projections/:viewId/snapshot?limit=N
    *
-   * Returns the current materialized snapshot for the specified view.
-   *
-   * Query params:
-   *   limit  - Max events in the snapshot (default: view-specific)
+   * Returns the current snapshot for a registered projection view.
+   * ?limit defaults to 100, server clamps to [1, 500].
    */
-  router.get('/:viewId/snapshot', (req: Request, res: Response) => {
-    const { viewId } = req.params;
-    const rawLimit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
-    const limit =
-      rawLimit !== undefined && !isNaN(rawLimit) && rawLimit > 0
-        ? Math.min(rawLimit, MAX_BUFFER_SIZE)
-        : undefined;
+  router.get('/:viewId/snapshot', (req, res) => {
+    const viewIdResult = ViewIdSchema.safeParse(req.params.viewId);
+    if (!viewIdResult.success) {
+      return res.status(400).json({ error: 'Invalid viewId parameter' });
+    }
+    const viewId = viewIdResult.data;
 
-    const safeViewId = sanitizeViewId(viewId);
-    const view = projectionService.getView(safeViewId);
+    const view = projectionService.getView(viewId);
     if (!view) {
       return res.status(404).json({
-        error: 'not_found',
-        message: `Projection view "${safeViewId}" not found`,
+        error: `Projection view "${viewId}" not found`,
+        ...(isDev ? { availableViews: projectionService.viewIds } : {}),
+      });
+    }
+
+    const queryResult = SnapshotQuerySchema.safeParse(req.query);
+    if (!queryResult.success) {
+      return res.status(400).json({
+        error: 'Invalid query parameters',
+        message: queryResult.error.errors
+          .map((e) => `${e.path.join('.')}: ${e.message}`)
+          .join('; '),
       });
     }
 
     try {
-      const snapshot = view.getSnapshot(limit !== undefined ? { limit } : undefined);
+      const { limit } = queryResult.data;
+      const snapshot = view.getSnapshot({ limit });
       return res.json(snapshot);
     } catch (err) {
-      console.error(`[projection-routes] Error getting snapshot for "${safeViewId}":`, err);
+      console.error(`[projection-routes] Error getting snapshot for "${viewId}":`, err);
       return res.status(500).json({
         error: 'internal_error',
         message: 'An internal error occurred while processing the projection request',
@@ -69,45 +100,42 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
   });
 
   /**
-   * GET /api/projections/:viewId/events
+   * GET /api/projections/:viewId/events?cursor=N&limit=50
    *
-   * Returns events applied to the view since the given cursor.
-   * Used for incremental catch-up by clients.
-   *
-   * Query params:
-   *   since_cursor  - ingestSeq to start from (exclusive). Required.
-   *   limit         - Max events to return (default: 50)
+   * Returns events applied to a view since the given cursor.
+   * Used for incremental catch-up by WebSocket clients.
    */
-  router.get('/:viewId/events', (req: Request, res: Response) => {
-    const { viewId } = req.params;
-    const sinceCursor = parseInt(req.query.since_cursor as string, 10);
-    const rawLimit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
-    const limit: number =
-      rawLimit !== undefined && !isNaN(rawLimit) && rawLimit > 0
-        ? Math.min(Math.floor(rawLimit), MAX_BUFFER_SIZE)
-        : 50;
+  router.get('/:viewId/events', (req, res) => {
+    const viewIdResult = ViewIdSchema.safeParse(req.params.viewId);
+    if (!viewIdResult.success) {
+      return res.status(400).json({ error: 'Invalid viewId parameter' });
+    }
+    const viewId = viewIdResult.data;
 
-    if (isNaN(sinceCursor) || sinceCursor < 0) {
-      return res.status(400).json({
-        error: 'bad_request',
-        message: 'since_cursor query parameter is required and must be a non-negative number',
+    const view = projectionService.getView(viewId);
+    if (!view) {
+      return res.status(404).json({
+        error: `Projection view "${viewId}" not found`,
+        ...(isDev ? { availableViews: projectionService.viewIds } : {}),
       });
     }
 
-    const safeViewId = sanitizeViewId(viewId);
-    const view = projectionService.getView(safeViewId);
-    if (!view) {
-      return res.status(404).json({
-        error: 'not_found',
-        message: `Projection view "${safeViewId}" not found`,
+    const queryResult = EventsQuerySchema.safeParse(req.query);
+    if (!queryResult.success) {
+      return res.status(400).json({
+        error: 'Invalid query parameters',
+        message: queryResult.error.errors
+          .map((e) => `${e.path.join('.')}: ${e.message}`)
+          .join('; '),
       });
     }
 
     try {
-      const response = view.getEventsSince(sinceCursor, limit);
+      const { cursor, limit } = queryResult.data;
+      const response = view.getEventsSince(cursor, limit);
       return res.json(response);
     } catch (err) {
-      console.error(`[projection-routes] Error getting events for "${safeViewId}":`, err);
+      console.error(`[projection-routes] Error getting events for "${viewId}":`, err);
       return res.status(500).json({
         error: 'internal_error',
         message: 'An internal error occurred while processing the projection request',

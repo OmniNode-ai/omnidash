@@ -16,6 +16,7 @@ import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
 import { runtimeIdentity } from './runtime-identity';
+import { initProjectionListeners, teardownProjectionListeners } from './projection-instance';
 import { wireProjectionSources, projectionService } from './projection-bootstrap';
 import { NodeRegistryProjection } from './projections/node-registry-projection';
 
@@ -174,6 +175,11 @@ app.use((req, res, next) => {
     console.error('   Application will continue with limited functionality');
   }
 
+  // Wire EventConsumer intent-event → ProjectionService (idempotent guard).
+  // Safe to call regardless of Kafka availability; events will flow once
+  // EventConsumer connects.
+  initProjectionListeners();
+
   // Validate and start Event Bus Data Source
   try {
     const isEventBusAvailable = await eventBusDataSource.validateConnection();
@@ -306,6 +312,7 @@ app.use((req, res, next) => {
 
   process.on('SIGTERM', async () => {
     log('SIGTERM received, shutting down gracefully');
+    teardownProjectionListeners();
     cleanupProjectionBridge();
     cleanupProjectionSources?.();
     await eventConsumer.stop();
@@ -320,6 +327,7 @@ app.use((req, res, next) => {
 
   process.on('SIGINT', async () => {
     log('SIGINT received, shutting down gracefully');
+    teardownProjectionListeners();
     cleanupProjectionBridge();
     cleanupProjectionSources?.();
     await eventConsumer.stop();
