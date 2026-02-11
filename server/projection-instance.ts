@@ -41,7 +41,12 @@ eventConsumer.on(
     if (!payload || typeof payload !== 'object') return;
 
     projectionService.ingest({
-      id: (payload.id as string) ?? (payload.intent_id as string) ?? undefined,
+      id:
+        payload.id != null
+          ? String(payload.id)
+          : payload.intent_id != null
+            ? String(payload.intent_id)
+            : undefined,
       topic: event.topic,
       type: (payload.event_type as string) ?? event.topic,
       source: 'event-consumer',

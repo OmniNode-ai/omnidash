@@ -288,7 +288,7 @@ export default function IntentDashboard() {
   const avgConfidence = useMemo(() => {
     if (!snapshot?.recentIntents?.length) return 0;
     const confidences = snapshot.recentIntents
-      .map((e) => (e.payload.confidence as number) ?? 0)
+      .map((e) => Number(e.payload.confidence) || 0)
       .filter((c) => c > 0);
     if (confidences.length === 0) return 0;
     return confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
