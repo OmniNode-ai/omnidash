@@ -236,13 +236,12 @@ export function useProjectionStream<T>(
     }
   }, [fetchOnMount, fetchSnapshot, viewId]);
 
-  // Memoize so a new Error object isn't created on every render when wsError is set.
-  // Without this, downstream deps using error as a React dependency would re-render
-  // on every cycle due to changing reference identity.
-  const combinedError = useMemo(
-    () => error || (wsError ? new Error(wsError) : null),
-    [error, wsError]
-  );
+  // Memoize wsError → Error conversion separately so the Error object is only
+  // recreated when the wsError string itself changes, not when the fetch `error`
+  // toggles. This prevents an extra allocation when `error` clears while wsError
+  // persists.
+  const wsErrorObj = useMemo(() => (wsError ? new Error(wsError) : null), [wsError]);
+  const combinedError = error || wsErrorObj;
 
   return {
     snapshot,
