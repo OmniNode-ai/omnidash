@@ -1,9 +1,10 @@
 /**
- * Projection Routes — REST API for Projection Snapshots (OMN-2095 / OMN-2097)
+ * Projection Routes — REST API for Projection Snapshots (OMN-2095 / OMN-2097 / OMN-2098)
  *
  * Standardized envelope responses for all projection views.
  *
  * Endpoints:
+ *   GET /api/projections                              — list registered views
  *   GET /api/projections/:viewId/snapshot?limit=200
  *   GET /api/projections/:viewId/events?since_cursor=X&limit=50
  */
@@ -20,6 +21,15 @@ function sanitizeViewId(raw: string): string {
 
 export function createProjectionRouter(projectionService: ProjectionService): Router {
   const router = Router();
+
+  /**
+   * GET /api/projections
+   *
+   * Discovery endpoint: returns the list of registered projection view IDs.
+   */
+  router.get('/', (_req: Request, res: Response) => {
+    return res.json({ views: projectionService.viewIds });
+  });
 
   /**
    * GET /api/projections/:viewId/snapshot
