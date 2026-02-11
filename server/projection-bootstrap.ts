@@ -51,6 +51,18 @@ if (!projectionService.getView(eventBusProjection.viewId)) {
 }
 
 // ============================================================================
+// Module-scoped fallback sequence counter
+// ============================================================================
+
+// Intentionally module-scoped (not inside wireProjectionSources) so that the
+// counter persists across rewires within a single process lifetime. If it were
+// local to wireProjectionSources, each call (e.g. test teardown/setup,
+// hot-reload) would reset the counter to 0, allowing dedup keys from a
+// previous wiring to collide with those from the new wiring.
+let fallbackSeq = 0;
+const FALLBACK_SEQ_MAX = Number.MAX_SAFE_INTEGER;
+
+// ============================================================================
 // Event source wiring
 // ============================================================================
 
@@ -69,22 +81,33 @@ export type ProjectionSourceCleanup = () => void;
  *          Call on shutdown or before re-wiring to prevent listener leaks.
  */
 export function wireProjectionSources(): ProjectionSourceCleanup {
+  // Guard: if module caching broke (symlink aliasing, path mismatches, or
+  // bundler re-evaluation), a second ProjectionService instance may exist
+  // with zero views. Surface the problem immediately instead of silently
+  // routing events into the void.
+  if (projectionService.viewCount === 0) {
+    console.warn(
+      '[projection] WARNING: projectionService has no registered views — possible module caching issue'
+    );
+  }
+
   // Ring-buffer deduplication: O(1) per add, no periodic pruning spikes.
   // Tracks event IDs from EventBusDataSource so EventConsumer doesn't double-count.
   // Trade-off: if an ID is evicted from the ring before EventConsumer delivers
   // the same event, a rare double-count can occur. At DEDUP_CAPACITY=5000 and
   // typical inter-source latency <1s, this is negligible.
   const DEDUP_CAPACITY = 5000;
-  // Pre-fill with '' to keep V8 packed-elements representation (faster property
+  // Pre-fill with null to keep V8 packed-elements representation (faster property
   // access than a holey array created by `new Array(n)` with sparse slots).
-  const dedupRing: string[] = new Array<string>(DEDUP_CAPACITY).fill('');
+  // null (not '') so that a real empty-string event ID is evictable.
+  const dedupRing: (string | null)[] = new Array<string | null>(DEDUP_CAPACITY).fill(null);
   const dedupSet = new Set<string>();
   let dedupIdx = 0;
 
   function trackEventId(id: string): void {
-    // Evict oldest entry if ring is full ('' is falsy, so initial slots are skipped)
+    // Evict oldest entry if ring is full (null sentinel marks unused slots)
     const evicted = dedupRing[dedupIdx];
-    if (evicted) dedupSet.delete(evicted);
+    if (evicted !== null) dedupSet.delete(evicted);
     dedupRing[dedupIdx] = id;
     dedupSet.add(id);
     dedupIdx = (dedupIdx + 1) % DEDUP_CAPACITY;
@@ -102,8 +125,7 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
   // When timestamp is missing (sentinel 0/''), a monotonic counter is appended
   // to prevent collisions between events that share the same topic+type.
   // Wraps at MAX_SAFE_INTEGER to prevent loss of integer precision.
-  let fallbackSeq = 0;
-  const FALLBACK_SEQ_MAX = Number.MAX_SAFE_INTEGER;
+  // Note: fallbackSeq and FALLBACK_SEQ_MAX are module-scoped — see above.
   function deriveFallbackDedupKey(data: Record<string, unknown>): string {
     const topic = (data.topic as string) || '';
     const type =

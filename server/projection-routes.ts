@@ -43,7 +43,6 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
       return res.status(404).json({
         error: 'not_found',
         message: `Projection view "${safeViewId}" not found`,
-        availableViews: projectionService.viewIds,
       });
     }
 
@@ -91,7 +90,6 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
       return res.status(404).json({
         error: 'not_found',
         message: `Projection view "${safeViewId}" not found`,
-        availableViews: projectionService.viewIds,
       });
     }
 

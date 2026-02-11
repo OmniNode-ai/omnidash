@@ -18,20 +18,13 @@
 
 import { EventEmitter } from 'events';
 import { extractEventTimeMs, MISSING_TIMESTAMP_SENTINEL_MS } from './monotonic-merge';
-import type { ProjectionResponse, ProjectionEvent } from '@shared/projection-types';
+import type {
+  ProjectionResponse,
+  ProjectionEvent,
+  ProjectionEventsResponse,
+} from '@shared/projection-types';
 
-export type { ProjectionResponse, ProjectionEvent };
-
-/**
- * Response envelope for events-since queries.
- */
-export interface ProjectionEventsResponse {
-  viewId: string;
-  /** Cursor: max(ingestSeq) in the returned events */
-  cursor: number;
-  snapshotTimeMs: number;
-  events: ProjectionEvent[];
-}
+export type { ProjectionResponse, ProjectionEvent, ProjectionEventsResponse };
 
 // ============================================================================
 // ProjectionView interface
@@ -110,6 +103,18 @@ export interface ProjectionServiceOptions {
 export class ProjectionService extends EventEmitter {
   private ingestSeqCounter: number;
   private views: Map<string, ProjectionView<unknown>>;
+
+  /**
+   * Microtask-based invalidation coalescing.
+   *
+   * Instead of emitting 'projection-invalidate' synchronously for every
+   * event, we accumulate the latest cursor per view and schedule a single
+   * flush via queueMicrotask. A burst of 50 events in the same tick fires
+   * only ONE invalidation per view, eliminating unbounded EventEmitter
+   * dispatch overhead on the server side.
+   */
+  private pendingInvalidations: Map<string, number> = new Map();
+  private invalidationScheduled = false;
 
   constructor(options?: ProjectionServiceOptions) {
     super();
@@ -223,17 +228,29 @@ export class ProjectionService extends EventEmitter {
 
   /**
    * Route a ProjectionEvent to all registered views.
-   * Emits 'projection-invalidate' for each view that applies the event.
+   *
+   * Uses microtask-based coalescing: instead of emitting
+   * 'projection-invalidate' synchronously for every event, we track the
+   * latest cursor per view and schedule a single flush via queueMicrotask.
+   * A burst of N events in the same synchronous call chain fires only ONE
+   * invalidation per affected view.
    */
   private routeToViews(event: ProjectionEvent): void {
     for (const view of this.views.values()) {
       try {
         const applied = view.applyEvent(event);
         if (applied) {
-          this.emit('projection-invalidate', {
-            viewId: view.viewId,
-            cursor: event.ingestSeq,
-          });
+          // Track the max cursor per view (events are monotonically sequenced)
+          const existing = this.pendingInvalidations.get(view.viewId) ?? 0;
+          if (event.ingestSeq > existing) {
+            this.pendingInvalidations.set(view.viewId, event.ingestSeq);
+          }
+
+          // Schedule a flush if not already scheduled
+          if (!this.invalidationScheduled) {
+            this.invalidationScheduled = true;
+            queueMicrotask(() => this.flushInvalidations());
+          }
         }
       } catch (err) {
         console.error(
@@ -246,6 +263,20 @@ export class ProjectionService extends EventEmitter {
           error: err instanceof Error ? err.message : String(err),
         });
       }
+    }
+  }
+
+  /**
+   * Flush coalesced invalidations. Emits one 'projection-invalidate' per
+   * view that had state changes since the last flush.
+   */
+  private flushInvalidations(): void {
+    const pending = this.pendingInvalidations;
+    this.pendingInvalidations = new Map();
+    this.invalidationScheduled = false;
+
+    for (const [viewId, cursor] of pending) {
+      this.emit('projection-invalidate', { viewId, cursor });
     }
   }
 

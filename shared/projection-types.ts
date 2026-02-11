@@ -50,3 +50,15 @@ export interface ProjectionEvent {
   /** Error details, if this is an error event */
   error?: { message: string; stack?: string };
 }
+
+/**
+ * Response envelope for events-since queries.
+ * Used by both server (ProjectionView.getEventsSince) and client (useProjectionStream catch-up).
+ */
+export interface ProjectionEventsResponse {
+  viewId: string;
+  /** Cursor: max(ingestSeq) in the returned events */
+  cursor: number;
+  snapshotTimeMs: number;
+  events: ProjectionEvent[];
+}

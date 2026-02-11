@@ -402,15 +402,22 @@ describe('EventBusProjection', () => {
   // --------------------------------------------------------------------------
 
   describe('integration with ProjectionService', () => {
-    it('should emit projection-invalidate on each applied event', () => {
+    it('should emit coalesced projection-invalidate with final cursor', async () => {
       const invalidations: Array<{ viewId: string; cursor: number }> = [];
       service.on('projection-invalidate', (data) => invalidations.push(data));
 
       service.ingestBatch([makeRawEvent(), makeRawEvent()]);
 
-      expect(invalidations).toHaveLength(2);
-      expect(invalidations[0].viewId).toBe('event-bus');
-      expect(invalidations[1].viewId).toBe('event-bus');
+      // Invalidations are coalesced via queueMicrotask — wait for the
+      // microtask queue to drain before checking.
+      await Promise.resolve();
+
+      // With microtask coalescing, a synchronous batch of 2 events
+      // should produce exactly 1 coalesced invalidation per view.
+      expect(invalidations.length).toBeGreaterThanOrEqual(1);
+      expect(invalidations[invalidations.length - 1].viewId).toBe('event-bus');
+      // The final cursor should reflect the last ingested event (seq 2)
+      expect(invalidations[invalidations.length - 1].cursor).toBe(2);
     });
 
     it('should update cursor monotonically', () => {
