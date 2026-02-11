@@ -79,6 +79,7 @@ export function useProjectionStream<T>(
 
   // Uses the project's established useWebSocket pattern for reconnection, stabilization,
   // and anti-flicker. Each hook instance opens its own /ws connection (see module comment).
+  // useWebSocket handles connection cleanup on unmount (closes socket, clears timers).
   // reconnectInterval: 1000ms for fast initial reconnect on transient disconnects.
   const { isConnected, subscribe } = useWebSocket({
     onMessage: useCallback(

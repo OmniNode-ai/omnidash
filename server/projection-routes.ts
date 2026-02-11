@@ -41,7 +41,10 @@ export function resetProjectionServiceForTest(): void {
   const isTestEnv =
     process.env.NODE_ENV === 'test' || !!process.env.VITEST || !!process.env.JEST_WORKER_ID;
   if (!isTestEnv) {
-    throw new Error('resetProjectionServiceForTest() is only available in test environments');
+    throw new Error(
+      'resetProjectionServiceForTest() is only available in test environments. ' +
+        'Set NODE_ENV=test, VITEST=true, or JEST_WORKER_ID to enable.'
+    );
   }
   projectionService = null;
 }

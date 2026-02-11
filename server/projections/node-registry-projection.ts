@@ -168,7 +168,9 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
 
     if (applied) {
       this.cursor = Math.max(this.cursor, event.ingestSeq);
-      this.appliedEvents.push(event);
+      // Defensive clone: routeToViews() passes the same event reference to all
+      // views, so a sibling view mutating payload would corrupt our buffer.
+      this.appliedEvents.push({ ...event, payload: { ...event.payload } });
       if (this.appliedEvents.length > MAX_APPLIED_EVENTS + APPLIED_EVENTS_TRIM_MARGIN) {
         this.appliedEvents = this.appliedEvents.slice(-MAX_APPLIED_EVENTS);
       }
