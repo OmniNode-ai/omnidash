@@ -9,6 +9,11 @@
  * - evict:    O(1) pop + O(1) counter updates
  * - snapshot: O(k) Map-to-object serialization + O(m log m) timeSeries sort
  *
+ * Scaling note: Array.splice for sorted insertion is O(n) due to element
+ * shifting. At MAX_BUFFER_SIZE=500 this is ~500 shifts per insert — well
+ * within V8's optimized threshold (~microseconds). If MAX_BUFFER_SIZE needs
+ * to grow beyond ~2000, replace the sorted array with a skip list or B-tree.
+ *
  * Maintained state:
  * - events:             Bounded buffer (500 max), binary insert by (eventTimeMs DESC, ingestSeq DESC)
  * - topicBreakdown:     Map<string, number>, insert: ++count[topic], evict: --count[topic]
@@ -36,6 +41,10 @@ export const MAX_BUFFER_SIZE = 500;
 export const TIME_SERIES_BUCKET_MS = 15_000; // 15 seconds
 export const TIME_SERIES_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const ROLLING_WINDOW_MS = 60_000; // 60 seconds for EPS
+// Cap-based pruning fires when this threshold is exceeded; between prunes,
+// the array can temporarily hold up to this many entries. At 166+ events/sec
+// sustained, cap-based pruning kicks in; below that, only the lazy time-based
+// prune in getSnapshot() trims stale entries. See applyEvent() for details.
 const ROLLING_WINDOW_MAX_ENTRIES = 10_000;
 
 // ============================================================================

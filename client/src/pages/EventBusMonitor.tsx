@@ -324,16 +324,18 @@ export default function EventBusMonitor() {
   });
 
   // Map ProjectionEvents to display format (memoized).
-  // Keyed on cursor (a stable number) rather than the events array reference,
+  // Keyed on cursor + totalEventsIngested rather than the events array reference,
   // which changes on every poll cycle even when data hasn't changed.
-  // Edge case: cursor=0→reset→0 won't retrigger, but this is benign — a 0→0
-  // transition means "no events" both before and after the reset. A meaningful
-  // reset (N→0) IS detected since the value changes.
+  // Edge cases handled:
+  //   cursor 0→0: benign — "no events" both before and after reset.
+  //   cursor N→reset→N: detected via totalEventsIngested, which resets to 0
+  //     on server restart and re-increments independently of cursor. Even if
+  //     cursor happens to reach the same value N, totalEventsIngested will differ.
   const displayEvents = useMemo((): DisplayEvent[] => {
     if (!snapshot?.payload?.events) return [];
     return snapshot.payload.events.map(toDisplayEvent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshot?.cursor]);
+  }, [snapshot?.cursor, snapshot?.payload?.totalEventsIngested]);
 
   // Extract aggregates from snapshot
   const snapshotPayload = snapshot?.payload;

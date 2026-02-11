@@ -53,14 +53,16 @@ export function wireProjectionSources(): void {
   // the same event, a rare double-count can occur. At DEDUP_CAPACITY=5000 and
   // typical inter-source latency <1s, this is negligible.
   const DEDUP_CAPACITY = 5000;
-  const dedupRing: string[] = new Array(DEDUP_CAPACITY);
+  // Pre-fill with '' to keep V8 packed-elements representation (faster property
+  // access than a holey array created by `new Array(n)` with sparse slots).
+  const dedupRing: string[] = new Array<string>(DEDUP_CAPACITY).fill('');
   const dedupSet = new Set<string>();
   let dedupIdx = 0;
 
   function trackEventId(id: string): void {
-    // Evict oldest entry if ring is full
+    // Evict oldest entry if ring is full ('' is falsy, so initial slots are skipped)
     const evicted = dedupRing[dedupIdx];
-    if (evicted !== undefined) dedupSet.delete(evicted);
+    if (evicted) dedupSet.delete(evicted);
     dedupRing[dedupIdx] = id;
     dedupSet.add(id);
     dedupIdx = (dedupIdx + 1) % DEDUP_CAPACITY;
@@ -68,6 +70,12 @@ export function wireProjectionSources(): void {
 
   // Normalized fallback key: tries all known field name variants so the same
   // event produces an identical key regardless of which source delivers it.
+  // Collision risk: two distinct events with identical topic + type + timestamp
+  // (plausible at >1000 events/ms) would share a key, causing the second to be
+  // silently dropped. This is acceptable because: (1) events with no event_id
+  // are already low-fidelity (legacy format), (2) the dedup window is only
+  // DEDUP_CAPACITY=5000 events, and (3) a rare duplicate miss is preferable
+  // to a rare duplicate count.
   function deriveFallbackDedupKey(data: Record<string, unknown>): string {
     const topic = (data.topic as string) || '';
     const type =
