@@ -34,28 +34,40 @@ projectionService.registerView(intentView);
  * EventConsumer emits 'intent-event' for both classified and stored intents.
  * We convert these to RawEventInput and pass to ProjectionService.ingest().
  */
-eventConsumer.on(
-  'intent-event',
-  (event: { topic: string; payload: Record<string, unknown>; timestamp: string }) => {
-    const payload = event.payload;
-    if (!payload || typeof payload !== 'object') return;
+function handleIntentEvent(event: {
+  topic: string;
+  payload: Record<string, unknown>;
+  timestamp: string;
+}): void {
+  const payload = event.payload;
+  if (!payload || typeof payload !== 'object') return;
 
-    projectionService.ingest({
-      id:
-        payload.id != null
-          ? String(payload.id)
-          : payload.intent_id != null
-            ? String(payload.intent_id)
-            : undefined,
-      topic: event.topic,
-      type: (payload.event_type as string) ?? event.topic,
-      source: 'event-consumer',
-      severity: 'info',
-      payload,
-      eventTimeMs: extractTimestampMs(event),
-    });
-  }
-);
+  projectionService.ingest({
+    id:
+      payload.id != null
+        ? String(payload.id)
+        : payload.intent_id != null
+          ? String(payload.intent_id)
+          : undefined,
+    topic: event.topic,
+    type: (payload.event_type as string) ?? event.topic,
+    source: 'event-consumer',
+    severity: 'info',
+    payload,
+    eventTimeMs: extractTimestampMs(event),
+  });
+}
+
+eventConsumer.on('intent-event', handleIntentEvent);
+
+/**
+ * Remove EventConsumer listeners registered by this module.
+ * Call during graceful shutdown or in test teardown to prevent
+ * duplicate listeners in hot-reload scenarios.
+ */
+export function teardownProjectionListeners(): void {
+  eventConsumer.off('intent-event', handleIntentEvent);
+}
 
 /**
  * Extract a millisecond timestamp from an intent event.

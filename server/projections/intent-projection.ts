@@ -20,6 +20,14 @@ import type {
   ProjectionEventsResponse,
   ProjectionEvent,
 } from '../projection-service';
+import type {
+  IntentDistributionEntry,
+  IntentProjectionPayload,
+} from '../../shared/projection-types';
+
+// Re-export shared types for consumers that previously imported from here
+export type { IntentDistributionEntry, IntentProjectionPayload };
+export type { IntentProjectionPayload as IntentPayload };
 
 // ============================================================================
 // Constants
@@ -42,32 +50,10 @@ const ACCEPTED_TYPES = new Set([
 ]);
 
 // ============================================================================
-// Payload Type
-// ============================================================================
-
-export interface IntentDistributionEntry {
-  category: string;
-  count: number;
-  percentage: number;
-}
-
-/**
- * Snapshot payload returned by getSnapshot().
- * Client treats this as the authoritative source of truth.
- */
-export interface IntentPayload {
-  recentIntents: ProjectionEvent[];
-  distribution: IntentDistributionEntry[];
-  totalIntents: number;
-  categoryCount: number;
-  lastEventTimeMs: number | null;
-}
-
-// ============================================================================
 // IntentProjectionView
 // ============================================================================
 
-export class IntentProjectionView implements ProjectionView<IntentPayload> {
+export class IntentProjectionView implements ProjectionView<IntentProjectionPayload> {
   readonly viewId = INTENT_VIEW_ID;
 
   /** Bounded buffer, newest first (sorted by eventTimeMs DESC, ingestSeq DESC). */
@@ -89,7 +75,7 @@ export class IntentProjectionView implements ProjectionView<IntentPayload> {
   // ProjectionView interface
   // --------------------------------------------------------------------------
 
-  getSnapshot(options?: { limit?: number }): ProjectionResponse<IntentPayload> {
+  getSnapshot(options?: { limit?: number }): ProjectionResponse<IntentProjectionPayload> {
     const limit = Math.min(Math.max(options?.limit ?? 100, 1), MAX_BUFFER);
     const recentIntents = this.buffer.slice(0, limit);
 

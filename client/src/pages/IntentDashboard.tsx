@@ -60,6 +60,7 @@ import {
 } from 'lucide-react';
 import React from 'react';
 import type { IntentItem } from '@/components/intent';
+import type { IntentProjectionPayload } from '@shared/projection-types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -74,32 +75,6 @@ const TIME_RANGE_OPTIONS = [
 ] as const;
 
 type TimeRangeHours = (typeof TIME_RANGE_OPTIONS)[number]['value'];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Projection Payload Types (OMN-2096)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Server-side intent projection snapshot payload.
- * Source of truth: server/projections/intent-projection.ts (IntentPayload)
- * Event shape mirrors ProjectionEvent from server/projection-service.ts.
- */
-interface IntentPayload {
-  recentIntents: Array<{
-    id: string;
-    eventTimeMs: number;
-    ingestSeq: number;
-    type: string;
-    topic: string;
-    source: string;
-    severity: string;
-    payload: Record<string, unknown>;
-  }>;
-  distribution: Array<{ category: string; count: number; percentage: number }>;
-  totalIntents: number;
-  categoryCount: number;
-  lastEventTimeMs: number | null;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Error Boundary Component
@@ -277,10 +252,8 @@ export default function IntentDashboard() {
 
   // Server-side projection snapshot (OMN-2096 r4)
   // Fetches on mount, then re-fetches when WebSocket invalidation arrives.
-  const { snapshot, isConnected, connectionStatus, refresh } = useProjectionStream<IntentPayload>(
-    'intent',
-    { limit: 100 }
-  );
+  const { snapshot, isConnected, connectionStatus, refresh } =
+    useProjectionStream<IntentProjectionPayload>('intent', { limit: 100 });
 
   // Derive stat card values from the projection snapshot
   const categoryCount = snapshot?.categoryCount ?? 0;

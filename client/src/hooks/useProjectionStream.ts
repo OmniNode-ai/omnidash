@@ -75,6 +75,7 @@ export function useProjectionStream<T>(
   const viewIdRef = useRef(viewId);
   const hasSubscribed = useRef(false);
   const isConnectedRef = useRef(false);
+  const prevViewIdRef = useRef<string | null>(null);
 
   // Keep viewIdRef in sync so fetchSnapshot can detect stale responses
   viewIdRef.current = viewId;
@@ -198,16 +199,22 @@ export function useProjectionStream<T>(
     };
   }, [isConnected, subscribe, unsubscribe, log]);
 
-  // Reset state and fetch in a single effect to prevent race condition.
-  // Two separate effects for reset and fetch could fire in unpredictable order
-  // when viewId changes, causing the fetch to compare against a stale cursor.
+  // Reset state and fetch. State is only reset when viewId changes (not on
+  // limit-only changes) to prevent a flash of empty content. The effect still
+  // fires on limit changes (via fetchSnapshot identity) to re-fetch with the
+  // new limit, but preserves existing snapshot/cursor during the fetch.
   useEffect(() => {
     mountedRef.current = true;
-    cursorRef.current = 0;
-    setCursor(0);
-    setSnapshot(null);
-    setError(null);
-    fetchInFlightRef.current = false;
+
+    // Reset state only when viewId actually changes
+    if (prevViewIdRef.current !== null && prevViewIdRef.current !== viewId) {
+      cursorRef.current = 0;
+      setCursor(0);
+      setSnapshot(null);
+      setError(null);
+      fetchInFlightRef.current = false;
+    }
+    prevViewIdRef.current = viewId;
 
     if (fetchOnMount) {
       fetchSnapshot();
@@ -215,7 +222,7 @@ export function useProjectionStream<T>(
     return () => {
       mountedRef.current = false;
     };
-  }, [fetchOnMount, fetchSnapshot]);
+  }, [fetchOnMount, fetchSnapshot, viewId]);
 
   const combinedError = error || (wsError ? new Error(wsError) : null);
 
