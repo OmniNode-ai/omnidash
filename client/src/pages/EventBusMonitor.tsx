@@ -314,17 +314,23 @@ export default function EventBusMonitor() {
   const [maxEvents, setMaxEvents] = useState(eventConfig.max_events);
 
   // Server-side projection replaces useEventBusStream
-  const { data: snapshot, isLoading } = useProjectionStream<EventBusPayload>(
-    'event-bus',
-    fetchEventBusSnapshot,
-    { limit: maxEvents, refetchInterval: 2000 }
-  );
+  const {
+    data: snapshot,
+    isLoading,
+    isConnected: wsConnected,
+  } = useProjectionStream<EventBusPayload>('event-bus', fetchEventBusSnapshot, {
+    limit: maxEvents,
+    refetchInterval: 2000,
+  });
 
-  // Map ProjectionEvents to display format (memoized)
+  // Map ProjectionEvents to display format (memoized).
+  // Keyed on cursor (a stable number) rather than the events array reference,
+  // which changes on every poll cycle even when data hasn't changed.
   const displayEvents = useMemo((): DisplayEvent[] => {
     if (!snapshot?.payload?.events) return [];
     return snapshot.payload.events.map(toDisplayEvent);
-  }, [snapshot?.payload?.events]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot?.cursor]);
 
   // Extract aggregates from snapshot
   const snapshotPayload = snapshot?.payload;
@@ -332,9 +338,10 @@ export default function EventBusMonitor() {
   const errorCount = snapshotPayload?.errorCount ?? 0;
   const activeTopicsCount = snapshotPayload?.activeTopics ?? 0;
 
-  // Determine connection status from snapshot availability
-  const connectionStatus = isLoading ? 'connecting' : snapshot ? 'connected' : 'idle';
-  const isConnected = connectionStatus === 'connected';
+  // Connection status: require both snapshot data AND WebSocket connectivity
+  // to show "connected". This prevents false "Live Data" when Kafka is down
+  // but the snapshot endpoint still returns stale/empty data.
+  const isConnected = !isLoading && !!snapshot && wsConnected;
 
   // UI state
   const [filters, setFilters] = useState<FilterState>({

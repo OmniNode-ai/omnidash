@@ -66,6 +66,20 @@ export function wireProjectionSources(): void {
     dedupIdx = (dedupIdx + 1) % DEDUP_CAPACITY;
   }
 
+  // Normalized fallback key: tries all known field name variants so the same
+  // event produces an identical key regardless of which source delivers it.
+  function deriveFallbackDedupKey(data: Record<string, unknown>): string {
+    const topic = (data.topic as string) || '';
+    const type =
+      (data.event_type as string) || (data.actionType as string) || (data.type as string) || '';
+    const ts =
+      (data.timestamp as string | number) ||
+      (data.createdAt as string | number) ||
+      (data.created_at as string | number) ||
+      '';
+    return `${topic}:${type}:${ts}`;
+  }
+
   const sources: string[] = [];
 
   // --------------------------------------------------------------------------
@@ -75,11 +89,9 @@ export function wireProjectionSources(): void {
   if (typeof eventBusDataSource.on === 'function') {
     eventBusDataSource.on('event', (event: Record<string, unknown>) => {
       const eventId = event.event_id as string | undefined;
-      // Track for dedup: use event_id if present, otherwise derive a key from
-      // topic + type + timestamp to avoid double-counting when the same event
-      // arrives through both EventBusDataSource and EventConsumer.
-      const dedupKey =
-        eventId || `${event.topic || ''}:${event.event_type || ''}:${event.timestamp || ''}`;
+      // Track for dedup: use event_id if present, otherwise derive a normalized
+      // key from topic + type + timestamp (shared derivation with EventConsumer).
+      const dedupKey = eventId || deriveFallbackDedupKey(event);
       trackEventId(dedupKey);
 
       let payload: Record<string, unknown>;
@@ -127,11 +139,9 @@ export function wireProjectionSources(): void {
     for (const eventName of consumerEventNames) {
       eventConsumer.on(eventName, (data: Record<string, unknown>) => {
         // Skip if already ingested via EventBusDataSource.
-        // Use same fallback key derivation as EventBusDataSource for events without id.
+        // Uses shared deriveFallbackDedupKey for symmetric key derivation.
         const id = data.id as string | undefined;
-        const dedupKey =
-          id ||
-          `${data.topic || ''}:${data.actionType || data.type || ''}:${data.timestamp || data.createdAt || ''}`;
+        const dedupKey = id || deriveFallbackDedupKey(data);
         if (dedupSet.has(dedupKey)) return;
 
         const raw: RawEventInput = {
