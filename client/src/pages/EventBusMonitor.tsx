@@ -339,11 +339,18 @@ export default function EventBusMonitor() {
   //   cursor 0→0: benign — both before/after represent "no events".
   //   undefined→0: React detects this as a dep change (undefined !== 0).
   //   cursor N→reset→N: totalEventsIngested differs (resets to 0 independently).
+  //   Sort order change: firstEventId catches reordering even when aggregate keys match.
+  const firstEventId = snapshot?.payload?.events?.[0]?.id;
   const displayEvents = useMemo((): DisplayEvent[] => {
     if (!snapshot?.payload?.events) return [];
     return snapshot.payload.events.map(toDisplayEvent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshot?.cursor, snapshot?.payload?.totalEventsIngested, snapshot?.payload?.events?.length]);
+  }, [
+    snapshot?.cursor,
+    snapshot?.payload?.totalEventsIngested,
+    snapshot?.payload?.events?.length,
+    firstEventId,
+  ]);
 
   // Extract aggregates from snapshot
   const snapshotPayload = snapshot?.payload;

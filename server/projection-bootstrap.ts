@@ -32,10 +32,12 @@ export const projectionService = new ProjectionService();
 export const eventBusProjection = new EventBusProjection();
 
 // Register views (runs at import time — module-level side effect).
-// Tests that import this module (or modules that transitively import it,
-// such as routes.ts) must mock this file to avoid singleton registration.
-// See server/__tests__/index.test.ts for the canonical mock pattern.
-projectionService.registerView(eventBusProjection);
+// Idempotent guard: if the module is re-evaluated (e.g. test runner
+// resetModules with the same singleton in scope), skip re-registration
+// instead of throwing "already registered".
+if (!projectionService.getView(eventBusProjection.viewId)) {
+  projectionService.registerView(eventBusProjection);
+}
 
 // ============================================================================
 // Event source wiring
@@ -85,6 +87,10 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
   // are already low-fidelity (legacy format), (2) the dedup window is only
   // DEDUP_CAPACITY=5000 events, and (3) a rare duplicate miss is preferable
   // to a rare duplicate count.
+  //
+  // When timestamp is missing (sentinel 0/''), a monotonic counter is appended
+  // to prevent collisions between events that share the same topic+type.
+  let fallbackSeq = 0;
   function deriveFallbackDedupKey(data: Record<string, unknown>): string {
     const topic = (data.topic as string) || '';
     const type =
@@ -94,6 +100,11 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
       (data.createdAt as string | number) ||
       (data.created_at as string | number) ||
       '';
+    // If timestamp is missing/empty/zero, append a monotonic sequence to avoid
+    // collisions between distinct events with the same topic + type.
+    if (!ts || ts === 0) {
+      return `${topic}:${type}:_seq${fallbackSeq++}`;
+    }
     return `${topic}:${type}:${ts}`;
   }
 
