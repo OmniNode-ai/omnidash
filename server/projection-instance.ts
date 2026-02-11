@@ -6,9 +6,10 @@
  * into the projection pipeline.
  *
  * Import this module to get the configured service instance.
+ * Call `initProjectionListeners()` once during server startup
+ * (after EventConsumer is ready) to wire the intent-event listener.
  *
- * **Testing**: Importing this module registers an EventConsumer listener
- * as a side effect. Test files that import this module should call
+ * **Testing**: Test files that import this module should call
  * `teardownProjectionListeners()` in afterEach/afterAll to prevent
  * duplicate listeners across test suites.
  */
@@ -33,6 +34,9 @@ projectionService.registerView(intentView);
 // ============================================================================
 // EventConsumer → ProjectionService wiring
 // ============================================================================
+
+/** Guard flag to prevent duplicate listener registration under Vite HMR. */
+let listenerRegistered = false;
 
 /**
  * Route intent events from EventConsumer into the projection pipeline.
@@ -63,15 +67,26 @@ function handleIntentEvent(event: {
   });
 }
 
-eventConsumer.on('intent-event', handleIntentEvent);
+/**
+ * Register the EventConsumer → ProjectionService listener.
+ * Safe to call multiple times (idempotent via guard flag).
+ * Call once during server startup after EventConsumer is ready.
+ */
+export function initProjectionListeners(): void {
+  if (listenerRegistered) return;
+  listenerRegistered = true;
+  eventConsumer.on('intent-event', handleIntentEvent);
+}
 
 /**
- * Remove EventConsumer listeners registered by this module.
+ * Remove EventConsumer listeners registered by this module and
+ * reset the guard flag so `initProjectionListeners()` can re-register.
  * Call during graceful shutdown or in test teardown to prevent
  * duplicate listeners in hot-reload scenarios.
  */
 export function teardownProjectionListeners(): void {
   eventConsumer.removeListener('intent-event', handleIntentEvent);
+  listenerRegistered = false;
 }
 
 /**

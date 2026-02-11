@@ -74,12 +74,24 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
   /** Cumulative count of all intent events ingested (never decremented on eviction). */
   private _totalIngested = 0;
 
+  /** Cached snapshot response, invalidated on each applyEvent call. */
+  private _cachedSnapshot: {
+    limit: number;
+    response: ProjectionResponse<IntentProjectionPayload>;
+  } | null = null;
+
   // --------------------------------------------------------------------------
   // ProjectionView interface
   // --------------------------------------------------------------------------
 
   getSnapshot(options?: { limit?: number }): ProjectionResponse<IntentProjectionPayload> {
     const limit = Math.min(Math.max(options?.limit ?? 100, 1), MAX_BUFFER);
+
+    // Return cached snapshot if available for the same limit
+    if (this._cachedSnapshot && this._cachedSnapshot.limit === limit) {
+      return this._cachedSnapshot.response;
+    }
+
     // Strip server-only fields (error, eventTimeMissing) from wire payload
     const recentIntents = this.buffer
       .slice(0, limit)
@@ -108,7 +120,7 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
       }))
       .sort((a, b) => b.count - a.count);
 
-    return {
+    const response: ProjectionResponse<IntentProjectionPayload> = {
       viewId: this.viewId,
       cursor: this._cursor,
       snapshotTimeMs: Date.now(),
@@ -121,6 +133,10 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
         lastEventTimeMs: this._lastEventTimeMs,
       },
     };
+
+    // Cache for subsequent reads between events
+    this._cachedSnapshot = { limit, response };
+    return response;
   }
 
   getEventsSince(cursor: number, limit?: number): ProjectionEventsResponse {
@@ -128,8 +144,19 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     const oldestAvailable = this.appliedEvents.length > 0 ? this.appliedEvents[0].ingestSeq : 0;
     const truncated = cursor > 0 && cursor < oldestAvailable;
 
-    const filtered = this.appliedEvents.filter((e) => e.ingestSeq > cursor);
-    const result = limit ? filtered.slice(0, limit) : filtered;
+    // appliedEvents are appended in ingestSeq order (monotonically increasing).
+    // Use findIndex to locate the first event past the cursor, then slice from
+    // there. This avoids a full O(n) filter when only a small tail is needed.
+    let startIdx: number;
+    if (cursor <= 0 || this.appliedEvents.length === 0) {
+      startIdx = 0;
+    } else {
+      const idx = this.appliedEvents.findIndex((e) => e.ingestSeq > cursor);
+      startIdx = idx === -1 ? this.appliedEvents.length : idx;
+    }
+
+    const tail = this.appliedEvents.slice(startIdx);
+    const result = limit ? tail.slice(0, limit) : tail;
     return {
       viewId: this.viewId,
       cursor: result.length > 0 ? result[result.length - 1].ingestSeq : cursor,
@@ -141,6 +168,9 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
 
   applyEvent(event: ProjectionEvent): boolean {
     if (!this.isIntentEvent(event)) return false;
+
+    // Invalidate cached snapshot on any new event
+    this._cachedSnapshot = null;
 
     // Track cursor
     if (event.ingestSeq > this._cursor) {
@@ -194,6 +224,7 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     this._cursor = 0;
     this._lastEventTimeMs = null;
     this._totalIngested = 0;
+    this._cachedSnapshot = null;
   }
 
   // --------------------------------------------------------------------------

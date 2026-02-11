@@ -265,7 +265,7 @@ export default function IntentDashboard() {
       .filter((c) => !isNaN(c));
     if (confidences.length === 0) return 0;
     return confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
-  }, [snapshot]);
+  }, [snapshot?.recentIntents]);
 
   const lastEventTimeStr = useMemo(() => {
     if (snapshot?.lastEventTimeMs == null) return 'No events yet';

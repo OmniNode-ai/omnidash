@@ -35,6 +35,8 @@ vi.mock('../event-consumer', () => ({
     validateConnection: validateConnectionMock,
     start: startMock,
     stop: stopMock,
+    on: vi.fn(),
+    removeListener: vi.fn(),
   },
 }));
 

@@ -25,7 +25,7 @@ const SnapshotQuerySchema = z.object({
 
 const EventsQuerySchema = z.object({
   cursor: z.coerce.number().finite().int().min(0).optional().default(0),
-  limit: z.coerce.number().int().min(1).max(500).optional().default(50),
+  limit: z.coerce.number().finite().int().min(1).max(500).optional().default(50),
 });
 
 /**
