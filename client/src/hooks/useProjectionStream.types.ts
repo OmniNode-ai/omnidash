@@ -1,17 +1,11 @@
 /**
  * Shared types for useProjectionStream hook (OMN-2095)
  *
- * These mirror the server-side ProjectionResponse type but are
- * defined here to avoid importing server modules into client code.
+ * ProjectionResponse<T> lives in @shared/projection-types (single source of
+ * truth for both server and client). Projection-specific client types remain here.
  */
 
-/** Standardized response envelope from projection API */
-export interface ProjectionResponse<T> {
-  viewId: string;
-  cursor: number;
-  snapshotTimeMs: number;
-  payload: T;
-}
+export type { ProjectionResponse } from '@shared/projection-types';
 
 /** Response envelope for events-since queries */
 export interface ProjectionEventsResponse {

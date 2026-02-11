@@ -12,6 +12,12 @@ import { Router, type Request, type Response } from 'express';
 import type { ProjectionService } from './projection-service';
 import { MAX_BUFFER_SIZE } from './projections/event-bus-projection';
 
+/** Sanitize viewId for inclusion in error messages (defense-in-depth). */
+function sanitizeViewId(raw: string): string {
+  // Truncate and strip anything outside [a-zA-Z0-9_-]
+  return raw.slice(0, 64).replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
 export function createProjectionRouter(projectionService: ProjectionService): Router {
   const router = Router();
 
@@ -35,7 +41,7 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
     if (!view) {
       return res.status(404).json({
         error: 'not_found',
-        message: `Projection view "${viewId}" not found`,
+        message: `Projection view "${sanitizeViewId(viewId)}" not found`,
         availableViews: projectionService.viewIds,
       });
     }
@@ -44,7 +50,10 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
       const snapshot = view.getSnapshot(limit !== undefined ? { limit } : undefined);
       return res.json(snapshot);
     } catch (err) {
-      console.error(`[projection-routes] Error getting snapshot for "${viewId}":`, err);
+      console.error(
+        `[projection-routes] Error getting snapshot for "${sanitizeViewId(viewId)}":`,
+        err
+      );
       return res.status(500).json({
         error: 'internal_error',
         message: err instanceof Error ? err.message : 'Unknown error',
@@ -82,7 +91,7 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
     if (!view) {
       return res.status(404).json({
         error: 'not_found',
-        message: `Projection view "${viewId}" not found`,
+        message: `Projection view "${sanitizeViewId(viewId)}" not found`,
         availableViews: projectionService.viewIds,
       });
     }
@@ -91,7 +100,10 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
       const response = view.getEventsSince(sinceCursor, limit);
       return res.json(response);
     } catch (err) {
-      console.error(`[projection-routes] Error getting events for "${viewId}":`, err);
+      console.error(
+        `[projection-routes] Error getting events for "${sanitizeViewId(viewId)}":`,
+        err
+      );
       return res.status(500).json({
         error: 'internal_error',
         message: err instanceof Error ? err.message : 'Unknown error',

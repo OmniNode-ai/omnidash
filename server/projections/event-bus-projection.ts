@@ -29,16 +29,16 @@ import type {
   ProjectionResponse,
   ProjectionEventsResponse,
 } from '../projection-service';
-import type { EventBusPayload } from '@shared/event-bus-payload';
+import { TIME_SERIES_BUCKET_MS, type EventBusPayload } from '@shared/event-bus-payload';
 
 export type { EventBusPayload };
+export { TIME_SERIES_BUCKET_MS };
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 export const MAX_BUFFER_SIZE = 500;
-export const TIME_SERIES_BUCKET_MS = 15_000; // 15 seconds
 export const TIME_SERIES_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const ROLLING_WINDOW_MS = 60_000; // 60 seconds for EPS
 // Cap-based pruning fires when this threshold is exceeded; between prunes,
@@ -149,7 +149,13 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
    * Ingest a single event into the projection, updating all aggregates
    * incrementally. Binary-inserts into the sorted buffer, increments
    * topic/type/time-series counters, and evicts the oldest event if the
-   * buffer exceeds MAX_BUFFER_SIZE. Always returns true (ingestion accepted).
+   * buffer exceeds MAX_BUFFER_SIZE.
+   *
+   * Returns true unconditionally: EventBusProjection ingests ALL events
+   * regardless of topic or type (full-stream materialization). Future views
+   * with domain-scoped filtering (e.g. an IntentProjection that only cares
+   * about `onex.intent.*` topics) should return false for irrelevant events
+   * to avoid unnecessary invalidation broadcasts from ProjectionService.
    */
   applyEvent(event: ProjectionEvent): boolean {
     this._totalIngested++;

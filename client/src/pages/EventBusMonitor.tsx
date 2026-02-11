@@ -28,6 +28,7 @@ import {
   fetchEventBusSnapshot,
   type EventBusPayload,
 } from '@/lib/data-sources/event-bus-projection-source';
+import { TIME_SERIES_BUCKET_MS } from '@shared/event-bus-payload';
 import { extractParsedDetails, type ParsedDetails } from '@/components/event-bus/eventDetailUtils';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { Card } from '@/components/ui/card';
@@ -93,7 +94,6 @@ interface PausedSnapshot {
 
 const eventConfig = getEventMonitoringConfig();
 const monitoredTopics = getMonitoredTopics();
-const TIME_SERIES_BUCKET_MS = 15_000;
 
 // ============================================================================
 // Mapping: ProjectionEvent → DisplayEvent
@@ -324,18 +324,26 @@ export default function EventBusMonitor() {
   });
 
   // Map ProjectionEvents to display format (memoized).
-  // Keyed on cursor + totalEventsIngested rather than the events array reference,
-  // which changes on every poll cycle even when data hasn't changed.
-  // Edge cases handled:
-  //   cursor 0→0: benign — "no events" both before and after reset.
-  //   cursor N→reset→N: detected via totalEventsIngested, which resets to 0
-  //     on server restart and re-increments independently of cursor. Even if
-  //     cursor happens to reach the same value N, totalEventsIngested will differ.
+  //
+  // Proxy-key optimization: keyed on (cursor, totalEventsIngested, events.length)
+  // rather than the events array reference, which changes on every poll cycle
+  // even when data hasn't changed (JSON.parse creates new arrays).
+  //
+  // Why these three keys are sufficient:
+  //   - cursor (max ingestSeq) increases on every new event ingested
+  //   - totalEventsIngested monotonically increases (never resets to same value)
+  //   - events.length catches buffer-full edge cases where an evict + insert
+  //     could theoretically leave cursor unchanged (belt-and-suspenders)
+  //
+  // Edge cases:
+  //   cursor 0→0: benign — both before/after represent "no events".
+  //   undefined→0: React detects this as a dep change (undefined !== 0).
+  //   cursor N→reset→N: totalEventsIngested differs (resets to 0 independently).
   const displayEvents = useMemo((): DisplayEvent[] => {
     if (!snapshot?.payload?.events) return [];
     return snapshot.payload.events.map(toDisplayEvent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshot?.cursor, snapshot?.payload?.totalEventsIngested]);
+  }, [snapshot?.cursor, snapshot?.payload?.totalEventsIngested, snapshot?.payload?.events?.length]);
 
   // Extract aggregates from snapshot
   const snapshotPayload = snapshot?.payload;

@@ -18,6 +18,9 @@
 
 import { EventEmitter } from 'events';
 import { extractEventTimeMs, MISSING_TIMESTAMP_SENTINEL_MS } from './monotonic-merge';
+import type { ProjectionResponse } from '@shared/projection-types';
+
+export type { ProjectionResponse };
 
 // ============================================================================
 // Contracts (locked per OMN-2094)
@@ -49,20 +52,6 @@ export interface ProjectionEvent {
   eventTimeMissing?: boolean;
   /** Error details, if this is an error event */
   error?: { message: string; stack?: string };
-}
-
-/**
- * Standardized response envelope for view snapshots.
- *
- * @template T - The payload type specific to each view
- */
-export interface ProjectionResponse<T> {
-  viewId: string;
-  /** Cursor: max(ingestSeq) in the current snapshot */
-  cursor: number;
-  /** Timestamp when snapshot was captured */
-  snapshotTimeMs: number;
-  payload: T;
 }
 
 /**

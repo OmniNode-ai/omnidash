@@ -6,6 +6,9 @@
  * (event-bus-projection-source fetcher).
  */
 
+/** Time-series bucket width used by both server and client for chart alignment */
+export const TIME_SERIES_BUCKET_MS = 15_000; // 15 seconds
+
 /**
  * Event shape within the projection snapshot.
  * Mirrors ProjectionEvent but defined here to avoid importing server modules.

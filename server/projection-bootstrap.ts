@@ -31,12 +31,18 @@ export const projectionService = new ProjectionService();
  */
 export const eventBusProjection = new EventBusProjection();
 
-// Register views
+// Register views (runs at import time — module-level side effect).
+// Tests that import this module (or modules that transitively import it,
+// such as routes.ts) must mock this file to avoid singleton registration.
+// See server/__tests__/index.test.ts for the canonical mock pattern.
 projectionService.registerView(eventBusProjection);
 
 // ============================================================================
 // Event source wiring
 // ============================================================================
+
+/** Cleanup function returned by wireProjectionSources to remove listeners. */
+export type ProjectionSourceCleanup = () => void;
 
 /**
  * Wire EventBusDataSource and EventConsumer to the ProjectionService.
@@ -45,8 +51,11 @@ projectionService.registerView(eventBusProjection);
  * EventConsumer provides enriched events for legacy agent topics.
  * We deduplicate by tracking event IDs ingested from EventBusDataSource
  * to avoid double-counting when the same event arrives through both sources.
+ *
+ * @returns Cleanup function that removes all registered listeners.
+ *          Call on shutdown or before re-wiring to prevent listener leaks.
  */
-export function wireProjectionSources(): void {
+export function wireProjectionSources(): ProjectionSourceCleanup {
   // Ring-buffer deduplication: O(1) per add, no periodic pruning spikes.
   // Tracks event IDs from EventBusDataSource so EventConsumer doesn't double-count.
   // Trade-off: if an ID is evicted from the ring before EventConsumer delivers
@@ -89,6 +98,8 @@ export function wireProjectionSources(): void {
   }
 
   const sources: string[] = [];
+  // Track registered listeners for cleanup
+  const cleanups: Array<() => void> = [];
 
   // --------------------------------------------------------------------------
   // EventBusDataSource: full 197-topic coverage
@@ -98,7 +109,7 @@ export function wireProjectionSources(): void {
   // environments (e.g. test mocks, alternative implementations). Checking for
   // .on as a function is the standard Node.js pattern for optional listeners.
   if (typeof eventBusDataSource.on === 'function') {
-    eventBusDataSource.on('event', (event: Record<string, unknown>) => {
+    const handleDataSourceEvent = (event: Record<string, unknown>): void => {
       try {
         const eventId = event.event_id as string | undefined;
         // Track for dedup: use event_id if present, otherwise derive a normalized
@@ -128,6 +139,13 @@ export function wireProjectionSources(): void {
       } catch (err) {
         console.error('[projection] EventBusDataSource event handler error:', err);
       }
+    };
+
+    eventBusDataSource.on('event', handleDataSourceEvent);
+    cleanups.push(() => {
+      if (typeof eventBusDataSource.removeListener === 'function') {
+        eventBusDataSource.removeListener('event', handleDataSourceEvent);
+      }
     });
     sources.push('EventBusDataSource');
   } else {
@@ -152,7 +170,7 @@ export function wireProjectionSources(): void {
     ] as const;
 
     for (const eventName of consumerEventNames) {
-      eventConsumer.on(eventName, (data: Record<string, unknown>) => {
+      const handler = (data: Record<string, unknown>): void => {
         try {
           // Skip if already ingested via EventBusDataSource.
           // Uses shared deriveFallbackDedupKey for symmetric key derivation.
@@ -178,6 +196,13 @@ export function wireProjectionSources(): void {
         } catch (err) {
           console.error(`[projection] EventConsumer ${eventName} handler error:`, err);
         }
+      };
+
+      eventConsumer.on(eventName, handler);
+      cleanups.push(() => {
+        if (typeof eventConsumer.removeListener === 'function') {
+          eventConsumer.removeListener(eventName, handler);
+        }
       });
     }
     sources.push('EventConsumer');
@@ -191,6 +216,11 @@ export function wireProjectionSources(): void {
   } else {
     console.warn('[projection] No event sources available — projections will be empty');
   }
+
+  return () => {
+    for (const cleanup of cleanups) cleanup();
+    console.log('[projection] Removed all event source listeners');
+  };
 }
 
 // ============================================================================

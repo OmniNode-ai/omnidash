@@ -9,6 +9,11 @@
  * React context (e.g. ProjectionWebSocketProvider) to avoid duplicate connections
  * and redundant PROJECTION_INVALIDATE handling.
  *
+ * Mount/unmount lifecycle: on unmount, useWebSocket's cleanup effect closes the
+ * connection (after a 3-second stabilization delay for rapid navigation). On
+ * remount, a fresh WebSocket connects and re-subscribes. During the brief overlap,
+ * TanStack Query's refetchInterval ensures data continuity — no events are lost.
+ *
  * Usage:
  *   const { data, isLoading, error, cursor } = useProjectionStream<EventBusPayload>(
  *     'event-bus',
