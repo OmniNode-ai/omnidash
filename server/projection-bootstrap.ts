@@ -101,7 +101,9 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
   //
   // When timestamp is missing (sentinel 0/''), a monotonic counter is appended
   // to prevent collisions between events that share the same topic+type.
+  // Wraps at MAX_SAFE_INTEGER to prevent loss of integer precision.
   let fallbackSeq = 0;
+  const FALLBACK_SEQ_MAX = Number.MAX_SAFE_INTEGER;
   function deriveFallbackDedupKey(data: Record<string, unknown>): string {
     const topic = (data.topic as string) || '';
     const type =
@@ -114,7 +116,9 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
     // If timestamp is missing/empty/zero, append a monotonic sequence to avoid
     // collisions between distinct events with the same topic + type.
     if (!ts || ts === 0) {
-      return `${topic}:${type}:_seq${fallbackSeq++}`;
+      const seq = fallbackSeq;
+      fallbackSeq = (fallbackSeq + 1) % FALLBACK_SEQ_MAX;
+      return `${topic}:${type}:_seq${seq}`;
     }
     return `${topic}:${type}:${ts}`;
   }
@@ -195,7 +199,12 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
       const handler = (data: Record<string, unknown>): void => {
         try {
           // Skip if already ingested via EventBusDataSource.
-          // Uses shared deriveFallbackDedupKey for symmetric key derivation.
+          // Uses shared deriveFallbackDedupKey for symmetric key derivation:
+          // both sources derive identical keys from topic+type+timestamp when
+          // event_id/id is missing, so dedup works regardless of which source
+          // delivers first. If both sources lack an ID AND share the same
+          // topic+type+timestamp, the second is dropped (acceptable — see
+          // collision risk comment on deriveFallbackDedupKey above).
           const id = data.id as string | undefined;
           const dedupKey = id || deriveFallbackDedupKey(data);
           if (dedupSet.has(dedupKey)) return;
