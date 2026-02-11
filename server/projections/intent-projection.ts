@@ -199,11 +199,12 @@ export class IntentProjectionView implements ProjectionView<IntentPayload> {
 
   private extractCategory(event: ProjectionEvent): string {
     const payload = event.payload;
+    // Use || instead of ?? so empty strings fall through to the next candidate
     return (
-      (payload.intent_category as string) ??
-      (payload.intentCategory as string) ??
-      (payload.intent_type as string) ??
-      (payload.intentType as string) ??
+      (payload.intent_category as string) ||
+      (payload.intentCategory as string) ||
+      (payload.intent_type as string) ||
+      (payload.intentType as string) ||
       'unknown'
     );
   }

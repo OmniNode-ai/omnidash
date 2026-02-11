@@ -81,7 +81,8 @@ type TimeRangeHours = (typeof TIME_RANGE_OPTIONS)[number]['value'];
 
 /**
  * Server-side intent projection snapshot payload.
- * This is the contract returned by the intent projection's snapshot endpoint.
+ * Source of truth: server/projections/intent-projection.ts (IntentPayload)
+ * Event shape mirrors ProjectionEvent from server/projection-service.ts.
  */
 interface IntentPayload {
   recentIntents: Array<{
@@ -89,6 +90,9 @@ interface IntentPayload {
     eventTimeMs: number;
     ingestSeq: number;
     type: string;
+    topic: string;
+    source: string;
+    severity: string;
     payload: Record<string, unknown>;
   }>;
   distribution: Array<{ category: string; count: number; percentage: number }>;

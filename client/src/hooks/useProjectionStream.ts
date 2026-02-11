@@ -198,18 +198,17 @@ export function useProjectionStream<T>(
     };
   }, [isConnected, subscribe, unsubscribe, log]);
 
-  // Reset state when viewId changes to prevent stale data cross-contamination
+  // Reset state and fetch in a single effect to prevent race condition.
+  // Two separate effects for reset and fetch could fire in unpredictable order
+  // when viewId changes, causing the fetch to compare against a stale cursor.
   useEffect(() => {
+    mountedRef.current = true;
     cursorRef.current = 0;
     setCursor(0);
     setSnapshot(null);
     setError(null);
     fetchInFlightRef.current = false;
-  }, [viewId]);
 
-  // Initial fetch on mount (and when viewId/limit changes via fetchSnapshot dep)
-  useEffect(() => {
-    mountedRef.current = true;
     if (fetchOnMount) {
       fetchSnapshot();
     }
