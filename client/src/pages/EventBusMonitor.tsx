@@ -326,6 +326,9 @@ export default function EventBusMonitor() {
   // Map ProjectionEvents to display format (memoized).
   // Keyed on cursor (a stable number) rather than the events array reference,
   // which changes on every poll cycle even when data hasn't changed.
+  // Edge case: cursor=0→reset→0 won't retrigger, but this is benign — a 0→0
+  // transition means "no events" both before and after the reset. A meaningful
+  // reset (N→0) IS detected since the value changes.
   const displayEvents = useMemo((): DisplayEvent[] => {
     if (!snapshot?.payload?.events) return [];
     return snapshot.payload.events.map(toDisplayEvent);
