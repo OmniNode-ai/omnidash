@@ -11,6 +11,25 @@
  */
 
 // ============================================================================
+// Generic snapshot envelope (wire format)
+// ============================================================================
+
+/**
+ * Standardized response envelope for projection view snapshots.
+ * Used by both server (ProjectionResponse) and client (useProjectionStream).
+ *
+ * @template T - The payload type specific to each view
+ */
+export interface ProjectionSnapshot<T> {
+  viewId: string;
+  /** Cursor: max(ingestSeq) in the current snapshot */
+  cursor: number;
+  /** Timestamp when snapshot was captured */
+  snapshotTimeMs: number;
+  payload: T;
+}
+
+// ============================================================================
 // Generic projection event item (wire format)
 // ============================================================================
 

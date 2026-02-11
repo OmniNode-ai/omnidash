@@ -77,7 +77,19 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
 
   getSnapshot(options?: { limit?: number }): ProjectionResponse<IntentProjectionPayload> {
     const limit = Math.min(Math.max(options?.limit ?? 100, 1), MAX_BUFFER);
-    const recentIntents = this.buffer.slice(0, limit);
+    // Strip server-only fields (error, eventTimeMissing) from wire payload
+    const recentIntents = this.buffer
+      .slice(0, limit)
+      .map(({ id, eventTimeMs, ingestSeq, type, topic, source, severity, payload }) => ({
+        id,
+        eventTimeMs,
+        ingestSeq,
+        type,
+        topic,
+        source,
+        severity,
+        payload,
+      }));
 
     const totalIntents =
       this.distributionMap.size > 0

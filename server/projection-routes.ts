@@ -13,6 +13,12 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { ProjectionService } from './projection-service';
 
+/** Validate viewId: alphanumeric, hyphens, underscores, max 64 chars. */
+const ViewIdSchema = z
+  .string()
+  .max(64)
+  .regex(/^[a-zA-Z0-9_-]+$/);
+
 const SnapshotQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional().default(100),
 });
@@ -36,7 +42,11 @@ export function createProjectionRoutes(projectionService: ProjectionService): Ro
    * ?limit defaults to 100, server clamps to [1, 500].
    */
   router.get('/:viewId/snapshot', (req, res) => {
-    const { viewId } = req.params;
+    const viewIdResult = ViewIdSchema.safeParse(req.params.viewId);
+    if (!viewIdResult.success) {
+      return res.status(400).json({ error: 'Invalid viewId parameter' });
+    }
+    const viewId = viewIdResult.data;
 
     const view = projectionService.getView(viewId);
     if (!view) {
@@ -68,7 +78,11 @@ export function createProjectionRoutes(projectionService: ProjectionService): Ro
    * Used for incremental catch-up by WebSocket clients.
    */
   router.get('/:viewId/events', (req, res) => {
-    const { viewId } = req.params;
+    const viewIdResult = ViewIdSchema.safeParse(req.params.viewId);
+    if (!viewIdResult.success) {
+      return res.status(400).json({ error: 'Invalid viewId parameter' });
+    }
+    const viewId = viewIdResult.data;
 
     const view = projectionService.getView(viewId);
     if (!view) {

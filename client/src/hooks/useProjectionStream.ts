@@ -16,17 +16,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWebSocket } from './useWebSocket';
+import type { ProjectionSnapshot } from '@shared/projection-types';
+
+// Re-export for consumers that previously imported from here
+export type { ProjectionSnapshot } from '@shared/projection-types';
 
 // ============================================================================
 // Types
 // ============================================================================
-
-export interface ProjectionSnapshot<T> {
-  viewId: string;
-  cursor: number;
-  snapshotTimeMs: number;
-  payload: T;
-}
 
 export interface UseProjectionStreamOptions {
   /** Query limit for snapshot requests (default 100, max 500) */
@@ -154,7 +151,7 @@ export function useProjectionStream<T>(
 
       if (remoteCursor > cursorRef.current) {
         log('Invalidation received, remote cursor:', remoteCursor, '> local:', cursorRef.current);
-        fetchSnapshot();
+        fetchSnapshot().catch(() => {}); // errors handled inside via setError
       } else {
         log('Stale invalidation ignored, remote:', remoteCursor, 'local:', cursorRef.current);
       }
@@ -192,7 +189,7 @@ export function useProjectionStream<T>(
       // Catch-up fetch on reconnect to bridge the disconnect gap
       if (isReconnect) {
         log('Reconnect detected, fetching latest snapshot');
-        fetchSnapshot();
+        fetchSnapshot().catch(() => {}); // errors handled inside via setError
       }
     }
 
@@ -226,7 +223,7 @@ export function useProjectionStream<T>(
     prevViewIdRef.current = viewId;
 
     if (fetchOnMount) {
-      fetchSnapshot();
+      fetchSnapshot().catch(() => {}); // errors handled inside via setError
     }
     return () => {
       mountedRef.current = false;

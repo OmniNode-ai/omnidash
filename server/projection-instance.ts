@@ -50,7 +50,7 @@ function handleIntentEvent(event: {
           ? String(payload.intent_id)
           : undefined,
     topic: event.topic,
-    type: (payload.event_type as string) ?? event.topic,
+    type: typeof payload.event_type === 'string' ? payload.event_type : event.topic,
     source: 'event-consumer',
     severity: 'info',
     payload,
