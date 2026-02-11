@@ -128,7 +128,9 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       }
     }
 
-    const effectiveLimit = limit ?? this.appliedEvents.length;
+    // Default to full buffer — safe because appliedEvents is bounded
+    // by MAX_APPLIED_EVENTS + APPLIED_EVENTS_TRIM_MARGIN (600 max)
+    const effectiveLimit = limit ?? MAX_APPLIED_EVENTS + APPLIED_EVENTS_TRIM_MARGIN;
     const sliced = this.appliedEvents.slice(lo, lo + effectiveLimit);
     return {
       viewId: this.viewId,
