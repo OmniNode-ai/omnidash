@@ -37,13 +37,16 @@ projectionService.registerView(intentView);
 eventConsumer.on(
   'intent-event',
   (event: { topic: string; payload: Record<string, unknown>; timestamp: string }) => {
+    const payload = event.payload;
+    if (!payload || typeof payload !== 'object') return;
+
     projectionService.ingest({
-      id: (event.payload.id as string) ?? (event.payload.intent_id as string) ?? undefined,
+      id: (payload.id as string) ?? (payload.intent_id as string) ?? undefined,
       topic: event.topic,
-      type: (event.payload.event_type as string) ?? event.topic,
+      type: (payload.event_type as string) ?? event.topic,
       source: 'event-consumer',
       severity: 'info',
-      payload: event.payload,
+      payload,
       eventTimeMs: extractTimestampMs(event),
     });
   }
