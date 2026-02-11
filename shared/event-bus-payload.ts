@@ -18,6 +18,27 @@ export const TIME_SERIES_BUCKET_MS = 15_000; // 15 seconds
 export type EventBusSnapshotEvent = ProjectionEvent;
 
 /**
+ * Burst/spike detection state (OMN-2158).
+ *
+ * Represents a detected throughput burst or error spike, including
+ * the short-window vs baseline comparison and cooldown timing.
+ */
+export interface BurstInfo {
+  /** Whether this is a throughput burst or an error spike */
+  type: 'throughput' | 'error_spike';
+  /** Rate in the short window (events/sec for throughput, fraction for error) */
+  shortWindowRate: number;
+  /** Rate in the baseline/monitoring window */
+  baselineRate: number;
+  /** Actual multiplier: shortWindowRate / baselineRate. Null when baseline is zero (new errors). */
+  multiplier: number | null;
+  /** Epoch ms when the burst was first detected */
+  detectedAt: number;
+  /** Epoch ms when the cooldown expires */
+  cooldownUntil: number;
+}
+
+/**
  * Snapshot payload returned by the event-bus projection.
  * All aggregates are pre-computed server-side — no O(n) scans on read.
  */
@@ -30,4 +51,16 @@ export interface EventBusPayload {
   errorCount: number;
   activeTopics: number;
   totalEventsIngested: number;
+
+  // ── Burst detection fields (OMN-2158) ──────────────────────────────
+  /** Monitoring window used for baseline computation (ms) */
+  monitoringWindowMs: number;
+  /** Staleness threshold — independent from monitoring window (ms) */
+  stalenessThresholdMs: number;
+  /** Short window used for burst detection (ms) */
+  burstWindowMs: number;
+  /** Error rate computed within monitoringWindowMs (0.0–1.0) — fixes latent whole-buffer bug */
+  windowedErrorRate: number;
+  /** Current burst/spike state, or null if no burst active */
+  burstInfo: BurstInfo | null;
 }

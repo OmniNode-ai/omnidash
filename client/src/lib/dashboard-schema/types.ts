@@ -440,6 +440,70 @@ export interface EventMonitoringConfig {
    * @default 10000 (10 seconds)
    */
   periodic_cleanup_interval_ms: number;
+
+  // ── Burst Detection Config (OMN-2158) ─────────────────────────────
+
+  /**
+   * Unified monitoring window for all windowed metrics (ms).
+   * Single source of truth for baseline computation.
+   * @default 300000 (5 minutes)
+   */
+  monitoring_window_ms: number;
+
+  /**
+   * Staleness threshold — independent from monitoring_window_ms.
+   * Events older than this are considered stale.
+   * @default 600000 (10 minutes)
+   */
+  staleness_threshold_ms: number;
+
+  /**
+   * Short window for burst/spike detection (ms).
+   * @default 30000 (30 seconds)
+   */
+  burst_window_ms: number;
+
+  /**
+   * Short-window rate must be >= this multiplier of baseline rate
+   * to trigger a throughput burst.
+   * @default 3
+   */
+  burst_throughput_multiplier: number;
+
+  /**
+   * Minimum absolute events/sec in the short window to trigger a throughput burst.
+   * Prevents false positives when baseline is very low.
+   * @default 5
+   */
+  burst_throughput_min_rate: number;
+
+  /**
+   * Short-window error rate must be >= this multiplier of baseline error rate
+   * to trigger an error spike.
+   * @default 2
+   */
+  burst_error_multiplier: number;
+
+  /**
+   * Absolute error rate threshold (fraction 0.0–1.0).
+   * If short-window error rate >= this, it's an error spike regardless of multiplier.
+   * @default 0.05 (5%)
+   */
+  burst_error_absolute_threshold: number;
+
+  /**
+   * Minimum events in the short window to compute error rate.
+   * Prevents false positives from small sample sizes.
+   * @default 10
+   */
+  burst_error_min_events: number;
+
+  /**
+   * Cooldown period after a burst is detected (ms).
+   * Prevents banner flapping between burst and normal states.
+   * @default 15000 (15 seconds)
+   */
+  burst_cooldown_ms: number;
 }
 
 /**

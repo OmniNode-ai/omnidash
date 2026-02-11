@@ -42,7 +42,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Activity, Filter, X, Pause, Play, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import {
+  Activity,
+  Filter,
+  X,
+  Pause,
+  Play,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  Zap,
+  ShieldAlert,
+} from 'lucide-react';
 import {
   EventDetailPanel,
   type EventDetailPanelProps,
@@ -86,6 +97,12 @@ interface PausedSnapshot {
   errorCount: number;
   activeTopics: number;
   totalEvents: number;
+  // Burst/staleness state frozen at pause time (OMN-2158)
+  burstInfo: EventBusPayload['burstInfo'];
+  burstWindowMs: number;
+  monitoringWindowMs: number;
+  stalenessThresholdMs: number;
+  windowedErrorRate: number;
 }
 
 // ============================================================================
@@ -224,6 +241,19 @@ function formatRelativeTime(timestamp: string | Date): string {
   if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}m ago`;
   if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)}h ago`;
   return date.toLocaleDateString();
+}
+
+/** Format a ms duration to a human-readable string (config-driven, never hardcoded). */
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60)
+    return seconds === Math.floor(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
+  const minutes = seconds / 60;
+  if (minutes < 60)
+    return minutes === Math.floor(minutes) ? `${minutes} min` : `${minutes.toFixed(1)} min`;
+  const hours = minutes / 60;
+  return hours === Math.floor(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
 }
 
 function mapPriorityToType(priority: string): 'info' | 'success' | 'warning' | 'error' {
@@ -400,6 +430,12 @@ export default function EventBusMonitor() {
         errorCount,
         activeTopics: activeTopicsCount,
         totalEvents: displayEvents.length,
+        // Freeze burst/staleness state at pause time (OMN-2158)
+        burstInfo: snapshotPayload?.burstInfo ?? null,
+        burstWindowMs: snapshotPayload?.burstWindowMs ?? 30_000,
+        monitoringWindowMs: snapshotPayload?.monitoringWindowMs ?? 5 * 60 * 1000,
+        stalenessThresholdMs: snapshotPayload?.stalenessThresholdMs ?? 10 * 60 * 1000,
+        windowedErrorRate: snapshotPayload?.windowedErrorRate ?? 0,
       };
       wasPausedRef.current = true;
     } else if (!isPaused && wasPausedRef.current) {
@@ -504,6 +540,10 @@ export default function EventBusMonitor() {
   // Filtered Data
   // ============================================================================
 
+  // Whether we're in paused state with a frozen snapshot.
+  // Declared here (above filteredData useMemo) to avoid temporal dead zone.
+  const paused = isPaused && pausedSnapshotRef.current;
+
   const filteredData = useMemo((): DashboardData => {
     const { events: srcEvents } = sourceData;
 
@@ -593,17 +633,25 @@ export default function EventBusMonitor() {
     const effectiveTimeSeries =
       timeSeriesData.length > 0 ? timeSeriesData : (chartSnapshotRef.current?.timeSeriesData ?? []);
 
-    // Error rate: count both 'critical' and 'high' priority (maps from 'error' severity),
-    // matching the server's errorCount which tracks severity 'error' + 'critical'.
+    // Error rate: when no filters are active, use server-provided windowedErrorRate
+    // (computed within the unified monitoring window — fixes the latent whole-buffer bug).
+    // When paused, use the frozen windowedErrorRate. When filters are active, fall back
+    // to computing from the filtered set.
+    const hasFilters = filters.topic || filters.priority || filters.search || hideHeartbeats;
+    const serverErrorRate = paused
+      ? pausedSnapshotRef.current!.windowedErrorRate
+      : snapshotPayload?.windowedErrorRate;
     const errorRate =
-      displayedEvents.length > 0
-        ? Math.round(
-            (displayedEvents.filter((e) => e.priority === 'critical' || e.priority === 'high')
-              .length /
-              displayedEvents.length) *
-              10000
-          ) / 100
-        : 0;
+      !hasFilters && serverErrorRate != null
+        ? Math.round(serverErrorRate * 10000) / 100
+        : displayedEvents.length > 0
+          ? Math.round(
+              (displayedEvents.filter((e) => e.priority === 'critical' || e.priority === 'high')
+                .length /
+                displayedEvents.length) *
+                10000
+            ) / 100
+          : 0;
 
     return {
       totalEvents: displayedEvents.length,
@@ -618,7 +666,15 @@ export default function EventBusMonitor() {
       timeSeriesData: effectiveTimeSeries,
       topicHealth: [],
     };
-  }, [sourceData, filters, maxEvents, hideHeartbeats, topicsLoadedCount]);
+  }, [
+    sourceData,
+    filters,
+    maxEvents,
+    hideHeartbeats,
+    topicsLoadedCount,
+    paused,
+    snapshotPayload?.windowedErrorRate,
+  ]);
 
   // Clear chart snapshot when topic filter changes
   useEffect(() => {
@@ -670,9 +726,24 @@ export default function EventBusMonitor() {
 
   const hasActiveFilters = filters.topic || filters.priority || filters.search || hideHeartbeats;
 
-  // Staleness detection
+  // Staleness / burst state: respect pause by reading from frozen paused snapshot.
+  // When paused, banners stay consistent with the frozen event table/charts.
+  // Note: `paused` is defined above (before filteredData useMemo) to avoid TDZ issues.
+  const activeBurstInfo = paused
+    ? pausedSnapshotRef.current!.burstInfo
+    : (snapshotPayload?.burstInfo ?? null);
+  const activeBurstWindowMs = paused
+    ? pausedSnapshotRef.current!.burstWindowMs
+    : (snapshotPayload?.burstWindowMs ?? 30_000);
+  const activeMonitoringWindowMs = paused
+    ? pausedSnapshotRef.current!.monitoringWindowMs
+    : (snapshotPayload?.monitoringWindowMs ?? 5 * 60 * 1000);
+
+  // Staleness detection (uses server-provided threshold from OMN-2158)
+  const stalenessThresholdMs = paused
+    ? pausedSnapshotRef.current!.stalenessThresholdMs
+    : (snapshotPayload?.stalenessThresholdMs ?? 10 * 60 * 1000);
   const stalenessInfo = useMemo(() => {
-    const STALENESS_THRESHOLD_MS = 10 * 60 * 1000;
     const now = Date.now();
     const allEvents = sourceData.events;
 
@@ -692,7 +763,7 @@ export default function EventBusMonitor() {
     );
     const ageMs = now - newest.timestamp.getTime();
 
-    if (ageMs <= STALENESS_THRESHOLD_MS) return { stale: false, hasOnlyHeartbeats: false } as const;
+    if (ageMs <= stalenessThresholdMs) return { stale: false, hasOnlyHeartbeats: false } as const;
 
     let ageStr: string;
     if (ageMs < 3600000) ageStr = `${Math.floor(ageMs / 60000)}m`;
@@ -706,7 +777,7 @@ export default function EventBusMonitor() {
       newestTopic: newest.topic,
       newestTimestamp: newest.timestamp.toLocaleString(),
     } as const;
-  }, [sourceData.events]);
+  }, [sourceData.events, stalenessThresholdMs]);
 
   // ============================================================================
   // Dashboard config splits
@@ -797,8 +868,8 @@ export default function EventBusMonitor() {
         </div>
       </div>
 
-      {/* Staleness Warning Banner */}
-      {stalenessInfo.stale && (
+      {/* Priority banners: staleness > error spike > throughput burst */}
+      {stalenessInfo.stale ? (
         <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-200">
           <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0" />
           <span className="text-sm">
@@ -816,7 +887,37 @@ export default function EventBusMonitor() {
             )}
           </span>
         </div>
-      )}
+      ) : activeBurstInfo?.type === 'error_spike' ? (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-200">
+          <ShieldAlert className="h-4 w-4 text-red-400 flex-shrink-0" />
+          <span className="text-sm">
+            Error spike detected — {formatDuration(activeBurstWindowMs)} error rate{' '}
+            <span className="font-semibold">
+              {(activeBurstInfo.shortWindowRate * 100).toFixed(1)}%
+            </span>{' '}
+            vs {formatDuration(activeMonitoringWindowMs)} baseline{' '}
+            <span className="font-semibold">
+              {(activeBurstInfo.baselineRate * 100).toFixed(1)}%
+            </span>{' '}
+            <span className="text-red-300/70">
+              ({activeBurstInfo.multiplier != null ? `${activeBurstInfo.multiplier}x` : 'new'})
+            </span>
+          </span>
+        </div>
+      ) : activeBurstInfo?.type === 'throughput' ? (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-200">
+          <Zap className="h-4 w-4 text-blue-400 flex-shrink-0" />
+          <span className="text-sm">
+            Throughput burst — {formatDuration(activeBurstWindowMs)} rate{' '}
+            <span className="font-semibold">{activeBurstInfo.shortWindowRate} evt/s</span> vs{' '}
+            {formatDuration(activeMonitoringWindowMs)} baseline{' '}
+            <span className="font-semibold">{activeBurstInfo.baselineRate} evt/s</span>{' '}
+            <span className="text-blue-300/70">
+              ({activeBurstInfo.multiplier != null ? `${activeBurstInfo.multiplier}x` : 'new'})
+            </span>
+          </span>
+        </div>
+      ) : null}
 
       {/* Filters */}
       <Card className="p-3">
