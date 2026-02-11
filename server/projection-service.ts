@@ -20,61 +20,20 @@ import { EventEmitter } from 'events';
 import { extractEventTimeMs, MISSING_TIMESTAMP_SENTINEL_MS } from './monotonic-merge';
 
 // ============================================================================
-// Contracts (locked per OMN-2094)
+// Contracts (locked per OMN-2094) — canonical types live in @shared/projection-types
 // ============================================================================
 
-/**
- * Canonical event shape flowing through projections.
- * Every raw event (Kafka, DB preload, playback) is wrapped into this
- * before being routed to views.
- */
-export interface ProjectionEvent {
-  /** Unique event identifier (from source, or `proj-{ingestSeq}` fallback) */
-  id: string;
-  /** Event timestamp in epoch milliseconds (producer-assigned) */
-  eventTimeMs: number;
-  /** Monotonically increasing sequence assigned by ProjectionService */
-  ingestSeq: number;
-  /** Kafka topic or source identifier */
-  topic: string;
-  /** Event type (e.g. 'node-heartbeat', 'session-started') */
-  type: string;
-  /** Producer/source identifier */
-  source: string;
-  /** Severity level for display purposes */
-  severity: 'info' | 'warning' | 'error' | 'critical';
-  /** Event payload (domain-specific data) */
-  payload: Record<string, unknown>;
-  /** True when no timestamp could be extracted — eventTimeMs is the sentinel (0) */
-  eventTimeMissing?: boolean;
-  /** Error details, if this is an error event */
-  error?: { message: string; stack?: string };
-}
+export type {
+  ProjectionEvent,
+  ProjectionResponse,
+  ProjectionEventsResponse,
+} from '@shared/projection-types';
 
-/**
- * Standardized response envelope for view snapshots.
- *
- * @template T - The payload type specific to each view
- */
-export interface ProjectionResponse<T> {
-  viewId: string;
-  /** Cursor: max(ingestSeq) in the current snapshot */
-  cursor: number;
-  /** Timestamp when snapshot was captured */
-  snapshotTimeMs: number;
-  payload: T;
-}
-
-/**
- * Response envelope for events-since queries.
- */
-export interface ProjectionEventsResponse {
-  viewId: string;
-  /** Cursor: max(ingestSeq) in the returned events */
-  cursor: number;
-  snapshotTimeMs: number;
-  events: ProjectionEvent[];
-}
+import type {
+  ProjectionEvent,
+  ProjectionResponse,
+  ProjectionEventsResponse,
+} from '@shared/projection-types';
 
 // ============================================================================
 // ProjectionView interface

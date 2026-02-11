@@ -1,12 +1,7 @@
 /**
- * Shared projection types for client-side consumption (OMN-2097)
+ * Re-exports shared projection types for client-side consumption (OMN-2097)
  *
- * Mirrors the server-side ProjectionResponse envelope shape.
+ * Canonical types live in @shared/projection-types.
  */
 
-export interface ProjectionResponse<T> {
-  viewId: string;
-  cursor: number;
-  snapshotTimeMs: number;
-  payload: T;
-}
+export type { ProjectionResponse } from '@shared/projection-types';

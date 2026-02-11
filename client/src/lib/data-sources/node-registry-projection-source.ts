@@ -9,56 +9,16 @@
  */
 
 import type { DashboardData } from '@/lib/dashboard-schema';
+import type {
+  NodeType,
+  RegistrationState,
+  NodeState,
+  NodeRegistryStats,
+  NodeRegistryPayload,
+} from '@shared/projection-types';
 
-// ============================================================================
-// Types mirror server-side NodeRegistryPayload (server/projections/node-registry-projection.ts).
-// Intentionally duplicated to avoid importing server code into the client bundle.
-// Keep in sync manually when the server types change.
-// TODO(OMN-2097): Consider extracting shared types to shared/projection-types.ts
-// to enable compile-time drift detection via the @shared/ path alias.
-// ============================================================================
-
-export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
-
-export type RegistrationState =
-  | 'pending_registration'
-  | 'accepted'
-  | 'awaiting_ack'
-  | 'ack_received'
-  | 'active'
-  | 'rejected'
-  | 'ack_timed_out'
-  | 'liveness_expired';
-
-export interface NodeState {
-  nodeId: string;
-  nodeType: NodeType;
-  state: RegistrationState;
-  version: string;
-  uptimeSeconds: number;
-  lastSeen: string;
-  memoryUsageMb?: number;
-  cpuUsagePercent?: number;
-  endpoints?: Record<string, string>;
-}
-
-export interface NodeRegistryStats {
-  totalNodes: number;
-  activeNodes: number;
-  byState: Record<string, number>;
-}
-
-export interface NodeRegistryPayload {
-  nodes: NodeState[];
-  recentStateChanges: Array<{
-    id: string;
-    type: string;
-    payload: Record<string, unknown>;
-    eventTimeMs: number;
-    ingestSeq: number;
-  }>;
-  stats: NodeRegistryStats;
-}
+// Re-export for consumers that import from this module
+export type { NodeType, RegistrationState, NodeState, NodeRegistryStats, NodeRegistryPayload };
 
 // ============================================================================
 // Transform helpers

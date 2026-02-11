@@ -18,53 +18,27 @@
  * - 'node-registry-seed'  → bulk seed from EventConsumer.getRegisteredNodes()
  */
 
+import type { ProjectionView } from '../projection-service';
 import type {
-  ProjectionView,
+  ProjectionEvent,
   ProjectionResponse,
   ProjectionEventsResponse,
-  ProjectionEvent,
-} from '../projection-service';
+  NodeType,
+  RegistrationState,
+  NodeState,
+  NodeRegistryStats,
+  NodeRegistryPayload,
+} from '@shared/projection-types';
 import { MonotonicMergeTracker, MISSING_TIMESTAMP_SENTINEL_MS } from '../monotonic-merge';
 
-// ============================================================================
-// Types
-// ============================================================================
-
-export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
-
-export type RegistrationState =
-  | 'pending_registration'
-  | 'accepted'
-  | 'awaiting_ack'
-  | 'ack_received'
-  | 'active'
-  | 'rejected'
-  | 'ack_timed_out'
-  | 'liveness_expired';
-
-export interface NodeState {
-  nodeId: string;
-  nodeType: NodeType;
-  state: RegistrationState;
-  version: string;
-  uptimeSeconds: number;
-  lastSeen: string;
-  memoryUsageMb?: number;
-  cpuUsagePercent?: number;
-  endpoints?: Record<string, string>;
-}
-
-export interface NodeRegistryStats {
-  totalNodes: number;
-  activeNodes: number;
-  byState: Record<string, number>;
-}
-
-export interface NodeRegistryPayload {
-  nodes: NodeState[];
-  recentStateChanges: ProjectionEvent[];
-  stats: NodeRegistryStats;
-}
+// Re-export shared types for consumers that import from this module
+export type {
+  NodeType,
+  RegistrationState,
+  NodeState,
+  NodeRegistryStats,
+  NodeRegistryPayload,
+} from '@shared/projection-types';
 
 // ============================================================================
 // Constants
@@ -73,6 +47,8 @@ export interface NodeRegistryPayload {
 const VIEW_ID = 'node-registry';
 const MAX_RECENT_STATE_CHANGES = 100;
 const MAX_APPLIED_EVENTS = 500;
+/** Trim appliedEvents when it exceeds MAX by this many, amortizing the O(n) slice cost. */
+const APPLIED_EVENTS_TRIM_MARGIN = 100;
 
 /** Event types this view handles */
 const HANDLED_EVENT_TYPES = new Set([
@@ -182,7 +158,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
     if (applied) {
       this.cursor = Math.max(this.cursor, event.ingestSeq);
       this.appliedEvents.push(event);
-      if (this.appliedEvents.length > MAX_APPLIED_EVENTS) {
+      if (this.appliedEvents.length > MAX_APPLIED_EVENTS + APPLIED_EVENTS_TRIM_MARGIN) {
         this.appliedEvents = this.appliedEvents.slice(-MAX_APPLIED_EVENTS);
       }
     }
