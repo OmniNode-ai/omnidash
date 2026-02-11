@@ -1,19 +1,33 @@
 /**
- * Shared projection types used by both server and client (OMN-2097)
+ * Shared Projection Types (OMN-2095 / OMN-2097)
  *
- * Extracted from server/projection-service.ts and
- * server/projections/node-registry-projection.ts to provide compile-time
- * drift detection across the client/server boundary via the @shared/ alias.
+ * Single source of truth for projection types shared between server and client.
+ * Both server (ProjectionService, EventBusProjection, NodeRegistryProjection)
+ * and client (useProjectionStream, EventBusMonitor, NodeRegistry) import from
+ * here to prevent type drift.
  */
 
-// ============================================================================
-// Projection envelope types
-// ============================================================================
+/**
+ * Standardized response envelope for view snapshots.
+ *
+ * @template T - The payload type specific to each view
+ */
+export interface ProjectionResponse<T> {
+  viewId: string;
+  /** Cursor: max(ingestSeq) in the current snapshot */
+  cursor: number;
+  /** Timestamp when snapshot was captured */
+  snapshotTimeMs: number;
+  payload: T;
+}
 
 /**
  * Canonical event shape flowing through projections.
  * Every raw event (Kafka, DB preload, playback) is wrapped into this
  * before being routed to views.
+ *
+ * This is the single source of truth — server and client must both
+ * import from here to prevent type drift.
  */
 export interface ProjectionEvent {
   /** Unique event identifier (from source, or `proj-{ingestSeq}` fallback) */
@@ -39,21 +53,8 @@ export interface ProjectionEvent {
 }
 
 /**
- * Standardized response envelope for view snapshots.
- *
- * @template T - The payload type specific to each view
- */
-export interface ProjectionResponse<T> {
-  viewId: string;
-  /** Cursor: max(ingestSeq) in the current snapshot */
-  cursor: number;
-  /** Timestamp when snapshot was captured */
-  snapshotTimeMs: number;
-  payload: T;
-}
-
-/**
  * Response envelope for events-since queries.
+ * Used by both server (ProjectionView.getEventsSince) and client (useProjectionStream catch-up).
  */
 export interface ProjectionEventsResponse {
   viewId: string;
@@ -66,7 +67,7 @@ export interface ProjectionEventsResponse {
 }
 
 // ============================================================================
-// Node Registry domain types
+// Node Registry domain types (OMN-2097)
 // ============================================================================
 
 export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';

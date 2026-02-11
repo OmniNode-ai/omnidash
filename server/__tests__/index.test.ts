@@ -30,21 +30,14 @@ vi.mock('../websocket', () => ({
   setupWebSocket: setupWebSocketMock,
 }));
 
-vi.mock('../projection-service', () => ({
-  ProjectionService: vi.fn().mockImplementation(() => ({
-    registerView: vi.fn(),
-    on: vi.fn(),
+vi.mock('../projections/node-registry-projection', () => ({
+  NodeRegistryProjection: vi.fn().mockImplementation(() => ({
+    viewId: 'node-registry',
   })),
 }));
 
-vi.mock('../projections/node-registry-projection', () => ({
-  NodeRegistryProjection: vi.fn(),
-}));
-
-const setProjectionServiceMock = vi.fn();
 vi.mock('../projection-routes', () => ({
-  default: vi.fn(),
-  setProjectionService: setProjectionServiceMock,
+  createProjectionRouter: vi.fn(),
 }));
 
 const eventConsumerOnMock = vi.fn().mockReturnThis();
@@ -76,6 +69,18 @@ vi.mock('../event-bus-mock-generator', () => ({
     start: mockGeneratorStartMock,
     stop: mockGeneratorStopMock,
   },
+}));
+
+const projectionServiceMock = {
+  registerView: vi.fn(),
+  getView: vi.fn().mockReturnValue(undefined),
+  ingest: vi.fn(),
+  on: vi.fn(),
+};
+
+vi.mock('../projection-bootstrap', () => ({
+  wireProjectionSources: vi.fn(),
+  projectionService: projectionServiceMock,
 }));
 
 describe('server/index bootstrap', () => {
@@ -139,10 +144,7 @@ describe('server/index bootstrap', () => {
     expect(registerRoutesMock).toHaveBeenCalledTimes(1);
     expect(validateConnectionMock).toHaveBeenCalledTimes(1);
     expect(startMock).toHaveBeenCalledTimes(1);
-    expect(setupWebSocketMock).toHaveBeenCalledWith(
-      mockServer,
-      expect.objectContaining({ projectionService: expect.anything() })
-    );
+    expect(setupWebSocketMock).toHaveBeenCalledWith(mockServer);
     expect(setupViteMock).toHaveBeenCalledWith(expect.anything(), mockServer);
     expect(serveStaticMock).not.toHaveBeenCalled();
     expect(mockServer.listen).toHaveBeenCalledWith(4001, '0.0.0.0', expect.any(Function));
@@ -161,11 +163,8 @@ describe('server/index bootstrap', () => {
     await importIndex();
 
     expect(startMock).not.toHaveBeenCalled();
-    // WebSocket is always set up (projection invalidation needs it)
-    expect(setupWebSocketMock).toHaveBeenCalledWith(
-      mockServer,
-      expect.objectContaining({ projectionService: expect.anything() })
-    );
+    // WebSocket only set up when ENABLE_REAL_TIME_EVENTS=true
+    expect(setupWebSocketMock).not.toHaveBeenCalled();
     expect(setupViteMock).not.toHaveBeenCalled();
     expect(serveStaticMock).toHaveBeenCalledWith(expect.anything());
     expect(mockServer.listen).toHaveBeenCalledWith(3000, '0.0.0.0', expect.any(Function));
@@ -188,32 +187,29 @@ describe('server/index bootstrap', () => {
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       '   Intelligence endpoints will not receive real-time data'
     );
-    expect(setupWebSocketMock).toHaveBeenCalledWith(
-      mockServer,
-      expect.objectContaining({ projectionService: expect.anything() })
-    );
+    expect(setupWebSocketMock).toHaveBeenCalledWith(mockServer);
 
     consoleErrorSpy.mockRestore();
   });
 
-  it('calls setProjectionService before registerRoutes (no 503 window on startup)', async () => {
+  it('registers NodeRegistryProjection before registerRoutes', async () => {
     process.env.NODE_ENV = 'development';
 
     const callOrder: string[] = [];
+    projectionServiceMock.registerView.mockImplementation(() => {
+      callOrder.push('registerView');
+    });
     registerRoutesMock.mockImplementation(async () => {
       callOrder.push('registerRoutes');
       return mockServer;
     });
-    setProjectionServiceMock.mockImplementation(() => {
-      callOrder.push('setProjectionService');
-    });
 
     await importIndex();
 
+    const viewIdx = callOrder.indexOf('registerView');
     const routesIdx = callOrder.indexOf('registerRoutes');
-    const projIdx = callOrder.indexOf('setProjectionService');
+    expect(viewIdx).toBeGreaterThanOrEqual(0);
     expect(routesIdx).toBeGreaterThanOrEqual(0);
-    expect(projIdx).toBeGreaterThanOrEqual(0);
-    expect(projIdx).toBeLessThan(routesIdx);
+    expect(viewIdx).toBeLessThan(routesIdx);
   });
 });

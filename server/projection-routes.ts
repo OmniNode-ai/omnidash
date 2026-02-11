@@ -1,121 +1,109 @@
 /**
- * Projection Routes — REST endpoints for projection snapshots (OMN-2097)
+ * Projection Routes — REST API for Projection Snapshots (OMN-2095 / OMN-2097)
  *
- * Provides a generic route pattern for all registered projection views:
- *   GET /api/projections/:viewId/snapshot → ProjectionResponse<T>
- *   GET /api/projections/:viewId/events?cursor=N&limit=M → ProjectionEventsResponse
+ * Standardized envelope responses for all projection views.
  *
- * The ProjectionService must be set via setProjectionService() before
- * any requests are served.
+ * Endpoints:
+ *   GET /api/projections/:viewId/snapshot?limit=200
+ *   GET /api/projections/:viewId/events?since_cursor=X&limit=50
  */
 
 import { Router, type Request, type Response } from 'express';
 import type { ProjectionService } from './projection-service';
+import { MAX_BUFFER_SIZE } from './projections/event-bus-projection';
 
-const router = Router();
-
-/** Only allow alphanumeric characters, hyphens, and underscores in view IDs */
-const VIEW_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
-
-let projectionService: ProjectionService | null = null;
-
-/**
- * Inject the ProjectionService instance. Called once from server/index.ts
- * after the service is created and views are registered.
- * Throws if called more than once to prevent accidental service swaps.
- */
-export function setProjectionService(service: ProjectionService): void {
-  if (projectionService !== null) {
-    throw new Error('ProjectionService already initialized — cannot reinitialize');
-  }
-  projectionService = service;
+/** Sanitize viewId: truncate + strip non-alphanumeric (defense-in-depth for Map lookup and log output). */
+function sanitizeViewId(raw: string): string {
+  // Truncate and strip anything outside [a-zA-Z0-9_-]
+  return raw.slice(0, 64).replace(/[^a-zA-Z0-9_-]/g, '');
 }
 
-/**
- * Reset the singleton for integration tests. Throws in non-test environments.
- *
- * Guard checks NODE_ENV, VITEST, and JEST_WORKER_ID to cover common test
- * runners. CI is intentionally excluded — production CI/CD pipelines (GitHub
- * Actions, Jenkins) set CI=true during deployments, not just during tests.
- */
-export function resetProjectionServiceForTest(): void {
-  const isTestEnv =
-    process.env.NODE_ENV === 'test' || !!process.env.VITEST || !!process.env.JEST_WORKER_ID;
-  if (!isTestEnv) {
-    throw new Error(
-      'resetProjectionServiceForTest() is only available in test environments. ' +
-        'Set NODE_ENV=test, VITEST=true, or JEST_WORKER_ID to enable.'
-    );
-  }
-  projectionService = null;
+export function createProjectionRouter(projectionService: ProjectionService): Router {
+  const router = Router();
+
+  /**
+   * GET /api/projections/:viewId/snapshot
+   *
+   * Returns the current materialized snapshot for the specified view.
+   *
+   * Query params:
+   *   limit  - Max events in the snapshot (default: view-specific)
+   */
+  router.get('/:viewId/snapshot', (req: Request, res: Response) => {
+    const { viewId } = req.params;
+    const rawLimit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const limit =
+      rawLimit !== undefined && !isNaN(rawLimit) && rawLimit > 0
+        ? Math.min(rawLimit, MAX_BUFFER_SIZE)
+        : undefined;
+
+    const safeViewId = sanitizeViewId(viewId);
+    const view = projectionService.getView(safeViewId);
+    if (!view) {
+      return res.status(404).json({
+        error: 'not_found',
+        message: `Projection view "${safeViewId}" not found`,
+      });
+    }
+
+    try {
+      const snapshot = view.getSnapshot(limit !== undefined ? { limit } : undefined);
+      return res.json(snapshot);
+    } catch (err) {
+      console.error(`[projection-routes] Error getting snapshot for "${safeViewId}":`, err);
+      return res.status(500).json({
+        error: 'internal_error',
+        message: 'An internal error occurred while processing the projection request',
+      });
+    }
+  });
+
+  /**
+   * GET /api/projections/:viewId/events
+   *
+   * Returns events applied to the view since the given cursor.
+   * Used for incremental catch-up by clients.
+   *
+   * Query params:
+   *   since_cursor  - ingestSeq to start from (exclusive). Required.
+   *   limit         - Max events to return (default: 50)
+   */
+  router.get('/:viewId/events', (req: Request, res: Response) => {
+    const { viewId } = req.params;
+    const sinceCursor = parseInt(req.query.since_cursor as string, 10);
+    const rawLimit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const limit: number =
+      rawLimit !== undefined && !isNaN(rawLimit) && rawLimit > 0
+        ? Math.min(Math.floor(rawLimit), MAX_BUFFER_SIZE)
+        : 50;
+
+    if (isNaN(sinceCursor) || sinceCursor < 0) {
+      return res.status(400).json({
+        error: 'bad_request',
+        message: 'since_cursor query parameter is required and must be a non-negative number',
+      });
+    }
+
+    const safeViewId = sanitizeViewId(viewId);
+    const view = projectionService.getView(safeViewId);
+    if (!view) {
+      return res.status(404).json({
+        error: 'not_found',
+        message: `Projection view "${safeViewId}" not found`,
+      });
+    }
+
+    try {
+      const response = view.getEventsSince(sinceCursor, limit);
+      return res.json(response);
+    } catch (err) {
+      console.error(`[projection-routes] Error getting events for "${safeViewId}":`, err);
+      return res.status(500).json({
+        error: 'internal_error',
+        message: 'An internal error occurred while processing the projection request',
+      });
+    }
+  });
+
+  return router;
 }
-
-/**
- * GET /api/projections/:viewId/snapshot
- *
- * Returns the current materialized snapshot for the given view.
- * Query params:
- *   - limit: optional max items (view-specific semantics)
- */
-router.get('/:viewId/snapshot', (req: Request, res: Response) => {
-  if (!projectionService) {
-    return res.status(503).json({ error: 'Projection service not initialized' });
-  }
-
-  const { viewId } = req.params;
-  if (!VIEW_ID_PATTERN.test(viewId)) {
-    return res
-      .status(400)
-      .json({ error: 'Invalid viewId format — use alphanumeric, hyphens, or underscores' });
-  }
-  const view = projectionService.getView(viewId);
-
-  if (!view) {
-    return res.status(404).json({ error: `Projection view "${viewId}" not found` });
-  }
-
-  const rawLimit = req.query.limit ? parseInt(String(req.query.limit), 10) : undefined;
-  const limit =
-    rawLimit !== undefined && Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : undefined;
-  const snapshot = view.getSnapshot(limit ? { limit } : undefined);
-
-  return res.json(snapshot);
-});
-
-/**
- * GET /api/projections/:viewId/events
- *
- * Returns events applied to the view since the given cursor position.
- * Used for incremental client catch-up.
- * Query params:
- *   - cursor: ingestSeq to start from (exclusive), defaults to 0 (all events)
- *   - limit: max events to return (default: 100)
- */
-router.get('/:viewId/events', (req: Request, res: Response) => {
-  if (!projectionService) {
-    return res.status(503).json({ error: 'Projection service not initialized' });
-  }
-
-  const { viewId } = req.params;
-  if (!VIEW_ID_PATTERN.test(viewId)) {
-    return res
-      .status(400)
-      .json({ error: 'Invalid viewId format — use alphanumeric, hyphens, or underscores' });
-  }
-  const view = projectionService.getView(viewId);
-
-  if (!view) {
-    return res.status(404).json({ error: `Projection view "${viewId}" not found` });
-  }
-
-  const rawCursor = req.query.cursor ? parseInt(String(req.query.cursor), 10) : 0;
-  const cursor = Number.isFinite(rawCursor) && rawCursor >= 0 ? rawCursor : 0;
-
-  const rawLimit = req.query.limit ? parseInt(String(req.query.limit), 10) : 100;
-  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 1000) : 100;
-
-  const events = view.getEventsSince(cursor, limit);
-  return res.json(events);
-});
-
-export default router;

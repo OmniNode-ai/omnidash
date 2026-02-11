@@ -27,6 +27,7 @@ import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-sour
 import { getPlaybackDataSource } from './playback-data-source';
 import { playbackEventEmitter, type PlaybackWSMessage } from './playback-events';
 import { ENVIRONMENT_PREFIXES } from '@shared/topics';
+import { projectionService } from './projection-bootstrap';
 
 /**
  * Wrap an async function so that rejections are caught and logged.
@@ -254,6 +255,8 @@ const VALID_TOPICS = [
   'validation',
   // Extraction pipeline events (OMN-1804)
   'extraction',
+  // Projection invalidation events (OMN-2095)
+  'projections',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -285,11 +288,7 @@ interface ClientData {
   missedPings: number;
 }
 
-interface SetupWebSocketOptions {
-  projectionService?: import('./projection-service').ProjectionService;
-}
-
-export function setupWebSocket(httpServer: HTTPServer, options?: SetupWebSocketOptions) {
+export function setupWebSocket(httpServer: HTTPServer) {
   console.log('Initializing WebSocket server...');
 
   const wss = new WebSocketServer({
@@ -322,13 +321,6 @@ export function setupWebSocket(httpServer: HTTPServer, options?: SetupWebSocketO
    * The broadcast() function filters events per-client based on their subscriptions.
    */
   const eventListeners: Array<{ event: string; handler: (...args: any[]) => void }> = [];
-
-  // Projection service listeners tracked separately (different emitter than eventConsumer)
-  const projectionListeners: Array<{
-    emitter: import('./projection-service').ProjectionService;
-    event: string;
-    handler: (...args: any[]) => void;
-  }> = [];
 
   // Heartbeat interval (30 seconds) with tolerance for missed pings
   const HEARTBEAT_INTERVAL_MS = 30000;
@@ -514,25 +506,6 @@ export function setupWebSocket(httpServer: HTTPServer, options?: SetupWebSocketO
     broadcast('NODE_REGISTRY_UPDATE', data, 'node-registry');
   });
 
-  // Projection invalidation listener (OMN-2097)
-  // Broadcasts invalidation signals so clients using useProjectionStream can re-fetch.
-  if (options?.projectionService) {
-    const projectionInvalidateHandler = (info: { viewId: string; cursor: number }) => {
-      broadcast(
-        'PROJECTION_INVALIDATE',
-        { viewId: info.viewId, cursor: info.cursor },
-        `projection:${info.viewId}`
-      );
-    };
-    options.projectionService.on('projection-invalidate', projectionInvalidateHandler);
-    // Track for cleanup (NOT in eventListeners — that array is for eventConsumer only)
-    projectionListeners.push({
-      emitter: options.projectionService,
-      event: 'projection-invalidate',
-      handler: projectionInvalidateHandler,
-    });
-  }
-
   // Intent classification event listeners (OMN-1516)
   // Note: Intent events are emitted from intentEventEmitter, NOT eventConsumer
   const intentStoredHandler = (payload: IntentStoredEventPayload) => {
@@ -690,6 +663,61 @@ export function setupWebSocket(httpServer: HTTPServer, options?: SetupWebSocketO
       '[WebSocket] EventBusDataSource not available - event-bus topic will not receive real-time events'
     );
   }
+
+  // Projection invalidation bridge (OMN-2095)
+  // Bridges the server-side ProjectionService EventEmitter to WebSocket clients.
+  // When a projection view applies an event, broadcast PROJECTION_INVALIDATE so
+  // clients using useProjectionStream can invalidate their TanStack Query cache
+  // instead of waiting for the next polling interval.
+  //
+  // Throttled: at high throughput (50+ events/sec from 197 topics), emitting every
+  // event is wasteful. Leading-edge fires immediately for low latency; trailing-edge
+  // coalesces bursts. Client polls every 2s as a fallback regardless.
+  const PROJECTION_THROTTLE_MS = 150;
+  const projectionThrottleState = new Map<
+    string,
+    { timer: NodeJS.Timeout; leadingCursor: number; latestCursor: number }
+  >();
+
+  const projectionInvalidateHandler = (data: { viewId: string; cursor: number }) => {
+    const state = projectionThrottleState.get(data.viewId);
+
+    if (state) {
+      // Within throttle window — track latest cursor, timer handles trailing edge
+      state.latestCursor = Math.max(state.latestCursor, data.cursor);
+      return;
+    }
+
+    // Leading edge: broadcast immediately
+    broadcast('PROJECTION_INVALIDATE', data, 'projections');
+
+    // Open throttle window
+    const entry = {
+      leadingCursor: data.cursor,
+      latestCursor: data.cursor,
+      timer: setTimeout(() => {
+        projectionThrottleState.delete(data.viewId);
+        // Trailing edge: if cursor advanced during window, send one final update
+        if (entry.latestCursor > entry.leadingCursor) {
+          broadcast(
+            'PROJECTION_INVALIDATE',
+            { viewId: data.viewId, cursor: entry.latestCursor },
+            'projections'
+          );
+        }
+      }, PROJECTION_THROTTLE_MS),
+    };
+    projectionThrottleState.set(data.viewId, entry);
+  };
+  projectionService.on('projection-invalidate', projectionInvalidateHandler);
+
+  const projectionListeners = [
+    {
+      emitter: projectionService,
+      event: 'projection-invalidate' as string,
+      handler: projectionInvalidateHandler,
+    },
+  ];
 
   // PlaybackDataSource listener (works without Kafka for demo playback)
   const playbackDataSource = getPlaybackDataSource();
@@ -1015,19 +1043,25 @@ export function setupWebSocket(httpServer: HTTPServer, options?: SetupWebSocketO
     });
     eventBusListeners.length = 0;
 
+    // Remove projection event listeners (OMN-2095)
+    console.log(`Removing ${projectionListeners.length} projection event listeners...`);
+    projectionListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    projectionListeners.length = 0;
+
+    // Clear projection throttle timers
+    for (const state of projectionThrottleState.values()) {
+      clearTimeout(state.timer);
+    }
+    projectionThrottleState.clear();
+
     // Remove playback data source listeners (OMN-1885)
     console.log(`Removing ${playbackDataSourceListeners.length} playback data source listeners...`);
     playbackDataSourceListeners.forEach(({ emitter, event, handler }) => {
       emitter.removeListener(event, handler);
     });
     playbackDataSourceListeners.length = 0;
-
-    // Remove projection service listeners (OMN-2097)
-    console.log(`Removing ${projectionListeners.length} projection service listeners...`);
-    projectionListeners.forEach(({ emitter, event, handler }) => {
-      emitter.removeListener(event, handler);
-    });
-    projectionListeners.length = 0;
 
     // Terminate all client connections
     console.log(`Terminating ${clients.size} client connections...`);

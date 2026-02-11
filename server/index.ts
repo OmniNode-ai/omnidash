@@ -16,9 +16,8 @@ import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
 import { runtimeIdentity } from './runtime-identity';
-import { ProjectionService } from './projection-service';
+import { wireProjectionSources, projectionService } from './projection-bootstrap';
 import { NodeRegistryProjection } from './projections/node-registry-projection';
-import { setProjectionService } from './projection-routes';
 
 const app = express();
 
@@ -89,21 +88,21 @@ app.use((req, res, next) => {
   }
 
   // --------------------------------------------------------------------------
-  // Projection Service (OMN-2097)
-  // Must be created and injected BEFORE routes are registered so that
-  // projection REST endpoints never see a null service (no 503 window).
-  // Listeners registered BEFORE EventConsumer starts to avoid missing events.
+  // Node Registry Projection (OMN-2097)
+  // Register into the shared ProjectionService singleton BEFORE routes are
+  // registered so that projection REST endpoints are available immediately.
   // --------------------------------------------------------------------------
-  const projectionService = new ProjectionService();
   const nodeRegistryView = new NodeRegistryProjection();
-  projectionService.registerView(nodeRegistryView);
-  setProjectionService(projectionService);
+  if (!projectionService.getView(nodeRegistryView.viewId)) {
+    projectionService.registerView(nodeRegistryView);
+  }
 
   const server = await registerRoutes(app);
 
-  // Bridge EventConsumer node events → ProjectionService
-  // MUST be registered BEFORE eventConsumer.start() to avoid missing events
-  // Listeners stored for cleanup during graceful shutdown
+  // --------------------------------------------------------------------------
+  // Bridge EventConsumer node events → ProjectionService (OMN-2097)
+  // MUST be registered BEFORE eventConsumer.start() to avoid missing events.
+  // --------------------------------------------------------------------------
 
   /** Safely parse createdAt into epoch-ms, returning undefined if invalid to let ProjectionService use its own extraction. */
   function extractBridgeTimestamp(event: Record<string, unknown>): number | undefined {
@@ -192,6 +191,17 @@ app.use((req, res, next) => {
     console.error('   Application will continue with limited functionality');
   }
 
+  // Wire projection event sources (after EventConsumer and EventBusDataSource are started)
+  // This covers EventBusProjection wiring; NodeRegistry bridge listeners are above.
+  let cleanupProjectionSources: (() => void) | undefined;
+  try {
+    cleanupProjectionSources = wireProjectionSources();
+  } catch (error) {
+    console.error('❌ Failed to wire projection sources:', error);
+    console.error('   Projections will remain empty until next restart');
+    console.error('   Application will continue with limited functionality');
+  }
+
   // Seed projection with any nodes already tracked by EventConsumer from prior runs.
   // Seed has no eventTimeMs — represents in-memory EventConsumer state, not a
   // timestamped Kafka event. ProjectionService assigns sentinel (epoch 0), so
@@ -212,10 +222,10 @@ app.use((req, res, next) => {
     log(`Seeded node-registry projection with ${existingNodes.length} existing nodes`);
   }
 
-  // Setup WebSocket — always enabled so projection invalidation signals
-  // reach clients via push (not just 10s polling fallback).
-  // ENABLE_REAL_TIME_EVENTS controls Kafka consumer, not WebSocket.
-  setupWebSocket(server, { projectionService });
+  // Setup WebSocket for real-time events
+  if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
+    setupWebSocket(server);
+  }
 
   // Demo mode: start ALL mock data generators (fake heartbeats, events, registry)
   // ONLY runs when DEMO_MODE=true is explicitly set — no fake data by default
@@ -297,6 +307,7 @@ app.use((req, res, next) => {
   process.on('SIGTERM', async () => {
     log('SIGTERM received, shutting down gracefully');
     cleanupProjectionBridge();
+    cleanupProjectionSources?.();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();
@@ -310,6 +321,7 @@ app.use((req, res, next) => {
   process.on('SIGINT', async () => {
     log('SIGINT received, shutting down gracefully');
     cleanupProjectionBridge();
+    cleanupProjectionSources?.();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();

@@ -448,6 +448,31 @@ export const queryKeys = {
     /** Multi-metric trend */
     trend: () => [...queryKeys.effectiveness.all, 'trend'] as const,
   },
+  // ============================================================================
+  // Projections (OMN-2095)
+  // ============================================================================
+
+  /**
+   * Projection query keys for server-side materialized views.
+   *
+   * Used by `useProjectionStream` hook for TanStack Query cache management.
+   * On PROJECTION_INVALIDATE, invalidate the specific view's snapshot.
+   */
+  projections: {
+    /** Base key for all projection queries */
+    all: ['projections'] as const,
+
+    /** All queries for a specific view */
+    view: (viewId: string) => [...queryKeys.projections.all, viewId] as const,
+
+    /** Snapshot query for a view */
+    snapshot: (viewId: string, limit?: number) =>
+      [...queryKeys.projections.view(viewId), 'snapshot', limit ?? 'default'] as const,
+
+    /** Events-since query for a view */
+    events: (viewId: string, cursor: number) =>
+      [...queryKeys.projections.view(viewId), 'events', cursor] as const,
+  },
 
   // ============================================================================
   // Learned Insights (OMN-1407)

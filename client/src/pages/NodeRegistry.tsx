@@ -34,8 +34,17 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 export default function NodeRegistry() {
   // Server-side projection stream: fetches snapshot, re-fetches on invalidation
-  const { data, cursor, isLoading, error, isConnected, refresh } =
-    useProjectionStream<NodeRegistryPayload>('node-registry');
+  const {
+    data: snapshot,
+    cursor,
+    isLoading,
+    error,
+    isConnected,
+    refresh,
+  } = useProjectionStream<NodeRegistryPayload>('node-registry');
+
+  // Unwrap the projection envelope to get the domain payload
+  const data = snapshot?.payload ?? null;
 
   // Determine if we have real data from the projection
   const hasProjectionData = data !== null && data.nodes.length > 0;
@@ -141,7 +150,7 @@ export default function NodeRegistry() {
             </TooltipTrigger>
             <TooltipContent>
               <p>Projection: {connectionStatus}</p>
-              {error && <p className="text-xs text-destructive">{error}</p>}
+              {error && <p className="text-xs text-destructive">{error.message}</p>}
             </TooltipContent>
           </Tooltip>
 

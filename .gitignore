@@ -20,6 +20,7 @@ playwright-report/
 playwright/.cache/
 test-results/
 *.spec.ts-snapshots/
+snapshots/
 
 # Environment files with secrets
 .env
