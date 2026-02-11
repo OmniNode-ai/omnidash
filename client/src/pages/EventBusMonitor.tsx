@@ -97,6 +97,12 @@ interface PausedSnapshot {
   errorCount: number;
   activeTopics: number;
   totalEvents: number;
+  // Burst/staleness state frozen at pause time (OMN-2158)
+  burstInfo: EventBusPayload['burstInfo'];
+  burstWindowMs: number;
+  monitoringWindowMs: number;
+  stalenessThresholdMs: number;
+  windowedErrorRate: number;
 }
 
 // ============================================================================
@@ -424,6 +430,12 @@ export default function EventBusMonitor() {
         errorCount,
         activeTopics: activeTopicsCount,
         totalEvents: displayEvents.length,
+        // Freeze burst/staleness state at pause time (OMN-2158)
+        burstInfo: snapshotPayload?.burstInfo ?? null,
+        burstWindowMs: snapshotPayload?.burstWindowMs ?? 30_000,
+        monitoringWindowMs: snapshotPayload?.monitoringWindowMs ?? 5 * 60 * 1000,
+        stalenessThresholdMs: snapshotPayload?.stalenessThresholdMs ?? 10 * 60 * 1000,
+        windowedErrorRate: snapshotPayload?.windowedErrorRate ?? 0,
       };
       wasPausedRef.current = true;
     } else if (!isPaused && wasPausedRef.current) {
@@ -619,11 +631,15 @@ export default function EventBusMonitor() {
 
     // Error rate: when no filters are active, use server-provided windowedErrorRate
     // (computed within the unified monitoring window — fixes the latent whole-buffer bug).
-    // When filters are active, fall back to computing from the filtered set.
+    // When paused, use the frozen windowedErrorRate. When filters are active, fall back
+    // to computing from the filtered set.
     const hasFilters = filters.topic || filters.priority || filters.search || hideHeartbeats;
+    const serverErrorRate = paused
+      ? pausedSnapshotRef.current!.windowedErrorRate
+      : snapshotPayload?.windowedErrorRate;
     const errorRate =
-      !hasFilters && snapshotPayload?.windowedErrorRate != null
-        ? Math.round(snapshotPayload.windowedErrorRate * 10000) / 100
+      !hasFilters && serverErrorRate != null
+        ? Math.round(serverErrorRate * 10000) / 100
         : displayedEvents.length > 0
           ? Math.round(
               (displayedEvents.filter((e) => e.priority === 'critical' || e.priority === 'high')
@@ -698,8 +714,23 @@ export default function EventBusMonitor() {
 
   const hasActiveFilters = filters.topic || filters.priority || filters.search || hideHeartbeats;
 
+  // Staleness / burst state: respect pause by reading from frozen paused snapshot.
+  // When paused, banners stay consistent with the frozen event table/charts.
+  const paused = isPaused && pausedSnapshotRef.current;
+  const activeBurstInfo = paused
+    ? pausedSnapshotRef.current!.burstInfo
+    : (snapshotPayload?.burstInfo ?? null);
+  const activeBurstWindowMs = paused
+    ? pausedSnapshotRef.current!.burstWindowMs
+    : (snapshotPayload?.burstWindowMs ?? 30_000);
+  const activeMonitoringWindowMs = paused
+    ? pausedSnapshotRef.current!.monitoringWindowMs
+    : (snapshotPayload?.monitoringWindowMs ?? 5 * 60 * 1000);
+
   // Staleness detection (uses server-provided threshold from OMN-2158)
-  const stalenessThresholdMs = snapshotPayload?.stalenessThresholdMs ?? 10 * 60 * 1000;
+  const stalenessThresholdMs = paused
+    ? pausedSnapshotRef.current!.stalenessThresholdMs
+    : (snapshotPayload?.stalenessThresholdMs ?? 10 * 60 * 1000);
   const stalenessInfo = useMemo(() => {
     const now = Date.now();
     const allEvents = sourceData.events;
@@ -844,30 +875,36 @@ export default function EventBusMonitor() {
             )}
           </span>
         </div>
-      ) : snapshotPayload?.burstInfo?.type === 'error_spike' ? (
+      ) : activeBurstInfo?.type === 'error_spike' ? (
         <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-200">
           <ShieldAlert className="h-4 w-4 text-red-400 flex-shrink-0" />
           <span className="text-sm">
-            Error spike detected — {formatDuration(snapshotPayload.burstWindowMs)} error rate{' '}
+            Error spike detected — {formatDuration(activeBurstWindowMs)} error rate{' '}
             <span className="font-semibold">
-              {(snapshotPayload.burstInfo.shortWindowRate * 100).toFixed(1)}%
+              {(activeBurstInfo.shortWindowRate * 100).toFixed(1)}%
             </span>{' '}
-            vs {formatDuration(snapshotPayload.monitoringWindowMs)} baseline{' '}
+            vs {formatDuration(activeMonitoringWindowMs)} baseline{' '}
             <span className="font-semibold">
-              {(snapshotPayload.burstInfo.baselineRate * 100).toFixed(1)}%
+              {(activeBurstInfo.baselineRate * 100).toFixed(1)}%
             </span>{' '}
-            <span className="text-red-300/70">({snapshotPayload.burstInfo.multiplier}x)</span>
+            <span className="text-red-300/70">
+              (
+              {Number.isFinite(activeBurstInfo.multiplier)
+                ? `${activeBurstInfo.multiplier}x`
+                : 'new'}
+              )
+            </span>
           </span>
         </div>
-      ) : snapshotPayload?.burstInfo?.type === 'throughput' ? (
+      ) : activeBurstInfo?.type === 'throughput' ? (
         <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-200">
           <Zap className="h-4 w-4 text-blue-400 flex-shrink-0" />
           <span className="text-sm">
-            Throughput burst — {formatDuration(snapshotPayload.burstWindowMs)} rate{' '}
-            <span className="font-semibold">{snapshotPayload.burstInfo.shortWindowRate} evt/s</span>{' '}
-            vs {formatDuration(snapshotPayload.monitoringWindowMs)} baseline{' '}
-            <span className="font-semibold">{snapshotPayload.burstInfo.baselineRate} evt/s</span>{' '}
-            <span className="text-blue-300/70">({snapshotPayload.burstInfo.multiplier}x)</span>
+            Throughput burst — {formatDuration(activeBurstWindowMs)} rate{' '}
+            <span className="font-semibold">{activeBurstInfo.shortWindowRate} evt/s</span> vs{' '}
+            {formatDuration(activeMonitoringWindowMs)} baseline{' '}
+            <span className="font-semibold">{activeBurstInfo.baselineRate} evt/s</span>{' '}
+            <span className="text-blue-300/70">({activeBurstInfo.multiplier}x)</span>
           </span>
         </div>
       ) : null}

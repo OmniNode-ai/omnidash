@@ -10,9 +10,31 @@
  */
 
 import { ProjectionService, type RawEventInput } from './projection-service';
-import { EventBusProjection } from './projections/event-bus-projection';
+import {
+  EventBusProjection,
+  type EventBusProjectionConfig,
+} from './projections/event-bus-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
+
+// ============================================================================
+// Server-side burst detection config (single source of truth)
+// ============================================================================
+
+// These values match the dashboard runtime_config in event-bus-dashboard.ts.
+// Centralized here so the server-side projection and client-side dashboard
+// config stay in sync. If you change values here, update the dashboard config too.
+const BURST_DETECTION_CONFIG: EventBusProjectionConfig = {
+  monitoringWindowMs: 5 * 60 * 1000, // 5 min
+  stalenessThresholdMs: 10 * 60 * 1000, // 10 min
+  burstWindowMs: 30 * 1000, // 30s
+  burstThroughputMultiplier: 3,
+  burstThroughputMinRate: 5,
+  burstErrorMultiplier: 2,
+  burstErrorAbsoluteThreshold: 0.05, // 5%
+  burstErrorMinEvents: 10,
+  burstCooldownMs: 15 * 1000, // 15s
+};
 
 // ============================================================================
 // Singleton instances
@@ -29,7 +51,7 @@ export const projectionService = new ProjectionService();
  * by the `/api/projections/event-bus` endpoint and the EventBusMonitor page.
  * Registered into projectionService at module load time.
  */
-export const eventBusProjection = new EventBusProjection();
+export const eventBusProjection = new EventBusProjection(BURST_DETECTION_CONFIG);
 
 // Register views (runs at import time — module-level side effect).
 //

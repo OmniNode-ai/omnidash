@@ -8,6 +8,7 @@
  * - insert:   O(log n) binary search + O(n) splice shift
  * - evict:    O(1) pop + O(1) counter updates
  * - snapshot: O(k) Map-to-object serialization + O(m log m) timeSeries sort
+ *             + O(n * w) burst detection (n = buffer, w = number of windowing calls, currently 6-7)
  *
  * Scaling note: Array.splice for sorted insertion is O(n) due to element
  * shifting. At MAX_BUFFER_SIZE=500 this is ~500 shifts per insert — well
@@ -125,6 +126,14 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
    * Lazily prunes stale time-series buckets and rolling window entries
    * before computing EPS and serializing aggregates. The optional `limit`
    * caps the number of events included (defaults to the full buffer).
+   *
+   * DESIGN NOTE: This method has a write side effect — it updates `_burstInfo`
+   * via `detectBurst()`. Burst detection is intentionally lazy (computed on
+   * snapshot read, not on every applyEvent) because it requires windowed rate
+   * calculations that would be wasteful to run on every insert. The tradeoff
+   * is that burst detection timing is coupled to snapshot polling frequency
+   * (currently 2s). If snapshot caching is introduced, burst detection must
+   * be extracted to a separate `tick()` method called at a fixed interval.
    */
   getSnapshot(options?: { limit?: number }): ProjectionResponse<EventBusPayload> {
     const limit = options?.limit ?? this.events.length;
@@ -535,14 +544,16 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
 
     if (!exceedsMultiplier && !exceedsAbsolute) return null;
 
-    const multiplier =
-      baselineErrorRate > 0 ? shortErrorRate / baselineErrorRate : shortErrorRate / 0.001;
+    // When baseline is zero, the multiplier concept is meaningless.
+    // Use Infinity to signal "new errors from zero baseline" — the client
+    // can render this as "new" or "N/A" rather than a misleading "50x".
+    const multiplier = baselineErrorRate > 0 ? shortErrorRate / baselineErrorRate : Infinity;
 
     return {
       type: 'error_spike',
       shortWindowRate: Math.round(shortErrorRate * 1000) / 1000,
       baselineRate: Math.round(baselineErrorRate * 1000) / 1000,
-      multiplier: Math.round(multiplier * 10) / 10,
+      multiplier: Number.isFinite(multiplier) ? Math.round(multiplier * 10) / 10 : Infinity,
       detectedAt: now,
       cooldownUntil: now + cfg.burstCooldownMs,
     };
