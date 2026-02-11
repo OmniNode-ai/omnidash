@@ -71,6 +71,9 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
   /** Last event timestamp for stats. */
   private _lastEventTimeMs: number | null = null;
 
+  /** Cumulative count of all intent events ingested (never decremented on eviction). */
+  private _totalIngested = 0;
+
   // --------------------------------------------------------------------------
   // ProjectionView interface
   // --------------------------------------------------------------------------
@@ -91,7 +94,8 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
         payload,
       }));
 
-    const totalIntents =
+    // Buffer-visible count for distribution percentages
+    const bufferTotal =
       this.distributionMap.size > 0
         ? Array.from(this.distributionMap.values()).reduce((sum, c) => sum + c, 0)
         : 0;
@@ -100,7 +104,7 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
       .map(([category, count]) => ({
         category,
         count,
-        percentage: totalIntents > 0 ? (count / totalIntents) * 100 : 0,
+        percentage: bufferTotal > 0 ? (count / bufferTotal) * 100 : 0,
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -111,7 +115,8 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
       payload: {
         recentIntents,
         distribution,
-        totalIntents,
+        // Cumulative lifetime count (never decreases on eviction)
+        totalIntents: this._totalIngested,
         categoryCount: this.distributionMap.size,
         lastEventTimeMs: this._lastEventTimeMs,
       },
@@ -146,6 +151,9 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     if (event.eventTimeMs > (this._lastEventTimeMs ?? 0)) {
       this._lastEventTimeMs = event.eventTimeMs;
     }
+
+    // Cumulative counter (never decremented, survives eviction)
+    this._totalIngested++;
 
     // Extract category from payload
     const category = this.extractCategory(event);
@@ -185,6 +193,7 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     this.appliedEvents = [];
     this._cursor = 0;
     this._lastEventTimeMs = null;
+    this._totalIngested = 0;
   }
 
   // --------------------------------------------------------------------------
@@ -197,14 +206,12 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
 
   private extractCategory(event: ProjectionEvent): string {
     const payload = event.payload;
-    // Use || instead of ?? so empty strings fall through to the next candidate
-    return (
-      (payload.intent_category as string) ||
-      (payload.intentCategory as string) ||
-      (payload.intent_type as string) ||
-      (payload.intentType as string) ||
-      'unknown'
-    );
+    // Check each candidate field with typeof guard and empty-string fallthrough
+    for (const field of ['intent_category', 'intentCategory', 'intent_type', 'intentType']) {
+      const val = payload[field];
+      if (typeof val === 'string' && val.length > 0) return val;
+    }
+    return 'unknown';
   }
 
   /**

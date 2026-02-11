@@ -268,7 +268,7 @@ export default function IntentDashboard() {
   }, [snapshot]);
 
   const lastEventTimeStr = useMemo(() => {
-    if (!snapshot?.lastEventTimeMs) return 'No events yet';
+    if (snapshot?.lastEventTimeMs == null) return 'No events yet';
     return new Date(snapshot.lastEventTimeMs).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
@@ -292,7 +292,9 @@ export default function IntentDashboard() {
           description="Real-time classification of user intents across sessions"
           isConnected={isConnected}
           connectionStatus={connectionStatus}
-          lastUpdated={snapshot?.lastEventTimeMs ? new Date(snapshot.lastEventTimeMs) : null}
+          lastUpdated={
+            snapshot?.lastEventTimeMs != null ? new Date(snapshot.lastEventTimeMs) : null
+          }
           actions={
             <div className="flex items-center gap-2">
               {/* Time Range Selector - affects IntentDistribution only (see module docstring) */}

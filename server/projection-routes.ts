@@ -20,11 +20,11 @@ const ViewIdSchema = z
   .regex(/^[a-zA-Z0-9_-]+$/);
 
 const SnapshotQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(500).optional().default(100),
+  limit: z.coerce.number().finite().int().min(1).max(500).optional().default(100),
 });
 
 const EventsQuerySchema = z.object({
-  cursor: z.coerce.number().int().min(0).optional().default(0),
+  cursor: z.coerce.number().finite().int().min(0).optional().default(0),
   limit: z.coerce.number().int().min(1).max(500).optional().default(50),
 });
 

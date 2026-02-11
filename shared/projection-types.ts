@@ -65,6 +65,11 @@ export interface IntentDistributionEntry {
 /**
  * Intent projection snapshot payload.
  * Returned by GET /api/projections/intent/snapshot.
+ *
+ * Each item in `recentIntents` carries an intent-specific `payload` with
+ * expected fields: `intent_category` (string), `confidence` (number 0-1),
+ * `session_ref` (string), `keywords` (string[]). See `IntentRecordPayload`
+ * in `shared/intent-types.ts` for the canonical intent payload schema.
  */
 export interface IntentProjectionPayload {
   recentIntents: ProjectionEventItem[];

@@ -6,6 +6,11 @@
  * into the projection pipeline.
  *
  * Import this module to get the configured service instance.
+ *
+ * **Testing**: Importing this module registers an EventConsumer listener
+ * as a side effect. Test files that import this module should call
+ * `teardownProjectionListeners()` in afterEach/afterAll to prevent
+ * duplicate listeners across test suites.
  */
 
 import { ProjectionService } from './projection-service';
