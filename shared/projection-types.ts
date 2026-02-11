@@ -71,6 +71,12 @@ export interface ProjectionEventsResponse {
 
 export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
 
+/**
+ * Registration state values use lowercase. Canonical event handlers in EventConsumer
+ * use uppercase states ('ACTIVE', 'OFFLINE', 'PENDING') internally but convert them
+ * to these lowercase values via mapCanonicalState() before emitting to consumers.
+ * If bypassing EventConsumer (e.g., direct Kafka bridging), ensure the mapping is applied.
+ */
 export type RegistrationState =
   | 'pending_registration'
   | 'accepted'

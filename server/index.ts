@@ -103,6 +103,11 @@ app.use((req, res, next) => {
   // Bridge EventConsumer node events → ProjectionService
   // MUST be registered BEFORE eventConsumer.start() to avoid missing events
   // Listeners stored for cleanup during graceful shutdown
+  //
+  // NOTE on startup ordering: setProjectionService() above injects the service
+  // into projection-routes.ts. Routes are registered in registerRoutes() (line 91)
+  // which runs BEFORE this point, so there is a brief window where routes exist
+  // but the service is null — the routes return 503 during this window.
 
   /** Safely parse createdAt into epoch-ms, returning undefined if invalid to let ProjectionService use its own extraction. */
   function extractBridgeTimestamp(event: Record<string, unknown>): number | undefined {
@@ -138,10 +143,23 @@ app.use((req, res, next) => {
         payload: event,
       });
     },
+    // Canonical event handlers (handleCanonicalNode*) only emit 'nodeRegistryUpdate',
+    // not the granular events above. Bridge the full registry snapshot as a seed event
+    // so the projection stays in sync with canonical-path updates. The seed handler
+    // uses sentinel-0 timestamps, so nodes already updated by a granular event with
+    // a real timestamp will not be overwritten (merge tracker rejects stale updates).
+    nodeRegistryUpdate: (registeredNodes: Record<string, unknown>[]) => {
+      projectionService.ingest({
+        type: 'node-registry-seed',
+        source: 'event-consumer-canonical',
+        payload: { nodes: registeredNodes },
+      });
+    },
   };
   eventConsumer.on('nodeIntrospectionUpdate', projectionBridgeListeners.nodeIntrospectionUpdate);
   eventConsumer.on('nodeHeartbeatUpdate', projectionBridgeListeners.nodeHeartbeatUpdate);
   eventConsumer.on('nodeStateChangeUpdate', projectionBridgeListeners.nodeStateChangeUpdate);
+  eventConsumer.on('nodeRegistryUpdate', projectionBridgeListeners.nodeRegistryUpdate);
 
   // Validate and start Kafka event consumer
   try {
@@ -273,6 +291,10 @@ app.use((req, res, next) => {
     eventConsumer.removeListener(
       'nodeStateChangeUpdate',
       projectionBridgeListeners.nodeStateChangeUpdate
+    );
+    eventConsumer.removeListener(
+      'nodeRegistryUpdate',
+      projectionBridgeListeners.nodeRegistryUpdate
     );
   };
 
