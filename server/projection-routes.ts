@@ -1,5 +1,5 @@
 /**
- * Projection Routes (OMN-2096)
+ * Projection Routes (OMN-2095 / OMN-2096)
  *
  * REST endpoints for querying projection view snapshots.
  * Each registered ProjectionView gets a standardized snapshot endpoint.
@@ -7,6 +7,8 @@
  * Routes:
  *   GET /api/projections/:viewId/snapshot?limit=N
  *     → ProjectionResponse<T>
+ *   GET /api/projections/:viewId/events?cursor=N&limit=50
+ *     → ProjectionEventsResponse
  */
 
 import { Router } from 'express';
@@ -66,9 +68,17 @@ export function createProjectionRoutes(projectionService: ProjectionService): Ro
       });
     }
 
-    const { limit } = queryResult.data;
-    const snapshot = view.getSnapshot({ limit });
-    return res.json(snapshot);
+    try {
+      const { limit } = queryResult.data;
+      const snapshot = view.getSnapshot({ limit });
+      return res.json(snapshot);
+    } catch (err) {
+      console.error(`[projection-routes] Error getting snapshot for "${viewId}":`, err);
+      return res.status(500).json({
+        error: 'internal_error',
+        message: 'An internal error occurred while processing the projection request',
+      });
+    }
   });
 
   /**
@@ -102,9 +112,17 @@ export function createProjectionRoutes(projectionService: ProjectionService): Ro
       });
     }
 
-    const { cursor, limit } = queryResult.data;
-    const response = view.getEventsSince(cursor, limit);
-    return res.json(response);
+    try {
+      const { cursor, limit } = queryResult.data;
+      const response = view.getEventsSince(cursor, limit);
+      return res.json(response);
+    } catch (err) {
+      console.error(`[projection-routes] Error getting events for "${viewId}":`, err);
+      return res.status(500).json({
+        error: 'internal_error',
+        message: 'An internal error occurred while processing the projection request',
+      });
+    }
   });
 
   return router;

@@ -1,13 +1,10 @@
 /**
- * Shared Projection Types (OMN-2096)
+ * Shared Projection Types (OMN-2094 / OMN-2095 / OMN-2096)
  *
- * Wire-format contracts for server-side projection snapshots consumed by
- * client components. These types define the JSON shape that crosses HTTP
- * between projection-routes.ts (server) and useProjectionStream.ts (client).
- *
- * Server-side ProjectionEvent (which has stricter severity union and optional
- * error/eventTimeMissing) is structurally assignable to ProjectionEventItem,
- * so the server can use these types directly.
+ * Single source of truth for projection types shared between server and client.
+ * Both server (ProjectionService, EventBusProjection, IntentProjectionView)
+ * and client (useProjectionStream, EventBusMonitor, IntentDashboard)
+ * import from here to prevent type drift.
  */
 
 // ============================================================================
@@ -15,12 +12,11 @@
 // ============================================================================
 
 /**
- * Standardized response envelope for projection view snapshots.
- * Used by both server (ProjectionResponse) and client (useProjectionStream).
+ * Standardized response envelope for view snapshots.
  *
  * @template T - The payload type specific to each view
  */
-export interface ProjectionSnapshot<T> {
+export interface ProjectionResponse<T> {
   viewId: string;
   /** Cursor: max(ingestSeq) in the current snapshot */
   cursor: number;
@@ -29,8 +25,60 @@ export interface ProjectionSnapshot<T> {
   payload: T;
 }
 
+/**
+ * Alias for backward-compatible imports (OMN-2096 intent hook).
+ * Identical to ProjectionResponse.
+ */
+export type ProjectionSnapshot<T> = ProjectionResponse<T>;
+
 // ============================================================================
-// Generic projection event item (wire format)
+// Canonical projection event
+// ============================================================================
+
+/**
+ * Canonical event shape flowing through projections.
+ * Every raw event (Kafka, DB preload, playback) is wrapped into this
+ * before being routed to views.
+ */
+export interface ProjectionEvent {
+  /** Unique event identifier (from source, or `proj-{ingestSeq}` fallback) */
+  id: string;
+  /** Event timestamp in epoch milliseconds (producer-assigned) */
+  eventTimeMs: number;
+  /** Monotonically increasing sequence assigned by ProjectionService */
+  ingestSeq: number;
+  /** Kafka topic or source identifier */
+  topic: string;
+  /** Event type (e.g. 'node-heartbeat', 'session-started') */
+  type: string;
+  /** Producer/source identifier */
+  source: string;
+  /** Severity level for display purposes */
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  /** Event payload (domain-specific data) */
+  payload: Record<string, unknown>;
+  /** True when no timestamp could be extracted — eventTimeMs is the sentinel (0) */
+  eventTimeMissing?: boolean;
+  /** Error details, if this is an error event */
+  error?: { message: string; stack?: string };
+}
+
+/**
+ * Response envelope for events-since queries.
+ * Used by both server (ProjectionView.getEventsSince) and client (useProjectionStream catch-up).
+ */
+export interface ProjectionEventsResponse {
+  viewId: string;
+  /** Cursor: max(ingestSeq) in the returned events */
+  cursor: number;
+  snapshotTimeMs: number;
+  events: ProjectionEvent[];
+  /** True when internal event log was trimmed and events after the requested cursor may be missing. Clients should re-fetch the full snapshot. */
+  truncated?: boolean;
+}
+
+// ============================================================================
+// Projection event item (client wire format)
 // ============================================================================
 
 /**
@@ -50,7 +98,7 @@ export interface ProjectionEventItem {
 }
 
 // ============================================================================
-// Intent projection payload
+// Intent projection payload (OMN-2096)
 // ============================================================================
 
 /**

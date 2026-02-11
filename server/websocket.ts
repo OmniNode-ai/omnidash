@@ -23,7 +23,7 @@ import {
   type IntentSessionEventPayload,
   type IntentRecentEventPayload,
 } from './intent-events';
-import { projectionService } from './projection-instance';
+import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
 import { playbackEventEmitter, type PlaybackWSMessage } from './playback-events';
@@ -255,8 +255,8 @@ const VALID_TOPICS = [
   'validation',
   // Extraction pipeline events (OMN-1804)
   'extraction',
-  // Projection invalidation events (OMN-2096)
-  'projection-invalidate',
+  // Projection invalidation events (OMN-2095/OMN-2096)
+  'projections',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -519,13 +519,6 @@ export function setupWebSocket(httpServer: HTTPServer) {
   intentEventEmitter.on('intentSession', intentSessionHandler);
   intentEventEmitter.on('intentRecent', intentRecentHandler);
 
-  // Projection invalidation listener (OMN-2096)
-  // Broadcasts projection-invalidate to clients subscribed to 'projection-invalidate'
-  const projectionInvalidateHandler = (data: { viewId: string; cursor: number }) => {
-    broadcast('PROJECTION_INVALIDATE', data, 'projection-invalidate');
-  };
-  projectionService.on('projection-invalidate', projectionInvalidateHandler);
-
   // Playback event listener (OMN-1843)
   // Broadcasts playback lifecycle and progress events to clients subscribed to 'playback' topic
   const playbackHandler = (message: PlaybackWSMessage) => {
@@ -584,15 +577,6 @@ export function setupWebSocket(httpServer: HTTPServer) {
     },
     { emitter: intentEventEmitter, event: 'intentSession', handler: intentSessionHandler },
     { emitter: intentEventEmitter, event: 'intentRecent', handler: intentRecentHandler },
-  ];
-
-  // Track projection listeners for cleanup (OMN-2096)
-  const projectionListeners = [
-    {
-      emitter: projectionService,
-      event: 'projection-invalidate',
-      handler: projectionInvalidateHandler,
-    },
   ];
 
   // Event Bus data source listeners (real-time Kafka events for Event Bus Monitor)
@@ -668,6 +652,61 @@ export function setupWebSocket(httpServer: HTTPServer) {
       '[WebSocket] EventBusDataSource not available - event-bus topic will not receive real-time events'
     );
   }
+
+  // Projection invalidation bridge (OMN-2095)
+  // Bridges the server-side ProjectionService EventEmitter to WebSocket clients.
+  // When a projection view applies an event, broadcast PROJECTION_INVALIDATE so
+  // clients using useProjectionStream can invalidate their TanStack Query cache
+  // instead of waiting for the next polling interval.
+  //
+  // Throttled: at high throughput (50+ events/sec from 197 topics), emitting every
+  // event is wasteful. Leading-edge fires immediately for low latency; trailing-edge
+  // coalesces bursts. Client polls every 2s as a fallback regardless.
+  const PROJECTION_THROTTLE_MS = 150;
+  const projectionThrottleState = new Map<
+    string,
+    { timer: NodeJS.Timeout; leadingCursor: number; latestCursor: number }
+  >();
+
+  const projectionInvalidateHandler = (data: { viewId: string; cursor: number }) => {
+    const state = projectionThrottleState.get(data.viewId);
+
+    if (state) {
+      // Within throttle window — track latest cursor, timer handles trailing edge
+      state.latestCursor = Math.max(state.latestCursor, data.cursor);
+      return;
+    }
+
+    // Leading edge: broadcast immediately
+    broadcast('PROJECTION_INVALIDATE', data, 'projections');
+
+    // Open throttle window
+    const entry = {
+      leadingCursor: data.cursor,
+      latestCursor: data.cursor,
+      timer: setTimeout(() => {
+        projectionThrottleState.delete(data.viewId);
+        // Trailing edge: if cursor advanced during window, send one final update
+        if (entry.latestCursor > entry.leadingCursor) {
+          broadcast(
+            'PROJECTION_INVALIDATE',
+            { viewId: data.viewId, cursor: entry.latestCursor },
+            'projections'
+          );
+        }
+      }, PROJECTION_THROTTLE_MS),
+    };
+    projectionThrottleState.set(data.viewId, entry);
+  };
+  projectionService.on('projection-invalidate', projectionInvalidateHandler);
+
+  const projectionListeners = [
+    {
+      emitter: projectionService,
+      event: 'projection-invalidate' as string,
+      handler: projectionInvalidateHandler,
+    },
+  ];
 
   // PlaybackDataSource listener (works without Kafka for demo playback)
   const playbackDataSource = getPlaybackDataSource();
@@ -977,13 +1016,6 @@ export function setupWebSocket(httpServer: HTTPServer) {
     });
     intentListeners.length = 0;
 
-    // Remove projection event listeners (OMN-2096)
-    console.log(`Removing ${projectionListeners.length} projection event listeners...`);
-    projectionListeners.forEach(({ emitter, event, handler }) => {
-      emitter.removeListener(event, handler);
-    });
-    projectionListeners.length = 0;
-
     // Remove playback event listeners (OMN-1843)
     console.log(`Removing ${playbackListeners.length} playback event listeners...`);
     playbackListeners.forEach(({ emitter, event, handler }) => {
@@ -999,6 +1031,19 @@ export function setupWebSocket(httpServer: HTTPServer) {
       }
     });
     eventBusListeners.length = 0;
+
+    // Remove projection event listeners (OMN-2095)
+    console.log(`Removing ${projectionListeners.length} projection event listeners...`);
+    projectionListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    projectionListeners.length = 0;
+
+    // Clear projection throttle timers
+    for (const state of projectionThrottleState.values()) {
+      clearTimeout(state.timer);
+    }
+    projectionThrottleState.clear();
 
     // Remove playback data source listeners (OMN-1885)
     console.log(`Removing ${playbackDataSourceListeners.length} playback data source listeners...`);

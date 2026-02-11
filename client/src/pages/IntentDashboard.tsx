@@ -7,7 +7,7 @@
  * - SessionTimeline: Chronological timeline visualization (live, unfiltered)
  *
  * Features:
- * - Server-side projection snapshots via useProjectionStream (OMN-2096 r4)
+ * - Server-side projection snapshots via useIntentProjectionStream (OMN-2096 r4)
  * - WebSocket invalidation triggers re-fetch (no polling)
  * - Animated connection status indicator
  * - Responsive grid layout
@@ -27,7 +27,7 @@
 
 import { useState, useMemo } from 'react';
 import { IntentDistribution, RecentIntents, SessionTimeline } from '@/components/intent';
-import { useProjectionStream } from '@/hooks/useProjectionStream';
+import { useIntentProjectionStream } from '@/hooks/useIntentProjectionStream';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -253,7 +253,7 @@ export default function IntentDashboard() {
   // Server-side projection snapshot (OMN-2096 r4)
   // Fetches on mount, then re-fetches when WebSocket invalidation arrives.
   const { snapshot, isConnected, connectionStatus, refresh } =
-    useProjectionStream<IntentProjectionPayload>('intent', { limit: 100 });
+    useIntentProjectionStream<IntentProjectionPayload>('intent', { limit: 100 });
 
   // Derive stat card values from the projection snapshot
   const categoryCount = snapshot?.categoryCount ?? 0;

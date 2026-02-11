@@ -14,16 +14,14 @@
  * Sort key: (eventTimeMs DESC, ingestSeq DESC) — universal across projections.
  */
 
+import type { ProjectionView } from '../projection-service';
 import type {
-  ProjectionView,
   ProjectionResponse,
   ProjectionEventsResponse,
   ProjectionEvent,
-} from '../projection-service';
-import type {
   IntentDistributionEntry,
   IntentProjectionPayload,
-} from '../../shared/projection-types';
+} from '@shared/projection-types';
 
 // Re-export shared types for consumers that previously imported from here
 export type { IntentDistributionEntry, IntentProjectionPayload };

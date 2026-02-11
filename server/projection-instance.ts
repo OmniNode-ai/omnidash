@@ -1,11 +1,10 @@
 /**
- * Projection Service Singleton (OMN-2096)
+ * Intent Projection Wiring (OMN-2096)
  *
- * Creates and configures the global ProjectionService instance.
- * Registers all projection views and wires EventConsumer events
- * into the projection pipeline.
+ * Registers the IntentProjectionView with the shared ProjectionService
+ * singleton (from projection-bootstrap.ts) and wires EventConsumer
+ * intent events into the projection pipeline.
  *
- * Import this module to get the configured service instance.
  * Call `initProjectionListeners()` once during server startup
  * (after EventConsumer is ready) to wire the intent-event listener.
  *
@@ -14,15 +13,12 @@
  * duplicate listeners across test suites.
  */
 
-import { ProjectionService } from './projection-service';
+import { projectionService } from './projection-bootstrap';
 import { IntentProjectionView, INTENT_VIEW_ID } from './projections/intent-projection';
 import { eventConsumer } from './event-consumer';
 
-// ============================================================================
-// Singleton
-// ============================================================================
-
-export const projectionService = new ProjectionService();
+// Re-export projectionService for backward-compatible imports
+export { projectionService };
 
 // ============================================================================
 // View Registration
