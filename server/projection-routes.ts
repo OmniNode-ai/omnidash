@@ -15,24 +15,32 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { ProjectionService } from './projection-service';
 
-/** Validate viewId: alphanumeric, hyphens, underscores, max 64 chars. */
+/** Zod schema for viewId path parameter: alphanumeric, hyphens, underscores, max 64 chars. */
 const ViewIdSchema = z
   .string()
   .max(64)
   .regex(/^[a-zA-Z0-9_-]+$/);
 
+/** Zod schema for `GET .../snapshot` query params. Defaults limit to 100, max 500. */
 const SnapshotQuerySchema = z.object({
   limit: z.coerce.number().finite().int().min(1).max(500).optional().default(100),
 });
 
+/** Zod schema for `GET .../events` query params. Cursor defaults to 0, limit to 50. */
 const EventsQuerySchema = z.object({
+  // .min(0) rejects negative cursors at the validation layer (Zod returns a
+  // 400 error before the value reaches getEventsSince), so no additional
+  // Math.max(cursor, 0) clamp is needed downstream.
   cursor: z.coerce.number().finite().int().min(0).optional().default(0),
   limit: z.coerce.number().finite().int().min(1).max(500).optional().default(50),
 });
 
 /**
- * Create projection routes bound to a ProjectionService instance.
- * Called during server startup after views are registered.
+ * Create an Express router with projection snapshot and events endpoints.
+ * Mount at `/api/projections` during server startup after views are registered.
+ *
+ * @param projectionService - The service instance holding registered views
+ * @returns Express Router with `/:viewId/snapshot` and `/:viewId/events` routes
  */
 const isDev = process.env.NODE_ENV !== 'production';
 

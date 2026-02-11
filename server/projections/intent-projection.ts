@@ -23,8 +23,9 @@ import type {
   IntentProjectionPayload,
 } from '@shared/projection-types';
 
-// Re-export shared types for consumers that previously imported from here
+/** Re-export shared types for consumers that previously imported from here. */
 export type { IntentDistributionEntry, IntentProjectionPayload };
+/** Convenience alias mapping the legacy name to {@link IntentProjectionPayload}. */
 export type { IntentProjectionPayload as IntentPayload };
 
 // ============================================================================
@@ -62,6 +63,13 @@ const ACCEPTED_TYPES = new Set([
 // IntentProjectionView
 // ============================================================================
 
+/**
+ * Server-side materialized view for intent events.
+ *
+ * Maintains a bounded buffer of recent intents sorted by
+ * (eventTimeMs DESC, ingestSeq DESC) and an incremental
+ * category distribution map.
+ */
 export class IntentProjectionView implements ProjectionView<IntentProjectionPayload> {
   readonly viewId = INTENT_VIEW_ID;
 
@@ -93,6 +101,11 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
   // ProjectionView interface
   // --------------------------------------------------------------------------
 
+  /**
+   * Return the current materialized snapshot.
+   * Results are cached between events; the cache is invalidated on each {@link applyEvent} call.
+   * @param options.limit - Max recent intents to include (default 100, clamped to MAX_BUFFER)
+   */
   getSnapshot(options?: { limit?: number }): ProjectionResponse<IntentProjectionPayload> {
     const limit = Math.min(Math.max(options?.limit ?? 100, 1), MAX_BUFFER);
 
@@ -156,6 +169,11 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     };
   }
 
+  /**
+   * Return events applied after the given cursor for incremental catch-up.
+   * @param cursor - Exclusive lower bound on ingestSeq (0 returns all retained events)
+   * @param limit - Max events to return
+   */
   getEventsSince(cursor: number, limit?: number): ProjectionEventsResponse {
     // Detect if appliedEvents has been trimmed past the requested cursor
     const oldestAvailable = this.appliedEvents.length > 0 ? this.appliedEvents[0].ingestSeq : 0;
@@ -182,6 +200,11 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     };
   }
 
+  /**
+   * Apply an intent event to the view, updating buffer, distribution, and cursor.
+   * @param event - Canonical projection event to apply
+   * @returns `true` if the event was an intent event and was applied, `false` otherwise
+   */
   applyEvent(event: ProjectionEvent): boolean {
     if (!this.isIntentEvent(event)) return false;
 
@@ -193,8 +216,10 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
       this._cursor = event.ingestSeq;
     }
 
-    // Track last event time (max to prevent regression on out-of-order events)
-    if (event.eventTimeMs > (this._lastEventTimeMs ?? 0)) {
+    // Track last event time (max to prevent regression on out-of-order events).
+    // Skip sentinel value 0 (indicates missing timestamp) to prevent
+    // lastEventTimeMs from being set to a meaningless value.
+    if (event.eventTimeMs > 0 && event.eventTimeMs > (this._lastEventTimeMs ?? 0)) {
       this._lastEventTimeMs = event.eventTimeMs;
     }
 
@@ -225,14 +250,16 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     // Track for getEventsSince
     this.appliedEvents.push(event);
 
-    // Trim appliedEvents if too large (keep last MAX_BUFFER entries)
+    // Trim appliedEvents if too large — keep 1.5x buffer to retain recent
+    // history overlap and reduce the chance of getEventsSince() missing events.
     if (this.appliedEvents.length > MAX_BUFFER * 2) {
-      this.appliedEvents = this.appliedEvents.slice(-MAX_BUFFER);
+      this.appliedEvents = this.appliedEvents.slice(-Math.floor(MAX_BUFFER * 1.5));
     }
 
     return true;
   }
 
+  /** Clear all state (buffer, distribution, cursor, cache). */
   reset(): void {
     this.buffer = [];
     this.distributionMap.clear();

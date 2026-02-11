@@ -93,7 +93,7 @@ export interface ProjectionEventItem {
   type: string;
   topic: string;
   source: string;
-  severity: string;
+  severity: ProjectionEvent['severity'];
   payload: Record<string, unknown>;
 }
 

@@ -30,7 +30,10 @@ let initialized = false;
 /**
  * Route intent events from EventConsumer into the projection pipeline.
  * EventConsumer emits 'intent-event' for both classified and stored intents.
- * We convert these to RawEventInput and pass to ProjectionService.ingest().
+ * Converts the raw event envelope to a {@link RawEventInput} and passes it
+ * to {@link ProjectionService.ingest}.
+ *
+ * @param event - Raw intent event from EventConsumer ('intent-event' emission)
  */
 function handleIntentEvent(event: {
   topic: string;
@@ -89,7 +92,12 @@ export function teardownProjectionListeners(): void {
 }
 
 /**
- * Extract a millisecond timestamp from an intent event.
+ * Extract a millisecond-epoch timestamp from an intent event.
+ * Checks payload fields (timestamp, created_at, stored_at, createdAt)
+ * then falls back to the event envelope timestamp.
+ *
+ * @param event - Raw event with payload and envelope timestamp
+ * @returns Epoch milliseconds, or `undefined` if no valid timestamp found
  */
 function extractTimestampMs(event: {
   payload: Record<string, unknown>;
