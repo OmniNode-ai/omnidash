@@ -96,31 +96,35 @@ export function wireProjectionSources(): void {
 
   if (typeof eventBusDataSource.on === 'function') {
     eventBusDataSource.on('event', (event: Record<string, unknown>) => {
-      const eventId = event.event_id as string | undefined;
-      // Track for dedup: use event_id if present, otherwise derive a normalized
-      // key from topic + type + timestamp (shared derivation with EventConsumer).
-      const dedupKey = eventId || deriveFallbackDedupKey(event);
-      trackEventId(dedupKey);
+      try {
+        const eventId = event.event_id as string | undefined;
+        // Track for dedup: use event_id if present, otherwise derive a normalized
+        // key from topic + type + timestamp (shared derivation with EventConsumer).
+        const dedupKey = eventId || deriveFallbackDedupKey(event);
+        trackEventId(dedupKey);
 
-      let payload: Record<string, unknown>;
-      const rawPayload = event.payload;
-      if (rawPayload != null && typeof rawPayload === 'object' && !Array.isArray(rawPayload)) {
-        payload = rawPayload as Record<string, unknown>;
-      } else {
-        payload = { value: rawPayload };
+        let payload: Record<string, unknown>;
+        const rawPayload = event.payload;
+        if (rawPayload != null && typeof rawPayload === 'object' && !Array.isArray(rawPayload)) {
+          payload = rawPayload as Record<string, unknown>;
+        } else {
+          payload = { value: rawPayload };
+        }
+
+        const raw: RawEventInput = {
+          id: eventId,
+          topic: (event.topic as string) || '',
+          type: (event.event_type as string) || '',
+          source: (event.source as string) || '',
+          severity: mapSeverity(payload),
+          payload,
+          eventTimeMs: extractTimestamp(event),
+        };
+
+        projectionService.ingest(raw);
+      } catch (err) {
+        console.error('[projection] EventBusDataSource event handler error:', err);
       }
-
-      const raw: RawEventInput = {
-        id: eventId,
-        topic: (event.topic as string) || '',
-        type: (event.event_type as string) || '',
-        source: (event.source as string) || '',
-        severity: mapSeverity(payload),
-        payload,
-        eventTimeMs: extractTimestamp(event),
-      };
-
-      projectionService.ingest(raw);
     });
     sources.push('EventBusDataSource');
   } else {
@@ -146,27 +150,31 @@ export function wireProjectionSources(): void {
 
     for (const eventName of consumerEventNames) {
       eventConsumer.on(eventName, (data: Record<string, unknown>) => {
-        // Skip if already ingested via EventBusDataSource.
-        // Uses shared deriveFallbackDedupKey for symmetric key derivation.
-        const id = data.id as string | undefined;
-        const dedupKey = id || deriveFallbackDedupKey(data);
-        if (dedupSet.has(dedupKey)) return;
+        try {
+          // Skip if already ingested via EventBusDataSource.
+          // Uses shared deriveFallbackDedupKey for symmetric key derivation.
+          const id = data.id as string | undefined;
+          const dedupKey = id || deriveFallbackDedupKey(data);
+          if (dedupSet.has(dedupKey)) return;
 
-        const raw: RawEventInput = {
-          id,
-          topic: (data.topic as string) || eventName,
-          type: (data.actionType as string) || (data.type as string) || eventName,
-          source:
-            (data.agentName as string) ||
-            (data.sourceAgent as string) ||
-            (data.node_id as string) ||
-            'system',
-          severity: mapSeverity(data),
-          payload: data,
-          eventTimeMs: extractTimestamp(data),
-        };
+          const raw: RawEventInput = {
+            id,
+            topic: (data.topic as string) || eventName,
+            type: (data.actionType as string) || (data.type as string) || eventName,
+            source:
+              (data.agentName as string) ||
+              (data.sourceAgent as string) ||
+              (data.node_id as string) ||
+              'system',
+            severity: mapSeverity(data),
+            payload: data,
+            eventTimeMs: extractTimestamp(data),
+          };
 
-        projectionService.ingest(raw);
+          projectionService.ingest(raw);
+        } catch (err) {
+          console.error(`[projection] EventConsumer ${eventName} handler error:`, err);
+        }
       });
     }
     sources.push('EventConsumer');

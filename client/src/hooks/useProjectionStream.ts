@@ -41,7 +41,11 @@ export interface UseProjectionStreamReturn<T> {
   isLoading: boolean;
   /** Error state */
   error: Error | null;
-  /** Current cursor position (max ingestSeq in snapshot) */
+  /**
+   * Current cursor position (max ingestSeq in snapshot).
+   * Stored in a ref — changes do NOT trigger re-renders. Use `data?.cursor`
+   * if you need a reactive cursor value for display or conditional logic.
+   */
   cursor: number;
   /** Whether the WebSocket connection is active */
   isConnected: boolean;

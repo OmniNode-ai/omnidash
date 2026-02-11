@@ -309,6 +309,11 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
   // Pruning (called lazily on getSnapshot)
   // --------------------------------------------------------------------------
 
+  // Note: pruneTimeSeries may delete a bucket that still has events in the buffer.
+  // If those events are later evicted, decrementCounters will attempt to decrement
+  // a non-existent key (0 - 1 = -1 → delete). This is harmless: the delete is
+  // a no-op on a missing key, and the time series is display-only with a 5-minute
+  // window that rarely overlaps with the 500-event buffer tail.
   private pruneTimeSeries(): void {
     const cutoff = Date.now() - TIME_SERIES_MAX_AGE_MS;
     const cutoffBucket = Math.floor(cutoff / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
