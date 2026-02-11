@@ -17,6 +17,11 @@ const SnapshotQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional().default(100),
 });
 
+const EventsQuerySchema = z.object({
+  cursor: z.coerce.number().int().min(0).optional().default(0),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(50),
+});
+
 /**
  * Create projection routes bound to a ProjectionService instance.
  * Called during server startup after views are registered.
@@ -73,9 +78,17 @@ export function createProjectionRoutes(projectionService: ProjectionService): Ro
       });
     }
 
-    const cursor = parseInt(req.query.cursor as string, 10) || 0;
-    const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 500);
+    const queryResult = EventsQuerySchema.safeParse(req.query);
+    if (!queryResult.success) {
+      return res.status(400).json({
+        error: 'Invalid query parameters',
+        message: queryResult.error.errors
+          .map((e) => `${e.path.join('.')}: ${e.message}`)
+          .join('; '),
+      });
+    }
 
+    const { cursor, limit } = queryResult.data;
     const response = view.getEventsSince(cursor, limit);
     return res.json(response);
   });
