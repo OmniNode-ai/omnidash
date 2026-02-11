@@ -124,7 +124,13 @@ app.use((req, res, next) => {
   }
 
   // Wire projection event sources (after EventConsumer and EventBusDataSource are started)
-  wireProjectionSources();
+  try {
+    wireProjectionSources();
+  } catch (error) {
+    console.error('❌ Failed to wire projection sources:', error);
+    console.error('   Projections will remain empty until next restart');
+    console.error('   Application will continue with limited functionality');
+  }
 
   // Setup WebSocket for real-time events
   if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {

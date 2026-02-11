@@ -118,8 +118,10 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   const payloadStr = JSON.stringify(event.payload);
   const parsedDetails = extractParsedDetails(payloadStr, event.type);
   const normalizedType = computeNormalizedType(event.type, parsedDetails);
-  const timestampRaw =
-    event.eventTimeMs > 0 ? new Date(event.eventTimeMs).toISOString() : new Date().toISOString();
+
+  // Use a single fallback time so timestamp and timestampRaw are always consistent
+  const effectiveTimeMs = event.eventTimeMs > 0 ? event.eventTimeMs : Date.now();
+  const timestampRaw = new Date(effectiveTimeMs).toISOString();
 
   return {
     id: event.id,
@@ -127,7 +129,7 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
     topicRaw: event.topic,
     eventType: event.type,
     priority: mapSeverityToPriority(event.severity),
-    timestamp: new Date(event.eventTimeMs > 0 ? event.eventTimeMs : Date.now()),
+    timestamp: new Date(effectiveTimeMs),
     timestampRaw,
     source: event.source || 'system',
     correlationId: event.payload?.correlationId as string | undefined,

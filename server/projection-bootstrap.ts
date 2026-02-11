@@ -18,7 +18,17 @@ import { eventBusDataSource } from './event-bus-data-source';
 // Singleton instances
 // ============================================================================
 
+/**
+ * Application-wide ProjectionService singleton. Manages view registration,
+ * cursor assignment, and event fan-out to all registered projection views.
+ */
 export const projectionService = new ProjectionService();
+
+/**
+ * EventBusProjection singleton. Maintains the materialized view consumed
+ * by the `/api/projections/event-bus` endpoint and the EventBusMonitor page.
+ * Registered into projectionService at module load time.
+ */
 export const eventBusProjection = new EventBusProjection();
 
 // Register views

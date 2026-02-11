@@ -65,8 +65,11 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
   router.get('/:viewId/events', (req: Request, res: Response) => {
     const { viewId } = req.params;
     const sinceCursor = parseInt(req.query.since_cursor as string, 10);
-    const rawLimit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
-    const limit = !isNaN(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, MAX_BUFFER_SIZE) : 50;
+    const rawLimit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const limit: number =
+      rawLimit !== undefined && !isNaN(rawLimit) && rawLimit > 0
+        ? Math.min(Math.floor(rawLimit), MAX_BUFFER_SIZE)
+        : 50;
 
     if (isNaN(sinceCursor) || sinceCursor < 0) {
       return res.status(400).json({

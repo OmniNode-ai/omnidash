@@ -60,6 +60,13 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
   // ProjectionView interface
   // --------------------------------------------------------------------------
 
+  /**
+   * Build a point-in-time snapshot of the event bus state.
+   *
+   * Lazily prunes stale time-series buckets and rolling window entries
+   * before computing EPS and serializing aggregates. The optional `limit`
+   * caps the number of events included (defaults to the full buffer).
+   */
   getSnapshot(options?: { limit?: number }): ProjectionResponse<EventBusPayload> {
     const limit = options?.limit ?? this.events.length;
 
@@ -105,6 +112,11 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     };
   }
 
+  /**
+   * Return events ingested after the given cursor, sorted ASC for client
+   * playback order. Scans the full buffer (max 500 events) since events
+   * are stored in DESC order and cursor gaps are possible after eviction.
+   */
   getEventsSince(cursor: number, limit?: number): ProjectionEventsResponse {
     // Collect events with ingestSeq > cursor
     const matched: ProjectionEvent[] = [];
@@ -124,6 +136,12 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     };
   }
 
+  /**
+   * Ingest a single event into the projection, updating all aggregates
+   * incrementally. Binary-inserts into the sorted buffer, increments
+   * topic/type/time-series counters, and evicts the oldest event if the
+   * buffer exceeds MAX_BUFFER_SIZE. Always returns true (ingestion accepted).
+   */
   applyEvent(event: ProjectionEvent): boolean {
     this._totalIngested++;
 
@@ -143,8 +161,14 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     const now = Date.now();
     this.rollingWindow.push(now);
 
-    // Prune inline if cap exceeded — use time-based cutoff (not arbitrary halving)
-    // to avoid including stale entries that would skew EPS readings.
+    // Dual-pruning strategy for the rolling window:
+    //   1. Inline cap-based (here): triggers when the array exceeds 10,000 entries
+    //      (ROLLING_WINDOW_MAX_ENTRIES) to bound memory under sustained high
+    //      throughput (e.g. >166 events/s). Removes entries older than the 60s
+    //      window rather than arbitrarily halving, so surviving entries are always
+    //      within the EPS calculation window.
+    //   2. Lazy time-based (pruneRollingWindow): runs on each getSnapshot() call
+    //      to trim stale entries even when throughput is low and the cap is never hit.
     if (this.rollingWindow.length > ROLLING_WINDOW_MAX_ENTRIES) {
       const cutoff = now - ROLLING_WINDOW_MS;
       let pruneIdx = 0;
@@ -171,6 +195,7 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     return true;
   }
 
+  /** Clear all state — buffer, counters, time series, and rolling window. */
   reset(): void {
     this.events = [];
     this.topicCounts.clear();
@@ -279,6 +304,9 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     const cutoff = Date.now() - TIME_SERIES_MAX_AGE_MS;
     const cutoffBucket = Math.floor(cutoff / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
 
+    // Use strict `<` (not `<=`): the cutoff bucket itself may partially overlap
+    // with the retention window, so we keep it. Deleting from a Map during
+    // iteration over its keys is safe per the ES2015 Map specification.
     for (const bucketKey of this.timeSeriesBuckets.keys()) {
       if (bucketKey < cutoffBucket) {
         this.timeSeriesBuckets.delete(bucketKey);
