@@ -50,6 +50,16 @@ const MAX_APPLIED_EVENTS = 500;
 /** Trim appliedEvents when it exceeds MAX by this many, amortizing the O(n) slice cost. */
 const APPLIED_EVENTS_TRIM_MARGIN = 100;
 
+/**
+ * Convert an event timestamp to an ISO display string. Uses `||` (not `??`)
+ * intentionally: eventTimeMs of 0 is the MISSING_TIMESTAMP_SENTINEL_MS sentinel
+ * meaning "no real timestamp". For display purposes we fall back to the current
+ * wall-clock time rather than showing epoch-0 (1970-01-01) in the UI.
+ */
+function displayTimestamp(eventTimeMs: number): string {
+  return new Date(eventTimeMs || Date.now()).toISOString();
+}
+
 /** Event types this view handles */
 const HANDLED_EVENT_TYPES = new Set([
   'node-introspection',
@@ -227,10 +237,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         existing?.version ??
         '1.0.0') as string,
       uptimeSeconds: existing?.uptimeSeconds ?? 0,
-      // Use || (not ??) intentionally: eventTimeMs of 0 is the MISSING_TIMESTAMP_SENTINEL_MS
-      // sentinel meaning "no real timestamp". For display purposes we fall back to now rather
-      // than showing epoch-0 (1970-01-01) in the UI.
-      lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
+      lastSeen: displayTimestamp(event.eventTimeMs),
       memoryUsageMb: existing?.memoryUsageMb,
       cpuUsagePercent: existing?.cpuUsagePercent,
       endpoints: (payload.endpoints ?? existing?.endpoints) as Record<string, string> | undefined,
@@ -265,8 +272,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         state: 'active',
         version: '1.0.0',
         uptimeSeconds: (payload.uptimeSeconds ?? payload.uptime_seconds ?? 0) as number,
-        // || intentional: sentinel 0 → fall back to now for display (see handleIntrospection)
-        lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
+        lastSeen: displayTimestamp(event.eventTimeMs),
         memoryUsageMb: (payload.memoryUsageMb ?? payload.memory_usage_mb) as number | undefined,
         cpuUsagePercent: (payload.cpuUsagePercent ?? payload.cpu_usage_percent) as
           | number
@@ -282,8 +288,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       uptimeSeconds: (payload.uptimeSeconds ??
         payload.uptime_seconds ??
         existing.uptimeSeconds) as number,
-      // || intentional: sentinel 0 → fall back to now for display (see handleIntrospection)
-      lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
+      lastSeen: displayTimestamp(event.eventTimeMs),
       memoryUsageMb: (payload.memoryUsageMb ??
         payload.memory_usage_mb ??
         existing.memoryUsageMb) as number | undefined,
@@ -319,8 +324,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       this.nodes.set(nodeId, {
         ...existing,
         state: newState,
-        // || intentional: sentinel 0 → fall back to now for display (see handleIntrospection)
-        lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
+        lastSeen: displayTimestamp(event.eventTimeMs),
       });
     } else {
       // State change for unknown node — create a minimal entry so the
@@ -331,8 +335,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         state: newState,
         version: '1.0.0',
         uptimeSeconds: 0,
-        // || intentional: sentinel 0 → fall back to now for display (see handleIntrospection)
-        lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
+        lastSeen: displayTimestamp(event.eventTimeMs),
       });
     }
 
