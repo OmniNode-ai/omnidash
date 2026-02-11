@@ -156,7 +156,22 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     }
 
     const tail = this.appliedEvents.slice(startIdx);
-    const result = limit ? tail.slice(0, limit) : tail;
+    const raw = limit ? tail.slice(0, limit) : tail;
+
+    // Strip server-only fields (error, eventTimeMissing) to match getSnapshot
+    const result = raw.map(
+      ({ id, eventTimeMs, ingestSeq, type, topic, source, severity, payload }) => ({
+        id,
+        eventTimeMs,
+        ingestSeq,
+        type,
+        topic,
+        source,
+        severity,
+        payload,
+      })
+    );
+
     return {
       viewId: this.viewId,
       cursor: result.length > 0 ? result[result.length - 1].ingestSeq : cursor,

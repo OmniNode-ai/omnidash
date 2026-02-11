@@ -274,7 +274,7 @@ export default function IntentDashboard() {
       minute: '2-digit',
       second: '2-digit',
     });
-  }, [snapshot]);
+  }, [snapshot?.lastEventTimeMs]);
 
   // Handlers
   const handleIntentClick = (intent: IntentItem) => {
