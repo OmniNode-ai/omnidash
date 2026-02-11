@@ -688,8 +688,11 @@ export function setupWebSocket(httpServer: HTTPServer) {
       return;
     }
 
-    // Leading edge: broadcast immediately
-    broadcast('PROJECTION_INVALIDATE', data, 'projections');
+    // Leading edge: broadcast immediately.
+    // Broadcast only to the per-view topic — avoids duplicate delivery to
+    // clients subscribed to 'all' (which would match both 'projections' and
+    // 'projection:<viewId>' broadcast calls).
+    broadcast('PROJECTION_INVALIDATE', data, `projection:${data.viewId}`);
 
     // Open throttle window
     const entry = {
@@ -699,11 +702,8 @@ export function setupWebSocket(httpServer: HTTPServer) {
         projectionThrottleState.delete(data.viewId);
         // Trailing edge: if cursor advanced during window, send one final update
         if (entry.latestCursor > entry.leadingCursor) {
-          broadcast(
-            'PROJECTION_INVALIDATE',
-            { viewId: data.viewId, cursor: entry.latestCursor },
-            'projections'
-          );
+          const trailingData = { viewId: data.viewId, cursor: entry.latestCursor };
+          broadcast('PROJECTION_INVALIDATE', trailingData, `projection:${data.viewId}`);
         }
       }, PROJECTION_THROTTLE_MS),
     };

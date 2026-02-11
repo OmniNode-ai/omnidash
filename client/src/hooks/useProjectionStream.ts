@@ -1,5 +1,5 @@
 /**
- * useProjectionStream — Generic Projection Polling Hook (OMN-2095 / OMN-2097)
+ * useProjectionStream — Generic Projection Polling Hook (OMN-2095 / OMN-2097 / OMN-2098)
  *
  * TanStack Query for snapshot polling + WebSocket-driven invalidation.
  *
@@ -126,22 +126,38 @@ export function useProjectionStream<T>(
     [viewId, limit, queryClient]
   );
 
-  // WebSocket connection with explicit subscription to 'projections' topic.
+  // WebSocket connection with per-view topic subscription (OMN-2098).
   // The server uses a subscription model — clients must subscribe to receive
   // messages for a given topic. onOpen fires after each (re)connection.
   //
-  // Note: The subscription topic is always ['projections'] regardless of viewId.
-  // PROJECTION_INVALIDATE messages include a viewId field that handleProjectionMessage
-  // filters on, so a single subscription covers all views. If viewId or limit changes
-  // after the WebSocket connects, onOpen won't re-fire, but this is safe because the
-  // subscription topic is static. Only handleProjectionMessage (updated via ref) needs
-  // the current viewId, and useWebSocket reads callbacks from refs.
-  const { isConnected, subscribe } = useWebSocket({
+  // Each hook instance subscribes to `projection:${viewId}` so the server only
+  // delivers PROJECTION_INVALIDATE messages relevant to this view. The
+  // handleProjectionMessage callback still filters by viewId as defense-in-depth.
+  //
+  // If viewId changes while the WebSocket is already connected, onOpen won't
+  // re-fire. The useEffect below handles re-subscription in that case by
+  // unsubscribing from the old topic and subscribing to the new one.
+  const { isConnected, subscribe, unsubscribe } = useWebSocket({
     onOpen: () => {
-      subscribe(['projections']);
+      subscribe([`projection:${viewId}`]);
     },
     onMessage: handleProjectionMessage,
   });
+
+  // Re-subscribe when viewId changes on an already-open connection.
+  // On first mount, onOpen handles the initial subscription; this effect
+  // only acts when viewId transitions while connected.
+  //
+  // No cleanup return needed: on unmount, useWebSocket's cleanup effect
+  // closes the connection, which implicitly drops all server-side subscriptions.
+  const prevViewIdRef = useRef(viewId);
+  useEffect(() => {
+    if (prevViewIdRef.current !== viewId && isConnected) {
+      unsubscribe([`projection:${prevViewIdRef.current}`]);
+      subscribe([`projection:${viewId}`]);
+    }
+    prevViewIdRef.current = viewId;
+  }, [viewId, isConnected, subscribe, unsubscribe]);
 
   // Reset cursor when viewId changes
   useEffect(() => {
