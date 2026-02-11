@@ -100,8 +100,18 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
 
     // Return cached snapshot if available for the same limit.
     // Recompute snapshotTimeMs so callers always see a fresh observation time.
+    // Deep-copy payload arrays so callers cannot mutate the cached data.
     if (this._cachedSnapshot && this._cachedSnapshot.limit === limit) {
-      return { ...this._cachedSnapshot.response, snapshotTimeMs: Date.now() };
+      const cached = this._cachedSnapshot.response;
+      return {
+        ...cached,
+        snapshotTimeMs: Date.now(),
+        payload: {
+          ...cached.payload,
+          recentIntents: cached.payload.recentIntents.slice(),
+          distribution: cached.payload.distribution.slice(),
+        },
+      };
     }
 
     // Strip server-only fields (error, eventTimeMissing) from wire payload
@@ -145,19 +155,14 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     const oldestAvailable = this.appliedEvents.length > 0 ? this.appliedEvents[0].ingestSeq : 0;
     const truncated = cursor > 0 && cursor < oldestAvailable;
 
-    // appliedEvents are appended in ingestSeq order (monotonically increasing).
-    // Use findIndex to locate the first event past the cursor, then slice from
-    // there. This avoids a full O(n) filter when only a small tail is needed.
-    let startIdx: number;
-    if (cursor <= 0 || this.appliedEvents.length === 0) {
-      startIdx = 0;
-    } else {
-      const idx = this.appliedEvents.findIndex((e) => e.ingestSeq > cursor);
-      startIdx = idx === -1 ? this.appliedEvents.length : idx;
-    }
-
-    const tail = this.appliedEvents.slice(startIdx);
-    const raw = limit ? tail.slice(0, limit) : tail;
+    // Filter for events past the cursor. Using filter() instead of
+    // findIndex+slice for correctness even if appliedEvents arrive
+    // out of ingestSeq order (defensive against concurrent ingestion).
+    const past =
+      cursor <= 0 || this.appliedEvents.length === 0
+        ? this.appliedEvents
+        : this.appliedEvents.filter((e) => e.ingestSeq > cursor);
+    const raw = limit ? past.slice(0, limit) : past;
 
     // Strip server-only fields (error, eventTimeMissing) to match getSnapshot
     const result = raw.map(stripServerFields);

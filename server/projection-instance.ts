@@ -15,7 +15,7 @@
  */
 
 import { ProjectionService } from './projection-service';
-import { IntentProjectionView } from './projections/intent-projection';
+import { IntentProjectionView, INTENT_VIEW_ID } from './projections/intent-projection';
 import { eventConsumer } from './event-consumer';
 
 // ============================================================================
@@ -28,13 +28,13 @@ export const projectionService = new ProjectionService();
 // View Registration
 // ============================================================================
 
-const intentView = new IntentProjectionView();
-
 // Guard for idempotent registration — prevents "already registered" throw
 // when test runners (vi.resetModules) or HMR re-import this module while
 // projectionService still holds the previous registration.
-if (!projectionService.getView(intentView.viewId)) {
-  projectionService.registerView(intentView);
+// Also avoids constructing a new IntentProjectionView that would be
+// immediately discarded (wasteful and risks future state divergence).
+if (!projectionService.getView(INTENT_VIEW_ID)) {
+  projectionService.registerView(new IntentProjectionView());
 }
 
 // ============================================================================

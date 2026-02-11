@@ -14,7 +14,7 @@
  * No polling. WS invalidation is the only trigger for re-fetches.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useWebSocket } from './useWebSocket';
 import type { ProjectionSnapshot } from '@shared/projection-types';
 
@@ -236,7 +236,13 @@ export function useProjectionStream<T>(
     }
   }, [fetchOnMount, fetchSnapshot, viewId]);
 
-  const combinedError = error || (wsError ? new Error(wsError) : null);
+  // Memoize so a new Error object isn't created on every render when wsError is set.
+  // Without this, downstream deps using error as a React dependency would re-render
+  // on every cycle due to changing reference identity.
+  const combinedError = useMemo(
+    () => error || (wsError ? new Error(wsError) : null),
+    [error, wsError]
+  );
 
   return {
     snapshot,
