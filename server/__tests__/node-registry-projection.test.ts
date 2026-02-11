@@ -12,8 +12,10 @@
  * - Edge cases: unknown node heartbeat, unknown node state change, missing nodeId
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { NodeRegistryProjection } from '../projections/node-registry-projection';
+import { setProjectionService, resetProjectionServiceForTest } from '../projection-routes';
+import { ProjectionService } from '../projection-service';
 import type { ProjectionEvent } from '@shared/projection-types';
 
 // ============================================================================
@@ -699,5 +701,35 @@ describe('NodeRegistryProjection', () => {
       expect(applied).toBe(true);
       expect(projection.getSnapshot().payload.nodes).toHaveLength(1);
     });
+  });
+});
+
+// ============================================================================
+// setProjectionService singleton guard
+// ============================================================================
+
+describe('setProjectionService singleton guard', () => {
+  afterEach(() => {
+    resetProjectionServiceForTest();
+  });
+
+  it('should throw when called twice without a reset', () => {
+    const service1 = new ProjectionService();
+    const service2 = new ProjectionService();
+
+    setProjectionService(service1);
+
+    expect(() => setProjectionService(service2)).toThrow('ProjectionService already initialized');
+  });
+
+  it('should allow re-initialization after resetProjectionServiceForTest', () => {
+    const service1 = new ProjectionService();
+    const service2 = new ProjectionService();
+
+    setProjectionService(service1);
+    resetProjectionServiceForTest();
+
+    // Should not throw after reset
+    expect(() => setProjectionService(service2)).not.toThrow();
   });
 });

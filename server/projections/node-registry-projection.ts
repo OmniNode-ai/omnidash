@@ -225,6 +225,9 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         existing?.version ??
         '1.0.0') as string,
       uptimeSeconds: existing?.uptimeSeconds ?? 0,
+      // Use || (not ??) intentionally: eventTimeMs of 0 is the MISSING_TIMESTAMP_SENTINEL_MS
+      // sentinel meaning "no real timestamp". For display purposes we fall back to now rather
+      // than showing epoch-0 (1970-01-01) in the UI.
       lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
       memoryUsageMb: existing?.memoryUsageMb,
       cpuUsagePercent: existing?.cpuUsagePercent,
@@ -260,6 +263,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         state: 'active',
         version: '1.0.0',
         uptimeSeconds: (payload.uptimeSeconds ?? payload.uptime_seconds ?? 0) as number,
+        // || intentional: sentinel 0 → fall back to now for display (see handleIntrospection)
         lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
         memoryUsageMb: (payload.memoryUsageMb ?? payload.memory_usage_mb) as number | undefined,
         cpuUsagePercent: (payload.cpuUsagePercent ?? payload.cpu_usage_percent) as
@@ -276,6 +280,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       uptimeSeconds: (payload.uptimeSeconds ??
         payload.uptime_seconds ??
         existing.uptimeSeconds) as number,
+      // || intentional: sentinel 0 → fall back to now for display (see handleIntrospection)
       lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
       memoryUsageMb: (payload.memoryUsageMb ??
         payload.memory_usage_mb ??
@@ -312,6 +317,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       this.nodes.set(nodeId, {
         ...existing,
         state: newState,
+        // || intentional: sentinel 0 → fall back to now for display (see handleIntrospection)
         lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
       });
     } else {
@@ -323,6 +329,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         state: newState,
         version: '1.0.0',
         uptimeSeconds: 0,
+        // || intentional: sentinel 0 → fall back to now for display (see handleIntrospection)
         lastSeen: new Date(event.eventTimeMs || Date.now()).toISOString(),
       });
     }

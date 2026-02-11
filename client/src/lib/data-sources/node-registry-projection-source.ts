@@ -121,6 +121,8 @@ export function transformNodeRegistryPayload(payload: NodeRegistryPayload): Dash
       node_id: nodeId,
       message: `${nodeId}: ${previousState} -> ${newState}`,
       severity: stateToSeverity(newState as RegistrationState),
+      // || intentional: eventTimeMs of 0 is the monotonic-merge sentinel meaning "no real
+      // timestamp". For display we fall back to now rather than showing epoch-0 (1970-01-01).
       timestamp: new Date(change.eventTimeMs || Date.now()).toISOString(),
     };
   });
