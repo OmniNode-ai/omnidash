@@ -22,19 +22,30 @@ import { ProjectionService, type RawEventInput } from '../projection-service';
 // Test Helpers
 // ============================================================================
 
-let rawCounter = 0;
+/** Scoped counter for deterministic event IDs. Call resetRawCounter() in beforeEach. */
+const rawEventFactory = (() => {
+  let counter = 0;
+  return {
+    reset() {
+      counter = 0;
+    },
+    make(overrides: Partial<RawEventInput> = {}): RawEventInput {
+      return {
+        id: `test-${++counter}`,
+        eventTimeMs: Date.now(),
+        topic: 'test-topic',
+        type: 'test-event',
+        source: 'test-source',
+        severity: 'info',
+        payload: { data: 'test' },
+        ...overrides,
+      };
+    },
+  };
+})();
 
 function makeRawEvent(overrides: Partial<RawEventInput> = {}): RawEventInput {
-  return {
-    id: `test-${++rawCounter}`,
-    eventTimeMs: Date.now(),
-    topic: 'test-topic',
-    type: 'test-event',
-    source: 'test-source',
-    severity: 'info',
-    payload: { data: 'test' },
-    ...overrides,
-  };
+  return rawEventFactory.make(overrides);
 }
 
 // ============================================================================
@@ -49,7 +60,7 @@ describe('EventBusProjection', () => {
     projection = new EventBusProjection();
     service = new ProjectionService();
     service.registerView(projection);
-    rawCounter = 0;
+    rawEventFactory.reset();
   });
 
   // --------------------------------------------------------------------------

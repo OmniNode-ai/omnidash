@@ -24,8 +24,6 @@ import type {
   ProjectionEventsResponse,
 } from '@shared/projection-types';
 
-export type { ProjectionResponse, ProjectionEvent, ProjectionEventsResponse };
-
 // ============================================================================
 // ProjectionView interface
 // ============================================================================

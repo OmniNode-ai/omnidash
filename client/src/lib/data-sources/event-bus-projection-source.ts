@@ -30,5 +30,5 @@ export async function fetchEventBusSnapshot(params?: {
     );
   }
 
-  return response.json();
+  return (await response.json()) as ProjectionResponse<EventBusPayload>;
 }

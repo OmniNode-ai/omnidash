@@ -23,12 +23,12 @@
  * - cursor:             max(ingestSeq) across all events in buffer
  */
 
+import type { ProjectionView } from '../projection-service';
 import type {
-  ProjectionView,
   ProjectionEvent,
   ProjectionResponse,
   ProjectionEventsResponse,
-} from '../projection-service';
+} from '@shared/projection-types';
 import { TIME_SERIES_BUCKET_MS, type EventBusPayload } from '@shared/event-bus-payload';
 
 export type { EventBusPayload };
@@ -45,7 +45,7 @@ const ROLLING_WINDOW_MS = 60_000; // 60 seconds for EPS
 // the array can temporarily hold up to this many entries. At 166+ events/sec
 // sustained, cap-based pruning kicks in; below that, only the lazy time-based
 // prune in getSnapshot() trims stale entries. See applyEvent() for details.
-const ROLLING_WINDOW_MAX_ENTRIES = 10_000;
+const EPS_WINDOW_MAX_SAMPLES = 10_000;
 
 // ============================================================================
 // Implementation
@@ -183,13 +183,13 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
 
     // Dual-pruning strategy for the rolling window:
     //   1. Inline cap-based (here): triggers when the array exceeds 10,000 entries
-    //      (ROLLING_WINDOW_MAX_ENTRIES) to bound memory under sustained high
+    //      (EPS_WINDOW_MAX_SAMPLES) to bound memory under sustained high
     //      throughput (e.g. >166 events/s). Removes entries older than the 60s
     //      window rather than arbitrarily halving, so surviving entries are always
     //      within the EPS calculation window.
     //   2. Lazy time-based (pruneRollingWindow): runs on each getSnapshot() call
     //      to trim stale entries even when throughput is low and the cap is never hit.
-    if (this.rollingWindow.length > ROLLING_WINDOW_MAX_ENTRIES) {
+    if (this.rollingWindow.length > EPS_WINDOW_MAX_SAMPLES) {
       const cutoff = now - ROLLING_WINDOW_MS;
       let pruneIdx = 0;
       while (pruneIdx < this.rollingWindow.length && this.rollingWindow[pruneIdx] < cutoff) {
