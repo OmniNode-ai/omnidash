@@ -108,6 +108,13 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
 
   /** Returns applied events with ingestSeq > cursor (exclusive). Uses binary search for O(log n) lookup. */
   getEventsSince(cursor: number, limit?: number): ProjectionEventsResponse {
+    // Detect whether the buffer was trimmed past the client's cursor.
+    // If the oldest available event has a seq more than 1 ahead of the
+    // requested cursor, earlier events were discarded and the client
+    // should fall back to a full snapshot refresh.
+    const oldestAvailableSeq = this.appliedEvents.length > 0 ? this.appliedEvents[0].ingestSeq : 0;
+    const truncated = cursor > 0 && oldestAvailableSeq > cursor + 1;
+
     // Binary search for the first event with ingestSeq > cursor.
     // appliedEvents are appended in ingestSeq order, so binary search is valid.
     let lo = 0;
@@ -130,6 +137,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       snapshotTimeMs: Date.now(),
       // Deep copy events consistent with getSnapshot() to isolate from internal state
       events: sliced.map((e) => ({ ...e, payload: { ...e.payload } })),
+      ...(truncated && { truncated }),
     };
   }
 

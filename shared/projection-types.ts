@@ -61,6 +61,8 @@ export interface ProjectionEventsResponse {
   cursor: number;
   snapshotTimeMs: number;
   events: ProjectionEvent[];
+  /** True when earlier events were trimmed from the buffer — client should fetch a full snapshot instead of relying on incremental catch-up */
+  truncated?: boolean;
 }
 
 // ============================================================================
