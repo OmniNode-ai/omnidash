@@ -187,6 +187,26 @@ export const EVENT_MONITORING_MAX_BREAKDOWN_ITEMS_DEFAULT = 50;
 /** Default periodic cleanup interval in ms (10 seconds) */
 export const EVENT_MONITORING_PERIODIC_CLEANUP_INTERVAL_MS_DEFAULT = 10000;
 
+// ── Burst Detection Defaults (OMN-2158) ─────────────────────────────
+/** Default unified monitoring window in ms (5 minutes) */
+export const BURST_MONITORING_WINDOW_MS_DEFAULT = 5 * 60 * 1000;
+/** Default staleness threshold in ms (10 minutes) */
+export const BURST_STALENESS_THRESHOLD_MS_DEFAULT = 10 * 60 * 1000;
+/** Default short burst window in ms (30 seconds) */
+export const BURST_WINDOW_MS_DEFAULT = 30 * 1000;
+/** Default throughput burst multiplier (3x baseline) */
+export const BURST_THROUGHPUT_MULTIPLIER_DEFAULT = 3;
+/** Default minimum absolute events/sec for throughput burst */
+export const BURST_THROUGHPUT_MIN_RATE_DEFAULT = 5;
+/** Default error spike multiplier (2x baseline) */
+export const BURST_ERROR_MULTIPLIER_DEFAULT = 2;
+/** Default absolute error rate threshold (5%) */
+export const BURST_ERROR_ABSOLUTE_THRESHOLD_DEFAULT = 0.05;
+/** Default minimum events for error rate computation */
+export const BURST_ERROR_MIN_EVENTS_DEFAULT = 10;
+/** Default burst cooldown in ms (15 seconds) */
+export const BURST_COOLDOWN_MS_DEFAULT = 15 * 1000;
+
 /**
  * Event Monitoring Configuration Schema
  *
@@ -237,6 +257,39 @@ export const eventMonitoringConfigSchema = z.object({
     .int()
     .min(1000)
     .default(EVENT_MONITORING_PERIODIC_CLEANUP_INTERVAL_MS_DEFAULT),
+
+  // ── Burst Detection (OMN-2158) ───────────────────────────────────
+
+  /** Unified monitoring window for baseline computation (min 30s, default 5 min) */
+  monitoring_window_ms: z.number().int().min(30000).default(BURST_MONITORING_WINDOW_MS_DEFAULT),
+
+  /** Staleness threshold (min 1 min, default 10 min) */
+  staleness_threshold_ms: z.number().int().min(60000).default(BURST_STALENESS_THRESHOLD_MS_DEFAULT),
+
+  /** Short burst window (min 5s, default 30s) */
+  burst_window_ms: z.number().int().min(5000).default(BURST_WINDOW_MS_DEFAULT),
+
+  /** Throughput burst multiplier (min 1.5x) */
+  burst_throughput_multiplier: z.number().min(1.5).default(BURST_THROUGHPUT_MULTIPLIER_DEFAULT),
+
+  /** Min absolute events/sec for throughput burst (min 1) */
+  burst_throughput_min_rate: z.number().min(1).default(BURST_THROUGHPUT_MIN_RATE_DEFAULT),
+
+  /** Error spike multiplier (min 1.5x) */
+  burst_error_multiplier: z.number().min(1.5).default(BURST_ERROR_MULTIPLIER_DEFAULT),
+
+  /** Absolute error rate threshold (0.01–1.0) */
+  burst_error_absolute_threshold: z
+    .number()
+    .min(0.01)
+    .max(1.0)
+    .default(BURST_ERROR_ABSOLUTE_THRESHOLD_DEFAULT),
+
+  /** Min events for error rate computation (min 2) */
+  burst_error_min_events: z.number().int().min(2).default(BURST_ERROR_MIN_EVENTS_DEFAULT),
+
+  /** Burst cooldown in ms (min 5s, default 15s) */
+  burst_cooldown_ms: z.number().int().min(5000).default(BURST_COOLDOWN_MS_DEFAULT),
 });
 
 /**
