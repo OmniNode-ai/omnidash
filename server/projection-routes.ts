@@ -56,7 +56,7 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
       );
       return res.status(500).json({
         error: 'internal_error',
-        message: err instanceof Error ? err.message : 'Unknown error',
+        message: 'An internal error occurred while processing the projection request',
       });
     }
   });
@@ -106,7 +106,7 @@ export function createProjectionRouter(projectionService: ProjectionService): Ro
       );
       return res.status(500).json({
         error: 'internal_error',
-        message: err instanceof Error ? err.message : 'Unknown error',
+        message: 'An internal error occurred while processing the projection request',
       });
     }
   });
