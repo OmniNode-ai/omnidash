@@ -82,7 +82,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
   // ProjectionView interface
   // --------------------------------------------------------------------------
 
-  /** Returns a defensive deep copy of the current node registry state, stats, and recent state changes. */
+  /** Returns a defensive shallow copy of the current node registry state, stats, and recent state changes. */
   getSnapshot(options?: { limit?: number }): ProjectionResponse<NodeRegistryPayload> {
     const allNodes = Array.from(this.nodes.values()).map((n) => ({
       ...n,
@@ -96,7 +96,8 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       snapshotTimeMs: Date.now(),
       payload: {
         nodes,
-        // Deep copy events to isolate nested payload objects from internal state
+        // Shallow-copy events and payloads to isolate from internal state.
+        // Sufficient because current payloads are flat key-value pairs.
         recentStateChanges: this.recentStateChanges.map((e) => ({
           ...e,
           payload: { ...e.payload },
@@ -137,7 +138,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       cursor:
         sliced.length > 0 ? sliced[sliced.length - 1].ingestSeq : Math.max(cursor, this.cursor),
       snapshotTimeMs: Date.now(),
-      // Deep copy events consistent with getSnapshot() to isolate from internal state
+      // Shallow-copy events consistent with getSnapshot() to isolate from internal state
       events: sliced.map((e) => ({ ...e, payload: { ...e.payload } })),
       ...(truncated && { truncated }),
     };
