@@ -128,7 +128,8 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       cursor:
         sliced.length > 0 ? sliced[sliced.length - 1].ingestSeq : Math.max(cursor, this.cursor),
       snapshotTimeMs: Date.now(),
-      events: sliced,
+      // Deep copy events consistent with getSnapshot() to isolate from internal state
+      events: sliced.map((e) => ({ ...e, payload: { ...e.payload } })),
     };
   }
 

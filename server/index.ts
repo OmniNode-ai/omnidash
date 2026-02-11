@@ -103,12 +103,20 @@ app.use((req, res, next) => {
   // Bridge EventConsumer node events → ProjectionService
   // MUST be registered BEFORE eventConsumer.start() to avoid missing events
   // Listeners stored for cleanup during graceful shutdown
+
+  /** Safely parse createdAt into epoch-ms, returning undefined if invalid to let ProjectionService use its own extraction. */
+  function extractBridgeTimestamp(event: Record<string, unknown>): number | undefined {
+    if (!event.createdAt) return undefined;
+    const ts = new Date(event.createdAt as string).getTime();
+    return Number.isFinite(ts) ? ts : undefined;
+  }
+
   const projectionBridgeListeners = {
     nodeIntrospectionUpdate: (event: Record<string, unknown>) => {
       projectionService.ingest({
         type: 'node-introspection',
         source: 'event-consumer',
-        eventTimeMs: event.createdAt ? new Date(event.createdAt as string).getTime() : undefined,
+        eventTimeMs: extractBridgeTimestamp(event),
         payload: event,
       });
     },
@@ -116,7 +124,7 @@ app.use((req, res, next) => {
       projectionService.ingest({
         type: 'node-heartbeat',
         source: 'event-consumer',
-        eventTimeMs: event.createdAt ? new Date(event.createdAt as string).getTime() : undefined,
+        eventTimeMs: extractBridgeTimestamp(event),
         payload: event,
       });
     },
@@ -124,7 +132,7 @@ app.use((req, res, next) => {
       projectionService.ingest({
         type: 'node-state-change',
         source: 'event-consumer',
-        eventTimeMs: event.createdAt ? new Date(event.createdAt as string).getTime() : undefined,
+        eventTimeMs: extractBridgeTimestamp(event),
         payload: event,
       });
     },

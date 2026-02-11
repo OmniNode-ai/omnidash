@@ -31,6 +31,14 @@ export function setProjectionService(service: ProjectionService): void {
   projectionService = service;
 }
 
+/** Reset for integration tests. No-op in production. */
+export function resetProjectionServiceForTest(): void {
+  if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+    throw new Error('resetProjectionServiceForTest() is only available in test environments');
+  }
+  projectionService = null;
+}
+
 /**
  * GET /api/projections/:viewId/snapshot
  *
