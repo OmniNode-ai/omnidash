@@ -121,7 +121,7 @@ export function transformNodeRegistryPayload(payload: NodeRegistryPayload): Dash
       node_id: nodeId,
       message: `${nodeId}: ${previousState} -> ${newState}`,
       severity: stateToSeverity(newState as RegistrationState),
-      timestamp: new Date(change.eventTimeMs ?? Date.now()).toISOString(),
+      timestamp: new Date(change.eventTimeMs || Date.now()).toISOString(),
     };
   });
 

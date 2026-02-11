@@ -185,10 +185,10 @@ app.use((req, res, next) => {
     log(`Seeded node-registry projection with ${existingNodes.length} existing nodes`);
   }
 
-  // Setup WebSocket for real-time events
-  if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
-    setupWebSocket(server, { projectionService });
-  }
+  // Setup WebSocket — always enabled so projection invalidation signals
+  // reach clients via push (not just 10s polling fallback).
+  // ENABLE_REAL_TIME_EVENTS controls Kafka consumer, not WebSocket.
+  setupWebSocket(server, { projectionService });
 
   // Demo mode: start ALL mock data generators (fake heartbeats, events, registry)
   // ONLY runs when DEMO_MODE=true is explicitly set — no fake data by default

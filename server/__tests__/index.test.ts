@@ -55,6 +55,7 @@ vi.mock('../event-consumer', () => ({
     start: startMock,
     stop: stopMock,
     on: eventConsumerOnMock,
+    removeListener: vi.fn(),
     getRegisteredNodes: getRegisteredNodesMock,
   },
 }));
@@ -159,7 +160,11 @@ describe('server/index bootstrap', () => {
     await importIndex();
 
     expect(startMock).not.toHaveBeenCalled();
-    expect(setupWebSocketMock).not.toHaveBeenCalled();
+    // WebSocket is always set up (projection invalidation needs it)
+    expect(setupWebSocketMock).toHaveBeenCalledWith(
+      mockServer,
+      expect.objectContaining({ projectionService: expect.anything() })
+    );
     expect(setupViteMock).not.toHaveBeenCalled();
     expect(serveStaticMock).toHaveBeenCalledWith(expect.anything());
     expect(mockServer.listen).toHaveBeenCalledWith(3000, '0.0.0.0', expect.any(Function));

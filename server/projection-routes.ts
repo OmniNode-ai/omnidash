@@ -69,7 +69,7 @@ router.get('/:viewId/snapshot', (req: Request, res: Response) => {
  * Returns events applied to the view since the given cursor position.
  * Used for incremental client catch-up.
  * Query params:
- *   - cursor: ingestSeq to start from (exclusive), required
+ *   - cursor: ingestSeq to start from (exclusive), defaults to 0 (all events)
  *   - limit: max events to return (default: 100)
  */
 router.get('/:viewId/events', (req: Request, res: Response) => {
