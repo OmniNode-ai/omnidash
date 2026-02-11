@@ -6,11 +6,3 @@
  */
 
 export type { ProjectionResponse, ProjectionEvent } from '@shared/projection-types';
-
-/** Response envelope for events-since queries */
-export interface ProjectionEventsResponse {
-  viewId: string;
-  cursor: number;
-  snapshotTimeMs: number;
-  events: import('@shared/projection-types').ProjectionEvent[];
-}
