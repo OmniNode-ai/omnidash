@@ -423,7 +423,7 @@ describe('IntentProjectionView', () => {
       expect(snapshot.payload).toHaveProperty('lastEventTimeMs');
     });
 
-    it('should return totalIntents as the sum of all category counts in the buffer', () => {
+    it('should return totalIntents as the cumulative count of all ingested events', () => {
       view.applyEvent(intentEvent({ ingestSeq: 1, payload: { intent_category: 'a' } }));
       view.applyEvent(intentEvent({ ingestSeq: 2, payload: { intent_category: 'b' } }));
       view.applyEvent(intentEvent({ ingestSeq: 3, payload: { intent_category: 'a' } }));
