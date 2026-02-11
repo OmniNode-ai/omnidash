@@ -125,6 +125,11 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
    * Return events ingested after the given cursor, sorted ASC for client
    * playback order. Scans the full buffer (max 500 events) since events
    * are stored in DESC order and cursor gaps are possible after eviction.
+   *
+   * Complexity: O(n) scan + O(k log k) sort, where n = buffer size and
+   * k = matched events. At MAX_BUFFER_SIZE=500 this is sub-millisecond.
+   * If buffer grows beyond ~2000 or polling frequency increases, consider
+   * adding a secondary index by ingestSeq (e.g. Map or ASC ring buffer).
    */
   getEventsSince(cursor: number, limit?: number): ProjectionEventsResponse {
     // Collect events with ingestSeq > cursor

@@ -83,6 +83,14 @@ export function useProjectionStream<T>(
   // Stable callback for PROJECTION_INVALIDATE messages.
   // Uses useCallback so the closure captures current viewId and limit,
   // avoiding stale query-key references if either value changes.
+  //
+  // Reset edge case: after a server-side projection reset, cursor drops
+  // to 0 while cursorRef.current still holds the old high-water-mark.
+  // PROJECTION_INVALIDATE messages with low cursor values are ignored
+  // until the next poll updates data.cursor (which resets cursorRef via
+  // the useEffect above). Worst-case latency: one refetchInterval (2s).
+  // This is acceptable — resets are rare (demo mode only) and the
+  // polling fallback ensures eventual consistency.
   const handleProjectionMessage = useCallback(
     (msg: { type: string; data?: unknown }) => {
       if (msg.type === 'PROJECTION_INVALIDATE' && msg.data && typeof msg.data === 'object') {

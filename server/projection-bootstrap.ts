@@ -125,6 +125,12 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
   // When timestamp is missing (sentinel 0/''), a monotonic counter is appended
   // to prevent collisions between events that share the same topic+type.
   // Wraps at MAX_SAFE_INTEGER to prevent loss of integer precision.
+  // After wrap-around, early sequence numbers reappear. If the dedup ring
+  // still holds a key from those early numbers (extremely unlikely given
+  // DEDUP_CAPACITY=5000 and 9-quadrillion wraps), a collision can occur.
+  // This is acceptable for the same reasons as timestamp-based collisions:
+  // events without IDs are already low-fidelity, and a rare duplicate is
+  // preferable to a rare missed dedup.
   // Note: fallbackSeq and FALLBACK_SEQ_MAX are module-scoped — see above.
   function deriveFallbackDedupKey(data: Record<string, unknown>): string {
     const topic = (data.topic as string) || '';
