@@ -162,7 +162,12 @@ function deriveEventsFromPatterns(
   }
 
   // Sort by timestamp descending and limit
-  return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, maxEvents);
+  return events
+    .sort(
+      (a, b) =>
+        b.timestamp.getTime() - a.timestamp.getTime() || a.patternName.localeCompare(b.patternName)
+    )
+    .slice(0, maxEvents);
 }
 
 // ===========================

@@ -1,11 +1,15 @@
 /**
- * Shared Projection Types (OMN-2095 / OMN-2097)
+ * Shared Projection Types (OMN-2095 / OMN-2096 / OMN-2097)
  *
  * Single source of truth for projection types shared between server and client.
- * Both server (ProjectionService, EventBusProjection, NodeRegistryProjection)
- * and client (useProjectionStream, EventBusMonitor, NodeRegistry) import from
- * here to prevent type drift.
+ * Both server (ProjectionService, EventBusProjection, IntentProjectionView, NodeRegistryProjection)
+ * and client (useProjectionStream, EventBusMonitor, IntentDashboard, NodeRegistry)
+ * import from here to prevent type drift.
  */
+
+// ============================================================================
+// Generic snapshot envelope (wire format)
+// ============================================================================
 
 /**
  * Standardized response envelope for view snapshots.
@@ -22,12 +26,19 @@ export interface ProjectionResponse<T> {
 }
 
 /**
+ * Alias for backward-compatible imports (OMN-2096 intent hook).
+ * Identical to ProjectionResponse.
+ */
+export type ProjectionSnapshot<T> = ProjectionResponse<T>;
+
+// ============================================================================
+// Canonical projection event
+// ============================================================================
+
+/**
  * Canonical event shape flowing through projections.
  * Every raw event (Kafka, DB preload, playback) is wrapped into this
  * before being routed to views.
- *
- * This is the single source of truth — server and client must both
- * import from here to prevent type drift.
  */
 export interface ProjectionEvent {
   /** Unique event identifier (from source, or `proj-{ingestSeq}` fallback) */
@@ -64,6 +75,55 @@ export interface ProjectionEventsResponse {
   events: ProjectionEvent[];
   /** True when earlier events were trimmed from the buffer — client should fetch a full snapshot instead of relying on incremental catch-up */
   truncated?: boolean;
+}
+
+// Projection event item (client wire format)
+// ============================================================================
+
+/**
+ * A projection event as serialized in snapshot JSON payloads.
+ * Subset of the server-side ProjectionEvent — only fields that
+ * cross the wire to the client.
+ */
+export interface ProjectionEventItem {
+  id: string;
+  eventTimeMs: number;
+  ingestSeq: number;
+  type: string;
+  topic: string;
+  source: string;
+  severity: ProjectionEvent['severity'];
+  payload: Record<string, unknown>;
+}
+
+// ============================================================================
+// Intent projection payload (OMN-2096)
+// ============================================================================
+
+/**
+ * Distribution entry for intent category statistics.
+ */
+export interface IntentDistributionEntry {
+  category: string;
+  count: number;
+  percentage: number;
+}
+
+/**
+ * Intent projection snapshot payload.
+ * Returned by GET /api/projections/intent/snapshot.
+ *
+ * Each item in `recentIntents` carries an intent-specific `payload` with
+ * expected fields: `intent_category` (string), `confidence` (number 0-1),
+ * `session_ref` (string), `keywords` (string[]). See `IntentRecordPayload`
+ * in `shared/intent-types.ts` for the canonical intent payload schema.
+ */
+export interface IntentProjectionPayload {
+  recentIntents: ProjectionEventItem[];
+  distribution: IntentDistributionEntry[];
+  totalIntents: number;
+  categoryCount: number;
+  lastEventTimeMs: number | null;
 }
 
 // ============================================================================

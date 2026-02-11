@@ -736,7 +736,7 @@ function PatternLearningContent() {
               ))}
             </div>
           ) : paginatedPatterns.length > 0 ? (
-            <Table>
+            <Table data-testid="patterns-table">
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
