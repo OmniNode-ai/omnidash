@@ -258,6 +258,9 @@ export default function IntentDashboard() {
   // Derive stat card values from the projection snapshot
   const categoryCount = snapshot?.categoryCount ?? 0;
 
+  // Depend on `snapshot` — the entire object is replaced on each fetch, so
+  // using snapshot?.recentIntents would also trigger on every update (same
+  // reference lifetime). Using `snapshot` is more explicit about the intent.
   const avgConfidence = useMemo(() => {
     if (!snapshot?.recentIntents?.length) return 0;
     const confidences = snapshot.recentIntents
@@ -265,7 +268,7 @@ export default function IntentDashboard() {
       .filter((c) => !isNaN(c));
     if (confidences.length === 0) return 0;
     return confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
-  }, [snapshot?.recentIntents]);
+  }, [snapshot]);
 
   const lastEventTimeStr = useMemo(() => {
     if (snapshot?.lastEventTimeMs == null) return 'No events yet';

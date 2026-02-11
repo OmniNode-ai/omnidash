@@ -36,6 +36,17 @@ export type { IntentProjectionPayload as IntentPayload };
 /** Internal buffer cap. Snapshot ?limit clamps to this. */
 const MAX_BUFFER = 500;
 
+/** Strip server-only fields (error, eventTimeMissing) from events for wire payload. */
+function stripServerFields(
+  event: ProjectionEvent
+): Pick<
+  ProjectionEvent,
+  'id' | 'eventTimeMs' | 'ingestSeq' | 'type' | 'topic' | 'source' | 'severity' | 'payload'
+> {
+  const { id, eventTimeMs, ingestSeq, type, topic, source, severity, payload } = event;
+  return { id, eventTimeMs, ingestSeq, type, topic, source, severity, payload };
+}
+
 /** View identifier used in ProjectionResponse envelopes and invalidation. */
 export const INTENT_VIEW_ID = 'intent';
 
@@ -87,24 +98,14 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
   getSnapshot(options?: { limit?: number }): ProjectionResponse<IntentProjectionPayload> {
     const limit = Math.min(Math.max(options?.limit ?? 100, 1), MAX_BUFFER);
 
-    // Return cached snapshot if available for the same limit
+    // Return cached snapshot if available for the same limit.
+    // Recompute snapshotTimeMs so callers always see a fresh observation time.
     if (this._cachedSnapshot && this._cachedSnapshot.limit === limit) {
-      return this._cachedSnapshot.response;
+      return { ...this._cachedSnapshot.response, snapshotTimeMs: Date.now() };
     }
 
     // Strip server-only fields (error, eventTimeMissing) from wire payload
-    const recentIntents = this.buffer
-      .slice(0, limit)
-      .map(({ id, eventTimeMs, ingestSeq, type, topic, source, severity, payload }) => ({
-        id,
-        eventTimeMs,
-        ingestSeq,
-        type,
-        topic,
-        source,
-        severity,
-        payload,
-      }));
+    const recentIntents = this.buffer.slice(0, limit).map(stripServerFields);
 
     // Buffer-visible count for distribution percentages
     const bufferTotal =
@@ -159,18 +160,7 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     const raw = limit ? tail.slice(0, limit) : tail;
 
     // Strip server-only fields (error, eventTimeMissing) to match getSnapshot
-    const result = raw.map(
-      ({ id, eventTimeMs, ingestSeq, type, topic, source, severity, payload }) => ({
-        id,
-        eventTimeMs,
-        ingestSeq,
-        type,
-        topic,
-        source,
-        severity,
-        payload,
-      })
-    );
+    const result = raw.map(stripServerFields);
 
     return {
       viewId: this.viewId,

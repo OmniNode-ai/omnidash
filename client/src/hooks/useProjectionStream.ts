@@ -77,6 +77,15 @@ export function useProjectionStream<T>(
   // Keep viewIdRef in sync so fetchSnapshot can detect stale responses
   viewIdRef.current = viewId;
 
+  // Dedicated mount/unmount tracking — separate from data-fetching effects
+  // so that mountedRef accurately reflects component lifecycle.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const log = useCallback(
     (...args: unknown[]) => {
       if (debug) {
@@ -197,8 +206,10 @@ export function useProjectionStream<T>(
       hasSubscribed.current = false;
     }
 
+    // Capture isConnected in closure so cleanup doesn't rely on a stale ref
+    const wasConnected = isConnected;
     return () => {
-      if (hasSubscribed.current && isConnectedRef.current) {
+      if (hasSubscribed.current && wasConnected) {
         unsubscribe(['projection-invalidate']);
         hasSubscribed.current = false;
       }
@@ -210,8 +221,6 @@ export function useProjectionStream<T>(
   // fires on limit changes (via fetchSnapshot identity) to re-fetch with the
   // new limit, but preserves existing snapshot/cursor during the fetch.
   useEffect(() => {
-    mountedRef.current = true;
-
     // Reset state only when viewId actually changes
     if (prevViewIdRef.current !== null && prevViewIdRef.current !== viewId) {
       cursorRef.current = 0;
@@ -225,9 +234,6 @@ export function useProjectionStream<T>(
     if (fetchOnMount) {
       fetchSnapshot().catch(() => {}); // errors handled inside via setError
     }
-    return () => {
-      mountedRef.current = false;
-    };
   }, [fetchOnMount, fetchSnapshot, viewId]);
 
   const combinedError = error || (wsError ? new Error(wsError) : null);

@@ -29,7 +29,13 @@ export const projectionService = new ProjectionService();
 // ============================================================================
 
 const intentView = new IntentProjectionView();
-projectionService.registerView(intentView);
+
+// Guard for idempotent registration — prevents "already registered" throw
+// when test runners (vi.resetModules) or HMR re-import this module while
+// projectionService still holds the previous registration.
+if (!projectionService.getView(intentView.viewId)) {
+  projectionService.registerView(intentView);
+}
 
 // ============================================================================
 // EventConsumer → ProjectionService wiring
