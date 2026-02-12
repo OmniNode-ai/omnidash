@@ -1,8 +1,8 @@
 /**
- * Integration test helpers for patterns API tests.
+ * Integration test helpers for patterns and effectiveness API tests.
  *
  * Provides database connection, seeding, truncation, and Express app
- * factory for testing the patterns route against a real PostgreSQL database.
+ * factory for testing routes against a real PostgreSQL database.
  *
  * SAFETY: Refuses to run against any database whose name does not end
  * with _test or -test.
@@ -12,8 +12,18 @@ import { randomUUID } from 'crypto';
 import pg from 'pg';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { learnedPatterns } from '@shared/intelligence-schema';
-import type { InsertLearnedPattern } from '@shared/intelligence-schema';
+import {
+  learnedPatterns,
+  injectionEffectiveness,
+  latencyBreakdowns,
+  patternHitRates,
+} from '@shared/intelligence-schema';
+import type {
+  InsertLearnedPattern,
+  InsertInjectionEffectiveness,
+  InsertLatencyBreakdown,
+  InsertPatternHitRate,
+} from '@shared/intelligence-schema';
 import type { Express } from 'express';
 import { vi } from 'vitest';
 
@@ -117,6 +127,112 @@ export function makePattern(overrides: Partial<InsertLearnedPattern> = {}): Inse
     qualityScore: '0.500000',
     ...overrides,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Effectiveness factories
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a full InsertInjectionEffectiveness with sensible defaults.
+ * Any field can be overridden via the `overrides` parameter.
+ */
+export function makeEffectivenessRow(
+  overrides: Partial<InsertInjectionEffectiveness> = {}
+): InsertInjectionEffectiveness {
+  return {
+    sessionId: randomUUID(),
+    correlationId: randomUUID(),
+    cohort: 'treatment',
+    injectionOccurred: true,
+    agentName: 'test-agent',
+    utilizationScore: '0.750000',
+    agentMatchScore: '0.850000',
+    userVisibleLatencyMs: 100,
+    sessionOutcome: 'success',
+    eventType: 'test',
+    ...overrides,
+  };
+}
+
+/**
+ * Create a full InsertLatencyBreakdown with sensible defaults.
+ * Any field can be overridden via the `overrides` parameter.
+ */
+export function makeLatencyBreakdownRow(
+  overrides: Partial<InsertLatencyBreakdown> = {}
+): InsertLatencyBreakdown {
+  return {
+    sessionId: randomUUID(),
+    promptId: randomUUID(),
+    cohort: 'treatment',
+    routingTimeMs: 10,
+    retrievalTimeMs: 20,
+    injectionTimeMs: 15,
+    userVisibleLatencyMs: 100,
+    cacheHit: false,
+    ...overrides,
+  };
+}
+
+/**
+ * Create a full InsertPatternHitRate with sensible defaults.
+ * Any field can be overridden via the `overrides` parameter.
+ */
+export function makePatternHitRateRow(
+  overrides: Partial<InsertPatternHitRate> = {}
+): InsertPatternHitRate {
+  return {
+    sessionId: randomUUID(),
+    patternId: randomUUID(),
+    utilizationScore: '0.800000',
+    utilizationMethod: 'tool_call_match',
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Effectiveness table operations
+// ---------------------------------------------------------------------------
+
+/**
+ * Bulk insert rows into the injection_effectiveness table.
+ */
+export async function seedEffectiveness(items: InsertInjectionEffectiveness[]): Promise<void> {
+  if (items.length === 0) return;
+  const testDb = getTestDb();
+  await testDb.insert(injectionEffectiveness).values(items);
+}
+
+/**
+ * Bulk insert rows into the latency_breakdowns table.
+ */
+export async function seedLatencyBreakdowns(items: InsertLatencyBreakdown[]): Promise<void> {
+  if (items.length === 0) return;
+  const testDb = getTestDb();
+  await testDb.insert(latencyBreakdowns).values(items);
+}
+
+/**
+ * Bulk insert rows into the pattern_hit_rates table.
+ */
+export async function seedPatternHitRates(items: InsertPatternHitRate[]): Promise<void> {
+  if (items.length === 0) return;
+  const testDb = getTestDb();
+  await testDb.insert(patternHitRates).values(items);
+}
+
+/**
+ * Delete all rows from injection_effectiveness, latency_breakdowns,
+ * and pattern_hit_rates tables. Uses DELETE (not TRUNCATE) to avoid
+ * permission issues.
+ */
+export async function truncateEffectiveness(): Promise<void> {
+  const testDb = getTestDb();
+  // pattern_hit_rates has no FK deps, safe to delete in any order
+  await testDb.delete(patternHitRates);
+  await testDb.delete(latencyBreakdowns);
+  await testDb.delete(injectionEffectiveness);
 }
 
 // ---------------------------------------------------------------------------
