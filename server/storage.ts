@@ -153,3 +153,22 @@ export function tryGetIntelligenceDb(): ReturnType<typeof drizzle> | null {
     return null;
   }
 }
+
+/**
+ * Close the intelligence database pool and reset lazy-init state.
+ *
+ * Intended for test teardown so integration tests that override
+ * DATABASE_URL can cleanly shut down the pool they caused to be created.
+ * A subsequent call to getIntelligenceDb() / tryGetIntelligenceDb() will
+ * re-initialize a fresh pool from the current environment.
+ */
+export async function resetIntelligenceDb(): Promise<void> {
+  if (poolInstance) {
+    await poolInstance.end();
+  }
+  poolInstance = null;
+  intelligenceDbInstance = null;
+  connectionAttempted = false;
+  databaseConfigured = false;
+  databaseConnectionError = null;
+}

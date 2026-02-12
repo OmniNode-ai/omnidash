@@ -591,8 +591,8 @@ describe('Patterns Routes', () => {
       expect(pattern.usage_count_rolling_20).toBe(0);
       expect(pattern.sample_size_rolling_20).toBe(0);
       expect(pattern.success_rate_rolling_20).toBeNull(); // null due to zero sample
-      expect(pattern.created_at).toBeDefined(); // Should have a default date
-      expect(pattern.updated_at).toBeDefined(); // Should have a default date
+      expect(pattern.created_at).toBeNull(); // null when DB column is null
+      expect(pattern.updated_at).toBeNull(); // null when DB column is null
     });
   });
 });

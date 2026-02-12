@@ -9,7 +9,6 @@
  */
 
 import { randomUUID } from 'crypto';
-import express from 'express';
 import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { learnedPatterns } from '@shared/intelligence-schema';
@@ -115,41 +114,6 @@ export function makePattern(overrides: Partial<InsertLearnedPattern> = {}): Inse
     qualityScore: '0.500000',
     ...overrides,
   };
-}
-
-// ---------------------------------------------------------------------------
-// Express app factory
-// ---------------------------------------------------------------------------
-
-/**
- * Create an Express app with the real patterns route mounted at /api/patterns.
- *
- * This wires up the production route handler against the test database by
- * setting DATABASE_URL to TEST_DATABASE_URL before dynamically importing
- * the storage and routes modules.
- *
- * Returns the Express app for use with supertest.
- */
-export async function createTestApp(): Promise<express.Express> {
-  // Point the storage module at the test database.
-  // We set DATABASE_URL so the lazy-init singleton in storage.ts picks it up.
-  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
-
-  // Clear any previously-cached modules so storage.ts re-initialises
-  // its singleton pool/db with the new DATABASE_URL.
-  // vi.resetModules() is not available here (this is a helper, not a test file),
-  // so we rely on the caller to use vi.resetModules() or dynamic imports in the
-  // test file itself. For this helper, we dynamically import each time.
-
-  // Dynamic import to pick up the current env var state.
-  // The import cache is handled by the test file via vi.resetModules().
-  const { default: patternsRoutes } = await import('../../patterns-routes');
-
-  const app = express();
-  app.use(express.json());
-  app.use('/api/patterns', patternsRoutes);
-
-  return app;
 }
 
 // ---------------------------------------------------------------------------

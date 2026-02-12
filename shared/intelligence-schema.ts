@@ -454,8 +454,8 @@ export interface PatternListItem {
   usage_count_rolling_20: number;
   success_rate_rolling_20: number | null; // null when sample_size is 0
   sample_size_rolling_20: number;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 /**

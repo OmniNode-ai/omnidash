@@ -1,12 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { queryPatterns } from './pattern-queries';
+import { queryPatterns, VALID_STATUSES } from './pattern-queries';
 import type { PaginatedPatternsResponse } from '@shared/intelligence-schema';
 
 const router = Router();
-
-// Valid status values (DB canonical)
-const VALID_STATUSES = ['candidate', 'provisional', 'validated', 'deprecated'] as const;
 
 // Query parameter validation schema
 const PatternsQuerySchema = z.object({
@@ -93,7 +90,7 @@ router.get('/', async (req, res) => {
     console.error('Error fetching patterns:', error);
     res.status(500).json({
       error: 'Failed to fetch patterns',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: 'Internal server error',
     });
   }
 });

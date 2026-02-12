@@ -16,6 +16,7 @@ import request from 'supertest';
 import type { Express } from 'express';
 import type { InsertLearnedPattern } from '@shared/intelligence-schema';
 import { getTestDb, truncatePatterns, seedPatterns, makePattern, closeTestDb } from './helpers';
+import { resetIntelligenceDb } from '../../storage';
 
 // ---------------------------------------------------------------------------
 // Skip guard
@@ -107,6 +108,10 @@ describe.skipIf(!shouldRun)('Patterns API Integration Tests (E2E-002)', () => {
   afterAll(async () => {
     await truncatePatterns();
     await closeTestDb();
+
+    // Close the lazy-init pool that storage.ts created when the first
+    // supertest request triggered tryGetIntelligenceDb().
+    await resetIntelligenceDb();
 
     // Restore original DATABASE_URL so other test files are unaffected
     if (originalDatabaseUrl !== undefined) {

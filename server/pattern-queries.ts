@@ -18,8 +18,8 @@ import {
 import { sql, desc, eq, gte, and, count } from 'drizzle-orm';
 
 // Valid status values (DB canonical)
-const VALID_STATUSES = ['candidate', 'provisional', 'validated', 'deprecated'] as const;
-type PatternStatus = (typeof VALID_STATUSES)[number];
+export const VALID_STATUSES = ['candidate', 'provisional', 'validated', 'deprecated'] as const;
+export type PatternStatus = (typeof VALID_STATUSES)[number];
 
 export interface PatternQueryOptions {
   status?: PatternStatus;
@@ -145,7 +145,7 @@ function toPatternListItem(row: {
     usage_count_rolling_20: sampleSize,
     success_rate_rolling_20: sampleSize > 0 ? successCount / sampleSize : null,
     sample_size_rolling_20: sampleSize,
-    created_at: row.createdAt?.toISOString() ?? new Date().toISOString(),
-    updated_at: row.updatedAt?.toISOString() ?? new Date().toISOString(),
+    created_at: row.createdAt?.toISOString() ?? null,
+    updated_at: row.updatedAt?.toISOString() ?? null,
   };
 }
