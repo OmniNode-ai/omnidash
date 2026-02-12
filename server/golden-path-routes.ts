@@ -58,6 +58,14 @@ export function createGoldenPathRoutes(): Router | null {
       const sessionId = req.query.session_id as string | undefined;
       const since = req.query.since as string | undefined;
 
+      // Validate session_id is a valid UUID format before it reaches SQL
+      if (sessionId !== undefined) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(sessionId)) {
+          return res.status(400).json({ error: 'Invalid session_id: must be a valid UUID format' });
+        }
+      }
+
       if (!sessionId && !since) {
         return res.status(400).json({ error: 'Required: session_id or since parameter' });
       }
@@ -69,7 +77,7 @@ export function createGoldenPathRoutes(): Router | null {
           return res.status(400).json({ error: 'Invalid since timestamp' });
         }
         // Must have explicit timezone (ends with Z or +/-HH:MM)
-        if (!/Z|[+-]\d{2}:\d{2}$/.test(since)) {
+        if (!/(?:Z|[+-]\d{2}:\d{2})$/.test(since)) {
           return res.status(400).json({ error: 'Timestamp must include timezone (Z or ±HH:MM)' });
         }
         const maxWindowMs = 10 * 60 * 1000;
@@ -136,7 +144,10 @@ export function createGoldenPathRoutes(): Router | null {
         },
       });
     } catch (error) {
-      console.error('[golden-path] Verification error:', error);
+      console.error(
+        '[golden-path] Verification error:',
+        error instanceof Error ? error.message : String(error)
+      );
       res.status(500).json({ error: 'Verification failed' });
     }
   });

@@ -8,6 +8,13 @@
  * - "since": Time-window heuristic (for cases without session tracking)
  *
  * Used by golden path integration tests to verify end-to-end data flow.
+ *
+ * NOTE: `verifyPatternArrival` and `verifyEffectivenessArrival` are not yet
+ * consumed by any test in this repository. They are test infrastructure
+ * intended for future golden-path integration tests that will verify
+ * event arrival via the Kafka pipeline (e.g., publishing an agent event
+ * and asserting it materialises in the intelligence database). Retained
+ * here so follow-up PRs can import them without reimplementation.
  */
 
 import { sql } from 'drizzle-orm';
