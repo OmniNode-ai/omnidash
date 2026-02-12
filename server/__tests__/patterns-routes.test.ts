@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { type Express } from 'express';
 import patternsRoutes from '../patterns-routes';
+import { resetTableExistenceCache } from '../pattern-queries';
 
 // Mock data structure as specified
 const mockPatterns = [
@@ -74,6 +75,7 @@ describe('Patterns Routes', () => {
     app.use(express.json());
     app.use('/api/patterns', patternsRoutes);
     vi.clearAllMocks();
+    resetTableExistenceCache();
 
     // Reset mockDb chain after clearing mocks
     mockDb.select.mockReturnValue(mockDb);
