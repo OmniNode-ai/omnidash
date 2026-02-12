@@ -163,6 +163,10 @@ export function tryGetIntelligenceDb(): ReturnType<typeof drizzle> | null {
  * re-initialize a fresh pool from the current environment.
  */
 export async function resetIntelligenceDb(): Promise<void> {
+  if (process.env.NODE_ENV !== 'test') {
+    console.warn('resetIntelligenceDb() called outside test environment — ignoring');
+    return;
+  }
   try {
     if (poolInstance) {
       await poolInstance.end();

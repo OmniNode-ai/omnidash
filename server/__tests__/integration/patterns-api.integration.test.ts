@@ -73,19 +73,26 @@ describe.skipIf(!canRunIntegrationTests)('Patterns API Integration Tests (E2E-00
   });
 
   afterAll(async () => {
-    await truncatePatterns();
-    await closeTestDb();
+    try {
+      await truncatePatterns();
+    } finally {
+      try {
+        await closeTestDb();
+      } finally {
+        try {
+          // Close the lazy-init pool that storage.ts created when the first
+          // supertest request triggered tryGetIntelligenceDb().
+          await resetIntelligenceDb();
+        } finally {
+          // Reset the table-existence cache in pattern-queries so subsequent
+          // test runs start with a clean slate (avoids circular dep with storage).
+          resetTableExistenceCache();
 
-    // Close the lazy-init pool that storage.ts created when the first
-    // supertest request triggered tryGetIntelligenceDb().
-    await resetIntelligenceDb();
-
-    // Reset the table-existence cache in pattern-queries so subsequent
-    // test runs start with a clean slate (avoids circular dep with storage).
-    resetTableExistenceCache();
-
-    // Restore original DATABASE_URL so other test files are unaffected
-    vi.unstubAllEnvs();
+          // Restore original DATABASE_URL so other test files are unaffected
+          vi.unstubAllEnvs();
+        }
+      }
+    }
   });
 
   // -----------------------------------------------------------------------

@@ -15,7 +15,7 @@ import {
   type PatternListItem,
   type PaginatedPatternsResponse,
 } from '@shared/intelligence-schema';
-import { sql, desc, eq, gte, and, count } from 'drizzle-orm';
+import { desc, eq, gte, and, count, getTableName } from 'drizzle-orm';
 
 // Log table-missing message only once per process lifetime
 let tableExistenceLogged = false;
@@ -137,7 +137,7 @@ async function tableExists(
   if (tableExistsCache === true) return true;
 
   try {
-    await db.execute(sql`SELECT 1 FROM learned_patterns LIMIT 1`);
+    await db.select().from(learnedPatterns).limit(1);
     tableExistsCache = true;
     return true;
   } catch (err: unknown) {
@@ -149,7 +149,9 @@ async function tableExists(
     if (isUndefinedTable) {
       // Never cache a negative result — the table may be created later.
       if (!tableExistenceLogged) {
-        console.log('learned_patterns table does not exist - returning empty response');
+        console.log(
+          `${getTableName(learnedPatterns)} table does not exist - returning empty response`
+        );
         tableExistenceLogged = true;
       }
       return false;
@@ -180,13 +182,16 @@ function toPatternListItem(row: {
   const sampleSize = row.injectionCountRolling20 ?? 0;
   const successCount = row.successCountRolling20 ?? 0;
 
+  const parsedConfidence = parseFloat(row.confidence);
+  const parsedQuality = parseFloat(row.qualityScore ?? '0.5');
+
   return {
     id: row.id,
     name: row.domainId,
     signature: row.patternSignature,
     status: row.status as PatternStatus,
-    confidence: parseFloat(row.confidence) || 0,
-    quality_score: parseFloat(row.qualityScore ?? '0.5') || 0,
+    confidence: Number.isNaN(parsedConfidence) ? 0 : parsedConfidence,
+    quality_score: Number.isNaN(parsedQuality) ? 0.5 : parsedQuality,
     usage_count_rolling_20: sampleSize,
     success_rate_rolling_20: sampleSize > 0 ? successCount / sampleSize : null,
     sample_size_rolling_20: sampleSize,
