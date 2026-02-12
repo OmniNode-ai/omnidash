@@ -15,7 +15,7 @@ import {
   type PatternListItem,
   type PaginatedPatternsResponse,
 } from '@shared/intelligence-schema';
-import { desc, eq, gte, and, count, getTableName } from 'drizzle-orm';
+import { desc, eq, gte, and, count, getTableName, SQL } from 'drizzle-orm';
 
 // Log table-missing message only once per process lifetime
 let tableExistenceLogged = false;
@@ -57,7 +57,7 @@ export async function queryPatterns(
   }
 
   // Build WHERE conditions — always filter to current patterns only
-  const conditions: ReturnType<typeof eq>[] = [eq(learnedPatterns.isCurrent, true)];
+  const conditions: SQL[] = [eq(learnedPatterns.isCurrent, true)];
 
   if (status) {
     conditions.push(eq(learnedPatterns.status, status));

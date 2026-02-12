@@ -163,9 +163,9 @@ export async function createTestApp(
  * code 42P01 -- undefined_table) so integration test failures are obvious.
  */
 export async function assertTableExists(tableName: string): Promise<void> {
-  if (!/^[a-z_]+$/.test(tableName)) {
+  if (!/^[a-z_][a-z0-9_]*$/.test(tableName)) {
     throw new Error(
-      `Invalid table name: "${tableName}". Only lowercase letters and underscores are allowed.`
+      `Invalid table name: "${tableName}". Must start with a letter or underscore, followed by letters, digits, or underscores.`
     );
   }
   const testDb = getTestDb();
