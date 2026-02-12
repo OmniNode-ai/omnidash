@@ -549,13 +549,13 @@ describe('Patterns Routes', () => {
         patternSignature: 'test_pattern_3',
         domainId: 'analysis',
         status: 'provisional',
-        confidence: null, // null confidence
-        qualityScore: null, // null quality score
-        injectionCountRolling20: null, // null injection count
-        successCountRolling20: null, // null success count
+        confidence: '0', // NOT NULL in DB, but could be '0'
+        qualityScore: null, // null quality score (nullable column)
+        injectionCountRolling20: null, // null injection count (nullable column)
+        successCountRolling20: null, // null success count (nullable column)
         isCurrent: true,
-        createdAt: null, // null dates
-        updatedAt: null,
+        createdAt: new Date('2026-01-01'), // NOT NULL in DB (defaultNow)
+        updatedAt: new Date('2026-01-01'), // NOT NULL in DB (defaultNow)
       };
 
       // Mock table existence check
@@ -585,14 +585,15 @@ describe('Patterns Routes', () => {
 
       const pattern = response.body.patterns[0];
 
-      // Should handle nulls gracefully with defaults
+      // Should handle nulls gracefully with defaults for nullable columns
       expect(pattern.confidence).toBe(0);
       expect(pattern.quality_score).toBe(0.5);
       expect(pattern.usage_count_rolling_20).toBe(0);
       expect(pattern.sample_size_rolling_20).toBe(0);
       expect(pattern.success_rate_rolling_20).toBeNull(); // null due to zero sample
-      expect(pattern.created_at).toBeNull(); // null when DB column is null
-      expect(pattern.updated_at).toBeNull(); // null when DB column is null
+      // NOT NULL columns always produce valid ISO strings
+      expect(pattern.created_at).toBe('2026-01-01T00:00:00.000Z');
+      expect(pattern.updated_at).toBe('2026-01-01T00:00:00.000Z');
     });
   });
 });

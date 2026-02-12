@@ -17,6 +17,9 @@ import {
 } from '@shared/intelligence-schema';
 import { sql, desc, eq, gte, and, count } from 'drizzle-orm';
 
+// Log table-missing message only once per process lifetime
+let tableExistenceLogged = false;
+
 // Valid status values (DB canonical)
 export const VALID_STATUSES = ['candidate', 'provisional', 'validated', 'deprecated'] as const;
 export type PatternStatus = (typeof VALID_STATUSES)[number];
@@ -55,7 +58,7 @@ export async function queryPatterns(
     conditions.push(eq(learnedPatterns.status, status));
   }
   if (min_confidence !== undefined) {
-    conditions.push(gte(learnedPatterns.confidence, min_confidence.toString()));
+    conditions.push(gte(learnedPatterns.confidence, sql`${min_confidence}::numeric`));
   }
 
   const where = and(...conditions);
@@ -101,14 +104,19 @@ export async function queryPatterns(
  * Check whether the learned_patterns table exists.
  * Returns false for PG error 42P01 (undefined_table).
  */
-async function tableExists(db: ReturnType<typeof tryGetIntelligenceDb>): Promise<boolean> {
+async function tableExists(
+  db: NonNullable<ReturnType<typeof tryGetIntelligenceDb>>
+): Promise<boolean> {
   try {
-    await db!.execute(sql`SELECT 1 FROM learned_patterns LIMIT 1`);
+    await db.execute(sql`SELECT 1 FROM learned_patterns LIMIT 1`);
     return true;
   } catch (err: any) {
     const code = err?.code || err?.errno || '';
     if (code === '42P01' || err?.message?.includes('does not exist')) {
-      console.log('learned_patterns table does not exist - returning empty response');
+      if (!tableExistenceLogged) {
+        console.log('learned_patterns table does not exist - returning empty response');
+        tableExistenceLogged = true;
+      }
       return false;
     }
     throw err;
@@ -125,12 +133,12 @@ function toPatternListItem(row: {
   patternSignature: string;
   domainId: string;
   status: string;
-  confidence: string | null;
+  confidence: string;
   qualityScore: string | null;
   injectionCountRolling20: number | null;
   successCountRolling20: number | null;
-  createdAt: Date | null;
-  updatedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 }): PatternListItem {
   const sampleSize = row.injectionCountRolling20 ?? 0;
   const successCount = row.successCountRolling20 ?? 0;
@@ -140,12 +148,12 @@ function toPatternListItem(row: {
     name: row.domainId,
     signature: row.patternSignature,
     status: row.status as PatternStatus,
-    confidence: parseFloat(row.confidence?.toString() ?? '0'),
-    quality_score: parseFloat(row.qualityScore?.toString() ?? '0.5'),
+    confidence: parseFloat(row.confidence),
+    quality_score: parseFloat(row.qualityScore ?? '0.5'),
     usage_count_rolling_20: sampleSize,
     success_rate_rolling_20: sampleSize > 0 ? successCount / sampleSize : null,
     sample_size_rolling_20: sampleSize,
-    created_at: row.createdAt?.toISOString() ?? null,
-    updated_at: row.updatedAt?.toISOString() ?? null,
+    created_at: row.createdAt.toISOString(),
+    updated_at: row.updatedAt.toISOString(),
   };
 }

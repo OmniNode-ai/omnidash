@@ -11,7 +11,7 @@
  * Outside CI, tests are skipped with a warning.
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import type { InsertLearnedPattern } from '@shared/intelligence-schema';
@@ -44,21 +44,19 @@ if (!shouldRun) {
 // App factory - creates Express app pointing at the test database
 // ---------------------------------------------------------------------------
 
-// Capture original DATABASE_URL so we can restore it in afterAll.
-// We must keep DATABASE_URL set to the test URL for the ENTIRE suite
-// because storage.ts uses lazy initialization — the actual pool connection
-// happens on the first tryGetIntelligenceDb() call (triggered by the first
-// supertest request), NOT at module import time.
-const originalDatabaseUrl = process.env.DATABASE_URL;
-
 /**
  * Build an Express app with the real patterns route handler wired to the
- * test database. Sets DATABASE_URL before importing so the storage
- * module's lazy singleton connects to the test DB on first use.
+ * test database. Sets DATABASE_URL via vi.stubEnv before importing so the
+ * storage module's lazy singleton connects to the test DB on first use.
+ *
+ * We must keep DATABASE_URL set to the test URL for the ENTIRE suite
+ * because storage.ts uses lazy initialization — the actual pool connection
+ * happens on the first tryGetIntelligenceDb() call (triggered by the first
+ * supertest request), NOT at module import time.
  */
 async function buildTestApp(): Promise<Express> {
   // Point storage.ts at the test database — kept for the entire suite
-  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+  vi.stubEnv('DATABASE_URL', process.env.TEST_DATABASE_URL!);
 
   const { default: express } = await import('express');
   const { default: patternsRoutes } = await import('../../patterns-routes');
@@ -114,11 +112,7 @@ describe.skipIf(!shouldRun)('Patterns API Integration Tests (E2E-002)', () => {
     await resetIntelligenceDb();
 
     // Restore original DATABASE_URL so other test files are unaffected
-    if (originalDatabaseUrl !== undefined) {
-      process.env.DATABASE_URL = originalDatabaseUrl;
-    } else {
-      delete process.env.DATABASE_URL;
-    }
+    vi.unstubAllEnvs();
   });
 
   // -----------------------------------------------------------------------
