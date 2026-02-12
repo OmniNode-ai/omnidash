@@ -20,6 +20,11 @@ import { sql, desc, eq, gte, and, count } from 'drizzle-orm';
 // Log table-missing message only once per process lifetime
 let tableExistenceLogged = false;
 
+// Cache: once the table is confirmed to exist, skip re-checking on every request.
+// null = not yet checked; true = confirmed present.  A negative result is never
+// cached so that a table created after startup is picked up on the next call.
+let tableExistsCache: boolean | null = null;
+
 // Valid status values (DB canonical)
 export const VALID_STATUSES = ['candidate', 'provisional', 'validated', 'deprecated'] as const;
 export type PatternStatus = (typeof VALID_STATUSES)[number];
@@ -97,22 +102,48 @@ export async function queryPatterns(
 }
 
 // ---------------------------------------------------------------------------
+// Cache reset (for tests)
+// ---------------------------------------------------------------------------
+
+/**
+ * Reset the module-level table-existence cache and logging flag.
+ *
+ * Call this alongside `resetIntelligenceDb()` in test teardown so that
+ * subsequent test runs start with a clean slate.  Exported separately
+ * (rather than called from storage.ts) to avoid a circular dependency
+ * (pattern-queries already imports from storage).
+ */
+export function resetTableExistenceCache(): void {
+  tableExistsCache = null;
+  tableExistenceLogged = false;
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
 /**
  * Check whether the learned_patterns table exists.
+ *
+ * Once the table is confirmed present the result is cached for the
+ * lifetime of the process (table drops in production are extremely rare).
+ * A negative result is never cached so creation after startup is detected.
+ *
  * Returns false for PG error 42P01 (undefined_table).
  */
 async function tableExists(
   db: NonNullable<ReturnType<typeof tryGetIntelligenceDb>>
 ): Promise<boolean> {
+  if (tableExistsCache === true) return true;
+
   try {
     await db.execute(sql`SELECT 1 FROM learned_patterns LIMIT 1`);
+    tableExistsCache = true;
     return true;
   } catch (err: any) {
     const code = err?.code || err?.errno || '';
     if (code === '42P01' || err?.message?.includes('does not exist')) {
+      // Don't cache the negative result — table may be created later
       if (!tableExistenceLogged) {
         console.log('learned_patterns table does not exist - returning empty response');
         tableExistenceLogged = true;

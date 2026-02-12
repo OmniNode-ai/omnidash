@@ -17,23 +17,17 @@ import type { Express } from 'express';
 import type { InsertLearnedPattern } from '@shared/intelligence-schema';
 import { getTestDb, truncatePatterns, seedPatterns, makePattern, closeTestDb } from './helpers';
 import { resetIntelligenceDb } from '../../storage';
+import { resetTableExistenceCache } from '../../pattern-queries';
 
 // ---------------------------------------------------------------------------
 // Skip guard
 // ---------------------------------------------------------------------------
 
 const TEST_DB_URL = process.env.TEST_DATABASE_URL;
-const shouldRun = !!TEST_DB_URL;
+const canRunIntegrationTests = !!TEST_DB_URL;
 
-// In CI, missing TEST_DATABASE_URL is a hard failure
-if (process.env.CI && !TEST_DB_URL) {
-  throw new Error(
-    'TEST_DATABASE_URL is required in CI. Set it to a PostgreSQL database ending with _test.'
-  );
-}
-
-// Outside CI, skip with loud warning
-if (!shouldRun) {
+// Outside CI, skip with loud warning (no throw — let describe.skipIf handle it)
+if (!canRunIntegrationTests) {
   console.warn(
     '\n\u26a0\ufe0f  TEST_DATABASE_URL not set \u2014 skipping integration tests.\n' +
       '   Set TEST_DATABASE_URL=postgresql://.../<dbname>_test to enable.\n'
@@ -72,10 +66,17 @@ async function buildTestApp(): Promise<Express> {
 // Test suite
 // ---------------------------------------------------------------------------
 
-describe.skipIf(!shouldRun)('Patterns API Integration Tests (E2E-002)', () => {
+describe.skipIf(!canRunIntegrationTests)('Patterns API Integration Tests (E2E-002)', () => {
   let app: Express;
 
   beforeAll(async () => {
+    // In CI, missing TEST_DATABASE_URL is a hard failure
+    if (process.env.CI && !TEST_DB_URL) {
+      throw new Error(
+        'TEST_DATABASE_URL is required in CI. Set it to a PostgreSQL database ending with _test.'
+      );
+    }
+
     // Validate test database name (safety guard)
     getTestDb();
 
@@ -110,6 +111,10 @@ describe.skipIf(!shouldRun)('Patterns API Integration Tests (E2E-002)', () => {
     // Close the lazy-init pool that storage.ts created when the first
     // supertest request triggered tryGetIntelligenceDb().
     await resetIntelligenceDb();
+
+    // Reset the table-existence cache in pattern-queries so subsequent
+    // test runs start with a clean slate (avoids circular dep with storage).
+    resetTableExistenceCache();
 
     // Restore original DATABASE_URL so other test files are unaffected
     vi.unstubAllEnvs();
