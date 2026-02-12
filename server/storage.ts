@@ -142,11 +142,13 @@ export function getIntelligenceDb(): ReturnType<typeof drizzle> {
 /**
  * Try to get database connection, returns null if not configured.
  * Use this for routes that want graceful degradation.
+ *
+ * Delegates directly to getIntelligenceDb() and catches any error
+ * (including "not configured") so that the very first call can still
+ * succeed when DATABASE_URL / POSTGRES_* vars are present.  Repeated
+ * failures are cheap because getPool() caches via connectionAttempted.
  */
 export function tryGetIntelligenceDb(): ReturnType<typeof drizzle> | null {
-  if (!isDatabaseConfigured()) {
-    return null;
-  }
   try {
     return getIntelligenceDb();
   } catch {
