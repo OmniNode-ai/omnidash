@@ -21,7 +21,3 @@ export type {
   UseIntentProjectionStreamOptions,
   UseIntentProjectionStreamReturn,
 } from './useIntentProjectionStream';
-
-// Event Bus Stream
-export { useEventBusStream, getEventId, processEvent } from './useEventBusStream';
-export * from './useEventBusStream.types';
