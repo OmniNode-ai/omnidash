@@ -163,12 +163,15 @@ export function tryGetIntelligenceDb(): ReturnType<typeof drizzle> | null {
  * re-initialize a fresh pool from the current environment.
  */
 export async function resetIntelligenceDb(): Promise<void> {
-  if (poolInstance) {
-    await poolInstance.end();
+  try {
+    if (poolInstance) {
+      await poolInstance.end();
+    }
+  } finally {
+    poolInstance = null;
+    intelligenceDbInstance = null;
+    connectionAttempted = false;
+    databaseConfigured = false;
+    databaseConnectionError = null;
   }
-  poolInstance = null;
-  intelligenceDbInstance = null;
-  connectionAttempted = false;
-  databaseConfigured = false;
-  databaseConnectionError = null;
 }

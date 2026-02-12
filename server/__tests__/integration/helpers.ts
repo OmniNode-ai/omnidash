@@ -10,9 +10,12 @@
 
 import { randomUUID } from 'crypto';
 import pg from 'pg';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { learnedPatterns } from '@shared/intelligence-schema';
 import type { InsertLearnedPattern } from '@shared/intelligence-schema';
+import type { Express } from 'express';
+import { vi } from 'vitest';
 
 const { Pool } = pg;
 
@@ -114,6 +117,65 @@ export function makePattern(overrides: Partial<InsertLearnedPattern> = {}): Inse
     qualityScore: '0.500000',
     ...overrides,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Express app factory
+// ---------------------------------------------------------------------------
+
+/**
+ * Build an Express app wired to the test database.
+ *
+ * Sets `DATABASE_URL` via `vi.stubEnv` before importing so the storage
+ * module's lazy singleton connects to the test DB on first use.
+ *
+ * The caller provides a `registerRoutes` callback to mount whichever
+ * route modules the test suite needs.
+ *
+ * We must keep DATABASE_URL set to the test URL for the ENTIRE suite
+ * because storage.ts uses lazy initialization -- the actual pool connection
+ * happens on the first `tryGetIntelligenceDb()` call (triggered by the first
+ * supertest request), NOT at module import time.
+ */
+export async function createTestApp(
+  registerRoutes: (app: Express) => void | Promise<void>
+): Promise<Express> {
+  // Point storage.ts at the test database -- kept for the entire suite
+  vi.stubEnv('DATABASE_URL', process.env.TEST_DATABASE_URL!);
+
+  const { default: express } = await import('express');
+  const app = express();
+  app.use(express.json());
+
+  await registerRoutes(app);
+
+  return app;
+}
+
+// ---------------------------------------------------------------------------
+// Table existence guard
+// ---------------------------------------------------------------------------
+
+/**
+ * Assert that a table exists in the test database.
+ *
+ * Throws a descriptive error when the table is missing (PostgreSQL error
+ * code 42P01 -- undefined_table) so integration test failures are obvious.
+ */
+export async function assertTableExists(tableName: string): Promise<void> {
+  const testDb = getTestDb();
+  try {
+    await testDb.execute(sql`SELECT 1 FROM ${sql.raw(tableName)} LIMIT 1`);
+  } catch (err: unknown) {
+    const pgErr = err as { code?: string; message?: string };
+    if (pgErr.code === '42P01' || pgErr.message?.includes('does not exist')) {
+      throw new Error(
+        `The ${tableName} table does not exist in the test database. ` +
+          'Run migrations or create the table before running integration tests.'
+      );
+    }
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------

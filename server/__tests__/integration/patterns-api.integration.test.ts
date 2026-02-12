@@ -15,7 +15,15 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vites
 import request from 'supertest';
 import type { Express } from 'express';
 import type { InsertLearnedPattern } from '@shared/intelligence-schema';
-import { getTestDb, truncatePatterns, seedPatterns, makePattern, closeTestDb } from './helpers';
+import {
+  getTestDb,
+  truncatePatterns,
+  seedPatterns,
+  makePattern,
+  closeTestDb,
+  createTestApp,
+  assertTableExists,
+} from './helpers';
 import { resetIntelligenceDb } from '../../storage';
 import { resetTableExistenceCache } from '../../pattern-queries';
 
@@ -35,34 +43,6 @@ if (!canRunIntegrationTests) {
 }
 
 // ---------------------------------------------------------------------------
-// App factory - creates Express app pointing at the test database
-// ---------------------------------------------------------------------------
-
-/**
- * Build an Express app with the real patterns route handler wired to the
- * test database. Sets DATABASE_URL via vi.stubEnv before importing so the
- * storage module's lazy singleton connects to the test DB on first use.
- *
- * We must keep DATABASE_URL set to the test URL for the ENTIRE suite
- * because storage.ts uses lazy initialization — the actual pool connection
- * happens on the first tryGetIntelligenceDb() call (triggered by the first
- * supertest request), NOT at module import time.
- */
-async function buildTestApp(): Promise<Express> {
-  // Point storage.ts at the test database — kept for the entire suite
-  vi.stubEnv('DATABASE_URL', process.env.TEST_DATABASE_URL!);
-
-  const { default: express } = await import('express');
-  const { default: patternsRoutes } = await import('../../patterns-routes');
-
-  const app = express();
-  app.use(express.json());
-  app.use('/api/patterns', patternsRoutes);
-
-  return app;
-}
-
-// ---------------------------------------------------------------------------
 // Test suite
 // ---------------------------------------------------------------------------
 
@@ -77,27 +57,15 @@ describe.skipIf(!canRunIntegrationTests)('Patterns API Integration Tests (E2E-00
       );
     }
 
-    // Validate test database name (safety guard)
+    // Validate test database name (safety guard) and verify table exists
     getTestDb();
+    await assertTableExists('learned_patterns');
 
-    // Verify the learned_patterns table exists
-    const db = getTestDb();
-    try {
-      const { sql } = await import('drizzle-orm');
-      await db.execute(sql`SELECT 1 FROM learned_patterns LIMIT 1`);
-    } catch (err: any) {
-      const code = err?.code || '';
-      if (code === '42P01' || err?.message?.includes('does not exist')) {
-        throw new Error(
-          'The learned_patterns table does not exist in the test database. ' +
-            'Run migrations or create the table before running integration tests.'
-        );
-      }
-      throw err;
-    }
-
-    // Build the Express app (once for the suite — routes are stateless)
-    app = await buildTestApp();
+    // Build the Express app (once for the suite -- routes are stateless)
+    app = await createTestApp(async (expressApp) => {
+      const { default: patternsRoutes } = await import('../../patterns-routes');
+      expressApp.use('/api/patterns', patternsRoutes);
+    });
   });
 
   beforeEach(async () => {

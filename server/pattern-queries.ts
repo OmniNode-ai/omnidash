@@ -63,7 +63,7 @@ export async function queryPatterns(
     conditions.push(eq(learnedPatterns.status, status));
   }
   if (min_confidence !== undefined) {
-    conditions.push(gte(learnedPatterns.confidence, sql`${min_confidence}::numeric`));
+    conditions.push(gte(learnedPatterns.confidence, String(min_confidence)));
   }
 
   const where = and(...conditions);
@@ -140,16 +140,22 @@ async function tableExists(
     await db.execute(sql`SELECT 1 FROM learned_patterns LIMIT 1`);
     tableExistsCache = true;
     return true;
-  } catch (err: any) {
-    const code = err?.code || err?.errno || '';
-    if (code === '42P01' || err?.message?.includes('does not exist')) {
-      // Don't cache the negative result — table may be created later
+  } catch (err: unknown) {
+    // Safely extract a PostgreSQL error code without relying on `any`.
+    const pgErr = err as { code?: string };
+    const isUndefinedTable =
+      pgErr.code === '42P01' || (err instanceof Error && err.message.includes('does not exist'));
+
+    if (isUndefinedTable) {
+      // Never cache a negative result — the table may be created later.
       if (!tableExistenceLogged) {
         console.log('learned_patterns table does not exist - returning empty response');
         tableExistenceLogged = true;
       }
       return false;
     }
+
+    // Unknown / connection error — do NOT cache; let the next call retry.
     throw err;
   }
 }
