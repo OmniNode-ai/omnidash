@@ -19,6 +19,7 @@ import { runtimeIdentity } from './runtime-identity';
 import { initProjectionListeners, teardownProjectionListeners } from './projection-instance';
 import { wireProjectionSources, projectionService } from './projection-bootstrap';
 import { NodeRegistryProjection } from './projections/node-registry-projection';
+import { readModelConsumer } from './read-model-consumer';
 
 const app = express();
 
@@ -197,6 +198,18 @@ app.use((req, res, next) => {
     console.error('   Application will continue with limited functionality');
   }
 
+  // Start read-model consumer (OMN-2061)
+  // Projects Kafka events into omnidash_analytics for durable persistence.
+  // Runs as a separate consumer group from EventConsumer.
+  try {
+    await readModelConsumer.start();
+    log('Read-model consumer started -- projecting events to omnidash_analytics');
+  } catch (error) {
+    console.error('Failed to start read-model consumer:', error);
+    console.error('   Read-model tables will not receive new projections');
+    console.error('   Application will continue with limited functionality');
+  }
+
   // Wire projection event sources (after EventConsumer and EventBusDataSource are started)
   // This covers EventBusProjection wiring; NodeRegistry bridge listeners are above.
   let cleanupProjectionSources: (() => void) | undefined;
@@ -315,6 +328,7 @@ app.use((req, res, next) => {
     teardownProjectionListeners();
     cleanupProjectionBridge();
     cleanupProjectionSources?.();
+    await readModelConsumer.stop();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();
@@ -330,6 +344,7 @@ app.use((req, res, next) => {
     teardownProjectionListeners();
     cleanupProjectionBridge();
     cleanupProjectionSources?.();
+    await readModelConsumer.stop();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();

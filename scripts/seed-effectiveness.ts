@@ -156,7 +156,7 @@ function buildConnectionString(): string {
 
   const host = process.env.POSTGRES_HOST;
   const port = process.env.POSTGRES_PORT || '5436';
-  const database = process.env.POSTGRES_DATABASE || 'omninode_bridge';
+  const database = process.env.POSTGRES_DATABASE || 'omnidash_analytics';
   const user = process.env.POSTGRES_USER || 'postgres';
   const password = process.env.POSTGRES_PASSWORD;
 

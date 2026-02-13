@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { intelligenceEvents } from './intelligence-event-adapter';
 import { eventConsumer } from './event-consumer';
+import { readModelConsumer } from './read-model-consumer';
 import { getIntelligenceDb } from './storage';
 import { getRuntimeIdentityForApi } from './runtime-identity';
 import {
@@ -588,6 +589,30 @@ intelligenceRouter.get('/health', async (req, res) => {
       status: 'unhealthy',
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+/**
+ * GET /api/intelligence/read-model/status
+ * Returns read-model consumer health and projection statistics
+ */
+intelligenceRouter.get('/read-model/status', async (req, res) => {
+  try {
+    const stats = readModelConsumer.getStats();
+    res.json({
+      status: stats.isRunning ? 'running' : 'stopped',
+      eventsProjected: stats.eventsProjected,
+      errorsCount: stats.errorsCount,
+      lastProjectedAt: stats.lastProjectedAt,
+      topicStats: stats.topicStats,
+      database: 'omnidash_analytics',
+    });
+  } catch (error) {
+    console.error('Error fetching read-model status:', error);
+    res.status(500).json({
+      error: 'Failed to fetch read-model status',
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

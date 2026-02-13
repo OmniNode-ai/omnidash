@@ -584,10 +584,10 @@ export type InsertPatternHitRate = typeof patternHitRates.$inferInsert;
 // ============================================================================
 // Cross-Repo Validation Tables (OMN-1907)
 //
-// These tables live in the intelligence database (omninode_bridge on
-// 192.168.86.200:5436). To create them, run:
+// These tables live in the omnidash_analytics read-model database.
+// To create them, run:
 //   npm run db:push
-// or apply the SQL manually against the intelligence DB.
+// or apply the SQL migration manually against omnidash_analytics.
 // ============================================================================
 
 /**
