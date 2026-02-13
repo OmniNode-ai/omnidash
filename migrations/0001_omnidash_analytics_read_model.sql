@@ -414,35 +414,42 @@ CREATE TABLE IF NOT EXISTS "projection_watermarks" (
 -- ============================================================================
 -- Validation tables (read-model projection)
 -- Source: ONEX validation run events
+-- Matches Drizzle schema in shared/intelligence-schema.ts (OMN-1907)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS "validation_runs" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  "run_id" text NOT NULL UNIQUE,
+  "run_id" text PRIMARY KEY,
+  "repos" jsonb NOT NULL DEFAULT '[]',
+  "validators" jsonb NOT NULL DEFAULT '[]',
+  "triggered_by" text,
   "status" text NOT NULL DEFAULT 'running',
-  "scope" text,
-  "started_at" timestamp with time zone DEFAULT now(),
+  "started_at" timestamp with time zone NOT NULL DEFAULT now(),
   "completed_at" timestamp with time zone,
-  "total_files" integer DEFAULT 0,
-  "violations_count" integer DEFAULT 0,
-  "clean_count" integer DEFAULT 0,
-  "error_count" integer DEFAULT 0,
-  "metadata" jsonb DEFAULT '{}',
-  "projected_at" timestamp DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS "validation_violations" (
-  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  "run_id" text NOT NULL,
-  "file_path" text NOT NULL,
-  "rule_id" text NOT NULL,
-  "severity" text NOT NULL DEFAULT 'warning',
-  "message" text NOT NULL,
-  "line" integer,
-  "column" integer,
-  "metadata" jsonb DEFAULT '{}',
+  "duration_ms" integer,
+  "total_violations" integer NOT NULL DEFAULT 0,
+  "violations_by_severity" jsonb NOT NULL DEFAULT '{}',
   "created_at" timestamp with time zone DEFAULT now(),
   "projected_at" timestamp DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS "idx_vv_run_id" ON "validation_violations" ("run_id");
-CREATE INDEX IF NOT EXISTS "idx_vv_severity" ON "validation_violations" ("severity");
+CREATE INDEX IF NOT EXISTS "idx_validation_runs_status" ON "validation_runs" ("status");
+CREATE INDEX IF NOT EXISTS "idx_validation_runs_started_at" ON "validation_runs" ("started_at");
+CREATE INDEX IF NOT EXISTS "idx_validation_runs_repos_gin" ON "validation_runs" USING gin ("repos");
+
+CREATE TABLE IF NOT EXISTS "validation_violations" (
+  "id" serial PRIMARY KEY,
+  "run_id" text NOT NULL REFERENCES "validation_runs"("run_id") ON DELETE CASCADE,
+  "batch_index" integer NOT NULL,
+  "rule_id" text NOT NULL,
+  "severity" text NOT NULL,
+  "message" text NOT NULL,
+  "repo" text NOT NULL,
+  "file_path" text,
+  "line" integer,
+  "validator" text NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now(),
+  "projected_at" timestamp DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS "idx_validation_violations_run_id" ON "validation_violations" ("run_id");
+CREATE INDEX IF NOT EXISTS "idx_validation_violations_run_batch" ON "validation_violations" ("run_id", "batch_index");
+CREATE INDEX IF NOT EXISTS "idx_validation_violations_severity" ON "validation_violations" ("severity");
