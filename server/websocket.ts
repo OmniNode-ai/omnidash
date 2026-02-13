@@ -23,11 +23,11 @@ import {
   type IntentSessionEventPayload,
   type IntentRecentEventPayload,
 } from './intent-events';
+import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
 import { playbackEventEmitter, type PlaybackWSMessage } from './playback-events';
 import { ENVIRONMENT_PREFIXES } from '@shared/topics';
-import { projectionService } from './projection-bootstrap';
 
 /**
  * Wrap an async function so that rejections are caught and logged.
@@ -255,7 +255,7 @@ const VALID_TOPICS = [
   'validation',
   // Extraction pipeline events (OMN-1804)
   'extraction',
-  // Projection invalidation events (OMN-2095)
+  // Projection invalidation events (OMN-2095/OMN-2096)
   'projections',
 ] as const;
 

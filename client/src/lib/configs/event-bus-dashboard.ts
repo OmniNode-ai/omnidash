@@ -24,6 +24,13 @@ import {
   SUFFIX_NODE_REGISTRATION_INITIATED,
   SUFFIX_NODE_REGISTRATION_ACCEPTED,
   SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_NODE_REGISTRATION_ACKED,
+  SUFFIX_NODE_REGISTRATION_RESULT,
+  SUFFIX_NODE_REGISTRATION_ACK_RECEIVED,
+  SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT,
+  SUFFIX_REGISTRY_REQUEST_INTROSPECTION,
+  SUFFIX_FSM_STATE_TRANSITIONS,
+  SUFFIX_RUNTIME_TICK,
   SUFFIX_REGISTRATION_SNAPSHOTS,
   SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
   SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
@@ -82,12 +89,19 @@ export const NODE_TOPICS = [
   SUFFIX_NODE_REGISTRATION,
   SUFFIX_NODE_HEARTBEAT,
   SUFFIX_REQUEST_INTROSPECTION,
+  SUFFIX_REGISTRY_REQUEST_INTROSPECTION,
   SUFFIX_CONTRACT_REGISTERED,
   SUFFIX_CONTRACT_DEREGISTERED,
   SUFFIX_NODE_REGISTRATION_INITIATED,
   SUFFIX_NODE_REGISTRATION_ACCEPTED,
   SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_NODE_REGISTRATION_ACKED,
+  SUFFIX_NODE_REGISTRATION_RESULT,
+  SUFFIX_NODE_REGISTRATION_ACK_RECEIVED,
+  SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT,
   SUFFIX_REGISTRATION_SNAPSHOTS,
+  SUFFIX_FSM_STATE_TRANSITIONS,
+  SUFFIX_RUNTIME_TICK,
 ] as const;
 
 /**
@@ -148,8 +162,8 @@ export const TOPIC_METADATA: Record<
     category: 'health',
   },
   [SUFFIX_REQUEST_INTROSPECTION]: {
-    label: 'Registry Introspection Request',
-    description: 'Introspection requests from registry to nodes',
+    label: 'Introspect Cmd',
+    description: 'Command telling nodes to introspect themselves',
     category: 'introspection',
   },
   [SUFFIX_CONTRACT_REGISTERED]: {
@@ -176,6 +190,41 @@ export const TOPIC_METADATA: Record<
     label: 'Registration Rejected',
     description: 'Node registration rejection events',
     category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_ACKED]: {
+    label: 'Registration ACKed',
+    description: 'Node acknowledges registration',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_RESULT]: {
+    label: 'Registration Result',
+    description: 'Final registration result',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_ACK_RECEIVED]: {
+    label: 'ACK Received',
+    description: 'Registration ACK received from node',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT]: {
+    label: 'ACK Timed Out',
+    description: 'Registration ACK not received in time',
+    category: 'lifecycle',
+  },
+  [SUFFIX_REGISTRY_REQUEST_INTROSPECTION]: {
+    label: 'Registry Re-Introspect',
+    description: 'Registry announces it wants nodes to re-introspect',
+    category: 'introspection',
+  },
+  [SUFFIX_FSM_STATE_TRANSITIONS]: {
+    label: 'FSM Transitions',
+    description: 'FSM state transition audit trail',
+    category: 'lifecycle',
+  },
+  [SUFFIX_RUNTIME_TICK]: {
+    label: 'Runtime Tick',
+    description: 'Periodic tick for timeout checks',
+    category: 'health',
   },
   [SUFFIX_REGISTRATION_SNAPSHOTS]: {
     label: 'Registration Snapshots',

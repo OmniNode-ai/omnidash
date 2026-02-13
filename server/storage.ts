@@ -142,14 +142,42 @@ export function getIntelligenceDb(): ReturnType<typeof drizzle> {
 /**
  * Try to get database connection, returns null if not configured.
  * Use this for routes that want graceful degradation.
+ *
+ * Delegates directly to getIntelligenceDb() and catches any error
+ * (including "not configured") so that the very first call can still
+ * succeed when DATABASE_URL / POSTGRES_* vars are present.  Repeated
+ * failures are cheap because getPool() caches via connectionAttempted.
  */
 export function tryGetIntelligenceDb(): ReturnType<typeof drizzle> | null {
-  if (!isDatabaseConfigured()) {
-    return null;
-  }
   try {
     return getIntelligenceDb();
   } catch {
     return null;
+  }
+}
+
+/**
+ * Close the intelligence database pool and reset lazy-init state.
+ *
+ * Intended for test teardown so integration tests that override
+ * DATABASE_URL can cleanly shut down the pool they caused to be created.
+ * A subsequent call to getIntelligenceDb() / tryGetIntelligenceDb() will
+ * re-initialize a fresh pool from the current environment.
+ */
+export async function resetIntelligenceDb(): Promise<void> {
+  if (process.env.NODE_ENV !== 'test') {
+    console.warn('resetIntelligenceDb() called outside test environment — ignoring');
+    return;
+  }
+  try {
+    if (poolInstance) {
+      await poolInstance.end();
+    }
+  } finally {
+    poolInstance = null;
+    intelligenceDbInstance = null;
+    connectionAttempted = false;
+    databaseConfigured = false;
+    databaseConnectionError = null;
   }
 }

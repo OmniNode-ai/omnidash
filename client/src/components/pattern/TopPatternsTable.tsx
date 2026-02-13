@@ -84,6 +84,10 @@ function sortPatterns(patterns: PatlearnArtifact[], config: SortConfig): Patlear
         break;
     }
 
+    // Stable tiebreaker: equal primary values → sort by name ascending
+    if (comparison === 0) {
+      return a.patternName.localeCompare(b.patternName);
+    }
     return config.direction === 'asc' ? comparison : -comparison;
   });
 }
