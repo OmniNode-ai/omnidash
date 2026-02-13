@@ -105,6 +105,8 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
   private timeSeriesBuckets = new Map<number, number>();
   /** Ingest-time timestamps for EPS calculation (sorted ASC) */
   private rollingWindow: number[] = [];
+  /** Dedup guard: tracks event IDs currently in the buffer to reject duplicates */
+  private seenIds = new Set<string>();
   private _cursor = 0;
   private _totalIngested = 0;
   private _errorCount = 0;
@@ -246,6 +248,11 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
    * to avoid unnecessary invalidation broadcasts from ProjectionService.
    */
   applyEvent(event: ProjectionEvent): boolean {
+    // Reject duplicate events — same ID already in the buffer
+    if (this.seenIds.has(event.id)) {
+      return false;
+    }
+
     this._totalIngested++;
 
     // Track errors in buffer
@@ -256,6 +263,7 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     // Binary insert into sorted buffer (eventTimeMs DESC, ingestSeq DESC)
     const insertPos = this.findInsertPosition(event);
     this.events.splice(insertPos, 0, event);
+    this.seenIds.add(event.id);
 
     // Increment aggregate counters
     this.incrementCounters(event);
@@ -284,6 +292,7 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     // Evict oldest if over capacity
     if (this.events.length > MAX_BUFFER_SIZE) {
       const evicted = this.events.pop()!;
+      this.seenIds.delete(evicted.id);
       this.decrementCounters(evicted);
 
       // Adjust error count for evicted error events
@@ -305,6 +314,7 @@ export class EventBusProjection implements ProjectionView<EventBusPayload> {
     this.eventTypeCounts.clear();
     this.timeSeriesBuckets.clear();
     this.rollingWindow = [];
+    this.seenIds.clear();
     this._cursor = 0;
     this._totalIngested = 0;
     this._errorCount = 0;

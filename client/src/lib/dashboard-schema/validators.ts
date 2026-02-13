@@ -45,6 +45,7 @@ export const tableColumnConfigSchema = z.object({
   sortable: z.boolean().optional(),
   align: z.enum(['left', 'center', 'right']).optional(),
   format: z.string().optional(),
+  sort_key: z.string().optional(),
 });
 
 export const metricThresholdSchema = z.object({
