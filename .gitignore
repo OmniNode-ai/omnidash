@@ -28,7 +28,8 @@ snapshots/
 .env.*.local
 
 # Claude settings with credentials
-.claude/
+.claude/*
+!.claude/architecture-handshake.md
 .local/
 
 # Playwright screenshots and captures
