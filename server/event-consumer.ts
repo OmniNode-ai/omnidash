@@ -13,8 +13,6 @@ import {
   EVENT_TYPE_NAMES,
   isIntentClassifiedEvent,
   isIntentStoredEvent,
-  type IntentClassifiedEvent as _SharedIntentClassifiedEvent,
-  type IntentStoredEvent as _SharedIntentStoredEvent,
   type IntentRecordPayload,
 } from '@shared/intent-types';
 // Import intentEventEmitter for WebSocket broadcasting of intent events
@@ -72,9 +70,6 @@ import {
   OFFLINE_NODE_TTL_MS,
   CLEANUP_INTERVAL_MS,
   type EventEnvelope,
-  type NodeBecameActivePayload as _NodeBecameActivePayload,
-  type NodeHeartbeatPayload as _NodeHeartbeatPayload,
-  type NodeLivenessExpiredPayload as _NodeLivenessExpiredPayload,
   type NodeState,
 } from '@shared/schemas';
 import {

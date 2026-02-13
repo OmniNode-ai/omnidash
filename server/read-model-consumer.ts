@@ -30,6 +30,27 @@ import {
   agentActions,
   agentTransformationEvents,
 } from '@shared/intelligence-schema';
+import type {
+  InsertAgentRoutingDecision,
+  InsertAgentAction,
+  InsertAgentTransformationEvent,
+} from '@shared/intelligence-schema';
+
+/**
+ * Derive a deterministic UUID-shaped string from Kafka message coordinates.
+ * Uses SHA-256 hash of topic + partition + offset, which uniquely identify
+ * a message within a Kafka cluster. This ensures that redelivery of the
+ * same message produces the same fallback correlation_id, preserving
+ * ON CONFLICT DO NOTHING idempotency.
+ */
+function deterministicCorrelationId(topic: string, partition: number, offset: string): string {
+  return crypto
+    .createHash('sha256')
+    .update(`${topic}:${partition}:${offset}`)
+    .digest('hex')
+    .slice(0, 32)
+    .replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
+}
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 
@@ -125,7 +146,11 @@ export class ReadModelConsumer {
         await this.consumer.connect();
         console.log('[ReadModelConsumer] Connected to Kafka');
 
-        // Subscribe to all read-model topics
+        // Subscribe to all read-model topics.
+        // fromBeginning: false is intentional -- we only project events produced
+        // after this consumer first joins the group. Historical / pre-existing
+        // events must be backfilled separately (e.g., by re-reading from the
+        // source database or by temporarily resetting consumer group offsets).
         for (const topic of READ_MODEL_TOPICS) {
           await this.consumer.subscribe({ topic, fromBeginning: false });
         }
@@ -190,20 +215,21 @@ export class ReadModelConsumer {
    * Handle an incoming Kafka message and project it to the read-model.
    */
   private async handleMessage(payload: EachMessagePayload): Promise<void> {
-    const { topic, message } = payload;
+    const { topic, partition, message } = payload;
 
     try {
       const parsed = this.parseMessage(message);
       if (!parsed) return;
 
       const topicKey = topic as ReadModelTopic;
+      const fallbackId = deterministicCorrelationId(topic, partition, message.offset);
 
       switch (topicKey) {
         case 'agent-routing-decisions':
-          await this.projectRoutingDecision(parsed);
+          await this.projectRoutingDecision(parsed, fallbackId);
           break;
         case 'agent-actions':
-          await this.projectAgentAction(parsed);
+          await this.projectAgentAction(parsed, fallbackId);
           break;
         case 'agent-transformation-events':
           await this.projectTransformationEvent(parsed);
@@ -220,6 +246,10 @@ export class ReadModelConsumer {
         this.stats.topicStats[topic] = { projected: 0, errors: 0 };
       }
       this.stats.topicStats[topic].projected++;
+
+      // Track consumer progress via watermark
+      const watermarkName = `${topic}:${partition}`;
+      await this.updateWatermark(watermarkName, Number(message.offset));
     } catch (err) {
       this.stats.errorsCount++;
       if (!this.stats.topicStats[topic]) {
@@ -255,13 +285,16 @@ export class ReadModelConsumer {
   /**
    * Project a routing decision event into agent_routing_decisions table.
    */
-  private async projectRoutingDecision(data: Record<string, unknown>): Promise<void> {
+  private async projectRoutingDecision(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<void> {
     const db = tryGetIntelligenceDb();
     if (!db) return;
 
-    const row = {
+    const row: InsertAgentRoutingDecision = {
       correlationId:
-        (data.correlation_id as string) || (data.correlationId as string) || crypto.randomUUID(),
+        (data.correlation_id as string) || (data.correlationId as string) || fallbackId,
       sessionId: (data.session_id as string) || (data.sessionId as string) || undefined,
       userRequest: (data.user_request as string) || (data.userRequest as string) || '',
       userRequestHash:
@@ -284,6 +317,7 @@ export class ReadModelConsumer {
       routingTimeMs: Number(data.routing_time_ms ?? data.routingTimeMs ?? 0),
       cacheHit: Boolean(data.cache_hit ?? data.cacheHit ?? false),
       selectionValidated: Boolean(data.selection_validated ?? data.selectionValidated ?? false),
+      actualSuccess: data.actual_success != null ? Boolean(data.actual_success) : undefined,
       executionSucceeded:
         data.execution_succeeded != null ? Boolean(data.execution_succeeded) : undefined,
       actualQualityScore:
@@ -293,20 +327,23 @@ export class ReadModelConsumer {
 
     await db
       .insert(agentRoutingDecisions)
-      .values(row as any)
+      .values(row)
       .onConflictDoNothing({ target: agentRoutingDecisions.correlationId });
   }
 
   /**
    * Project an agent action event into agent_actions table.
    */
-  private async projectAgentAction(data: Record<string, unknown>): Promise<void> {
+  private async projectAgentAction(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<void> {
     const db = tryGetIntelligenceDb();
     if (!db) return;
 
-    const row = {
+    const row: InsertAgentAction = {
       correlationId:
-        (data.correlation_id as string) || (data.correlationId as string) || crypto.randomUUID(),
+        (data.correlation_id as string) || (data.correlationId as string) || fallbackId,
       agentName: (data.agent_name as string) || (data.agentName as string) || 'unknown',
       actionType: (data.action_type as string) || (data.actionType as string) || 'unknown',
       actionName: (data.action_name as string) || (data.actionName as string) || 'unknown',
@@ -323,7 +360,7 @@ export class ReadModelConsumer {
 
     await db
       .insert(agentActions)
-      .values(row as any)
+      .values(row)
       .onConflictDoNothing({ target: agentActions.correlationId });
   }
 
@@ -334,7 +371,7 @@ export class ReadModelConsumer {
     const db = tryGetIntelligenceDb();
     if (!db) return;
 
-    const row = {
+    const row: InsertAgentTransformationEvent = {
       sourceAgent: (data.source_agent as string) || (data.sourceAgent as string) || 'unknown',
       targetAgent: (data.target_agent as string) || (data.targetAgent as string) || 'unknown',
       transformationReason:
@@ -354,9 +391,15 @@ export class ReadModelConsumer {
         (data.claude_session_id as string) || (data.claudeSessionId as string) || undefined,
     };
 
+    // NOTE: The composite key (source_agent, target_agent, created_at) is a
+    // best-effort deduplication strategy. Two distinct transformation events
+    // between the same agents within the same second-level timestamp will
+    // collide and the second will be silently dropped. If transformation
+    // events gain a correlation_id or unique event ID in the future, that
+    // field should be used as the deduplication target instead.
     await db
       .insert(agentTransformationEvents)
-      .values(row as any)
+      .values(row)
       .onConflictDoNothing({
         target: [
           agentTransformationEvents.sourceAgent,
@@ -369,10 +412,9 @@ export class ReadModelConsumer {
   /**
    * Update projection watermark for tracking consumer progress.
    *
-   * TODO(OMN-2061): Integrate watermark tracking into handleMessage() after
-   * successful projection. Currently defined but not invoked -- watermark
-   * persistence will be wired in a follow-up iteration once the consumer
-   * is validated in staging.
+   * Called after each successful message projection in handleMessage().
+   * The projection name is formatted as "topic:partition" to track
+   * per-partition progress independently.
    */
   async updateWatermark(projectionName: string, offset: number): Promise<void> {
     const db = tryGetIntelligenceDb();

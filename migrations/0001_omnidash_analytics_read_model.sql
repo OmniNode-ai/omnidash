@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS "agent_routing_decisions" (
   "routing_time_ms" integer NOT NULL,
   "cache_hit" boolean DEFAULT false,
   "selection_validated" boolean DEFAULT false,
+  "actual_success" boolean,
   "execution_succeeded" boolean,
   "actual_quality_score" numeric(5, 4),
   "created_at" timestamp DEFAULT now(),

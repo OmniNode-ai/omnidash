@@ -44,6 +44,7 @@ export const agentRoutingDecisions = pgTable(
     executionSucceeded: boolean('execution_succeeded'),
     actualQualityScore: numeric('actual_quality_score', { precision: 5, scale: 4 }),
     createdAt: timestamp('created_at').defaultNow(),
+    projectedAt: timestamp('projected_at').defaultNow(),
   },
   (table) => [uniqueIndex('idx_agent_routing_decisions_correlation').on(table.correlationId)]
 );
@@ -65,6 +66,7 @@ export const agentActions = pgTable(
     debugMode: boolean('debug_mode').default(true),
     durationMs: integer('duration_ms'),
     createdAt: timestamp('created_at').defaultNow(),
+    projectedAt: timestamp('projected_at').defaultNow(),
   },
   (table) => [uniqueIndex('idx_agent_actions_correlation').on(table.correlationId)]
 );
@@ -91,6 +93,7 @@ export const agentTransformationEvents = pgTable(
     projectPath: text('project_path'),
     projectName: text('project_name'),
     claudeSessionId: text('claude_session_id'),
+    projectedAt: timestamp('projected_at').defaultNow(),
   },
   (table) => [
     uniqueIndex('uq_ate_source_target_created').on(
@@ -127,6 +130,7 @@ export const agentManifestInjections = pgTable('agent_manifest_injections', {
   agentExecutionTimeMs: integer('agent_execution_time_ms'),
   agentQualityScore: numeric('agent_quality_score', { precision: 5, scale: 4 }),
   createdAt: timestamp('created_at').defaultNow(),
+  projectedAt: timestamp('projected_at').defaultNow(),
 });
 
 // Export Zod schemas for validation
@@ -149,6 +153,7 @@ export const patternLineageNodes = pgTable('pattern_lineage_nodes', {
   correlationId: uuid('correlation_id').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }),
   language: varchar('language', { length: 50 }),
+  projectedAt: timestamp('projected_at').defaultNow(),
 });
 
 /**
@@ -166,6 +171,7 @@ export const patternLineageEdges = pgTable('pattern_lineage_edges', {
   correlationId: uuid('correlation_id'),
   createdAt: timestamp('created_at').defaultNow(),
   createdBy: text('created_by'),
+  projectedAt: timestamp('projected_at').defaultNow(),
 });
 
 // Export Zod schemas for validation
@@ -188,6 +194,7 @@ export const patternQualityMetrics = pgTable('pattern_quality_metrics', {
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  projectedAt: timestamp('projected_at').defaultNow(),
 });
 
 export const insertPatternQualityMetricsSchema = createInsertSchema(patternQualityMetrics);
@@ -223,6 +230,7 @@ export const patternLearningArtifacts = pgTable(
     // Timestamps
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+    projectedAt: timestamp('projected_at').defaultNow(),
   },
   (table) => [
     // Index for lifecycle state filtering (WHERE lifecycle_state = ?)
@@ -257,6 +265,7 @@ export const onexComplianceStamps = pgTable('onex_compliance_stamps', {
   correlationId: uuid('correlation_id'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+  projectedAt: timestamp('projected_at').defaultNow(),
 });
 
 // Export Zod schemas for validation
@@ -300,6 +309,7 @@ export const documentMetadata = pgTable('document_metadata', {
   vectorId: text('vector_id'),
   graphId: text('graph_id'),
   metadata: jsonb('metadata').notNull().default({}),
+  projectedAt: timestamp('projected_at').defaultNow(),
 });
 
 /**
@@ -317,6 +327,7 @@ export const documentAccessLog = pgTable('document_access_log', {
   relevanceScore: numeric('relevance_score', { precision: 10, scale: 6 }),
   responseTimeMs: integer('response_time_ms'),
   metadata: jsonb('metadata').notNull().default({}),
+  projectedAt: timestamp('projected_at').defaultNow(),
 });
 
 // Export Zod schemas for validation
@@ -339,6 +350,7 @@ export const nodeServiceRegistry = pgTable('node_service_registry', {
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+  projectedAt: timestamp('projected_at').defaultNow(),
 });
 
 // Export Zod schema for validation
@@ -358,6 +370,7 @@ export const taskCompletionMetrics = pgTable('task_completion_metrics', {
   success: boolean('success').default(true),
   agentName: text('agent_name'),
   metadata: jsonb('metadata').default({}),
+  projectedAt: timestamp('projected_at').defaultNow(),
 });
 
 // Export Zod schema for validation
@@ -445,6 +458,7 @@ export const learnedPatterns = pgTable('learned_patterns', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   signatureHash: text('signature_hash').notNull(),
+  projectedAt: timestamp('projected_at').defaultNow(),
 });
 
 // Export Zod schema for validation
@@ -521,6 +535,7 @@ export const injectionEffectiveness = pgTable(
     cacheHit: boolean('cache_hit').default(false),
     eventType: text('event_type'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    projectedAt: timestamp('projected_at').defaultNow(),
   },
   (table) => [
     index('idx_ie_session_id').on(table.sessionId),
@@ -557,6 +572,7 @@ export const latencyBreakdowns = pgTable(
     cohort: text('cohort').notNull(),
     cacheHit: boolean('cache_hit').default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    projectedAt: timestamp('projected_at').defaultNow(),
   },
   (table) => [
     index('idx_lb_session_id').on(table.sessionId),
@@ -584,6 +600,7 @@ export const patternHitRates = pgTable(
     utilizationScore: numeric('utilization_score', { precision: 10, scale: 6 }),
     utilizationMethod: text('utilization_method'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    projectedAt: timestamp('projected_at').defaultNow(),
   },
   // DEPLOYMENT: These indexes require `npm run db:push` against the intelligence DB.
   // Drizzle's push will skip indexes that already exist.
@@ -630,6 +647,7 @@ export const validationRuns = pgTable(
       .default({})
       .$type<Record<string, number>>(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    projectedAt: timestamp('projected_at').defaultNow(),
   },
   (table) => [
     index('idx_validation_runs_status').on(table.status),
@@ -660,6 +678,7 @@ export const validationViolations = pgTable(
     line: integer('line'),
     validator: text('validator').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    projectedAt: timestamp('projected_at').defaultNow(),
   },
   (table) => [
     index('idx_validation_violations_run_id').on(table.runId),

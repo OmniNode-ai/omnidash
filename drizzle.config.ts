@@ -14,6 +14,9 @@ if (!dbUrl) {
 
 export default defineConfig({
   out: './migrations',
+  // Only intelligence-schema.ts is included here because this Drizzle config
+  // targets the omnidash_analytics database. shared/schema.ts defines tables
+  // for the application database, which is managed separately.
   schema: './shared/intelligence-schema.ts',
   dialect: 'postgresql',
   dbCredentials: {

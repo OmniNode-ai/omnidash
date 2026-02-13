@@ -84,9 +84,14 @@ async function main(): Promise<void> {
 
       console.log(`[migrate] Running: ${file}`);
       try {
+        await pool.query('BEGIN');
         await pool.query(sqlContent);
+        await pool.query('COMMIT');
         console.log(`[migrate] OK: ${file}`);
       } catch (err) {
+        await pool.query('ROLLBACK').catch(() => {
+          // ROLLBACK itself may fail if connection is broken; ignore.
+        });
         console.error(`[migrate] FAILED: ${file}`, err instanceof Error ? err.message : err);
         throw err;
       }
