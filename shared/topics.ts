@@ -258,6 +258,11 @@ export const LEGACY_AGENT_MANIFEST_INJECTIONS = 'agent-manifest-injections';
 // service still produces to these topics. Once the producer migrates to ONEX
 // canonical names (onex.cmd/evt.omniintelligence.*), these should be removed.
 //
+// The `dev.` prefix is intentionally hardcoded here because the upstream
+// producer (omniintelligence) always emits to `dev.*` regardless of
+// environment. These are not routed through resolveTopicName() since they
+// match a fixed external topic, not our own ONEX-convention topics.
+//
 // Canonical ONEX equivalents already exist above as:
 //   SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD       (request)
 //   SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED  (completed)
