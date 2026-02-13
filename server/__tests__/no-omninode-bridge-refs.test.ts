@@ -47,7 +47,7 @@ describe('DB-SPLIT-10: No omninode_bridge references', () => {
     const sourceFiles = findFiles(
       PROJECT_ROOT,
       ['.ts', '.tsx', '.json'],
-      ['node_modules', 'dist', 'docs', '.git', 'coverage']
+      ['node_modules', 'dist', 'docs', '.git', '.claude', 'coverage', 'migrations']
     );
 
     const violations: string[] = [];

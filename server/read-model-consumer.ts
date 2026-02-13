@@ -14,7 +14,9 @@
  * - agent-routing-decisions -> agent_routing_decisions table
  * - agent-actions -> agent_actions table
  * - agent-transformation-events -> agent_transformation_events table
- * - router-performance-metrics -> (in-memory only, no table needed)
+ *
+ * Note: router-performance-metrics is handled by EventConsumer in
+ * event-consumer.ts (in-memory aggregation only, no table needed).
  *
  * The consumer runs alongside the existing EventConsumer (which handles
  * in-memory aggregation for real-time WebSocket delivery). This consumer
@@ -416,7 +418,7 @@ export class ReadModelConsumer {
    * The projection name is formatted as "topic:partition" to track
    * per-partition progress independently.
    */
-  async updateWatermark(projectionName: string, offset: number): Promise<void> {
+  private async updateWatermark(projectionName: string, offset: number): Promise<void> {
     const db = tryGetIntelligenceDb();
     if (!db) return;
 
