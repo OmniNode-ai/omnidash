@@ -131,6 +131,25 @@ function mapSeverityToPriority(
   }
 }
 
+/**
+ * Extract the producer segment from an ONEX canonical topic name.
+ * Format: onex.<kind>.<producer>.<event-name>.v<version>
+ * Also handles legacy env-prefixed form: <env>.onex.<kind>.<producer>...
+ * Returns null for flat legacy topics (e.g. "agent-actions").
+ */
+function extractProducerFromTopic(topic: string): string | null {
+  const segments = topic.split('.');
+  // Canonical: onex.<kind>.<producer>.<event-name>.v<version>  (5+ segments)
+  if (segments.length >= 5 && segments[0] === 'onex') {
+    return segments[2];
+  }
+  // Env-prefixed: <env>.onex.<kind>.<producer>.<event-name>.v<version>  (6+ segments)
+  if (segments.length >= 6 && segments[1] === 'onex') {
+    return segments[3];
+  }
+  return null;
+}
+
 function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   const payloadStr = JSON.stringify(event.payload);
   const parsedDetails = extractParsedDetails(payloadStr, event.type);
@@ -140,6 +159,14 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   const effectiveTimeMs = event.eventTimeMs > 0 ? event.eventTimeMs : Date.now();
   const timestampRaw = new Date(effectiveTimeMs).toISOString();
 
+  // Resolve source: use event.source if present and not "unknown",
+  // otherwise try to extract the producer from the ONEX topic name,
+  // falling back to "system" for legacy flat-name topics.
+  const resolvedSource =
+    event.source && event.source !== 'unknown'
+      ? event.source
+      : (extractProducerFromTopic(event.topic) ?? 'system');
+
   return {
     id: event.id,
     topic: getTopicLabel(event.topic),
@@ -148,7 +175,7 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
     priority: mapSeverityToPriority(event.severity),
     timestamp: new Date(effectiveTimeMs),
     timestampRaw,
-    source: event.source || 'system',
+    source: resolvedSource,
     correlationId: event.payload?.correlationId as string | undefined,
     payload: payloadStr,
     summary: generateSummary(event.type, parsedDetails, event),
@@ -162,6 +189,17 @@ function computeNormalizedType(eventType: string, details: ParsedDetails | null)
   if (details?.selectedAgent) return `route:${details.selectedAgent}`;
   if (/^v\d+$/.test(eventType)) {
     return details?.actionName || details?.actionType || 'unknown';
+  }
+  // OMN-2196: Handle ONEX topic-style types (e.g. 'onex.cmd.omniintelligence.tool-content.v1').
+  // Extract the action name segment (second-to-last) from the canonical format.
+  if (
+    eventType.startsWith('onex.') ||
+    /^(dev|staging|prod|production|test|local)\.onex\./.test(eventType)
+  ) {
+    const segments = eventType.split('.');
+    if (segments.length >= 5) {
+      return segments[segments.length - 2]; // event-name segment
+    }
   }
   return eventType;
 }
@@ -291,7 +329,7 @@ function toRecentEvent(event: DisplayEvent) {
     id: event.id,
     topic: event.topic,
     topicRaw: event.topicRaw,
-    eventType: getEventTypeLabel(event.eventType),
+    eventType: event.normalizedType,
     summary: event.summary,
     source: event.source,
     timestamp: formatRelativeTime(event.timestampRaw),
@@ -376,7 +414,15 @@ export default function EventBusMonitor() {
   const lastEventId = events && events.length > 0 ? events[events.length - 1]?.id : undefined;
   const displayEvents = useMemo((): DisplayEvent[] => {
     if (!snapshot?.payload?.events) return [];
-    return snapshot.payload.events.map(toDisplayEvent);
+    const mapped = snapshot.payload.events.map(toDisplayEvent);
+    // Client-side dedup: filter out any duplicate IDs (belt-and-suspenders
+    // defense in case duplicates slip through the server-side projection)
+    const seen = new Set<string>();
+    return mapped.filter((e) => {
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     snapshot?.cursor,
@@ -486,7 +532,19 @@ export default function EventBusMonitor() {
     const FIVE_MINUTES_MS = 5 * 60 * 1000;
     const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
-    const statusRows = monitoredTopics.map((topic) => {
+    // Merge hardcoded monitored topics with dynamically observed topics from
+    // the projection snapshot's topicBreakdown (OMN-2193). Observed topics not
+    // in the hardcoded list appear dynamically; known topics with no events
+    // remain "Silent".
+    const allTopics = new Set<string>(monitoredTopics);
+    const topicBreakdown = sourceData.topicBreakdown;
+    for (const observedTopic of Object.keys(topicBreakdown)) {
+      // Normalize env-prefixed topics to their canonical suffix form
+      const normalized = normalizeToSuffix(observedTopic);
+      allTopics.add(normalized);
+    }
+
+    const statusRows = Array.from(allTopics).map((topic) => {
       const topicEvents = sourceData.events.filter((e) => topicMatchesSuffix(e.topicRaw, topic));
       const eventCount = topicEvents.length;
       const lastEvent = topicEvents.length > 0 ? topicEvents[0] : null;
@@ -529,7 +587,7 @@ export default function EventBusMonitor() {
     });
 
     return statusRows;
-  }, [sourceData.events, statusTick]);
+  }, [sourceData.events, sourceData.topicBreakdown, statusTick]);
 
   const topicsLoadedCount = useMemo(
     () => topicStatusData.filter((t) => t.eventCount > 0).length,
@@ -608,7 +666,11 @@ export default function EventBusMonitor() {
     const timeSeriesData = Object.entries(timeBuckets)
       .map(([time, count]) => {
         const date = new Date(Number(time));
-        const formattedTime = `${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+        const formattedTime = date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
         return {
           time: Number(time),
           timestamp: formattedTime,

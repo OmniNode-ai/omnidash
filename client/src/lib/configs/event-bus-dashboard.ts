@@ -411,7 +411,13 @@ export const eventBusDashboardConfig: DashboardConfig = {
           { key: 'eventType', header: 'Event Type', width: 130, sortable: true },
           { key: 'summary', header: 'Summary', width: 250, sortable: false },
           { key: 'source', header: 'Source', width: 120, sortable: true },
-          { key: 'timestamp', header: 'Time', width: 100, sortable: true },
+          {
+            key: 'timestamp',
+            header: 'Time',
+            width: 100,
+            sortable: true,
+            sort_key: 'timestampSort',
+          },
         ],
       },
     },
@@ -697,13 +703,31 @@ export function getTopicMetadata(
 }
 
 /**
- * Get the display label for a topic, with fallback to the raw topic name.
+ * Get the display label for a topic, with fallback to a suffix-extracted short name.
+ *
+ * Fallback chain (OMN-2198):
+ *   1. Direct metadata lookup (handles known topics)
+ *   2. Extract the event-name segment from ONEX canonical format and title-case it
+ *      (e.g. 'onex.evt.omniclaude.session-started.v1' → 'Session Started')
+ *   3. Return the raw topic as-is (legacy flat names are already short)
  *
  * @param topic - Raw or canonical topic name (may include env prefix)
- * @returns Human-readable label from TOPIC_METADATA, or the raw topic if not found
+ * @returns Human-readable label
  */
 export function getTopicLabel(topic: string): string {
-  return getTopicMetadata(topic)?.label ?? topic;
+  const meta = getTopicMetadata(topic);
+  if (meta) return meta.label;
+
+  // Try extracting a short name from ONEX canonical format
+  const canonical = extractSuffix(topic);
+  const segments = canonical.split('.');
+  // Canonical: onex.<kind>.<producer>.<event-name>.v<N>
+  if (segments.length >= 5 && segments[0] === 'onex') {
+    const eventName = segments[segments.length - 2];
+    return toTitleCase(eventName);
+  }
+
+  return topic;
 }
 
 /**
