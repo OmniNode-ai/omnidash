@@ -13,6 +13,7 @@ import { ProjectionService, type RawEventInput } from './projection-service';
 import { EventBusProjection } from './projections/event-bus-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
+import { extractSuffix } from '@shared/topics';
 
 // ============================================================================
 // Singleton instances
@@ -115,6 +116,27 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
     dedupIdx = (dedupIdx + 1) % DEDUP_CAPACITY;
   }
 
+  // OMN-2197: Secondary correlation-ID-based dedup ring.
+  // EventBusDataSource and EventConsumer may produce different event IDs and
+  // different derived fallback keys for the same underlying Kafka message
+  // (EventConsumer reshapes events into enriched objects with new fields).
+  // The correlation_id is preserved across both paths, so tracking it provides
+  // a reliable cross-source dedup dimension. EventBusDataSource tracks
+  // correlation IDs; EventConsumer checks them before ingestion.
+  const CORR_DEDUP_CAPACITY = 5000;
+  const corrDedupRing: (string | null)[] = new Array<string | null>(CORR_DEDUP_CAPACITY).fill(null);
+  const corrDedupSet = new Set<string>();
+  let corrDedupIdx = 0;
+
+  function trackCorrelationId(corrId: string): void {
+    if (!corrId) return;
+    const evicted = corrDedupRing[corrDedupIdx];
+    if (evicted !== null) corrDedupSet.delete(evicted);
+    corrDedupRing[corrDedupIdx] = corrId;
+    corrDedupSet.add(corrId);
+    corrDedupIdx = (corrDedupIdx + 1) % CORR_DEDUP_CAPACITY;
+  }
+
   // Normalized fallback key: tries all known field name variants so the same
   // event produces an identical key regardless of which source delivers it.
   // Collision risk: two distinct events with identical topic + type + timestamp
@@ -173,6 +195,12 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
         const dedupKey = eventId || deriveFallbackDedupKey(event);
         trackEventId(dedupKey);
 
+        // OMN-2197: Track correlation_id for cross-source dedup.
+        // EventConsumer reshapes events with new IDs, making ID-based dedup
+        // insufficient. The correlation_id is preserved across both sources.
+        const corrId = (event.correlation_id as string) || (event.correlationId as string) || '';
+        if (corrId) trackCorrelationId(corrId);
+
         let payload: Record<string, unknown>;
         const rawPayload = event.payload;
         if (rawPayload != null && typeof rawPayload === 'object' && !Array.isArray(rawPayload)) {
@@ -181,11 +209,25 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
           payload = { value: rawPayload };
         }
 
+        const topic = (event.topic as string) || '';
+        const rawType = (event.event_type as string) || '';
+        const rawSource = (event.source as string) || '';
+
+        // OMN-2196: When event_type is empty, extract the action name from the
+        // topic (e.g. 'onex.cmd.omniintelligence.tool-content.v1' → 'tool-content').
+        const type = rawType || extractActionFromTopic(topic);
+
+        // OMN-2195: When source is empty or the literal 'unknown' default from
+        // EventBusDataSource, infer the producer from the topic name
+        // (e.g. 'onex.evt.omniclaude.session-started.v1' → 'omniclaude').
+        const source =
+          rawSource && rawSource !== 'unknown' ? rawSource : extractProducerFromTopic(topic);
+
         const raw: RawEventInput = {
           id: eventId,
-          topic: (event.topic as string) || '',
-          type: (event.event_type as string) || '',
-          source: (event.source as string) || '',
+          topic,
+          type,
+          source,
           severity: mapSeverity(payload),
           payload,
           eventTimeMs: extractTimestamp(event),
@@ -238,6 +280,13 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
           const id = data.id as string | undefined;
           const dedupKey = id || deriveFallbackDedupKey(data);
           if (dedupSet.has(dedupKey)) return;
+
+          // OMN-2197: Cross-source correlation-ID dedup.
+          // EventConsumer reshapes events with new crypto.randomUUID() IDs,
+          // so ID-based dedup misses cross-source duplicates. Check if the
+          // correlation_id was already ingested via EventBusDataSource.
+          const corrId = (data.correlationId as string) || (data.correlation_id as string) || '';
+          if (corrId && corrDedupSet.has(corrId)) return;
 
           const raw: RawEventInput = {
             id,
@@ -304,4 +353,42 @@ function extractTimestamp(data: Record<string, unknown>): number | undefined {
     return isNaN(parsed) ? undefined : parsed;
   }
   return undefined;
+}
+
+/**
+ * Extract the action name (event-name segment) from an ONEX topic string.
+ * Canonical format: onex.<kind>.<producer>.<event-name>.v<version>
+ * Strips env prefix first via extractSuffix.
+ *
+ * @example 'onex.cmd.omniintelligence.tool-content.v1' → 'tool-content'
+ * @example 'dev.onex.evt.omniclaude.session-started.v1' → 'session-started'
+ * @example 'agent-actions' → '' (legacy flat name, no action to extract)
+ */
+function extractActionFromTopic(topic: string): string {
+  const canonical = extractSuffix(topic);
+  const segments = canonical.split('.');
+  // Canonical ONEX format has 5 segments: onex.<kind>.<producer>.<event-name>.v<N>
+  if (segments.length >= 5 && segments[0] === 'onex') {
+    // event-name is the second-to-last segment (before version)
+    return segments[segments.length - 2];
+  }
+  return '';
+}
+
+/**
+ * Extract the producer name from an ONEX topic string.
+ * Canonical format: onex.<kind>.<producer>.<event-name>.v<version>
+ *
+ * @example 'onex.evt.omniclaude.session-started.v1' → 'omniclaude'
+ * @example 'onex.cmd.omniintelligence.tool-content.v1' → 'omniintelligence'
+ * @example 'agent-actions' → 'system' (fallback for legacy flat names)
+ */
+function extractProducerFromTopic(topic: string): string {
+  const canonical = extractSuffix(topic);
+  const segments = canonical.split('.');
+  // Canonical ONEX format: onex.<kind>.<producer>.<event-name>.v<N>
+  if (segments.length >= 5 && segments[0] === 'onex') {
+    return segments[2]; // producer is the third segment
+  }
+  return 'system';
 }

@@ -196,6 +196,27 @@ export const SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED =
 export const SUFFIX_INTELLIGENCE_PATTERN_LEARNED = 'onex.evt.omniintelligence.pattern-learned.v1';
 export const SUFFIX_INTELLIGENCE_TOOL_CONTENT = 'onex.cmd.omniintelligence.tool-content.v1';
 
+/** Intelligence pipeline commands (consumed by omniintelligence) */
+export const SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD = 'onex.cmd.omniintelligence.code-analysis.v1';
+export const SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD =
+  'onex.cmd.omniintelligence.document-ingestion.v1';
+export const SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD =
+  'onex.cmd.omniintelligence.pattern-learning.v1';
+export const SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD =
+  'onex.cmd.omniintelligence.quality-assessment.v1';
+
+/** Intelligence pipeline events (published by omniintelligence) */
+export const SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED =
+  'onex.evt.omniintelligence.code-analysis-completed.v1';
+export const SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED =
+  'onex.evt.omniintelligence.code-analysis-failed.v1';
+export const SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED =
+  'onex.evt.omniintelligence.document-ingestion-completed.v1';
+export const SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED =
+  'onex.evt.omniintelligence.pattern-learning-completed.v1';
+export const SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED =
+  'onex.evt.omniintelligence.quality-assessment-completed.v1';
+
 // ============================================================================
 // OmniMemory Topics
 // ============================================================================
@@ -279,6 +300,19 @@ export const OMNICLAUDE_INJECTION_SUFFIXES = [
   SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
 ] as const;
 
+/** OmniIntelligence pipeline topic suffixes */
+export const INTELLIGENCE_PIPELINE_SUFFIXES = [
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
+] as const;
+
 /** Intent topic suffixes */
 export const INTENT_SUFFIXES = [
   SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED,
@@ -315,6 +349,7 @@ export function buildSubscriptionTopics(): string[] {
     SUFFIX_INTELLIGENCE_TOOL_CONTENT,
     ...OMNICLAUDE_SUFFIXES,
     ...OMNICLAUDE_INJECTION_SUFFIXES,
+    ...INTELLIGENCE_PIPELINE_SUFFIXES,
     ...INTENT_SUFFIXES,
     ...VALIDATION_SUFFIXES,
   ];

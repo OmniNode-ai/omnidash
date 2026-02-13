@@ -39,6 +39,15 @@ import {
   SUFFIX_INTELLIGENCE_PATTERN_SCORED,
   SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
   ENVIRONMENT_PREFIXES,
   extractSuffix,
 } from '@shared/topics';
@@ -145,6 +154,11 @@ export const TOPIC_METADATA: Record<
     description: 'Tool calls, decisions, errors, and successes',
     category: 'actions',
   },
+  actionUpdate: {
+    label: 'Action Updates',
+    description: 'Real-time tool call and action events from active Claude sessions',
+    category: 'actions',
+  },
   // Node registry topics (canonical ONEX suffixes)
   [SUFFIX_NODE_INTROSPECTION]: {
     label: 'Node Introspection',
@@ -230,6 +244,52 @@ export const TOPIC_METADATA: Record<
     label: 'Registration Snapshots',
     description: 'Point-in-time registration state snapshots',
     category: 'snapshot',
+  },
+  // Intelligence pipeline topics
+  [SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD]: {
+    label: 'Code Analysis Cmd',
+    description: 'Request code analysis from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD]: {
+    label: 'Doc Ingestion Cmd',
+    description: 'Request document ingestion from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD]: {
+    label: 'Pattern Learning Cmd',
+    description: 'Request pattern learning from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD]: {
+    label: 'Quality Assessment Cmd',
+    description: 'Request quality assessment from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED]: {
+    label: 'Code Analysis Done',
+    description: 'Code analysis completed successfully',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED]: {
+    label: 'Code Analysis Failed',
+    description: 'Code analysis failed',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED]: {
+    label: 'Doc Ingestion Done',
+    description: 'Document ingestion completed successfully',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED]: {
+    label: 'Pattern Learning Done',
+    description: 'Pattern learning completed successfully',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED]: {
+    label: 'Quality Assessment Done',
+    description: 'Quality assessment completed successfully',
+    category: 'intelligence',
   },
   // Error topics
   errors: {
@@ -411,7 +471,13 @@ export const eventBusDashboardConfig: DashboardConfig = {
           { key: 'eventType', header: 'Event Type', width: 130, sortable: true },
           { key: 'summary', header: 'Summary', width: 250, sortable: false },
           { key: 'source', header: 'Source', width: 120, sortable: true },
-          { key: 'timestamp', header: 'Time', width: 100, sortable: true },
+          {
+            key: 'timestamp',
+            header: 'Time',
+            width: 100,
+            sortable: true,
+            sort_key: 'timestampSort',
+          },
         ],
       },
     },
@@ -697,13 +763,31 @@ export function getTopicMetadata(
 }
 
 /**
- * Get the display label for a topic, with fallback to the raw topic name.
+ * Get the display label for a topic, with fallback to a suffix-extracted short name.
+ *
+ * Fallback chain (OMN-2198):
+ *   1. Direct metadata lookup (handles known topics)
+ *   2. Extract the event-name segment from ONEX canonical format and title-case it
+ *      (e.g. 'onex.evt.omniclaude.session-started.v1' → 'Session Started')
+ *   3. Return the raw topic as-is (legacy flat names are already short)
  *
  * @param topic - Raw or canonical topic name (may include env prefix)
- * @returns Human-readable label from TOPIC_METADATA, or the raw topic if not found
+ * @returns Human-readable label
  */
 export function getTopicLabel(topic: string): string {
-  return getTopicMetadata(topic)?.label ?? topic;
+  const meta = getTopicMetadata(topic);
+  if (meta) return meta.label;
+
+  // Try extracting a short name from ONEX canonical format
+  const canonical = extractSuffix(topic);
+  const segments = canonical.split('.');
+  // Canonical: onex.<kind>.<producer>.<event-name>.v<N>
+  if (segments.length >= 5 && segments[0] === 'onex') {
+    const eventName = segments[segments.length - 2];
+    return toTitleCase(eventName);
+  }
+
+  return topic;
 }
 
 /**

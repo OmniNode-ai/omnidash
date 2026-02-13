@@ -260,6 +260,8 @@ export interface TableColumnConfig {
   sortable?: boolean;
   align?: 'left' | 'center' | 'right';
   format?: string;
+  /** Optional alternate data key used for sorting instead of `key`. */
+  sort_key?: string;
 }
 
 export interface MetricThreshold {
