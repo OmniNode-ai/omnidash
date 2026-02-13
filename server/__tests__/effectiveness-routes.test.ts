@@ -1,3 +1,11 @@
+/**
+ * Effectiveness Routes Tests
+ *
+ * Exercises the /api/effectiveness endpoints (summary, throttle, latency,
+ * utilization, ab, trend) against a mock Drizzle DB, covering empty-DB
+ * fallbacks, aggregation logic, throttle boundary conditions, and error paths.
+ */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { type Express } from 'express';

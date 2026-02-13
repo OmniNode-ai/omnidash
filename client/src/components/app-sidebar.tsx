@@ -7,7 +7,9 @@ import {
   Brain,
   Sparkles,
   ShieldCheck,
+  Gauge,
   Activity,
+  Lightbulb,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -23,7 +25,9 @@ import {
 import { cn } from '@/lib/utils';
 
 // Dashboards ordered by priority - core monitoring dashboards first
+// Ordered by functional group: Infrastructure → Pattern Lifecycle → Quality & Intelligence
 const dashboards = [
+  // -- Infrastructure --
   {
     title: 'Event Bus',
     url: '/events',
@@ -31,23 +35,31 @@ const dashboards = [
     description: 'Real-time Kafka event stream visualization',
   },
   {
+    title: 'Registry Discovery',
+    url: '/discovery',
+    icon: Globe,
+    description: 'Contract-driven node and service discovery',
+  },
+  // -- Pattern Lifecycle (discover → extract → measure) --
+  {
     title: 'Pattern Learning',
     url: '/patterns',
     icon: Sparkles,
     description: 'Code pattern discovery and learning analytics',
   },
   {
-    title: 'Registry Discovery',
-    url: '/discovery',
-    icon: Globe,
-    description: 'Contract-driven node and service discovery',
+    title: 'Extraction Pipeline',
+    url: '/extraction',
+    icon: Gauge,
+    description: 'Pattern extraction metrics and pipeline health',
   },
   {
-    title: 'Intent Dashboard',
-    url: '/intents',
-    icon: Brain,
-    description: 'Real-time intent classification and analysis',
+    title: 'Effectiveness',
+    url: '/effectiveness',
+    icon: Activity,
+    description: 'Injection effectiveness metrics and A/B analysis',
   },
+  // -- Quality & Intelligence --
   {
     title: 'Validation',
     url: '/validation',
@@ -55,10 +67,16 @@ const dashboards = [
     description: 'Cross-repo validation runs and violation trends',
   },
   {
-    title: 'Effectiveness',
-    url: '/effectiveness',
-    icon: Activity,
-    description: 'Injection effectiveness metrics and A/B analysis',
+    title: 'Learned Insights',
+    url: '/insights',
+    icon: Lightbulb,
+    description: 'Patterns and conventions from OmniClaude sessions',
+  },
+  {
+    title: 'Intent Dashboard',
+    url: '/intents',
+    icon: Brain,
+    description: 'Real-time intent classification and analysis',
   },
   // Hidden: Execution Graph (/graph) - node execution visualization
   // Hidden: Demo Stream (/live-events) - superseded by Event Bus

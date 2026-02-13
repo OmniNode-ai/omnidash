@@ -16,6 +16,9 @@ import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
 import { runtimeIdentity } from './runtime-identity';
+import { initProjectionListeners, teardownProjectionListeners } from './projection-instance';
+import { wireProjectionSources, projectionService } from './projection-bootstrap';
+import { NodeRegistryProjection } from './projections/node-registry-projection';
 
 const app = express();
 
@@ -85,7 +88,74 @@ app.use((req, res, next) => {
     log(`Running in standalone mode (no runtime supervision)`);
   }
 
+  // --------------------------------------------------------------------------
+  // Node Registry Projection (OMN-2097)
+  // Register into the shared ProjectionService singleton BEFORE routes are
+  // registered so that projection REST endpoints are available immediately.
+  // --------------------------------------------------------------------------
+  const nodeRegistryView = new NodeRegistryProjection();
+  if (!projectionService.getView(nodeRegistryView.viewId)) {
+    projectionService.registerView(nodeRegistryView);
+  }
+
   const server = await registerRoutes(app);
+
+  // --------------------------------------------------------------------------
+  // Bridge EventConsumer node events → ProjectionService (OMN-2097)
+  // MUST be registered BEFORE eventConsumer.start() to avoid missing events.
+  // --------------------------------------------------------------------------
+
+  /** Safely parse createdAt into epoch-ms, returning undefined if invalid to let ProjectionService use its own extraction. */
+  function extractBridgeTimestamp(event: Record<string, unknown>): number | undefined {
+    const raw = event.createdAt;
+    if (raw == null) return undefined;
+    // Handle numeric timestamps (epoch-ms) directly; coerce everything else via Date parsing
+    const ts = typeof raw === 'number' ? raw : new Date(String(raw)).getTime();
+    return Number.isFinite(ts) ? ts : undefined;
+  }
+
+  const projectionBridgeListeners = {
+    nodeIntrospectionUpdate: (event: Record<string, unknown>) => {
+      projectionService.ingest({
+        type: 'node-introspection',
+        source: 'event-consumer',
+        eventTimeMs: extractBridgeTimestamp(event),
+        payload: event,
+      });
+    },
+    nodeHeartbeatUpdate: (event: Record<string, unknown>) => {
+      projectionService.ingest({
+        type: 'node-heartbeat',
+        source: 'event-consumer',
+        eventTimeMs: extractBridgeTimestamp(event),
+        payload: event,
+      });
+    },
+    nodeStateChangeUpdate: (event: Record<string, unknown>) => {
+      projectionService.ingest({
+        type: 'node-state-change',
+        source: 'event-consumer',
+        eventTimeMs: extractBridgeTimestamp(event),
+        payload: event,
+      });
+    },
+    // Canonical event handlers (handleCanonicalNode*) only emit 'nodeRegistryUpdate',
+    // not the granular events above. Bridge the full registry snapshot as a seed event
+    // so the projection stays in sync with canonical-path updates. The seed handler
+    // uses sentinel-0 timestamps, so nodes already updated by a granular event with
+    // a real timestamp will not be overwritten (merge tracker rejects stale updates).
+    nodeRegistryUpdate: (registeredNodes: Record<string, unknown>[]) => {
+      projectionService.ingest({
+        type: 'node-registry-seed',
+        source: 'event-consumer-canonical',
+        payload: { nodes: registeredNodes },
+      });
+    },
+  };
+  eventConsumer.on('nodeIntrospectionUpdate', projectionBridgeListeners.nodeIntrospectionUpdate);
+  eventConsumer.on('nodeHeartbeatUpdate', projectionBridgeListeners.nodeHeartbeatUpdate);
+  eventConsumer.on('nodeStateChangeUpdate', projectionBridgeListeners.nodeStateChangeUpdate);
+  eventConsumer.on('nodeRegistryUpdate', projectionBridgeListeners.nodeRegistryUpdate);
 
   // Validate and start Kafka event consumer
   try {
@@ -105,6 +175,11 @@ app.use((req, res, next) => {
     console.error('   Application will continue with limited functionality');
   }
 
+  // Wire EventConsumer intent-event → ProjectionService (idempotent guard).
+  // Safe to call regardless of Kafka availability; events will flow once
+  // EventConsumer connects.
+  initProjectionListeners();
+
   // Validate and start Event Bus Data Source
   try {
     const isEventBusAvailable = await eventBusDataSource.validateConnection();
@@ -120,6 +195,37 @@ app.use((req, res, next) => {
     console.error('❌ Failed to start Event Bus Data Source:', error);
     console.error('   Event querying endpoints will not be available');
     console.error('   Application will continue with limited functionality');
+  }
+
+  // Wire projection event sources (after EventConsumer and EventBusDataSource are started)
+  // This covers EventBusProjection wiring; NodeRegistry bridge listeners are above.
+  let cleanupProjectionSources: (() => void) | undefined;
+  try {
+    cleanupProjectionSources = wireProjectionSources();
+  } catch (error) {
+    console.error('❌ Failed to wire projection sources:', error);
+    console.error('   Projections will remain empty until next restart');
+    console.error('   Application will continue with limited functionality');
+  }
+
+  // Seed projection with any nodes already tracked by EventConsumer from prior runs.
+  // Seed has no eventTimeMs — represents in-memory EventConsumer state, not a
+  // timestamped Kafka event. ProjectionService assigns sentinel (epoch 0), so
+  // MonotonicMergeTracker accepts any future event with a real timestamp.
+  //
+  // NOTE: On a fresh start this will almost always return an empty array because
+  // eventConsumer.start() triggers async Kafka consumer group rebalancing — the
+  // consumer hasn't received messages yet. The seed path only provides value when
+  // EventConsumer has cached nodes from a prior module load (e.g., hot-reload).
+  // New nodes will arrive via the event bridge listeners registered above.
+  const existingNodes = eventConsumer.getRegisteredNodes();
+  if (existingNodes.length > 0) {
+    projectionService.ingest({
+      type: 'node-registry-seed',
+      source: 'event-consumer',
+      payload: { nodes: existingNodes },
+    });
+    log(`Seeded node-registry projection with ${existingNodes.length} existing nodes`);
   }
 
   // Setup WebSocket for real-time events
@@ -185,8 +291,30 @@ app.use((req, res, next) => {
   });
 
   // Graceful shutdown
+  const cleanupProjectionBridge = () => {
+    eventConsumer.removeListener(
+      'nodeIntrospectionUpdate',
+      projectionBridgeListeners.nodeIntrospectionUpdate
+    );
+    eventConsumer.removeListener(
+      'nodeHeartbeatUpdate',
+      projectionBridgeListeners.nodeHeartbeatUpdate
+    );
+    eventConsumer.removeListener(
+      'nodeStateChangeUpdate',
+      projectionBridgeListeners.nodeStateChangeUpdate
+    );
+    eventConsumer.removeListener(
+      'nodeRegistryUpdate',
+      projectionBridgeListeners.nodeRegistryUpdate
+    );
+  };
+
   process.on('SIGTERM', async () => {
     log('SIGTERM received, shutting down gracefully');
+    teardownProjectionListeners();
+    cleanupProjectionBridge();
+    cleanupProjectionSources?.();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();
@@ -199,6 +327,9 @@ app.use((req, res, next) => {
 
   process.on('SIGINT', async () => {
     log('SIGINT received, shutting down gracefully');
+    teardownProjectionListeners();
+    cleanupProjectionBridge();
+    cleanupProjectionSources?.();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();

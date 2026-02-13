@@ -35,10 +35,12 @@ import ExecutionGraph from '@/pages/ExecutionGraph';
 import RegistryDiscovery from '@/pages/RegistryDiscovery';
 import IntentDashboard from '@/pages/IntentDashboard';
 import ValidationDashboard from '@/pages/ValidationDashboard';
+import ExtractionDashboard from '@/pages/ExtractionDashboard';
 import EffectivenessSummary from '@/pages/EffectivenessSummary';
 import EffectivenessLatency from '@/pages/EffectivenessLatency';
 import EffectivenessUtilization from '@/pages/EffectivenessUtilization';
 import EffectivenessAB from '@/pages/EffectivenessAB';
+import LearnedInsights from '@/pages/LearnedInsights';
 
 // Preview pages
 import EnhancedAnalytics from '@/pages/preview/EnhancedAnalytics';
@@ -83,6 +85,10 @@ function Router() {
       <Route path="/discovery" component={RegistryDiscovery} />
       <Route path="/intents" component={IntentDashboard} />
       <Route path="/validation" component={ValidationDashboard} />
+      <Route path="/extraction" component={ExtractionDashboard} />
+
+      {/* Learned Insights dashboard (OMN-1407) */}
+      <Route path="/insights" component={LearnedInsights} />
 
       {/* Effectiveness dashboard routes (OMN-1891) */}
       <Route path="/effectiveness" component={EffectivenessSummary} />

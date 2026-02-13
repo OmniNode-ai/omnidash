@@ -155,6 +155,18 @@ export const SUFFIX_NODE_REGISTRATION_INITIATED =
 export const SUFFIX_NODE_REGISTRATION_ACCEPTED = 'onex.evt.platform.node-registration-accepted.v1';
 export const SUFFIX_NODE_REGISTRATION_REJECTED = 'onex.evt.platform.node-registration-rejected.v1';
 
+/** Dual-confirmation ACK flow events */
+export const SUFFIX_NODE_REGISTRATION_ACKED = 'onex.cmd.platform.node-registration-acked.v1';
+export const SUFFIX_NODE_REGISTRATION_RESULT = 'onex.evt.platform.node-registration-result.v1';
+export const SUFFIX_NODE_REGISTRATION_ACK_RECEIVED =
+  'onex.evt.platform.node-registration-ack-received.v1';
+export const SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT =
+  'onex.evt.platform.node-registration-ack-timed-out.v1';
+
+/** Registry announces it wants nodes to re-introspect (evt counterpart to the cmd variant) */
+export const SUFFIX_REGISTRY_REQUEST_INTROSPECTION =
+  'onex.evt.platform.registry-request-introspection.v1';
+
 // ============================================================================
 // OmniClaude Topics
 // ============================================================================
@@ -183,6 +195,27 @@ export const SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED =
   'onex.evt.omniintelligence.pattern-discovered.v1';
 export const SUFFIX_INTELLIGENCE_PATTERN_LEARNED = 'onex.evt.omniintelligence.pattern-learned.v1';
 export const SUFFIX_INTELLIGENCE_TOOL_CONTENT = 'onex.cmd.omniintelligence.tool-content.v1';
+
+/** Intelligence pipeline commands (consumed by omniintelligence) */
+export const SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD = 'onex.cmd.omniintelligence.code-analysis.v1';
+export const SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD =
+  'onex.cmd.omniintelligence.document-ingestion.v1';
+export const SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD =
+  'onex.cmd.omniintelligence.pattern-learning.v1';
+export const SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD =
+  'onex.cmd.omniintelligence.quality-assessment.v1';
+
+/** Intelligence pipeline events (published by omniintelligence) */
+export const SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED =
+  'onex.evt.omniintelligence.code-analysis-completed.v1';
+export const SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED =
+  'onex.evt.omniintelligence.code-analysis-failed.v1';
+export const SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED =
+  'onex.evt.omniintelligence.document-ingestion-completed.v1';
+export const SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED =
+  'onex.evt.omniintelligence.pattern-learning-completed.v1';
+export const SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED =
+  'onex.evt.omniintelligence.quality-assessment-completed.v1';
 
 // ============================================================================
 // OmniMemory Topics
@@ -234,6 +267,7 @@ export const PLATFORM_NODE_SUFFIXES = [
   SUFFIX_NODE_INTROSPECTION,
   SUFFIX_NODE_REGISTRATION,
   SUFFIX_REQUEST_INTROSPECTION,
+  SUFFIX_REGISTRY_REQUEST_INTROSPECTION,
   SUFFIX_NODE_BECAME_ACTIVE,
   SUFFIX_NODE_LIVENESS_EXPIRED,
   SUFFIX_NODE_HEARTBEAT,
@@ -242,7 +276,13 @@ export const PLATFORM_NODE_SUFFIXES = [
   SUFFIX_NODE_REGISTRATION_INITIATED,
   SUFFIX_NODE_REGISTRATION_ACCEPTED,
   SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_NODE_REGISTRATION_ACKED,
+  SUFFIX_NODE_REGISTRATION_RESULT,
+  SUFFIX_NODE_REGISTRATION_ACK_RECEIVED,
+  SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT,
   SUFFIX_REGISTRATION_SNAPSHOTS,
+  SUFFIX_FSM_STATE_TRANSITIONS,
+  SUFFIX_RUNTIME_TICK,
 ] as const;
 
 /** OmniClaude lifecycle topic suffixes */
@@ -251,6 +291,26 @@ export const OMNICLAUDE_SUFFIXES = [
   SUFFIX_OMNICLAUDE_SESSION_STARTED,
   SUFFIX_OMNICLAUDE_SESSION_ENDED,
   SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+] as const;
+
+/** OmniClaude injection/extraction pipeline topic suffixes (OMN-1804) */
+export const OMNICLAUDE_INJECTION_SUFFIXES = [
+  SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION,
+  SUFFIX_OMNICLAUDE_AGENT_MATCH,
+  SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
+] as const;
+
+/** OmniIntelligence pipeline topic suffixes */
+export const INTELLIGENCE_PIPELINE_SUFFIXES = [
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
 ] as const;
 
 /** Intent topic suffixes */
@@ -288,6 +348,8 @@ export function buildSubscriptionTopics(): string[] {
     SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
     SUFFIX_INTELLIGENCE_TOOL_CONTENT,
     ...OMNICLAUDE_SUFFIXES,
+    ...OMNICLAUDE_INJECTION_SUFFIXES,
+    ...INTELLIGENCE_PIPELINE_SUFFIXES,
     ...INTENT_SUFFIXES,
     ...VALIDATION_SUFFIXES,
   ];

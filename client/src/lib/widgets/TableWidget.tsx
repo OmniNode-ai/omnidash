@@ -168,8 +168,10 @@ export function TableWidget({
     if (!column) return rawRows;
 
     return [...rawRows].sort((a, b) => {
-      const aVal = a[sortState.key!];
-      const bVal = b[sortState.key!];
+      // Use sort_key override if the column defines one (e.g. ISO string for relative time)
+      const effectiveKey = column.sort_key ?? sortState.key!;
+      const aVal = a[effectiveKey];
+      const bVal = b[effectiveKey];
 
       // Handle null/undefined
       if (aVal == null && bVal == null) return 0;

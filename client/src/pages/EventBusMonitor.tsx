@@ -1,15 +1,13 @@
 /**
- * Event Bus Monitor Dashboard
+ * Event Bus Monitor Dashboard (OMN-2095)
  *
  * Real-time Kafka event stream visualization for ONEX platform.
- * Uses useEventBusStream hook for live event streaming and displays
- * events through the contract-driven dashboard renderer.
+ * Uses server-side projection for event aggregation and the
+ * useProjectionStream hook for efficient data fetching.
  *
- * Features:
- * - Real-time event streaming via WebSocket
- * - Topic health monitoring
- * - Event filtering and search
- * - Throughput and error rate metrics
+ * Architecture: pure renderer — all buffering, deduplication, sorting,
+ * and time-series computation happen server-side in EventBusProjection.
+ * The client handles UI concerns: filtering, pausing, search, display.
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -24,14 +22,14 @@ import {
   topicMatchesSuffix,
   normalizeToSuffix,
 } from '@/lib/configs/event-bus-dashboard';
-import { useEventBusStream } from '@/hooks/useEventBusStream';
-import type {
-  ProcessedEvent,
-  TopicBreakdownItem,
-  EventTypeBreakdownItem,
-  TimeSeriesItem,
-} from '@/hooks/useEventBusStream.types';
-import { TIME_SERIES_BUCKET_MS } from '@/hooks/useEventBusStream.utils';
+import { useProjectionStream } from '@/hooks/useProjectionStream';
+import type { ProjectionEvent } from '@/hooks/useProjectionStream.types';
+import {
+  fetchEventBusSnapshot,
+  type EventBusPayload,
+} from '@/lib/data-sources/event-bus-projection-source';
+import { TIME_SERIES_BUCKET_MS } from '@shared/event-bus-payload';
+import { extractParsedDetails, type ParsedDetails } from '@/components/event-bus/eventDetailUtils';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +44,6 @@ import {
 } from '@/components/ui/select';
 import {
   Activity,
-  RefreshCw,
   Filter,
   X,
   Pause,
@@ -54,6 +51,8 @@ import {
   Eye,
   EyeOff,
   AlertTriangle,
+  Zap,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   EventDetailPanel,
@@ -72,15 +71,38 @@ interface FilterState {
   search: string;
 }
 
+/** Display-oriented event derived from ProjectionEvent */
+interface DisplayEvent {
+  id: string;
+  topic: string;
+  topicRaw: string;
+  eventType: string;
+  priority: 'critical' | 'high' | 'normal' | 'low';
+  timestamp: Date;
+  timestampRaw: string;
+  source: string;
+  correlationId?: string;
+  payload: string;
+  summary: string;
+  normalizedType: string;
+  parsedDetails: ParsedDetails | null;
+}
+
 interface PausedSnapshot {
-  events: ProcessedEvent[];
-  topicBreakdown: TopicBreakdownItem[];
-  eventTypeBreakdown: EventTypeBreakdownItem[];
-  timeSeries: TimeSeriesItem[];
-  totalEvents: number;
+  events: DisplayEvent[];
+  topicBreakdown: Record<string, number>;
+  eventTypeBreakdown: Record<string, number>;
+  timeSeries: Array<{ bucketKey: number; count: number }>;
   eventsPerSecond: number;
-  errorRate: number;
+  errorCount: number;
   activeTopics: number;
+  totalEvents: number;
+  // Burst/staleness state frozen at pause time (OMN-2158)
+  burstInfo: EventBusPayload['burstInfo'];
+  burstWindowMs: number;
+  monitoringWindowMs: number;
+  stalenessThresholdMs: number;
+  windowedErrorRate: number;
 }
 
 // ============================================================================
@@ -91,13 +113,162 @@ const eventConfig = getEventMonitoringConfig();
 const monitoredTopics = getMonitoredTopics();
 
 // ============================================================================
+// Mapping: ProjectionEvent → DisplayEvent
+// ============================================================================
+
+function mapSeverityToPriority(
+  severity: ProjectionEvent['severity']
+): 'critical' | 'high' | 'normal' | 'low' {
+  switch (severity) {
+    case 'critical':
+      return 'critical';
+    case 'error':
+      return 'high';
+    case 'warning':
+      return 'normal';
+    case 'info':
+      return 'low';
+  }
+}
+
+/**
+ * Extract the producer segment from an ONEX canonical topic name.
+ * Format: onex.<kind>.<producer>.<event-name>.v<version>
+ * Also handles legacy env-prefixed form: <env>.onex.<kind>.<producer>...
+ * Returns null for flat legacy topics (e.g. "agent-actions").
+ */
+function extractProducerFromTopic(topic: string): string | null {
+  const segments = topic.split('.');
+  // Canonical: onex.<kind>.<producer>.<event-name>.v<version>  (5+ segments)
+  if (segments.length >= 5 && segments[0] === 'onex') {
+    return segments[2];
+  }
+  // Env-prefixed: <env>.onex.<kind>.<producer>.<event-name>.v<version>  (6+ segments)
+  if (segments.length >= 6 && segments[1] === 'onex') {
+    return segments[3];
+  }
+  return null;
+}
+
+function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
+  const payloadStr = JSON.stringify(event.payload);
+  const parsedDetails = extractParsedDetails(payloadStr, event.type);
+  const normalizedType = computeNormalizedType(event.type, parsedDetails);
+
+  // Use a single fallback time so timestamp and timestampRaw are always consistent
+  const effectiveTimeMs = event.eventTimeMs > 0 ? event.eventTimeMs : Date.now();
+  const timestampRaw = new Date(effectiveTimeMs).toISOString();
+
+  // Resolve source: use event.source if present and not "unknown",
+  // otherwise try to extract the producer from the ONEX topic name,
+  // falling back to "system" for legacy flat-name topics.
+  const resolvedSource =
+    event.source && event.source !== 'unknown'
+      ? event.source
+      : (extractProducerFromTopic(event.topic) ?? 'system');
+
+  return {
+    id: event.id,
+    topic: getTopicLabel(event.topic),
+    topicRaw: event.topic,
+    eventType: event.type,
+    priority: mapSeverityToPriority(event.severity),
+    timestamp: new Date(effectiveTimeMs),
+    timestampRaw,
+    source: resolvedSource,
+    correlationId: event.payload?.correlationId as string | undefined,
+    payload: payloadStr,
+    summary: generateSummary(event.type, parsedDetails, event),
+    normalizedType,
+    parsedDetails,
+  };
+}
+
+function computeNormalizedType(eventType: string, details: ParsedDetails | null): string {
+  if (details?.toolName) return details.toolName;
+  if (details?.actionName) return details.actionName;
+  if (details?.selectedAgent) return `route:${details.selectedAgent}`;
+  if (/^v\d+$/.test(eventType)) {
+    return details?.actionName || details?.actionType || 'unknown';
+  }
+  // OMN-2196: Handle ONEX topic-style types (e.g. 'onex.cmd.omniintelligence.tool-content.v1').
+  // Extract the action name segment (second-to-last) from the canonical format.
+  if (
+    eventType.startsWith('onex.') ||
+    /^(dev|staging|prod|production|test|local)\.onex\./.test(eventType)
+  ) {
+    const segments = eventType.split('.');
+    if (segments.length >= 5) {
+      return segments[segments.length - 2]; // event-name segment
+    }
+  }
+  return eventType;
+}
+
+function generateSummary(
+  eventType: string,
+  details: ParsedDetails | null,
+  event: ProjectionEvent
+): string {
+  if (!details) {
+    const actionName = event.payload?.actionType || event.payload?.action_type;
+    if (actionName && typeof actionName === 'string') {
+      return actionName.length > 60 ? actionName.slice(0, 57) + '...' : actionName;
+    }
+    return eventType.length > 60 ? eventType.slice(0, 57) + '...' : eventType;
+  }
+
+  if (details.toolName) {
+    const filePath = findFilePath(event.payload);
+    if (filePath) {
+      return `${details.toolName} ${filePath.split('/').pop() || filePath}`;
+    }
+    return details.toolName;
+  }
+
+  if (details.nodeId) {
+    return `${details.nodeId} — ${details.healthStatus || details.status || 'healthy'}`;
+  }
+
+  if (details.selectedAgent) {
+    const conf = details.confidence;
+    const confStr = typeof conf === 'number' ? ` (${Math.round(conf * 100)}%)` : '';
+    return `Selected ${details.selectedAgent}${confStr}`;
+  }
+
+  if (details.error) {
+    const errorType = details.actionType || 'Error';
+    const msg = details.error.length > 50 ? details.error.slice(0, 47) + '...' : details.error;
+    return `${errorType}: ${msg}`;
+  }
+
+  if (details.actionName) {
+    return details.actionName.length > 60
+      ? details.actionName.slice(0, 57) + '...'
+      : details.actionName;
+  }
+
+  return eventType.length > 60 ? eventType.slice(0, 57) + '...' : eventType;
+}
+
+function findFilePath(payload: Record<string, unknown>): string | undefined {
+  if (typeof payload.file_path === 'string') return payload.file_path;
+  if (typeof payload.filePath === 'string') return payload.filePath;
+  for (const key of ['content', 'details', 'data']) {
+    const nested = payload[key];
+    if (nested && typeof nested === 'object') {
+      const n = nested as Record<string, unknown>;
+      if (typeof n.file_path === 'string') return n.file_path;
+      if (typeof n.filePath === 'string') return n.filePath;
+    }
+  }
+  return undefined;
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
-/**
- * Format a timestamp as a relative time string (e.g., "5s ago", "2m ago").
- * Falls back to absolute date for events older than 24 hours.
- */
 function formatRelativeTime(timestamp: string | Date): string {
   const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
   const now = Date.now();
@@ -111,9 +282,19 @@ function formatRelativeTime(timestamp: string | Date): string {
   return date.toLocaleDateString();
 }
 
-/**
- * Map event priority to UI type for EventFeed display.
- */
+/** Format a ms duration to a human-readable string (config-driven, never hardcoded). */
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60)
+    return seconds === Math.floor(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
+  const minutes = seconds / 60;
+  if (minutes < 60)
+    return minutes === Math.floor(minutes) ? `${minutes} min` : `${minutes.toFixed(1)} min`;
+  const hours = minutes / 60;
+  return hours === Math.floor(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
+}
+
 function mapPriorityToType(priority: string): 'info' | 'success' | 'warning' | 'error' {
   switch (priority) {
     case 'critical':
@@ -129,10 +310,7 @@ function mapPriorityToType(priority: string): 'info' | 'success' | 'warning' | '
   }
 }
 
-/**
- * Convert ProcessedEvent to live event format for EventFeed widget.
- */
-function toLiveEvent(event: ProcessedEvent) {
+function toLiveEvent(event: DisplayEvent) {
   return {
     id: event.id,
     timestamp: event.timestampRaw,
@@ -147,15 +325,12 @@ function toLiveEvent(event: ProcessedEvent) {
   };
 }
 
-/**
- * Convert ProcessedEvent to recent event format for table.
- */
-function toRecentEvent(event: ProcessedEvent) {
+function toRecentEvent(event: DisplayEvent) {
   return {
     id: event.id,
     topic: event.topic,
     topicRaw: event.topicRaw,
-    eventType: getEventTypeLabel(event.eventType),
+    eventType: event.normalizedType,
     summary: event.summary,
     source: event.source,
     timestamp: formatRelativeTime(event.timestampRaw),
@@ -170,15 +345,9 @@ function toRecentEvent(event: ProcessedEvent) {
 // Chart Bucketing
 // ============================================================================
 
-/** Minimum share (0..1) for an event type to avoid being collapsed into "Other" */
 const OTHER_THRESHOLD_SHARE = 0.03;
-/** Minimum absolute count for an event type to avoid being collapsed into "Other" */
 const OTHER_THRESHOLD_COUNT = 2;
 
-/**
- * Aggregate small event-type slices into an "Other" bucket.
- * Types with <3% share OR <2 events get merged, unless that would merge everything.
- */
 function bucketSmallTypes(
   items: Array<{ name: string; eventType: string; eventCount: number }>
 ): Array<{ name: string; eventType: string; eventCount: number }> {
@@ -197,7 +366,6 @@ function bucketSmallTypes(
     }
   }
 
-  // If everything collapsed, just return original — don't show a single "Other" bar
   if (kept.length === 0) return items;
 
   if (otherCount > 0) {
@@ -212,22 +380,69 @@ function bucketSmallTypes(
 // ============================================================================
 
 export default function EventBusMonitor() {
-  // Max events state - controls how many events the hook retains
   const [maxEvents, setMaxEvents] = useState(eventConfig.max_events);
 
-  // Stream hook provides events, metrics, and connection management
+  // Server-side projection replaces useEventBusStream
   const {
-    events,
-    metrics,
-    topicBreakdown,
-    eventTypeBreakdown,
-    timeSeries,
-    connectionStatus,
-    stats,
-    connect,
-  } = useEventBusStream({
-    maxItems: maxEvents,
+    data: snapshot,
+    isLoading,
+    isConnected: wsConnected,
+  } = useProjectionStream<EventBusPayload>('event-bus', fetchEventBusSnapshot, {
+    limit: maxEvents,
+    refetchInterval: 2000,
   });
+
+  // Map ProjectionEvents to display format (memoized).
+  //
+  // Proxy-key optimization: keyed on (cursor, totalEventsIngested, events.length)
+  // rather than the events array reference, which changes on every poll cycle
+  // even when data hasn't changed (JSON.parse creates new arrays).
+  //
+  // Why these three keys are sufficient:
+  //   - cursor (max ingestSeq) increases on every new event ingested
+  //   - totalEventsIngested monotonically increases (never resets to same value)
+  //   - events.length catches buffer-full edge cases where an evict + insert
+  //     could theoretically leave cursor unchanged (belt-and-suspenders)
+  //
+  // Edge cases:
+  //   cursor 0→0: benign — both before/after represent "no events".
+  //   undefined→0: React detects this as a dep change (undefined !== 0).
+  //   cursor N→reset→N: totalEventsIngested differs (resets to 0 independently).
+  //   Sort order change: firstEventId + lastEventId pin both ends of the array,
+  //     catching reordering even when aggregate keys match.
+  const events = snapshot?.payload?.events;
+  const firstEventId = events?.[0]?.id;
+  const lastEventId = events && events.length > 0 ? events[events.length - 1]?.id : undefined;
+  const displayEvents = useMemo((): DisplayEvent[] => {
+    if (!snapshot?.payload?.events) return [];
+    const mapped = snapshot.payload.events.map(toDisplayEvent);
+    // Client-side dedup: filter out any duplicate IDs (belt-and-suspenders
+    // defense in case duplicates slip through the server-side projection)
+    const seen = new Set<string>();
+    return mapped.filter((e) => {
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    snapshot?.cursor,
+    snapshot?.payload?.totalEventsIngested,
+    snapshot?.payload?.events?.length,
+    firstEventId,
+    lastEventId,
+  ]);
+
+  // Extract aggregates from snapshot
+  const snapshotPayload = snapshot?.payload;
+  const eventsPerSecond = snapshotPayload?.eventsPerSecond ?? 0;
+  const errorCount = snapshotPayload?.errorCount ?? 0;
+  const activeTopicsCount = snapshotPayload?.activeTopics ?? 0;
+
+  // Connection status: require both snapshot data AND WebSocket connectivity
+  // to show "connected". This prevents false "Live Data" when Kafka is down
+  // but the snapshot endpoint still returns stale/empty data.
+  const isConnected = !isLoading && !!snapshot && wsConnected;
 
   // UI state
   const [filters, setFilters] = useState<FilterState>({
@@ -240,73 +455,71 @@ export default function EventBusMonitor() {
   const [isPaused, setIsPaused] = useState(false);
   const [hideHeartbeats, setHideHeartbeats] = useState(false);
 
-  // Paused snapshot - captures state when pausing
+  // Paused snapshot
   const pausedSnapshotRef = useRef<PausedSnapshot | null>(null);
-  // Track previous pause state to detect transitions
   const wasPausedRef = useRef(false);
 
-  // Chart snapshot — prevents blank charts when old events expire from the
-  // bounded buffer while a topic filter is active. Cleared on filter change.
+  // Chart snapshot cache
   const chartSnapshotRef = useRef<{
     eventTypeBreakdownData: Array<{ name: string; eventType: string; eventCount: number }>;
     timeSeriesData: Array<{ time: number; timestamp: string; name: string; events: number }>;
   } | null>(null);
 
-  // Capture snapshot only on transition from unpaused -> paused
+  // Capture snapshot on pause transition
   useEffect(() => {
     if (isPaused && !wasPausedRef.current) {
-      // Transition: unpaused -> paused - capture snapshot once
       pausedSnapshotRef.current = {
-        events,
-        topicBreakdown,
-        eventTypeBreakdown,
-        timeSeries,
-        totalEvents: metrics.totalEvents,
-        eventsPerSecond: metrics.eventsPerSecond,
-        errorRate: metrics.errorRate,
-        activeTopics: metrics.activeTopics,
+        events: displayEvents,
+        topicBreakdown: snapshotPayload?.topicBreakdown ?? {},
+        eventTypeBreakdown: snapshotPayload?.eventTypeBreakdown ?? {},
+        timeSeries: snapshotPayload?.timeSeries ?? [],
+        eventsPerSecond,
+        errorCount,
+        activeTopics: activeTopicsCount,
+        totalEvents: displayEvents.length,
+        // Freeze burst/staleness state at pause time (OMN-2158)
+        burstInfo: snapshotPayload?.burstInfo ?? null,
+        burstWindowMs: snapshotPayload?.burstWindowMs ?? 30_000,
+        monitoringWindowMs: snapshotPayload?.monitoringWindowMs ?? 5 * 60 * 1000,
+        stalenessThresholdMs: snapshotPayload?.stalenessThresholdMs ?? 10 * 60 * 1000,
+        windowedErrorRate: snapshotPayload?.windowedErrorRate ?? 0,
       };
       wasPausedRef.current = true;
     } else if (!isPaused && wasPausedRef.current) {
-      // Transition: paused -> unpaused - clear snapshot
       pausedSnapshotRef.current = null;
       wasPausedRef.current = false;
     }
-  }, [isPaused, events, topicBreakdown, eventTypeBreakdown, timeSeries, metrics]);
+  }, [isPaused, displayEvents, snapshotPayload, eventsPerSecond, errorCount, activeTopicsCount]);
 
-  // Use paused snapshot or live data
+  // Source data (paused or live)
   const sourceData = useMemo(() => {
     if (isPaused && pausedSnapshotRef.current) {
       return pausedSnapshotRef.current;
     }
     return {
-      events,
-      topicBreakdown,
-      eventTypeBreakdown,
-      timeSeries,
-      totalEvents: metrics.totalEvents,
-      eventsPerSecond: metrics.eventsPerSecond,
-      errorRate: metrics.errorRate,
-      activeTopics: metrics.activeTopics,
+      events: displayEvents,
+      topicBreakdown: snapshotPayload?.topicBreakdown ?? {},
+      eventTypeBreakdown: snapshotPayload?.eventTypeBreakdown ?? {},
+      timeSeries: snapshotPayload?.timeSeries ?? [],
+      eventsPerSecond,
+      errorCount,
+      activeTopics: activeTopicsCount,
+      totalEvents: displayEvents.length,
     };
-  }, [isPaused, events, topicBreakdown, eventTypeBreakdown, timeSeries, metrics]);
+  }, [isPaused, displayEvents, snapshotPayload, eventsPerSecond, errorCount, activeTopicsCount]);
 
-  // Last update time for display
+  // Last update time
   const lastUpdate = useMemo(() => {
-    if (stats.lastEventAt) {
-      return new Date(stats.lastEventAt);
+    if (snapshot?.snapshotTimeMs) {
+      return new Date(snapshot.snapshotTimeMs);
     }
     return new Date();
-  }, [stats.lastEventAt]);
+  }, [snapshot?.snapshotTimeMs]);
 
   // ============================================================================
   // Topic Status Data
   // ============================================================================
 
-  // Tick counter forces topicStatusData to recompute every 30 seconds so that
-  // topic statuses properly decay from "active" to "silent" even when no new
-  // events arrive.  Without this, the useMemo only runs when sourceData.events
-  // changes, leaving stale "active" badges indefinitely.
   const [statusTick, setStatusTick] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setStatusTick((t) => t + 1), 30_000);
@@ -314,15 +527,25 @@ export default function EventBusMonitor() {
   }, []);
 
   const topicStatusData = useMemo(() => {
-    // statusTick is read here so the linter keeps it in the dep array; the
-    // actual value is unused — it just forces a periodic recomputation.
     void statusTick;
 
     const now = Date.now();
     const FIVE_MINUTES_MS = 5 * 60 * 1000;
     const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
-    const statusRows = monitoredTopics.map((topic) => {
+    // Merge hardcoded monitored topics with dynamically observed topics from
+    // the projection snapshot's topicBreakdown (OMN-2193). Observed topics not
+    // in the hardcoded list appear dynamically; known topics with no events
+    // remain "Silent".
+    const allTopics = new Set<string>(monitoredTopics);
+    const topicBreakdown = sourceData.topicBreakdown;
+    for (const observedTopic of Object.keys(topicBreakdown)) {
+      // Normalize env-prefixed topics to their canonical suffix form
+      const normalized = normalizeToSuffix(observedTopic);
+      allTopics.add(normalized);
+    }
+
+    const statusRows = Array.from(allTopics).map((topic) => {
       const topicEvents = sourceData.events.filter((e) => topicMatchesSuffix(e.topicRaw, topic));
       const eventCount = topicEvents.length;
       const lastEvent = topicEvents.length > 0 ? topicEvents[0] : null;
@@ -358,7 +581,6 @@ export default function EventBusMonitor() {
       };
     });
 
-    // Sort: active first, then silent; within each group, by eventCount desc
     statusRows.sort((a, b) => {
       if (a.status === 'active' && b.status !== 'active') return -1;
       if (a.status !== 'active' && b.status === 'active') return 1;
@@ -366,10 +588,9 @@ export default function EventBusMonitor() {
     });
 
     return statusRows;
-  }, [sourceData.events, statusTick]);
+  }, [sourceData.events, sourceData.topicBreakdown, statusTick]);
 
-  // Derive Topics Loaded KPI — count of topics with any events in the current buffer
-  const activeTopicsCount = useMemo(
+  const topicsLoadedCount = useMemo(
     () => topicStatusData.filter((t) => t.eventCount > 0).length,
     [topicStatusData]
   );
@@ -378,101 +599,51 @@ export default function EventBusMonitor() {
   // Filtered Data
   // ============================================================================
 
+  // Whether we're in paused state with a frozen snapshot.
+  // Declared here (above filteredData useMemo) to avoid temporal dead zone.
+  const paused = isPaused && pausedSnapshotRef.current;
+
   const filteredData = useMemo((): DashboardData => {
     const { events: srcEvents } = sourceData;
 
-    // Quick path: no filters active - but still compute charts from displayed events
-    if (!filters.topic && !filters.priority && !filters.search && !hideHeartbeats) {
-      const displayedEvents = srcEvents.slice(0, maxEvents);
-      const liveEvents = displayedEvents.map(toLiveEvent);
-      const recentEvents = displayedEvents.map(toRecentEvent);
+    // Apply filters
+    const filtered =
+      !filters.topic && !filters.priority && !filters.search && !hideHeartbeats
+        ? srcEvents
+        : srcEvents.filter((event) => {
+            if (
+              hideHeartbeats &&
+              (event.topicRaw.includes('heartbeat') ||
+                event.eventType.toLowerCase().includes('heartbeat'))
+            )
+              return false;
+            if (filters.topic && !topicMatchesSuffix(event.topicRaw, filters.topic)) return false;
+            if (filters.priority && event.priority !== filters.priority) return false;
+            if (filters.search) {
+              const searchLower = filters.search.toLowerCase();
+              const matchesSearch =
+                event.eventType.toLowerCase().includes(searchLower) ||
+                event.source.toLowerCase().includes(searchLower) ||
+                event.topic.toLowerCase().includes(searchLower) ||
+                event.summary.toLowerCase().includes(searchLower) ||
+                (event.parsedDetails?.toolName?.toLowerCase().includes(searchLower) ?? false) ||
+                (event.parsedDetails?.nodeId?.toLowerCase().includes(searchLower) ?? false) ||
+                (event.parsedDetails?.selectedAgent?.toLowerCase().includes(searchLower) ??
+                  false) ||
+                (event.parsedDetails?.actionName?.toLowerCase().includes(searchLower) ?? false);
+              if (!matchesSearch) return false;
+            }
+            return true;
+          });
 
-      // Compute chart data from displayed events (respects maxEvents)
-      const topicCounts: Record<string, number> = {};
-      const eventTypeCounts: Record<string, number> = {};
-      const timeBuckets: Record<number, number> = {};
+    const displayedEvents = filtered.slice(0, maxEvents);
 
-      for (const event of displayedEvents) {
-        topicCounts[event.topicRaw] = (topicCounts[event.topicRaw] || 0) + 1;
-        eventTypeCounts[event.normalizedType] = (eventTypeCounts[event.normalizedType] || 0) + 1;
-        const bucketTime =
-          Math.floor(event.timestamp.getTime() / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
-        timeBuckets[bucketTime] = (timeBuckets[bucketTime] || 0) + 1;
-      }
-
-      const topicBreakdownData = Object.entries(topicCounts).map(([topic, count]) => ({
-        name: getTopicLabel(topic),
-        topic,
-        eventCount: count,
-      }));
-
-      const eventTypeBreakdownRaw = Object.entries(eventTypeCounts).map(([eventType, count]) => ({
-        name: getEventTypeLabel(eventType),
-        eventType,
-        eventCount: count,
-      }));
-      const eventTypeBreakdownData = bucketSmallTypes(eventTypeBreakdownRaw);
-
-      const timeSeriesData = Object.entries(timeBuckets)
-        .map(([time, count]) => {
-          const date = new Date(Number(time));
-          const formattedTime = `${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
-          return {
-            time: Number(time),
-            timestamp: formattedTime,
-            name: formattedTime,
-            events: count,
-          };
-        })
-        .sort((a, b) => a.time - b.time);
-
-      return {
-        totalEvents: displayedEvents.length,
-        eventsPerSecond: sourceData.eventsPerSecond,
-        errorRate: sourceData.errorRate,
-        activeTopics: activeTopicsCount,
-        dlqCount: displayedEvents.filter((e) => e.priority === 'critical').length,
-        recentEvents,
-        liveEvents,
-        topicBreakdownData,
-        eventTypeBreakdownData,
-        timeSeriesData,
-        topicHealth: [],
-      };
-    }
-
-    // Filter events
-    const filtered = srcEvents.filter((event) => {
-      if (
-        hideHeartbeats &&
-        (event.topicRaw.includes('heartbeat') ||
-          event.eventType.toLowerCase().includes('heartbeat'))
-      )
-        return false;
-      if (filters.topic && !topicMatchesSuffix(event.topicRaw, filters.topic)) return false;
-      if (filters.priority && event.priority !== filters.priority) return false;
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const matchesSearch =
-          event.eventType.toLowerCase().includes(searchLower) ||
-          event.source.toLowerCase().includes(searchLower) ||
-          event.topic.toLowerCase().includes(searchLower) ||
-          event.summary.toLowerCase().includes(searchLower) ||
-          (event.parsedDetails?.toolName?.toLowerCase().includes(searchLower) ?? false) ||
-          (event.parsedDetails?.nodeId?.toLowerCase().includes(searchLower) ?? false) ||
-          (event.parsedDetails?.selectedAgent?.toLowerCase().includes(searchLower) ?? false) ||
-          (event.parsedDetails?.actionName?.toLowerCase().includes(searchLower) ?? false);
-        if (!matchesSearch) return false;
-      }
-      return true;
-    });
-
-    // Recalculate breakdowns from filtered events
+    // Compute chart data from displayed events
     const topicCounts: Record<string, number> = {};
     const eventTypeCounts: Record<string, number> = {};
     const timeBuckets: Record<number, number> = {};
 
-    for (const event of filtered) {
+    for (const event of displayedEvents) {
       topicCounts[event.topicRaw] = (topicCounts[event.topicRaw] || 0) + 1;
       eventTypeCounts[event.normalizedType] = (eventTypeCounts[event.normalizedType] || 0) + 1;
       const bucketTime =
@@ -480,25 +651,40 @@ export default function EventBusMonitor() {
       timeBuckets[bucketTime] = (timeBuckets[bucketTime] || 0) + 1;
     }
 
-    const filteredTopicBreakdown = Object.entries(topicCounts).map(([topic, count]) => ({
+    // Fill zero-count gaps so the chart shows flat baseline during idle periods
+    // instead of misleading interpolation lines.
+    const bucketKeys = Object.keys(timeBuckets).map(Number);
+    if (bucketKeys.length > 1) {
+      const minBucket = Math.min(...bucketKeys);
+      const maxBucket = Math.max(...bucketKeys);
+      for (let b = minBucket; b <= maxBucket; b += TIME_SERIES_BUCKET_MS) {
+        if (!(b in timeBuckets)) {
+          timeBuckets[b] = 0;
+        }
+      }
+    }
+
+    const topicBreakdownData = Object.entries(topicCounts).map(([topic, count]) => ({
       name: getTopicLabel(topic),
       topic,
       eventCount: count,
     }));
 
-    const filteredEventTypeBreakdownRaw = Object.entries(eventTypeCounts).map(
-      ([eventType, count]) => ({
-        name: getEventTypeLabel(eventType),
-        eventType,
-        eventCount: count,
-      })
-    );
-    const filteredEventTypeBreakdown = bucketSmallTypes(filteredEventTypeBreakdownRaw);
+    const eventTypeBreakdownRaw = Object.entries(eventTypeCounts).map(([eventType, count]) => ({
+      name: getEventTypeLabel(eventType),
+      eventType,
+      eventCount: count,
+    }));
+    const eventTypeBreakdownData = bucketSmallTypes(eventTypeBreakdownRaw);
 
-    const filteredTimeSeries = Object.entries(timeBuckets)
+    const timeSeriesData = Object.entries(timeBuckets)
       .map(([time, count]) => {
         const date = new Date(Number(time));
-        const formattedTime = `${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+        const formattedTime = date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
         return {
           time: Number(time),
           timestamp: formattedTime,
@@ -508,41 +694,65 @@ export default function EventBusMonitor() {
       })
       .sort((a, b) => a.time - b.time);
 
-    // Cache non-empty chart data so charts don't go blank when old events
-    // expire from the bounded buffer while a topic filter is active.
-    if (filteredEventTypeBreakdown.length > 0) {
+    // Chart snapshot cache
+    if (eventTypeBreakdownData.length > 0) {
       chartSnapshotRef.current = {
-        eventTypeBreakdownData: filteredEventTypeBreakdown,
-        timeSeriesData: filteredTimeSeries,
+        eventTypeBreakdownData,
+        timeSeriesData,
       };
     }
 
-    // Fall back to cached chart data when current computation yields nothing
     const effectiveBreakdown =
-      filteredEventTypeBreakdown.length > 0
-        ? filteredEventTypeBreakdown
+      eventTypeBreakdownData.length > 0
+        ? eventTypeBreakdownData
         : (chartSnapshotRef.current?.eventTypeBreakdownData ?? []);
     const effectiveTimeSeries =
-      filteredTimeSeries.length > 0
-        ? filteredTimeSeries
-        : (chartSnapshotRef.current?.timeSeriesData ?? []);
+      timeSeriesData.length > 0 ? timeSeriesData : (chartSnapshotRef.current?.timeSeriesData ?? []);
+
+    // Error rate: when no filters are active, use server-provided windowedErrorRate
+    // (computed within the unified monitoring window — fixes the latent whole-buffer bug).
+    // When paused, use the frozen windowedErrorRate. When filters are active, fall back
+    // to computing from the filtered set.
+    const hasFilters = filters.topic || filters.priority || filters.search || hideHeartbeats;
+    const serverErrorRate = paused
+      ? pausedSnapshotRef.current!.windowedErrorRate
+      : snapshotPayload?.windowedErrorRate;
+    const errorRate =
+      !hasFilters && serverErrorRate != null
+        ? Math.round(serverErrorRate * 10000) / 100
+        : displayedEvents.length > 0
+          ? Math.round(
+              (displayedEvents.filter((e) => e.priority === 'critical' || e.priority === 'high')
+                .length /
+                displayedEvents.length) *
+                10000
+            ) / 100
+          : 0;
 
     return {
-      totalEvents: filtered.length,
+      totalEvents: displayedEvents.length,
       eventsPerSecond: sourceData.eventsPerSecond,
-      errorRate: sourceData.errorRate,
-      activeTopics: activeTopicsCount,
-      dlqCount: filtered.filter((e) => e.priority === 'critical').length,
-      recentEvents: filtered.slice(0, maxEvents).map(toRecentEvent),
-      liveEvents: filtered.slice(0, maxEvents).map(toLiveEvent),
-      topicBreakdownData: filteredTopicBreakdown,
+      errorRate,
+      activeTopics: topicsLoadedCount,
+      dlqCount: displayedEvents.filter((e) => e.priority === 'critical').length,
+      recentEvents: displayedEvents.map(toRecentEvent),
+      liveEvents: displayedEvents.map(toLiveEvent),
+      topicBreakdownData,
       eventTypeBreakdownData: effectiveBreakdown,
       timeSeriesData: effectiveTimeSeries,
       topicHealth: [],
     };
-  }, [sourceData, filters, maxEvents, hideHeartbeats, activeTopicsCount]);
+  }, [
+    sourceData,
+    filters,
+    maxEvents,
+    hideHeartbeats,
+    topicsLoadedCount,
+    paused,
+    snapshotPayload?.windowedErrorRate,
+  ]);
 
-  // Clear chart snapshot when topic filter changes so stale data doesn't linger
+  // Clear chart snapshot when topic filter changes
   useEffect(() => {
     chartSnapshotRef.current = null;
   }, [filters.topic]);
@@ -558,7 +768,6 @@ export default function EventBusMonitor() {
   const handleFilterRequest = useCallback((filter: FilterRequest) => {
     switch (filter.type) {
       case 'topic':
-        // Normalize env-prefixed topic to suffix so TopicSelector highlight matches
         setFilters((prev) => ({ ...prev, topic: normalizeToSuffix(filter.value) }));
         break;
       case 'source':
@@ -591,12 +800,26 @@ export default function EventBusMonitor() {
   // Derived State
   // ============================================================================
 
-  const hasActiveFilters = filters.priority || filters.search || hideHeartbeats;
-  const isConnected = connectionStatus === 'connected';
+  const hasActiveFilters = filters.topic || filters.priority || filters.search || hideHeartbeats;
 
-  // Staleness detection — computed from ALL events (unfiltered), excluding heartbeats
+  // Staleness / burst state: respect pause by reading from frozen paused snapshot.
+  // When paused, banners stay consistent with the frozen event table/charts.
+  // Note: `paused` is defined above (before filteredData useMemo) to avoid TDZ issues.
+  const activeBurstInfo = paused
+    ? pausedSnapshotRef.current!.burstInfo
+    : (snapshotPayload?.burstInfo ?? null);
+  const activeBurstWindowMs = paused
+    ? pausedSnapshotRef.current!.burstWindowMs
+    : (snapshotPayload?.burstWindowMs ?? 30_000);
+  const activeMonitoringWindowMs = paused
+    ? pausedSnapshotRef.current!.monitoringWindowMs
+    : (snapshotPayload?.monitoringWindowMs ?? 5 * 60 * 1000);
+
+  // Staleness detection (uses server-provided threshold from OMN-2158)
+  const stalenessThresholdMs = paused
+    ? pausedSnapshotRef.current!.stalenessThresholdMs
+    : (snapshotPayload?.stalenessThresholdMs ?? 10 * 60 * 1000);
   const stalenessInfo = useMemo(() => {
-    const STALENESS_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
     const now = Date.now();
     const allEvents = sourceData.events;
 
@@ -610,16 +833,14 @@ export default function EventBusMonitor() {
     if (hasNoEvents) return { stale: false, hasOnlyHeartbeats: false } as const;
     if (hasOnlyHeartbeats) return { stale: true, hasOnlyHeartbeats: true } as const;
 
-    // Find the newest non-heartbeat event
     const newest = nonHeartbeatEvents.reduce(
       (latest, e) => (e.timestamp.getTime() > latest.timestamp.getTime() ? e : latest),
       nonHeartbeatEvents[0]
     );
     const ageMs = now - newest.timestamp.getTime();
 
-    if (ageMs <= STALENESS_THRESHOLD_MS) return { stale: false, hasOnlyHeartbeats: false } as const;
+    if (ageMs <= stalenessThresholdMs) return { stale: false, hasOnlyHeartbeats: false } as const;
 
-    // Format the age
     let ageStr: string;
     if (ageMs < 3600000) ageStr = `${Math.floor(ageMs / 60000)}m`;
     else if (ageMs < 86400000) ageStr = `${Math.floor(ageMs / 3600000)}h`;
@@ -632,10 +853,10 @@ export default function EventBusMonitor() {
       newestTopic: newest.topic,
       newestTimestamp: newest.timestamp.toLocaleString(),
     } as const;
-  }, [sourceData.events]);
+  }, [sourceData.events, stalenessThresholdMs]);
 
   // ============================================================================
-  // Split dashboard config: KPIs, Charts, Table
+  // Dashboard config splits
   // ============================================================================
 
   const kpiConfig = useMemo(
@@ -720,18 +941,11 @@ export default function EventBusMonitor() {
               </>
             )}
           </Button>
-
-          {!isConnected && connectionStatus !== 'connecting' && (
-            <Button variant="outline" size="sm" onClick={connect} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Reconnect
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Staleness Warning Banner */}
-      {stalenessInfo.stale && (
+      {/* Priority banners: staleness > error spike > throughput burst */}
+      {stalenessInfo.stale ? (
         <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-200">
           <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0" />
           <span className="text-sm">
@@ -749,7 +963,37 @@ export default function EventBusMonitor() {
             )}
           </span>
         </div>
-      )}
+      ) : activeBurstInfo?.type === 'error_spike' ? (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-200">
+          <ShieldAlert className="h-4 w-4 text-red-400 flex-shrink-0" />
+          <span className="text-sm">
+            Error spike detected — {formatDuration(activeBurstWindowMs)} error rate{' '}
+            <span className="font-semibold">
+              {(activeBurstInfo.shortWindowRate * 100).toFixed(1)}%
+            </span>{' '}
+            vs {formatDuration(activeMonitoringWindowMs)} baseline{' '}
+            <span className="font-semibold">
+              {(activeBurstInfo.baselineRate * 100).toFixed(1)}%
+            </span>{' '}
+            <span className="text-red-300/70">
+              ({activeBurstInfo.multiplier != null ? `${activeBurstInfo.multiplier}x` : 'new'})
+            </span>
+          </span>
+        </div>
+      ) : activeBurstInfo?.type === 'throughput' ? (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-200">
+          <Zap className="h-4 w-4 text-blue-400 flex-shrink-0" />
+          <span className="text-sm">
+            Throughput burst — {formatDuration(activeBurstWindowMs)} rate{' '}
+            <span className="font-semibold">{activeBurstInfo.shortWindowRate} evt/s</span> vs{' '}
+            {formatDuration(activeMonitoringWindowMs)} baseline{' '}
+            <span className="font-semibold">{activeBurstInfo.baselineRate} evt/s</span>{' '}
+            <span className="text-blue-300/70">
+              ({activeBurstInfo.multiplier != null ? `${activeBurstInfo.multiplier}x` : 'new'})
+            </span>
+          </span>
+        </div>
+      ) : null}
 
       {/* Filters */}
       <Card className="p-3">
@@ -827,13 +1071,9 @@ export default function EventBusMonitor() {
       </Card>
 
       {/* KPI Metric Cards */}
-      <DashboardRenderer
-        config={kpiConfig}
-        data={filteredData}
-        isLoading={connectionStatus === 'connecting'}
-      />
+      <DashboardRenderer config={kpiConfig} data={filteredData} isLoading={isLoading} />
 
-      {/* Topics + Charts — single row, fixed height so neither child can overflow */}
+      {/* Topics + Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4 h-[340px]">
         <TopicSelector
           topics={topicStatusData}
@@ -841,11 +1081,7 @@ export default function EventBusMonitor() {
           onSelectTopic={(topic) => setFilters((prev) => ({ ...prev, topic: topic }))}
         />
 
-        <DashboardRenderer
-          config={chartsConfig}
-          data={filteredData}
-          isLoading={connectionStatus === 'connecting'}
-        />
+        <DashboardRenderer config={chartsConfig} data={filteredData} isLoading={isLoading} />
       </div>
 
       {/* Context line + active filter banner */}
@@ -892,7 +1128,7 @@ export default function EventBusMonitor() {
       <DashboardRenderer
         config={tableConfig}
         data={filteredData}
-        isLoading={connectionStatus === 'connecting'}
+        isLoading={isLoading}
         onWidgetRowClick={handleEventClick}
       />
 

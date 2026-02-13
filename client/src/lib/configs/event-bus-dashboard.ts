@@ -24,6 +24,13 @@ import {
   SUFFIX_NODE_REGISTRATION_INITIATED,
   SUFFIX_NODE_REGISTRATION_ACCEPTED,
   SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_NODE_REGISTRATION_ACKED,
+  SUFFIX_NODE_REGISTRATION_RESULT,
+  SUFFIX_NODE_REGISTRATION_ACK_RECEIVED,
+  SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT,
+  SUFFIX_REGISTRY_REQUEST_INTROSPECTION,
+  SUFFIX_FSM_STATE_TRANSITIONS,
+  SUFFIX_RUNTIME_TICK,
   SUFFIX_REGISTRATION_SNAPSHOTS,
   SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
   SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
@@ -32,6 +39,15 @@ import {
   SUFFIX_INTELLIGENCE_PATTERN_SCORED,
   SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
   ENVIRONMENT_PREFIXES,
   extractSuffix,
 } from '@shared/topics';
@@ -82,12 +98,19 @@ export const NODE_TOPICS = [
   SUFFIX_NODE_REGISTRATION,
   SUFFIX_NODE_HEARTBEAT,
   SUFFIX_REQUEST_INTROSPECTION,
+  SUFFIX_REGISTRY_REQUEST_INTROSPECTION,
   SUFFIX_CONTRACT_REGISTERED,
   SUFFIX_CONTRACT_DEREGISTERED,
   SUFFIX_NODE_REGISTRATION_INITIATED,
   SUFFIX_NODE_REGISTRATION_ACCEPTED,
   SUFFIX_NODE_REGISTRATION_REJECTED,
+  SUFFIX_NODE_REGISTRATION_ACKED,
+  SUFFIX_NODE_REGISTRATION_RESULT,
+  SUFFIX_NODE_REGISTRATION_ACK_RECEIVED,
+  SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT,
   SUFFIX_REGISTRATION_SNAPSHOTS,
+  SUFFIX_FSM_STATE_TRANSITIONS,
+  SUFFIX_RUNTIME_TICK,
 ] as const;
 
 /**
@@ -131,6 +154,11 @@ export const TOPIC_METADATA: Record<
     description: 'Tool calls, decisions, errors, and successes',
     category: 'actions',
   },
+  actionUpdate: {
+    label: 'Action Updates',
+    description: 'Real-time tool call and action events from active Claude sessions',
+    category: 'actions',
+  },
   // Node registry topics (canonical ONEX suffixes)
   [SUFFIX_NODE_INTROSPECTION]: {
     label: 'Node Introspection',
@@ -148,8 +176,8 @@ export const TOPIC_METADATA: Record<
     category: 'health',
   },
   [SUFFIX_REQUEST_INTROSPECTION]: {
-    label: 'Registry Introspection Request',
-    description: 'Introspection requests from registry to nodes',
+    label: 'Introspect Cmd',
+    description: 'Command telling nodes to introspect themselves',
     category: 'introspection',
   },
   [SUFFIX_CONTRACT_REGISTERED]: {
@@ -177,10 +205,91 @@ export const TOPIC_METADATA: Record<
     description: 'Node registration rejection events',
     category: 'lifecycle',
   },
+  [SUFFIX_NODE_REGISTRATION_ACKED]: {
+    label: 'Registration ACKed',
+    description: 'Node acknowledges registration',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_RESULT]: {
+    label: 'Registration Result',
+    description: 'Final registration result',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_ACK_RECEIVED]: {
+    label: 'ACK Received',
+    description: 'Registration ACK received from node',
+    category: 'lifecycle',
+  },
+  [SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT]: {
+    label: 'ACK Timed Out',
+    description: 'Registration ACK not received in time',
+    category: 'lifecycle',
+  },
+  [SUFFIX_REGISTRY_REQUEST_INTROSPECTION]: {
+    label: 'Registry Re-Introspect',
+    description: 'Registry announces it wants nodes to re-introspect',
+    category: 'introspection',
+  },
+  [SUFFIX_FSM_STATE_TRANSITIONS]: {
+    label: 'FSM Transitions',
+    description: 'FSM state transition audit trail',
+    category: 'lifecycle',
+  },
+  [SUFFIX_RUNTIME_TICK]: {
+    label: 'Runtime Tick',
+    description: 'Periodic tick for timeout checks',
+    category: 'health',
+  },
   [SUFFIX_REGISTRATION_SNAPSHOTS]: {
     label: 'Registration Snapshots',
     description: 'Point-in-time registration state snapshots',
     category: 'snapshot',
+  },
+  // Intelligence pipeline topics
+  [SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD]: {
+    label: 'Code Analysis Cmd',
+    description: 'Request code analysis from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD]: {
+    label: 'Doc Ingestion Cmd',
+    description: 'Request document ingestion from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD]: {
+    label: 'Pattern Learning Cmd',
+    description: 'Request pattern learning from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD]: {
+    label: 'Quality Assessment Cmd',
+    description: 'Request quality assessment from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED]: {
+    label: 'Code Analysis Done',
+    description: 'Code analysis completed successfully',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED]: {
+    label: 'Code Analysis Failed',
+    description: 'Code analysis failed',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED]: {
+    label: 'Doc Ingestion Done',
+    description: 'Document ingestion completed successfully',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED]: {
+    label: 'Pattern Learning Done',
+    description: 'Pattern learning completed successfully',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED]: {
+    label: 'Quality Assessment Done',
+    description: 'Quality assessment completed successfully',
+    category: 'intelligence',
   },
   // Error topics
   errors: {
@@ -223,6 +332,17 @@ export const eventBusDashboardConfig: DashboardConfig = {
       throughput_window_ms: 60 * 1000, // 1 minute
       max_breakdown_items: 50,
       periodic_cleanup_interval_ms: 10 * 1000, // 10 seconds - for responsive UX
+
+      // Burst detection (OMN-2158)
+      monitoring_window_ms: 5 * 60 * 1000, // 5 min — unified baseline for all windowed metrics
+      staleness_threshold_ms: 10 * 60 * 1000, // 10 min — independent from monitoring window
+      burst_window_ms: 30 * 1000, // 30s short window
+      burst_throughput_multiplier: 3, // 3x baseline
+      burst_throughput_min_rate: 5, // min 5 events/sec absolute
+      burst_error_multiplier: 2, // 2x baseline
+      burst_error_absolute_threshold: 0.05, // 5%
+      burst_error_min_events: 10, // min 10 events for error rate
+      burst_cooldown_ms: 15 * 1000, // 15s cooldown
     },
   },
 
@@ -237,7 +357,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
     {
       widget_id: 'metric-topics-loaded',
       title: 'Topics Active',
-      description: 'Topics that emitted events in the last 5 min',
+      description: 'Topics that emitted events in the monitoring window',
       row: 0,
       col: 0,
       width: 4,
@@ -271,7 +391,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
     {
       widget_id: 'metric-error-rate',
       title: 'Error Rate',
-      description: 'Failed events in the last 5 min',
+      description: 'Error rate within the monitoring window',
       row: 0,
       col: 8,
       width: 4,
@@ -351,7 +471,13 @@ export const eventBusDashboardConfig: DashboardConfig = {
           { key: 'eventType', header: 'Event Type', width: 130, sortable: true },
           { key: 'summary', header: 'Summary', width: 250, sortable: false },
           { key: 'source', header: 'Source', width: 120, sortable: true },
-          { key: 'timestamp', header: 'Time', width: 100, sortable: true },
+          {
+            key: 'timestamp',
+            header: 'Time',
+            width: 100,
+            sortable: true,
+            sort_key: 'timestampSort',
+          },
         ],
       },
     },
@@ -582,6 +708,16 @@ export function getEventMonitoringConfig() {
     throughput_window_ms: config?.throughput_window_ms ?? 60 * 1000,
     max_breakdown_items: config?.max_breakdown_items ?? 50,
     periodic_cleanup_interval_ms: config?.periodic_cleanup_interval_ms ?? 10 * 1000,
+    // Burst detection (OMN-2158)
+    monitoring_window_ms: config?.monitoring_window_ms ?? 5 * 60 * 1000,
+    staleness_threshold_ms: config?.staleness_threshold_ms ?? 10 * 60 * 1000,
+    burst_window_ms: config?.burst_window_ms ?? 30 * 1000,
+    burst_throughput_multiplier: config?.burst_throughput_multiplier ?? 3,
+    burst_throughput_min_rate: config?.burst_throughput_min_rate ?? 5,
+    burst_error_multiplier: config?.burst_error_multiplier ?? 2,
+    burst_error_absolute_threshold: config?.burst_error_absolute_threshold ?? 0.05,
+    burst_error_min_events: config?.burst_error_min_events ?? 10,
+    burst_cooldown_ms: config?.burst_cooldown_ms ?? 15 * 1000,
   };
 }
 
@@ -627,13 +763,31 @@ export function getTopicMetadata(
 }
 
 /**
- * Get the display label for a topic, with fallback to the raw topic name.
+ * Get the display label for a topic, with fallback to a suffix-extracted short name.
+ *
+ * Fallback chain (OMN-2198):
+ *   1. Direct metadata lookup (handles known topics)
+ *   2. Extract the event-name segment from ONEX canonical format and title-case it
+ *      (e.g. 'onex.evt.omniclaude.session-started.v1' → 'Session Started')
+ *   3. Return the raw topic as-is (legacy flat names are already short)
  *
  * @param topic - Raw or canonical topic name (may include env prefix)
- * @returns Human-readable label from TOPIC_METADATA, or the raw topic if not found
+ * @returns Human-readable label
  */
 export function getTopicLabel(topic: string): string {
-  return getTopicMetadata(topic)?.label ?? topic;
+  const meta = getTopicMetadata(topic);
+  if (meta) return meta.label;
+
+  // Try extracting a short name from ONEX canonical format
+  const canonical = extractSuffix(topic);
+  const segments = canonical.split('.');
+  // Canonical: onex.<kind>.<producer>.<event-name>.v<N>
+  if (segments.length >= 5 && segments[0] === 'onex') {
+    const eventName = segments[segments.length - 2];
+    return toTitleCase(eventName);
+  }
+
+  return topic;
 }
 
 /**

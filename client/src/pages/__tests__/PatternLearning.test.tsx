@@ -8,7 +8,7 @@
  * Part of OMN-1699: Pattern Dashboard with Evidence-Based Score Debugging
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -753,11 +753,13 @@ describe('PatternLearning page', () => {
       await user.click(comboboxes[2]); // Limit is third
       await user.click(screen.getByRole('option', { name: '25' }));
 
-      // Now only 25 patterns should be visible
+      // Now only 25 patterns should be visible in the main patterns table
+      // (widget components may still render pattern names from the full filtered set)
       await waitFor(() => {
-        expect(screen.getAllByText('Pattern 25').length).toBeGreaterThan(0);
+        const table = screen.getByTestId('patterns-table');
+        expect(within(table).getAllByText('Pattern 25').length).toBeGreaterThan(0);
+        expect(within(table).queryAllByText('Pattern 26')).toHaveLength(0);
       });
-      expect(screen.queryAllByText('Pattern 26')).toHaveLength(0);
 
       result.unmount();
     });

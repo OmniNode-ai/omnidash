@@ -23,10 +23,29 @@ import {
   type IntentSessionEventPayload,
   type IntentRecentEventPayload,
 } from './intent-events';
+import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
 import { playbackEventEmitter, type PlaybackWSMessage } from './playback-events';
 import { ENVIRONMENT_PREFIXES } from '@shared/topics';
+
+/**
+ * Wrap an async function so that rejections are caught and logged.
+ * Node's EventEmitter does NOT await async handlers — a thrown error
+ * becomes an unhandled promise rejection. This wrapper guarantees
+ * that errors are caught even if future edits accidentally move code
+ * outside of an inner try/catch.
+ */
+function safeAsyncHandler<T extends unknown[]>(
+  label: string,
+  fn: (...args: T) => Promise<void>
+): (...args: T) => void {
+  return (...args: T) => {
+    fn(...args).catch((err) => {
+      console.error(`[WebSocket] Unhandled error in ${label}:`, err);
+    });
+  };
+}
 
 /**
  * Structural tokens to strip when extracting action from ONEX canonical topics.
@@ -164,26 +183,47 @@ function transformEventToClientAction(event: EventBusEvent): ClientAction {
 }
 
 /**
- * Get real events from EventConsumer's in-memory preload cache for initial state.
- * Returns both transformed client actions and raw events for the Event Bus Monitor.
+ * Get real events for WebSocket INITIAL_STATE by querying PostgreSQL directly.
  *
- * Previously this queried PostgreSQL (event_bus_events) on every WebSocket connection,
- * which was redundant because EventConsumer.preloadFromDatabase() already loaded the
- * same data into memory at startup. Now reads directly from EventConsumer's cache.
+ * EventBusDataSource writes events from 197+ Kafka topics to the DB, while
+ * EventConsumer's in-memory buffer only covers ~30 topics. Querying the DB
+ * ensures INITIAL_STATE includes ALL event types — not just those EventConsumer
+ * tracks — so events persist across page reloads.
+ *
+ * Falls back to EventConsumer's in-memory buffer if the DB query fails.
  */
-function getEventsForInitialState(): {
+async function getEventsForInitialState(): Promise<{
   recentActions: ClientAction[];
   eventBusEvents: EventBusEvent[];
-} {
-  const events = eventConsumer.getPreloadedEventBusEvents();
+}> {
+  // Primary path: query PostgreSQL for latest events across ALL topics
+  const dataSource = getEventBusDataSource();
+  if (dataSource) {
+    try {
+      const events = await dataSource.queryEvents({
+        limit: 200,
+        order_by: 'timestamp',
+        order_direction: 'desc',
+      });
 
+      if (events.length > 0) {
+        const recentActions = events.map(transformEventToClientAction);
+        return { recentActions, eventBusEvents: events };
+      }
+    } catch (error) {
+      console.error(
+        '[WebSocket] Failed to query DB for initial state, falling back to in-memory:',
+        error
+      );
+    }
+  }
+
+  // Fallback: use EventConsumer's in-memory buffer (covers only ~30 topics)
+  const events = eventConsumer.getPreloadedEventBusEvents();
   if (events.length === 0) {
     return { recentActions: [], eventBusEvents: [] };
   }
-
-  // Transform to client format
   const recentActions = events.map(transformEventToClientAction);
-
   return { recentActions, eventBusEvents: events };
 }
 
@@ -213,14 +253,29 @@ const VALID_TOPICS = [
   'playback',
   // Cross-repo validation events (OMN-1907)
   'validation',
+  // Extraction pipeline events (OMN-1804)
+  'extraction',
+  // Projection invalidation events (OMN-2095/OMN-2096)
+  'projections',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
 
+/**
+ * Validates a topic string. Accepts static VALID_TOPICS entries or any
+ * topic matching `projection:<viewId>` for dynamic projection views (OMN-2097).
+ */
+const PROJECTION_TOPIC_PATTERN = /^projection:[a-zA-Z0-9_-]+$/;
+
+const validTopicSchema = z.union([
+  z.enum(VALID_TOPICS),
+  z.string().regex(PROJECTION_TOPIC_PATTERN),
+]);
+
 // Zod schema for validating WebSocket client messages
 const WebSocketMessageSchema = z.object({
   action: z.enum(['subscribe', 'unsubscribe', 'ping', 'getState']),
-  topics: z.union([z.enum(VALID_TOPICS), z.array(z.enum(VALID_TOPICS))]).optional(),
+  topics: z.union([validTopicSchema, z.array(validTopicSchema)]).optional(),
 });
 
 type _WebSocketMessage = z.infer<typeof WebSocketMessageSchema>;
@@ -374,21 +429,35 @@ export function setupWebSocket(httpServer: HTTPServer) {
     console.log('[WebSocket] Demo mode: state restored - broadcasting DEMO_STATE_RESTORED');
     broadcast('DEMO_STATE_RESTORED', { timestamp: Date.now() }, 'all');
 
-    // After notifying clients to clear their state, send fresh initial state with restored data
-    // This allows the UI to immediately show the live data that was snapshotted before demo
-    setTimeout(() => {
-      console.log('[WebSocket] Demo mode: broadcasting restored INITIAL_STATE');
-      broadcast(
-        'INITIAL_STATE',
-        {
-          metrics: eventConsumer.getAgentMetrics(),
-          recentActions: eventConsumer.getRecentActions(),
-          routingDecisions: eventConsumer.getRoutingDecisions(),
-          recentTransformations: eventConsumer.getRecentTransformations(),
-        },
-        'all'
-      );
-    }, 100); // Small delay to ensure DEMO_STATE_RESTORED is processed first
+    // After notifying clients to clear their state, send fresh initial state with restored data.
+    // Query PostgreSQL for full event set (same path as connection handler) so all 197+ topics
+    // are included, not just EventConsumer's ~30 topic in-memory buffer.
+    // Small delay (100ms) ensures DEMO_STATE_RESTORED is processed first.
+    void setTimeout(
+      safeAsyncHandler('demo-restore', async () => {
+        console.log('[WebSocket] Demo mode: broadcasting restored INITIAL_STATE');
+        const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
+        const legacyActions = eventConsumer.getRecentActions();
+        const combinedActions = realActions.length > 0 ? realActions : legacyActions;
+
+        broadcast(
+          'INITIAL_STATE',
+          {
+            metrics: eventConsumer.getAgentMetrics(),
+            recentActions: combinedActions,
+            routingDecisions: eventConsumer.getRoutingDecisions(),
+            recentTransformations: eventConsumer.getRecentTransformations(),
+            performanceStats: eventConsumer.getPerformanceStats(),
+            health: eventConsumer.getHealthStatus(),
+            registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
+            nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+            eventBusEvents: eventBusEvents,
+          },
+          'all'
+        );
+      }),
+      100
+    );
   });
 
   registerEventListener('stateSnapshotted', () => {
@@ -403,6 +472,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
     // Send minimal payload - clients only need the type for query invalidation,
     // plus run_id for targeted cache updates. Full violation data stays server-side.
     broadcast('VALIDATION_EVENT', { type: data.type, run_id: data.event?.run_id }, 'validation');
+  });
+
+  // Extraction pipeline event listener (OMN-1804)
+  // Invalidation-only broadcast: tells clients to re-fetch, does NOT carry data payloads.
+  // PostgreSQL is the single source of truth; clients re-query API endpoints on invalidation.
+  registerEventListener('extraction-event', (data: { type: string }) => {
+    broadcast('EXTRACTION_INVALIDATE', { type: data.type }, 'extraction');
   });
 
   // Node Registry event listeners
@@ -588,6 +664,61 @@ export function setupWebSocket(httpServer: HTTPServer) {
     );
   }
 
+  // Projection invalidation bridge (OMN-2095)
+  // Bridges the server-side ProjectionService EventEmitter to WebSocket clients.
+  // When a projection view applies an event, broadcast PROJECTION_INVALIDATE so
+  // clients using useProjectionStream can invalidate their TanStack Query cache
+  // instead of waiting for the next polling interval.
+  //
+  // Throttled: at high throughput (50+ events/sec from 197 topics), emitting every
+  // event is wasteful. Leading-edge fires immediately for low latency; trailing-edge
+  // coalesces bursts. Client polls every 2s as a fallback regardless.
+  const PROJECTION_THROTTLE_MS = 150;
+  const projectionThrottleState = new Map<
+    string,
+    { timer: NodeJS.Timeout; leadingCursor: number; latestCursor: number }
+  >();
+
+  const projectionInvalidateHandler = (data: { viewId: string; cursor: number }) => {
+    const state = projectionThrottleState.get(data.viewId);
+
+    if (state) {
+      // Within throttle window — track latest cursor, timer handles trailing edge
+      state.latestCursor = Math.max(state.latestCursor, data.cursor);
+      return;
+    }
+
+    // Leading edge: broadcast immediately.
+    // Broadcast only to the per-view topic — avoids duplicate delivery to
+    // clients subscribed to 'all' (which would match both 'projections' and
+    // 'projection:<viewId>' broadcast calls).
+    broadcast('PROJECTION_INVALIDATE', data, `projection:${data.viewId}`);
+
+    // Open throttle window
+    const entry = {
+      leadingCursor: data.cursor,
+      latestCursor: data.cursor,
+      timer: setTimeout(() => {
+        projectionThrottleState.delete(data.viewId);
+        // Trailing edge: if cursor advanced during window, send one final update
+        if (entry.latestCursor > entry.leadingCursor) {
+          const trailingData = { viewId: data.viewId, cursor: entry.latestCursor };
+          broadcast('PROJECTION_INVALIDATE', trailingData, `projection:${data.viewId}`);
+        }
+      }, PROJECTION_THROTTLE_MS),
+    };
+    projectionThrottleState.set(data.viewId, entry);
+  };
+  projectionService.on('projection-invalidate', projectionInvalidateHandler);
+
+  const projectionListeners = [
+    {
+      emitter: projectionService,
+      event: 'projection-invalidate' as string,
+      handler: projectionInvalidateHandler,
+    },
+  ];
+
   // PlaybackDataSource listener (works without Kafka for demo playback)
   const playbackDataSource = getPlaybackDataSource();
 
@@ -616,165 +747,186 @@ export function setupWebSocket(httpServer: HTTPServer) {
   console.log('[WebSocket] PlaybackDataSource listener registered for demo playback');
 
   // Handle WebSocket connections
-  wss.on('connection', (ws: WebSocket, request: IncomingMessage) => {
-    console.log('WebSocket client connected from', request.socket.remoteAddress);
+  wss.on(
+    'connection',
+    safeAsyncHandler('connection', async (ws: WebSocket, request: IncomingMessage) => {
+      console.log('WebSocket client connected from', request.socket.remoteAddress);
 
-    // Initialize client data
-    const clientData: ClientData = {
-      ws,
-      subscriptions: new Set(['all']), // Subscribe to all by default
-      lastPing: new Date(),
-      isAlive: true,
-      missedPings: 0,
-    };
+      // Initialize client data
+      const clientData: ClientData = {
+        ws,
+        subscriptions: new Set(['all']), // Subscribe to all by default
+        lastPing: new Date(),
+        isAlive: true,
+        missedPings: 0,
+      };
 
-    clients.set(ws, clientData);
+      clients.set(ws, clientData);
 
-    // Send welcome message
-    ws.send(
-      JSON.stringify({
-        type: 'CONNECTED',
-        message: 'Connected to Omnidash real-time event stream',
-        timestamp: new Date().toISOString(),
-      })
-    );
-
-    // Send initial state from EventConsumer's in-memory cache (no database query).
-    // All data comes from preloadFromDatabase() which ran at startup.
-    {
-      const { recentActions: realActions, eventBusEvents } = getEventsForInitialState();
-
-      // Get legacy data for backward compatibility with other dashboards
-      const legacyActions = eventConsumer.getRecentActions();
-      const legacyRouting = eventConsumer.getRoutingDecisions();
-
-      // Combine real actions with legacy actions (real events take priority)
-      // Real events are more recent and accurate for Event Bus Monitor
-      const combinedActions = realActions.length > 0 ? realActions : legacyActions;
-
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(
-          JSON.stringify({
-            type: 'INITIAL_STATE',
-            data: {
-              metrics: eventConsumer.getAgentMetrics(),
-              recentActions: combinedActions,
-              routingDecisions: legacyRouting,
-              recentTransformations: eventConsumer.getRecentTransformations(),
-              performanceStats: eventConsumer.getPerformanceStats(),
-              health: eventConsumer.getHealthStatus(),
-              registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
-              nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-              eventBusEvents: eventBusEvents,
-            },
-            timestamp: new Date().toISOString(),
-          })
-        );
-      }
-    }
-
-    // Handle pong responses
-    ws.on('pong', () => {
-      const client = clients.get(ws);
-      if (client) {
-        client.isAlive = true;
-        client.lastPing = new Date();
-      }
-    });
-
-    // Handle client messages (for subscriptions/filtering)
-    ws.on('message', (data: WebSocket.Data) => {
+      // Entire async body wrapped in try/catch: EventEmitter does NOT await the async
+      // connection handler, so any uncaught throw becomes an unhandled promise rejection.
       try {
-        const rawMessage = JSON.parse(data.toString());
-
-        // Validate message against schema
-        const parseResult = WebSocketMessageSchema.safeParse(rawMessage);
-
-        if (!parseResult.success) {
-          const errorMessage = parseResult.error.errors
-            .map((e) => `${e.path.join('.')}: ${e.message}`)
-            .join('; ');
-          console.warn('Invalid WebSocket message received:', errorMessage);
+        // Send welcome message (guard readyState in case socket closes between connect and here)
+        if (ws.readyState === WebSocket.OPEN) {
           ws.send(
             JSON.stringify({
-              type: 'ERROR',
-              message: `Invalid message: ${errorMessage}`,
-              validActions: ['subscribe', 'unsubscribe', 'ping', 'getState'],
-              validTopics: VALID_TOPICS,
+              type: 'CONNECTED',
+              message: 'Connected to Omnidash real-time event stream',
               timestamp: new Date().toISOString(),
             })
           );
-          return;
         }
 
-        const message = parseResult.data;
+        // Send initial state by querying PostgreSQL for latest events across ALL topics.
+        // This ensures events from EventBusDataSource's 197+ topics persist across reloads.
+        const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
 
-        switch (message.action) {
-          case 'subscribe':
-            handleSubscription(ws, message.topics);
-            break;
-          case 'unsubscribe':
-            handleUnsubscription(ws, message.topics);
-            break;
-          case 'ping':
-            ws.send(JSON.stringify({ type: 'PONG', timestamp: new Date().toISOString() }));
-            break;
-          case 'getState': {
-            // Send current state on demand from EventConsumer's in-memory cache
-            const { recentActions: realActions, eventBusEvents } = getEventsForInitialState();
+        // Get legacy data for backward compatibility with other dashboards
+        const legacyActions = eventConsumer.getRecentActions();
+        const legacyRouting = eventConsumer.getRoutingDecisions();
 
-            const legacyActions = eventConsumer.getRecentActions();
-            const combinedActions = realActions.length > 0 ? realActions : legacyActions;
+        // Combine real actions with legacy actions (real events take priority)
+        // Real events are more recent and accurate for Event Bus Monitor
+        const combinedActions = realActions.length > 0 ? realActions : legacyActions;
 
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({
+              type: 'INITIAL_STATE',
+              data: {
+                metrics: eventConsumer.getAgentMetrics(),
+                recentActions: combinedActions,
+                routingDecisions: legacyRouting,
+                recentTransformations: eventConsumer.getRecentTransformations(),
+                performanceStats: eventConsumer.getPerformanceStats(),
+                health: eventConsumer.getHealthStatus(),
+                registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
+                nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+                eventBusEvents: eventBusEvents,
+              },
+              timestamp: new Date().toISOString(),
+            })
+          );
+        }
+      } catch (error) {
+        console.error('[WebSocket] Error during client connection setup:', error);
+      }
+
+      // Handle pong responses
+      ws.on('pong', () => {
+        const client = clients.get(ws);
+        if (client) {
+          client.isAlive = true;
+          client.lastPing = new Date();
+        }
+      });
+
+      // Handle client messages (for subscriptions/filtering)
+      ws.on(
+        'message',
+        safeAsyncHandler('message', async (data: WebSocket.Data) => {
+          try {
+            const rawMessage = JSON.parse(data.toString());
+
+            // Validate message against schema
+            const parseResult = WebSocketMessageSchema.safeParse(rawMessage);
+
+            if (!parseResult.success) {
+              const errorMessage = parseResult.error.errors
+                .map((e) => `${e.path.join('.')}: ${e.message}`)
+                .join('; ');
+              console.warn('Invalid WebSocket message received:', errorMessage);
+              ws.send(
+                JSON.stringify({
+                  type: 'ERROR',
+                  message: `Invalid message: ${errorMessage}`,
+                  validActions: ['subscribe', 'unsubscribe', 'ping', 'getState'],
+                  validTopics: VALID_TOPICS,
+                  timestamp: new Date().toISOString(),
+                })
+              );
+              return;
+            }
+
+            const message = parseResult.data;
+
+            switch (message.action) {
+              case 'subscribe':
+                handleSubscription(ws, message.topics);
+                break;
+              case 'unsubscribe':
+                handleUnsubscription(ws, message.topics);
+                break;
+              case 'ping':
+                ws.send(JSON.stringify({ type: 'PONG', timestamp: new Date().toISOString() }));
+                break;
+              case 'getState': {
+                // Send current state on demand by querying PostgreSQL
+                const { recentActions: realActions, eventBusEvents } =
+                  await getEventsForInitialState();
+
+                const legacyActions = eventConsumer.getRecentActions();
+                const combinedActions = realActions.length > 0 ? realActions : legacyActions;
+
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(
+                    JSON.stringify({
+                      type: 'CURRENT_STATE',
+                      data: {
+                        metrics: eventConsumer.getAgentMetrics(),
+                        recentActions: combinedActions,
+                        routingDecisions: eventConsumer.getRoutingDecisions(),
+                        recentTransformations: eventConsumer.getRecentTransformations(),
+                        performanceStats: eventConsumer.getPerformanceStats(),
+                        health: eventConsumer.getHealthStatus(),
+                        registeredNodes: transformNodesToSnakeCase(
+                          eventConsumer.getRegisteredNodes()
+                        ),
+                        nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
+                        eventBusEvents: eventBusEvents,
+                      },
+                      timestamp: new Date().toISOString(),
+                    })
+                  );
+                }
+                break;
+              }
+            }
+          } catch (error) {
+            const errorMessage =
+              error instanceof SyntaxError
+                ? 'Invalid JSON format'
+                : `WebSocket message handler error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            console.error('[WebSocket] Message handler error:', error);
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(
                 JSON.stringify({
-                  type: 'CURRENT_STATE',
-                  data: {
-                    metrics: eventConsumer.getAgentMetrics(),
-                    recentActions: combinedActions,
-                    routingDecisions: eventConsumer.getRoutingDecisions(),
-                    recentTransformations: eventConsumer.getRecentTransformations(),
-                    performanceStats: eventConsumer.getPerformanceStats(),
-                    health: eventConsumer.getHealthStatus(),
-                    registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
-                    nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-                    eventBusEvents: eventBusEvents,
-                  },
+                  type: 'ERROR',
+                  message: errorMessage,
                   timestamp: new Date().toISOString(),
                 })
               );
             }
-            break;
           }
-        }
-      } catch (error) {
-        console.error('Error parsing client message:', error);
-        ws.send(
-          JSON.stringify({
-            type: 'ERROR',
-            message: 'Invalid JSON format',
-            timestamp: new Date().toISOString(),
-          })
-        );
-      }
-    });
+        })
+      );
 
-    // Handle client disconnection
-    ws.on('close', () => {
-      console.log('WebSocket client disconnected');
-      clients.delete(ws);
-    });
+      // Handle client disconnection
+      ws.on('close', () => {
+        console.log('WebSocket client disconnected');
+        clients.delete(ws);
+      });
 
-    // Handle errors
-    ws.on('error', (error: Error) => {
-      console.error('WebSocket client error:', error);
-      clients.delete(ws);
-    });
-  });
+      // Handle errors
+      ws.on('error', (error: Error) => {
+        console.error('WebSocket client error:', error);
+        clients.delete(ws);
+      });
+    })
+  );
 
   // Handle subscription updates
-  function handleSubscription(ws: WebSocket, topics: ValidTopic | ValidTopic[] | undefined) {
+  function handleSubscription(ws: WebSocket, topics: string | string[] | undefined) {
     const client = clients.get(ws);
     if (!client) return;
 
@@ -800,7 +952,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
   }
 
   // Handle unsubscription
-  function handleUnsubscription(ws: WebSocket, topics: ValidTopic | ValidTopic[] | undefined) {
+  function handleUnsubscription(ws: WebSocket, topics: string | string[] | undefined) {
     const client = clients.get(ws);
     if (!client) return;
 
@@ -890,6 +1042,19 @@ export function setupWebSocket(httpServer: HTTPServer) {
       }
     });
     eventBusListeners.length = 0;
+
+    // Remove projection event listeners (OMN-2095)
+    console.log(`Removing ${projectionListeners.length} projection event listeners...`);
+    projectionListeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    projectionListeners.length = 0;
+
+    // Clear projection throttle timers
+    for (const state of projectionThrottleState.values()) {
+      clearTimeout(state.timer);
+    }
+    projectionThrottleState.clear();
 
     // Remove playback data source listeners (OMN-1885)
     console.log(`Removing ${playbackDataSourceListeners.length} playback data source listeners...`);

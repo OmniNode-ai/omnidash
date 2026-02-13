@@ -394,6 +394,35 @@ export const queryKeys = {
     trends: (repo: string) => [...queryKeys.validation.all, 'trends', repo] as const,
   },
   // ============================================================================
+  // Extraction Pipeline (OMN-1804)
+  // ============================================================================
+
+  /**
+   * Extraction pipeline query keys for pattern extraction metrics dashboard.
+   *
+   * Supports WebSocket invalidation: on EXTRACTION_INVALIDATE, invalidate
+   * `queryKeys.extraction.all` to refetch all panels.
+   */
+  extraction: {
+    /** Base key for all extraction queries */
+    all: ['extraction'] as const,
+
+    /** Summary stats (metric cards) */
+    summary: () => [...queryKeys.extraction.all, 'summary'] as const,
+
+    /** Pipeline health by stage */
+    health: () => [...queryKeys.extraction.all, 'health'] as const,
+
+    /** Latency heatmap */
+    latency: (window: string) => [...queryKeys.extraction.all, 'latency', window] as const,
+
+    /** Pattern volume over time */
+    volume: (window: string) => [...queryKeys.extraction.all, 'volume', window] as const,
+
+    /** Error rates summary */
+    errors: () => [...queryKeys.extraction.all, 'errors'] as const,
+  },
+  // ============================================================================
   // Injection Effectiveness (OMN-1891)
   // ============================================================================
 
@@ -418,6 +447,46 @@ export const queryKeys = {
 
     /** Multi-metric trend */
     trend: () => [...queryKeys.effectiveness.all, 'trend'] as const,
+  },
+  // ============================================================================
+  // Projections (OMN-2095)
+  // ============================================================================
+
+  /**
+   * Projection query keys for server-side materialized views.
+   *
+   * Used by `useProjectionStream` hook for TanStack Query cache management.
+   * On PROJECTION_INVALIDATE, invalidate the specific view's snapshot.
+   */
+  projections: {
+    /** Base key for all projection queries */
+    all: ['projections'] as const,
+
+    /** All queries for a specific view */
+    view: (viewId: string) => [...queryKeys.projections.all, viewId] as const,
+
+    /** Snapshot query for a view */
+    snapshot: (viewId: string, limit?: number) =>
+      [...queryKeys.projections.view(viewId), 'snapshot', limit ?? 'default'] as const,
+
+    /** Events-since query for a view */
+    events: (viewId: string, cursor: number) =>
+      [...queryKeys.projections.view(viewId), 'events', cursor] as const,
+  },
+
+  // ============================================================================
+  // Learned Insights (OMN-1407)
+  // ============================================================================
+
+  insights: {
+    /** Base key for all insights queries */
+    all: ['insights'] as const,
+
+    /** Insights summary with full insight list */
+    summary: () => [...queryKeys.insights.all, 'summary'] as const,
+
+    /** Insight discovery trend */
+    trend: () => [...queryKeys.insights.all, 'trend'] as const,
   },
 } as const;
 
