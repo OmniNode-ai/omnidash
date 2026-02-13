@@ -39,6 +39,15 @@ import {
   SUFFIX_INTELLIGENCE_PATTERN_SCORED,
   SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
   ENVIRONMENT_PREFIXES,
   extractSuffix,
 } from '@shared/topics';
@@ -230,6 +239,52 @@ export const TOPIC_METADATA: Record<
     label: 'Registration Snapshots',
     description: 'Point-in-time registration state snapshots',
     category: 'snapshot',
+  },
+  // Intelligence pipeline topics
+  [SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD]: {
+    label: 'Code Analysis Cmd',
+    description: 'Request code analysis from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD]: {
+    label: 'Doc Ingestion Cmd',
+    description: 'Request document ingestion from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD]: {
+    label: 'Pattern Learning Cmd',
+    description: 'Request pattern learning from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD]: {
+    label: 'Quality Assessment Cmd',
+    description: 'Request quality assessment from OmniIntelligence',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED]: {
+    label: 'Code Analysis Done',
+    description: 'Code analysis completed successfully',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED]: {
+    label: 'Code Analysis Failed',
+    description: 'Code analysis failed',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED]: {
+    label: 'Doc Ingestion Done',
+    description: 'Document ingestion completed successfully',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED]: {
+    label: 'Pattern Learning Done',
+    description: 'Pattern learning completed successfully',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED]: {
+    label: 'Quality Assessment Done',
+    description: 'Quality assessment completed successfully',
+    category: 'intelligence',
   },
   // Error topics
   errors: {
