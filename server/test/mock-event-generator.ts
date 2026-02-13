@@ -1,4 +1,5 @@
 import { Kafka, Producer } from 'kafkajs';
+import { LEGACY_AGENT_ROUTING_DECISIONS, LEGACY_AGENT_ACTIONS } from '@shared/topics';
 
 /**
  * Mock Event Generator for Kafka Topics
@@ -275,7 +276,7 @@ class MockEventGenerator {
     };
 
     await this.producer!.send({
-      topic: 'agent-routing-decisions',
+      topic: LEGACY_AGENT_ROUTING_DECISIONS,
       messages: [{ value: JSON.stringify(event) }],
     });
   }
@@ -302,7 +303,7 @@ class MockEventGenerator {
     };
 
     await this.producer!.send({
-      topic: 'agent-actions',
+      topic: LEGACY_AGENT_ACTIONS,
       messages: [{ value: JSON.stringify(event) }],
     });
   }

@@ -251,6 +251,35 @@ export const LEGACY_ROUTER_PERFORMANCE_METRICS = 'router-performance-metrics';
 export const LEGACY_AGENT_MANIFEST_INJECTIONS = 'agent-manifest-injections';
 
 // ============================================================================
+// Legacy Archon-Intelligence Topics (pre-ONEX naming convention)
+//
+// These use `{env}.archon-intelligence.intelligence.<event-name>.v1` format,
+// which predates the canonical ONEX convention. The upstream omniintelligence
+// service still produces to these topics. Once the producer migrates to ONEX
+// canonical names (onex.cmd/evt.omniintelligence.*), these should be removed.
+//
+// The `dev.` prefix is intentionally hardcoded here because the upstream
+// producer (omniintelligence) always emits to `dev.*` regardless of
+// environment. These are not routed through resolveTopicName() since they
+// match a fixed external topic, not our own ONEX-convention topics.
+//
+// Canonical ONEX equivalents already exist above as:
+//   SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD       (request)
+//   SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED  (completed)
+//   SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED     (failed)
+// ============================================================================
+
+/** Intelligence code analysis request (pre-ONEX format, env-prefixed). */
+export const LEGACY_INTELLIGENCE_CODE_ANALYSIS_REQUESTED =
+  'dev.archon-intelligence.intelligence.code-analysis-requested.v1';
+/** Intelligence code analysis completed (pre-ONEX format, env-prefixed). */
+export const LEGACY_INTELLIGENCE_CODE_ANALYSIS_COMPLETED =
+  'dev.archon-intelligence.intelligence.code-analysis-completed.v1';
+/** Intelligence code analysis failed (pre-ONEX format, env-prefixed). */
+export const LEGACY_INTELLIGENCE_CODE_ANALYSIS_FAILED =
+  'dev.archon-intelligence.intelligence.code-analysis-failed.v1';
+
+// ============================================================================
 // Topic Groups (for subscription lists)
 // ============================================================================
 

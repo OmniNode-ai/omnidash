@@ -55,7 +55,13 @@ vi.mock('../storage', () => ({
 
 // Import after mocks are set up - this will use our mocks
 import { EventConsumer } from '../event-consumer';
-import { buildSubscriptionTopics } from '@shared/topics';
+import {
+  buildSubscriptionTopics,
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+} from '@shared/topics';
 
 describe('EventConsumer', () => {
   let consumer: InstanceType<typeof EventConsumer>;
@@ -279,7 +285,7 @@ describe('EventConsumer', () => {
       };
 
       await eachMessageHandler({
-        topic: 'agent-routing-decisions',
+        topic: LEGACY_AGENT_ROUTING_DECISIONS,
         message: {
           value: Buffer.from(JSON.stringify(event)),
         },
@@ -317,7 +323,7 @@ describe('EventConsumer', () => {
       };
 
       await eachMessageHandler({
-        topic: 'agent-routing-decisions',
+        topic: LEGACY_AGENT_ROUTING_DECISIONS,
         message: {
           value: Buffer.from(JSON.stringify(event)),
         },
@@ -349,7 +355,7 @@ describe('EventConsumer', () => {
 
       for (const event of events) {
         await eachMessageHandler({
-          topic: 'agent-routing-decisions',
+          topic: LEGACY_AGENT_ROUTING_DECISIONS,
           message: {
             value: Buffer.from(JSON.stringify(event)),
           },
@@ -393,7 +399,7 @@ describe('EventConsumer', () => {
       };
 
       await eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: Buffer.from(JSON.stringify(event)),
         },
@@ -419,7 +425,7 @@ describe('EventConsumer', () => {
 
       for (const event of events) {
         await eachMessageHandler({
-          topic: 'agent-actions',
+          topic: LEGACY_AGENT_ACTIONS,
           message: {
             value: Buffer.from(JSON.stringify(event)),
           },
@@ -451,7 +457,7 @@ describe('EventConsumer', () => {
       consumer.on('error', errorSpy);
 
       await eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: Buffer.from('{ invalid json'),
         },
@@ -469,7 +475,7 @@ describe('EventConsumer', () => {
 
       // Send malformed event
       await eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: Buffer.from('invalid'),
         },
@@ -477,7 +483,7 @@ describe('EventConsumer', () => {
 
       // Send valid event
       await eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: Buffer.from(JSON.stringify({ agent_name: 'test', action_type: 'success' })),
         },
@@ -660,7 +666,7 @@ describe('EventConsumer', () => {
 
       // Create message that will throw connection error during toString
       const testMessage = {
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: {
             toString: () => {
@@ -689,7 +695,7 @@ describe('EventConsumer', () => {
 
       // Send malformed JSON (non-connection error)
       const handlerPromise = eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: Buffer.from('{ invalid json'),
         },
@@ -714,7 +720,7 @@ describe('EventConsumer', () => {
 
       // Create message that will throw connection error
       const testMessage = {
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: {
             toString: () => {
@@ -769,12 +775,12 @@ describe('EventConsumer', () => {
       };
 
       await eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: { value: Buffer.from(JSON.stringify(oldAction)) },
       });
 
       await eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: { value: Buffer.from(JSON.stringify(recentAction)) },
       });
 
@@ -810,12 +816,12 @@ describe('EventConsumer', () => {
       };
 
       await eachMessageHandler({
-        topic: 'agent-routing-decisions',
+        topic: LEGACY_AGENT_ROUTING_DECISIONS,
         message: { value: Buffer.from(JSON.stringify(oldDecision)) },
       });
 
       await eachMessageHandler({
-        topic: 'agent-routing-decisions',
+        topic: LEGACY_AGENT_ROUTING_DECISIONS,
         message: { value: Buffer.from(JSON.stringify(recentDecision)) },
       });
 
@@ -853,12 +859,12 @@ describe('EventConsumer', () => {
       };
 
       await eachMessageHandler({
-        topic: 'agent-transformation-events',
+        topic: LEGACY_AGENT_TRANSFORMATION_EVENTS,
         message: { value: Buffer.from(JSON.stringify(oldTransformation)) },
       });
 
       await eachMessageHandler({
-        topic: 'agent-transformation-events',
+        topic: LEGACY_AGENT_TRANSFORMATION_EVENTS,
         message: { value: Buffer.from(JSON.stringify(recentTransformation)) },
       });
 
@@ -896,12 +902,12 @@ describe('EventConsumer', () => {
       };
 
       await eachMessageHandler({
-        topic: 'router-performance-metrics',
+        topic: LEGACY_ROUTER_PERFORMANCE_METRICS,
         message: { value: Buffer.from(JSON.stringify(oldMetric)) },
       });
 
       await eachMessageHandler({
-        topic: 'router-performance-metrics',
+        topic: LEGACY_ROUTER_PERFORMANCE_METRICS,
         message: { value: Buffer.from(JSON.stringify(recentMetric)) },
       });
 
@@ -943,7 +949,7 @@ describe('EventConsumer', () => {
 
       for (const event of events) {
         await eachMessageHandler({
-          topic: 'agent-actions',
+          topic: LEGACY_AGENT_ACTIONS,
           message: { value: Buffer.from(JSON.stringify(event)) },
         });
       }
