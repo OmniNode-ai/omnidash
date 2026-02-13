@@ -27,9 +27,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: OmniNode-ai/omnibase_core
-          # Pinned to omnibase_core main as of 2026-02-10.
+          # Pinned to omnibase_core main as of 2026-02-13.
           # Update by running: gh api repos/OmniNode-ai/omnibase_core/commits/main --jq '.sha'
-          ref: 4dc7a0adf299e47eef57ab9950b0f0a587638a3e
+          ref: eb0bd238f7a3f13958e805a2ec51e3cb8454225f
           path: omnibase_core
 
       - name: Verify omnibase_core checkout
