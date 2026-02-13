@@ -203,7 +203,11 @@ app.use((req, res, next) => {
   // Runs as a separate consumer group from EventConsumer.
   try {
     await readModelConsumer.start();
-    log('Read-model consumer started -- projecting events to omnidash_analytics');
+    if (readModelConsumer.getStats().isRunning) {
+      log('Read-model consumer started -- projecting events to omnidash_analytics');
+    } else {
+      log('Read-model consumer skipped (missing brokers or DB) -- projections not running');
+    }
   } catch (error) {
     console.error('Failed to start read-model consumer:', error);
     console.error('   Read-model tables will not receive new projections');

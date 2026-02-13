@@ -21,6 +21,7 @@
  * is responsible for durable persistence into the read-model DB.
  */
 
+import crypto from 'node:crypto';
 import { Kafka, Consumer, EachMessagePayload, KafkaMessage } from 'kafkajs';
 import { tryGetIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
@@ -361,6 +362,11 @@ export class ReadModelConsumer {
 
   /**
    * Update projection watermark for tracking consumer progress.
+   *
+   * TODO(OMN-2061): Integrate watermark tracking into handleMessage() after
+   * successful projection. Currently defined but not invoked -- watermark
+   * persistence will be wired in a follow-up iteration once the consumer
+   * is validated in staging.
    */
   async updateWatermark(projectionName: string, offset: number): Promise<void> {
     const db = tryGetIntelligenceDb();

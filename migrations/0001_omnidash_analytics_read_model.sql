@@ -5,6 +5,11 @@
 -- omnidash owns the schema, migrations, and consumers end-to-end.
 -- No cross-repo SQL queries -- all data arrives via event-sourced projections.
 
+-- Ensure gen_random_uuid() is available on fresh databases.
+-- pgcrypto is a no-op if already present (PostgreSQL 13+ has gen_random_uuid()
+-- built-in, but pgcrypto guarantees it on PostgreSQL 12 and earlier).
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- ============================================================================
 -- Agent Routing Decisions (read-model projection)
 -- Source: Kafka topic agent-routing-decisions
