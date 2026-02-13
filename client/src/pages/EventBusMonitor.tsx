@@ -186,6 +186,7 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
 
 function computeNormalizedType(eventType: string, details: ParsedDetails | null): string {
   if (details?.toolName) return details.toolName;
+  if (details?.actionName) return details.actionName;
   if (details?.selectedAgent) return `route:${details.selectedAgent}`;
   if (/^v\d+$/.test(eventType)) {
     return details?.actionName || details?.actionType || 'unknown';
@@ -648,6 +649,19 @@ export default function EventBusMonitor() {
       const bucketTime =
         Math.floor(event.timestamp.getTime() / TIME_SERIES_BUCKET_MS) * TIME_SERIES_BUCKET_MS;
       timeBuckets[bucketTime] = (timeBuckets[bucketTime] || 0) + 1;
+    }
+
+    // Fill zero-count gaps so the chart shows flat baseline during idle periods
+    // instead of misleading interpolation lines.
+    const bucketKeys = Object.keys(timeBuckets).map(Number);
+    if (bucketKeys.length > 1) {
+      const minBucket = Math.min(...bucketKeys);
+      const maxBucket = Math.max(...bucketKeys);
+      for (let b = minBucket; b <= maxBucket; b += TIME_SERIES_BUCKET_MS) {
+        if (!(b in timeBuckets)) {
+          timeBuckets[b] = 0;
+        }
+      }
     }
 
     const topicBreakdownData = Object.entries(topicCounts).map(([topic, count]) => ({

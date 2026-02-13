@@ -154,6 +154,11 @@ export const TOPIC_METADATA: Record<
     description: 'Tool calls, decisions, errors, and successes',
     category: 'actions',
   },
+  actionUpdate: {
+    label: 'Action Updates',
+    description: 'Real-time tool call and action events from active Claude sessions',
+    category: 'actions',
+  },
   // Node registry topics (canonical ONEX suffixes)
   [SUFFIX_NODE_INTROSPECTION]: {
     label: 'Node Introspection',
