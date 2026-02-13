@@ -20,9 +20,10 @@ const ViewIdSchema = z
   .max(64)
   .regex(/^[a-zA-Z0-9_-]+$/);
 
-/** Zod schema for `GET .../snapshot` query params. Defaults limit to 100, max 500. */
+/** Zod schema for `GET .../snapshot` query params. Defaults limit to 100, max 5000.
+ *  Upper bound matches the client's max_events_options (see event-bus-dashboard.ts). */
 const SnapshotQuerySchema = z.object({
-  limit: z.coerce.number().finite().int().min(1).max(500).optional().default(100),
+  limit: z.coerce.number().finite().int().min(1).max(5000).optional().default(100),
 });
 
 /** Zod schema for `GET .../events` query params. Cursor defaults to 0, limit to 50. */
@@ -78,11 +79,16 @@ export function createProjectionRoutes(projectionService: ProjectionService): Ro
 
     const queryResult = SnapshotQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
+      const detail = queryResult.error.errors
+        .map((e) => `${e.path.join('.')}: ${e.message}`)
+        .join('; ');
+      console.error(
+        `[projection-routes] Snapshot query validation failed for "${viewId}": ${detail}`,
+        { query: req.query }
+      );
       return res.status(400).json({
         error: 'Invalid query parameters',
-        message: queryResult.error.errors
-          .map((e) => `${e.path.join('.')}: ${e.message}`)
-          .join('; '),
+        message: detail,
       });
     }
 
@@ -122,11 +128,16 @@ export function createProjectionRoutes(projectionService: ProjectionService): Ro
 
     const queryResult = EventsQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
+      const detail = queryResult.error.errors
+        .map((e) => `${e.path.join('.')}: ${e.message}`)
+        .join('; ');
+      console.error(
+        `[projection-routes] Events query validation failed for "${viewId}": ${detail}`,
+        { query: req.query }
+      );
       return res.status(400).json({
         error: 'Invalid query parameters',
-        message: queryResult.error.errors
-          .map((e) => `${e.path.join('.')}: ${e.message}`)
-          .join('; '),
+        message: detail,
       });
     }
 

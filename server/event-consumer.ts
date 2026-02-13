@@ -55,6 +55,13 @@ import {
   SUFFIX_VALIDATION_RUN_STARTED,
   SUFFIX_VALIDATION_VIOLATIONS_BATCH,
   SUFFIX_VALIDATION_RUN_COMPLETED,
+  SUFFIX_NODE_REGISTRATION_ACKED,
+  SUFFIX_NODE_REGISTRATION_RESULT,
+  SUFFIX_NODE_REGISTRATION_ACK_RECEIVED,
+  SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT,
+  SUFFIX_REGISTRY_REQUEST_INTROSPECTION,
+  SUFFIX_FSM_STATE_TRANSITIONS,
+  SUFFIX_RUNTIME_TICK,
 } from '@shared/topics';
 import {
   EventEnvelopeSchema,
@@ -164,6 +171,13 @@ const TOPIC = {
   NODE_REGISTRATION_INITIATED: SUFFIX_NODE_REGISTRATION_INITIATED,
   NODE_REGISTRATION_ACCEPTED: SUFFIX_NODE_REGISTRATION_ACCEPTED,
   NODE_REGISTRATION_REJECTED: SUFFIX_NODE_REGISTRATION_REJECTED,
+  NODE_REGISTRATION_ACKED: SUFFIX_NODE_REGISTRATION_ACKED,
+  NODE_REGISTRATION_RESULT: SUFFIX_NODE_REGISTRATION_RESULT,
+  NODE_REGISTRATION_ACK_RECEIVED: SUFFIX_NODE_REGISTRATION_ACK_RECEIVED,
+  NODE_REGISTRATION_ACK_TIMED_OUT: SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT,
+  REGISTRY_REQUEST_INTROSPECTION: SUFFIX_REGISTRY_REQUEST_INTROSPECTION,
+  FSM_STATE_TRANSITIONS: SUFFIX_FSM_STATE_TRANSITIONS,
+  RUNTIME_TICK: SUFFIX_RUNTIME_TICK,
   REGISTRATION_SNAPSHOTS: SUFFIX_REGISTRATION_SNAPSHOTS,
   // OmniClaude
   CLAUDE_HOOK: SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
@@ -1305,11 +1319,36 @@ export class EventConsumer extends EventEmitter {
               }
               case TOPIC.NODE_REGISTRATION_INITIATED:
               case TOPIC.NODE_REGISTRATION_ACCEPTED:
-              case TOPIC.NODE_REGISTRATION_REJECTED: {
+              case TOPIC.NODE_REGISTRATION_REJECTED:
+              case TOPIC.NODE_REGISTRATION_ACKED:
+              case TOPIC.NODE_REGISTRATION_RESULT:
+              case TOPIC.NODE_REGISTRATION_ACK_RECEIVED:
+              case TOPIC.NODE_REGISTRATION_ACK_TIMED_OUT: {
                 if (isDebug) {
                   intentLogger.debug(
                     `Processing node registration lifecycle event from topic: ${topic}`
                   );
+                }
+                this.handleCanonicalNodeIntrospection(message);
+                break;
+              }
+              case TOPIC.REGISTRY_REQUEST_INTROSPECTION: {
+                if (isDebug) {
+                  intentLogger.debug('Processing registry-request-introspection event');
+                }
+                this.handleCanonicalNodeIntrospection(message);
+                break;
+              }
+              case TOPIC.FSM_STATE_TRANSITIONS: {
+                if (isDebug) {
+                  intentLogger.debug('Processing FSM state transition event');
+                }
+                this.handleCanonicalNodeIntrospection(message);
+                break;
+              }
+              case TOPIC.RUNTIME_TICK: {
+                if (isDebug) {
+                  intentLogger.debug('Processing runtime tick event');
                 }
                 this.handleCanonicalNodeIntrospection(message);
                 break;
