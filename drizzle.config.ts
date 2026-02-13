@@ -7,7 +7,8 @@ const dbUrl = process.env.OMNIDASH_ANALYTICS_DB_URL || process.env.DATABASE_URL;
 
 if (!dbUrl) {
   throw new Error(
-    'OMNIDASH_ANALYTICS_DB_URL (or DATABASE_URL) must be set. Ensure the database is provisioned.'
+    'Neither OMNIDASH_ANALYTICS_DB_URL nor DATABASE_URL is set. ' +
+      'Set one of these environment variables to point at the omnidash_analytics database.'
   );
 }
 

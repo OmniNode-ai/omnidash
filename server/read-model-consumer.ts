@@ -294,7 +294,7 @@ export class ReadModelConsumer {
     await db
       .insert(agentRoutingDecisions)
       .values(row as any)
-      .onConflictDoNothing();
+      .onConflictDoNothing({ target: agentRoutingDecisions.correlationId });
   }
 
   /**
@@ -324,7 +324,7 @@ export class ReadModelConsumer {
     await db
       .insert(agentActions)
       .values(row as any)
-      .onConflictDoNothing();
+      .onConflictDoNothing({ target: agentActions.correlationId });
   }
 
   /**
@@ -357,7 +357,13 @@ export class ReadModelConsumer {
     await db
       .insert(agentTransformationEvents)
       .values(row as any)
-      .onConflictDoNothing();
+      .onConflictDoNothing({
+        target: [
+          agentTransformationEvents.sourceAgent,
+          agentTransformationEvents.targetAgent,
+          agentTransformationEvents.createdAt,
+        ],
+      });
   }
 
   /**

@@ -19,47 +19,55 @@ import { createInsertSchema } from 'drizzle-zod';
  * Tracks all routing decisions made by the polymorphic agent system
  * with confidence scoring and performance metrics
  */
-export const agentRoutingDecisions = pgTable('agent_routing_decisions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  correlationId: uuid('correlation_id').notNull(),
-  sessionId: uuid('session_id'),
-  userRequest: text('user_request').notNull(),
-  userRequestHash: text('user_request_hash'),
-  contextSnapshot: jsonb('context_snapshot'),
-  selectedAgent: text('selected_agent').notNull(),
-  confidenceScore: numeric('confidence_score', { precision: 5, scale: 4 }).notNull(),
-  routingStrategy: text('routing_strategy').notNull(),
-  triggerConfidence: numeric('trigger_confidence', { precision: 5, scale: 4 }),
-  contextConfidence: numeric('context_confidence', { precision: 5, scale: 4 }),
-  capabilityConfidence: numeric('capability_confidence', { precision: 5, scale: 4 }),
-  historicalConfidence: numeric('historical_confidence', { precision: 5, scale: 4 }),
-  alternatives: jsonb('alternatives'),
-  reasoning: text('reasoning'),
-  routingTimeMs: integer('routing_time_ms').notNull(),
-  cacheHit: boolean('cache_hit').default(false),
-  selectionValidated: boolean('selection_validated').default(false),
-  actualSuccess: boolean('actual_success'), // @deprecated Use executionSucceeded instead
-  executionSucceeded: boolean('execution_succeeded'),
-  actualQualityScore: numeric('actual_quality_score', { precision: 5, scale: 4 }),
-  createdAt: timestamp('created_at').defaultNow(),
-});
+export const agentRoutingDecisions = pgTable(
+  'agent_routing_decisions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: uuid('correlation_id').notNull(),
+    sessionId: uuid('session_id'),
+    userRequest: text('user_request').notNull(),
+    userRequestHash: text('user_request_hash'),
+    contextSnapshot: jsonb('context_snapshot'),
+    selectedAgent: text('selected_agent').notNull(),
+    confidenceScore: numeric('confidence_score', { precision: 5, scale: 4 }).notNull(),
+    routingStrategy: text('routing_strategy').notNull(),
+    triggerConfidence: numeric('trigger_confidence', { precision: 5, scale: 4 }),
+    contextConfidence: numeric('context_confidence', { precision: 5, scale: 4 }),
+    capabilityConfidence: numeric('capability_confidence', { precision: 5, scale: 4 }),
+    historicalConfidence: numeric('historical_confidence', { precision: 5, scale: 4 }),
+    alternatives: jsonb('alternatives'),
+    reasoning: text('reasoning'),
+    routingTimeMs: integer('routing_time_ms').notNull(),
+    cacheHit: boolean('cache_hit').default(false),
+    selectionValidated: boolean('selection_validated').default(false),
+    actualSuccess: boolean('actual_success'), // @deprecated Use executionSucceeded instead
+    executionSucceeded: boolean('execution_succeeded'),
+    actualQualityScore: numeric('actual_quality_score', { precision: 5, scale: 4 }),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [uniqueIndex('idx_agent_routing_decisions_correlation').on(table.correlationId)]
+);
 
 /**
  * Agent Actions Table
  * Tracks all actions executed by agents for observability
  * and debugging purposes
  */
-export const agentActions = pgTable('agent_actions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  correlationId: uuid('correlation_id').notNull(),
-  agentName: text('agent_name').notNull(),
-  actionType: text('action_type').notNull(),
-  actionName: text('action_name').notNull(),
-  actionDetails: jsonb('action_details').default({}),
-  debugMode: boolean('debug_mode').default(true),
-  durationMs: integer('duration_ms'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
+export const agentActions = pgTable(
+  'agent_actions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: uuid('correlation_id').notNull(),
+    agentName: text('agent_name').notNull(),
+    actionType: text('action_type').notNull(),
+    actionName: text('action_name').notNull(),
+    actionDetails: jsonb('action_details').default({}),
+    debugMode: boolean('debug_mode').default(true),
+    durationMs: integer('duration_ms'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => [uniqueIndex('idx_agent_actions_correlation').on(table.correlationId)]
+);
 
 // Export Zod schemas for validation
 export const insertAgentRoutingDecisionSchema = createInsertSchema(agentRoutingDecisions);
@@ -69,19 +77,29 @@ export const insertAgentActionSchema = createInsertSchema(agentActions);
  * Agent Transformation Events Table
  * Tracks polymorphic agent transformations between roles
  */
-export const agentTransformationEvents = pgTable('agent_transformation_events', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  sourceAgent: text('source_agent').notNull(),
-  targetAgent: text('target_agent').notNull(),
-  transformationReason: text('transformation_reason'),
-  confidenceScore: numeric('confidence_score', { precision: 5, scale: 4 }),
-  transformationDurationMs: integer('transformation_duration_ms'),
-  success: boolean('success').default(true),
-  createdAt: timestamp('created_at').defaultNow(),
-  projectPath: text('project_path'),
-  projectName: text('project_name'),
-  claudeSessionId: text('claude_session_id'),
-});
+export const agentTransformationEvents = pgTable(
+  'agent_transformation_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sourceAgent: text('source_agent').notNull(),
+    targetAgent: text('target_agent').notNull(),
+    transformationReason: text('transformation_reason'),
+    confidenceScore: numeric('confidence_score', { precision: 5, scale: 4 }),
+    transformationDurationMs: integer('transformation_duration_ms'),
+    success: boolean('success').default(true),
+    createdAt: timestamp('created_at').defaultNow(),
+    projectPath: text('project_path'),
+    projectName: text('project_name'),
+    claudeSessionId: text('claude_session_id'),
+  },
+  (table) => [
+    uniqueIndex('uq_ate_source_target_created').on(
+      table.sourceAgent,
+      table.targetAgent,
+      table.createdAt
+    ),
+  ]
+);
 
 export const insertAgentTransformationEventSchema = createInsertSchema(agentTransformationEvents);
 

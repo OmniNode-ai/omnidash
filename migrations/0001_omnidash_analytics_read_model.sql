@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS "agent_routing_decisions" (
 CREATE INDEX IF NOT EXISTS "idx_ard_selected_agent" ON "agent_routing_decisions" ("selected_agent");
 CREATE INDEX IF NOT EXISTS "idx_ard_created_at" ON "agent_routing_decisions" ("created_at");
 CREATE INDEX IF NOT EXISTS "idx_ard_correlation_id" ON "agent_routing_decisions" ("correlation_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_agent_routing_decisions_correlation" ON "agent_routing_decisions" ("correlation_id");
 
 -- ============================================================================
 -- Agent Actions (read-model projection)
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS "agent_actions" (
 CREATE INDEX IF NOT EXISTS "idx_aa_agent_name" ON "agent_actions" ("agent_name");
 CREATE INDEX IF NOT EXISTS "idx_aa_created_at" ON "agent_actions" ("created_at");
 CREATE INDEX IF NOT EXISTS "idx_aa_correlation_id" ON "agent_actions" ("correlation_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_agent_actions_correlation" ON "agent_actions" ("correlation_id");
 
 -- ============================================================================
 -- Agent Transformation Events (read-model projection)
@@ -84,6 +86,7 @@ CREATE TABLE IF NOT EXISTS "agent_transformation_events" (
 );
 
 CREATE INDEX IF NOT EXISTS "idx_ate_created_at" ON "agent_transformation_events" ("created_at");
+CREATE UNIQUE INDEX IF NOT EXISTS "uq_ate_source_target_created" ON "agent_transformation_events" ("source_agent", "target_agent", "created_at");
 
 -- ============================================================================
 -- Agent Manifest Injections (read-model projection)

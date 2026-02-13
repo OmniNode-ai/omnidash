@@ -20,7 +20,6 @@ config();
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import pkg from 'pg';
 const { Pool } = pkg;
 
@@ -70,7 +69,7 @@ async function main(): Promise<void> {
     client.release();
 
     // Read and execute migration files in order
-    const scriptDir = import.meta.dirname ?? path.dirname(fileURLToPath(import.meta.url));
+    const scriptDir = import.meta.dirname;
     const migrationsDir = path.resolve(scriptDir, '..', 'migrations');
     const files = fs
       .readdirSync(migrationsDir)
