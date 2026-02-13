@@ -8,6 +8,7 @@
 
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { EventEmitter } from 'events';
+import { LEGACY_AGENT_ROUTING_DECISIONS } from '@shared/topics';
 
 // Mock heavy server-side dependencies to prevent esbuild TextEncoder invariant errors
 // in the jsdom test environment. (Same mocks as websocket.test.ts)
@@ -133,9 +134,9 @@ describe('extractActionFromTopic', () => {
 
   // Edge: no 'onex' token at all
   it('falls back gracefully for non-ONEX topics', () => {
-    const parts = 'agent-routing-decisions'.split('.');
+    const parts = LEGACY_AGENT_ROUTING_DECISIONS.split('.');
     const result = extractActionFromTopic(parts);
-    expect(result.actionType).toBe('agent-routing-decisions');
+    expect(result.actionType).toBe(LEGACY_AGENT_ROUTING_DECISIONS);
   });
 
   // Edge: empty parts
