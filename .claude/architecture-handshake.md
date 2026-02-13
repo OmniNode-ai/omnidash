@@ -1,8 +1,8 @@
 <!-- HANDSHAKE_METADATA
 source: omnibase_core/architecture-handshakes/repos/omnidash.md
-source_version: 0.16.0
-source_sha256: 0c8ec1fea1a2e61c56d6efb90bd3dced847444e2c4018fe7a4d605dc70711c63
-installed_at: 2026-02-10T18:30:36Z
+source_version: 0.17.0
+source_sha256: 9fb590d29ea451b326b18ed62559213def133ee29889c12fcf6f6658d4e6f250
+installed_at: 2026-02-13T21:43:00Z
 installed_by: jonah
 -->
 
@@ -24,7 +24,7 @@ installed_by: jonah
 - Express backend (minimal API surface)
 - TanStack Query for server state
 - shadcn/ui components (New York variant)
-- 9 dashboard routes
+- 40+ dashboard routes (core, preview, effectiveness)
 
 ## Rules the Agent Must Obey
 
@@ -57,7 +57,7 @@ installed_by: jonah
 
 | Alias | Path | Usage |
 |-------|------|-------|
-| `@/` | `client/` | React components |
+| `@/` | `client/src/` | React components |
 | `@shared/` | `shared/` | Shared types/schemas |
 
 ## API Endpoints (port 3000)
