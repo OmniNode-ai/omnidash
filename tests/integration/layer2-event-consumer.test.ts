@@ -159,7 +159,7 @@ describe('Layer 2: Topic Resolution', () => {
     );
 
     // staging prefix (on a legacy flat topic name that happens to be prefixed)
-    expect(extractSuffix('staging.agent-actions')).toBe('agent-actions');
+    expect(extractSuffix(`staging.${LEGACY_AGENT_ACTIONS}`)).toBe(LEGACY_AGENT_ACTIONS);
 
     // prod prefix
     expect(extractSuffix('prod.onex.evt.platform.node-heartbeat.v1')).toBe(
@@ -201,10 +201,14 @@ describe('Layer 2: Topic Resolution', () => {
   });
 
   it('extractSuffix passes through legacy flat topic names unchanged', () => {
-    expect(extractSuffix('agent-actions')).toBe('agent-actions');
-    expect(extractSuffix('agent-routing-decisions')).toBe('agent-routing-decisions');
-    expect(extractSuffix('agent-transformation-events')).toBe('agent-transformation-events');
-    expect(extractSuffix('router-performance-metrics')).toBe('router-performance-metrics');
+    expect(extractSuffix(LEGACY_AGENT_ACTIONS)).toBe(LEGACY_AGENT_ACTIONS);
+    expect(extractSuffix(LEGACY_AGENT_ROUTING_DECISIONS)).toBe(LEGACY_AGENT_ROUTING_DECISIONS);
+    expect(extractSuffix(LEGACY_AGENT_TRANSFORMATION_EVENTS)).toBe(
+      LEGACY_AGENT_TRANSFORMATION_EVENTS
+    );
+    expect(extractSuffix(LEGACY_ROUTER_PERFORMANCE_METRICS)).toBe(
+      LEGACY_ROUTER_PERFORMANCE_METRICS
+    );
   });
 
   // --------------------------------------------------------------------------

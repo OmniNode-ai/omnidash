@@ -2,6 +2,12 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+} from '@shared/topics';
 
 // Mock fs module
 vi.mock('fs', () => ({
@@ -27,7 +33,7 @@ describe('EventPlaybackService', () => {
     {
       timestamp: '2024-01-01T00:00:00.000Z',
       relativeMs: 0,
-      topic: 'agent-routing-decisions',
+      topic: LEGACY_AGENT_ROUTING_DECISIONS,
       partition: 0,
       offset: '0',
       key: null,
@@ -36,7 +42,7 @@ describe('EventPlaybackService', () => {
     {
       timestamp: '2024-01-01T00:00:00.100Z',
       relativeMs: 100,
-      topic: 'agent-actions',
+      topic: LEGACY_AGENT_ACTIONS,
       partition: 0,
       offset: '1',
       key: null,
@@ -45,7 +51,7 @@ describe('EventPlaybackService', () => {
     {
       timestamp: '2024-01-01T00:00:00.200Z',
       relativeMs: 200,
-      topic: 'agent-transformation-events',
+      topic: LEGACY_AGENT_TRANSFORMATION_EVENTS,
       partition: 0,
       offset: '2',
       key: null,
@@ -54,7 +60,7 @@ describe('EventPlaybackService', () => {
     {
       timestamp: '2024-01-01T00:00:00.300Z',
       relativeMs: 300,
-      topic: 'router-performance-metrics',
+      topic: LEGACY_ROUTER_PERFORMANCE_METRICS,
       partition: 0,
       offset: '3',
       key: null,
@@ -113,8 +119,8 @@ describe('EventPlaybackService', () => {
       const events = service.loadRecording(filePath);
 
       expect(events).toHaveLength(5);
-      expect(events[0].topic).toBe('agent-routing-decisions');
-      expect(events[1].topic).toBe('agent-actions');
+      expect(events[0].topic).toBe(LEGACY_AGENT_ROUTING_DECISIONS);
+      expect(events[1].topic).toBe(LEGACY_AGENT_ACTIONS);
     });
 
     it('should throw error for non-existent file', () => {
@@ -352,14 +358,14 @@ describe('EventPlaybackService', () => {
 
       service.startPlayback('/path/to/recording.jsonl', {
         speed: 0,
-        topics: ['agent-actions'],
+        topics: [LEGACY_AGENT_ACTIONS],
       });
 
       // Use runAllTimersAsync to process all events
       await vi.runAllTimersAsync();
 
       expect(eventSpy).toHaveBeenCalledTimes(1);
-      expect(eventSpy.mock.calls[0][0].topic).toBe('agent-actions');
+      expect(eventSpy.mock.calls[0][0].topic).toBe(LEGACY_AGENT_ACTIONS);
     });
 
     it('should call onEvent callback for each event', async () => {
@@ -959,7 +965,7 @@ describe('EventPlaybackService', () => {
         manyEvents.push({
           timestamp: `2024-01-01T00:00:${String(i).padStart(2, '0')}.000Z`,
           relativeMs: i * 100, // 100ms between events
-          topic: 'agent-actions',
+          topic: LEGACY_AGENT_ACTIONS,
           partition: 0,
           offset: String(i),
           key: null,
@@ -1010,7 +1016,7 @@ describe('EventPlaybackService', () => {
         manyEvents.push({
           timestamp: `2024-01-01T00:00:${String(i).padStart(2, '0')}.000Z`,
           relativeMs: i,
-          topic: 'agent-actions',
+          topic: LEGACY_AGENT_ACTIONS,
           partition: 0,
           offset: String(i),
           key: null,

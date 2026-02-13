@@ -1,5 +1,10 @@
 import { Kafka, Producer, Consumer } from 'kafkajs';
 import { randomUUID } from 'crypto';
+import {
+  LEGACY_INTELLIGENCE_CODE_ANALYSIS_REQUESTED,
+  LEGACY_INTELLIGENCE_CODE_ANALYSIS_COMPLETED,
+  LEGACY_INTELLIGENCE_CODE_ANALYSIS_FAILED,
+} from '@shared/topics';
 
 /**
  * Error class for intelligence request failures with optional error code.
@@ -42,16 +47,15 @@ export class IntelligenceEventAdapter {
     }
   > = new Map();
 
-  // Default topics aligned with OmniArchon/OmniClaude patterns
+  // Default topics aligned with OmniArchon/OmniClaude patterns.
+  // Uses legacy archon-intelligence topic names (see shared/topics.ts).
+  // Override via env vars for canonical ONEX migration.
   public readonly TOPIC_REQUEST =
-    process.env.INTEL_REQUEST_TOPIC ||
-    'dev.archon-intelligence.intelligence.code-analysis-requested.v1';
+    process.env.INTEL_REQUEST_TOPIC || LEGACY_INTELLIGENCE_CODE_ANALYSIS_REQUESTED;
   public readonly TOPIC_COMPLETED =
-    process.env.INTEL_COMPLETED_TOPIC ||
-    'dev.archon-intelligence.intelligence.code-analysis-completed.v1';
+    process.env.INTEL_COMPLETED_TOPIC || LEGACY_INTELLIGENCE_CODE_ANALYSIS_COMPLETED;
   public readonly TOPIC_FAILED =
-    process.env.INTEL_FAILED_TOPIC ||
-    'dev.archon-intelligence.intelligence.code-analysis-failed.v1';
+    process.env.INTEL_FAILED_TOPIC || LEGACY_INTELLIGENCE_CODE_ANALYSIS_FAILED;
 
   constructor(
     private readonly brokers: string[] = (() => {
