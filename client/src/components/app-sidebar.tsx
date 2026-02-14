@@ -35,6 +35,9 @@ interface NavItem {
 
 // OMN-2180: Product-facing navigation groups
 // Routes are intentionally preserved -- only labels and grouping change.
+// Hidden routes (still in App.tsx but excluded from sidebar):
+//   /graph  — Execution Graph (node execution visualization)
+//   /live-events — Demo Stream (superseded by Event Stream)
 
 const monitoring: NavItem[] = [
   {
