@@ -34,7 +34,7 @@ interface NavItem {
 }
 
 // OMN-2180: Product-facing navigation groups
-// Routes are intentionally preserved -- only labels change.
+// Routes are intentionally preserved -- only labels and grouping change.
 
 const monitoring: NavItem[] = [
   {
@@ -49,9 +49,6 @@ const monitoring: NavItem[] = [
     icon: Gauge,
     description: 'Pattern extraction metrics and pipeline health',
   },
-];
-
-const effectiveness: NavItem[] = [
   {
     title: 'Injection Performance',
     url: '/effectiveness',
@@ -78,9 +75,9 @@ const intelligence: NavItem[] = [
 const system: NavItem[] = [
   {
     title: 'Node Registry',
-    url: '/registry',
+    url: '/discovery',
     icon: Globe,
-    description: 'Node and service registry',
+    description: 'Contract-driven node and service discovery',
   },
   {
     title: 'Validation',
@@ -139,7 +136,7 @@ function NavGroup({ label, items, location }: NavGroupProps) {
                   className={cn('group', isActive && 'bg-sidebar-accent')}
                   data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, '-')}`}
                 >
-                  <Link href={item.url}>
+                  <Link href={item.url} title={item.description}>
                     <item.icon className="w-4 h-4" />
                     <span>{item.title}</span>
                     {isActive && (
@@ -164,7 +161,6 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarContent>
         <NavGroup label="Monitoring" items={monitoring} location={location} />
-        <NavGroup label="Effectiveness" items={effectiveness} location={location} />
         <NavGroup label="Intelligence" items={intelligence} location={location} />
         <NavGroup label="System" items={system} location={location} />
         <NavGroup label="Tools" items={tools} location={location} />
