@@ -25,7 +25,7 @@ const MOCK_REPOS = [
   'omniarchon',
   'omniclaude',
   'omnidash',
-  'omninode_bridge',
+  'omnibase_infra',
   'onex_runtime',
   'onex_cli',
   'omni_registry',

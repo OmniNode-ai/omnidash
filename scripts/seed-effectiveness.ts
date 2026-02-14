@@ -150,20 +150,27 @@ function withTrend(
 // ---------------------------------------------------------------------------
 
 function buildConnectionString(): string {
+  // Priority 1: OMNIDASH_ANALYTICS_DB_URL (canonical for read-model DB)
+  if (process.env.OMNIDASH_ANALYTICS_DB_URL) {
+    return process.env.OMNIDASH_ANALYTICS_DB_URL;
+  }
+
+  // Priority 2: DATABASE_URL (backward compatibility)
   if (process.env.DATABASE_URL) {
     return process.env.DATABASE_URL;
   }
 
+  // Priority 3: Individual POSTGRES_* variables
   const host = process.env.POSTGRES_HOST;
   const port = process.env.POSTGRES_PORT || '5436';
-  const database = process.env.POSTGRES_DATABASE || 'omninode_bridge';
+  const database = process.env.POSTGRES_DATABASE || 'omnidash_analytics';
   const user = process.env.POSTGRES_USER || 'postgres';
   const password = process.env.POSTGRES_PASSWORD;
 
   if (!host || !password) {
     console.error(
       'Error: Database connection details not found.\n' +
-        'Set DATABASE_URL or POSTGRES_HOST + POSTGRES_PASSWORD in your .env file.'
+        'Set OMNIDASH_ANALYTICS_DB_URL, DATABASE_URL, or POSTGRES_HOST + POSTGRES_PASSWORD in your .env file.'
     );
     process.exit(1);
   }

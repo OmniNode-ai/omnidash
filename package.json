@@ -21,6 +21,7 @@
     "test:snapshots:debug": "playwright test --debug",
     "test:snapshots:report": "playwright show-report",
     "db:push": "drizzle-kit push",
+    "db:migrate": "tsx scripts/run-migrations.ts",
     "seed-events": "tsx scripts/seed-events.ts",
     "seed-events:continuous": "tsx scripts/seed-events.ts --continuous",
     "seed-effectiveness": "tsx scripts/seed-effectiveness.ts",

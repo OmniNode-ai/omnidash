@@ -147,7 +147,7 @@ const CONTRACT_TYPES = {
   },
 };
 
-// Mock examples from omninode_bridge contracts
+// Mock examples from ONEX contracts
 const EXAMPLE_CONTRACTS = {
   workflow: {
     name: 'codegen_workflow',

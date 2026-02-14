@@ -43,6 +43,7 @@ npm run test:coverage     # Generate test coverage report
 
 ```bash
 npm run db:push     # Push Drizzle schema changes to PostgreSQL
+npm run db:migrate  # Run SQL migrations from migrations/ (recommended for omnidash_analytics read-model)
 ```
 
 **Testing APIs**:
@@ -174,7 +175,7 @@ Three-directory monorepo with TypeScript path aliases:
   - `shared/schema.ts` - User authentication tables
   - `shared/intelligence-schema.ts` - 30+ intelligence tracking tables
 - **Type Safety**: Zod schemas auto-generated from Drizzle via `drizzle-zod`
-- **Connection**: Two databases - app DB and intelligence DB (`omninode_bridge`)
+- **Connection**: Two databases - app DB and read-model DB (`omnidash_analytics`, populated by Kafka consumer projections from the upstream `omninode_bridge` event bus)
 
 **Request Logging**: Custom middleware logs API requests (`/api` paths only) with duration and truncated JSON responses (80 char limit). WebSocket connections logged separately.
 
@@ -306,17 +307,21 @@ npm run test:coverage     # Generate coverage report
 
 ### Available Data Sources
 
-**PostgreSQL Database** (`192.168.86.200:5436`):
+**Omnidash Read-Model Database** (`omnidash_analytics`):
 
-- **Database**: `omninode_bridge`
-- **30+ tables** tracking agent execution, routing, patterns, and performance
-- **Key tables**:
-  - `agent_routing_decisions` - Agent selection with confidence scoring (~1K/day)
-  - `agent_manifest_injections` - Complete manifest snapshots (~1K/day)
-  - `agent_actions` - Tool calls, decisions, errors (~50K/day)
-  - `workflow_steps` - Workflow execution steps (~10K/day)
-  - `llm_calls` - LLM API calls with costs (~5K/day)
-  - `error_events` / `success_events` - Error and success tracking
+- **Database**: `omnidash_analytics` (omnidash's own read-model, NOT the upstream `omninode_bridge`)
+- Populated by `server/read-model-consumer.ts` which projects Kafka events into local tables
+- **Key projected tables**:
+  - `agent_routing_decisions` - Agent selection with confidence scoring
+  - `agent_actions` - Tool calls, decisions, errors
+  - `agent_transformation_events` - Polymorphic agent transformations
+  - `projection_watermarks` - Consumer progress tracking
+
+**Upstream Source Database** (`omninode_bridge` on `192.168.86.200:5436`):
+
+- Omnidash does NOT query this database directly
+- Events originating from this database are published to Kafka topics and consumed by the read-model consumer above
+- Contains 30+ tables tracking agent execution, routing, patterns, and performance
 
 **Kafka Event Bus** (`192.168.86.200:9092`):
 
@@ -330,14 +335,11 @@ npm run test:coverage     # Generate coverage report
 Add to `.env` for intelligence integration (see `.env.example` for template):
 
 ```bash
-# PostgreSQL Intelligence Database
+# Omnidash Read-Model Database (omnidash's own database)
 # See .env file for actual credentials - NEVER commit passwords to git!
-DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge"
-POSTGRES_HOST=192.168.86.200
-POSTGRES_PORT=5436
-POSTGRES_DATABASE=omninode_bridge
+OMNIDASH_ANALYTICS_DB_URL="postgresql://postgres:<password>@192.168.86.200:5436/omnidash_analytics"
 
-# Kafka Event Streaming
+# Kafka Event Streaming (source of events projected into omnidash_analytics)
 KAFKA_BROKERS=192.168.86.200:9092
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers-v2
@@ -351,7 +353,8 @@ ENABLE_REAL_TIME_EVENTS=true
 **Pattern 1: Database-Backed API Endpoints** (✅ Implemented)
 
 - Express API endpoints in `server/intelligence-routes.ts`, `server/savings-routes.ts`, `server/agent-registry-routes.ts`
-- Uses Drizzle ORM with PostgreSQL at `192.168.86.200:5436`
+- Uses Drizzle ORM with the local `omnidash_analytics` read-model database
+- Data is projected from Kafka events by `server/read-model-consumer.ts`
 - Backend aggregation and caching for performance
 - Integrate with TanStack Query in dashboard components
 
@@ -468,4 +471,4 @@ Both schemas use:
 - `createInsertSchema()` from `drizzle-zod` for runtime validation
 - PostgreSQL with connection pooling via `@neondatabase/serverless`
 
-The intelligence database (`omninode_bridge`) is on a separate PostgreSQL instance at `192.168.86.200:5436`.
+The read-model database (`omnidash_analytics`) is omnidash's own database, populated by Kafka consumer projections from the upstream `omninode_bridge` event bus. Omnidash does not query `omninode_bridge` directly.

@@ -13,8 +13,6 @@ import {
   EVENT_TYPE_NAMES,
   isIntentClassifiedEvent,
   isIntentStoredEvent,
-  type IntentClassifiedEvent as SharedIntentClassifiedEvent,
-  type IntentStoredEvent as SharedIntentStoredEvent,
   type IntentRecordPayload,
 } from '@shared/intent-types';
 // Import intentEventEmitter for WebSocket broadcasting of intent events
@@ -72,9 +70,6 @@ import {
   OFFLINE_NODE_TTL_MS,
   CLEANUP_INTERVAL_MS,
   type EventEnvelope,
-  type NodeBecameActivePayload,
-  type NodeHeartbeatPayload,
-  type NodeLivenessExpiredPayload,
   type NodeState,
 } from '@shared/schemas';
 import {
@@ -153,7 +148,7 @@ const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
 // (e.g. `onex.evt.platform.node-heartbeat.v1`).
 //
 // ⚠️ DEPLOYMENT ORDER: Node/platform topic names below use canonical ONEX format.
-// The upstream producer (omninode_bridge, omniclaude hooks) MUST be deployed
+// The upstream producer (omnibase_infra, omniclaude hooks) MUST be deployed
 // BEFORE or SIMULTANEOUSLY with this omnidash change. If omnidash subscribes
 // to the new canonical names before producers emit on them, node registry
 // events (introspection, heartbeat, registration, liveness) will be silently

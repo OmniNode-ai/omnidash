@@ -88,6 +88,22 @@ vi.mock('../projection-bootstrap', () => ({
   projectionService: projectionServiceMock,
 }));
 
+vi.mock('../read-model-consumer', () => ({
+  readModelConsumer: {
+    start: vi.fn().mockResolvedValue(undefined),
+    stop: vi.fn().mockResolvedValue(undefined),
+    getStats: vi
+      .fn()
+      .mockReturnValue({
+        isRunning: false,
+        eventsProjected: 0,
+        errorsCount: 0,
+        lastProjectedAt: null,
+        topicStats: {},
+      }),
+  },
+}));
+
 describe('server/index bootstrap', () => {
   let originalEnv: NodeJS.ProcessEnv;
   let processOnSpy: ReturnType<typeof vi.spyOn>;
