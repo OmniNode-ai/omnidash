@@ -421,13 +421,16 @@ All tables use Drizzle ORM with Zod validation schemas auto-generated via `creat
 
 ### Dashboard-Specific Data Mappings
 
-**AgentOperations** → `agent_routing_decisions`, `agent_actions`, topic: `agent-actions`
-**PatternLearning** → `agent_manifest_injections`, pattern data
-**IntelligenceOperations** → `agent_manifest_injections`, `llm_calls`
-**EventFlow** → Kafka consumer lag metrics, direct topic monitoring
-**CodeIntelligence** → semantic search, `workflow_steps`
-**PlatformHealth** → `error_events`, database connection pool stats
-**DeveloperExperience** → `agent_routing_decisions`, `workflow_steps`
+**EventBusMonitor** (`/events`) → Kafka consumer lag metrics, direct topic monitoring, topic: `agent-actions`
+**ExtractionDashboard** (`/extraction`) → `agent_manifest_injections`, pattern data, pipeline health metrics
+**EffectivenessSummary** (`/effectiveness`) → `agent_manifest_injections`, `llm_calls`, A/B analysis
+**IntentDashboard** (`/intents`) → intent classification data, real-time signal analysis
+**PatternLearning** (`/patterns`) → `agent_manifest_injections`, pattern data, learning analytics
+**NodeRegistry** (`/registry`) → `agent_routing_decisions`, `agent_actions`, service discovery
+**ValidationDashboard** (`/validation`) → `error_events`, validation runs, violation trends
+**CorrelationTrace** (`/trace`) → `workflow_steps`, correlation data, event tracing
+**LearnedInsights** (`/insights`) → `agent_routing_decisions`, `workflow_steps`, session patterns
+**WidgetShowcase** (`/showcase`) → preview/demo data (contract-driven widget types)
 
 ### Complete Integration Guide
 
