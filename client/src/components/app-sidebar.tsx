@@ -23,48 +23,78 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import type { LucideIcon } from 'lucide-react';
 
-// Dashboards ordered by priority - core monitoring dashboards first
-// Ordered by functional group: Infrastructure → Pattern Lifecycle → Quality & Intelligence
-const dashboards = [
-  // -- Infrastructure --
+interface NavItem {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+  description: string;
+}
+
+// OMN-2180: Product-facing navigation groups
+// Routes are intentionally preserved -- only labels change.
+
+const monitoring: NavItem[] = [
   {
-    title: 'Event Bus',
+    title: 'Event Stream',
     url: '/events',
     icon: Radio,
     description: 'Real-time Kafka event stream visualization',
   },
   {
-    title: 'Registry Discovery',
-    url: '/discovery',
-    icon: Globe,
-    description: 'Contract-driven node and service discovery',
-  },
-  // -- Pattern Lifecycle (discover → extract → measure) --
-  {
-    title: 'Pattern Learning',
-    url: '/patterns',
-    icon: Sparkles,
-    description: 'Code pattern discovery and learning analytics',
-  },
-  {
-    title: 'Extraction Pipeline',
+    title: 'Pipeline Metrics',
     url: '/extraction',
     icon: Gauge,
     description: 'Pattern extraction metrics and pipeline health',
   },
+];
+
+const effectiveness: NavItem[] = [
   {
-    title: 'Effectiveness',
+    title: 'Injection Performance',
     url: '/effectiveness',
     icon: Activity,
     description: 'Injection effectiveness metrics and A/B analysis',
   },
-  // -- Quality & Intelligence --
+];
+
+const intelligence: NavItem[] = [
+  {
+    title: 'Intent Signals',
+    url: '/intents',
+    icon: Brain,
+    description: 'Real-time intent classification and analysis',
+  },
+  {
+    title: 'Pattern Intelligence',
+    url: '/patterns',
+    icon: Sparkles,
+    description: 'Code pattern discovery and learning analytics',
+  },
+];
+
+const system: NavItem[] = [
+  {
+    title: 'Node Registry',
+    url: '/registry',
+    icon: Globe,
+    description: 'Node and service registry',
+  },
   {
     title: 'Validation',
     url: '/validation',
     icon: ShieldCheck,
     description: 'Cross-repo validation runs and violation trends',
+  },
+];
+
+const tools: NavItem[] = [
+  {
+    title: 'Correlation Trace',
+    url: '/trace',
+    icon: Search,
+    description: 'Trace events by correlation ID',
   },
   {
     title: 'Learned Insights',
@@ -72,26 +102,9 @@ const dashboards = [
     icon: Lightbulb,
     description: 'Patterns and conventions from OmniClaude sessions',
   },
-  {
-    title: 'Intent Dashboard',
-    url: '/intents',
-    icon: Brain,
-    description: 'Real-time intent classification and analysis',
-  },
-  // Hidden: Execution Graph (/graph) - node execution visualization
-  // Hidden: Demo Stream (/live-events) - superseded by Event Bus
 ];
 
-const tools = [
-  {
-    title: 'Correlation Trace',
-    url: '/trace',
-    icon: Search,
-    description: 'Trace events by correlation ID',
-  },
-];
-
-const previews = [
+const previews: NavItem[] = [
   {
     title: 'Widget Showcase',
     url: '/showcase',
@@ -100,101 +113,58 @@ const previews = [
   },
 ];
 
+interface NavGroupProps {
+  label: string;
+  items: NavItem[];
+  location: string;
+}
+
+function NavGroup({ label, items, location }: NavGroupProps) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel className="text-xs uppercase tracking-wider px-3 mb-2">
+        {label}
+      </SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => {
+            const isActive = location === item.url;
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  asChild
+                  className={cn('group', isActive && 'bg-sidebar-accent')}
+                  data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                >
+                  <Link href={item.url}>
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.title}</span>
+                    {isActive && (
+                      <ChevronRight className="w-4 h-4 ml-auto text-sidebar-accent-foreground" />
+                    )}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
 export function AppSidebar() {
   const [location] = useLocation();
 
   return (
     <Sidebar>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs uppercase tracking-wider px-3 mb-2">
-            Dashboards
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {dashboards.map((item) => {
-                const isActive = location === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      className={cn('group', isActive && 'bg-sidebar-accent')}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                    >
-                      <Link href={item.url}>
-                        <item.icon className="w-4 h-4" />
-                        <span>{item.title}</span>
-                        {isActive && (
-                          <ChevronRight className="w-4 h-4 ml-auto text-sidebar-accent-foreground" />
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs uppercase tracking-wider px-3 mb-2">
-            Tools
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {tools.map((item) => {
-                const isActive = location === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      className={cn('group', isActive && 'bg-sidebar-accent')}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                    >
-                      <Link href={item.url}>
-                        <item.icon className="w-4 h-4" />
-                        <span>{item.title}</span>
-                        {isActive && (
-                          <ChevronRight className="w-4 h-4 ml-auto text-sidebar-accent-foreground" />
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs uppercase tracking-wider px-3 mb-2">
-            Preview Features
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {previews.map((item) => {
-                const isActive = location === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      className={cn('group', isActive && 'bg-sidebar-accent')}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                    >
-                      <Link href={item.url}>
-                        <item.icon className="w-4 h-4" />
-                        <span>{item.title}</span>
-                        {isActive && (
-                          <ChevronRight className="w-4 h-4 ml-auto text-sidebar-accent-foreground" />
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <NavGroup label="Monitoring" items={monitoring} location={location} />
+        <NavGroup label="Effectiveness" items={effectiveness} location={location} />
+        <NavGroup label="Intelligence" items={intelligence} location={location} />
+        <NavGroup label="System" items={system} location={location} />
+        <NavGroup label="Tools" items={tools} location={location} />
+        <NavGroup label="Preview" items={previews} location={location} />
       </SidebarContent>
     </Sidebar>
   );
