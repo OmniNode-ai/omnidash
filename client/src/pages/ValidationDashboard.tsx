@@ -310,6 +310,7 @@ export default function ValidationDashboard() {
     queryKey: queryKeys.validation.lifecycle(),
     queryFn: () => validationSource.getLifecycleSummary(),
     refetchInterval: 30_000,
+    enabled: activeTab === 'lifecycle',
   });
 
   const repos = useMemo(() => summary?.repos ?? [], [summary]);
