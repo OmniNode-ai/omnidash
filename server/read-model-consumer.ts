@@ -226,19 +226,35 @@ export class ReadModelConsumer {
       const topicKey = topic as ReadModelTopic;
       const fallbackId = deterministicCorrelationId(topic, partition, message.offset);
 
+      let projected: boolean;
       switch (topicKey) {
         case 'agent-routing-decisions':
-          await this.projectRoutingDecision(parsed, fallbackId);
+          projected = await this.projectRoutingDecision(parsed, fallbackId);
           break;
         case 'agent-actions':
-          await this.projectAgentAction(parsed, fallbackId);
+          projected = await this.projectAgentAction(parsed, fallbackId);
           break;
         case 'agent-transformation-events':
-          await this.projectTransformationEvent(parsed);
+          projected = await this.projectTransformationEvent(parsed);
           break;
         default:
-          // Unknown topic -- skip
+          console.warn(
+            `[ReadModelConsumer] Received message on unknown topic "${topic}" -- skipping`
+          );
           return;
+      }
+
+      // Only update stats and watermark when the projection actually succeeded.
+      // If the DB was unavailable the projection method returns false and we
+      // must NOT advance the watermark -- Kafka will redeliver the message on
+      // the next consumer restart (or when the DB comes back and the next
+      // poll cycle retries).
+      if (!projected) {
+        console.warn(
+          `[ReadModelConsumer] DB unavailable, skipping projection for ${topic} ` +
+            `partition=${partition} offset=${message.offset}`
+        );
+        return;
       }
 
       // Update stats
@@ -286,13 +302,14 @@ export class ReadModelConsumer {
 
   /**
    * Project a routing decision event into agent_routing_decisions table.
+   * Returns true if the row was successfully written, false if the DB was unavailable.
    */
   private async projectRoutingDecision(
     data: Record<string, unknown>,
     fallbackId: string
-  ): Promise<void> {
+  ): Promise<boolean> {
     const db = tryGetIntelligenceDb();
-    if (!db) return;
+    if (!db) return false;
 
     const row: InsertAgentRoutingDecision = {
       correlationId:
@@ -331,17 +348,20 @@ export class ReadModelConsumer {
       .insert(agentRoutingDecisions)
       .values(row)
       .onConflictDoNothing({ target: agentRoutingDecisions.correlationId });
+
+    return true;
   }
 
   /**
    * Project an agent action event into agent_actions table.
+   * Returns true if the row was successfully written, false if the DB was unavailable.
    */
   private async projectAgentAction(
     data: Record<string, unknown>,
     fallbackId: string
-  ): Promise<void> {
+  ): Promise<boolean> {
     const db = tryGetIntelligenceDb();
-    if (!db) return;
+    if (!db) return false;
 
     const row: InsertAgentAction = {
       correlationId:
@@ -364,14 +384,17 @@ export class ReadModelConsumer {
       .insert(agentActions)
       .values(row)
       .onConflictDoNothing({ target: agentActions.correlationId });
+
+    return true;
   }
 
   /**
    * Project a transformation event into agent_transformation_events table.
+   * Returns true if the row was successfully written, false if the DB was unavailable.
    */
-  private async projectTransformationEvent(data: Record<string, unknown>): Promise<void> {
+  private async projectTransformationEvent(data: Record<string, unknown>): Promise<boolean> {
     const db = tryGetIntelligenceDb();
-    if (!db) return;
+    if (!db) return false;
 
     const row: InsertAgentTransformationEvent = {
       sourceAgent: (data.source_agent as string) || (data.sourceAgent as string) || 'unknown',
@@ -409,6 +432,8 @@ export class ReadModelConsumer {
           agentTransformationEvents.createdAt,
         ],
       });
+
+    return true;
   }
 
   /**

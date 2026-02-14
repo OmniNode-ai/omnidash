@@ -83,6 +83,11 @@ async function main(): Promise<void> {
       const sqlContent = fs.readFileSync(filePath, 'utf-8');
 
       console.log(`[migrate] Running: ${file}`);
+      // Known limitation: Each migration file is wrapped in a transaction.
+      // CREATE EXTENSION cannot run inside a transaction on some PostgreSQL
+      // configurations (e.g., Amazon RDS, Azure). If a migration containing
+      // CREATE EXTENSION fails, it may need to be run outside of a transaction
+      // or the extension must be pre-installed by a superuser.
       try {
         await pool.query('BEGIN');
         await pool.query(sqlContent);

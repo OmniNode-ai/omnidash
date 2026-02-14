@@ -4,6 +4,7 @@ import {
   text,
   varchar,
   integer,
+  bigint,
   serial,
   numeric,
   boolean,
@@ -617,6 +618,32 @@ export type PatternHitRateRow = typeof patternHitRates.$inferSelect;
 export type InsertPatternHitRate = typeof patternHitRates.$inferInsert;
 
 // ============================================================================
+// Projection Watermarks (consumer progress tracking)
+//
+// Tracks per-topic/partition consumer offsets so the read-model consumer can
+// resume from the last successfully projected event after a restart.
+// ============================================================================
+
+/**
+ * Projection Watermarks Table
+ * Tracks consumer progress for each Kafka topic/partition projection.
+ * The projection_name key is formatted as "topic:partition".
+ */
+export const projectionWatermarks = pgTable('projection_watermarks', {
+  projectionName: text('projection_name').primaryKey(),
+  lastOffset: bigint('last_offset', { mode: 'number' }).notNull().default(0),
+  lastEventId: uuid('last_event_id'),
+  lastProjectedAt: timestamp('last_projected_at').defaultNow(),
+  eventsProjected: bigint('events_projected', { mode: 'number' }).notNull().default(0),
+  errorsCount: bigint('errors_count', { mode: 'number' }).notNull().default(0),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const insertProjectionWatermarkSchema = createInsertSchema(projectionWatermarks);
+export type ProjectionWatermark = typeof projectionWatermarks.$inferSelect;
+export type InsertProjectionWatermark = typeof projectionWatermarks.$inferInsert;
+
+// ============================================================================
 // Cross-Repo Validation Tables (OMN-1907)
 //
 // These tables live in the omnidash_analytics read-model database.
@@ -638,7 +665,7 @@ export const validationRuns = pgTable(
     validators: jsonb('validators').notNull().$type<string[]>(),
     triggeredBy: text('triggered_by'),
     status: text('status').notNull().default('running'),
-    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp('completed_at', { withTimezone: true }),
     durationMs: integer('duration_ms'),
     totalViolations: integer('total_violations').notNull().default(0),
