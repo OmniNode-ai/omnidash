@@ -53,8 +53,9 @@ describe('DB-SPLIT-10: No omninode_bridge references', () => {
     const violations: string[] = [];
 
     for (const filePath of sourceFiles) {
-      // Skip this test file itself
+      // Skip this test file itself and package-lock.json (transitive deps may mention it)
       if (filePath.includes('no-omninode-bridge-refs.test.ts')) continue;
+      if (filePath.endsWith('package-lock.json')) continue;
 
       const content = fs.readFileSync(filePath, 'utf-8');
       if (content.includes('omninode_bridge')) {

@@ -47,7 +47,12 @@ export const agentRoutingDecisions = pgTable(
     createdAt: timestamp('created_at').defaultNow(),
     projectedAt: timestamp('projected_at').defaultNow(),
   },
-  (table) => [uniqueIndex('idx_agent_routing_decisions_correlation').on(table.correlationId)]
+  (table) => [
+    uniqueIndex('idx_agent_routing_decisions_correlation').on(table.correlationId),
+    index('idx_ard_selected_agent').on(table.selectedAgent),
+    index('idx_ard_created_at').on(table.createdAt),
+    index('idx_ard_correlation_id').on(table.correlationId),
+  ]
 );
 
 /**
@@ -69,7 +74,12 @@ export const agentActions = pgTable(
     createdAt: timestamp('created_at').defaultNow(),
     projectedAt: timestamp('projected_at').defaultNow(),
   },
-  (table) => [uniqueIndex('idx_agent_actions_correlation').on(table.correlationId)]
+  (table) => [
+    uniqueIndex('idx_agent_actions_correlation').on(table.correlationId),
+    index('idx_aa_agent_name').on(table.agentName),
+    index('idx_aa_created_at').on(table.createdAt),
+    index('idx_aa_correlation_id').on(table.correlationId),
+  ]
 );
 
 // Export Zod schemas for validation
@@ -102,6 +112,7 @@ export const agentTransformationEvents = pgTable(
       table.targetAgent,
       table.createdAt
     ),
+    index('idx_ate_created_at').on(table.createdAt),
   ]
 );
 

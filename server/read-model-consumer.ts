@@ -54,6 +54,16 @@ function deterministicCorrelationId(topic: string, partition: number, offset: st
     .replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
 }
 
+/**
+ * Parse a date string safely, returning a fallback of `new Date()` when the
+ * input is missing or produces an invalid Date (e.g. malformed ISO string).
+ */
+function safeParseDate(value: unknown): Date {
+  if (!value) return new Date();
+  const d = new Date(value as string);
+  return Number.isFinite(d.getTime()) ? d : new Date();
+}
+
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 
 // Consumer configuration
@@ -341,7 +351,7 @@ export class ReadModelConsumer {
         data.execution_succeeded != null ? Boolean(data.execution_succeeded) : undefined,
       actualQualityScore:
         data.actual_quality_score != null ? String(data.actual_quality_score) : undefined,
-      createdAt: data.created_at ? new Date(data.created_at as string) : new Date(),
+      createdAt: safeParseDate(data.created_at),
     };
 
     await db
@@ -377,7 +387,7 @@ export class ReadModelConsumer {
           : data.durationMs != null
             ? Number(data.durationMs)
             : undefined,
-      createdAt: data.created_at ? new Date(data.created_at as string) : new Date(),
+      createdAt: safeParseDate(data.created_at),
     };
 
     await db
@@ -409,7 +419,7 @@ export class ReadModelConsumer {
           ? Number(data.transformation_duration_ms)
           : undefined,
       success: Boolean(data.success ?? true),
-      createdAt: data.created_at ? new Date(data.created_at as string) : new Date(),
+      createdAt: safeParseDate(data.created_at),
       projectPath: (data.project_path as string) || (data.projectPath as string) || undefined,
       projectName: (data.project_name as string) || (data.projectName as string) || undefined,
       claudeSessionId:
@@ -448,6 +458,10 @@ export class ReadModelConsumer {
     if (!db) return;
 
     try {
+      // NOTE: The projection_watermarks table also has an errors_count column,
+      // but we intentionally omit it here. Per-watermark error tracking is
+      // deferred to a future iteration; for now, errors are tracked in the
+      // in-memory ReadModelConsumerStats.errorsCount counter instead.
       await db.execute(sql`
         INSERT INTO projection_watermarks (projection_name, last_offset, events_projected, updated_at)
         VALUES (${projectionName}, ${offset}, 1, NOW())
@@ -455,6 +469,7 @@ export class ReadModelConsumer {
         DO UPDATE SET
           last_offset = GREATEST(projection_watermarks.last_offset, EXCLUDED.last_offset),
           events_projected = projection_watermarks.events_projected + 1,
+          last_projected_at = NOW(),
           updated_at = NOW()
       `);
     } catch (err) {
