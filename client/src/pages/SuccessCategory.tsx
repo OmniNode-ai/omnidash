@@ -73,6 +73,7 @@ function CohortComparisonChart({ data }: { data: ABComparison | undefined }) {
           domain={[0, 100]}
         />
         <Tooltip
+          cursor={{ fill: 'hsl(var(--muted))' }}
           contentStyle={{
             backgroundColor: 'hsl(var(--card))',
             border: '1px solid hsl(var(--border))',

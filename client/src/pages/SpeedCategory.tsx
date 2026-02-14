@@ -68,6 +68,7 @@ function LatencyPercentilesChart({ data }: { data: LatencyDetails | undefined })
           tickFormatter={(v: number) => `${v}ms`}
         />
         <Tooltip
+          cursor={{ fill: 'hsl(var(--muted))' }}
           contentStyle={{
             backgroundColor: 'hsl(var(--card))',
             border: '1px solid hsl(var(--border))',

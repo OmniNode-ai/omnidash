@@ -180,6 +180,7 @@ function NodeStatusChart({
           allowDecimals={false}
         />
         <Tooltip
+          cursor={{ fill: 'hsl(var(--muted))' }}
           contentStyle={{
             backgroundColor: 'hsl(var(--card))',
             border: '1px solid hsl(var(--border))',
