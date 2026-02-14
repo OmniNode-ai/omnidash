@@ -10,6 +10,8 @@ import {
   Gauge,
   Activity,
   Lightbulb,
+  Zap,
+  FlaskConical,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -31,25 +33,63 @@ interface NavItem {
   url: string;
   icon: LucideIcon;
   description: string;
+  /** Indented sub-page indicator */
+  indent?: boolean;
 }
 
-// OMN-2180: Product-facing navigation groups
-// Routes are intentionally preserved -- only labels and grouping change.
+// OMN-2181: Phase 2 category dashboards as primary navigation
+// OMN-2180: Product-facing navigation groups (preserved as sub-pages)
+//
 // Hidden routes (registered in App.tsx but not in sidebar navigation):
-//   /graph             — Execution Graph (node execution visualization)
-//   /live-events       — Demo Stream (superseded by Event Stream)
-//   /discovery         — Registry Discovery (standalone discovery page)
-//   /intelligence      — Intelligence Operations (archived legacy, OMN-1377)
-//   /code              — Code Intelligence (archived legacy, OMN-1377)
-//   /events-legacy     — Event Flow (archived legacy, OMN-1377)
-//   /event-bus         — Event Bus Explorer (archived legacy, OMN-1377)
-//   /knowledge         — Knowledge Graph (archived legacy, OMN-1377)
-//   /health            — Platform Health (archived legacy, OMN-1377)
-//   /developer         — Developer Experience (archived legacy, OMN-1377)
-//   /chat              — Chat interface
-//   /demo              — Dashboard Demo
-//   /effectiveness/*   — Effectiveness sub-pages (latency, utilization, ab)
-//   /preview/*         — 17 preview/prototype pages
+//   /graph             -- Execution Graph (node execution visualization)
+//   /live-events       -- Demo Stream (superseded by Event Stream)
+//   /discovery         -- Registry Discovery (standalone discovery page)
+//   /intelligence      -- Intelligence Operations (archived legacy, OMN-1377)
+//   /code              -- Code Intelligence (archived legacy, OMN-1377)
+//   /events-legacy     -- Event Flow (archived legacy, OMN-1377)
+//   /event-bus         -- Event Bus Explorer (archived legacy, OMN-1377)
+//   /knowledge         -- Knowledge Graph (archived legacy, OMN-1377)
+//   /health            -- Platform Health (archived legacy, OMN-1377)
+//   /developer         -- Developer Experience (archived legacy, OMN-1377)
+//   /chat              -- Chat interface
+//   /demo              -- Dashboard Demo
+//   /effectiveness/*   -- Effectiveness sub-pages (latency, utilization, ab)
+//   /preview/*         -- 17 preview/prototype pages
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Category Dashboards (OMN-2181)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const categories: NavItem[] = [
+  {
+    title: 'Speed & Responsiveness',
+    url: '/category/speed',
+    icon: Zap,
+    description: 'Cache hit rate, latency percentiles, pipeline health',
+  },
+  {
+    title: 'Success & Testing',
+    url: '/category/success',
+    icon: FlaskConical,
+    description: 'A/B comparison, injection hit rates, effectiveness trends',
+  },
+  {
+    title: 'Intelligence',
+    url: '/category/intelligence',
+    icon: Brain,
+    description: 'Pattern utilization, intent classification, behavior tracking',
+  },
+  {
+    title: 'System Health',
+    url: '/category/health',
+    icon: ShieldCheck,
+    description: 'Validation counts, node registry, health checks',
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Monitoring (drill-down pages)
+// ─────────────────────────────────────────────────────────────────────────────
 
 const monitoring: NavItem[] = [
   {
@@ -63,12 +103,14 @@ const monitoring: NavItem[] = [
     url: '/extraction',
     icon: Gauge,
     description: 'Pattern extraction metrics and pipeline health',
+    indent: true,
   },
   {
     title: 'Injection Performance',
     url: '/effectiveness',
     icon: Activity,
     description: 'Injection effectiveness metrics and A/B analysis',
+    indent: true,
   },
 ];
 
@@ -78,12 +120,14 @@ const intelligence: NavItem[] = [
     url: '/intents',
     icon: Brain,
     description: 'Real-time intent classification and analysis',
+    indent: true,
   },
   {
     title: 'Pattern Intelligence',
     url: '/patterns',
     icon: Sparkles,
     description: 'Code pattern discovery and learning analytics',
+    indent: true,
   },
 ];
 
@@ -93,12 +137,14 @@ const system: NavItem[] = [
     url: '/registry',
     icon: Globe,
     description: 'Contract-driven node and service discovery',
+    indent: true,
   },
   {
     title: 'Validation',
     url: '/validation',
     icon: ShieldCheck,
     description: 'Cross-repo validation runs and violation trends',
+    indent: true,
   },
 ];
 
@@ -153,8 +199,8 @@ function NavGroup({ label, items, location }: NavGroupProps) {
                 <SidebarMenuButton
                   asChild
                   tooltip={item.description}
-                  className={cn('group', isActive && 'bg-sidebar-accent')}
-                  data-testid={`nav-${item.url.slice(1)}`}
+                  className={cn('group', isActive && 'bg-sidebar-accent', item.indent && 'pl-7')}
+                  data-testid={`nav-${item.url.slice(1).replace(/\//g, '-')}`}
                 >
                   <Link href={item.url}>
                     <item.icon className="w-4 h-4" />
@@ -173,13 +219,14 @@ function NavGroup({ label, items, location }: NavGroupProps) {
   );
 }
 
-/** Primary application sidebar with product-facing navigation groups. */
+/** Primary application sidebar with category dashboards and drill-down pages. */
 export function AppSidebar() {
   const [location] = useLocation();
 
   return (
     <Sidebar>
       <SidebarContent>
+        <NavGroup label="Dashboards" items={categories} location={location} />
         <NavGroup label="Monitoring" items={monitoring} location={location} />
         <NavGroup label="Intelligence" items={intelligence} location={location} />
         <NavGroup label="System" items={system} location={location} />

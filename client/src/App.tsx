@@ -42,6 +42,12 @@ import EffectivenessUtilization from '@/pages/EffectivenessUtilization';
 import EffectivenessAB from '@/pages/EffectivenessAB';
 import LearnedInsights from '@/pages/LearnedInsights';
 
+// Phase 2: Category landing pages (OMN-2181)
+import SpeedCategory from '@/pages/SpeedCategory';
+import SuccessCategory from '@/pages/SuccessCategory';
+import IntelligenceCategory from '@/pages/IntelligenceCategory';
+import SystemHealthCategory from '@/pages/SystemHealthCategory';
+
 // Preview pages
 import EnhancedAnalytics from '@/pages/preview/EnhancedAnalytics';
 import SystemHealth from '@/pages/preview/SystemHealth';
@@ -65,6 +71,13 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={EventBusMonitor} />
+
+      {/* Phase 2: Category landing pages (OMN-2181) */}
+      <Route path="/category/speed" component={SpeedCategory} />
+      <Route path="/category/success" component={SuccessCategory} />
+      <Route path="/category/intelligence" component={IntelligenceCategory} />
+      <Route path="/category/health" component={SystemHealthCategory} />
+
       <Route path="/patterns" component={PatternLearning} />
       <Route path="/intelligence" component={IntelligenceOperations} />
       <Route path="/code" component={CodeIntelligence} />
