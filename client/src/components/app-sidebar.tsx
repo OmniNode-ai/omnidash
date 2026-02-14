@@ -25,7 +25,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 
-/** A single sidebar navigation entry with its route, icon, and tooltip text. */
+/** A single sidebar navigation entry with its route, icon, and description. */
 interface NavItem {
   title: string;
   url: string;
@@ -136,10 +136,11 @@ function NavGroup({ label, items, location }: NavGroupProps) {
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
                   asChild
+                  tooltip={item.description}
                   className={cn('group', isActive && 'bg-sidebar-accent')}
                   data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, '-')}`}
                 >
-                  <Link href={item.url} title={item.description}>
+                  <Link href={item.url}>
                     <item.icon className="w-4 h-4" />
                     <span>{item.title}</span>
                     {isActive && (
