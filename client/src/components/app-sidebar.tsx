@@ -237,9 +237,6 @@ function NavGroup({ label, items, location }: NavGroupProps) {
                   <Link href={item.url}>
                     <item.icon className="w-4 h-4" />
                     <span>{item.title}</span>
-                    {isActive && (
-                      <ChevronRight className="w-4 h-4 ml-auto text-sidebar-accent-foreground" />
-                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
