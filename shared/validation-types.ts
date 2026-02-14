@@ -173,6 +173,101 @@ export interface RepoTrends {
 }
 
 // ============================================================================
+// Lifecycle Tier & Candidate Types (OMN-2152)
+// ============================================================================
+
+/**
+ * Lifecycle tiers that a validation rule/pattern candidate progresses through.
+ * Ordered from least mature to most mature.
+ */
+export const LIFECYCLE_TIERS = [
+  'observed',
+  'suggested',
+  'shadow_apply',
+  'promoted',
+  'default',
+] as const;
+
+/** Union type of valid lifecycle tier strings. */
+export type LifecycleTier = (typeof LIFECYCLE_TIERS)[number];
+
+/** Human-readable labels for each lifecycle tier. */
+export const LIFECYCLE_TIER_LABELS: Record<LifecycleTier, string> = {
+  observed: 'Observed',
+  suggested: 'Suggested',
+  shadow_apply: 'Shadow Apply',
+  promoted: 'Promoted',
+  default: 'Default',
+};
+
+/**
+ * Candidate validation statuses within a lifecycle tier.
+ */
+export const CANDIDATE_STATUSES = ['pending', 'pass', 'fail', 'quarantine'] as const;
+
+/** Union type of valid candidate status strings. */
+export type CandidateStatus = (typeof CANDIDATE_STATUSES)[number];
+
+/**
+ * A single validation lifecycle candidate representing a pattern or rule
+ * progressing through the lifecycle tiers.
+ */
+export interface LifecycleCandidate {
+  /** Unique identifier for this candidate */
+  candidate_id: string;
+  /** Human-readable name of the rule or pattern */
+  rule_name: string;
+  /** Rule ID matching a validation rule (e.g. SCHEMA-001) */
+  rule_id: string;
+  /** Current lifecycle tier */
+  tier: LifecycleTier;
+  /** Current validation status within the tier */
+  status: CandidateStatus;
+  /** Repository where this candidate was discovered */
+  source_repo: string;
+  /** ISO-8601 timestamp when candidate entered current tier */
+  entered_tier_at: string;
+  /** ISO-8601 timestamp of last validation run for this candidate */
+  last_validated_at: string;
+  /** Number of consecutive passes at current tier */
+  pass_streak: number;
+  /** Number of consecutive failures at current tier */
+  fail_streak: number;
+  /** Total number of validation runs for this candidate */
+  total_runs: number;
+}
+
+/**
+ * Per-tier aggregated metrics for the lifecycle visualization.
+ */
+export interface LifecycleTierMetrics {
+  /** The lifecycle tier */
+  tier: LifecycleTier;
+  /** Number of candidates currently at this tier */
+  count: number;
+  /** Breakdown of candidate statuses at this tier */
+  by_status: Record<CandidateStatus, number>;
+  /** Average days candidates spend at this tier before advancing */
+  avg_days_at_tier: number;
+  /** Rate at which candidates transition to the next tier (0-1) */
+  transition_rate: number;
+}
+
+/**
+ * Summary response for the lifecycle tab.
+ */
+export interface LifecycleSummary {
+  /** Total number of tracked candidates */
+  total_candidates: number;
+  /** Per-tier breakdown */
+  tiers: LifecycleTierMetrics[];
+  /** Aggregate counts by candidate status across all tiers */
+  by_status: Record<CandidateStatus, number>;
+  /** Candidates list (paginated subset) */
+  candidates: LifecycleCandidate[];
+}
+
+// ============================================================================
 // Type Guards
 // ============================================================================
 

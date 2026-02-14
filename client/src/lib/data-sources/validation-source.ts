@@ -9,12 +9,13 @@
  * Part of OMN-1907: Cross-Repo Validation Dashboard Integration
  */
 
-import type { ValidationRun, RepoTrends } from '@shared/validation-types';
+import type { ValidationRun, RepoTrends, LifecycleSummary } from '@shared/validation-types';
 import {
   getMockRuns,
   getMockSummary,
   getMockRunDetail,
   getMockRepoTrends,
+  getMockLifecycleSummary,
 } from '@/lib/mock-data/validation-mock';
 
 // ===========================
@@ -187,6 +188,32 @@ class ValidationSource {
         );
         this._isUsingMockData = true;
         return getMockRunDetail(runId);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get lifecycle summary with tier metrics and candidates.
+   */
+  async getLifecycleSummary(options: ValidationFetchOptions = {}): Promise<LifecycleSummary> {
+    const { fallbackToMock = true } = options;
+
+    try {
+      const response = await fetch(`${this.baseUrl}/lifecycle/summary`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+      this._isUsingMockData = false;
+      return data;
+    } catch (error) {
+      if (fallbackToMock) {
+        console.warn(
+          '[ValidationSource] API unavailable for lifecycle, using demo data:',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+        this._isUsingMockData = true;
+        return getMockLifecycleSummary();
       }
       throw error;
     }
