@@ -18,7 +18,7 @@ import type {
   LifecycleTier,
   CandidateStatus,
 } from '@shared/validation-types';
-import { LIFECYCLE_TIERS, CANDIDATE_STATUSES } from '@shared/validation-types';
+import { LIFECYCLE_TIERS } from '@shared/validation-types';
 import { generateUUID } from '@shared/uuid';
 
 // ===========================
