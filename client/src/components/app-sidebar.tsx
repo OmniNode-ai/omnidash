@@ -35,9 +35,21 @@ interface NavItem {
 
 // OMN-2180: Product-facing navigation groups
 // Routes are intentionally preserved -- only labels and grouping change.
-// Hidden routes (still in App.tsx but excluded from sidebar):
-//   /graph  — Execution Graph (node execution visualization)
-//   /live-events — Demo Stream (superseded by Event Stream)
+// Hidden routes (registered in App.tsx but not in sidebar navigation):
+//   /graph             — Execution Graph (node execution visualization)
+//   /live-events       — Demo Stream (superseded by Event Stream)
+//   /discovery         — Registry Discovery (standalone discovery page)
+//   /intelligence      — Intelligence Operations (archived legacy, OMN-1377)
+//   /code              — Code Intelligence (archived legacy, OMN-1377)
+//   /events-legacy     — Event Flow (archived legacy, OMN-1377)
+//   /event-bus         — Event Bus Explorer (archived legacy, OMN-1377)
+//   /knowledge         — Knowledge Graph (archived legacy, OMN-1377)
+//   /health            — Platform Health (archived legacy, OMN-1377)
+//   /developer         — Developer Experience (archived legacy, OMN-1377)
+//   /chat              — Chat interface
+//   /demo              — Dashboard Demo
+//   /effectiveness/*   — Effectiveness sub-pages (latency, utilization, ab)
+//   /preview/*         — 17 preview/prototype pages
 
 const monitoring: NavItem[] = [
   {

@@ -205,7 +205,7 @@ export type User = typeof users.$inferSelect;           // Drizzle inference
 export const insertUserSchema = createInsertSchema(users); // Zod schema
 ```
 
-**Component Reuse Philosophy**: MetricCard, ChartContainer, and StatusBadge are designed as reusable primitives across all 8 operational dashboards. When adding new metrics or visualizations, extend these components rather than creating new patterns.
+**Component Reuse Philosophy**: MetricCard, ChartContainer, and StatusBadge are designed as reusable primitives across all 10 operational dashboards. When adding new metrics or visualizations, extend these components rather than creating new patterns.
 
 **Responsive Grid System**: Dashboards use Tailwind's responsive grid utilities with breakpoints:
 
