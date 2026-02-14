@@ -42,9 +42,19 @@ export class MemStorage implements IStorage {
 
 export const storage = new MemStorage();
 
-// Intelligence Database Connection
-// Connects to PostgreSQL database at 192.168.86.200:5436 (omninode_bridge)
-// When not configured, dashboard runs in demo-only mode (graceful degradation)
+// ============================================================================
+// Analytics Database Connection (omnidash_analytics read-model)
+// ============================================================================
+//
+// omnidash owns its own read-model database: omnidash_analytics.
+// All data arrives via Kafka event-sourced projections -- no cross-repo queries.
+//
+// Connection priority:
+//   1. OMNIDASH_ANALYTICS_DB_URL  (canonical)
+//   2. DATABASE_URL               (backward compatibility)
+//   3. POSTGRES_* individual vars (backward compatibility)
+//
+// When not configured, dashboard runs in demo-only mode (graceful degradation).
 
 // Track database configuration state for graceful degradation
 let databaseConfigured = false;
@@ -66,14 +76,20 @@ export function getDatabaseError(): string | null {
   return databaseConnectionError;
 }
 
-function getIntelligenceConnectionString(): string | null {
-  // Prefer DATABASE_URL if set
+function getAnalyticsConnectionString(): string | null {
+  // Priority 1: OMNIDASH_ANALYTICS_DB_URL (canonical for read-model DB)
+  if (process.env.OMNIDASH_ANALYTICS_DB_URL) {
+    databaseConfigured = true;
+    return process.env.OMNIDASH_ANALYTICS_DB_URL;
+  }
+
+  // Priority 2: DATABASE_URL (backward compatibility)
   if (process.env.DATABASE_URL) {
     databaseConfigured = true;
     return process.env.DATABASE_URL;
   }
 
-  // Check for individual POSTGRES_* environment variables
+  // Priority 3: Individual POSTGRES_* variables (backward compatibility)
   const password = process.env.POSTGRES_PASSWORD;
   const host = process.env.POSTGRES_HOST;
   const port = process.env.POSTGRES_PORT;
@@ -89,7 +105,7 @@ function getIntelligenceConnectionString(): string | null {
     if (!user) missing.push('POSTGRES_USER');
     if (!password) missing.push('POSTGRES_PASSWORD');
 
-    databaseConnectionError = `Database not configured. Missing: ${missing.join(', ')}. Dashboard running in demo-only mode.`;
+    databaseConnectionError = `Database not configured. Missing: ${missing.join(', ')}. Set OMNIDASH_ANALYTICS_DB_URL or individual POSTGRES_* vars. Dashboard running in demo-only mode.`;
     console.warn(`[Database] ${databaseConnectionError}`);
     databaseConfigured = false;
     return null;
@@ -107,7 +123,7 @@ let connectionAttempted = false;
 function getPool(): InstanceType<typeof Pool> | null {
   if (!poolInstance && !connectionAttempted) {
     connectionAttempted = true;
-    const connectionString = getIntelligenceConnectionString();
+    const connectionString = getAnalyticsConnectionString();
     if (!connectionString) {
       // Database not configured - graceful degradation
       return null;
@@ -120,7 +136,7 @@ function getPool(): InstanceType<typeof Pool> | null {
 }
 
 /**
- * Get the intelligence database connection.
+ * Get the analytics database connection (omnidash_analytics read-model).
  * Throws if database is not configured.
  * Use isDatabaseConfigured() first to check availability for graceful degradation.
  */
@@ -131,7 +147,7 @@ export function getIntelligenceDb(): ReturnType<typeof drizzle> {
       // Database not configured - throw with helpful message
       throw new Error(
         databaseConnectionError ||
-          'Database not configured. Set POSTGRES_* environment variables or DATABASE_URL.'
+          'Database not configured. Set OMNIDASH_ANALYTICS_DB_URL or POSTGRES_* environment variables.'
       );
     }
     intelligenceDbInstance = drizzle(pool);
@@ -145,8 +161,8 @@ export function getIntelligenceDb(): ReturnType<typeof drizzle> {
  *
  * Delegates directly to getIntelligenceDb() and catches any error
  * (including "not configured") so that the very first call can still
- * succeed when DATABASE_URL / POSTGRES_* vars are present.  Repeated
- * failures are cheap because getPool() caches via connectionAttempted.
+ * succeed when OMNIDASH_ANALYTICS_DB_URL / POSTGRES_* vars are present.
+ * Repeated failures are cheap because getPool() caches via connectionAttempted.
  */
 export function tryGetIntelligenceDb(): ReturnType<typeof drizzle> | null {
   try {
@@ -157,16 +173,16 @@ export function tryGetIntelligenceDb(): ReturnType<typeof drizzle> | null {
 }
 
 /**
- * Close the intelligence database pool and reset lazy-init state.
+ * Close the analytics database pool and reset lazy-init state.
  *
  * Intended for test teardown so integration tests that override
- * DATABASE_URL can cleanly shut down the pool they caused to be created.
- * A subsequent call to getIntelligenceDb() / tryGetIntelligenceDb() will
- * re-initialize a fresh pool from the current environment.
+ * OMNIDASH_ANALYTICS_DB_URL can cleanly shut down the pool they caused
+ * to be created. A subsequent call to getIntelligenceDb() / tryGetIntelligenceDb()
+ * will re-initialize a fresh pool from the current environment.
  */
 export async function resetIntelligenceDb(): Promise<void> {
   if (process.env.NODE_ENV !== 'test') {
-    console.warn('resetIntelligenceDb() called outside test environment — ignoring');
+    console.warn('resetIntelligenceDb() called outside test environment -- ignoring');
     return;
   }
   try {

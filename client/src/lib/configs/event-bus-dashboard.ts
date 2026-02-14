@@ -545,7 +545,7 @@ export const EVENT_TYPE_METADATA: Record<string, { label: string; description?: 
 };
 
 /** Structural segments to skip (not meaningful for display) */
-const STRUCTURAL_SEGMENTS = ['evt', 'event', 'events', 'onex', 'omninode_bridge'];
+const STRUCTURAL_SEGMENTS = ['evt', 'event', 'events', 'onex', 'omnidash_analytics'];
 
 /**
  * Convert a kebab-case or snake_case string to Title Case.

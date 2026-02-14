@@ -5,8 +5,8 @@
  * for the learned_patterns table. Route handlers delegate here instead of
  * executing inline Drizzle queries.
  *
- * The learned_patterns table is a projection populated externally by the
- * PATLEARN system (omninode_bridge). This module is read-only.
+ * The learned_patterns table is a read-model projection populated by
+ * Kafka consumers into omnidash_analytics. This module is read-only.
  */
 
 import { tryGetIntelligenceDb } from './storage';

@@ -646,8 +646,8 @@ export function EnhancedAnalytics({ timeRange = '24h' }: EnhancedAnalyticsProps)
       ],
     },
     {
-      id: 'omninode_bridge',
-      name: 'omninode_bridge',
+      id: 'omnibase_infra',
+      name: 'omnibase_infra',
       securityScore: 93,
       coverage: 88,
       qualityScore: 89,
