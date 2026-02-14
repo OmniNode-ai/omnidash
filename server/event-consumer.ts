@@ -1140,7 +1140,24 @@ export class EventConsumer extends EventEmitter {
       await this.consumer.run({
         eachMessage: async ({ topic: rawTopic, partition, message }) => {
           try {
-            const event = JSON.parse(message.value?.toString() || '{}');
+            // Parse JSON with dedicated guard so malformed messages are
+            // logged and skipped instead of crashing the consumer.
+            // Follows the same defensive pattern used by parseEnvelope()
+            // and read-model-consumer.ts's parseMessage().
+
+            let event: any;
+            try {
+              event = JSON.parse(message.value?.toString() || '{}');
+            } catch (parseError) {
+              console.warn('[EventConsumer] Skipping malformed JSON message:', {
+                topic: rawTopic,
+                partition,
+                offset: message.offset,
+                error: parseError instanceof Error ? parseError.message : String(parseError),
+                valuePreview: message.value?.toString().slice(0, 200),
+              });
+              return; // skip bad message, do not re-throw
+            }
 
             // Strip legacy env prefix (e.g. "dev.onex.evt..." -> "onex.evt...")
             // so topics match canonical names used by the switch cases below.

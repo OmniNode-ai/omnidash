@@ -85,11 +85,20 @@ export class IntelligenceEventAdapter {
     await this.consumer.subscribe({ topic: this.TOPIC_FAILED, fromBeginning: false });
 
     await this.consumer.run({
-      eachMessage: async ({ topic, message }) => {
+      eachMessage: async ({ topic, partition, message }) => {
         try {
           const value = message.value?.toString();
           if (!value) return;
-          const event = JSON.parse(value);
+
+          let event: any;
+          try {
+            event = JSON.parse(value);
+          } catch {
+            console.warn(
+              `[IntelligenceAdapter] Error parsing message from ${topic}:${partition}:${message.offset} - skipping`
+            );
+            return;
+          }
 
           // Extract correlation_id (may be top-level or in payload)
           const correlationIdRaw =
