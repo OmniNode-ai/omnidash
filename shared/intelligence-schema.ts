@@ -123,27 +123,34 @@ export const insertAgentTransformationEventSchema = createInsertSchema(agentTran
  * Tracks manifest generation with pattern discovery metrics
  * and intelligence query performance
  */
-export const agentManifestInjections = pgTable('agent_manifest_injections', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  correlationId: uuid('correlation_id').notNull(),
-  routingDecisionId: uuid('routing_decision_id'),
-  agentName: text('agent_name').notNull(),
-  manifestVersion: text('manifest_version').notNull(),
-  generationSource: text('generation_source').notNull(),
-  isFallback: boolean('is_fallback').default(false),
-  patternsCount: integer('patterns_count').default(0),
-  infrastructureServices: integer('infrastructure_services').default(0),
-  debugIntelligenceSuccesses: integer('debug_intelligence_successes').default(0),
-  debugIntelligenceFailures: integer('debug_intelligence_failures').default(0),
-  queryTimes: jsonb('query_times').notNull(),
-  totalQueryTimeMs: integer('total_query_time_ms').notNull(),
-  fullManifestSnapshot: jsonb('full_manifest_snapshot').notNull(),
-  agentExecutionSuccess: boolean('agent_execution_success'),
-  agentExecutionTimeMs: integer('agent_execution_time_ms'),
-  agentQualityScore: numeric('agent_quality_score', { precision: 5, scale: 4 }),
-  createdAt: timestamp('created_at').defaultNow(),
-  projectedAt: timestamp('projected_at').defaultNow(),
-});
+export const agentManifestInjections = pgTable(
+  'agent_manifest_injections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: uuid('correlation_id').notNull(),
+    routingDecisionId: uuid('routing_decision_id'),
+    agentName: text('agent_name').notNull(),
+    manifestVersion: text('manifest_version').notNull(),
+    generationSource: text('generation_source').notNull(),
+    isFallback: boolean('is_fallback').default(false),
+    patternsCount: integer('patterns_count').default(0),
+    infrastructureServices: integer('infrastructure_services').default(0),
+    debugIntelligenceSuccesses: integer('debug_intelligence_successes').default(0),
+    debugIntelligenceFailures: integer('debug_intelligence_failures').default(0),
+    queryTimes: jsonb('query_times').notNull(),
+    totalQueryTimeMs: integer('total_query_time_ms').notNull(),
+    fullManifestSnapshot: jsonb('full_manifest_snapshot').notNull(),
+    agentExecutionSuccess: boolean('agent_execution_success'),
+    agentExecutionTimeMs: integer('agent_execution_time_ms'),
+    agentQualityScore: numeric('agent_quality_score', { precision: 5, scale: 4 }),
+    createdAt: timestamp('created_at').defaultNow(),
+    projectedAt: timestamp('projected_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_ami_created_at').on(table.createdAt),
+    index('idx_ami_agent_name').on(table.agentName),
+  ]
+);
 
 // Export Zod schemas for validation
 export const insertAgentManifestInjectionSchema = createInsertSchema(agentManifestInjections);
@@ -152,39 +159,53 @@ export const insertAgentManifestInjectionSchema = createInsertSchema(agentManife
  * Pattern Lineage Nodes Table
  * Tracks code patterns discovered and their lineage
  */
-export const patternLineageNodes = pgTable('pattern_lineage_nodes', {
-  id: uuid('id').primaryKey(),
-  patternId: varchar('pattern_id', { length: 255 }).notNull(),
-  patternName: varchar('pattern_name', { length: 255 }).notNull(),
-  patternType: varchar('pattern_type', { length: 100 }).notNull(),
-  patternVersion: varchar('pattern_version', { length: 50 }).notNull(),
-  lineageId: uuid('lineage_id').notNull(),
-  generation: integer('generation').notNull(),
-  patternData: jsonb('pattern_data').notNull(),
-  metadata: jsonb('metadata'),
-  correlationId: uuid('correlation_id').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }),
-  language: varchar('language', { length: 50 }),
-  projectedAt: timestamp('projected_at').defaultNow(),
-});
+export const patternLineageNodes = pgTable(
+  'pattern_lineage_nodes',
+  {
+    id: uuid('id').primaryKey(),
+    patternId: varchar('pattern_id', { length: 255 }).notNull(),
+    patternName: varchar('pattern_name', { length: 255 }).notNull(),
+    patternType: varchar('pattern_type', { length: 100 }).notNull(),
+    patternVersion: varchar('pattern_version', { length: 50 }).notNull(),
+    lineageId: uuid('lineage_id').notNull(),
+    generation: integer('generation').notNull(),
+    patternData: jsonb('pattern_data').notNull(),
+    metadata: jsonb('metadata'),
+    correlationId: uuid('correlation_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }),
+    language: varchar('language', { length: 50 }),
+    projectedAt: timestamp('projected_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_pln_created_at').on(table.createdAt),
+    index('idx_pln_language').on(table.language),
+  ]
+);
 
 /**
  * Pattern Lineage Edges Table
  * Tracks relationships between patterns
  */
-export const patternLineageEdges = pgTable('pattern_lineage_edges', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  sourceNodeId: uuid('source_node_id').notNull(),
-  targetNodeId: uuid('target_node_id').notNull(),
-  edgeType: text('edge_type').notNull(),
-  edgeWeight: numeric('edge_weight', { precision: 10, scale: 6 }),
-  transformationType: text('transformation_type'),
-  metadata: jsonb('metadata'),
-  correlationId: uuid('correlation_id'),
-  createdAt: timestamp('created_at').defaultNow(),
-  createdBy: text('created_by'),
-  projectedAt: timestamp('projected_at').defaultNow(),
-});
+export const patternLineageEdges = pgTable(
+  'pattern_lineage_edges',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sourceNodeId: uuid('source_node_id').notNull(),
+    targetNodeId: uuid('target_node_id').notNull(),
+    edgeType: text('edge_type').notNull(),
+    edgeWeight: numeric('edge_weight', { precision: 10, scale: 6 }),
+    transformationType: text('transformation_type'),
+    metadata: jsonb('metadata'),
+    correlationId: uuid('correlation_id'),
+    createdAt: timestamp('created_at').defaultNow(),
+    createdBy: text('created_by'),
+    projectedAt: timestamp('projected_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_ple_source').on(table.sourceNodeId),
+    index('idx_ple_target').on(table.targetNodeId),
+  ]
+);
 
 // Export Zod schemas for validation
 export const insertPatternLineageNodeSchema = createInsertSchema(patternLineageNodes);

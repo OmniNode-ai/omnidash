@@ -43,6 +43,7 @@ npm run test:coverage     # Generate test coverage report
 
 ```bash
 npm run db:push     # Push Drizzle schema changes to PostgreSQL
+npm run db:migrate  # Run SQL migrations from migrations/ (recommended for omnidash_analytics read-model)
 ```
 
 **Testing APIs**:
