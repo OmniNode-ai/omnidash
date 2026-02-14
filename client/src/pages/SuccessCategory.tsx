@@ -15,6 +15,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
 import { queryKeys } from '@/lib/query-keys';
 import { MetricCard } from '@/components/MetricCard';
+import { HeroMetric } from '@/components/HeroMetric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,43 +38,6 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-
-// ============================================================================
-// Hero Metric Component
-// ============================================================================
-
-interface HeroMetricProps {
-  label: string;
-  value: string;
-  subtitle: string;
-  status?: 'healthy' | 'warning' | 'error';
-  isLoading?: boolean;
-}
-
-function HeroMetric({ label, value, subtitle, status, isLoading }: HeroMetricProps) {
-  const borderColor =
-    status === 'healthy'
-      ? 'border-status-healthy'
-      : status === 'warning'
-        ? 'border-status-warning'
-        : status === 'error'
-          ? 'border-status-error'
-          : 'border-primary';
-
-  return (
-    <Card className={`border-l-4 ${borderColor} bg-gradient-to-r from-card to-card/80`}>
-      <CardContent className="py-6 px-6">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{label}</div>
-        {isLoading ? (
-          <div className="h-12 w-32 bg-muted animate-pulse rounded" />
-        ) : (
-          <div className="text-5xl font-bold font-mono tracking-tight">{value}</div>
-        )}
-        <div className="text-sm text-muted-foreground mt-2">{subtitle}</div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // ============================================================================
 // A/B Cohort Comparison Mini-Chart
@@ -235,7 +199,7 @@ export default function SuccessCategory() {
   // WebSocket
   // ---------------------------------------------------------------------------
 
-  const { subscribe, isConnected } = useWebSocket({
+  const { subscribe, unsubscribe, isConnected } = useWebSocket({
     onMessage: (msg) => {
       if (msg.type === 'EFFECTIVENESS_UPDATE') {
         queryClient.invalidateQueries({ queryKey: queryKeys.effectiveness.all });
@@ -247,7 +211,10 @@ export default function SuccessCategory() {
     if (isConnected) {
       subscribe(['effectiveness']);
     }
-  }, [isConnected, subscribe]);
+    return () => {
+      unsubscribe(['effectiveness']);
+    };
+  }, [isConnected, subscribe, unsubscribe]);
 
   // ---------------------------------------------------------------------------
   // Derived values
@@ -322,7 +289,7 @@ export default function SuccessCategory() {
       />
 
       {/* Supporting Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
           label="Injection Rate"
           value={summary ? `${(summary.injection_rate * 100).toFixed(1)}%` : '--'}
@@ -379,7 +346,7 @@ export default function SuccessCategory() {
       </div>
 
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">

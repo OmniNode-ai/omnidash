@@ -15,6 +15,7 @@ import { useIntentProjectionStream } from '@/hooks/useIntentProjectionStream';
 import { patlearnSource } from '@/lib/data-sources';
 import { queryKeys } from '@/lib/query-keys';
 import { MetricCard } from '@/components/MetricCard';
+import { HeroMetric } from '@/components/HeroMetric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { IntentDistribution } from '@/components/intent';
@@ -32,43 +33,6 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
-
-// ============================================================================
-// Hero Metric Component
-// ============================================================================
-
-interface HeroMetricProps {
-  label: string;
-  value: string;
-  subtitle: string;
-  status?: 'healthy' | 'warning' | 'error';
-  isLoading?: boolean;
-}
-
-function HeroMetric({ label, value, subtitle, status, isLoading }: HeroMetricProps) {
-  const borderColor =
-    status === 'healthy'
-      ? 'border-status-healthy'
-      : status === 'warning'
-        ? 'border-status-warning'
-        : status === 'error'
-          ? 'border-status-error'
-          : 'border-primary';
-
-  return (
-    <Card className={`border-l-4 ${borderColor} bg-gradient-to-r from-card to-card/80`}>
-      <CardContent className="py-6 px-6">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{label}</div>
-        {isLoading ? (
-          <div className="h-12 w-32 bg-muted animate-pulse rounded" />
-        ) : (
-          <div className="text-5xl font-bold font-mono tracking-tight">{value}</div>
-        )}
-        <div className="text-sm text-muted-foreground mt-2">{subtitle}</div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // ============================================================================
 // Pattern Usage Donut Chart
@@ -230,7 +194,7 @@ export default function IntelligenceCategory() {
       />
 
       {/* Supporting Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
           label="Total Intents"
           value={snapshot?.totalIntents ?? 0}
@@ -263,7 +227,7 @@ export default function IntelligenceCategory() {
       </div>
 
       {/* Visualizations Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Intent Distribution */}
         <Card className="h-full">
           <CardHeader className="pb-2">

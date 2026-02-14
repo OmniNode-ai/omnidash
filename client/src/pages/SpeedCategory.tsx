@@ -16,6 +16,7 @@ import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
 import { queryKeys } from '@/lib/query-keys';
 import { MetricCard } from '@/components/MetricCard';
+import { HeroMetric } from '@/components/HeroMetric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PipelineHealthPanel } from '@/components/extraction/PipelineHealthPanel';
@@ -33,43 +34,6 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-
-// ============================================================================
-// Hero Metric Component
-// ============================================================================
-
-interface HeroMetricProps {
-  label: string;
-  value: string;
-  subtitle: string;
-  status?: 'healthy' | 'warning' | 'error';
-  isLoading?: boolean;
-}
-
-function HeroMetric({ label, value, subtitle, status, isLoading }: HeroMetricProps) {
-  const borderColor =
-    status === 'healthy'
-      ? 'border-status-healthy'
-      : status === 'warning'
-        ? 'border-status-warning'
-        : status === 'error'
-          ? 'border-status-error'
-          : 'border-primary';
-
-  return (
-    <Card className={`border-l-4 ${borderColor} bg-gradient-to-r from-card to-card/80`}>
-      <CardContent className="py-6 px-6">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{label}</div>
-        {isLoading ? (
-          <div className="h-12 w-32 bg-muted animate-pulse rounded" />
-        ) : (
-          <div className="text-5xl font-bold font-mono tracking-tight">{value}</div>
-        )}
-        <div className="text-sm text-muted-foreground mt-2">{subtitle}</div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // ============================================================================
 // Latency Percentile Mini-Chart
@@ -232,7 +196,7 @@ export default function SpeedCategory() {
       />
 
       {/* Supporting Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
           label="Avg Latency"
           value={avgLatency != null ? `${Math.round(avgLatency)}ms` : '--'}
@@ -281,7 +245,7 @@ export default function SpeedCategory() {
       </div>
 
       {/* Latency Percentiles + Pipeline Health */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">

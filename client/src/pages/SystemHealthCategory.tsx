@@ -16,6 +16,7 @@ import type { ValidationSummary } from '@/lib/data-sources/validation-source';
 import type { NodeRegistryPayload } from '@/lib/data-sources/node-registry-projection-source';
 import { queryKeys } from '@/lib/query-keys';
 import { MetricCard } from '@/components/MetricCard';
+import { HeroMetric } from '@/components/HeroMetric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,43 +43,6 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts';
-
-// ============================================================================
-// Hero Metric Component
-// ============================================================================
-
-interface HeroMetricProps {
-  label: string;
-  value: string;
-  subtitle: string;
-  status?: 'healthy' | 'warning' | 'error';
-  isLoading?: boolean;
-}
-
-function HeroMetric({ label, value, subtitle, status, isLoading }: HeroMetricProps) {
-  const borderColor =
-    status === 'healthy'
-      ? 'border-status-healthy'
-      : status === 'warning'
-        ? 'border-status-warning'
-        : status === 'error'
-          ? 'border-status-error'
-          : 'border-primary';
-
-  return (
-    <Card className={`border-l-4 ${borderColor} bg-gradient-to-r from-card to-card/80`}>
-      <CardContent className="py-6 px-6">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{label}</div>
-        {isLoading ? (
-          <div className="h-12 w-32 bg-muted animate-pulse rounded" />
-        ) : (
-          <div className="text-5xl font-bold font-mono tracking-tight">{value}</div>
-        )}
-        <div className="text-sm text-muted-foreground mt-2">{subtitle}</div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // ============================================================================
 // Violation Severity Chart
@@ -326,7 +290,7 @@ export default function SystemHealthCategory() {
       />
 
       {/* Supporting Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
           label="Active Nodes"
           value={activeNodes}
@@ -348,7 +312,15 @@ export default function SystemHealthCategory() {
           value={failedNodes}
           subtitle="Rejected, expired, or timed out"
           icon={AlertTriangle}
-          status={failedNodes === 0 ? 'healthy' : failedNodes <= 2 ? 'warning' : 'error'}
+          status={
+            totalNodes > 0
+              ? failedNodes === 0
+                ? 'healthy'
+                : failedNodes <= 2
+                  ? 'warning'
+                  : 'error'
+              : undefined
+          }
           isLoading={nodeLoading}
         />
         <MetricCard
@@ -377,7 +349,7 @@ export default function SystemHealthCategory() {
       </div>
 
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
