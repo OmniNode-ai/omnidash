@@ -71,16 +71,16 @@ node scripts/seed-events.ts      # Direct script execution
 
 **Dashboard URLs** (always port 3000):
 
-- Agent Operations: http://localhost:3000/
-- Pattern Learning: http://localhost:3000/patterns
-- Intelligence Operations: http://localhost:3000/intelligence
-- Event Flow: http://localhost:3000/events
-- Code Intelligence: http://localhost:3000/code
-- Knowledge Graph: http://localhost:3000/knowledge
-- Platform Health: http://localhost:3000/health
-- Developer Experience: http://localhost:3000/developer
-- Chat: http://localhost:3000/chat
+- Event Stream: http://localhost:3000/events
+- Pipeline Metrics: http://localhost:3000/extraction
+- Injection Performance: http://localhost:3000/effectiveness
+- Intent Signals: http://localhost:3000/intents
+- Pattern Intelligence: http://localhost:3000/patterns
+- Node Registry: http://localhost:3000/registry
 - Validation: http://localhost:3000/validation
+- Correlation Trace: http://localhost:3000/trace
+- Learned Insights: http://localhost:3000/insights
+- Widget Showcase: http://localhost:3000/showcase
 
 **Environment**:
 
@@ -102,20 +102,20 @@ Three-directory monorepo with TypeScript path aliases:
 
 ### Frontend Architecture
 
-**Router Pattern**: Wouter-based SPA with 10 dashboard routes representing different platform capabilities:
+**Router Pattern**: Wouter-based SPA with dashboard routes organized into sidebar navigation groups:
 
-| Route           | Component              | Purpose                         |
-| --------------- | ---------------------- | ------------------------------- |
-| `/`             | AgentOperations        | 52 AI agents monitoring         |
-| `/patterns`     | PatternLearning        | 25,000+ code patterns           |
-| `/intelligence` | IntelligenceOperations | 168+ AI operations              |
-| `/code`         | CodeIntelligence       | Semantic search, quality gates  |
-| `/events`       | EventFlow              | Kafka/Redpanda event processing |
-| `/knowledge`    | KnowledgeGraph         | Code relationship visualization |
-| `/health`       | PlatformHealth         | System health monitoring        |
-| `/developer`    | DeveloperExperience    | Workflow metrics                |
-| `/chat`         | Chat                   | AI query assistant              |
-| `/validation`   | ValidationDashboard    | Cross-repo validation runs      |
+| Group          | Route            | Component            | Purpose                                          |
+| -------------- | ---------------- | -------------------- | ------------------------------------------------ |
+| **Monitoring** | `/events` (+ `/`) | EventBusMonitor      | Real-time Kafka event stream visualization       |
+| **Monitoring** | `/extraction`    | ExtractionDashboard  | Pattern extraction metrics and pipeline health   |
+| **Monitoring** | `/effectiveness` | EffectivenessSummary | Injection effectiveness metrics and A/B analysis |
+| **Intelligence** | `/intents`     | IntentDashboard      | Real-time intent classification and analysis     |
+| **Intelligence** | `/patterns`    | PatternLearning      | Code pattern discovery and learning analytics    |
+| **System**     | `/registry`      | NodeRegistry         | Contract-driven node and service discovery       |
+| **System**     | `/validation`    | ValidationDashboard  | Cross-repo validation runs and violation trends  |
+| **Tools**      | `/trace`         | CorrelationTrace     | Trace events by correlation ID                   |
+| **Tools**      | `/insights`      | LearnedInsights      | Patterns and conventions from OmniClaude sessions |
+| **Preview**    | `/showcase`      | WidgetShowcase       | All 5 contract-driven widget types               |
 
 **Component System**: Built on shadcn/ui (New York variant) with Radix UI primitives. All UI components live in `client/src/components/ui/` and follow shadcn conventions.
 

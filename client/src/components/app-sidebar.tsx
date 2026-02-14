@@ -78,7 +78,7 @@ const intelligence: NavItem[] = [
 const system: NavItem[] = [
   {
     title: 'Node Registry',
-    url: '/discovery',
+    url: '/registry',
     icon: Globe,
     description: 'Contract-driven node and service discovery',
   },
@@ -138,7 +138,7 @@ function NavGroup({ label, items, location }: NavGroupProps) {
                   asChild
                   tooltip={item.description}
                   className={cn('group', isActive && 'bg-sidebar-accent')}
-                  data-testid={`nav-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                  data-testid={`nav-${item.url.slice(1)}`}
                 >
                   <Link href={item.url}>
                     <item.icon className="w-4 h-4" />
