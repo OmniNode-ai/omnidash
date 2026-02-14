@@ -571,6 +571,7 @@ export function generateMockLifecycleSummary(candidateCount = 30): LifecycleSumm
 // ===========================
 
 let cachedRuns: ValidationRun[] | null = null;
+let cachedLifecycle: LifecycleSummary | null = null;
 
 /**
  * Get cached mock validation runs (generates once per session).
@@ -604,20 +605,6 @@ export function getMockRunDetail(runId: string): ValidationRun | null {
 }
 
 /**
- * Clear cached mock data (useful for testing).
- */
-export function clearValidationMockCache(): void {
-  cachedRuns = null;
-  cachedLifecycle = null;
-}
-
-// ===========================
-// Lifecycle Cache (OMN-2152)
-// ===========================
-
-let cachedLifecycle: LifecycleSummary | null = null;
-
-/**
  * Get cached mock lifecycle summary (generates once per session).
  */
 export function getMockLifecycleSummary(): LifecycleSummary {
@@ -625,4 +612,12 @@ export function getMockLifecycleSummary(): LifecycleSummary {
     cachedLifecycle = generateMockLifecycleSummary(30);
   }
   return cachedLifecycle;
+}
+
+/**
+ * Clear cached mock data (useful for testing).
+ */
+export function clearValidationMockCache(): void {
+  cachedRuns = null;
+  cachedLifecycle = null;
 }
