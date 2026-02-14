@@ -25,6 +25,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 
+/** A single sidebar navigation entry with its route, icon, and tooltip text. */
 interface NavItem {
   title: string;
   url: string;
@@ -113,12 +114,14 @@ const previews: NavItem[] = [
   },
 ];
 
+/** Props for {@link NavGroup}. */
 interface NavGroupProps {
   label: string;
   items: NavItem[];
   location: string;
 }
 
+/** Renders a labelled sidebar group with active-route highlighting. */
 function NavGroup({ label, items, location }: NavGroupProps) {
   return (
     <SidebarGroup>
@@ -153,6 +156,7 @@ function NavGroup({ label, items, location }: NavGroupProps) {
   );
 }
 
+/** Primary application sidebar with product-facing navigation groups. */
 export function AppSidebar() {
   const [location] = useLocation();
 
