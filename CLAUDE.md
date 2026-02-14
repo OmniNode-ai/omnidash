@@ -71,16 +71,16 @@ node scripts/seed-events.ts      # Direct script execution
 
 **Dashboard URLs** (always port 3000):
 
-- Agent Operations: http://localhost:3000/
-- Pattern Learning: http://localhost:3000/patterns
-- Intelligence Operations: http://localhost:3000/intelligence
-- Event Flow: http://localhost:3000/events
-- Code Intelligence: http://localhost:3000/code
-- Knowledge Graph: http://localhost:3000/knowledge
-- Platform Health: http://localhost:3000/health
-- Developer Experience: http://localhost:3000/developer
-- Chat: http://localhost:3000/chat
+- Event Stream: http://localhost:3000/events
+- Pipeline Metrics: http://localhost:3000/extraction
+- Injection Performance: http://localhost:3000/effectiveness
+- Intent Signals: http://localhost:3000/intents
+- Pattern Intelligence: http://localhost:3000/patterns
+- Node Registry: http://localhost:3000/registry
 - Validation: http://localhost:3000/validation
+- Correlation Trace: http://localhost:3000/trace
+- Learned Insights: http://localhost:3000/insights
+- Widget Showcase: http://localhost:3000/showcase
 
 **Environment**:
 
@@ -102,20 +102,20 @@ Three-directory monorepo with TypeScript path aliases:
 
 ### Frontend Architecture
 
-**Router Pattern**: Wouter-based SPA with 10 dashboard routes representing different platform capabilities:
+**Router Pattern**: Wouter-based SPA with dashboard routes organized into sidebar navigation groups:
 
-| Route           | Component              | Purpose                         |
-| --------------- | ---------------------- | ------------------------------- |
-| `/`             | AgentOperations        | 52 AI agents monitoring         |
-| `/patterns`     | PatternLearning        | 25,000+ code patterns           |
-| `/intelligence` | IntelligenceOperations | 168+ AI operations              |
-| `/code`         | CodeIntelligence       | Semantic search, quality gates  |
-| `/events`       | EventFlow              | Kafka/Redpanda event processing |
-| `/knowledge`    | KnowledgeGraph         | Code relationship visualization |
-| `/health`       | PlatformHealth         | System health monitoring        |
-| `/developer`    | DeveloperExperience    | Workflow metrics                |
-| `/chat`         | Chat                   | AI query assistant              |
-| `/validation`   | ValidationDashboard    | Cross-repo validation runs      |
+| Group          | Route            | Component            | Purpose                                          |
+| -------------- | ---------------- | -------------------- | ------------------------------------------------ |
+| **Monitoring** | `/events` (+ `/`) | EventBusMonitor      | Real-time Kafka event stream visualization       |
+| **Monitoring** | `/extraction`    | ExtractionDashboard  | Pattern extraction metrics and pipeline health   |
+| **Monitoring** | `/effectiveness` | EffectivenessSummary | Injection effectiveness metrics and A/B analysis |
+| **Intelligence** | `/intents`     | IntentDashboard      | Real-time intent classification and analysis     |
+| **Intelligence** | `/patterns`    | PatternLearning      | Code pattern discovery and learning analytics    |
+| **System**     | `/registry`      | NodeRegistry         | Contract-driven node and service discovery       |
+| **System**     | `/validation`    | ValidationDashboard  | Cross-repo validation runs and violation trends  |
+| **Tools**      | `/trace`         | CorrelationTrace     | Trace events by correlation ID                   |
+| **Tools**      | `/insights`      | LearnedInsights      | Patterns and conventions from OmniClaude sessions |
+| **Preview**    | `/showcase`      | WidgetShowcase       | All 5 contract-driven widget types               |
 
 **Component System**: Built on shadcn/ui (New York variant) with Radix UI primitives. All UI components live in `client/src/components/ui/` and follow shadcn conventions.
 
@@ -205,7 +205,7 @@ export type User = typeof users.$inferSelect;           // Drizzle inference
 export const insertUserSchema = createInsertSchema(users); // Zod schema
 ```
 
-**Component Reuse Philosophy**: MetricCard, ChartContainer, and StatusBadge are designed as reusable primitives across all 8 operational dashboards. When adding new metrics or visualizations, extend these components rather than creating new patterns.
+**Component Reuse Philosophy**: MetricCard, ChartContainer, and StatusBadge are designed as reusable primitives across all dashboard pages. When adding new metrics or visualizations, extend these components rather than creating new patterns.
 
 **Responsive Grid System**: Dashboards use Tailwind's responsive grid utilities with breakpoints:
 
@@ -421,13 +421,16 @@ All tables use Drizzle ORM with Zod validation schemas auto-generated via `creat
 
 ### Dashboard-Specific Data Mappings
 
-**AgentOperations** → `agent_routing_decisions`, `agent_actions`, topic: `agent-actions`
-**PatternLearning** → `agent_manifest_injections`, pattern data
-**IntelligenceOperations** → `agent_manifest_injections`, `llm_calls`
-**EventFlow** → Kafka consumer lag metrics, direct topic monitoring
-**CodeIntelligence** → semantic search, `workflow_steps`
-**PlatformHealth** → `error_events`, database connection pool stats
-**DeveloperExperience** → `agent_routing_decisions`, `workflow_steps`
+**EventBusMonitor** (`/events`) → Kafka consumer lag metrics, direct topic monitoring, topic: `agent-actions`
+**ExtractionDashboard** (`/extraction`) → `agent_manifest_injections`, pattern data, pipeline health metrics
+**EffectivenessSummary** (`/effectiveness`) → `agent_manifest_injections`, `llm_calls`, A/B analysis
+**IntentDashboard** (`/intents`) → intent classification data, real-time signal analysis
+**PatternLearning** (`/patterns`) → `agent_manifest_injections`, pattern data, learning analytics
+**NodeRegistry** (`/registry`) → `agent_routing_decisions`, `agent_actions`, service discovery
+**ValidationDashboard** (`/validation`) → `error_events`, validation runs, violation trends
+**CorrelationTrace** (`/trace`) → `workflow_steps`, correlation data, event tracing
+**LearnedInsights** (`/insights`) → `agent_routing_decisions`, `workflow_steps`, session patterns
+**WidgetShowcase** (`/showcase`) → preview/demo data (contract-driven widget types)
 
 ### Complete Integration Guide
 
