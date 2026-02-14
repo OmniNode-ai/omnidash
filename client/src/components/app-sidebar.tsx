@@ -143,7 +143,11 @@ function NavGroup({ label, items, location }: NavGroupProps) {
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => {
-            const isActive = location === item.url || (item.url === '/events' && location === '/');
+            const normalizedLocation = location.split(/[?#]/)[0];
+            const isActive =
+              normalizedLocation === item.url ||
+              (item.url === '/events' && normalizedLocation === '/') ||
+              normalizedLocation.startsWith(`${item.url}/`);
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
