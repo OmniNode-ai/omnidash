@@ -28,6 +28,7 @@ import {
   SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 
@@ -258,9 +259,17 @@ interface AdvancedNavSectionProps {
 /** Collapsible Advanced section containing all granular drill-down pages. */
 function AdvancedNavSection({ location }: AdvancedNavSectionProps) {
   const hasActiveChild = isAdvancedRoute(location);
+  const [isOpen, setIsOpen] = useState(hasActiveChild);
+
+  // Auto-expand when navigating to an advanced route
+  useEffect(() => {
+    if (hasActiveChild) {
+      setIsOpen(true);
+    }
+  }, [hasActiveChild]);
 
   return (
-    <Collapsible defaultOpen={hasActiveChild} data-testid="advanced-section">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} data-testid="advanced-section">
       <SidebarGroup>
         <CollapsibleTrigger className="w-full" data-testid="advanced-section-trigger">
           <SidebarGroupLabel className="text-xs uppercase tracking-wider px-3 mb-2 cursor-pointer hover:text-sidebar-foreground transition-colors w-full">
