@@ -32,7 +32,7 @@ Add these lines to your `.env` file:
 # PostgreSQL Intelligence Database
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
-POSTGRES_DATABASE=omninode_bridge
+POSTGRES_DATABASE=omnidash_analytics
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=<your_password>  # Get from .env file - never commit passwords!
 ```
@@ -126,7 +126,7 @@ If the fix doesn't work:
 
    ```bash
    # Replace <your_password> with actual password from .env file
-   psql "postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge" -c "SELECT 1"
+   psql "postgresql://postgres:<your_password>@192.168.86.200:5436/omnidash_analytics" -c "SELECT 1"
    ```
 
 3. **Check server logs for detailed error messages**

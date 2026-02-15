@@ -21,7 +21,7 @@
 
 ```bash
 # 1. Check database connectivity
-psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "SELECT COUNT(*) FROM pattern_lineage_nodes;"
+psql -h 192.168.86.200 -p 5436 -U postgres -d omnidash_analytics -c "SELECT COUNT(*) FROM pattern_lineage_nodes;"
 
 # 2. Check API endpoints
 curl http://localhost:3000/api/intelligence/patterns/summary | jq

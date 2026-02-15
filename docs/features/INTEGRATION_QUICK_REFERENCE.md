@@ -290,20 +290,20 @@ export function useRoutingStrategies(timeWindow: string = '24h') {
 ```bash
 # Check routing strategies
 PGPASSWORD='<your_password>' psql -h 192.168.86.200 -p 5436 \
-  -U postgres -d omninode_bridge \
+  -U postgres -d omnidash_analytics \
   -c "SELECT routing_strategy, COUNT(*) FROM agent_routing_decisions \
       WHERE created_at > NOW() - INTERVAL '24 hours' \
       GROUP BY routing_strategy"
 
 # Check pattern languages
 PGPASSWORD='<your_password>' psql -h 192.168.86.200 -p 5436 \
-  -U postgres -d omninode_bridge \
+  -U postgres -d omnidash_analytics \
   -c "SELECT language, COUNT(*) FROM pattern_lineage_nodes \
       GROUP BY language ORDER BY count DESC"
 
 # Check document access
 PGPASSWORD='<your_password>' psql -h 192.168.86.200 -p 5436 \
-  -U postgres -d omninode_bridge \
+  -U postgres -d omnidash_analytics \
   -c "SELECT repository, COUNT(*) FROM document_metadata \
       GROUP BY repository"
 ```

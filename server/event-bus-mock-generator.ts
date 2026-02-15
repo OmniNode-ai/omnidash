@@ -149,7 +149,7 @@ export class EventBusMockGenerator {
   private async generateIntelligenceQueryChain(): Promise<void> {
     const correlationId = randomUUID();
     const query = this.queries[Math.floor(Math.random() * this.queries.length)];
-    const source = 'omniarchon';
+    const source = 'omniintelligence';
 
     // Requested event
     const requestedEventId = randomUUID();

@@ -72,7 +72,7 @@ const brokers = (process.env.KAFKA_BROKERS || '192.168.86.200:29092').split(',')
 
 **File**: `server/service-health.ts:129`
 ```typescript
-const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+const intelligenceUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
 ```
 - **Issue**: Hardcoded intelligence service URL
 - **Recommended**: `INTELLIGENCE_SERVICE_URL_DEFAULT=http://localhost:8053`
@@ -80,7 +80,7 @@ const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:
 
 **File**: `server/alert-routes.ts:44`
 ```typescript
-const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+const intelligenceUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
 ```
 - **Issue**: Duplicate hardcoded URL (3 occurrences across files)
 - **Recommended**: Same as above
@@ -88,7 +88,7 @@ const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:
 
 **File**: `server/intelligence-routes.ts:1062, 1871, 2021`
 ```typescript
-const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+const intelligenceUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
 ```
 - **Issue**: Same URL hardcoded in 3 places
 - **Recommended**: Extract to shared constant or env default
@@ -397,7 +397,7 @@ KAFKA_HEALTH_CHECK_TIMEOUT_MS=3000
 # Service Endpoints
 # ============================================
 
-# Intelligence Service (Omniarchon)
+# Intelligence Service
 INTELLIGENCE_SERVICE_URL=http://localhost:8053
 INTELLIGENCE_SERVICE_URL_DEFAULT=http://localhost:8053
 

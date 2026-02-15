@@ -15,7 +15,7 @@ This guide summarizes live data sources (PostgreSQL, Kafka, Memgraph, Qdrant), r
   - Status: ✅ Healthy
   - Collections: `quality_vectors`, `workflow_events`, `test_patterns`, `code_patterns`, `file_locations`, `archon_vectors`, `execution_patterns`
 
-- **Omniarchon Intelligence** (`archon-intelligence`)
+- **OmniIntelligence Intelligence** (`archon-intelligence`)
   - Port: `0.0.0.0:8053->8053/tcp`
   - Status: ⚠️ Degraded (Memgraph disconnected, Ollama/Freshness DB connected)
   - Health: `http://localhost:8053/health`
@@ -33,7 +33,7 @@ This guide summarizes live data sources (PostgreSQL, Kafka, Memgraph, Qdrant), r
 
 - Host: `192.168.86.200` (from host) or `omninode-bridge-postgres` (from Docker network)
 - Port: `5436` (external) → `5432` (container)
-- Database: `omninode_bridge`
+- Database: `omnidash_analytics`
 - User: `postgres`
 - Password: See `.env` file (never commit passwords to git)
 
@@ -44,12 +44,12 @@ This guide summarizes live data sources (PostgreSQL, Kafka, Memgraph, Qdrant), r
 # NOTE: POSTGRES_* variables are the canonical configuration (as of 2025-11-12)
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
-POSTGRES_DATABASE=omninode_bridge
+POSTGRES_DATABASE=omnidash_analytics
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=<your_password>
 
 # Optional: Connection string (takes priority if set)
-# DATABASE_URL=postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge
+# DATABASE_URL=postgresql://postgres:<your_password>@192.168.86.200:5436/omnidash_analytics
 ```
 
 **Usage:** Used via Drizzle ORM in `server/intelligence-routes.ts` and `shared/intelligence-schema.ts`.
@@ -75,19 +75,19 @@ POSTGRES_PASSWORD=<your_password>
 **Status:** ✅ Accessible. Direct integration not yet implemented in Omnidash (placeholder in `server/intelligence-routes.ts`). Can be accessed via:
 
 - Direct HTTP API: `http://localhost:6333/collections/{collection_name}/points/search`
-- Via Omniarchon APIs (recommended for pattern similarity)
+- Via OmniIntelligence APIs (recommended for pattern similarity)
 
 ### Memgraph (Knowledge Graph)
 
 **Connection Details:**
 
-- Access via Omniarchon Intelligence service (HTTP API)
+- Access via OmniIntelligence Intelligence service (HTTP API)
 - Direct Bolt connection: `bolt://memgraph:7687` (internal Docker network only)
 - Service URL: `http://localhost:8053`
 
 **Status:** ⚠️ Degraded - Memgraph connection currently down (Ollama and Freshness DB connected)
 
-**Usage:** Access via Omniarchon Intelligence API endpoints. Direct Bolt connection not configured in Omnidash (use Omniarchon HTTP APIs instead).
+**Usage:** Access via OmniIntelligence Intelligence API endpoints. Direct Bolt connection not configured in Omnidash (use OmniIntelligence HTTP APIs instead).
 
 ### Kafka/Redpanda (Event Bus)
 
@@ -126,7 +126,7 @@ KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:29092
 ## Enable Live PostgreSQL
 
 1. Set `.env` in `omnidash`:
-   - `DATABASE_URL=postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge`
+   - `DATABASE_URL=postgresql://postgres:<password>@192.168.86.200:5436/omnidash_analytics`
 2. Restart the server: `npm run dev`
 3. Verify health:
    - System Health page (PostgreSQL shows healthy)
@@ -134,30 +134,30 @@ KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:29092
 4. Test queries:
    - `node scripts/test-db-query.ts`
 
-## Accessing Omniarchon (Memgraph-backed) Intelligence
+## Accessing OmniIntelligence (Memgraph-backed) Intelligence
 
 - Base URL: `http://localhost:8053`
 - Provides aggregated graph/insights endpoints backed by Memgraph.
-- Use Omniarchon APIs where appropriate to avoid direct Bolt connections in Omnidash.
+- Use OmniIntelligence APIs where appropriate to avoid direct Bolt connections in Omnidash.
 
 ## Qdrant Integration Paths
 
 - Direct (future): Add client and env (`QDRANT_URL`, `QDRANT_API_KEY`) and implement queries where marked in `intelligence-routes.ts`.
-- Via Omniarchon: Call Omniarchon endpoints that already leverage Qdrant for pattern similarity/search.
+- Via OmniIntelligence: Call OmniIntelligence endpoints that already leverage Qdrant for pattern similarity/search.
 
 ## Kafka Events
 
-- Ensure event producers (OmniClaude/Omniarchon agents) are running.
+- Ensure event producers (OmniClaude/OmniIntelligence agents) are running.
 - Omnidash consumes via in-memory consumer (`server/event-consumer.ts`).
 
 ## Troubleshooting
 
 - PostgreSQL not reachable:
   - Confirm host/port and firewall
-  - `psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "SELECT 1;"`
+  - `psql -h 192.168.86.200 -p 5436 -U postgres -d omnidash_analytics -c "SELECT 1;"`
 - Qdrant:
   - Confirm `http://<qdrant-host>:6333/collections`
-- Omniarchon:
+- OmniIntelligence:
   - Check service at `http://localhost:8053`
 
 ## Current Integration Status (2025-10-31)
@@ -167,7 +167,7 @@ KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:29092
 1. **Intelligence Event Adapter**
    - Kafka-based request/response pattern for code analysis
    - Endpoint: `/api/intelligence/analysis/patterns`
-   - Status: ✅ Working end-to-end with OmniArchon consumer
+   - Status: ✅ Working end-to-end with OmniIntelligence consumer
    - Test: `curl "http://localhost:3000/api/intelligence/events/test/patterns?path=node_*_effect.py&lang=python&timeout=15000"`
 
 2. **PatternLearning Page**
@@ -241,7 +241,7 @@ KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:29092
 
 3. **Node Network Visualization (`AgentNetwork.tsx`, `NodeNetworkComposer.tsx`)**
    - **Source:** Consul service registry + PostgreSQL agent metadata
-   - **Route:** Query Consul at `http://192.168.86.200:28500/v1/agent/services` or use Omniarchon bridge
+   - **Route:** Query Consul at `http://192.168.86.200:28500/v1/agent/services` or use OmniIntelligence bridge
    - **Action:** Add API endpoint to aggregate service/node data
 
 4. **Qdrant Pattern Search**
@@ -254,7 +254,7 @@ KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:29092
      ```
 
 5. **Feature Showcase Demos**
-   - Use Omniarchon Intelligence API (`http://localhost:8053`) for:
+   - Use OmniIntelligence Intelligence API (`http://localhost:8053`) for:
      - Pattern similarity searches
      - Knowledge graph queries
      - Quality trend data

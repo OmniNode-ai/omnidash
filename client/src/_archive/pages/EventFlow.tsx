@@ -20,7 +20,7 @@ import { EventBusHealthIndicator } from '@/components/event-bus/EventBusHealthIn
 import type { EventQueryOptions } from '@/lib/data-sources';
 import type { QueryObserverOptions } from '@tanstack/react-query';
 
-// Event stream interface matching omniarchon endpoint
+// Event stream interface matching omniintelligence endpoint
 interface EventStreamItem {
   id: string;
   type: string;
@@ -345,7 +345,7 @@ export default function EventFlow({ queryBehaviorOverrides }: EventFlowProps = {
             Error loading events: {error instanceof Error ? error.message : 'Unknown error'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Make sure omniarchon is running at http://localhost:8053
+            Make sure omniintelligence is running at http://localhost:8053
           </p>
         </Card>
       )}

@@ -1,6 +1,6 @@
 # Event Bus & Database Adapter Guide
 
-This guide documents how Omnidash uses the event bus (Kafka/Redpanda) and PostgreSQL CRUD adapter, following patterns from OmniClaude and OmniArchon.
+This guide documents how Omnidash uses the event bus (Kafka/Redpanda) and PostgreSQL CRUD adapter, following patterns from OmniClaude and OmniIntelligence.
 
 ## Architecture Overview
 
@@ -214,10 +214,10 @@ KAFKA_BROKERS=192.168.86.200:29092
 KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:29092
 
 # PostgreSQL
-DATABASE_URL=postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge
+DATABASE_URL=postgresql://postgres:<your_password>@192.168.86.200:5436/omnidash_analytics
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
-POSTGRES_DATABASE=omninode_bridge
+POSTGRES_DATABASE=omnidash_analytics
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=<your_password>  # Get from .env file - never commit passwords!
 
@@ -230,7 +230,7 @@ ENABLE_REAL_TIME_EVENTS=true
 
 - OmniClaude: `agents/lib/database_event_client.py` - Event-based DB client pattern
 - OmniClaude: `agents/lib/intelligence_event_client.py` - Intelligence event pattern
-- OmniArchon: `services/bridge/producers/kafka_producer_manager.py` - Producer pattern
+- OmniIntelligence: `services/bridge/producers/kafka_producer_manager.py` - Producer pattern
 - Omnidash: `server/event-consumer.ts` - Event consumption
 - Omnidash: `server/db-adapter.ts` - CRUD adapter
 - `DATA_SOURCES_AND_RETRIEVAL.md` - Data sources overview

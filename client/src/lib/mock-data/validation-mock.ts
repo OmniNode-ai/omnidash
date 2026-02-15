@@ -28,7 +28,7 @@ import { generateUUID } from '@shared/uuid';
 /** Realistic OmniNode repository names */
 const MOCK_REPOS = [
   'omnibase_core',
-  'omniarchon',
+  'omniintelligence',
   'omniclaude',
   'omnidash',
   'omnibase_infra',

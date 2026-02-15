@@ -105,7 +105,7 @@ Latency: <200ms
 
 **Host**: `192.168.86.200`
 **Port**: `5436`
-**Database**: `omninode_bridge`
+**Database**: `omnidash_analytics`
 **User**: `postgres`
 **Password**: (see environment variables)
 
@@ -161,10 +161,10 @@ Create `.env` file in omnidash root (copy from `.env.example` and update values)
 ```bash
 # PostgreSQL Connection
 # IMPORTANT: Replace <your_password> with actual password - never commit real passwords to git!
-DATABASE_URL="postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge"
+DATABASE_URL="postgresql://postgres:<your_password>@192.168.86.200:5436/omnidash_analytics"
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
-POSTGRES_DATABASE=omninode_bridge
+POSTGRES_DATABASE=omnidash_analytics
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=<your_password>
 

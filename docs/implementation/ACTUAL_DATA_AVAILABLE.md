@@ -1,7 +1,7 @@
 # Actual Data Available in PostgreSQL
 
 **Generated**: 2025-11-03 (Historical Snapshot)
-**Database**: `omninode_bridge` at `<POSTGRES_HOST>:<POSTGRES_PORT>`
+**Database**: `omnidash_analytics` at `<POSTGRES_HOST>:<POSTGRES_PORT>`
 **Configuration**: See `.env` file for actual database connection details
 
 > **⚠️ HISTORICAL DOCUMENT**: This is a snapshot from 2025-11-03. Database schema and data have evolved. Check current schema with `\dt` in psql or review `shared/intelligence-schema.ts` for latest table definitions.

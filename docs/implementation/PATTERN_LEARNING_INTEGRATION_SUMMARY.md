@@ -119,7 +119,7 @@ Cleaned up component by removing inline mock data fallbacks:
            │ SQL queries
            ↓
 ┌─────────────────────┐
-│   PostgreSQL        │  ← omninode_bridge database
+│   PostgreSQL        │  ← omnidash_analytics database
 │ pattern_lineage_nodes │
 └─────────────────────┘
 ```
