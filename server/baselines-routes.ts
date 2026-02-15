@@ -67,8 +67,9 @@ router.get('/comparisons', async (_req, res) => {
 router.get('/trend', async (req, res) => {
   try {
     // TODO: Replace with real database query when baselines tables exist.
+    // TODO(OMN-2156): Wire days parameter to database query when real data source is connected
     const days = Math.min(Math.max(parseInt(req.query.days as string) || 14, 1), 90);
-    void days; // will be used for time-window filtering once tables exist
+    void days;
     const trend: ROITrendPoint[] = [];
     return res.json(trend);
   } catch (error) {

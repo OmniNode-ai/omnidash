@@ -185,6 +185,7 @@ function BreakdownChart({ data }: { data: RecommendationBreakdown[] | undefined 
 // ============================================================================
 
 function DeltaDisplay({ metric }: { metric: DeltaMetric }) {
+  const isPositive = metric.delta > 0;
   const isImproved = metric.direction === 'lower_is_better' ? metric.delta < 0 : metric.delta > 0;
   const absDelta = Math.abs(metric.delta);
 
@@ -214,10 +215,10 @@ function DeltaDisplay({ metric }: { metric: DeltaMetric }) {
         <span
           className={`text-xs font-mono flex items-center gap-0.5 ${isImproved ? 'text-green-400' : 'text-red-400'}`}
         >
-          {isImproved ? (
-            <ArrowDownRight className="w-3 h-3" />
-          ) : (
+          {isPositive ? (
             <ArrowUpRight className="w-3 h-3" />
+          ) : (
+            <ArrowDownRight className="w-3 h-3" />
           )}
           {formatDelta(absDelta)}
         </span>
