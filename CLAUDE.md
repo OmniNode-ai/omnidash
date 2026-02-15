@@ -2,7 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Shared Standards**: For shared development standards (Python, Git, testing), environment configuration priority rules, infrastructure topology (PostgreSQL, Kafka/Redpanda, remote server, Docker networking), environment variables, and LLM architecture, see **`~/.claude/CLAUDE.md`**. This file contains **omnidash-specific** frontend architecture and development only.
+> **Shared Standards**: See **`~/.claude/CLAUDE.md`** for:
+> - Development standards (Python, Git, testing)
+> - Environment configuration priority rules
+> - Infrastructure topology (PostgreSQL, Kafka/Redpanda, remote server, Docker networking)
+> - Environment variables and LLM architecture
+>
+> This file contains **omnidash-specific** frontend architecture and development only.
 
 ## Omnidash-Specific Configuration
 
