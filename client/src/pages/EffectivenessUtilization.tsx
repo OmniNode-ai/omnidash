@@ -27,6 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { DetailSheet } from '@/components/DetailSheet';
+import { SessionDetailSheet, ClickableSessionId } from '@/components/SessionDetailSheet';
 import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
 import type {
@@ -165,6 +166,7 @@ export default function EffectivenessUtilization() {
   const [selectedMethod, setSelectedMethod] = useState<UtilizationByMethod | null>(null);
   const [selectedPattern, setSelectedPattern] = useState<PatternUtilization | null>(null);
   const [copiedPatternId, setCopiedPatternId] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Sort state
@@ -539,8 +541,11 @@ export default function EffectivenessUtilization() {
               <TableBody>
                 {lowSessions.map((session) => (
                   <TableRow key={session.session_id}>
-                    <TableCell className="font-mono text-xs">
-                      {session.session_id.slice(0, 8)}...
+                    <TableCell>
+                      <ClickableSessionId
+                        sessionId={session.session_id}
+                        onClick={setSelectedSessionId}
+                      />
                     </TableCell>
                     <TableCell>
                       <span
@@ -657,6 +662,12 @@ export default function EffectivenessUtilization() {
           </div>
         )}
       </DetailSheet>
+
+      {/* Session Detail Sheet (OMN-2049 F3) */}
+      <SessionDetailSheet
+        sessionId={selectedSessionId}
+        onClose={() => setSelectedSessionId(null)}
+      />
     </div>
   );
 }
