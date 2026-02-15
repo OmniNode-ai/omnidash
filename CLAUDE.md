@@ -102,20 +102,24 @@ Three-directory monorepo with TypeScript path aliases:
 
 ### Frontend Architecture
 
-**Router Pattern**: Wouter-based SPA with dashboard routes organized into sidebar navigation groups:
+**Router Pattern**: Wouter-based SPA with dashboard routes. Default nav shows 4 category dashboards; granular drill-down pages live in a collapsible **Advanced** section (OMN-2182).
 
-| Group          | Route            | Component            | Purpose                                          |
-| -------------- | ---------------- | -------------------- | ------------------------------------------------ |
-| **Monitoring** | `/events` (+ `/`) | EventBusMonitor      | Real-time Kafka event stream visualization       |
-| **Monitoring** | `/extraction`    | ExtractionDashboard  | Pattern extraction metrics and pipeline health   |
-| **Monitoring** | `/effectiveness` | EffectivenessSummary | Injection effectiveness metrics and A/B analysis |
-| **Intelligence** | `/intents`     | IntentDashboard      | Real-time intent classification and analysis     |
-| **Intelligence** | `/patterns`    | PatternLearning      | Code pattern discovery and learning analytics    |
-| **System**     | `/registry`      | NodeRegistry         | Contract-driven node and service discovery       |
-| **System**     | `/validation`    | ValidationDashboard  | Cross-repo validation runs and violation trends  |
-| **Tools**      | `/trace`         | CorrelationTrace     | Trace events by correlation ID                   |
-| **Tools**      | `/insights`      | LearnedInsights      | Patterns and conventions from OmniClaude sessions |
-| **Preview**    | `/showcase`      | WidgetShowcase       | All 5 contract-driven widget types               |
+| Section | Group | Route | Component | Purpose |
+| ------- | ----- | ----- | --------- | ------- |
+| **Dashboards** | | `/category/speed` | SpeedCategory | Cache hit rate, latency percentiles, pipeline health |
+| **Dashboards** | | `/category/success` | SuccessCategory | A/B comparison, injection hit rates, effectiveness trends |
+| **Dashboards** | | `/category/intelligence` | IntelligenceCategory | Pattern utilization, intent classification, behavior tracking |
+| **Dashboards** | | `/category/health` | SystemHealthCategory | Validation counts, node registry, health checks |
+| **Advanced** | Monitoring | `/events` (+ `/`) | EventBusMonitor | Real-time Kafka event stream visualization |
+| **Advanced** | Monitoring | `/extraction` | ExtractionDashboard | Pattern extraction metrics and pipeline health |
+| **Advanced** | Monitoring | `/effectiveness` | EffectivenessSummary | Injection effectiveness metrics and A/B analysis |
+| **Advanced** | Intelligence | `/intents` | IntentDashboard | Real-time intent classification and analysis |
+| **Advanced** | Intelligence | `/patterns` | PatternLearning | Code pattern discovery and learning analytics |
+| **Advanced** | System | `/registry` | NodeRegistry | Contract-driven node and service discovery |
+| **Advanced** | System | `/validation` | ValidationDashboard | Cross-repo validation runs and violation trends |
+| **Advanced** | Tools | `/trace` | CorrelationTrace | Trace events by correlation ID |
+| **Advanced** | Tools | `/insights` | LearnedInsights | Patterns and conventions from OmniClaude sessions |
+| **Advanced** | Preview | `/showcase` | WidgetShowcase | All 5 contract-driven widget types |
 
 **Component System**: Built on shadcn/ui (New York variant) with Radix UI primitives. All UI components live in `client/src/components/ui/` and follow shadcn conventions.
 

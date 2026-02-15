@@ -452,9 +452,11 @@ describe('EventConsumer', () => {
       await consumer.start();
     });
 
-    it('should emit error event for malformed JSON', async () => {
+    it('should skip malformed JSON with console.warn instead of emitting error', async () => {
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       await eachMessageHandler({
         topic: LEGACY_AGENT_ACTIONS,
@@ -463,17 +465,26 @@ describe('EventConsumer', () => {
         },
       });
 
-      expect(errorSpy).toHaveBeenCalled();
-      expect(errorSpy.mock.calls[0][0]).toBeInstanceOf(Error);
+      // Malformed JSON is now caught by inner try/catch and logged via console.warn,
+      // not emitted as an error event (defensive pattern matching read-model-consumer)
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[EventConsumer] Skipping malformed JSON message'),
+        expect.any(Object)
+      );
+
+      warnSpy.mockRestore();
     });
 
-    it('should continue processing after error', async () => {
+    it('should continue processing after malformed JSON is skipped', async () => {
       const errorSpy = vi.fn();
       const actionUpdateSpy = vi.fn();
       consumer.on('error', errorSpy);
       consumer.on('actionUpdate', actionUpdateSpy);
 
-      // Send malformed event
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Send malformed event (now skipped via inner try/catch, no error emitted)
       await eachMessageHandler({
         topic: LEGACY_AGENT_ACTIONS,
         message: {
@@ -489,8 +500,12 @@ describe('EventConsumer', () => {
         },
       });
 
-      expect(errorSpy).toHaveBeenCalledTimes(1);
+      // Malformed JSON is silently skipped (no error event), but valid events still process
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledTimes(1);
       expect(actionUpdateSpy).toHaveBeenCalledTimes(1);
+
+      warnSpy.mockRestore();
     });
   });
 
@@ -693,7 +708,10 @@ describe('EventConsumer', () => {
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
-      // Send malformed JSON (non-connection error)
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Send malformed JSON (non-connection error) - now handled by inner
+      // try/catch with console.warn + return, no error event emitted
       const handlerPromise = eachMessageHandler({
         topic: LEGACY_AGENT_ACTIONS,
         message: {
@@ -703,9 +721,12 @@ describe('EventConsumer', () => {
       await vi.advanceTimersByTimeAsync(1000);
       await handlerPromise;
 
-      // Should emit error but not attempt reconnection
-      expect(errorSpy).toHaveBeenCalled();
+      // Should NOT emit error (malformed JSON is silently skipped) and not attempt reconnection
+      expect(errorSpy).not.toHaveBeenCalled();
       expect(mockConsumerConnect).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
       vi.useRealTimers();
     });
 

@@ -346,11 +346,13 @@ describe('EventConsumer Intent Forwarding', () => {
   });
 
   describe('error handling', () => {
-    it('should emit error event when intent classified processing fails', async () => {
+    it('should skip malformed JSON with console.warn instead of emitting error', async () => {
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
-      // Send malformed event that will cause processing error
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Send malformed event - now handled by inner try/catch with console.warn + return
       await eachMessageHandler({
         topic: 'dev.onex.evt.omniintelligence.intent-classified.v1',
         message: {
@@ -358,14 +360,23 @@ describe('EventConsumer Intent Forwarding', () => {
         },
       });
 
-      expect(errorSpy).toHaveBeenCalled();
+      // Malformed JSON is silently skipped (no error event emitted)
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[EventConsumer] Skipping malformed JSON message'),
+        expect.any(Object)
+      );
+
+      warnSpy.mockRestore();
     });
 
-    it('should emit error event when intent stored processing fails', async () => {
+    it('should skip malformed JSON on intent stored topic with console.warn', async () => {
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
-      // Send malformed event that will cause processing error
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Send malformed event - now handled by inner try/catch with console.warn + return
       await eachMessageHandler({
         topic: 'dev.onex.evt.omnimemory.intent-stored.v1',
         message: {
@@ -373,14 +384,23 @@ describe('EventConsumer Intent Forwarding', () => {
         },
       });
 
-      expect(errorSpy).toHaveBeenCalled();
+      // Malformed JSON is silently skipped (no error event emitted)
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[EventConsumer] Skipping malformed JSON message'),
+        expect.any(Object)
+      );
+
+      warnSpy.mockRestore();
     });
 
-    it('should continue processing after error in intent classified handler', async () => {
+    it('should continue processing after malformed JSON is skipped', async () => {
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
-      // Send malformed event
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Send malformed event (now skipped via inner try/catch, no error emitted)
       await eachMessageHandler({
         topic: 'dev.onex.evt.omniintelligence.intent-classified.v1',
         message: {
@@ -409,10 +429,13 @@ describe('EventConsumer Intent Forwarding', () => {
         },
       });
 
-      // Error should have been emitted for the first event
-      expect(errorSpy).toHaveBeenCalled();
+      // Malformed JSON is silently skipped (no error event), but valid events still process
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledTimes(1);
       // Valid event should still be processed
       expect(mockEmitIntentStored).toHaveBeenCalledTimes(1);
+
+      warnSpy.mockRestore();
     });
   });
 
