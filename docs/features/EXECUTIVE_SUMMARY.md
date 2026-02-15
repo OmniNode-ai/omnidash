@@ -94,7 +94,7 @@
 | --------------------------- | ---- | ---------- | -------------------------------- |
 | **Omniarchon Intelligence** | 8053 | ✅ Healthy | Memgraph, Ollama, quality trends |
 | **PostgreSQL Database**     | 5436 | ✅ Healthy | 39 tables, real-time events      |
-| **Kafka/Redpanda**          | 9092 | ✅ Active  | 4 topics, event streaming        |
+| **Kafka/Redpanda**          | 29092 | ✅ Active  | 4 topics, event streaming        |
 | **Omnidash API**            | 3000 | ✅ Working | Serving real data                |
 
 ---
@@ -278,7 +278,7 @@ PGPASSWORD='<your_password>' \
 - Omnidash: http://localhost:3000
 - Omniarchon: http://localhost:8053
 - Database: 192.168.86.200:5436
-- Kafka: 192.168.86.200:9092
+- Kafka: 192.168.86.200:29092
 
 **Note**: Intelligence integration is work-in-progress. Some advanced features (vector search, graph queries) are planned for future implementation.
 

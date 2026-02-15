@@ -1,11 +1,27 @@
+/**
+ * EventConsumer unit tests -- verifies core Kafka consumer functionality
+ * including connection lifecycle, message handling, metric aggregation,
+ * retry/reconnection logic, and data pruning.
+ *
+ * Mock strategy:
+ *   vi.hoisted() blocks define mock fns and seed process.env before any
+ *   module-level code executes.  vi.mock() replaces kafkajs and storage
+ *   so no real broker or database connection is attempted.
+ *
+ * Environment variables:
+ *   KAFKA_BROKERS / KAFKA_BOOTSTRAP_SERVERS are set to a clearly-fake
+ *   test broker ('test-broker:29092') inside vi.hoisted() so the module
+ *   can load without error.  beforeEach() resets them to the same fake
+ *   value to keep every test isolated.
+ */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 
 // Use vi.hoisted to set environment variables and create mocks before module loading
 // Create mock functions using vi.hoisted() so they're available during module loading
 vi.hoisted(() => {
-  process.env.KAFKA_BROKERS = 'localhost:9092';
-  process.env.KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092';
+  process.env.KAFKA_BROKERS = 'test-broker:29092';
+  process.env.KAFKA_BOOTSTRAP_SERVERS = 'test-broker:29092';
 });
 
 // Create mock functions for Kafka operations
@@ -71,8 +87,9 @@ describe('EventConsumer', () => {
     vi.clearAllMocks();
     vi.useRealTimers(); // Ensure real timers for most tests
 
-    // Reset environment variables
-    process.env.KAFKA_BOOTSTRAP_SERVERS = '192.168.86.200:9092';
+    // Reset environment variables to clearly-fake test broker
+    process.env.KAFKA_BROKERS = 'test-broker:29092';
+    process.env.KAFKA_BOOTSTRAP_SERVERS = 'test-broker:29092';
     process.env.ENABLE_EVENT_PRELOAD = 'false';
 
     // Create new consumer instance for each test

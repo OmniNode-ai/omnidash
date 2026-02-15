@@ -37,7 +37,7 @@ These pages represent the original Omnidash dashboard implementation that used m
 The replacement pages use:
 
 - **Contract-driven widgets**: Widgets defined by JSON contracts that specify data sources, refresh intervals, and visualizations
-- **Real-time Kafka events**: Direct integration with the event bus (configured via environment variables; local development typically uses `192.168.86.200:9092`)
+- **Real-time Kafka events**: Direct integration with the event bus (configured via environment variables; local development typically uses `192.168.86.200:29092`)
 - **ONEX node system**: Integration with the 4-node architecture (Effect/Compute/Reducer/Orchestrator)
 - **Type-safe data flow**: End-to-end TypeScript types from Kafka events to UI components
 

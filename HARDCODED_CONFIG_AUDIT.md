@@ -26,15 +26,15 @@
 
 **File**: `scripts/seed-events.ts:16`
 ```typescript
-brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(','),
+brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:29092').split(','),
 ```
 - **Issue**: Default fallback to production IP address
-- **Recommended**: `KAFKA_BROKERS_DEFAULT=192.168.86.200:9092`
+- **Recommended**: `KAFKA_BROKERS_DEFAULT=192.168.86.200:29092`
 - **Priority**: High (differs between dev/prod)
 
 **File**: `scripts/check-kafka-topics.ts:15`
 ```typescript
-brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(','),
+brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:29092').split(','),
 ```
 - **Issue**: Same hardcoded fallback
 - **Recommended**: Use centralized default from env
@@ -58,7 +58,7 @@ process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9
 
 **File**: `server/service-health.ts:70`
 ```typescript
-const brokers = (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(',');
+const brokers = (process.env.KAFKA_BROKERS || '192.168.86.200:29092').split(',');
 ```
 - **Issue**: Health check has different default than other services
 - **Recommended**: Centralize broker configuration
@@ -377,7 +377,7 @@ if (process.env.ENABLE_REAL_TIME_EVENTS === 'true')
 # ============================================
 
 # Broker fallback (when KAFKA_BROKERS not set)
-KAFKA_BROKERS_DEFAULT=192.168.86.200:9092
+KAFKA_BROKERS_DEFAULT=192.168.86.200:29092
 
 # Consumer Groups
 KAFKA_CONSUMER_GROUP_ID=omnidash-consumers-v2
