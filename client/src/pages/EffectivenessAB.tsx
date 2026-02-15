@@ -9,7 +9,7 @@
  * @see OMN-1891 - Build Effectiveness Dashboard (R5)
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
@@ -17,6 +17,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SignificanceBadge } from '@/components/SignificanceBadge';
+import { chiSquaredTest, welchTTest } from '@/lib/statistics';
+import type { SignificanceResult } from '@/lib/statistics';
 import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
 import type { ABComparison, CohortComparison } from '@shared/effectiveness-types';
@@ -99,12 +102,18 @@ function buildLatencyChartData(treatment: CohortComparison, control: CohortCompa
 // Sub-Components
 // ============================================================================
 
+interface SignificanceMap {
+  success_rate?: SignificanceResult;
+  latency?: SignificanceResult;
+}
+
 interface CohortCardProps {
   cohort: CohortComparison;
   label: string;
   borderClass: string;
   badgeClass: string;
   deltas?: { [key: string]: number };
+  significance?: SignificanceMap;
 }
 
 /** Format a delta badge with appropriate color and sign. */
@@ -128,7 +137,14 @@ function DeltaBadge({ metric, value }: { metric: string; value: number }) {
 }
 
 /** Renders a single cohort's metrics in a card with colored accent border. */
-function CohortCard({ cohort, label, borderClass, badgeClass, deltas }: CohortCardProps) {
+function CohortCard({
+  cohort,
+  label,
+  borderClass,
+  badgeClass,
+  deltas,
+  significance,
+}: CohortCardProps) {
   return (
     <Card className={`border-l-4 ${borderClass}`}>
       <CardHeader className="pb-2">
@@ -181,6 +197,11 @@ function CohortCard({ cohort, label, borderClass, badgeClass, deltas }: CohortCa
                 <DeltaBadge metric="success_rate" value={deltas.success_rate} />
               )}
             </div>
+            {significance?.success_rate && (
+              <div className="mt-1">
+                <SignificanceBadge result={significance.success_rate} metric="success rate" />
+              </div>
+            )}
             <div className="text-[11px] text-muted-foreground mt-1 leading-tight">
               Successful task completions
             </div>
@@ -194,6 +215,11 @@ function CohortCard({ cohort, label, borderClass, badgeClass, deltas }: CohortCa
               {cohort.avg_latency_ms.toFixed(0)}ms
               {deltas?.latency != null && <DeltaBadge metric="latency" value={deltas.latency} />}
             </div>
+            {significance?.latency && (
+              <div className="mt-1">
+                <SignificanceBadge result={significance.latency} metric="latency" />
+              </div>
+            )}
             <div className="text-[11px] text-muted-foreground mt-1 leading-tight">
               Mean end-to-end response time
             </div>
@@ -263,6 +289,42 @@ export default function EffectivenessAB() {
       : undefined;
 
   // ---------------------------------------------------------------------------
+  // Statistical significance (OMN-2049 F2)
+  // ---------------------------------------------------------------------------
+
+  const significance = useMemo<SignificanceMap | undefined>(() => {
+    if (!treatment || !control) return undefined;
+
+    // Chi-squared test for success rate
+    const treatmentSuccesses = Math.round(
+      (treatment.success_rate_pct / 100) * treatment.session_count
+    );
+    const treatmentFailures = treatment.session_count - treatmentSuccesses;
+    const controlSuccesses = Math.round((control.success_rate_pct / 100) * control.session_count);
+    const controlFailures = control.session_count - controlSuccesses;
+
+    const successRateResult = chiSquaredTest(
+      treatmentSuccesses,
+      treatmentFailures,
+      controlSuccesses,
+      controlFailures
+    );
+
+    // Welch's t-test for latency
+    const latencyResult = welchTTest(
+      treatment.avg_latency_ms,
+      control.avg_latency_ms,
+      treatment.session_count,
+      control.session_count
+    );
+
+    return {
+      success_rate: successRateResult,
+      latency: latencyResult,
+    };
+  }, [treatment, control]);
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
@@ -324,6 +386,7 @@ export default function EffectivenessAB() {
             borderClass="border-l-blue-500"
             badgeClass="text-blue-500 border-blue-500/30"
             deltas={deltas}
+            significance={significance}
           />
           <CohortCard
             cohort={control}
@@ -338,6 +401,44 @@ export default function EffectivenessAB() {
             <div className="flex items-center justify-center text-muted-foreground text-sm">
               No A/B comparison data available. Data will appear once sessions with outcomes are
               recorded.
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Statistical Significance Summary (OMN-2049 F2) */}
+      {!isLoading && significance && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Statistical Significance</CardTitle>
+            <CardDescription>
+              Confidence levels for key metric differences between cohorts
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {significance.success_rate && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <div className="text-sm font-medium">Success Rate</div>
+                    <div className="text-xs text-muted-foreground">
+                      Chi-squared test (2x2 contingency)
+                    </div>
+                  </div>
+                  <SignificanceBadge result={significance.success_rate} metric="success rate" />
+                </div>
+              )}
+              {significance.latency && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <div className="text-sm font-medium">Latency</div>
+                    <div className="text-xs text-muted-foreground">
+                      Welch&apos;s t-test (unequal variance)
+                    </div>
+                  </div>
+                  <SignificanceBadge result={significance.latency} metric="latency" />
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TrendDrillDown } from '@/components/TrendDrillDown';
+import type { TrendDrillDownData } from '@/components/TrendDrillDown';
 import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
 import { cn } from '@/lib/utils';
@@ -37,6 +39,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { Payload } from 'recharts/types/component/DefaultLegendContent';
+import type { CategoricalChartState } from 'recharts/types/chart/types';
 import {
   Activity,
   AlertTriangle,
@@ -88,6 +91,7 @@ export default function EffectivenessSummary() {
   // ---------------------------------------------------------------------------
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
   const [trendDays, setTrendDays] = useState<number>(14);
+  const [trendDrillDown, setTrendDrillDown] = useState<TrendDrillDownData | null>(null);
 
   // ---------------------------------------------------------------------------
   // Data fetching
@@ -141,6 +145,40 @@ export default function EffectivenessSummary() {
     refetchSummary();
     refetchThrottle();
   };
+
+  /** Handle clicking a data point on the effectiveness trend chart (F1). */
+  const handleTrendChartClick = useCallback(
+    (state: CategoricalChartState) => {
+      if (!state?.activePayload?.length || !trend) return;
+      const payload = state.activePayload[0].payload as EffectivenessTrendPoint;
+      setTrendDrillDown({
+        date: payload.date,
+        metrics: [
+          {
+            label: 'Injection Rate',
+            value: `${(payload.injection_rate * 100).toFixed(1)}%`,
+            color: '#22c55e',
+          },
+          {
+            label: 'Utilization',
+            value: `${(payload.avg_utilization * 100).toFixed(1)}%`,
+            color: '#3b82f6',
+          },
+          {
+            label: 'Accuracy',
+            value: `${(payload.avg_accuracy * 100).toFixed(1)}%`,
+            color: '#f59e0b',
+          },
+          {
+            label: 'Latency Delta',
+            value: `${payload.avg_latency_delta_ms.toFixed(0)}ms`,
+            color: '#ef4444',
+          },
+        ],
+      });
+    },
+    [trend]
+  );
 
   // ---------------------------------------------------------------------------
   // Render
@@ -302,22 +340,28 @@ export default function EffectivenessSummary() {
       ) : null}
 
       {/* Effectiveness Trend Chart */}
-      <Card>
+      <Card className="relative">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Activity className="w-4 h-4 text-muted-foreground" />
             Effectiveness Trend
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            {trendDays}-day trend of key effectiveness metrics
+            {trendDays}-day trend of key effectiveness metrics{' '}
+            <span className="text-primary/60">&middot; click a data point for details</span>
           </p>
         </CardHeader>
         <CardContent>
+          <TrendDrillDown data={trendDrillDown} onClose={() => setTrendDrillDown(null)} />
           {trendLoading ? (
             <Skeleton className="h-[280px] w-full rounded-lg" />
           ) : trend && trend.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
-              <ComposedChart data={trend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <ComposedChart
+                data={trend}
+                margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                onClick={handleTrendChartClick}
+              >
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis
                   dataKey="date"
@@ -381,6 +425,7 @@ export default function EffectivenessSummary() {
                   stroke="#22c55e"
                   strokeWidth={2}
                   dot={false}
+                  activeDot={{ r: 5, cursor: 'pointer' }}
                   hide={hiddenSeries.has('injection_rate')}
                 />
                 <Line
@@ -390,6 +435,7 @@ export default function EffectivenessSummary() {
                   stroke="#3b82f6"
                   strokeWidth={2}
                   dot={false}
+                  activeDot={{ r: 5, cursor: 'pointer' }}
                   hide={hiddenSeries.has('avg_utilization')}
                 />
                 <Line
@@ -399,6 +445,7 @@ export default function EffectivenessSummary() {
                   stroke="#f59e0b"
                   strokeWidth={2}
                   dot={false}
+                  activeDot={{ r: 5, cursor: 'pointer' }}
                   hide={hiddenSeries.has('avg_accuracy')}
                 />
                 <Line
@@ -408,6 +455,7 @@ export default function EffectivenessSummary() {
                   stroke="#ef4444"
                   strokeWidth={2}
                   dot={false}
+                  activeDot={{ r: 5, cursor: 'pointer' }}
                   hide={hiddenSeries.has('avg_latency_delta_ms')}
                 />
               </ComposedChart>

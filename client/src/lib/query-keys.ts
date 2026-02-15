@@ -447,6 +447,9 @@ export const queryKeys = {
 
     /** Multi-metric trend */
     trend: () => [...queryKeys.effectiveness.all, 'trend'] as const,
+
+    /** Single session detail */
+    session: (id: string) => [...queryKeys.effectiveness.all, 'session', id] as const,
   },
   // ============================================================================
   // Projections (OMN-2095)

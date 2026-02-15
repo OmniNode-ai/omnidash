@@ -12,6 +12,7 @@ import type {
   UtilizationDetails,
   ABComparison,
   EffectivenessTrendPoint,
+  SessionDetail,
 } from '@shared/effectiveness-types';
 
 export function getMockSummary(): EffectivenessSummary {
@@ -161,4 +162,44 @@ export function getMockEffectivenessTrend(): EffectivenessTrendPoint[] {
       avg_latency_delta_ms: 110 + (Math.random() - 0.5) * 40 - i * 1.5,
     };
   });
+}
+
+const MOCK_AGENTS = [
+  'api-architect',
+  'code-reviewer',
+  'test-runner',
+  'frontend-developer',
+  'debug',
+  'python-fastapi-expert',
+];
+
+const MOCK_METHODS = ['heuristic', 'embedding_similarity', 'keyword_match'];
+
+const MOCK_SUMMARIES = [
+  'Injected 3 patterns: API error handling, retry logic, and logging conventions.',
+  'Injected 5 patterns: React component structure, state management, and test utilities.',
+  'Injected 2 patterns: FastAPI dependency injection and Pydantic validation.',
+  'Injected 4 patterns: Git workflow, PR review checklist, commit conventions, and CI config.',
+  null,
+];
+
+export function getMockSessionDetail(sessionId: string): SessionDetail {
+  // Deterministic-ish mock based on session ID hash
+  const hash = sessionId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const idx = hash % MOCK_AGENTS.length;
+
+  return {
+    session_id: sessionId,
+    agent_name: MOCK_AGENTS[idx],
+    detection_method: MOCK_METHODS[hash % MOCK_METHODS.length],
+    utilization_score: 0.2 + (hash % 80) / 100,
+    latency_routing_ms: 30 + (hash % 40),
+    latency_retrieval_ms: 80 + (hash % 100),
+    latency_injection_ms: 40 + (hash % 60),
+    latency_total_ms: 200 + (hash % 200),
+    cohort: hash % 3 === 0 ? 'control' : 'treatment',
+    injection_content_summary: MOCK_SUMMARIES[hash % MOCK_SUMMARIES.length],
+    pattern_count: 1 + (hash % 6),
+    created_at: new Date(Date.now() - (hash % 72) * 3600000).toISOString(),
+  };
 }
