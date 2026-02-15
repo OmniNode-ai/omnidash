@@ -36,17 +36,14 @@ interface SessionDetailSheetProps {
 // Sub-Components
 // ============================================================================
 
-function LatencyBar({
-  label,
-  value,
-  total,
-  color,
-}: {
+interface LatencyBarProps {
   label: string;
   value: number;
   total: number;
   color: string;
-}) {
+}
+
+function LatencyBar({ label, value, total, color }: LatencyBarProps) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
     <div className="space-y-1">
@@ -81,11 +78,15 @@ export function SessionDetailSheet({ sessionId, onClose }: SessionDetailSheetPro
     staleTime: 60_000,
   });
 
-  const handleCopy = useCallback(() => {
+  const handleCopy = useCallback(async () => {
     if (!session) return;
-    navigator.clipboard.writeText(session.session_id);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(session.session_id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard access may be denied in some contexts
+    }
   }, [session]);
 
   return (
@@ -273,7 +274,10 @@ export function ClickableSessionId({ sessionId, onClick, truncate = 8 }: Clickab
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') onClick(sessionId);
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(sessionId);
+        }
       }}
       title={`View session ${sessionId}`}
     >

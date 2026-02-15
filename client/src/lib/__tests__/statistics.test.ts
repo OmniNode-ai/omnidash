@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { proportionTest, chiSquaredTest, welchTTest, confidenceLevel } from '../statistics';
+import { proportionTest, chiSquaredTest, welchTTest, confidenceLevel } from '@/lib/statistics';
 
 describe('statistics', () => {
   // ===========================

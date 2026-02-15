@@ -30,13 +30,13 @@ export interface SignificanceResult {
 // ============================================================================
 
 /** Minimum sample size per group for chi-squared / proportion test */
-const MIN_SAMPLE_PROPORTION = 30;
+const minSampleProportion = 30;
 
 /** Minimum sample size per group for t-test (continuous metrics) */
-const MIN_SAMPLE_CONTINUOUS = 30;
+const minSampleContinuous = 30;
 
 /** Default significance level */
-const ALPHA = 0.05;
+const alpha = 0.05;
 
 // ============================================================================
 // Normal distribution approximation
@@ -105,13 +105,13 @@ export function proportionTest(
   successB: number,
   nB: number
 ): SignificanceResult {
-  if (nA < MIN_SAMPLE_PROPORTION || nB < MIN_SAMPLE_PROPORTION) {
+  if (nA < minSampleProportion || nB < minSampleProportion) {
     return {
       significant: false,
       pValue: 1,
       hasEnoughData: false,
       label: 'Not enough data',
-      minSampleSize: MIN_SAMPLE_PROPORTION,
+      minSampleSize: minSampleProportion,
     };
   }
 
@@ -126,7 +126,7 @@ export function proportionTest(
       pValue: 1,
       hasEnoughData: true,
       label: 'No variance',
-      minSampleSize: MIN_SAMPLE_PROPORTION,
+      minSampleSize: minSampleProportion,
     };
   }
 
@@ -134,11 +134,11 @@ export function proportionTest(
   const pValue = 2 * (1 - normalCdf(z)); // two-tailed
 
   return {
-    significant: pValue < ALPHA,
+    significant: pValue < alpha,
     pValue,
     hasEnoughData: true,
     label: formatPValueLabel(pValue),
-    minSampleSize: MIN_SAMPLE_PROPORTION,
+    minSampleSize: minSampleProportion,
   };
 }
 
@@ -162,13 +162,13 @@ export function chiSquaredTest(
   const nA = successA + failA;
   const nB = successB + failB;
 
-  if (nA < MIN_SAMPLE_PROPORTION || nB < MIN_SAMPLE_PROPORTION) {
+  if (nA < minSampleProportion || nB < minSampleProportion) {
     return {
       significant: false,
       pValue: 1,
       hasEnoughData: false,
       label: 'Not enough data',
-      minSampleSize: MIN_SAMPLE_PROPORTION,
+      minSampleSize: minSampleProportion,
     };
   }
 
@@ -189,7 +189,7 @@ export function chiSquaredTest(
       pValue: 1,
       hasEnoughData: true,
       label: 'No variance',
-      minSampleSize: MIN_SAMPLE_PROPORTION,
+      minSampleSize: minSampleProportion,
     };
   }
 
@@ -203,11 +203,11 @@ export function chiSquaredTest(
   const pValue = 1 - chiSquaredCdf(chi2, 1);
 
   return {
-    significant: pValue < ALPHA,
+    significant: pValue < alpha,
     pValue,
     hasEnoughData: true,
     label: formatPValueLabel(pValue),
-    minSampleSize: MIN_SAMPLE_PROPORTION,
+    minSampleSize: minSampleProportion,
   };
 }
 
@@ -232,13 +232,13 @@ export function welchTTest(
   sdA?: number,
   sdB?: number
 ): SignificanceResult {
-  if (nA < MIN_SAMPLE_CONTINUOUS || nB < MIN_SAMPLE_CONTINUOUS) {
+  if (nA < minSampleContinuous || nB < minSampleContinuous) {
     return {
       significant: false,
       pValue: 1,
       hasEnoughData: false,
       label: 'Not enough data',
-      minSampleSize: MIN_SAMPLE_CONTINUOUS,
+      minSampleSize: minSampleContinuous,
     };
   }
 
@@ -259,7 +259,7 @@ export function welchTTest(
       pValue: 1,
       hasEnoughData: true,
       label: 'No variance',
-      minSampleSize: MIN_SAMPLE_CONTINUOUS,
+      minSampleSize: minSampleContinuous,
     };
   }
 
@@ -274,11 +274,11 @@ export function welchTTest(
     df > 30 ? 2 * (1 - normalCdf(t)) : 2 * (1 - normalCdf(t * Math.sqrt(df / (df + t * t))));
 
   return {
-    significant: pValue < ALPHA,
+    significant: pValue < alpha,
     pValue,
     hasEnoughData: true,
     label: formatPValueLabel(pValue),
-    minSampleSize: MIN_SAMPLE_CONTINUOUS,
+    minSampleSize: minSampleContinuous,
   };
 }
 
@@ -294,11 +294,16 @@ function formatPValueLabel(pValue: number): string {
   return `p = ${pValue.toFixed(2)}`;
 }
 
+export interface ConfidenceLevel {
+  level: string;
+  colorClass: string;
+}
+
 /**
  * Get a semantic confidence level for display.
  * Returns a tuple of [level, color class].
  */
-export function confidenceLevel(result: SignificanceResult): { level: string; colorClass: string } {
+export function confidenceLevel(result: SignificanceResult): ConfidenceLevel {
   if (!result.hasEnoughData) {
     return { level: 'Insufficient data', colorClass: 'text-muted-foreground border-muted' };
   }

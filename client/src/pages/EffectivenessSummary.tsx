@@ -93,6 +93,12 @@ export default function EffectivenessSummary() {
   const [trendDays, setTrendDays] = useState<number>(14);
   const [trendDrillDown, setTrendDrillDown] = useState<TrendDrillDownData | null>(null);
 
+  // Close drill-down overlay when the trend range changes so stale metrics
+  // don't remain visible after the chart data refreshes.
+  useEffect(() => {
+    setTrendDrillDown(null);
+  }, [trendDays]);
+
   // ---------------------------------------------------------------------------
   // Data fetching
   // ---------------------------------------------------------------------------

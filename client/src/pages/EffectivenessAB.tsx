@@ -107,12 +107,19 @@ interface SignificanceMap {
   latency?: SignificanceResult;
 }
 
+interface CohortDeltas {
+  utilization?: number;
+  accuracy?: number;
+  success_rate?: number;
+  latency?: number;
+}
+
 interface CohortCardProps {
   cohort: CohortComparison;
   label: string;
   borderClass: string;
   badgeClass: string;
-  deltas?: { [key: string]: number };
+  deltas?: CohortDeltas;
   significance?: SignificanceMap;
 }
 
