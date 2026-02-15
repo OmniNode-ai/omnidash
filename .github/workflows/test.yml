@@ -30,7 +30,6 @@ jobs:
 
       - name: Run type checking
         run: npm run check
-        continue-on-error: true # Don't fail on pre-existing TypeScript errors
 
       - name: Run unit tests
         run: npm run test:ci

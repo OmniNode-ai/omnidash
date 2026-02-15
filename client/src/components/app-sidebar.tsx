@@ -195,7 +195,14 @@ const advancedSubGroups: AdvancedSubGroup[] = [
 /** All advanced-section URLs for determining whether the section should auto-expand. */
 const advancedUrls = advancedSubGroups.flatMap((g) => g.items.map((i) => i.url));
 
-/** Returns true if the current location matches an advanced-section route. */
+/**
+ * Returns true if the current location matches an advanced-section route.
+ *
+ * NOTE: The root path '/' is treated as an alias for '/events' (Event Stream).
+ * It maps to the Advanced section, not to any category dashboard. If a
+ * dashboard landing page is added in the future, this alias and the
+ * corresponding isActive check below should be revisited.
+ */
 function isAdvancedRoute(location: string): boolean {
   const normalized = location.split(/[?#]/)[0];
   return advancedUrls.some(
@@ -258,7 +265,11 @@ function AdvancedNavSection({ location }: AdvancedNavSectionProps) {
   const hasActiveChild = isAdvancedRoute(location);
   const [isOpen, setIsOpen] = useState(hasActiveChild);
 
-  // Auto-expand when navigating to an advanced route
+  // Auto-expand when navigating to an advanced route.
+  // Intentionally one-way: we only auto-expand, never auto-collapse.
+  // If the user opens the section manually and then navigates to a
+  // category dashboard, the section stays open so they can quickly
+  // switch back without re-opening it.
   useEffect(() => {
     if (hasActiveChild) {
       setIsOpen(true);

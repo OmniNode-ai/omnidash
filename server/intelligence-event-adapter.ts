@@ -93,9 +93,10 @@ export class IntelligenceEventAdapter {
           let event: any;
           try {
             event = JSON.parse(value);
-          } catch {
+          } catch (e) {
             console.warn(
-              `[IntelligenceAdapter] Error parsing message from ${topic}:${partition}:${message.offset} - skipping`
+              `[IntelligenceAdapter] Error parsing message from ${topic}:${partition}:${message.offset} - skipping`,
+              e
             );
             return;
           }
