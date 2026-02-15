@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 > **Shared Standards**: See **`~/.claude/CLAUDE.md`** for:
-> - Development standards (Python, Git, testing)
+> - Shared development standards (Git, architecture principles)
 > - Environment configuration priority rules
 > - Infrastructure topology (PostgreSQL, Kafka/Redpanda, remote server, Docker networking)
 > - Environment variables and LLM architecture
@@ -450,3 +450,5 @@ See `design_guidelines.md` for comprehensive Carbon Design System implementation
 **Intelligence Schema**: `shared/intelligence-schema.ts` contains 30+ tables for agent observability (see "Database Schema for Intelligence" above for the full table listing).
 
 Both schemas use Drizzle ORM with Zod validation (`createInsertSchema()` from `drizzle-zod`) and PostgreSQL via `@neondatabase/serverless`.
+
+**Architectural invariant**: Omnidash never queries the upstream `omninode_bridge` database directly. All intelligence data flows through Kafka into omnidash's own `omnidash_analytics` read-model database (see "Available Data Sources" above).
