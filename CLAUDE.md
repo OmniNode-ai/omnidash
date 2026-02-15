@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 > **Shared Standards**: See **`~/.claude/CLAUDE.md`** for:
-> - Shared development standards (Git, architecture principles)
+> - Shared development standards (Git, testing, architecture)
 > - Environment configuration priority rules
 > - Infrastructure topology (PostgreSQL, Kafka/Redpanda, remote server, Docker networking)
 > - Environment variables and LLM architecture
@@ -80,7 +80,7 @@ node scripts/seed-events.ts      # Direct script execution
 - Learned Insights: http://localhost:3000/insights
 - Widget Showcase: http://localhost:3000/showcase
 
-**Environment**: See `~/.claude/CLAUDE.md` for `.env`-first configuration rules. Omnidash runs on `PORT=3000` (configured in package.json dev script).
+**Environment**: Always verify `.env` before assuming defaults (see `~/.claude/CLAUDE.md` for full configuration priority rules). Omnidash runs on `PORT=3000` (configured in package.json dev script).
 
 ## Project Architecture
 
