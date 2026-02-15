@@ -50,6 +50,13 @@ import {
   SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION,
   SUFFIX_OMNICLAUDE_AGENT_MATCH,
   SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
+  SUFFIX_OMNICLAUDE_ROUTING_DECISION,
+  SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
+  SUFFIX_OMNICLAUDE_MANIFEST_INJECTED,
+  SUFFIX_OMNICLAUDE_PHASE_METRICS,
+  SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED,
+  SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED,
+  SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED,
   SUFFIX_VALIDATION_RUN_STARTED,
   SUFFIX_VALIDATION_VIOLATIONS_BATCH,
   SUFFIX_VALIDATION_RUN_COMPLETED,
@@ -60,6 +67,22 @@ import {
   SUFFIX_REGISTRY_REQUEST_INTROSPECTION,
   SUFFIX_FSM_STATE_TRANSITIONS,
   SUFFIX_RUNTIME_TICK,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
+  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITION_CMD,
+  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
+  SUFFIX_INTELLIGENCE_PATTERN_PROMOTED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_PATTERN_DISCOVERED,
+  SUFFIX_INTELLIGENCE_SESSION_OUTCOME_CMD,
+  SUFFIX_AGENT_STATUS,
 } from '@shared/topics';
 import {
   EventEnvelopeSchema,
@@ -1519,6 +1542,53 @@ export class EventConsumer extends EventEmitter {
                   }
                 } else {
                   console.warn('[extraction] Dropped malformed latency-breakdown event');
+                }
+                break;
+
+              // Intelligence pipeline commands + completions
+              case SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD:
+              case SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD:
+              case SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD:
+              case SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD:
+              case SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED:
+              case SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED:
+              case SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED:
+              case SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED:
+              case SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED:
+                if (isDebug) {
+                  intentLogger.debug(`Processing intelligence pipeline event from topic: ${topic}`);
+                }
+                break;
+
+              // Pattern lifecycle
+              case SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITION_CMD:
+              case SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED:
+              case SUFFIX_INTELLIGENCE_PATTERN_PROMOTED:
+              case SUFFIX_INTELLIGENCE_PATTERN_STORED:
+              case SUFFIX_PATTERN_DISCOVERED:
+                if (isDebug) {
+                  intentLogger.debug(`Processing pattern lifecycle event from topic: ${topic}`);
+                }
+                break;
+
+              // Session/agent status
+              case SUFFIX_INTELLIGENCE_SESSION_OUTCOME_CMD:
+              case SUFFIX_AGENT_STATUS:
+                if (isDebug) {
+                  intentLogger.debug(`Processing session/agent event from topic: ${topic}`);
+                }
+                break;
+
+              // OmniClaude extended events (routing, sessions, manifests, notifications)
+              case SUFFIX_OMNICLAUDE_ROUTING_DECISION:
+              case SUFFIX_OMNICLAUDE_SESSION_OUTCOME:
+              case SUFFIX_OMNICLAUDE_MANIFEST_INJECTED:
+              case SUFFIX_OMNICLAUDE_PHASE_METRICS:
+              case SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED:
+              case SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED:
+              case SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED:
+                if (isDebug) {
+                  intentLogger.debug(`Processing omniclaude extended event from topic: ${topic}`);
                 }
                 break;
 
