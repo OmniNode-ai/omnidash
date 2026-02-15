@@ -1,6 +1,7 @@
 import {
   Radio,
   ChevronRight,
+  ChevronDown,
   Search,
   Layers,
   Globe,
@@ -12,6 +13,7 @@ import {
   Lightbulb,
   Zap,
   FlaskConical,
+  Wrench,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -23,7 +25,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 
@@ -33,12 +38,14 @@ interface NavItem {
   url: string;
   icon: LucideIcon;
   description: string;
-  /** Indented sub-page indicator */
-  indent?: boolean;
 }
 
-// OMN-2181: Phase 2 category dashboards as primary navigation
-// OMN-2180: Product-facing navigation groups (preserved as sub-pages)
+// OMN-2182: Phase 3 -- Retire legacy views, tuck granular pages under Advanced
+// OMN-2181: Phase 2 category dashboards remain as primary navigation
+//
+// Default nav shows only 4 category pages.
+// Advanced/Developer section accessible for granular drill-down views.
+// No functionality removed -- just reorganized.
 //
 // Hidden routes (registered in App.tsx but not in sidebar navigation):
 //   /graph             -- Execution Graph (node execution visualization)
@@ -57,7 +64,7 @@ interface NavItem {
 //   /preview/*         -- 17 preview/prototype pages
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Category Dashboards (OMN-2181)
+// Category Dashboards (OMN-2181) -- primary navigation
 // ─────────────────────────────────────────────────────────────────────────────
 
 const categories: NavItem[] = [
@@ -88,89 +95,116 @@ const categories: NavItem[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Monitoring (drill-down pages)
+// Advanced / Developer section (granular drill-down pages)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const monitoring: NavItem[] = [
+/** A labelled group of nav items within the Advanced section. */
+interface AdvancedSubGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const advancedSubGroups: AdvancedSubGroup[] = [
   {
-    title: 'Event Stream',
-    url: '/events',
-    icon: Radio,
-    description: 'Real-time Kafka event stream visualization',
+    label: 'Monitoring',
+    items: [
+      {
+        title: 'Event Stream',
+        url: '/events',
+        icon: Radio,
+        description: 'Real-time Kafka event stream visualization',
+      },
+      {
+        title: 'Pipeline Metrics',
+        url: '/extraction',
+        icon: Gauge,
+        description: 'Pattern extraction metrics and pipeline health',
+      },
+      {
+        title: 'Injection Performance',
+        url: '/effectiveness',
+        icon: Activity,
+        description: 'Injection effectiveness metrics and A/B analysis',
+      },
+    ],
   },
   {
-    title: 'Pipeline Metrics',
-    url: '/extraction',
-    icon: Gauge,
-    description: 'Pattern extraction metrics and pipeline health',
-    indent: true,
+    label: 'Intelligence',
+    items: [
+      {
+        title: 'Intent Signals',
+        url: '/intents',
+        icon: Brain,
+        description: 'Real-time intent classification and analysis',
+      },
+      {
+        title: 'Pattern Intelligence',
+        url: '/patterns',
+        icon: Sparkles,
+        description: 'Code pattern discovery and learning analytics',
+      },
+    ],
   },
   {
-    title: 'Injection Performance',
-    url: '/effectiveness',
-    icon: Activity,
-    description: 'Injection effectiveness metrics and A/B analysis',
-    indent: true,
+    label: 'System',
+    items: [
+      {
+        title: 'Node Registry',
+        url: '/registry',
+        icon: Globe,
+        description: 'Contract-driven node and service discovery',
+      },
+      {
+        title: 'Validation',
+        url: '/validation',
+        icon: ShieldCheck,
+        description: 'Cross-repo validation runs and violation trends',
+      },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      {
+        title: 'Correlation Trace',
+        url: '/trace',
+        icon: Search,
+        description: 'Trace events by correlation ID',
+      },
+      {
+        title: 'Learned Insights',
+        url: '/insights',
+        icon: Lightbulb,
+        description: 'Patterns and conventions from OmniClaude sessions',
+      },
+    ],
+  },
+  {
+    label: 'Preview',
+    items: [
+      {
+        title: 'Widget Showcase',
+        url: '/showcase',
+        icon: Layers,
+        description: 'All 5 contract-driven widget types',
+      },
+    ],
   },
 ];
 
-const intelligence: NavItem[] = [
-  {
-    title: 'Intent Signals',
-    url: '/intents',
-    icon: Brain,
-    description: 'Real-time intent classification and analysis',
-    indent: true,
-  },
-  {
-    title: 'Pattern Intelligence',
-    url: '/patterns',
-    icon: Sparkles,
-    description: 'Code pattern discovery and learning analytics',
-    indent: true,
-  },
-];
+/** All advanced-section URLs for determining whether the section should auto-expand. */
+const advancedUrls = advancedSubGroups.flatMap((g) => g.items.map((i) => i.url));
 
-const system: NavItem[] = [
-  {
-    title: 'Node Registry',
-    url: '/registry',
-    icon: Globe,
-    description: 'Contract-driven node and service discovery',
-    indent: true,
-  },
-  {
-    title: 'Validation',
-    url: '/validation',
-    icon: ShieldCheck,
-    description: 'Cross-repo validation runs and violation trends',
-    indent: true,
-  },
-];
-
-const tools: NavItem[] = [
-  {
-    title: 'Correlation Trace',
-    url: '/trace',
-    icon: Search,
-    description: 'Trace events by correlation ID',
-  },
-  {
-    title: 'Learned Insights',
-    url: '/insights',
-    icon: Lightbulb,
-    description: 'Patterns and conventions from OmniClaude sessions',
-  },
-];
-
-const previews: NavItem[] = [
-  {
-    title: 'Widget Showcase',
-    url: '/showcase',
-    icon: Layers,
-    description: 'All 5 contract-driven widget types',
-  },
-];
+/** Returns true if the current location matches an advanced-section route. */
+function isAdvancedRoute(location: string): boolean {
+  const normalized = location.split(/[?#]/)[0];
+  return advancedUrls.some(
+    (url) =>
+      normalized === url ||
+      (url === '/events' && normalized === '/') ||
+      normalized.startsWith(`${url}/`)
+  );
+}
 
 /** Props for {@link NavGroup}. */
 interface NavGroupProps {
@@ -191,23 +225,18 @@ function NavGroup({ label, items, location }: NavGroupProps) {
           {items.map((item) => {
             const normalizedLocation = location.split(/[?#]/)[0];
             const isActive =
-              normalizedLocation === item.url ||
-              (item.url === '/events' && normalizedLocation === '/') ||
-              normalizedLocation.startsWith(`${item.url}/`);
+              normalizedLocation === item.url || normalizedLocation.startsWith(`${item.url}/`);
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
                   asChild
                   tooltip={item.description}
-                  className={cn('group', isActive && 'bg-sidebar-accent', item.indent && 'pl-7')}
+                  className={cn('group', isActive && 'bg-sidebar-accent')}
                   data-testid={`nav-${item.url.slice(1).replace(/\//g, '-')}`}
                 >
                   <Link href={item.url}>
                     <item.icon className="w-4 h-4" />
                     <span>{item.title}</span>
-                    {isActive && (
-                      <ChevronRight className="w-4 h-4 ml-auto text-sidebar-accent-foreground" />
-                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -219,7 +248,81 @@ function NavGroup({ label, items, location }: NavGroupProps) {
   );
 }
 
-/** Primary application sidebar with category dashboards and drill-down pages. */
+/** Props for {@link AdvancedNavSection}. */
+interface AdvancedNavSectionProps {
+  location: string;
+}
+
+/** Collapsible Advanced section containing all granular drill-down pages. */
+function AdvancedNavSection({ location }: AdvancedNavSectionProps) {
+  const hasActiveChild = isAdvancedRoute(location);
+  const [isOpen, setIsOpen] = useState(hasActiveChild);
+
+  // Auto-expand when navigating to an advanced route
+  useEffect(() => {
+    if (hasActiveChild) {
+      setIsOpen(true);
+    }
+  }, [hasActiveChild]);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} data-testid="advanced-section">
+      <SidebarGroup>
+        <CollapsibleTrigger className="w-full" data-testid="advanced-section-trigger">
+          <SidebarGroupLabel className="text-xs uppercase tracking-wider px-3 mb-2 cursor-pointer hover:text-sidebar-foreground transition-colors w-full">
+            <Wrench className="w-3.5 h-3.5 mr-1.5" />
+            <span>Advanced</span>
+            <ChevronDown className="w-3.5 h-3.5 ml-auto transition-transform duration-200 [[data-state=closed]_&]:-rotate-90" />
+          </SidebarGroupLabel>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent>
+          <SidebarGroupContent>
+            {advancedSubGroups.map((subGroup, groupIdx) => (
+              <div key={subGroup.label}>
+                {groupIdx > 0 && <SidebarSeparator className="my-1" />}
+                <div className="px-3 py-1.5">
+                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">
+                    {subGroup.label}
+                  </span>
+                </div>
+                <SidebarMenu>
+                  {subGroup.items.map((item) => {
+                    const normalizedLocation = location.split(/[?#]/)[0];
+                    const isActive =
+                      normalizedLocation === item.url ||
+                      (item.url === '/events' && normalizedLocation === '/') ||
+                      normalizedLocation.startsWith(`${item.url}/`);
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          asChild
+                          tooltip={item.description}
+                          className={cn('group pl-5', isActive && 'bg-sidebar-accent')}
+                          data-testid={`nav-${item.url.slice(1).replace(/\//g, '-')}`}
+                        >
+                          <Link href={item.url}>
+                            <item.icon className="w-4 h-4" />
+                            <span>{item.title}</span>
+                            {isActive && (
+                              <ChevronRight className="w-4 h-4 ml-auto text-sidebar-accent-foreground" />
+                            )}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </div>
+            ))}
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
+  );
+}
+
+/** Primary application sidebar with category dashboards and collapsible Advanced section. */
 export function AppSidebar() {
   const [location] = useLocation();
 
@@ -227,11 +330,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarContent>
         <NavGroup label="Dashboards" items={categories} location={location} />
-        <NavGroup label="Monitoring" items={monitoring} location={location} />
-        <NavGroup label="Intelligence" items={intelligence} location={location} />
-        <NavGroup label="System" items={system} location={location} />
-        <NavGroup label="Tools" items={tools} location={location} />
-        <NavGroup label="Preview" items={previews} location={location} />
+        <AdvancedNavSection location={location} />
       </SidebarContent>
     </Sidebar>
   );
