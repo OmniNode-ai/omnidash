@@ -1154,7 +1154,7 @@ export class EventConsumer extends EventEmitter {
                 partition,
                 offset: message.offset,
                 error: parseError instanceof Error ? parseError.message : String(parseError),
-                valuePreview: message.value?.toString().slice(0, 200),
+                valuePreview: message.value?.toString().slice(0, 50),
               });
               return; // skip bad message, do not re-throw
             }

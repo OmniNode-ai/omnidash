@@ -5,7 +5,7 @@
 # branch protection settings (Settings -> Branches -> main).
 #
 # Added: OMN-2187
-# Last verified: 2026-02-14 (PR TBD — gate job added, branch protection applied)
+# Last verified: 2026-02-14 (PR #64 — gate job added, branch protection applied)
 
 required_checks:
   # -- test.yml (primary CI pipeline) ----------------------------------------

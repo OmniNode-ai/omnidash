@@ -201,7 +201,7 @@ const advancedUrls = advancedSubGroups.flatMap((g) => g.items.map((i) => i.url))
  * NOTE: The root path '/' is treated as an alias for '/events' (Event Stream).
  * It maps to the Advanced section, not to any category dashboard. If a
  * dashboard landing page is added in the future, this alias and the
- * corresponding isActive check below (line ~293) should be revisited.
+ * corresponding isActive check below should be revisited.
  */
 function isAdvancedRoute(location: string): boolean {
   const normalized = location.split(/[?#]/)[0];
