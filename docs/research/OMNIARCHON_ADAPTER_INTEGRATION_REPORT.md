@@ -180,7 +180,7 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
 4. **Check Response Topic**:
    ```bash
    # Using kcat or rpk
-   kcat -C -b localhost:19092 -t dev.archon-intelligence.intelligence.code-analysis-completed.v1 -o end -c 1
+   kcat -C -b localhost:29092 -t dev.archon-intelligence.intelligence.code-analysis-completed.v1 -o end -c 1
    ```
 
 ### Success Criteria

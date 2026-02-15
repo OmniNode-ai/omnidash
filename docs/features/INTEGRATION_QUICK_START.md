@@ -10,7 +10,7 @@
 OmniClaude has **34+ PostgreSQL tables** and **8 Kafka topics** tracking comprehensive agent execution data. All data is production-ready and available for integration.
 
 **Database**: `postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge`
-**Kafka**: `192.168.86.200:9092`
+**Kafka**: `192.168.86.200:29092`
 
 ---
 

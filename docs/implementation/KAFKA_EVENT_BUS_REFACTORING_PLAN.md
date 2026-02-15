@@ -13,7 +13,7 @@ Refactor the Omnidash intelligence dashboard from direct PostgreSQL queries to a
 ### Direct Database Coupling Issues
 
 1. **Tight Coupling**: Dashboard directly queries PostgreSQL at 192.168.86.200:5436
-2. **Ignores Event Bus**: Existing Kafka infrastructure (192.168.86.200:9092) not utilized
+2. **Ignores Event Bus**: Existing Kafka infrastructure (192.168.86.200:29092) not utilized
 3. **Slow Queries**: Database queries add 50-200ms latency per request
 4. **Schema Dependencies**: Requires exact column matching (e.g., actual_success column issues)
 5. **No Real-Time**: Polling every 10-30s instead of event-driven updates
@@ -37,7 +37,7 @@ WebSocket Broadcasts → Dashboard (real-time updates)
 
 ## Available Infrastructure
 
-**Kafka Brokers**: 192.168.86.200:9092
+**Kafka Brokers**: 192.168.86.200:29092
 
 **Topics**:
 
@@ -95,7 +95,7 @@ class EventConsumer {
 
   constructor() {
     this.kafka = new Kafka({
-      brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:9092').split(','),
+      brokers: (process.env.KAFKA_BROKERS || '192.168.86.200:29092').split(','),
       clientId: 'omnidash-event-consumer',
     });
 

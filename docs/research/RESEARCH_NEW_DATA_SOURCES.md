@@ -20,7 +20,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 | --------------------------- | ---------- | --------------------- | ---------------------------------------- |
 | **Omniarchon Intelligence** | ✅ Healthy | http://localhost:8053 | Memgraph, Ollama, freshness DB connected |
 | **PostgreSQL Database**     | ✅ Healthy | 192.168.86.200:5436   | 39 tables, 209 routing decisions/24h     |
-| **Kafka/Redpanda**          | ✅ Active  | 192.168.86.200:9092   | 4 topics producing events                |
+| **Kafka/Redpanda**          | ✅ Active  | 192.168.86.200:29092   | 4 topics producing events                |
 | **Omnidash API**            | ✅ Working | http://localhost:3000 | Serving real data from Kafka + DB        |
 
 ---
@@ -611,7 +611,7 @@ Top 15 tables by disk usage:
 
 ## Kafka Topics Summary
 
-**Broker**: 192.168.86.200:9092
+**Broker**: 192.168.86.200:29092
 
 **Active Topics** (being consumed by omnidash-event-consumer):
 

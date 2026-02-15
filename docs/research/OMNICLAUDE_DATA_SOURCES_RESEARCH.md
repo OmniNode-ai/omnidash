@@ -89,7 +89,7 @@ OmniClaude is a **comprehensive toolkit for enhancing Claude Code** with:
 | Component             | Location              | Purpose                           | Status        |
 | --------------------- | --------------------- | --------------------------------- | ------------- |
 | **PostgreSQL**        | `192.168.86.200:5436` | Primary data storage (34+ tables) | ✅ Production |
-| **Kafka/Redpanda**    | `192.168.86.200:9092` | Event streaming (8 topics)        | ✅ Production |
+| **Kafka/Redpanda**    | `192.168.86.200:29092` | Event streaming (8 topics)        | ✅ Production |
 | **Qdrant**            | `localhost:6333`      | Vector database (120+ patterns)   | ✅ Production |
 | **Memgraph**          | `localhost:7687`      | Graph database (relationships)    | ✅ Production |
 | **FastAPI Dashboard** | Port unknown          | Web dashboard with SSE            | ⚠️ Optional   |
@@ -754,7 +754,7 @@ import { WebSocketServer } from 'ws';
 
 const kafka = new Kafka({
   clientId: 'omnidash',
-  brokers: ['192.168.86.200:9092'],
+  brokers: ['192.168.86.200:29092'],
 });
 
 const consumer = kafka.consumer({ groupId: 'omnidash-consumers' });
@@ -1529,7 +1529,7 @@ docker exec omninode-bridge-redpanda rpk topic consume agent-actions --num 10
 ### Environment Configuration
 
 - PostgreSQL: `192.168.86.200:5436` (database: `omninode_bridge`)
-- Kafka: `192.168.86.200:9092`
+- Kafka: `192.168.86.200:29092`
 - Credentials in `.env` file (never commit!)
 
 ---

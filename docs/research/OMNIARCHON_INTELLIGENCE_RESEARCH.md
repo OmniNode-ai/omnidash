@@ -196,7 +196,7 @@ pattern_usage_events:
 
 | Metric                 | Source                         | How to Get                                                                   |
 | ---------------------- | ------------------------------ | ---------------------------------------------------------------------------- |
-| **Kafka Topics**       | Redpanda (192.168.86.200:9092) | `docker exec omninode-bridge-redpanda rpk topic list`                        |
+| **Kafka Topics**       | Redpanda (192.168.86.200:29092) | `docker exec omninode-bridge-redpanda rpk topic list`                        |
 | **Event Throughput**   | Kafka metrics                  | `docker exec omninode-bridge-redpanda rpk group describe omnidash-consumers` |
 | **Consumer Lag**       | Kafka consumer groups          | `curl http://192.168.86.200:8054/kafka/metrics`                              |
 | **Event Types**        | Event schemas                  | 50+ event types (see below)                                                  |

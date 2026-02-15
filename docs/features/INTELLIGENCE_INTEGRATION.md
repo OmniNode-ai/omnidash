@@ -57,7 +57,7 @@ This guide documents how to integrate OmniClaude's comprehensive intelligence in
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐ │
 │  │   Kafka      │    │  PostgreSQL  │    │   Qdrant     │ │
 │  │ 192.168.86   │    │ 192.168.86   │    │ archon-      │ │
-│  │   .200:9092  │───▶│   .200:5436  │    │ qdrant:6333  │ │
+│  │  .200:29092  │───▶│   .200:5436  │    │ qdrant:6333  │ │
 │  │              │    │              │    │              │ │
 │  │ 4 Topics     │    │ 34 Tables    │    │ 120+ Patterns│ │
 │  └──────────────┘    └──────────────┘    └──────────────┘ │
@@ -126,7 +126,7 @@ Latency: <200ms
 
 ### 2. Kafka Event Bus
 
-**Brokers**: `192.168.86.200:9092`
+**Brokers**: `192.168.86.200:29092`
 **Protocol**: Kafka 2.x compatible
 **Consumer Group**: `omnidash-consumers` (suggested)
 
@@ -169,7 +169,7 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=<your_password>
 
 # Kafka Connection
-KAFKA_BROKERS=192.168.86.200:9092
+KAFKA_BROKERS=192.168.86.200:29092
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers
 
@@ -182,7 +182,7 @@ ENABLE_REAL_TIME_EVENTS=true
 **Requirements**:
 
 - Dashboard server must have network access to `192.168.86.0/24` subnet
-- Ports required: 5436 (PostgreSQL), 9092 (Kafka), 6333 (Qdrant)
+- Ports required: 5436 (PostgreSQL), 29092 (Kafka), 6333 (Qdrant)
 - No authentication required for local development (production: add auth)
 
 ---
@@ -654,7 +654,7 @@ GROUP BY generation_source;
 import { Kafka } from 'kafkajs';
 
 const kafka = new Kafka({
-  brokers: ['192.168.86.200:9092'],
+  brokers: ['192.168.86.200:29092'],
 });
 
 const admin = kafka.admin();
@@ -1162,7 +1162,7 @@ import { Kafka } from 'kafkajs';
 import { createServer } from 'http';
 
 const kafka = new Kafka({
-  brokers: ['192.168.86.200:9092'],
+  brokers: ['192.168.86.200:29092'],
   clientId: 'omnidash-websocket',
 });
 
@@ -1319,7 +1319,7 @@ intelligenceRouter.get('/events/stream', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
 
   const kafka = new Kafka({
-    brokers: ['192.168.86.200:9092'],
+    brokers: ['192.168.86.200:29092'],
     clientId: `omnidash-sse-${Date.now()}`,
   });
 
@@ -1615,7 +1615,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   const kafka = new Kafka({
-    brokers: ['192.168.86.200:9092'],
+    brokers: ['192.168.86.200:29092'],
     clientId: 'omnidash-websocket',
   });
 
