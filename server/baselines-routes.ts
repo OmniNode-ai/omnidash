@@ -64,10 +64,11 @@ router.get('/comparisons', async (_req, res) => {
 // GET /api/baselines/trend?days=14
 // ============================================================================
 
-router.get('/trend', async (_req, res) => {
+router.get('/trend', async (req, res) => {
   try {
     // TODO: Replace with real database query when baselines tables exist.
-    // The `days` query param (e.g. ?days=14) will be used for time-window filtering.
+    const days = Math.min(Math.max(parseInt(req.query.days as string) || 14, 1), 90);
+    void days; // will be used for time-window filtering once tables exist
     const trend: ROITrendPoint[] = [];
     return res.json(trend);
   } catch (error) {

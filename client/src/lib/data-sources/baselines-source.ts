@@ -17,13 +17,17 @@ import {
   getMockROITrend,
   getMockRecommendationBreakdown,
 } from '@/lib/mock-data/baselines-mock';
+import { buildApiUrl } from './api-base';
 
 export interface BaselinesFetchOptions {
+  /** Fall back to mock data on network/HTTP errors (default: true). */
   fallbackToMock?: boolean;
+  /** Also fall back to mock when the API returns empty results (default: false). */
+  mockOnEmpty?: boolean;
 }
 
 class BaselinesSource {
-  private baseUrl = '/api/baselines';
+  private baseUrl = buildApiUrl('/api/baselines');
   private _mockEndpoints = new Set<string>();
 
   /** True if any endpoint fell back to mock data. */
@@ -40,12 +44,12 @@ class BaselinesSource {
   }
 
   async summary(options: BaselinesFetchOptions = {}): Promise<BaselinesSummary> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/summary`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      if (fallbackToMock && data.total_comparisons === 0) {
+      if (mockOnEmpty && data.total_comparisons === 0) {
         this.markMock('summary');
         return getMockBaselinesSummary();
       }
@@ -62,12 +66,12 @@ class BaselinesSource {
   }
 
   async comparisons(options: BaselinesFetchOptions = {}): Promise<PatternComparison[]> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/comparisons`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      if (fallbackToMock && (!Array.isArray(data) || data.length === 0)) {
+      if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
         this.markMock('comparisons');
         return getMockComparisons();
       }
@@ -84,12 +88,12 @@ class BaselinesSource {
   }
 
   async trend(days?: number, options: BaselinesFetchOptions = {}): Promise<ROITrendPoint[]> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/trend?days=${days ?? 14}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      if (fallbackToMock && (!Array.isArray(data) || data.length === 0)) {
+      if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
         this.markMock('trend');
         return getMockROITrend();
       }
@@ -106,12 +110,12 @@ class BaselinesSource {
   }
 
   async breakdown(options: BaselinesFetchOptions = {}): Promise<RecommendationBreakdown[]> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/breakdown`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      if (fallbackToMock && (!Array.isArray(data) || data.length === 0)) {
+      if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
         this.markMock('breakdown');
         return getMockRecommendationBreakdown();
       }

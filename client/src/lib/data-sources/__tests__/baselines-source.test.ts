@@ -138,11 +138,21 @@ describe('BaselinesSource', () => {
       expect(result.avg_cost_savings).toBe(0.24);
     });
 
-    it('falls back to mock when total_comparisons is 0', async () => {
+    it('returns empty API data as-is by default (no mockOnEmpty)', async () => {
       const emptyData = createValidSummary({ total_comparisons: 0 });
       setupFetchMock(new Map([['/api/baselines/summary', createMockResponse(emptyData)]]));
 
       const result = await baselinesSource.summary();
+
+      expect(result.total_comparisons).toBe(0);
+      expect(baselinesSource.isUsingMockData).toBe(false);
+    });
+
+    it('falls back to mock when total_comparisons is 0 and mockOnEmpty is true', async () => {
+      const emptyData = createValidSummary({ total_comparisons: 0 });
+      setupFetchMock(new Map([['/api/baselines/summary', createMockResponse(emptyData)]]));
+
+      const result = await baselinesSource.summary({ mockOnEmpty: true });
 
       expect(result.total_comparisons).toBeGreaterThan(0);
     });
@@ -194,10 +204,19 @@ describe('BaselinesSource', () => {
       expect(result[0].pattern_name).toBe('Error Retry with Backoff');
     });
 
-    it('falls back to mock when array is empty', async () => {
+    it('returns empty array as-is by default (no mockOnEmpty)', async () => {
       setupFetchMock(new Map([['/api/baselines/comparisons', createMockResponse([])]]));
 
       const result = await baselinesSource.comparisons();
+
+      expect(result).toHaveLength(0);
+      expect(baselinesSource.isUsingMockData).toBe(false);
+    });
+
+    it('falls back to mock when array is empty and mockOnEmpty is true', async () => {
+      setupFetchMock(new Map([['/api/baselines/comparisons', createMockResponse([])]]));
+
+      const result = await baselinesSource.comparisons({ mockOnEmpty: true });
 
       expect(result.length).toBeGreaterThan(0);
     });
@@ -229,18 +248,27 @@ describe('BaselinesSource', () => {
       expect(result[0].avg_cost_savings).toBe(0.2);
     });
 
-    it('falls back to mock when array is empty', async () => {
+    it('returns empty array as-is by default (no mockOnEmpty)', async () => {
       setupFetchMock(new Map([['/api/baselines/trend', createMockResponse([])]]));
 
       const result = await baselinesSource.trend();
 
+      expect(result).toHaveLength(0);
+      expect(baselinesSource.isUsingMockData).toBe(false);
+    });
+
+    it('falls back to mock when array is empty and mockOnEmpty is true', async () => {
+      setupFetchMock(new Map([['/api/baselines/trend', createMockResponse([])]]));
+
+      const result = await baselinesSource.trend(undefined, { mockOnEmpty: true });
+
       expect(result.length).toBeGreaterThan(0);
     });
 
-    it('falls back to mock when response is not an array', async () => {
+    it('falls back to mock when response is not an array and mockOnEmpty is true', async () => {
       setupFetchMock(new Map([['/api/baselines/trend', createMockResponse({ notArray: true })]]));
 
-      const result = await baselinesSource.trend();
+      const result = await baselinesSource.trend(undefined, { mockOnEmpty: true });
 
       expect(result.length).toBeGreaterThan(0);
     });
@@ -261,10 +289,19 @@ describe('BaselinesSource', () => {
       expect(result[0].action).toBe('promote');
     });
 
-    it('falls back to mock when array is empty', async () => {
+    it('returns empty array as-is by default (no mockOnEmpty)', async () => {
       setupFetchMock(new Map([['/api/baselines/breakdown', createMockResponse([])]]));
 
       const result = await baselinesSource.breakdown();
+
+      expect(result).toHaveLength(0);
+      expect(baselinesSource.isUsingMockData).toBe(false);
+    });
+
+    it('falls back to mock when array is empty and mockOnEmpty is true', async () => {
+      setupFetchMock(new Map([['/api/baselines/breakdown', createMockResponse([])]]));
+
+      const result = await baselinesSource.breakdown({ mockOnEmpty: true });
 
       expect(result.length).toBeGreaterThan(0);
     });

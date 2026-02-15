@@ -3,6 +3,9 @@
  *
  * Tests for the Baselines & ROI dashboard page.
  * Covers: rendering, loading states, data display, empty state, error handling.
+ *
+ * Note: Page-level tests live in pages/__tests__/ by convention (13+ existing
+ * files follow this pattern). Component tests live in components/__tests__/.
  */
 
 import { render, screen, waitFor } from '@testing-library/react';

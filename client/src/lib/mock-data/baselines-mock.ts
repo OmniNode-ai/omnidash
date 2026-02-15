@@ -162,11 +162,13 @@ export function getMockROITrend(): ROITrendPoint[] {
     const d = new Date();
     d.setDate(d.getDate() - (13 - i));
     const drift = i * 0.005;
+    // Deterministic variance per index keeps the demo "organic" but repeatable
+    const variance = ((i % 5) - 2) * 0.004;
     return {
       date: d.toISOString().slice(0, 10),
-      avg_cost_savings: 0.18 + drift + (Math.random() - 0.5) * 0.04,
-      avg_outcome_improvement: 0.08 + drift + (Math.random() - 0.5) * 0.03,
-      comparisons_evaluated: 8 + Math.floor(Math.random() * 5),
+      avg_cost_savings: 0.18 + drift + variance,
+      avg_outcome_improvement: 0.08 + drift + variance * 0.75,
+      comparisons_evaluated: 8 + (i % 5),
     };
   });
 }

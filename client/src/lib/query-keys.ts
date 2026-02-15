@@ -465,8 +465,8 @@ export const queryKeys = {
     /** Pattern comparisons list */
     comparisons: () => [...queryKeys.baselines.all, 'comparisons'] as const,
 
-    /** ROI trend over time */
-    trend: () => [...queryKeys.baselines.all, 'trend'] as const,
+    /** ROI trend over time (days defaults to 14) */
+    trend: (days?: number) => [...queryKeys.baselines.all, 'trend', days ?? 14] as const,
 
     /** Recommendation breakdown */
     breakdown: () => [...queryKeys.baselines.all, 'breakdown'] as const,
