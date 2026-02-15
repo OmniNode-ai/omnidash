@@ -32,6 +32,7 @@ import {
   TrendingUp,
   ArrowDownRight,
   ArrowUpRight,
+  Minus,
   Coins,
   Timer,
   GitPullRequest,
@@ -213,9 +214,11 @@ function DeltaDisplay({ metric }: { metric: DeltaMetric }) {
         <span className="text-xs text-muted-foreground">vs</span>
         <span className="text-xs font-mono">{formatValue(metric.candidate)}</span>
         <span
-          className={`text-xs font-mono flex items-center gap-0.5 ${isImproved ? 'text-green-400' : 'text-red-400'}`}
+          className={`text-xs font-mono flex items-center gap-0.5 ${metric.delta === 0 ? 'text-muted-foreground' : isImproved ? 'text-green-400' : 'text-red-400'}`}
         >
-          {isPositive ? (
+          {metric.delta === 0 ? (
+            <Minus className="w-3 h-3" />
+          ) : isPositive ? (
             <ArrowUpRight className="w-3 h-3" />
           ) : (
             <ArrowDownRight className="w-3 h-3" />
