@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Key values specific to this repository (all sourced from `.env`):
 
 - **Port**: 3000 (set in package.json: `PORT=3000 npm run dev`) -- NOT 5000
-- **Kafka Brokers**: `192.168.86.200:9092`
+- **Kafka Brokers**: `192.168.86.200:29092`
 - **Read-Model DB**: `omnidash_analytics` (omnidash's own database, not `omninode_bridge`)
 
 ## Common Commands
@@ -223,7 +223,7 @@ export const insertUserSchema = createInsertSchema(users); // Zod schema
 **Event Consumer** (`server/event-consumer.ts`):
 
 - Kafka consumer using `kafkajs` library
-- Connects to `192.168.86.200:9092` (configured via `KAFKA_BOOTSTRAP_SERVERS`)
+- Connects to `192.168.86.200:29092` (configured via `KAFKA_BROKERS`)
 - Consumes from multiple topics: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
 - In-memory event aggregation and caching
 - Provides aggregated metrics via `getAggregatedMetrics()` method
@@ -311,7 +311,7 @@ ws.onmessage = (event) => {
 - Events originating from this database are published to Kafka topics and consumed by the read-model consumer above
 - Contains 30+ tables tracking agent execution, routing, patterns, and performance
 
-**Kafka Event Bus** (`192.168.86.200:9092`):
+**Kafka Event Bus** (`192.168.86.200:29092`):
 
 - **Real-time event streaming** with <100ms latency
 - **Topics**: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
@@ -328,7 +328,7 @@ Add to `.env` for intelligence integration (see `.env.example` for template):
 OMNIDASH_ANALYTICS_DB_URL="postgresql://postgres:<password>@192.168.86.200:5436/omnidash_analytics"
 
 # Kafka Event Streaming (source of events projected into omnidash_analytics)
-KAFKA_BROKERS=192.168.86.200:9092
+KAFKA_BROKERS=192.168.86.200:29092
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers-v2
 
