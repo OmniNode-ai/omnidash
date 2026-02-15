@@ -94,7 +94,7 @@
 | --------------------------- | ---- | ---------- | -------------------------------- |
 | **Omniarchon Intelligence** | 8053 | ✅ Healthy | Memgraph, Ollama, quality trends |
 | **PostgreSQL Database**     | 5436 | ✅ Healthy | 39 tables, real-time events      |
-| **Kafka/Redpanda**          | 9092 | ✅ Active  | 4 topics, event streaming        |
+| **Kafka/Redpanda**          | 29092 | ✅ Active  | 4 topics, event streaming        |
 | **Omnidash API**            | 3000 | ✅ Working | Serving real data                |
 
 ---

@@ -22,7 +22,7 @@ This guide summarizes live data sources (PostgreSQL, Kafka, Memgraph, Qdrant), r
 
 - **Redpanda** (`omninode-bridge-redpanda-dev`)
   - Container: `redpandadata/redpanda:latest`
-  - Port: `0.0.0.0:19092->19092/tcp` (Kafka protocol)
+  - Port: `0.0.0.0:29092->29092/tcp` (Kafka protocol)
   - Status: ✅ Healthy
 
 ## Services Overview
@@ -94,7 +94,7 @@ POSTGRES_PASSWORD=<your_password>
 **Connection Details:**
 
 - Host: `192.168.86.200`
-- Port: `19092` (external), `9092` (internal Docker network)
+- Port: `29092` (external), `9092` (internal Docker network)
 - Broker: `192.168.86.200:29092`
 
 **Environment Variables:**

@@ -1,3 +1,23 @@
+/**
+ * EventConsumer intent/action event processing tests.
+ *
+ * Validates that the EventConsumer correctly forwards IntentClassified and
+ * IntentStored Kafka events to the IntentEventEmitter, handling both the
+ * current structured format and legacy field-name variants.
+ *
+ * Mock strategy:
+ *   - `vi.hoisted()` runs before any imports, creating mock functions and
+ *     setting environment variables so that module-level initialization in
+ *     `event-consumer.ts` sees the test values.
+ *   - `vi.mock()` replaces `kafkajs`, `../storage`, and `../intent-events`
+ *     with lightweight stubs that reference the hoisted mocks.
+ *
+ * Environment variables:
+ *   - `KAFKA_BROKERS` and `KAFKA_BOOTSTRAP_SERVERS` are set inside
+ *     `vi.hoisted()` so they are available at module-load time.
+ *   - They are reset to the same test value in `beforeEach` to ensure a
+ *     clean slate between tests.
+ */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 // Use vi.hoisted to set environment variables and create mocks before module loading
@@ -12,9 +32,10 @@ const {
   mockEmitIntentStored,
   mockIntentEventEmitter,
 } = vi.hoisted(() => {
-  // Set env vars immediately
-  process.env.KAFKA_BROKERS = 'localhost:9092';
-  process.env.KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092';
+  // Set env vars immediately (must use a clearly-fake broker so tests
+  // never accidentally connect to a real Kafka instance)
+  process.env.KAFKA_BROKERS = 'test-broker:29092';
+  process.env.KAFKA_BOOTSTRAP_SERVERS = 'test-broker:29092';
 
   const mockEmitIntentStored = vi.fn();
   const mockIntentEventEmitter = {
@@ -85,8 +106,9 @@ describe('EventConsumer Intent Forwarding', () => {
     vi.clearAllMocks();
     vi.useRealTimers();
 
-    // Reset environment variables
-    process.env.KAFKA_BOOTSTRAP_SERVERS = '192.168.86.200:29092';
+    // Reset environment variables (keep in sync with vi.hoisted values)
+    process.env.KAFKA_BROKERS = 'test-broker:29092';
+    process.env.KAFKA_BOOTSTRAP_SERVERS = 'test-broker:29092';
     process.env.ENABLE_EVENT_PRELOAD = 'false';
 
     // Create new consumer instance
