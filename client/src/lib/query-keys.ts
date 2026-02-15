@@ -449,6 +449,30 @@ export const queryKeys = {
     trend: () => [...queryKeys.effectiveness.all, 'trend'] as const,
   },
   // ============================================================================
+  // Baselines & ROI (OMN-2156)
+  // ============================================================================
+
+  /**
+   * Baselines & ROI query keys for cost + outcome comparison dashboard.
+   */
+  baselines: {
+    /** Base key for all baselines queries */
+    all: ['baselines'] as const,
+
+    /** Summary metrics */
+    summary: () => [...queryKeys.baselines.all, 'summary'] as const,
+
+    /** Pattern comparisons list */
+    comparisons: () => [...queryKeys.baselines.all, 'comparisons'] as const,
+
+    /** ROI trend over time */
+    trend: () => [...queryKeys.baselines.all, 'trend'] as const,
+
+    /** Recommendation breakdown */
+    breakdown: () => [...queryKeys.baselines.all, 'breakdown'] as const,
+  },
+
+  // ============================================================================
   // Projections (OMN-2095)
   // ============================================================================
 
