@@ -17,6 +17,7 @@ Key values specific to this repository (all sourced from `.env`):
 - **Port**: 3000 (set in package.json: `PORT=3000 npm run dev`) -- NOT 5000
 - **Kafka Brokers**: `192.168.86.200:29092`
 - **Read-Model DB**: `omnidash_analytics` (omnidash's own database, not `omninode_bridge`)
+- **Database credentials**: Always sourced from `.env` — never hardcode passwords
 
 ## Common Commands
 
@@ -69,6 +70,13 @@ node scripts/seed-events.ts      # Direct script execution
 
 **Dashboard URLs** (always port 3000):
 
+Category Dashboards (default):
+- Speed: http://localhost:3000/category/speed
+- Success: http://localhost:3000/category/success
+- Intelligence: http://localhost:3000/category/intelligence
+- System Health: http://localhost:3000/category/health
+
+Advanced Pages:
 - Event Stream: http://localhost:3000/events
 - Pipeline Metrics: http://localhost:3000/extraction
 - Injection Performance: http://localhost:3000/effectiveness

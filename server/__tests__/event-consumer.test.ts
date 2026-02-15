@@ -72,7 +72,7 @@ describe('EventConsumer', () => {
     vi.useRealTimers(); // Ensure real timers for most tests
 
     // Reset environment variables
-    process.env.KAFKA_BOOTSTRAP_SERVERS = '192.168.86.200:9092';
+    process.env.KAFKA_BOOTSTRAP_SERVERS = '192.168.86.200:29092';
     process.env.ENABLE_EVENT_PRELOAD = 'false';
 
     // Create new consumer instance for each test

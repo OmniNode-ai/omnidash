@@ -95,13 +95,13 @@ POSTGRES_PASSWORD=<your_password>
 
 - Host: `192.168.86.200`
 - Port: `19092` (external), `9092` (internal Docker network)
-- Broker: `192.168.86.200:9092`
+- Broker: `192.168.86.200:29092`
 
 **Environment Variables:**
 
 ```bash
-KAFKA_BROKERS=192.168.86.200:9092
-KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:9092
+KAFKA_BROKERS=192.168.86.200:29092
+KAFKA_BOOTSTRAP_SERVERS=192.168.86.200:29092
 ```
 
 **Active Topics:**

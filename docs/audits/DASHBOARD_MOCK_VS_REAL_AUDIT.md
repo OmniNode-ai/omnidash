@@ -559,7 +559,7 @@ VITE_INTELLIGENCE_SERVICE_URL=http://localhost:8053
 INTELLIGENCE_SERVICE_URL=http://localhost:8053
 
 # Kafka event streaming (if implemented)
-KAFKA_BROKERS=192.168.86.200:9092
+KAFKA_BROKERS=192.168.86.200:29092
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers
 ```

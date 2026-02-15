@@ -86,7 +86,7 @@ describe('EventConsumer Intent Forwarding', () => {
     vi.useRealTimers();
 
     // Reset environment variables
-    process.env.KAFKA_BOOTSTRAP_SERVERS = '192.168.86.200:9092';
+    process.env.KAFKA_BOOTSTRAP_SERVERS = '192.168.86.200:29092';
     process.env.ENABLE_EVENT_PRELOAD = 'false';
 
     // Create new consumer instance
