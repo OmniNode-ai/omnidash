@@ -531,7 +531,7 @@ function generateTierMetrics(candidates: LifecycleCandidate[]): LifecycleTierMet
       count: tierCandidates.length,
       by_status: byStatus,
       avg_days_at_tier: tier === 'default' ? 0 : avgDays,
-      transition_rate: transitionRate,
+      transition_rate: tier === 'default' ? 0 : transitionRate,
     };
   });
 }

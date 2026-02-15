@@ -206,7 +206,10 @@ const TIER_COLOR_CONFIG: Record<LifecycleTier, { bgClass: string; textClass: str
 function candidateStatusBadge(status: CandidateStatus) {
   const config = CANDIDATE_STATUS_CONFIG[status];
   return (
-    <Badge variant="outline" className={`${config.textClass} ${config.borderClass} text-xs`}>
+    <Badge
+      variant="outline"
+      className={`${config.bgClass} ${config.textClass} ${config.borderClass} text-xs`}
+    >
       {config.label}
     </Badge>
   );
@@ -216,7 +219,7 @@ function candidateStatusBadge(status: CandidateStatus) {
 function tierBadge(tier: LifecycleTier) {
   const config = TIER_COLOR_CONFIG[tier];
   return (
-    <Badge variant="outline" className={`${config.textClass} text-xs`}>
+    <Badge variant="outline" className={`${config.bgClass} ${config.textClass} text-xs`}>
       {LIFECYCLE_TIER_LABELS[tier]}
     </Badge>
   );
@@ -311,6 +314,7 @@ export default function ValidationDashboard() {
     queryFn: () => validationSource.getLifecycleSummary(),
     refetchInterval: 30_000,
     enabled: activeTab === 'lifecycle',
+    refetchOnWindowFocus: false,
   });
 
   const repos = useMemo(() => summary?.repos ?? [], [summary]);
