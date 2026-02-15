@@ -205,6 +205,9 @@ class ValidationSource {
 
       const data = await response.json();
       this._isUsingMockData = false;
+      // TODO: Add runtime validation (e.g. Zod parse) when the API endpoint
+      // is implemented. Currently returns unvalidated JSON cast to
+      // LifecycleSummary, consistent with other methods in this class.
       return data;
     } catch (error) {
       if (fallbackToMock) {

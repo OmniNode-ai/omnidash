@@ -318,7 +318,9 @@ export default function ValidationDashboard() {
   const handleRefresh = () => {
     refetchSummary();
     refetchRuns();
-    refetchLifecycle();
+    if (activeTab === 'lifecycle') {
+      refetchLifecycle();
+    }
   };
 
   return (
@@ -859,61 +861,69 @@ export default function ValidationDashboard() {
                   ))}
                 </div>
               ) : lifecycle && lifecycle.candidates.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Rule</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Tier</TableHead>
-                      <TableHead>Repo</TableHead>
-                      <TableHead>Runs</TableHead>
-                      <TableHead>Streak</TableHead>
-                      <TableHead>Last Validated</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {lifecycle.candidates.map((candidate) => (
-                      <TableRow key={candidate.candidate_id}>
-                        <TableCell>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium truncate max-w-[250px]">
-                              {candidate.rule_name}
-                            </span>
-                            <span className="text-xs font-mono text-muted-foreground">
-                              {candidate.rule_id}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{candidateStatusBadge(candidate.status)}</TableCell>
-                        <TableCell>{tierBadge(candidate.tier)}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            {candidate.source_repo}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-mono text-sm">{candidate.total_runs}</span>
-                        </TableCell>
-                        <TableCell>
-                          {candidate.pass_streak > 0 ? (
-                            <span className="text-green-400 font-mono text-sm">
-                              {candidate.pass_streak} pass
-                            </span>
-                          ) : candidate.fail_streak > 0 ? (
-                            <span className="text-red-400 font-mono text-sm">
-                              {candidate.fail_streak} fail
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">{'\u2014'}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {formatTime(candidate.last_validated_at)}
-                        </TableCell>
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Rule</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Tier</TableHead>
+                        <TableHead>Repo</TableHead>
+                        <TableHead>Runs</TableHead>
+                        <TableHead>Streak</TableHead>
+                        <TableHead>Last Validated</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {/* Cap rendered rows; real pagination should replace this when API is connected */}
+                      {lifecycle.candidates.slice(0, 50).map((candidate) => (
+                        <TableRow key={candidate.candidate_id}>
+                          <TableCell>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-sm font-medium truncate max-w-[250px]">
+                                {candidate.rule_name}
+                              </span>
+                              <span className="text-xs font-mono text-muted-foreground">
+                                {candidate.rule_id}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{candidateStatusBadge(candidate.status)}</TableCell>
+                          <TableCell>{tierBadge(candidate.tier)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {candidate.source_repo}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-mono text-sm">{candidate.total_runs}</span>
+                          </TableCell>
+                          <TableCell>
+                            {candidate.pass_streak > 0 ? (
+                              <span className="text-green-400 font-mono text-sm">
+                                {candidate.pass_streak} pass
+                              </span>
+                            ) : candidate.fail_streak > 0 ? (
+                              <span className="text-red-400 font-mono text-sm">
+                                {candidate.fail_streak} fail
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">{'\u2014'}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {formatTime(candidate.last_validated_at)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {lifecycle.candidates.length > 50 && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Showing 50 of {lifecycle.candidates.length} candidates
+                    </p>
+                  )}
+                </>
               ) : (
                 <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">
                   No lifecycle candidates found. Candidates will appear here as validation rules

@@ -203,7 +203,7 @@ export const LIFECYCLE_TIER_LABELS: Record<LifecycleTier, string> = {
 /**
  * Candidate validation statuses within a lifecycle tier.
  */
-const CANDIDATE_STATUSES = ['pending', 'pass', 'fail', 'quarantine'] as const;
+export const CANDIDATE_STATUSES = ['pending', 'pass', 'fail', 'quarantine'] as const;
 
 /** Union type of valid candidate status strings. */
 export type CandidateStatus = (typeof CANDIDATE_STATUSES)[number];
