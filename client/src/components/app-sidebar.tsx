@@ -14,6 +14,7 @@ import {
   Zap,
   FlaskConical,
   Wrench,
+  DollarSign,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -125,6 +126,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/effectiveness',
         icon: Activity,
         description: 'Injection effectiveness metrics and A/B analysis',
+      },
+      {
+        title: 'Baselines & ROI',
+        url: '/baselines',
+        icon: DollarSign,
+        description: 'Cost + outcome comparison for A/B pattern evaluation',
       },
     ],
   },

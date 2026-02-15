@@ -41,6 +41,7 @@ import EffectivenessLatency from '@/pages/EffectivenessLatency';
 import EffectivenessUtilization from '@/pages/EffectivenessUtilization';
 import EffectivenessAB from '@/pages/EffectivenessAB';
 import LearnedInsights from '@/pages/LearnedInsights';
+import BaselinesROI from '@/pages/BaselinesROI';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -108,6 +109,9 @@ function Router() {
       <Route path="/effectiveness/latency" component={EffectivenessLatency} />
       <Route path="/effectiveness/utilization" component={EffectivenessUtilization} />
       <Route path="/effectiveness/ab" component={EffectivenessAB} />
+
+      {/* Baselines & ROI dashboard (OMN-2156) */}
+      <Route path="/baselines" component={BaselinesROI} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />
