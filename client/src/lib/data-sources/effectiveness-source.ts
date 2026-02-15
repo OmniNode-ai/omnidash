@@ -14,6 +14,7 @@ import type {
   UtilizationDetails,
   ABComparison,
   EffectivenessTrendPoint,
+  SessionDetail,
 } from '@shared/effectiveness-types';
 import {
   getMockSummary,
@@ -22,6 +23,7 @@ import {
   getMockUtilizationDetails,
   getMockABComparison,
   getMockEffectivenessTrend,
+  getMockSessionDetail,
 } from '@/lib/mock-data/effectiveness-mock';
 
 export interface EffectivenessFetchOptions {
@@ -154,6 +156,27 @@ class EffectivenessSource {
         console.warn('[EffectivenessSource] API unavailable for A/B, using demo data');
         this.markMock('ab');
         return getMockABComparison();
+      }
+      throw error;
+    }
+  }
+
+  async sessionDetail(
+    sessionId: string,
+    options: EffectivenessFetchOptions = {}
+  ): Promise<SessionDetail> {
+    const { fallbackToMock = true } = options;
+    try {
+      const response = await fetch(`${this.baseUrl}/session/${encodeURIComponent(sessionId)}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      this.markReal('session');
+      return data;
+    } catch (error) {
+      if (fallbackToMock) {
+        console.warn('[EffectivenessSource] API unavailable for session detail, using demo data');
+        this.markMock('session');
+        return getMockSessionDetail(sessionId);
       }
       throw error;
     }

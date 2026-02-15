@@ -16,6 +16,8 @@ import { MetricCard } from '@/components/MetricCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DetailSheet } from '@/components/DetailSheet';
+import { TrendDrillDown } from '@/components/TrendDrillDown';
+import type { TrendDrillDownData } from '@/components/TrendDrillDown';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -28,8 +30,13 @@ import {
 } from '@/components/ui/table';
 import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
-import type { LatencyDetails, LatencyBreakdown } from '@shared/effectiveness-types';
+import type {
+  LatencyDetails,
+  LatencyBreakdown,
+  LatencyTrendPoint,
+} from '@shared/effectiveness-types';
 import type { Payload } from 'recharts/types/component/DefaultLegendContent';
+import type { CategoricalChartState } from 'recharts/types/chart/types';
 import { Clock, ChevronLeft, RefreshCw, Zap, Database } from 'lucide-react';
 import {
   BarChart,
@@ -126,6 +133,7 @@ export default function EffectivenessLatency() {
   // ---------------------------------------------------------------------------
 
   const [selectedCohort, setSelectedCohort] = useState<LatencyBreakdown | null>(null);
+  const [trendDrillDown, setTrendDrillDown] = useState<TrendDrillDownData | null>(null);
 
   // ---------------------------------------------------------------------------
   // Derived data for charts
@@ -150,6 +158,32 @@ export default function EffectivenessLatency() {
   const treatmentBreakdown = data?.breakdowns.find((b) => b.cohort === 'treatment');
   const controlBreakdown = data?.breakdowns.find((b) => b.cohort === 'control');
   const p95Delta = (treatmentBreakdown?.p95_ms ?? 0) - (controlBreakdown?.p95_ms ?? 0);
+
+  /** Handle clicking a data point on the latency trend chart (OMN-2049 F1). */
+  const handleLatencyTrendClick = useCallback((state: CategoricalChartState) => {
+    if (!state?.activePayload?.length) return;
+    const payload = state.activePayload[0].payload as LatencyTrendPoint;
+    setTrendDrillDown({
+      date: payload.date,
+      metrics: [
+        {
+          label: 'Treatment P95',
+          value: `${Math.round(payload.treatment_p95)}ms`,
+          color: CHART_COLORS.treatmentP95,
+        },
+        {
+          label: 'Control P95',
+          value: `${Math.round(payload.control_p95)}ms`,
+          color: CHART_COLORS.controlP95,
+        },
+        {
+          label: 'Delta P95',
+          value: `${Math.round(payload.delta_p95)}ms`,
+          color: CHART_COLORS.deltaP95,
+        },
+      ],
+    });
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -379,20 +413,28 @@ export default function EffectivenessLatency() {
       </Card>
 
       {/* Latency Delta Trend Line Chart */}
-      <Card>
+      <Card className="relative">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Clock className="w-4 h-4 text-muted-foreground" />
             Latency Trend (P95)
           </CardTitle>
-          <CardDescription>Treatment vs control P95 latency over time with delta</CardDescription>
+          <CardDescription>
+            Treatment vs control P95 latency over time with delta{' '}
+            <span className="text-primary/60">&middot; click a data point for details</span>
+          </CardDescription>
         </CardHeader>
         <CardContent>
+          <TrendDrillDown data={trendDrillDown} onClose={() => setTrendDrillDown(null)} />
           {isLoading ? (
             <Skeleton className="h-[300px] w-full" />
           ) : trendData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <LineChart
+                data={trendData}
+                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                onClick={handleLatencyTrendClick}
+              >
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis
                   dataKey="date"

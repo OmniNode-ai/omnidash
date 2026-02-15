@@ -131,3 +131,19 @@ export interface EffectivenessTrendPoint {
   avg_accuracy: number;
   avg_latency_delta_ms: number;
 }
+
+/** Session Detail (OMN-2049 F3) */
+export interface SessionDetail {
+  session_id: string;
+  agent_name: string | null;
+  detection_method: string | null;
+  utilization_score: number;
+  latency_routing_ms: number;
+  latency_retrieval_ms: number;
+  latency_injection_ms: number;
+  latency_total_ms: number;
+  cohort: string;
+  injection_content_summary: string | null;
+  pattern_count: number;
+  created_at: string;
+}
