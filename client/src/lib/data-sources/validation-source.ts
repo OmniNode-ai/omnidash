@@ -211,9 +211,11 @@ class ValidationSource {
 
       const data = await response.json();
       this._isUsingMockData = false;
-      // TODO: Add runtime validation (e.g. Zod parse) when the API endpoint
-      // is implemented. Currently returns unvalidated JSON cast to
-      // LifecycleSummary, consistent with other methods in this class.
+      // TODO(OMN-2152): Add a Zod schema for LifecycleSummary in
+      // shared/validation-types.ts and validate `data` here (e.g.
+      // LifecycleSummarySchema.parse(data)). Currently returns unvalidated
+      // JSON cast to LifecycleSummary, consistent with other methods in
+      // this class.
       return data;
     } catch (error) {
       if (fallbackToMock) {

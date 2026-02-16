@@ -9,7 +9,7 @@
  */
 
 import { Router } from 'express';
-import { eq, and, desc, sql, gte, inArray } from 'drizzle-orm';
+import { eq, ne, and, desc, sql, gte, inArray } from 'drizzle-orm';
 import { tryGetIntelligenceDb } from './storage';
 import { validationRuns, validationViolations } from '@shared/intelligence-schema';
 import type {
@@ -465,7 +465,7 @@ router.get('/repos/:repoId/trends', async (req, res) => {
       .where(
         and(
           sql`${validationRuns.repos} @> ${sql.param(JSON.stringify([repoId]))}::jsonb`,
-          sql`${validationRuns.status} != 'running'`,
+          ne(validationRuns.status, 'running'),
           gte(validationRuns.startedAt, cutoff)
         )
       )
@@ -595,7 +595,7 @@ router.get('/summary', async (_req, res) => {
       })
       .from(validationViolations)
       .innerJoin(validationRuns, eq(validationViolations.runId, validationRuns.runId))
-      .where(sql`${validationRuns.status} != 'running'`)
+      .where(ne(validationRuns.status, 'running'))
       .groupBy(validationViolations.severity);
 
     const totalBySeverity: Record<string, number> = {};

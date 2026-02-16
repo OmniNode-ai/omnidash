@@ -1545,6 +1545,10 @@ export class EventConsumer extends EventEmitter {
                 }
                 break;
 
+              // TODO(OMN-2152): Wire event processing for these topics once read-model
+              // projections are defined. Currently consuming to test connectivity;
+              // offset advancement is intentional.
+
               // Intelligence pipeline commands + completions
               case SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD:
               case SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD:

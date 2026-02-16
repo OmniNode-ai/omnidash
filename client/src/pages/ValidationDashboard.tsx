@@ -652,8 +652,10 @@ export default function ValidationDashboard() {
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                      {runDetail.violations.slice(0, 50).map((v, i) => (
-                                        <TableRow key={`${v.rule_id}-${v.repo}-${i}`}>
+                                      {runDetail.violations.slice(0, 50).map((v) => (
+                                        <TableRow
+                                          key={`${v.rule_id}-${v.repo}-${v.file_path ?? 'unknown'}-${v.line ?? 0}-${v.validator}`}
+                                        >
                                           <TableCell>{severityBadge(v.severity)}</TableCell>
                                           <TableCell className="font-mono text-xs">
                                             {v.rule_id}
@@ -891,6 +893,7 @@ export default function ValidationDashboard() {
                          so all data comes from the mock fallback (see validation-source.ts).
                          Server-side pagination should replace this .slice() once the
                          real endpoint is available. */}
+                      {/* TODO(OMN-2152): Replace with server-side pagination when lifecycle endpoint is implemented */}
                       {lifecycle.candidates.slice(0, 50).map((candidate) => (
                         <TableRow key={candidate.candidate_id}>
                           <TableCell>
