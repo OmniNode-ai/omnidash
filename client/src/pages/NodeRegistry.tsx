@@ -52,9 +52,6 @@ export default function NodeRegistry() {
   // Unwrap the projection envelope to get the domain payload
   const data = snapshot?.payload ?? null;
 
-  // Determine if we have real data from the projection
-  const hasProjectionData = data !== null && data.nodes.length > 0;
-
   // ------ Node selection state ------
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
@@ -67,6 +64,11 @@ export default function NodeRegistry() {
     if (!data || data.nodes.length === 0) return null;
     return transformNodeRegistryPayload(data);
   }, [data]);
+
+  // Determine if we have real data from the projection.
+  // Derived from projectionDashboardData (not the raw payload) so the badge
+  // is always consistent with the actual data source being rendered.
+  const hasProjectionData = projectionDashboardData !== null;
 
   // Final dashboard data: use projection data if available, else stable mock
   const dashboardData: DashboardData = (() => {

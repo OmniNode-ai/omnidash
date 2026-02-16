@@ -46,10 +46,26 @@ const NODE_TYPE_COLORS: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Truncate an ID for display, keeping first and last segments visible. */
-function truncateId(id: string, maxLen = 24): string {
+/** UUID v4 pattern: 8-4-4-4-12 hex digits */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Truncate an ID for display, keeping first and last segments visible.
+ *
+ * Human-readable node names (hyphenated words like "node-compute-transform-002")
+ * are returned as-is. Only UUID-style identifiers are truncated to keep the
+ * header compact while preserving readability.
+ */
+function truncateId(id: string, maxLen = 48): string {
   if (id.length <= maxLen) return id;
-  const half = Math.floor((maxLen - 3) / 2);
+  // Only aggressively truncate UUIDs; show human-readable names in full
+  if (UUID_RE.test(id)) {
+    const half = Math.floor((maxLen - 3) / 2);
+    return `${id.slice(0, half)}...${id.slice(-half)}`;
+  }
+  // Non-UUID long strings: use a generous limit before truncating
+  if (id.length <= 64) return id;
+  const half = Math.floor((64 - 3) / 2);
   return `${id.slice(0, half)}...${id.slice(-half)}`;
 }
 
