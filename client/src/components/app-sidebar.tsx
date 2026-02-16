@@ -133,6 +133,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         icon: DollarSign,
         description: 'Cost + outcome comparison for A/B pattern evaluation',
       },
+      {
+        title: 'Cost Trends',
+        url: '/costs',
+        icon: DollarSign,
+        description: 'LLM cost and token usage trends with drill-down',
+      },
     ],
   },
   {

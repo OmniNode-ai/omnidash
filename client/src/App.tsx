@@ -42,6 +42,7 @@ import EffectivenessUtilization from '@/pages/EffectivenessUtilization';
 import EffectivenessAB from '@/pages/EffectivenessAB';
 import LearnedInsights from '@/pages/LearnedInsights';
 import BaselinesROI from '@/pages/BaselinesROI';
+import CostTrendDashboard from '@/pages/CostTrendDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -112,6 +113,9 @@ function Router() {
 
       {/* Baselines & ROI dashboard (OMN-2156) */}
       <Route path="/baselines" component={BaselinesROI} />
+
+      {/* Cost Trends dashboard (OMN-2242) */}
+      <Route path="/costs" component={CostTrendDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

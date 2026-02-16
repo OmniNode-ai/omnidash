@@ -759,3 +759,77 @@ export type InsertValidationViolation = typeof validationViolations.$inferInsert
 // NOTE: Injection Effectiveness tables (OMN-1891) are defined in the
 // Pattern Extraction Pipeline section above (OMN-1804) which shares
 // injectionEffectiveness, latencyBreakdowns, and patternHitRates.
+
+// ============================================================================
+// LLM Cost Aggregates (OMN-2242)
+// ============================================================================
+
+/**
+ * LLM Cost Aggregates Table
+ * Pre-aggregated cost and token usage data for the cost trend dashboard.
+ * Populated by the upstream aggregation service (OMN-2240) or by the
+ * read-model consumer projecting Kafka events.
+ *
+ * usage_source indicates data provenance:
+ *   - API: directly reported by the LLM provider
+ *   - ESTIMATED: computed from heuristics / token estimation
+ *   - MISSING: placeholder where data could not be obtained
+ */
+export const llmCostAggregates = pgTable(
+  'llm_cost_aggregates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** Time bucket for the aggregate (hourly or daily). */
+    bucketTime: timestamp('bucket_time', { withTimezone: true }).notNull(),
+    /** Granularity of the bucket: 'hour' or 'day'. */
+    granularity: text('granularity').notNull().default('hour'),
+    /** LLM model name (e.g. 'gpt-4', 'claude-3-opus'). */
+    modelName: text('model_name').notNull(),
+    /** Repository that generated the usage. */
+    repoName: text('repo_name'),
+    /** Pattern ID if usage was pattern-driven. */
+    patternId: text('pattern_id'),
+    /** Pattern name for display. */
+    patternName: text('pattern_name'),
+    /** Session ID grouping related calls. */
+    sessionId: text('session_id'),
+    /** How the data was obtained: API, ESTIMATED, MISSING. */
+    usageSource: text('usage_source').notNull().default('API'),
+    /** Number of LLM requests in this bucket. */
+    requestCount: integer('request_count').notNull().default(0),
+    /** Total prompt tokens. */
+    promptTokens: bigint('prompt_tokens', { mode: 'number' }).notNull().default(0),
+    /** Total completion tokens. */
+    completionTokens: bigint('completion_tokens', { mode: 'number' }).notNull().default(0),
+    /** Total tokens (prompt + completion). */
+    totalTokens: bigint('total_tokens', { mode: 'number' }).notNull().default(0),
+    /** Total cost in USD. */
+    totalCostUsd: numeric('total_cost_usd', { precision: 12, scale: 6 }).notNull().default('0'),
+    /** Cost from API-reported data only (subset of total_cost_usd). */
+    reportedCostUsd: numeric('reported_cost_usd', { precision: 12, scale: 6 })
+      .notNull()
+      .default('0'),
+    /** Cost from estimated/missing data (subset of total_cost_usd). */
+    estimatedCostUsd: numeric('estimated_cost_usd', { precision: 12, scale: 6 })
+      .notNull()
+      .default('0'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    projectedAt: timestamp('projected_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_llm_cost_agg_bucket_time').on(table.bucketTime),
+    index('idx_llm_cost_agg_model').on(table.modelName),
+    index('idx_llm_cost_agg_repo').on(table.repoName),
+    index('idx_llm_cost_agg_pattern').on(table.patternId),
+    index('idx_llm_cost_agg_session').on(table.sessionId),
+    index('idx_llm_cost_agg_source').on(table.usageSource),
+    index('idx_llm_cost_agg_bucket_model').on(table.bucketTime, table.modelName),
+  ]
+);
+
+// Export Zod schemas for cost aggregates
+export const insertLlmCostAggregateSchema = createInsertSchema(llmCostAggregates);
+
+// Export TypeScript types
+export type LlmCostAggregateRow = typeof llmCostAggregates.$inferSelect;
+export type InsertLlmCostAggregate = typeof llmCostAggregates.$inferInsert;
