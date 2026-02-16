@@ -16,7 +16,7 @@ import {
   extractProducerFromTopic,
   extractProducerFromTopicOrDefault,
   extractActionFromTopic,
-} from '../topics';
+} from '@shared/topics';
 
 // ============================================================================
 // extractProducerFromTopic (shared — returns null for non-ONEX topics)
