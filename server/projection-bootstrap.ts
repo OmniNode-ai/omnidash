@@ -209,7 +209,8 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
         //
         // Both sources CHECK and TRACK the corrDedupSet to handle either
         // arrival order (EventBusDataSource-first or EventConsumer-first).
-        const corrId = (event.correlation_id as string) || (event.correlationId as string) || '';
+        const corrIdRaw = event.correlation_id ?? event.correlationId;
+        const corrId = corrIdRaw != null ? String(corrIdRaw) : '';
         if (corrId && corrDedupSet.has(corrId)) return; // Already ingested via EventConsumer
 
         let payload: Record<string, unknown>;
@@ -302,7 +303,8 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
           // so ID-based dedup misses cross-source duplicates. The correlation_id
           // is preserved across both sources. Both sources CHECK and TRACK the
           // corrDedupSet so dedup works regardless of arrival order.
-          const corrId = (data.correlationId as string) || (data.correlation_id as string) || '';
+          const corrIdRaw = data.correlationId ?? data.correlation_id;
+          const corrId = corrIdRaw != null ? String(corrIdRaw) : '';
           if (corrId && corrDedupSet.has(corrId)) return;
 
           const raw: RawEventInput = {
