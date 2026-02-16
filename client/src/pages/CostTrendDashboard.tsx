@@ -1,5 +1,5 @@
 /**
- * Cost Trend Dashboard (OMN-2242)
+ * @module CostTrendDashboard
  *
  * LLM cost and token usage trends with drill-down by model, repo,
  * pattern, and session. Six dashboard views:
@@ -94,6 +94,7 @@ const REPO_COLORS = ['#6366f1', '#10b981', '#f97316', '#ec4899', '#14b8a6', '#a8
  * @param props - Component props.
  * @param props.value - Currently selected time window.
  * @param props.onChange - Callback fired when the user selects a different window.
+ * @returns A row of toggle buttons representing the available time windows.
  */
 function WindowSelector({
   value,
@@ -134,6 +135,7 @@ function WindowSelector({
  * @param props.checked - Whether estimated data is currently included.
  * @param props.onCheckedChange - Callback fired when the switch is toggled.
  * @param props.coveragePct - Percentage of data that is API-reported (shown as badge).
+ * @returns A switch with label and an optional coverage-percentage badge.
  */
 function EstimatedToggle({
   checked,
@@ -176,6 +178,7 @@ function EstimatedToggle({
  *
  * @param props - Component props.
  * @param props.source - The usage source string (e.g. "API", "ESTIMATED", "MISSING").
+ * @returns A colored badge element, or null when the source is "API".
  */
 function UsageSourceBadge({ source }: { source: string }) {
   if (source === 'API') return null;
@@ -206,6 +209,7 @@ function UsageSourceBadge({ source }: { source: string }) {
  * @param props - Component props.
  * @param props.data - Array of cost trend data points to plot.
  * @param props.includeEstimated - Whether to split lines into Reported vs Estimated.
+ * @returns A Recharts line chart, or an empty-state placeholder when data is absent.
  */
 function CostTrendChart({
   data,
@@ -281,6 +285,7 @@ function CostTrendChart({
  *
  * @param props - Component props.
  * @param props.data - Array of per-model cost breakdowns.
+ * @returns A Recharts bar chart, or an empty-state placeholder when data is absent.
  */
 function CostByModelChart({ data }: { data: CostByModel[] | undefined }) {
   if (!data?.length) {
@@ -341,6 +346,7 @@ function CostByModelChart({ data }: { data: CostByModel[] | undefined }) {
  *
  * @param props - Component props.
  * @param props.data - Array of per-repo cost breakdowns.
+ * @returns A Recharts bar chart, or an empty-state placeholder when data is absent.
  */
 function CostByRepoChart({ data }: { data: CostByRepo[] | undefined }) {
   if (!data?.length) {
@@ -431,6 +437,7 @@ function getPatternSortValue(row: CostByPattern, col: PatternSortColumn): number
  *
  * @param props - Component props.
  * @param props.data - Array of per-pattern cost breakdowns with usage source metadata.
+ * @returns A sortable HTML table, or an empty-state message when data is absent.
  */
 function CostByPatternTable({ data }: { data: CostByPattern[] | undefined }) {
   const [sortColumn, setSortColumn] = useState<PatternSortColumn>('cost');
@@ -563,6 +570,7 @@ function CostByPatternTable({ data }: { data: CostByPattern[] | undefined }) {
  *
  * @param props - Component props.
  * @param props.data - Array of token-usage data points with prompt/completion splits.
+ * @returns A Recharts stacked bar chart, or an empty-state placeholder when data is absent.
  */
 function TokenUsageChart({ data }: { data: TokenUsagePoint[] | undefined }) {
   if (!data?.length) {
@@ -618,6 +626,7 @@ function TokenUsageChart({ data }: { data: TokenUsagePoint[] | undefined }) {
  *
  * @param props - Component props.
  * @param props.data - Array of budget alert definitions with current spend and thresholds.
+ * @returns A responsive grid of alert cards, or an empty-state message when none are configured.
  */
 function BudgetAlertCards({ data }: { data: BudgetAlert[] | undefined }) {
   if (!data?.length) {
@@ -692,6 +701,9 @@ function BudgetAlertCards({ data }: { data: BudgetAlert[] | undefined }) {
  * token usage, and budget alerts) with a time-window selector and
  * estimated-data toggle.  Data is fetched via TanStack Query with
  * 15-30s auto-refresh intervals and real-time WebSocket invalidation.
+ *
+ * @returns The full Cost Trends page layout including hero metric, summary cards,
+ *   chart grid, budget alerts, and the cost-by-pattern table.
  */
 export default function CostTrendDashboard() {
   const queryClient = useQueryClient();
@@ -746,7 +758,7 @@ export default function CostTrendDashboard() {
   });
 
   const { data: alerts, isLoading: alertsLoading } = useQuery<BudgetAlert[]>({
-    queryKey: queryKeys.costs.alerts(),
+    queryKey: [...queryKeys.costs.alerts(), includeEstimated],
     queryFn: () => costSource.alerts(fetchOpts),
     refetchInterval: 30_000,
   });

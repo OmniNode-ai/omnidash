@@ -151,26 +151,39 @@ export function getMockCostByModel(): CostByModel[] {
 // Cost by Repo (Bar Chart)
 // ============================================================================
 
-/** Generate per-repository cost breakdown with session counts. */
+/**
+ * Generate per-repository cost breakdown with session counts.
+ * Repos using cloud-hosted models report via API; repos using self-hosted
+ * models use estimated costs (mirrors getMockCostByModel pattern).
+ */
 export function getMockCostByRepo(): CostByRepo[] {
-  const repos: Array<{ name: string; cost: number; tokens: number; sessions: number }> = [
-    { name: 'repo-orchestrator', cost: 22.4, tokens: 145_000, sessions: 48 },
-    { name: 'repo-core', cost: 15.8, tokens: 92_000, sessions: 32 },
-    { name: 'repo-dashboard', cost: 11.3, tokens: 68_000, sessions: 25 },
-    { name: 'repo-intelligence', cost: 8.6, tokens: 52_000, sessions: 18 },
-    { name: 'repo-assistant', cost: 5.2, tokens: 31_000, sessions: 12 },
-    { name: 'repo-infra', cost: 3.1, tokens: 18_000, sessions: 8 },
+  const repos: Array<{
+    name: string;
+    cost: number;
+    tokens: number;
+    sessions: number;
+    source: UsageSource;
+  }> = [
+    { name: 'repo-orchestrator', cost: 22.4, tokens: 145_000, sessions: 48, source: 'API' },
+    { name: 'repo-core', cost: 15.8, tokens: 92_000, sessions: 32, source: 'API' },
+    { name: 'repo-dashboard', cost: 11.3, tokens: 68_000, sessions: 25, source: 'API' },
+    { name: 'repo-intelligence', cost: 8.6, tokens: 52_000, sessions: 18, source: 'API' },
+    { name: 'repo-assistant', cost: 5.2, tokens: 31_000, sessions: 12, source: 'ESTIMATED' },
+    { name: 'repo-infra', cost: 3.1, tokens: 18_000, sessions: 8, source: 'ESTIMATED' },
   ];
 
-  return repos.map((r) => ({
-    repo_name: r.name,
-    total_cost_usd: r.cost,
-    reported_cost_usd: +(r.cost * 0.82).toFixed(2),
-    estimated_cost_usd: +(r.cost * 0.18).toFixed(2),
-    total_tokens: r.tokens,
-    session_count: r.sessions,
-    usage_source: 'API' as UsageSource,
-  }));
+  return repos.map((r) => {
+    const reportedRatio = r.source === 'API' ? 1.0 : 0.0;
+    return {
+      repo_name: r.name,
+      total_cost_usd: r.cost,
+      reported_cost_usd: +(r.cost * reportedRatio).toFixed(2),
+      estimated_cost_usd: +(r.cost * (1 - reportedRatio)).toFixed(2),
+      total_tokens: r.tokens,
+      session_count: r.sessions,
+      usage_source: r.source,
+    };
+  });
 }
 
 // ============================================================================
