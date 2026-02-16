@@ -128,8 +128,8 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
   // before ingestion and TRACK after ingestion, so dedup works regardless of
   // which source delivers first. This eliminates the race condition where
   // EventConsumer-first delivery would bypass one-directional dedup.
-  const CORR_DEDUP_CAPACITY = 5000;
-  const corrDedupRing: (string | null)[] = new Array<string | null>(CORR_DEDUP_CAPACITY).fill(null);
+  const corrDedupCapacity = 5000;
+  const corrDedupRing: (string | null)[] = new Array<string | null>(corrDedupCapacity).fill(null);
   const corrDedupSet = new Set<string>();
   let corrDedupIdx = 0;
 
@@ -139,7 +139,7 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
     if (evicted !== null) corrDedupSet.delete(evicted);
     corrDedupRing[corrDedupIdx] = corrId;
     corrDedupSet.add(corrId);
-    corrDedupIdx = (corrDedupIdx + 1) % CORR_DEDUP_CAPACITY;
+    corrDedupIdx = (corrDedupIdx + 1) % corrDedupCapacity;
   }
 
   // Normalized fallback key: tries all known field name variants so the same
@@ -210,12 +210,7 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
         // Both sources CHECK and TRACK the corrDedupSet to handle either
         // arrival order (EventBusDataSource-first or EventConsumer-first).
         const corrId = (event.correlation_id as string) || (event.correlationId as string) || '';
-        if (corrId) {
-          if (corrDedupSet.has(corrId)) return; // Already ingested via EventConsumer
-          trackCorrelationId(corrId);
-        }
-
-        trackEventId(dedupKey);
+        if (corrId && corrDedupSet.has(corrId)) return; // Already ingested via EventConsumer
 
         let payload: Record<string, unknown>;
         const rawPayload = event.payload;
@@ -250,6 +245,11 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
         };
 
         projectionService.ingest(raw);
+
+        // Track dedup state only after successful ingest so that if ingest
+        // throws, the other source's copy of this event is not silently dropped.
+        trackEventId(dedupKey);
+        if (corrId) trackCorrelationId(corrId);
       } catch (err) {
         console.error('[projection] EventBusDataSource event handler error:', err);
       }
@@ -305,10 +305,6 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
           const corrId = (data.correlationId as string) || (data.correlation_id as string) || '';
           if (corrId && corrDedupSet.has(corrId)) return;
 
-          // Track after check so subsequent arrivals (from EventBusDataSource
-          // or another EventConsumer event on a different topic) are deduped.
-          if (corrId) trackCorrelationId(corrId);
-
           const raw: RawEventInput = {
             id,
             topic: (data.topic as string) || eventName,
@@ -324,6 +320,10 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
           };
 
           projectionService.ingest(raw);
+
+          // Track dedup state only after successful ingest so that if ingest
+          // throws, the other source's copy of this event is not silently dropped.
+          if (corrId) trackCorrelationId(corrId);
         } catch (err) {
           console.error(`[projection] EventConsumer ${eventName} handler error:`, err);
         }
