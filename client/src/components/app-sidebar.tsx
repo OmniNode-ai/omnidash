@@ -136,7 +136,7 @@ const advancedSubGroups: AdvancedSubGroup[] = [
       },
       {
         title: 'Cost Trends',
-        url: '/costs',
+        url: '/cost-trends',
         icon: TrendingUp,
         description: 'LLM cost and token usage trends with drill-down',
       },

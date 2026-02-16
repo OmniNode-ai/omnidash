@@ -115,7 +115,7 @@ function Router() {
       <Route path="/baselines" component={BaselinesROI} />
 
       {/* Cost Trends dashboard (OMN-2242) */}
-      <Route path="/costs" component={CostTrendDashboard} />
+      <Route path="/cost-trends" component={CostTrendDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

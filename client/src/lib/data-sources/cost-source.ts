@@ -35,6 +35,13 @@ export interface CostFetchOptions {
   includeEstimated?: boolean;
 }
 
+/**
+ * Client-side data source for all cost dashboard endpoints.
+ *
+ * Each method attempts the real API first and transparently falls back
+ * to mock data when the API is unavailable or returns empty results
+ * (controlled via {@link CostFetchOptions}).
+ */
 class CostSource {
   private baseUrl = buildApiUrl('/api/costs');
   private _mockEndpoints = new Set<string>();
@@ -52,6 +59,7 @@ class CostSource {
     this._mockEndpoints.add(endpoint);
   }
 
+  /** Build URL query string from window and includeEstimated options. */
   private buildParams(options: { window?: CostTimeWindow; includeEstimated?: boolean }): string {
     const params = new URLSearchParams();
     if (options.window) params.set('window', options.window);
@@ -59,6 +67,7 @@ class CostSource {
     return params.toString() ? `?${params.toString()}` : '';
   }
 
+  /** Fetch top-level cost summary metrics for the given time window. */
   async summary(
     window: CostTimeWindow = '7d',
     options: CostFetchOptions = {}
@@ -86,6 +95,7 @@ class CostSource {
     }
   }
 
+  /** Fetch cost-over-time data points for the line chart. */
   async trend(
     window: CostTimeWindow = '7d',
     options: CostFetchOptions = {}
@@ -113,6 +123,7 @@ class CostSource {
     }
   }
 
+  /** Fetch aggregate cost breakdown grouped by LLM model. */
   async byModel(options: CostFetchOptions = {}): Promise<CostByModel[]> {
     const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
     try {
@@ -137,6 +148,7 @@ class CostSource {
     }
   }
 
+  /** Fetch aggregate cost breakdown grouped by repository. */
   async byRepo(options: CostFetchOptions = {}): Promise<CostByRepo[]> {
     const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
     try {
@@ -161,6 +173,7 @@ class CostSource {
     }
   }
 
+  /** Fetch per-pattern cost and injection frequency data. */
   async byPattern(options: CostFetchOptions = {}): Promise<CostByPattern[]> {
     const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
     try {
@@ -185,6 +198,7 @@ class CostSource {
     }
   }
 
+  /** Fetch prompt vs completion token breakdown for the stacked bar chart. */
   async tokenUsage(
     window: CostTimeWindow = '7d',
     options: CostFetchOptions = {}
@@ -212,6 +226,7 @@ class CostSource {
     }
   }
 
+  /** Fetch configured budget threshold alerts and their current status. */
   async alerts(options: CostFetchOptions = {}): Promise<BudgetAlert[]> {
     const { fallbackToMock = true, mockOnEmpty = false } = options;
     try {
@@ -235,4 +250,5 @@ class CostSource {
   }
 }
 
+/** Singleton data source instance shared across components. */
 export const costSource = new CostSource();

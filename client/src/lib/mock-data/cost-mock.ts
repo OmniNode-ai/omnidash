@@ -21,6 +21,7 @@ import type {
 // Helpers
 // ============================================================================
 
+/** Map a time window to the number of calendar days it spans. */
 function daysForWindow(window: CostTimeWindow): number {
   switch (window) {
     case '24h':
@@ -32,6 +33,7 @@ function daysForWindow(window: CostTimeWindow): number {
   }
 }
 
+/** Number of chart buckets for a window (24 hourly for 24h, daily otherwise). */
 function bucketCount(window: CostTimeWindow): number {
   switch (window) {
     case '24h':
@@ -47,6 +49,7 @@ function bucketCount(window: CostTimeWindow): number {
 // Cost Summary
 // ============================================================================
 
+/** Generate a deterministic cost summary for the given time window. */
 export function getMockCostSummary(window: CostTimeWindow = '7d'): CostSummary {
   const multiplier = daysForWindow(window);
   const baseCost = 12.45 * multiplier;
@@ -71,6 +74,10 @@ export function getMockCostSummary(window: CostTimeWindow = '7d'): CostSummary {
 // Cost Trend (Line Chart)
 // ============================================================================
 
+/**
+ * Generate a time-series of cost data points for the line chart.
+ * Uses modulo-based variance to keep values organic but deterministic.
+ */
 export function getMockCostTrend(window: CostTimeWindow = '7d'): CostTrendPoint[] {
   const count = bucketCount(window);
   const now = new Date();
@@ -83,8 +90,9 @@ export function getMockCostTrend(window: CostTimeWindow = '7d'): CostTrendPoint[
       d.setDate(d.getDate() - (count - 1 - i));
     }
 
-    // Deterministic variance to keep demo data "organic" but repeatable
-    const base = 10 + (i % 7) * 1.5 + Math.sin(i * 0.8) * 3;
+    // Deterministic variance: modulo-based offsets keep demo data "organic" but repeatable
+    const wave = (((i * 7 + 3) % 11) - 5) * 0.6; // range roughly -3..+3
+    const base = 10 + (i % 7) * 1.5 + wave;
     const reportedRatio = 0.78 + (i % 5) * 0.03;
 
     return {
@@ -101,6 +109,7 @@ export function getMockCostTrend(window: CostTimeWindow = '7d'): CostTrendPoint[
 // Cost by Model (Bar Chart)
 // ============================================================================
 
+/** Generate per-model cost breakdown. Includes both API-reported and estimated sources. */
 export function getMockCostByModel(): CostByModel[] {
   const models: Array<{
     name: string;
@@ -136,6 +145,7 @@ export function getMockCostByModel(): CostByModel[] {
 // Cost by Repo (Bar Chart)
 // ============================================================================
 
+/** Generate per-repository cost breakdown with session counts. */
 export function getMockCostByRepo(): CostByRepo[] {
   const repos: Array<{ name: string; cost: number; tokens: number; sessions: number }> = [
     { name: 'repo-orchestrator', cost: 22.4, tokens: 145_000, sessions: 48 },
@@ -161,6 +171,11 @@ export function getMockCostByRepo(): CostByRepo[] {
 // Cost by Pattern (Table)
 // ============================================================================
 
+/**
+ * Generate per-pattern cost breakdown with injection frequency.
+ * Two patterns (pat-0008, pat-0010) are marked as ESTIMATED to exercise
+ * the usage-source badge rendering in the table view.
+ */
 export function getMockCostByPattern(): CostByPattern[] {
   const patterns = [
     { id: 'pat-0001', name: 'Error Retry with Backoff', cost: 8.4, injections: 145 },
@@ -198,6 +213,10 @@ export function getMockCostByPattern(): CostByPattern[] {
 // Token Usage Breakdown (Stacked Bar)
 // ============================================================================
 
+/**
+ * Generate a time-series of prompt vs completion token counts.
+ * Uses modulo-based variance to keep values organic but deterministic.
+ */
 export function getMockTokenUsage(window: CostTimeWindow = '7d'): TokenUsagePoint[] {
   const count = bucketCount(window);
   const now = new Date();
@@ -210,7 +229,9 @@ export function getMockTokenUsage(window: CostTimeWindow = '7d'): TokenUsagePoin
       d.setDate(d.getDate() - (count - 1 - i));
     }
 
-    const base = 30_000 + (i % 5) * 5_000 + Math.sin(i * 1.2) * 8_000;
+    // Deterministic variance: modulo-based offsets keep demo data "organic" but repeatable
+    const wave = (((i * 11 + 5) % 13) - 6) * 1_250; // range roughly -7500..+7500
+    const base = 30_000 + (i % 5) * 5_000 + wave;
     const promptRatio = 0.72 + (i % 3) * 0.03;
     const promptTokens = Math.round(base * promptRatio);
     const completionTokens = Math.round(base * (1 - promptRatio));
@@ -229,6 +250,7 @@ export function getMockTokenUsage(window: CostTimeWindow = '7d'): TokenUsagePoin
 // Budget Alerts
 // ============================================================================
 
+/** Generate three budget alerts (daily, weekly, monthly). Weekly is pre-triggered. */
 export function getMockBudgetAlerts(): BudgetAlert[] {
   const now = new Date().toISOString();
   return [

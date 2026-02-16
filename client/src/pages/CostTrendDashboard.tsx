@@ -75,14 +75,17 @@ const TIME_WINDOWS: { value: CostTimeWindow; label: string }[] = [
   { value: '30d', label: '30d' },
 ];
 
+/** Bar colors for the cost-by-model chart (cycled by index). */
 const MODEL_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4'];
 
+/** Bar colors for the cost-by-repo chart (cycled by index). */
 const REPO_COLORS = ['#6366f1', '#10b981', '#f97316', '#ec4899', '#14b8a6', '#a855f7'];
 
 // ============================================================================
 // Time Window Selector
 // ============================================================================
 
+/** Segmented toggle for selecting the dashboard time window (24h / 7d / 30d). */
 function WindowSelector({
   value,
   onChange,
@@ -114,6 +117,10 @@ function WindowSelector({
 // Estimated Data Toggle
 // ============================================================================
 
+/**
+ * Switch control that toggles inclusion of estimated usage data.
+ * When enabled, displays the reported-coverage percentage badge.
+ */
 function EstimatedToggle({
   checked,
   onCheckedChange,
@@ -149,6 +156,10 @@ function EstimatedToggle({
 // Usage Source Badge
 // ============================================================================
 
+/**
+ * Renders a colored badge for ESTIMATED or MISSING usage sources.
+ * Returns null for API-reported rows (no badge needed).
+ */
 function UsageSourceBadge({ source }: { source: string }) {
   if (source === 'API') return null;
   const isEstimated = source === 'ESTIMATED';
@@ -170,6 +181,11 @@ function UsageSourceBadge({ source }: { source: string }) {
 // 1. Cost Trend Line Chart
 // ============================================================================
 
+/**
+ * Line chart showing cost over time for the selected window.
+ * When `includeEstimated` is true, renders separate Reported and Estimated
+ * lines (dashed for estimated); otherwise renders a single Total line.
+ */
 function CostTrendChart({
   data,
   includeEstimated,
@@ -238,6 +254,7 @@ function CostTrendChart({
 // 2. Cost by Model Bar Chart
 // ============================================================================
 
+/** Bar chart ranking total cost by LLM model. */
 function CostByModelChart({ data }: { data: CostByModel[] | undefined }) {
   if (!data?.length) {
     return (
@@ -291,6 +308,7 @@ function CostByModelChart({ data }: { data: CostByModel[] | undefined }) {
 // 3. Cost by Repo Bar Chart
 // ============================================================================
 
+/** Bar chart ranking total cost by repository. */
 function CostByRepoChart({ data }: { data: CostByRepo[] | undefined }) {
   if (!data?.length) {
     return (
@@ -344,6 +362,11 @@ function CostByRepoChart({ data }: { data: CostByRepo[] | undefined }) {
 // 4. Cost by Pattern Table
 // ============================================================================
 
+/**
+ * Sortable table showing per-pattern costs, token counts, and injection frequency.
+ * Rows with estimated or missing usage data are visually flagged with a
+ * yellow background tint and warning icon.
+ */
 function CostByPatternTable({ data }: { data: CostByPattern[] | undefined }) {
   if (!data?.length) {
     return (
@@ -424,6 +447,7 @@ function CostByPatternTable({ data }: { data: CostByPattern[] | undefined }) {
 // 5. Token Usage Stacked Bar
 // ============================================================================
 
+/** Stacked bar chart showing prompt vs completion token volume over time. */
 function TokenUsageChart({ data }: { data: TokenUsagePoint[] | undefined }) {
   if (!data?.length) {
     return (
@@ -472,6 +496,10 @@ function TokenUsageChart({ data }: { data: TokenUsagePoint[] | undefined }) {
 // 6. Budget Threshold Alerts
 // ============================================================================
 
+/**
+ * Grid of budget alert cards, each showing spend vs threshold with a
+ * progress bar. Cards with triggered alerts get a red left border and badge.
+ */
 function BudgetAlertCards({ data }: { data: BudgetAlert[] | undefined }) {
   if (!data?.length) {
     return (
@@ -538,6 +566,14 @@ function BudgetAlertCards({ data }: { data: BudgetAlert[] | undefined }) {
 // Main Component
 // ============================================================================
 
+/**
+ * Cost Trend dashboard page.
+ *
+ * Renders six views (cost over time, by model, by repo, by pattern,
+ * token usage, and budget alerts) with a time-window selector and
+ * estimated-data toggle.  Data is fetched via TanStack Query with
+ * 15-30s auto-refresh intervals and real-time WebSocket invalidation.
+ */
 export default function CostTrendDashboard() {
   const queryClient = useQueryClient();
 
