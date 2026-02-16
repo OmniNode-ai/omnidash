@@ -78,11 +78,19 @@ describe('OMN-2197: Cross-source correlation-ID dedup', () => {
   // Helper: simulate events from each source
   // -----------------------------------------------------------------------
 
-  function emitFromDataSource(event: Record<string, unknown>): void {
+  interface DataSourceEvent {
+    [key: string]: unknown;
+  }
+
+  interface ConsumerEvent {
+    [key: string]: unknown;
+  }
+
+  function emitFromDataSource(event: DataSourceEvent): void {
     mockEventBusDataSource.emit('event', event);
   }
 
-  function emitFromConsumer(eventName: string, data: Record<string, unknown>): void {
+  function emitFromConsumer(eventName: string, data: ConsumerEvent): void {
     mockEventConsumer.emit(eventName, data);
   }
 

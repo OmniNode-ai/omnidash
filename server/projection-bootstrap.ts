@@ -195,10 +195,10 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
     const handleDataSourceEvent = (event: Record<string, unknown>): void => {
       try {
         const eventId = event.event_id as string | undefined;
-        // Track for dedup: use event_id if present, otherwise derive a normalized
-        // key from topic + type + timestamp (shared derivation with EventConsumer).
+        // Compute dedup key early; only track after corr-id check passes
+        // so that skipped duplicates don't evict entries from the event-id
+        // dedup ring (which would shrink the effective dedup window).
         const dedupKey = eventId || deriveFallbackDedupKey(event);
-        trackEventId(dedupKey);
 
         // OMN-2197: Bidirectional correlation-ID dedup.
         // The same tool call can appear on multiple Kafka topics (e.g. legacy
@@ -214,6 +214,8 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
           if (corrDedupSet.has(corrId)) return; // Already ingested via EventConsumer
           trackCorrelationId(corrId);
         }
+
+        trackEventId(dedupKey);
 
         let payload: Record<string, unknown>;
         const rawPayload = event.payload;
