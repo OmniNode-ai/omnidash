@@ -29,7 +29,7 @@ import {
   type EventBusPayload,
 } from '@/lib/data-sources/event-bus-projection-source';
 import { TIME_SERIES_BUCKET_MS } from '@shared/event-bus-payload';
-import { extractProducerFromTopicOrDefault } from '@shared/topics';
+import { extractProducerFromTopicOrDefault, extractActionFromTopic } from '@shared/topics';
 import { extractParsedDetails, type ParsedDetails } from '@/components/event-bus/eventDetailUtils';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { Card } from '@/components/ui/card';
@@ -174,14 +174,18 @@ function computeNormalizedType(eventType: string, details: ParsedDetails | null)
     return details?.actionName || details?.actionType || 'unknown';
   }
   // OMN-2196: Handle ONEX topic-style types (e.g. 'onex.cmd.omniintelligence.tool-content.v1').
-  // Extract the action name segment (second-to-last) from the canonical format.
+  // Use the shared extractActionFromTopic which correctly joins all segments between
+  // producer and version with hyphens (e.g. 'transformation.completed' → 'transformation-completed').
   if (
     eventType.startsWith('onex.') ||
     /^(dev|staging|prod|production|test|local)\.onex\./.test(eventType)
   ) {
+    const action = extractActionFromTopic(eventType);
+    if (action) return action;
+    // Fallback: extract second-to-last segment if shared function returns empty
     const segments = eventType.split('.');
     if (segments.length >= 5) {
-      return segments[segments.length - 2]; // event-name segment
+      return segments[segments.length - 2];
     }
   }
   return eventType;
