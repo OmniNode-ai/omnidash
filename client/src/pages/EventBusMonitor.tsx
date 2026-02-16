@@ -199,7 +199,21 @@ function computeNormalizedType(
 ): string {
   // Guard against bare version strings (e.g. "v1") that slip through
   if (/^v\d+$/.test(eventType)) {
-    return details?.toolName || details?.actionName || details?.actionType || 'unknown';
+    const fromDetails = details?.toolName || details?.actionName || details?.actionType;
+    if (fromDetails) return fromDetails;
+
+    // Derive a label from the topic when details are empty (OMN-2196)
+    if (topic) {
+      const topicLabel = getEventDisplayLabel({
+        eventType,
+        topic,
+      });
+      // getEventDisplayLabel falls back to the raw eventType ("v1") when
+      // no better label is found — treat that as no improvement.
+      if (topicLabel && topicLabel !== eventType) return topicLabel;
+    }
+
+    return 'unknown';
   }
 
   return getEventDisplayLabel({
