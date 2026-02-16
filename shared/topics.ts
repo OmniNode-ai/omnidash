@@ -104,6 +104,69 @@ export function extractSuffix(topic: string): string {
 }
 
 /**
+ * Extract the producer name from an ONEX topic string.
+ * Strips any environment prefix first via extractSuffix, then parses the
+ * canonical format: onex.<kind>.<producer>.<event-name>.v<version>
+ *
+ * @example 'onex.evt.omniclaude.session-started.v1' => 'omniclaude'
+ * @example 'dev.onex.cmd.omniintelligence.tool-content.v1' => 'omniintelligence'
+ * @example 'production.onex.evt.platform.node-heartbeat.v1' => 'platform'
+ * @example 'agent-actions' => null (legacy flat name, no producer to extract)
+ */
+export function extractProducerFromTopic(topic: string): string | null {
+  const canonical = extractSuffix(topic);
+  const segments = canonical.split('.');
+  // Canonical ONEX format: onex.<kind>.<producer>.<event-name>.v<N>
+  if (segments.length >= 5 && segments[0] === 'onex') {
+    return segments[2]; // producer is the third segment
+  }
+  return null;
+}
+
+/**
+ * Extract the producer name from an ONEX topic string, falling back to a
+ * default value for legacy flat-name topics.
+ *
+ * This is a convenience wrapper around `extractProducerFromTopic` that
+ * eliminates the need for callers to handle the `null` return. Use this
+ * when you always want a non-null string (e.g. for display purposes).
+ *
+ * @example extractProducerFromTopicOrDefault('onex.evt.omniclaude.session-started.v1') => 'omniclaude'
+ * @example extractProducerFromTopicOrDefault('agent-actions') => 'system'
+ * @example extractProducerFromTopicOrDefault('agent-actions', 'unknown') => 'unknown'
+ */
+export function extractProducerFromTopicOrDefault(topic: string, defaultValue = 'system'): string {
+  return extractProducerFromTopic(topic) ?? defaultValue;
+}
+
+/**
+ * Extract the action name (event-name segment) from an ONEX topic string.
+ * Strips any environment prefix first via extractSuffix, then parses the
+ * canonical format: onex.<kind>.<producer>.<event-name>.v<version>
+ *
+ * For standard 5-segment topics the event-name is a single segment.
+ * For 6+-segment topics (e.g. `onex.evt.omniclaude.transformation.completed.v1`)
+ * all segments between the producer (index 2) and the version (last segment) are
+ * joined with a hyphen, producing `'transformation-completed'`.
+ *
+ * @example 'onex.cmd.omniintelligence.tool-content.v1' => 'tool-content'
+ * @example 'dev.onex.evt.omniclaude.session-started.v1' => 'session-started'
+ * @example 'onex.evt.omniclaude.transformation.completed.v1' => 'transformation-completed'
+ * @example 'agent-actions' => '' (legacy flat name, no action to extract)
+ */
+export function extractActionFromTopic(topic: string): string {
+  const canonical = extractSuffix(topic);
+  const segments = canonical.split('.');
+  // Canonical ONEX format: onex.<kind>.<producer>.<event-name...>.v<N>
+  // Minimum 5 segments; event-name spans segments[3] through segments[length-2].
+  if (segments.length >= 5 && segments[0] === 'onex') {
+    // Join all segments between producer (index 2) and version (last) with a hyphen.
+    return segments.slice(3, -1).join('-');
+  }
+  return '';
+}
+
+/**
  * Look up a value from a topic-keyed map, normalizing env-prefixed topics first.
  *
  * Tries the raw topic key first for exact matches (works for legacy flat names
