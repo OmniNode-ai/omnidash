@@ -680,13 +680,63 @@ export function getEventDisplayLabel(opts: {
   if (canonicalTopic) {
     const segments = canonicalTopic.split('.');
     // onex.<kind>.<producer>.<event-name>.v<N> => event-name
+    // Guard: trailing dots produce empty segments — toTitleCase('') yields '',
+    // so only return when the result is non-empty.
     if (segments.length >= 5 && segments[0] === 'onex') {
-      return toTitleCase(segments[segments.length - 2]);
+      const label = toTitleCase(segments[segments.length - 2]);
+      if (label) return label;
     }
   }
 
   // 5. Try the eventType through getEventTypeLabel (handles metadata + extraction)
   return getEventTypeLabel(eventType);
+}
+
+/**
+ * Compute a short display label for the Event Type column.
+ *
+ * OMN-2196: Delegates to the centralized getEventDisplayLabel() which uses
+ * the hoisted toolName from the server-side AgentAction. Falls back through
+ * actionName, selectedAgent, ONEX topic segment extraction, and metadata lookup.
+ *
+ * Extracted from EventBusMonitor.tsx for testability.
+ */
+export function computeNormalizedType(
+  eventType: string,
+  details: {
+    toolName?: string;
+    actionName?: string;
+    actionType?: string;
+    selectedAgent?: string;
+  } | null,
+  topic?: string
+): string {
+  // Guard against bare version strings (e.g. "v1") that slip through
+  if (/^v\d+$/.test(eventType)) {
+    const fromDetails = details?.toolName || details?.actionName || details?.actionType;
+    if (fromDetails) return fromDetails;
+
+    // Derive a label from the topic when details are empty (OMN-2196)
+    if (topic) {
+      const topicLabel = getEventDisplayLabel({
+        eventType,
+        topic,
+      });
+      // getEventDisplayLabel falls back to the raw eventType ("v1") when
+      // no better label is found — treat that as no improvement.
+      if (topicLabel && topicLabel !== eventType) return topicLabel;
+    }
+
+    return 'unknown';
+  }
+
+  return getEventDisplayLabel({
+    eventType,
+    toolName: details?.toolName,
+    actionName: details?.actionName,
+    selectedAgent: details?.selectedAgent,
+    topic,
+  });
 }
 
 // ============================================================================

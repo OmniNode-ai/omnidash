@@ -2137,8 +2137,10 @@ export class EventConsumer extends EventEmitter {
 
     // OMN-2196: Strict toolName extraction — check payload.toolName then payload.tool_name.
     // Do NOT fall back to generic names; leave undefined so the client can decide.
+    // Runtime typeof guards ensure non-string values (numbers, objects) are ignored.
     const toolName =
-      (payload.toolName as string | undefined) || (payload.tool_name as string | undefined);
+      (typeof payload.toolName === 'string' ? payload.toolName : undefined) ||
+      (typeof payload.tool_name === 'string' ? payload.tool_name : undefined);
 
     const action: AgentAction = {
       id: crypto.randomUUID(),

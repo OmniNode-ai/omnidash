@@ -317,6 +317,12 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
               (data.node_id as string) ||
               'system',
             severity: mapSeverity(data),
+            // IMPORTANT: `data` is the full AgentAction (or similar) emitted by
+            // EventConsumer. Client-side display logic (EventBusMonitor's
+            // computeNormalizedType / getEventDisplayLabel) depends on `toolName`
+            // being present inside this serialized payload for specific tool
+            // name rendering (OMN-2196). Changing the shape of `data` here will
+            // break the Event Type column display.
             payload: data,
             eventTimeMs: extractTimestamp(data),
           };

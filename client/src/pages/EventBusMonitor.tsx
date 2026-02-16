@@ -18,7 +18,7 @@ import {
   getTopicLabel,
   getTopicMetadata,
   getEventTypeLabel,
-  getEventDisplayLabel,
+  computeNormalizedType,
   getMonitoredTopics,
   topicMatchesSuffix,
   normalizeToSuffix,
@@ -185,45 +185,8 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   };
 }
 
-/**
- * Compute a short display label for the Event Type column.
- *
- * OMN-2196: Delegates to the centralized getEventDisplayLabel() which uses
- * the hoisted toolName from the server-side AgentAction. Falls back through
- * actionName, selectedAgent, ONEX topic segment extraction, and metadata lookup.
- */
-function computeNormalizedType(
-  eventType: string,
-  details: ParsedDetails | null,
-  topic?: string
-): string {
-  // Guard against bare version strings (e.g. "v1") that slip through
-  if (/^v\d+$/.test(eventType)) {
-    const fromDetails = details?.toolName || details?.actionName || details?.actionType;
-    if (fromDetails) return fromDetails;
-
-    // Derive a label from the topic when details are empty (OMN-2196)
-    if (topic) {
-      const topicLabel = getEventDisplayLabel({
-        eventType,
-        topic,
-      });
-      // getEventDisplayLabel falls back to the raw eventType ("v1") when
-      // no better label is found — treat that as no improvement.
-      if (topicLabel && topicLabel !== eventType) return topicLabel;
-    }
-
-    return 'unknown';
-  }
-
-  return getEventDisplayLabel({
-    eventType,
-    toolName: details?.toolName,
-    actionName: details?.actionName,
-    selectedAgent: details?.selectedAgent,
-    topic,
-  });
-}
+// computeNormalizedType is imported from @/lib/configs/event-bus-dashboard
+// (extracted for testability — see OMN-2196).
 
 function generateSummary(
   eventType: string,
