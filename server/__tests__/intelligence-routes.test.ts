@@ -1531,7 +1531,26 @@ describe('Intelligence Routes', () => {
         }),
       } as any);
 
-      // Mock routing decisions query
+      // Mock routing decisions query — direct lookup by correlation_id
+      vi.mocked(mockDb.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([
+            {
+              id: 'routing-1',
+              selectedAgent: 'test-agent',
+              confidenceScore: '0.9',
+              routingStrategy: 'fuzzy_matching',
+              userRequest: 'test request',
+              reasoning: 'test reasoning',
+              alternatives: [],
+              routingTimeMs: 50,
+              createdAt: new Date(),
+            },
+          ]),
+        }),
+      } as any);
+
+      // Mock routing decisions query — FK lookup via manifest.routingDecisionId
       vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([

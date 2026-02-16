@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 
@@ -40,23 +41,64 @@ describe('CorrelationTrace page', () => {
     fetchSpy.mockReset();
   });
 
-  it('renders sample trace summary by default', async () => {
+  it('renders recent traces panel with empty state and sample fallback', async () => {
+    // Mock the recent traces endpoint to return an empty array
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const { default: CorrelationTrace } = await import('../CorrelationTrace');
+
+    const result = renderWithClient(<CorrelationTrace />);
+
+    // Wait for the fetch to resolve and empty state to render
+    await waitFor(() => {
+      expect(screen.getByText('No recent traces found')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Recent Traces')).toBeInTheDocument();
+    expect(screen.getByText('Sample Data')).toBeInTheDocument();
+
+    result.unmount();
+  });
+
+  it('renders recent traces table when API returns data', async () => {
+    const recentTraces = [
+      {
+        correlationId: 'abc-123-def-456',
+        selectedAgent: 'code-analyst',
+        confidenceScore: 0.95,
+        userRequest: 'Analyze the auth module',
+        routingTimeMs: 42,
+        createdAt: new Date().toISOString(),
+        eventCount: 3,
+      },
+    ];
+
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify(recentTraces), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
     const { default: CorrelationTrace } = await import('../CorrelationTrace');
 
     const result = renderWithClient(<CorrelationTrace />);
 
     await waitFor(() => {
-      expect(screen.getByText('Trace Results')).toBeInTheDocument();
+      expect(screen.getByText('code-analyst')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Total Events')).toBeInTheDocument();
-    expect(screen.getByText('Routing Decisions')).toBeInTheDocument();
-    expect(screen.getAllByText('4')[0]).toBeInTheDocument();
+    expect(screen.getByText('95%')).toBeInTheDocument();
 
     result.unmount();
   });
 
-  it('shows error card when trace fetch fails for searched ID', async () => {
+  it('shows error state when recent traces fetch fails', async () => {
     vi.resetModules();
     vi.doMock('@tanstack/react-query', async () => {
       const actual =
@@ -76,7 +118,7 @@ describe('CorrelationTrace page', () => {
 
     const result = renderWithClient(<CorrelationTrace />);
 
-    expect(screen.getByText('Error Loading Trace')).toBeInTheDocument();
+    expect(screen.getByText('Failed to load recent traces')).toBeInTheDocument();
     expect(screen.getByText('Failed to fetch trace')).toBeInTheDocument();
 
     result.unmount();

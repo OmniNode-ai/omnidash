@@ -1519,6 +1519,109 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
 });
 
 // ============================================================================
+// Correlation Trace Discovery Endpoint
+// ============================================================================
+
+/**
+ * GET /api/intelligence/traces/recent
+ * Returns recent correlation traces for the trace discovery feature.
+ *
+ * Query parameters:
+ * - limit: Number of traces to return (default 20, max 100)
+ *
+ * Response format:
+ * [
+ *   {
+ *     correlationId: "uuid",
+ *     selectedAgent: "agent-name",
+ *     confidenceScore: 0.95,
+ *     userRequest: "truncated to 120 chars...",
+ *     routingTimeMs: 42,
+ *     createdAt: "2026-02-16T...",
+ *     eventCount: 3
+ *   }
+ * ]
+ */
+intelligenceRouter.get('/traces/recent', async (req, res) => {
+  try {
+    const rawLimit = parseInt(req.query.limit as string, 10);
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 100) : 20;
+
+    // Fetch recent routing decisions
+    const decisions = await getIntelligenceDb()
+      .select({
+        correlationId: agentRoutingDecisions.correlationId,
+        selectedAgent: agentRoutingDecisions.selectedAgent,
+        confidenceScore: agentRoutingDecisions.confidenceScore,
+        userRequest: agentRoutingDecisions.userRequest,
+        routingTimeMs: agentRoutingDecisions.routingTimeMs,
+        createdAt: agentRoutingDecisions.createdAt,
+      })
+      .from(agentRoutingDecisions)
+      .orderBy(desc(agentRoutingDecisions.createdAt))
+      .limit(limit);
+
+    if (decisions.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    // Collect all correlation IDs to count related events in bulk
+    const correlationIds = decisions.map((d) => d.correlationId);
+
+    // Count events from agent_actions and agent_manifest_injections per correlation ID
+    const [actionCounts, manifestCounts] = await Promise.all([
+      getIntelligenceDb()
+        .select({
+          correlationId: agentActions.correlationId,
+          count: sql<number>`count(*)::int`.as('count'),
+        })
+        .from(agentActions)
+        .where(inArray(agentActions.correlationId, correlationIds))
+        .groupBy(agentActions.correlationId),
+
+      getIntelligenceDb()
+        .select({
+          correlationId: agentManifestInjections.correlationId,
+          count: sql<number>`count(*)::int`.as('count'),
+        })
+        .from(agentManifestInjections)
+        .where(inArray(agentManifestInjections.correlationId, correlationIds))
+        .groupBy(agentManifestInjections.correlationId),
+    ]);
+
+    // Build lookup maps for event counts
+    const actionCountMap = new Map(actionCounts.map((r) => [r.correlationId, r.count]));
+    const manifestCountMap = new Map(manifestCounts.map((r) => [r.correlationId, r.count]));
+
+    const traces = decisions.map((d) => ({
+      correlationId: d.correlationId,
+      selectedAgent: d.selectedAgent,
+      confidenceScore: parseFloat(d.confidenceScore?.toString() || '0'),
+      userRequest: d.userRequest
+        ? d.userRequest.length > 120
+          ? d.userRequest.slice(0, 120) + '...'
+          : d.userRequest
+        : null,
+      routingTimeMs: d.routingTimeMs,
+      createdAt: d.createdAt?.toISOString() || new Date().toISOString(),
+      eventCount:
+        1 + // the routing decision itself
+        (actionCountMap.get(d.correlationId) || 0) +
+        (manifestCountMap.get(d.correlationId) || 0),
+    }));
+
+    res.json(traces);
+  } catch (error) {
+    console.error('Error fetching recent traces:', error);
+    res.status(500).json({
+      error: 'Failed to fetch recent traces',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// ============================================================================
 // Correlation Trace Endpoint (Debugging Tool)
 // ============================================================================
 
@@ -1598,28 +1701,50 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
         .where(eq(agentManifestInjections.correlationId, correlationId)),
     ]);
 
-    // Get routing decisions if any manifests have routing_decision_id
+    // Get routing decisions via two paths:
+    // 1. Direct lookup by correlation_id (catches decisions with no manifest)
+    // 2. FK lookup via manifest.routing_decision_id (catches decisions linked to manifests)
     const routingDecisionIds = manifests
       .filter((m) => m.routingDecisionId)
       .map((m) => m.routingDecisionId as string);
 
-    const routingDecisions =
+    const routingSelect = {
+      id: agentRoutingDecisions.id,
+      selectedAgent: agentRoutingDecisions.selectedAgent,
+      confidenceScore: agentRoutingDecisions.confidenceScore,
+      routingStrategy: agentRoutingDecisions.routingStrategy,
+      userRequest: agentRoutingDecisions.userRequest,
+      reasoning: agentRoutingDecisions.reasoning,
+      alternatives: agentRoutingDecisions.alternatives,
+      routingTimeMs: agentRoutingDecisions.routingTimeMs,
+      createdAt: agentRoutingDecisions.createdAt,
+    };
+
+    const [directDecisions, fkDecisions] = await Promise.all([
+      // Path 1: Direct correlation_id match
+      getIntelligenceDb()
+        .select(routingSelect)
+        .from(agentRoutingDecisions)
+        .where(eq(agentRoutingDecisions.correlationId, correlationId)),
+
+      // Path 2: FK from manifests (may overlap with path 1)
       routingDecisionIds.length > 0
-        ? await getIntelligenceDb()
-            .select({
-              id: agentRoutingDecisions.id,
-              selectedAgent: agentRoutingDecisions.selectedAgent,
-              confidenceScore: agentRoutingDecisions.confidenceScore,
-              routingStrategy: agentRoutingDecisions.routingStrategy,
-              userRequest: agentRoutingDecisions.userRequest,
-              reasoning: agentRoutingDecisions.reasoning,
-              alternatives: agentRoutingDecisions.alternatives,
-              routingTimeMs: agentRoutingDecisions.routingTimeMs,
-              createdAt: agentRoutingDecisions.createdAt,
-            })
+        ? getIntelligenceDb()
+            .select(routingSelect)
             .from(agentRoutingDecisions)
             .where(inArray(agentRoutingDecisions.id, routingDecisionIds))
-        : [];
+        : Promise.resolve([]),
+    ]);
+
+    // Deduplicate by id — direct query results take precedence
+    const seenIds = new Set<string>();
+    const routingDecisions: typeof directDecisions = [];
+    for (const d of [...directDecisions, ...fkDecisions]) {
+      if (!seenIds.has(d.id)) {
+        seenIds.add(d.id);
+        routingDecisions.push(d);
+      }
+    }
 
     // Transform routing decisions into events
     const routingEvents = routingDecisions.map((d) => ({
