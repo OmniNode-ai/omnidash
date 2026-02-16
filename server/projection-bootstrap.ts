@@ -325,6 +325,7 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
 
           // Track dedup state only after successful ingest so that if ingest
           // throws, the other source's copy of this event is not silently dropped.
+          trackEventId(dedupKey);
           if (corrId) trackCorrelationId(corrId);
         } catch (err) {
           console.error(`[projection] EventConsumer ${eventName} handler error:`, err);

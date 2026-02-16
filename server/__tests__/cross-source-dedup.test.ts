@@ -16,7 +16,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { EventEmitter } from 'events';
 
 // ---------------------------------------------------------------------------
 // Module mocks — vi.hoisted ensures these run before vi.mock factories
@@ -78,19 +77,11 @@ describe('OMN-2197: Cross-source correlation-ID dedup', () => {
   // Helper: simulate events from each source
   // -----------------------------------------------------------------------
 
-  interface DataSourceEvent {
-    [key: string]: unknown;
-  }
-
-  interface ConsumerEvent {
-    [key: string]: unknown;
-  }
-
-  function emitFromDataSource(event: DataSourceEvent): void {
+  function emitFromDataSource(event: Record<string, unknown>): void {
     mockEventBusDataSource.emit('event', event);
   }
 
-  function emitFromConsumer(eventName: string, data: ConsumerEvent): void {
+  function emitFromConsumer(eventName: string, data: Record<string, unknown>): void {
     mockEventConsumer.emit(eventName, data);
   }
 
@@ -252,6 +243,7 @@ describe('OMN-2197: Cross-source correlation-ID dedup', () => {
     const snapshot = eventBusProjection.getSnapshot();
     // Both should be ingested (no correlation_id to dedup on)
     expect(snapshot.payload.totalEventsIngested).toBe(2);
+    expect(snapshot.payload.events).toHaveLength(2);
   });
 
   // -----------------------------------------------------------------------
