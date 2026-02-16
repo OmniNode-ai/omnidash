@@ -104,6 +104,46 @@ export function extractSuffix(topic: string): string {
 }
 
 /**
+ * Extract the producer name from an ONEX topic string.
+ * Strips any environment prefix first via extractSuffix, then parses the
+ * canonical format: onex.<kind>.<producer>.<event-name>.v<version>
+ *
+ * @example 'onex.evt.omniclaude.session-started.v1' => 'omniclaude'
+ * @example 'dev.onex.cmd.omniintelligence.tool-content.v1' => 'omniintelligence'
+ * @example 'production.onex.evt.platform.node-heartbeat.v1' => 'platform'
+ * @example 'agent-actions' => null (legacy flat name, no producer to extract)
+ */
+export function extractProducerFromTopic(topic: string): string | null {
+  const canonical = extractSuffix(topic);
+  const segments = canonical.split('.');
+  // Canonical ONEX format: onex.<kind>.<producer>.<event-name>.v<N>
+  if (segments.length >= 5 && segments[0] === 'onex') {
+    return segments[2]; // producer is the third segment
+  }
+  return null;
+}
+
+/**
+ * Extract the action name (event-name segment) from an ONEX topic string.
+ * Strips any environment prefix first via extractSuffix, then parses the
+ * canonical format: onex.<kind>.<producer>.<event-name>.v<version>
+ *
+ * @example 'onex.cmd.omniintelligence.tool-content.v1' => 'tool-content'
+ * @example 'dev.onex.evt.omniclaude.session-started.v1' => 'session-started'
+ * @example 'agent-actions' => '' (legacy flat name, no action to extract)
+ */
+export function extractActionFromTopic(topic: string): string {
+  const canonical = extractSuffix(topic);
+  const segments = canonical.split('.');
+  // Canonical ONEX format has 5 segments: onex.<kind>.<producer>.<event-name>.v<N>
+  if (segments.length >= 5 && segments[0] === 'onex') {
+    // event-name is the second-to-last segment (before version)
+    return segments[segments.length - 2];
+  }
+  return '';
+}
+
+/**
  * Look up a value from a topic-keyed map, normalizing env-prefixed topics first.
  *
  * Tries the raw topic key first for exact matches (works for legacy flat names

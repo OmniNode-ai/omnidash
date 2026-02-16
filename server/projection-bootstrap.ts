@@ -13,7 +13,11 @@ import { ProjectionService, type RawEventInput } from './projection-service';
 import { EventBusProjection } from './projections/event-bus-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
-import { extractSuffix } from '@shared/topics';
+import {
+  extractSuffix,
+  extractActionFromTopic,
+  extractProducerFromTopic as _extractProducerFromTopic,
+} from '@shared/topics';
 
 // ============================================================================
 // Singleton instances
@@ -379,40 +383,21 @@ function extractTimestamp(data: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-/**
- * Extract the action name (event-name segment) from an ONEX topic string.
- * Canonical format: onex.<kind>.<producer>.<event-name>.v<version>
- * Strips env prefix first via extractSuffix.
- *
- * @example 'onex.cmd.omniintelligence.tool-content.v1' → 'tool-content'
- * @example 'dev.onex.evt.omniclaude.session-started.v1' → 'session-started'
- * @example 'agent-actions' → '' (legacy flat name, no action to extract)
- */
-export function extractActionFromTopic(topic: string): string {
-  const canonical = extractSuffix(topic);
-  const segments = canonical.split('.');
-  // Canonical ONEX format has 5 segments: onex.<kind>.<producer>.<event-name>.v<N>
-  if (segments.length >= 5 && segments[0] === 'onex') {
-    // event-name is the second-to-last segment (before version)
-    return segments[segments.length - 2];
-  }
-  return '';
-}
+// Re-export shared topic parsers so existing importers (tests, etc.) continue to work.
+// The canonical implementations now live in @shared/topics.
+export { extractActionFromTopic };
+
+// Wrap the shared extractProducerFromTopic to preserve the previous 'system' fallback
+// for server-side callers. The shared version returns null for non-ONEX topics.
 
 /**
  * Extract the producer name from an ONEX topic string.
- * Canonical format: onex.<kind>.<producer>.<event-name>.v<version>
+ * Delegates to the shared implementation in @shared/topics, falling back to
+ * 'system' for legacy flat-name topics (preserving the original server-side behavior).
  *
- * @example 'onex.evt.omniclaude.session-started.v1' → 'omniclaude'
- * @example 'onex.cmd.omniintelligence.tool-content.v1' → 'omniintelligence'
- * @example 'agent-actions' → 'system' (fallback for legacy flat names)
+ * @example 'onex.evt.omniclaude.session-started.v1' => 'omniclaude'
+ * @example 'agent-actions' => 'system'
  */
 export function extractProducerFromTopic(topic: string): string {
-  const canonical = extractSuffix(topic);
-  const segments = canonical.split('.');
-  // Canonical ONEX format: onex.<kind>.<producer>.<event-name>.v<N>
-  if (segments.length >= 5 && segments[0] === 'onex') {
-    return segments[2]; // producer is the third segment
-  }
-  return 'system';
+  return _extractProducerFromTopic(topic) ?? 'system';
 }
