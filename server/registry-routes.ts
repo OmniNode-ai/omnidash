@@ -40,7 +40,7 @@ function shouldUseMockData(projection: NodeRegistryProjection | undefined): bool
   if (process.env.DEMO_MODE !== 'true') return false;
   if (!projection) return true;
   const snapshot = projection.getSnapshot();
-  return snapshot.payload.nodes.length === 0;
+  return (snapshot.payload?.nodes?.length ?? 0) === 0;
 }
 
 // ============================================================================
@@ -182,14 +182,14 @@ function filterProjectionNodes(nodes: NodeState[], params: FilterParams): NodeSt
   }
 
   if (params.capability) {
-    const cap = params.capability;
+    const cap = params.capability.toLowerCase();
     filtered = filtered.filter((n) => {
       const caps = n.capabilities;
       if (!caps) return false;
       return (
-        caps.declared?.includes(cap) ||
-        caps.discovered?.includes(cap) ||
-        caps.contract?.includes(cap)
+        caps.declared?.some((c) => c.toLowerCase() === cap) ||
+        caps.discovered?.some((c) => c.toLowerCase() === cap) ||
+        caps.contract?.some((c) => c.toLowerCase() === cap)
       );
     });
   }
@@ -504,7 +504,9 @@ function serveMockDiscovery(req: Request, res: Response, limit: number, offset: 
   for (const node of filteredNodes) {
     byType[node.node_type] = (byType[node.node_type] ?? 0) + 1;
     if (node.state === 'ACTIVE') activeNodes++;
-    else if (['PENDING_REGISTRATION', 'ACCEPTED', 'AWAITING_ACK'].includes(node.state))
+    else if (
+      ['PENDING_REGISTRATION', 'ACCEPTED', 'AWAITING_ACK', 'ACK_RECEIVED'].includes(node.state)
+    )
       pendingNodes++;
     else if (['ACK_TIMED_OUT', 'LIVENESS_EXPIRED', 'REJECTED'].includes(node.state)) failedNodes++;
   }
