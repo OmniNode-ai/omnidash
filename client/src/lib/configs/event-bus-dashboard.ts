@@ -795,6 +795,110 @@ export function getEventTypeLabel(eventType: string): string {
 }
 
 // ============================================================================
+// Centralized Display Label (OMN-2196)
+// ============================================================================
+
+/**
+ * Compute a short, human-readable display label for an event row.
+ *
+ * Priority chain (OMN-2196):
+ *   1. Hoisted toolName (e.g. "Read", "Write", "Bash") — most specific
+ *   2. actionName from parsed details
+ *   3. selectedAgent prefixed with "route:" for routing events
+ *   4. ONEX topic event-name segment extraction (e.g. "tool-content" from canonical topic)
+ *   5. EVENT_TYPE_METADATA lookup
+ *   6. Raw eventType fallback
+ *
+ * This centralizes the display logic that was previously scattered across
+ * computeNormalizedType in EventBusMonitor.tsx and various fallback paths.
+ */
+export function getEventDisplayLabel(opts: {
+  eventType: string;
+  toolName?: string;
+  actionName?: string;
+  selectedAgent?: string;
+  topic?: string;
+}): string {
+  const { eventType, toolName, actionName, selectedAgent, topic } = opts;
+
+  // 1. Specific tool name (e.g. "Read", "Write", "Bash")
+  if (toolName) return toolName;
+
+  // 2. Action name from parsed details
+  if (actionName) return actionName;
+
+  // 3. Routing events show the selected agent
+  if (selectedAgent) return `route:${selectedAgent}`;
+
+  // 4. ONEX canonical topic: extract event-name segment
+  const canonicalTopic = topic ? extractSuffix(topic) : '';
+  if (canonicalTopic) {
+    const segments = canonicalTopic.split('.');
+    // onex.<kind>.<producer>.<event-name>.v<N> => event-name
+    // Guard: trailing dots produce empty segments — toTitleCase('') yields '',
+    // so only return when the result is non-empty.
+    // Only the canonical 5-segment ONEX format is supported:
+    //   onex.<kind>.<producer>.<event-name>.v<N>
+    // Topics with extra trailing segments would extract the wrong segment;
+    // this is consistent with getTopicLabel's assumption elsewhere.
+    if (segments.length >= 5 && segments[0] === 'onex') {
+      const label = toTitleCase(segments[segments.length - 2]);
+      if (label) return label;
+    }
+  }
+
+  // 5. Try the eventType through getEventTypeLabel (handles metadata + extraction)
+  return getEventTypeLabel(eventType);
+}
+
+/**
+ * Compute a short display label for the Event Type column.
+ *
+ * OMN-2196: Delegates to the centralized getEventDisplayLabel() which uses
+ * the hoisted toolName from the server-side AgentAction. Falls back through
+ * actionName, selectedAgent, ONEX topic segment extraction, and metadata lookup.
+ *
+ * Extracted from EventBusMonitor.tsx for testability.
+ */
+export function computeNormalizedType(
+  eventType: string,
+  details: {
+    toolName?: string;
+    actionName?: string;
+    actionType?: string;
+    selectedAgent?: string;
+  } | null,
+  topic?: string
+): string {
+  // Guard against bare version strings (e.g. "v1") that slip through
+  if (/^v\d+$/.test(eventType)) {
+    const fromDetails = details?.toolName || details?.actionName || details?.actionType;
+    if (fromDetails) return fromDetails;
+
+    // Derive a label from the topic when details are empty (OMN-2196)
+    if (topic) {
+      const topicLabel = getEventDisplayLabel({
+        eventType,
+        topic,
+      });
+      // getEventDisplayLabel falls back to the raw eventType ("v1") when
+      // no better label is found — treat that as no improvement.
+      if (topicLabel && topicLabel !== eventType) return topicLabel;
+    }
+
+    return 'unknown';
+  }
+
+  return getEventDisplayLabel({
+    eventType,
+    toolName: details?.toolName,
+    actionName: details?.actionName,
+    selectedAgent: details?.selectedAgent,
+    topic,
+  });
+}
+
+// ============================================================================
 // Topic Matching Utilities
 // ============================================================================
 
