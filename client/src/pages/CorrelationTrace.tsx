@@ -309,7 +309,7 @@ export default function CorrelationTrace() {
     isLoading: traceLoading,
     error: traceError,
   } = useQuery<TraceResponse>({
-    queryKey: ['/api/intelligence/trace/', searchId ?? ''],
+    queryKey: ['/api/intelligence/trace/', searchId ?? '', showingSample],
     queryFn: async () => {
       if (showingSample) return SAMPLE_TRACE;
       const response = await fetch(`/api/intelligence/trace/${searchId}`);
