@@ -234,17 +234,31 @@ function findFilePath(payload: Record<string, unknown>): string | undefined {
 // Helper Functions
 // ============================================================================
 
-function formatRelativeTime(timestamp: string | Date): string {
+function formatEventTime(timestamp: string | Date): string {
   const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
   const now = Date.now();
   const diffMs = now - date.getTime();
 
-  if (diffMs < 0) return 'just now';
-  if (diffMs < 1000) return 'just now';
-  if (diffMs < 60000) return `${Math.floor(diffMs / 1000)}s ago`;
-  if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}m ago`;
-  if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)}h ago`;
-  return date.toLocaleDateString();
+  // Absolute time portion — always show clock time
+  const time = date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
+  // For events older than 24h, prepend the date
+  if (diffMs >= 86400000 || diffMs < 0) {
+    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`;
+  }
+
+  // Relative suffix for recent events
+  let relative: string;
+  if (diffMs < 1000) relative = 'just now';
+  else if (diffMs < 60000) relative = `${Math.floor(diffMs / 1000)}s ago`;
+  else if (diffMs < 3600000) relative = `${Math.floor(diffMs / 60000)}m ago`;
+  else relative = `${Math.floor(diffMs / 3600000)}h ago`;
+
+  return `${time} (${relative})`;
 }
 
 /** Format a ms duration to a human-readable string (config-driven, never hardcoded). */
@@ -298,7 +312,7 @@ function toRecentEvent(event: DisplayEvent) {
     eventType: event.normalizedType,
     summary: event.summary,
     source: event.source,
-    timestamp: formatRelativeTime(event.timestampRaw),
+    timestamp: formatEventTime(event.timestampRaw),
     timestampSort: event.timestampRaw,
     priority: event.priority,
     correlationId: event.correlationId,
@@ -539,7 +553,7 @@ export default function EventBusMonitor() {
         if (diffMs > TWENTY_FOUR_HOURS_MS) {
           lastEventFormatted = '>24h ago';
         } else {
-          lastEventFormatted = formatRelativeTime(lastEventAt);
+          lastEventFormatted = formatEventTime(lastEventAt);
         }
       }
 
