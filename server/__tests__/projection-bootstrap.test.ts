@@ -4,7 +4,6 @@
  * Covers:
  * - extractProducerFromTopic: source inference from ONEX canonical topic names
  * - extractActionFromTopic: event type inference from ONEX canonical topic names
- * - End-to-end source mapping through EventBusDataSource path
  *
  * OMN-2195: Events ingested via EventBusDataSource must infer the source
  * (producer) from the topic name when the upstream message has no `source` field.
@@ -109,6 +108,13 @@ describe('extractProducerFromTopic (OMN-2195)', () => {
     it('should return "system" for non-onex dotted topic', () => {
       expect(extractProducerFromTopic('some.other.topic.format.v1')).toBe('system');
     });
+
+    it('should extract producer from ONEX topic with >5 segments', () => {
+      // segments.length >= 5 guard still matches; segments[2] is the producer
+      expect(extractProducerFromTopic('onex.evt.platform.multi-part-name.extra.v1')).toBe(
+        'platform'
+      );
+    });
   });
 });
 
@@ -176,6 +182,12 @@ describe('extractActionFromTopic (OMN-2196)', () => {
 
     it('should return empty string for non-onex dotted topic with 5 segments', () => {
       expect(extractActionFromTopic('some.other.topic.format.v1')).toBe('');
+    });
+
+    it('should extract second-to-last segment from ONEX topic with >5 segments', () => {
+      // With 6 segments the >= 5 guard matches; segments[length - 2] picks
+      // the second-to-last segment ("extra"), not the canonical event-name slot.
+      expect(extractActionFromTopic('onex.evt.platform.multi-part-name.extra.v1')).toBe('extra');
     });
   });
 });
