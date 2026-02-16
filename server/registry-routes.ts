@@ -1,49 +1,93 @@
 /**
- * Registry Discovery Routes
+ * Registry Discovery Routes (OMN-2320)
  *
  * Express BFF endpoints for the ONEX Node Registry Discovery API.
- * Proxies to the FastAPI infra service (with mock data for development).
+ * Primary data source: NodeRegistryProjection (server-side materialized view).
+ * Fallback: MockDataStore when DEMO_MODE=true and projection is empty.
  *
  * Routes:
  * - GET /api/registry/discovery     - Full dashboard payload
  * - GET /api/registry/nodes         - Node list with pagination
  * - GET /api/registry/nodes/:id     - Single node detail
- * - GET /api/registry/instances     - Live Consul instances
  * - GET /api/registry/widgets/mapping - Capability -> widget mapping
  * - GET /api/registry/health        - Service health check
  */
 
 import { Router, type Request, type Response } from 'express';
-import type {
-  NodeType,
-  RegistrationState,
-  HealthStatus,
-  RegistryDiscoveryResponse,
-  RegistryNodesResponse,
-  RegistryNodeDetailResponse,
-  RegistryInstancesResponse,
-  RegistryWidgetMappingResponse,
-  RegistryHealthResponse,
-  RegistryErrorResponse,
-  RegistryNodeQueryParams,
-  RegistryInstanceQueryParams,
-} from '@shared/registry-types';
-import {
-  mockDataStore,
-  filterNodes,
-  filterInstances,
-  getWidgetMappings,
-} from './registry-mock-data';
+import type { NodeType, RegistrationState, NodeState } from '@shared/projection-types';
+import { projectionService } from './projection-bootstrap';
+import type { NodeRegistryProjection } from './projections/node-registry-projection';
+
+// DEMO_MODE imports — only used when DEMO_MODE=true and projection is empty
+import { mockDataStore, filterNodes, getWidgetMappings } from './registry-mock-data';
+import type { RegistryNodeView, RegistryErrorResponse } from '@shared/registry-types';
 
 const router = Router();
+
+// ============================================================================
+// Projection access
+// ============================================================================
+
+function getProjection(): NodeRegistryProjection | undefined {
+  return projectionService.getView('node-registry') as NodeRegistryProjection | undefined;
+}
+
+/**
+ * Check if we should use mock data (DEMO_MODE=true and projection has no nodes).
+ */
+function shouldUseMockData(projection: NodeRegistryProjection | undefined): boolean {
+  if (process.env.DEMO_MODE !== 'true') return false;
+  if (!projection) return true;
+  const snapshot = projection.getSnapshot();
+  return snapshot.payload.nodes.length === 0;
+}
+
+// ============================================================================
+// Adapter: NodeState -> RegistryNodeView-like shape for backward compat
+// ============================================================================
+
+/**
+ * Adapt projection NodeState to the response shape the frontend expects.
+ * Uses snake_case keys matching the existing API contract.
+ */
+function adaptNodeState(node: NodeState): Record<string, unknown> {
+  // Flatten capabilities for the capabilities array the frontend table/grid expects
+  const flatCapabilities: string[] = [];
+  if (node.capabilities?.declared) flatCapabilities.push(...node.capabilities.declared);
+  if (node.capabilities?.discovered) {
+    for (const c of node.capabilities.discovered) {
+      if (!flatCapabilities.includes(c)) flatCapabilities.push(c);
+    }
+  }
+
+  return {
+    node_id: node.nodeId,
+    name: node.nodeId, // projection does not have a separate name; use nodeId
+    service_name: node.nodeId,
+    namespace: node.metadata?.cluster ?? null,
+    display_name: node.nodeId,
+    node_type: node.nodeType,
+    version: node.version,
+    state: node.state,
+    capabilities: flatCapabilities,
+    registered_at: node.lastSeen,
+    last_heartbeat_at: node.lastSeen,
+    // Extended fields from projection
+    uptime_seconds: node.uptimeSeconds,
+    last_seen: node.lastSeen,
+    memory_usage_mb: node.memoryUsageMb,
+    cpu_usage_percent: node.cpuUsagePercent,
+    endpoints: node.endpoints,
+    metadata: node.metadata,
+    reason: node.reason,
+    structured_capabilities: node.capabilities,
+  };
+}
 
 // ============================================================================
 // Utility Functions
 // ============================================================================
 
-/**
- * Create standardized error response with timestamp
- */
 function createErrorResponse(error: string, message: string): RegistryErrorResponse {
   return {
     error,
@@ -52,18 +96,12 @@ function createErrorResponse(error: string, message: string): RegistryErrorRespo
   };
 }
 
-/**
- * Parse and validate pagination parameters
- */
 function parsePaginationParams(req: Request): { limit: number; offset: number } {
   const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 250);
   const offset = Math.max(parseInt(req.query.offset as string, 10) || 0, 0);
   return { limit, offset };
 }
 
-/**
- * Set standard cache headers
- */
 function setNoCacheHeaders(res: Response): void {
   res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.set('Pragma', 'no-cache');
@@ -75,13 +113,88 @@ function setStaticCacheHeaders(res: Response, maxAge: number = 60): void {
 }
 
 // ============================================================================
+// State classification helpers
+// ============================================================================
+
+const PENDING_STATES: RegistrationState[] = [
+  'pending_registration',
+  'accepted',
+  'awaiting_ack',
+  'ack_received',
+];
+
+const FAILED_STATES: RegistrationState[] = ['ack_timed_out', 'liveness_expired', 'rejected'];
+
+/** Normalize states: mock data uses UPPER_CASE, projection uses lowercase */
+function normalizeState(state: string): RegistrationState {
+  return state.toLowerCase() as RegistrationState;
+}
+
+function isActiveState(state: string): boolean {
+  return normalizeState(state) === 'active';
+}
+
+function isPendingState(state: string): boolean {
+  return PENDING_STATES.includes(normalizeState(state));
+}
+
+function isFailedState(state: string): boolean {
+  return FAILED_STATES.includes(normalizeState(state));
+}
+
+// ============================================================================
+// Filtering helpers for projection nodes
+// ============================================================================
+
+interface FilterParams {
+  state?: string;
+  type?: string;
+  capability?: string;
+  namespace?: string;
+  search?: string;
+}
+
+function filterProjectionNodes(nodes: NodeState[], params: FilterParams): NodeState[] {
+  let filtered = nodes;
+
+  if (params.state) {
+    const target = normalizeState(params.state);
+    filtered = filtered.filter((n) => n.state === target);
+  }
+
+  if (params.type) {
+    filtered = filtered.filter((n) => n.nodeType === params.type);
+  }
+
+  if (params.capability) {
+    const cap = params.capability;
+    filtered = filtered.filter((n) => {
+      const caps = n.capabilities;
+      if (!caps) return false;
+      return (
+        caps.declared?.includes(cap) ||
+        caps.discovered?.includes(cap) ||
+        caps.contract?.includes(cap)
+      );
+    });
+  }
+
+  if (params.search) {
+    const searchLower = params.search.toLowerCase();
+    filtered = filtered.filter((n) => n.nodeId.toLowerCase().includes(searchLower));
+  }
+
+  return filtered;
+}
+
+// ============================================================================
 // Routes
 // ============================================================================
 
 /**
  * GET /api/registry/discovery
  *
- * Full dashboard payload with nodes, instances, and summary statistics.
+ * Full dashboard payload with nodes, summary statistics.
  * Supports filtering by state, type, and capability.
  */
 router.get('/discovery', (req: Request, res: Response) => {
@@ -89,57 +202,42 @@ router.get('/discovery', (req: Request, res: Response) => {
     setNoCacheHeaders(res);
 
     const { limit, offset } = parsePaginationParams(req);
+    const projection = getProjection();
 
-    // Parse filter parameters
-    const params: RegistryNodeQueryParams = {
-      state: req.query.state as RegistrationState | undefined,
-      type: req.query.type as NodeType | undefined,
+    // DEMO_MODE fallback: use mock data when projection is empty
+    if (shouldUseMockData(projection)) {
+      return serveMockDiscovery(req, res, limit, offset);
+    }
+
+    const snapshot = projection!.getSnapshot();
+    const allNodes = snapshot.payload.nodes;
+    const stats = snapshot.payload.stats;
+
+    // Apply filters
+    const params: FilterParams = {
+      state: req.query.state as string | undefined,
+      type: req.query.type as string | undefined,
       capability: req.query.capability as string | undefined,
       namespace: req.query.namespace as string | undefined,
       search: req.query.search as string | undefined,
-      limit,
-      offset,
     };
 
-    // Get cached mock data
-    const allNodes = mockDataStore.getNodes();
-    const allInstances = mockDataStore.getInstances();
+    const filteredNodes = filterProjectionNodes(allNodes, params);
 
-    // Filter nodes first
-    const { nodes: filteredNodes, total } = filterNodes(allNodes, params);
+    // Paginate
+    const paginatedNodes = filteredNodes.slice(offset, offset + limit);
 
-    // Filter instances to only include those for returned nodes
-    const nodeIds = new Set(filteredNodes.map((n) => n.node_id));
-    const filteredInstances = allInstances.filter((i) => nodeIds.has(i.node_id));
-
-    // Compute summary from FILTERED data (not all data)
-    const byType: Record<NodeType, number> = {
-      EFFECT: 0,
-      COMPUTE: 0,
-      REDUCER: 0,
-      ORCHESTRATOR: 0,
-      SERVICE: 0,
-    };
-    const byHealth: Record<HealthStatus, number> = {
-      passing: 0,
-      warning: 0,
-      critical: 0,
-      unknown: 0,
-    };
-    let activeNodes = 0,
-      pendingNodes = 0,
-      failedNodes = 0;
+    // Compute summary from filtered data
+    const byType: Record<string, number> = {};
+    let activeNodes = 0;
+    let pendingNodes = 0;
+    let failedNodes = 0;
 
     for (const node of filteredNodes) {
-      byType[node.node_type]++;
-      if (node.state === 'ACTIVE') activeNodes++;
-      else if (['PENDING_REGISTRATION', 'ACCEPTED', 'AWAITING_ACK'].includes(node.state))
-        pendingNodes++;
-      else if (['ACK_TIMED_OUT', 'LIVENESS_EXPIRED', 'REJECTED'].includes(node.state))
-        failedNodes++;
-    }
-    for (const instance of filteredInstances) {
-      byHealth[instance.health_status]++;
+      byType[node.nodeType] = (byType[node.nodeType] ?? 0) + 1;
+      if (isActiveState(node.state)) activeNodes++;
+      else if (isPendingState(node.state)) pendingNodes++;
+      else if (isFailedState(node.state)) failedNodes++;
     }
 
     const summary = {
@@ -147,23 +245,24 @@ router.get('/discovery', (req: Request, res: Response) => {
       active_nodes: activeNodes,
       pending_nodes: pendingNodes,
       failed_nodes: failedNodes,
-      unhealthy_instances: byHealth.critical + byHealth.warning,
+      unhealthy_instances: 0, // Instances not tracked in projection
       by_type: byType,
-      by_health: byHealth,
+      by_health: { passing: 0, warning: 0, critical: 0, unknown: 0 },
     };
 
-    const response: RegistryDiscoveryResponse = {
+    const response = {
       timestamp: new Date().toISOString(),
       warnings: [],
       summary,
-      nodes: filteredNodes,
-      live_instances: filteredInstances,
+      nodes: paginatedNodes.map(adaptNodeState),
+      live_instances: [], // Instances are not part of the projection
       pagination: {
         total: allNodes.length,
-        filtered: total,
+        filtered: filteredNodes.length,
         limit,
         offset,
       },
+      source: 'projection',
     };
 
     res.json(response);
@@ -183,29 +282,35 @@ router.get('/nodes', (req: Request, res: Response) => {
     setNoCacheHeaders(res);
 
     const { limit, offset } = parsePaginationParams(req);
+    const projection = getProjection();
 
-    const params: RegistryNodeQueryParams = {
-      state: req.query.state as RegistrationState | undefined,
-      type: req.query.type as NodeType | undefined,
+    if (shouldUseMockData(projection)) {
+      return serveMockNodes(req, res, limit, offset);
+    }
+
+    const snapshot = projection!.getSnapshot();
+    const allNodes = snapshot.payload.nodes;
+
+    const params: FilterParams = {
+      state: req.query.state as string | undefined,
+      type: req.query.type as string | undefined,
       capability: req.query.capability as string | undefined,
-      namespace: req.query.namespace as string | undefined,
       search: req.query.search as string | undefined,
-      limit,
-      offset,
     };
 
-    const allNodes = mockDataStore.getNodes();
-    const { nodes: filteredNodes, total } = filterNodes(allNodes, params);
+    const filteredNodes = filterProjectionNodes(allNodes, params);
+    const paginatedNodes = filteredNodes.slice(offset, offset + limit);
 
-    const response: RegistryNodesResponse = {
+    const response = {
       timestamp: new Date().toISOString(),
-      nodes: filteredNodes,
+      nodes: paginatedNodes.map(adaptNodeState),
       pagination: {
         total: allNodes.length,
-        filtered: total,
+        filtered: filteredNodes.length,
         limit,
         offset,
       },
+      source: 'projection',
     };
 
     res.json(response);
@@ -218,16 +323,21 @@ router.get('/nodes', (req: Request, res: Response) => {
 /**
  * GET /api/registry/nodes/:id
  *
- * Single node detail with associated instances.
+ * Single node detail.
  */
 router.get('/nodes/:id', (req: Request, res: Response) => {
   try {
     setNoCacheHeaders(res);
 
     const { id } = req.params;
+    const projection = getProjection();
 
-    const allNodes = mockDataStore.getNodes();
-    const node = allNodes.find((n) => n.node_id === id || n.name === id);
+    if (shouldUseMockData(projection)) {
+      return serveMockNodeDetail(req, res, id);
+    }
+
+    const snapshot = projection!.getSnapshot();
+    const node = snapshot.payload.nodes.find((n) => n.nodeId === id);
 
     if (!node) {
       return res
@@ -235,59 +345,17 @@ router.get('/nodes/:id', (req: Request, res: Response) => {
         .json(createErrorResponse('not_found', `Node with ID '${id}' not found`));
     }
 
-    const allInstances = mockDataStore.getInstances();
-    const nodeInstances = allInstances.filter((i) => i.node_id === node.node_id);
-
-    const response: RegistryNodeDetailResponse = {
+    const response = {
       timestamp: new Date().toISOString(),
-      node,
-      instances: nodeInstances,
+      node: adaptNodeState(node),
+      instances: [], // Instances not tracked in projection
+      source: 'projection',
     };
 
     res.json(response);
   } catch (error) {
     console.error('[registry-routes] Error in /nodes/:id:', error);
     res.status(500).json(createErrorResponse('internal_error', 'Failed to fetch node details'));
-  }
-});
-
-/**
- * GET /api/registry/instances
- *
- * Live Consul service instances with filtering.
- */
-router.get('/instances', (req: Request, res: Response) => {
-  try {
-    setNoCacheHeaders(res);
-
-    const { limit, offset } = parsePaginationParams(req);
-
-    const params: RegistryInstanceQueryParams = {
-      node_id: req.query.node_id as string | undefined,
-      service_name: req.query.service_name as string | undefined,
-      health_status: req.query.health_status as HealthStatus | undefined,
-      limit,
-      offset,
-    };
-
-    const allInstances = mockDataStore.getInstances();
-    const { instances: filteredInstances, total } = filterInstances(allInstances, params);
-
-    const response: RegistryInstancesResponse = {
-      timestamp: new Date().toISOString(),
-      instances: filteredInstances,
-      pagination: {
-        total: allInstances.length,
-        filtered: total,
-        limit,
-        offset,
-      },
-    };
-
-    res.json(response);
-  } catch (error) {
-    console.error('[registry-routes] Error in /instances:', error);
-    res.status(500).json(createErrorResponse('internal_error', 'Failed to fetch instances'));
   }
 });
 
@@ -303,7 +371,7 @@ router.get('/widgets/mapping', (_req: Request, res: Response) => {
 
     const mappings = getWidgetMappings();
 
-    const response: RegistryWidgetMappingResponse = {
+    const response = {
       timestamp: new Date().toISOString(),
       mappings,
       version: '1.0.0',
@@ -319,28 +387,28 @@ router.get('/widgets/mapping', (_req: Request, res: Response) => {
 /**
  * GET /api/registry/health
  *
- * Service health check for upstream dependencies.
- * In mock mode, simulates healthy services.
+ * Service health check. Reports projection health when available.
  */
 router.get('/health', (_req: Request, res: Response) => {
   try {
     setNoCacheHeaders(res);
 
-    // In mock mode, simulate healthy services with realistic latencies
-    const postgresLatency = 5 + Math.floor(Math.random() * 10);
-    const consulLatency = 3 + Math.floor(Math.random() * 8);
+    const projection = getProjection();
+    const hasProjectionData = projection
+      ? projection.getSnapshot().payload.nodes.length > 0
+      : false;
 
-    const response: RegistryHealthResponse = {
+    const response = {
       timestamp: new Date().toISOString(),
-      status: 'healthy',
+      status: 'healthy' as const,
       services: {
-        postgres: 'healthy',
-        consul: 'healthy',
+        projection: hasProjectionData ? ('healthy' as const) : ('degraded' as const),
       },
-      latency_ms: {
-        postgres: postgresLatency,
-        consul: consulLatency,
-      },
+      source: hasProjectionData
+        ? 'projection'
+        : process.env.DEMO_MODE === 'true'
+          ? 'mock'
+          : 'empty',
     };
 
     res.json(response);
@@ -349,5 +417,129 @@ router.get('/health', (_req: Request, res: Response) => {
     res.status(500).json(createErrorResponse('internal_error', 'Health check failed'));
   }
 });
+
+// ============================================================================
+// DEMO_MODE mock fallback handlers
+// ============================================================================
+
+function serveMockDiscovery(req: Request, res: Response, limit: number, offset: number): void {
+  const allNodes = mockDataStore.getNodes();
+  const allInstances = mockDataStore.getInstances();
+
+  const params = {
+    state: req.query.state as RegistryNodeView['state'] | undefined,
+    type: req.query.type as NodeType | undefined,
+    capability: req.query.capability as string | undefined,
+    namespace: req.query.namespace as string | undefined,
+    search: req.query.search as string | undefined,
+    limit,
+    offset,
+  };
+
+  const { nodes: filteredNodes, total } = filterNodes(allNodes, params);
+  const nodeIds = new Set(filteredNodes.map((n) => n.node_id));
+  const filteredInstances = allInstances.filter((i) => nodeIds.has(i.node_id));
+
+  const byType: Record<string, number> = {
+    EFFECT: 0,
+    COMPUTE: 0,
+    REDUCER: 0,
+    ORCHESTRATOR: 0,
+    SERVICE: 0,
+  };
+  const byHealth: Record<string, number> = {
+    passing: 0,
+    warning: 0,
+    critical: 0,
+    unknown: 0,
+  };
+  let activeNodes = 0,
+    pendingNodes = 0,
+    failedNodes = 0;
+
+  for (const node of filteredNodes) {
+    byType[node.node_type] = (byType[node.node_type] ?? 0) + 1;
+    if (node.state === 'ACTIVE') activeNodes++;
+    else if (['PENDING_REGISTRATION', 'ACCEPTED', 'AWAITING_ACK'].includes(node.state))
+      pendingNodes++;
+    else if (['ACK_TIMED_OUT', 'LIVENESS_EXPIRED', 'REJECTED'].includes(node.state)) failedNodes++;
+  }
+  for (const instance of filteredInstances) {
+    byHealth[instance.health_status] = (byHealth[instance.health_status] ?? 0) + 1;
+  }
+
+  const summary = {
+    total_nodes: filteredNodes.length,
+    active_nodes: activeNodes,
+    pending_nodes: pendingNodes,
+    failed_nodes: failedNodes,
+    unhealthy_instances: (byHealth.critical ?? 0) + (byHealth.warning ?? 0),
+    by_type: byType,
+    by_health: byHealth,
+  };
+
+  res.json({
+    timestamp: new Date().toISOString(),
+    warnings: [],
+    summary,
+    nodes: filteredNodes,
+    live_instances: filteredInstances,
+    pagination: {
+      total: allNodes.length,
+      filtered: total,
+      limit,
+      offset,
+    },
+    source: 'mock',
+  });
+}
+
+function serveMockNodes(req: Request, res: Response, limit: number, offset: number): void {
+  const allNodes = mockDataStore.getNodes();
+
+  const params = {
+    state: req.query.state as RegistryNodeView['state'] | undefined,
+    type: req.query.type as NodeType | undefined,
+    capability: req.query.capability as string | undefined,
+    namespace: req.query.namespace as string | undefined,
+    search: req.query.search as string | undefined,
+    limit,
+    offset,
+  };
+
+  const { nodes: filteredNodes, total } = filterNodes(allNodes, params);
+
+  res.json({
+    timestamp: new Date().toISOString(),
+    nodes: filteredNodes,
+    pagination: {
+      total: allNodes.length,
+      filtered: total,
+      limit,
+      offset,
+    },
+    source: 'mock',
+  });
+}
+
+function serveMockNodeDetail(_req: Request, res: Response, id: string): void {
+  const allNodes = mockDataStore.getNodes();
+  const node = allNodes.find((n) => n.node_id === id || n.name === id);
+
+  if (!node) {
+    res.status(404).json(createErrorResponse('not_found', `Node with ID '${id}' not found`));
+    return;
+  }
+
+  const allInstances = mockDataStore.getInstances();
+  const nodeInstances = allInstances.filter((i) => i.node_id === node.node_id);
+
+  res.json({
+    timestamp: new Date().toISOString(),
+    node,
+    instances: nodeInstances,
+    source: 'mock',
+  });
+}
 
 export default router;

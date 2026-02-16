@@ -11,7 +11,7 @@ import type { DashboardConfig, DashboardData } from '@/lib/dashboard-schema';
 import { DashboardTheme } from '@/lib/dashboard-schema';
 
 // Event Schemas (from omnibase_infra)
-export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
+export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR' | 'SERVICE';
 
 export type RegistrationState =
   | 'pending_registration'
