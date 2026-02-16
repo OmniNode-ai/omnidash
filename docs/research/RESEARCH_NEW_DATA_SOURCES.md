@@ -18,7 +18,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 
 | Service                     | Status     | Endpoint              | Notes                                    |
 | --------------------------- | ---------- | --------------------- | ---------------------------------------- |
-| **Omniarchon Intelligence** | ✅ Healthy | http://localhost:8053 | Memgraph, Ollama, freshness DB connected |
+| **OmniIntelligence Intelligence** | ✅ Healthy | http://localhost:8053 | Memgraph, Ollama, freshness DB connected |
 | **PostgreSQL Database**     | ✅ Healthy | 192.168.86.200:5436   | 39 tables, 209 routing decisions/24h     |
 | **Kafka/Redpanda**          | ✅ Active  | 192.168.86.200:29092   | 4 topics producing events                |
 | **Omnidash API**            | ✅ Working | http://localhost:3000 | Serving real data from Kafka + DB        |
@@ -96,7 +96,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 
 **Integration Effort**: Easy (1-2h) once data exists
 
-- Omniarchon has `/api/freshness/summary` endpoint (404 currently)
+- OmniIntelligence has `/api/freshness/summary` endpoint (404 currently)
 - Wait for freshness service to populate data
 - Add "Documentation Freshness" widget to Platform Health
 
@@ -349,7 +349,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 
 3. **Intelligence Operations Dashboard** ⚠️ Partial
    - Data: `agent_manifest_injections` (manifest snapshot tracking)
-   - Missing: Real-time quality impact data (Omniarchon returns "insufficient_data")
+   - Missing: Real-time quality impact data (OmniIntelligence returns "insufficient_data")
 
 4. **Event Flow Dashboard** ✅
    - Data: Kafka consumer metrics from event-consumer.ts
@@ -392,7 +392,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 
 ---
 
-## Omniarchon Intelligence Service APIs
+## OmniIntelligence Intelligence Service APIs
 
 ### Available Endpoints
 
@@ -440,7 +440,7 @@ This research investigation discovered **39 PostgreSQL tables** (up from ~10 pre
 - `/api/freshness/summary` - 404 (freshness service not exposed)
 - `/api/intelligence/patterns/list` - 404 (may be under different path)
 
-**Recommendation**: Need to review Omniarchon OpenAPI docs to discover full API surface
+**Recommendation**: Need to review OmniIntelligence OpenAPI docs to discover full API surface
 
 ---
 
@@ -692,7 +692,7 @@ Top 15 tables by disk usage:
 
 ## Missing Capabilities (Not Available)
 
-1. **Real-Time Quality Snapshots** - Omniarchon has no data
+1. **Real-Time Quality Snapshots** - OmniIntelligence has no data
    - `/api/quality-trends` endpoint works but returns "insufficient_data"
    - Need quality assessment service to populate snapshots
 
@@ -719,7 +719,7 @@ Top 15 tables by disk usage:
    - Run freshness service for `document_freshness`
    - Run PR mining for `pattern_pr_intelligence`
 
-2. **Document Omniarchon API**
+2. **Document OmniIntelligence API**
    - Generate OpenAPI spec or endpoint listing
    - Currently testing endpoints blindly
    - Would enable faster integration
@@ -763,5 +763,5 @@ The intelligence infrastructure has **significantly matured** since the last aud
 
 1. Implement Phase 1 quick wins (12h) to maximize immediate dashboard value
 2. Start services to populate missing data (freshness, quality, PR intelligence)
-3. Document Omniarchon API for easier future integration
+3. Document OmniIntelligence API for easier future integration
 4. Add real-time monitoring to detect when new data sources become available

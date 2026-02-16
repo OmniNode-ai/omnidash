@@ -89,7 +89,7 @@ export class AgentOperationsMockData {
   static generateHealth(): HealthStatus {
     const services = [
       { name: 'PostgreSQL', status: 'up', latency: Gen.randomInt(5, 25) },
-      { name: 'OmniArchon', status: 'up', latency: Gen.randomInt(10, 50) },
+      { name: 'OmniIntelligence', status: 'up', latency: Gen.randomInt(10, 50) },
       { name: 'Qdrant', status: 'up', latency: Gen.randomInt(15, 45) },
       { name: 'Kafka', status: 'up', latency: Gen.randomInt(8, 30) },
       { name: 'Redis', status: 'up', latency: Gen.randomInt(3, 15) },

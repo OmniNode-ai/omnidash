@@ -171,10 +171,10 @@ All endpoints include comprehensive error handling:
 
 ```bash
 # IMPORTANT: Replace <your_password> with actual password from .env file
-DATABASE_URL="postgresql://postgres:<your_password>@192.168.86.200:5436/omninode_bridge"
+DATABASE_URL="postgresql://postgres:<your_password>@192.168.86.200:5436/omnidash_analytics"
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
-POSTGRES_DATABASE=omninode_bridge
+POSTGRES_DATABASE=omnidash_analytics
 POSTGRES_PASSWORD=<your_password>
 ```
 

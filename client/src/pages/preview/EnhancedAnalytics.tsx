@@ -562,8 +562,8 @@ export function EnhancedAnalytics({ timeRange = '24h' }: EnhancedAnalyticsProps)
       ],
     },
     {
-      id: 'omniarchon',
-      name: 'omniarchon',
+      id: 'omniintelligence',
+      name: 'omniintelligence',
       securityScore: 88,
       coverage: 78,
       qualityScore: 82,

@@ -18,7 +18,7 @@
 
 - ✅ **Strong Foundation**: Core agent operations, pattern learning, and intelligence monitoring have full real-time data
 - ⚠️ **Partial Gaps**: Code intelligence quality gates and developer metrics need completion
-- ❌ **Missing**: Chat interface needs omniarchon chat history endpoint implementation
+- ❌ **Missing**: Chat interface needs omniintelligence chat history endpoint implementation
 
 ---
 
@@ -893,7 +893,7 @@ EXECUTE FUNCTION increment_pattern_usage();
 
 **Optional Enhancements**:
 
-- Chat LLM integration (if routing chat through omninode-bridge instead of omniarchon)
+- Chat LLM integration (if routing chat through omninode-bridge instead of omniintelligence)
 
 ---
 

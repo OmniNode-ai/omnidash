@@ -392,6 +392,9 @@ export const queryKeys = {
 
     /** Per-repo trends */
     trends: (repo: string) => [...queryKeys.validation.all, 'trends', repo] as const,
+
+    /** Lifecycle summary (OMN-2152) */
+    lifecycle: () => [...queryKeys.validation.all, 'lifecycle'] as const,
   },
   // ============================================================================
   // Extraction Pipeline (OMN-1804)

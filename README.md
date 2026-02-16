@@ -35,11 +35,11 @@ Copy `.env.example` to `.env` and configure the following:
 # Server
 PORT=3000
 
-# PostgreSQL Intelligence Database
-DATABASE_URL="postgresql://user:password@192.168.86.200:5436/omninode_bridge"
+# PostgreSQL Read-Model Database
+DATABASE_URL="postgresql://user:password@192.168.86.200:5436/omnidash_analytics"
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
-POSTGRES_DATABASE=omninode_bridge
+POSTGRES_DATABASE=omnidash_analytics
 
 # Kafka Event Streaming
 KAFKA_BROKERS=192.168.86.200:29092

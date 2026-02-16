@@ -63,7 +63,7 @@ OmniClaude is a **comprehensive toolkit for enhancing Claude Code** with:
 │  ┌────────────────────────────────────────────────────┐    │
 │  │  PostgreSQL Database                               │    │
 │  │  - Host: 192.168.86.200:5436                      │    │
-│  │  - Database: omninode_bridge                       │    │
+│  │  - Database: omnidash_analytics                       │    │
 │  │  - 34+ tables with complete traceability          │    │
 │  └────────────────────────────────────────────────────┘    │
 │                        │                                     │
@@ -579,7 +579,7 @@ Update `.env`:
 
 ```bash
 # Intelligence Database (same as omnidash already has)
-DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge"
+DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omnidash_analytics"
 ```
 
 2. **Create Drizzle schema for intelligence tables**
@@ -1325,10 +1325,10 @@ export function AgentOperations() {
 
 ```bash
 # In omnidash/.env
-DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge"
+DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omnidash_analytics"
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
-POSTGRES_DATABASE=omninode_bridge
+POSTGRES_DATABASE=omnidash_analytics
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=<from omniclaude/.env>
 ```
@@ -1336,7 +1336,7 @@ POSTGRES_PASSWORD=<from omniclaude/.env>
 2. **Test connection**
 
 ```bash
-psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "SELECT COUNT(*) FROM agent_routing_decisions;"
+psql -h 192.168.86.200 -p 5436 -U postgres -d omnidash_analytics -c "SELECT COUNT(*) FROM agent_routing_decisions;"
 ```
 
 ### Step 2: Add Intelligence Schema (20 minutes)

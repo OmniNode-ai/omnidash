@@ -39,7 +39,7 @@ Successfully implemented a comprehensive critical alerts system for production o
 
 **CRITICAL Alerts (Red)**:
 
-- ❌ Omniarchon intelligence service unreachable
+- ❌ OmniIntelligence intelligence service unreachable
 - ❌ Database connection failed
 - ❌ Error rate > 10% (last 10 minutes)
 - ❌ Manifest injection success rate < 90% (last hour)
@@ -179,7 +179,7 @@ Database Tables → Alert Helpers → Alert Route → AlertBanner Component
 
 - Port 3000 required (configured in .env)
 - Database connection required to PostgreSQL at 192.168.86.200:5436
-- Omniarchon intelligence service expected at localhost:8053
+- OmniIntelligence intelligence service expected at localhost:8053
 - No additional dependencies required (uses existing stack)
 
 ---

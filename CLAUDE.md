@@ -179,7 +179,7 @@ Three-directory monorepo with TypeScript path aliases:
   - `shared/schema.ts` - User authentication tables
   - `shared/intelligence-schema.ts` - 30+ intelligence tracking tables
 - **Type Safety**: Zod schemas auto-generated from Drizzle via `drizzle-zod`
-- **Connection**: Two databases - app DB and read-model DB (`omnidash_analytics`, populated by Kafka consumer projections from the upstream `omninode_bridge` event bus)
+- **Connection**: Two databases - app DB and read-model DB (`omnidash_analytics`, populated by Kafka consumer projections from upstream services)
 
 **Request Logging**: Custom middleware logs API requests (`/api` paths only) with duration and truncated JSON responses (80 char limit). WebSocket connections logged separately.
 
@@ -305,7 +305,7 @@ ws.onmessage = (event) => {
 
 **Omnidash Read-Model Database** (`omnidash_analytics`):
 
-- **Database**: `omnidash_analytics` (omnidash's own read-model, NOT the upstream `omninode_bridge`)
+- **Database**: `omnidash_analytics` (omnidash's own read-model database)
 - Populated by `server/read-model-consumer.ts` which projects Kafka events into local tables
 - **Key projected tables**:
   - `agent_routing_decisions` - Agent selection with confidence scoring

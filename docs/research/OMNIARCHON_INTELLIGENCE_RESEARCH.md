@@ -1,15 +1,15 @@
-# OmniArchon Intelligence Research Report
+# OmniIntelligence Intelligence Research Report
 
-**Purpose**: Integration guide for replacing mock data in omnidash with real intelligence from omniarchon
+**Purpose**: Integration guide for replacing mock data in omnidash with real intelligence from omniintelligence
 **Date**: 2025-11-03
 **Target Dashboard**: omnidash (this repository)
-**Intelligence Source**: omniarchon (`/Volumes/PRO-G40/Code/omniarchon`)
+**Intelligence Source**: omniintelligence (`/Volumes/PRO-G40/Code/omniintelligence`)
 
 ---
 
 ## Executive Summary
 
-OmniArchon is a **comprehensive intelligence platform** providing 78+ APIs across 11 categories for code quality analysis, pattern learning, performance optimization, and RAG intelligence. It can fully replace mock data in omnidash with real-time intelligence data.
+OmniIntelligence is a **comprehensive intelligence platform** providing 78+ APIs across 11 categories for code quality analysis, pattern learning, performance optimization, and RAG intelligence. It can fully replace mock data in omnidash with real-time intelligence data.
 
 ### Key Findings
 
@@ -24,9 +24,9 @@ OmniArchon is a **comprehensive intelligence platform** providing 78+ APIs acros
 
 ## 1. Architecture Overview
 
-### What is OmniArchon?
+### What is OmniIntelligence?
 
-OmniArchon is an **intelligence platform for AI-driven development** providing:
+OmniIntelligence is an **intelligence platform for AI-driven development** providing:
 
 - **Code Quality Analysis**: ONEX compliance scoring across 6 dimensions
 - **Pattern Learning**: 25,249+ patterns indexed with hybrid matching (fuzzy + semantic)
@@ -386,11 +386,11 @@ export function useAgentSummary() {
 # PostgreSQL Intelligence Database
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
-POSTGRES_DATABASE=omninode_bridge
+POSTGRES_DATABASE=omnidash_analytics
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=<from-omniarchon-.env>
+POSTGRES_PASSWORD=<from-omniintelligence-.env>
 
-DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@192.168.86.200:5436/omninode_bridge"
+DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@192.168.86.200:5436/omnidash_analytics"
 ```
 
 **Implementation**:
@@ -798,12 +798,12 @@ archon_menu({ operation: 'discover' });
 2. **Add Database Configuration** to omnidash `.env`:
 
    ```bash
-   # Intelligence Database (copy from omniarchon/.env)
+   # Intelligence Database (copy from omniintelligence/.env)
    POSTGRES_HOST=192.168.86.200
    POSTGRES_PORT=5436
-   POSTGRES_DATABASE=omninode_bridge
+   POSTGRES_DATABASE=omnidash_analytics
    POSTGRES_USER=postgres
-   POSTGRES_PASSWORD=<from-omniarchon>
+   POSTGRES_PASSWORD=<from-omniintelligence>
 
    # Intelligence Services
    INTELLIGENCE_SERVICE_URL=http://localhost:8053
@@ -815,7 +815,7 @@ archon_menu({ operation: 'discover' });
 
    ```bash
    # Create server/intelligence-routes.ts
-   # Add proxy routes to omniarchon services
+   # Add proxy routes to omniintelligence services
    # Test with curl or Postman
    ```
 
@@ -844,12 +844,12 @@ archon_menu({ operation: 'discover' });
 
 ## 11. Reference Documentation
 
-**OmniArchon Documentation**:
+**OmniIntelligence Documentation**:
 
-- Main README: `/Volumes/PRO-G40/Code/omniarchon/README.md`
-- CLAUDE.md: `/Volumes/PRO-G40/Code/omniarchon/CLAUDE.md`
-- Intelligence Service: `/Volumes/PRO-G40/Code/omniarchon/services/intelligence/README.md`
-- Database Schema: `/Volumes/PRO-G40/Code/omniarchon/services/intelligence/database/schema/README.md`
+- Main README: `/Volumes/PRO-G40/Code/omniintelligence/README.md`
+- CLAUDE.md: `/Volumes/PRO-G40/Code/omniintelligence/CLAUDE.md`
+- Intelligence Service: `/Volumes/PRO-G40/Code/omniintelligence/services/intelligence/README.md`
+- Database Schema: `/Volumes/PRO-G40/Code/omniintelligence/services/intelligence/database/schema/README.md`
 
 **API Documentation**:
 
@@ -860,11 +860,11 @@ archon_menu({ operation: 'discover' });
 **Infrastructure**:
 
 - Shared config: `~/.claude/CLAUDE.md`
-- PostgreSQL: `192.168.86.200:5436` (omninode_bridge database)
+- PostgreSQL: `192.168.86.200:5436` (omnidash_analytics database)
 - Redpanda: `192.168.86.200:29092` (Kafka-compatible)
 - Qdrant: `localhost:6333` (vector database)
 - Memgraph: `localhost:7687` (knowledge graph)
 
 ---
 
-**Report Complete**: OmniArchon provides comprehensive intelligence suitable for replacing all mock data in omnidash. Prioritize Agent Operations and Pattern Learning dashboards for initial integration.
+**Report Complete**: OmniIntelligence provides comprehensive intelligence suitable for replacing all mock data in omnidash. Prioritize Agent Operations and Pattern Learning dashboards for initial integration.

@@ -74,7 +74,7 @@ export function ChatInterface() {
 
   const handleSend = () => {
     if (!input.trim()) return;
-    // TODO: Implement sending new messages to omniarchon API
+    // TODO: Implement sending new messages to backend API
     // For now, just clear the input as we're displaying read-only history
     setInput('');
   };

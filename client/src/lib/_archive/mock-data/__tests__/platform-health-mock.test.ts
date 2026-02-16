@@ -21,7 +21,7 @@ describe('PlatformHealthMockData', () => {
     vi.spyOn(Math, 'random')
       .mockReturnValueOnce(0.2) // PostgreSQL healthy
       .mockReturnValueOnce(0.3) // Kafka healthy
-      .mockReturnValueOnce(0.3) // Omniarchon healthy
+      .mockReturnValueOnce(0.3) // OmniIntelligence healthy
       .mockReturnValueOnce(0.2) // Event Consumer healthy
       .mockReturnValueOnce(0.05); // trigger degraded service branch
 

@@ -76,10 +76,10 @@ class CodeIntelligenceDataSource {
     }
 
     try {
-      const omniarchonUrl =
+      const omniintelligenceUrl =
         import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
       const response = await fetch(
-        `${omniarchonUrl}/api/intelligence/code/analysis?timeWindow=${timeRange}`
+        `${omniintelligenceUrl}/api/intelligence/code/analysis?timeWindow=${timeRange}`
       );
       if (response.ok) {
         const rawData = await response.json();
@@ -90,7 +90,7 @@ class CodeIntelligenceDataSource {
         }
       }
     } catch (err) {
-      console.warn('Failed to fetch code analysis from OmniArchon, using mock data', err);
+      console.warn('Failed to fetch code analysis from OmniIntelligence, using mock data', err);
     }
 
     // Static mock data fallback - always returns predictable values for tests

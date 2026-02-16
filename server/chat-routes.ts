@@ -7,7 +7,7 @@ export const chatRouter = Router();
  *
  * Currently returns demo messages for the Chat Dashboard.
  *
- * TODO: Integrate with omniarchon service for real chat functionality
+ * TODO: Integrate with backend API for real chat functionality
  * TODO: Store chat messages in database (new chat_messages table)
  * TODO: Implement WebSocket for real-time chat updates
  */
@@ -97,7 +97,7 @@ chatRouter.post('/send', async (req, res) => {
       });
     }
 
-    // TODO: Implement message sending to omniarchon
+    // TODO: Implement message sending to chat service
     // TODO: Store message in database
     // TODO: Get AI response
     // TODO: Store AI response in database
@@ -105,7 +105,7 @@ chatRouter.post('/send', async (req, res) => {
     res.status(501).json({
       error: 'Not implemented',
       message:
-        'Message sending functionality is not yet implemented. Integration with omniarchon service pending.',
+        'Message sending functionality is not yet implemented. Integration with LLM backend pending.',
     });
   } catch (error) {
     console.error('Error sending message:', error);

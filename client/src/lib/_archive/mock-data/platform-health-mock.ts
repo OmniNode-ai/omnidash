@@ -26,7 +26,7 @@ export class PlatformHealthMockData {
 
     const postgresHealth = generateStatusAndLatency(5, 30);
     const kafkaHealth = generateStatusAndLatency(15, 60);
-    const omniarchonHealth = generateStatusAndLatency(20, 80);
+    const omniintelligenceHealth = generateStatusAndLatency(20, 80);
 
     // Generate service health checks matching ServiceHealthCheck interface
     const services: PlatformHealth['services'] = [
@@ -49,9 +49,9 @@ export class PlatformHealthMockData {
         },
       },
       {
-        service: 'Omniarchon',
-        status: omniarchonHealth.status,
-        latencyMs: omniarchonHealth.latencyMs,
+        service: 'OmniIntelligence',
+        status: omniintelligenceHealth.status,
+        latencyMs: omniintelligenceHealth.latencyMs,
         details: {
           url: 'http://localhost:8053',
           statusCode: 200,

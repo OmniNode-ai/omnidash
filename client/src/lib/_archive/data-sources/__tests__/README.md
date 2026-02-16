@@ -19,7 +19,7 @@ This directory contains comprehensive unit tests for all data source modules.
    - `fetchSavingsMetrics` - Savings calculations
 
 3. **code-intelligence-source.test.ts** - Tests for code intelligence data
-   - `fetchCodeAnalysis` - Code analysis from OmniArchon
+   - `fetchCodeAnalysis` - Code analysis from OmniIntelligence
    - `fetchCompliance` - ONEX compliance data
    - `fetchPatternSummary` - Pattern discovery summaries
    - `fetchAll` - Combined code intelligence data

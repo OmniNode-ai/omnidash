@@ -126,7 +126,7 @@ describe('AgentOperationsSource', () => {
         status: 'healthy',
         services: [
           { name: 'PostgreSQL', status: 'up' },
-          { name: 'OmniArchon', status: 'up' },
+          { name: 'OmniIntelligence', status: 'up' },
           { name: 'Qdrant', status: 'up' },
         ],
       };

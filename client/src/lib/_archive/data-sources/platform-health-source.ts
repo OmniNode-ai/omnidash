@@ -12,7 +12,7 @@ export interface PlatformHealth {
   timestamp: string;
   overallStatus: 'healthy' | 'unhealthy' | 'error';
   services: Array<{
-    service: string; // Service name (e.g., "PostgreSQL", "Kafka/Redpanda", "Omniarchon")
+    service: string; // Service name (e.g., "PostgreSQL", "Kafka/Redpanda", "OmniIntelligence")
     status: 'up' | 'down' | 'warning';
     latencyMs?: number;
     error?: string;

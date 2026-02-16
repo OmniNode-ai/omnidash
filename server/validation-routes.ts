@@ -9,7 +9,7 @@
  */
 
 import { Router } from 'express';
-import { eq, and, desc, sql, gte } from 'drizzle-orm';
+import { eq, ne, and, desc, sql, gte, inArray } from 'drizzle-orm';
 import { tryGetIntelligenceDb } from './storage';
 import { validationRuns, validationViolations } from '@shared/intelligence-schema';
 import type {
@@ -23,6 +23,74 @@ import type {
 } from '@shared/validation-types';
 
 const router = Router();
+
+// ============================================================================
+// Explicit column selections (exclude projected_at which may not exist yet)
+// ============================================================================
+
+/**
+ * Select only the columns guaranteed to exist in the database.
+ * The `projected_at` column was added to the Drizzle schema but may not
+ * have been migrated yet, so using `.select()` (which selects all schema
+ * columns) would cause a "column does not exist" error at the database level.
+ */
+const validationRunColumns = {
+  runId: validationRuns.runId,
+  repos: validationRuns.repos,
+  validators: validationRuns.validators,
+  triggeredBy: validationRuns.triggeredBy,
+  status: validationRuns.status,
+  startedAt: validationRuns.startedAt,
+  completedAt: validationRuns.completedAt,
+  durationMs: validationRuns.durationMs,
+  totalViolations: validationRuns.totalViolations,
+  violationsBySeverity: validationRuns.violationsBySeverity,
+  createdAt: validationRuns.createdAt,
+} as const;
+
+const validationViolationColumns = {
+  id: validationViolations.id,
+  runId: validationViolations.runId,
+  batchIndex: validationViolations.batchIndex,
+  ruleId: validationViolations.ruleId,
+  severity: validationViolations.severity,
+  message: validationViolations.message,
+  repo: validationViolations.repo,
+  filePath: validationViolations.filePath,
+  line: validationViolations.line,
+  validator: validationViolations.validator,
+  createdAt: validationViolations.createdAt,
+} as const;
+
+/** Row shape returned by selecting validationRunColumns */
+type ValidationRunRow = {
+  runId: string;
+  repos: string[];
+  validators: string[];
+  triggeredBy: string | null;
+  status: string;
+  startedAt: Date;
+  completedAt: Date | null;
+  durationMs: number | null;
+  totalViolations: number;
+  violationsBySeverity: Record<string, number>;
+  createdAt: Date | null;
+};
+
+/** Row shape returned by selecting validationViolationColumns */
+type ValidationViolationRow = {
+  id: number;
+  runId: string;
+  batchIndex: number;
+  ruleId: string;
+  severity: string;
+  message: string;
+  repo: string;
+  filePath: string | null;
+  line: number | null;
+  validator: string;
+  createdAt: Date | null;
+};
 
 // ============================================================================
 // Event Handlers (called by event-consumer.ts)
@@ -212,10 +280,7 @@ export async function handleValidationRunCompleted(
 // Helper: reconstruct a ValidationRun from DB rows
 // ============================================================================
 
-function toValidationRun(
-  row: typeof validationRuns.$inferSelect,
-  violations: Violation[] = []
-): ValidationRun {
+function toValidationRun(row: ValidationRunRow, violations: Violation[] = []): ValidationRun {
   return {
     run_id: row.runId,
     repos: row.repos as string[],
@@ -231,7 +296,7 @@ function toValidationRun(
   };
 }
 
-function toViolation(row: typeof validationViolations.$inferSelect): Violation {
+function toViolation(row: ValidationViolationRow): Violation {
   return {
     rule_id: row.ruleId,
     severity: row.severity as Violation['severity'],
@@ -287,7 +352,7 @@ router.get('/runs', async (req, res) => {
     }
     if (repo) {
       // Filter runs whose repos jsonb array contains the given repo
-      conditions.push(sql`${validationRuns.repos} @> ${JSON.stringify([repo])}::jsonb`);
+      conditions.push(sql`${validationRuns.repos} @> ${sql.param(JSON.stringify([repo]))}::jsonb`);
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -299,9 +364,9 @@ router.get('/runs', async (req, res) => {
       .where(whereClause);
     const total = countResult[0]?.count ?? 0;
 
-    // Get paginated runs
+    // Get paginated runs (explicit columns to avoid missing projected_at column)
     const rows = await db
-      .select()
+      .select(validationRunColumns)
       .from(validationRuns)
       .where(whereClause)
       .orderBy(desc(validationRuns.startedAt))
@@ -309,7 +374,7 @@ router.get('/runs', async (req, res) => {
       .offset(offset);
 
     // Strip full violations from list view for performance; return violation_count instead
-    const summary = rows.map((row) => {
+    const summary = rows.map((row: ValidationRunRow) => {
       const run = toValidationRun(row);
       const { violations, ...rest } = run;
       return { ...rest, violation_count: run.total_violations };
@@ -340,7 +405,7 @@ router.get('/runs/:runId', async (req, res) => {
     }
 
     const rows = await db
-      .select()
+      .select(validationRunColumns)
       .from(validationRuns)
       .where(eq(validationRuns.runId, req.params.runId))
       .limit(1);
@@ -354,14 +419,14 @@ router.get('/runs/:runId', async (req, res) => {
 
     // Fetch violations with server-side limit to avoid unbounded memory usage
     const violationRows = await db
-      .select()
+      .select(validationViolationColumns)
       .from(validationViolations)
       .where(eq(validationViolations.runId, req.params.runId))
       .orderBy(validationViolations.batchIndex, validationViolations.id)
       .limit(vlimit);
 
-    const violations = violationRows.map(toViolation);
-    const run = toValidationRun(rows[0], violations);
+    const violations = violationRows.map((r: ValidationViolationRow) => toViolation(r));
+    const run = toValidationRun(rows[0] as ValidationRunRow, violations);
 
     res.json(run);
   } catch (error) {
@@ -395,12 +460,12 @@ router.get('/repos/:repoId/trends', async (req, res) => {
 
     // Find completed runs that include this repo within the time window
     const rows = await db
-      .select()
+      .select(validationRunColumns)
       .from(validationRuns)
       .where(
         and(
-          sql`${validationRuns.repos} @> ${JSON.stringify([repoId])}::jsonb`,
-          sql`${validationRuns.status} != 'running'`,
+          sql`${validationRuns.repos} @> ${sql.param(JSON.stringify([repoId]))}::jsonb`,
+          ne(validationRuns.status, 'running'),
           gte(validationRuns.startedAt, cutoff)
         )
       )
@@ -420,10 +485,7 @@ router.get('/repos/:repoId/trends', async (req, res) => {
         })
         .from(validationViolations)
         .where(
-          and(
-            sql`${validationViolations.runId} = ANY(${runIds})`,
-            eq(validationViolations.repo, repoId)
-          )
+          and(inArray(validationViolations.runId, runIds), eq(validationViolations.repo, repoId))
         )
         .groupBy(validationViolations.runId, validationViolations.severity);
 
@@ -533,7 +595,7 @@ router.get('/summary', async (_req, res) => {
       })
       .from(validationViolations)
       .innerJoin(validationRuns, eq(validationViolations.runId, validationRuns.runId))
-      .where(sql`${validationRuns.status} != 'running'`)
+      .where(ne(validationRuns.status, 'running'))
       .groupBy(validationViolations.severity);
 
     const totalBySeverity: Record<string, number> = {};

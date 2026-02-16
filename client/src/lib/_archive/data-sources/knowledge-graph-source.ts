@@ -34,10 +34,10 @@ class KnowledgeGraphSource {
     }
 
     try {
-      const omniarchonUrl =
+      const omniintelligenceUrl =
         import.meta.env.VITE_INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
       const response = await fetch(
-        `${omniarchonUrl}/api/intelligence/knowledge/graph?limit=${limit}&timeWindow=${timeRange}`
+        `${omniintelligenceUrl}/api/intelligence/knowledge/graph?limit=${limit}&timeWindow=${timeRange}`
       );
       if (response.ok) {
         const rawData = await response.json();

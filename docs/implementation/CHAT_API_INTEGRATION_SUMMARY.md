@@ -25,7 +25,7 @@ Implemented a complete API-based chat history system with proper error handling 
 - `POST /api/chat/send` - Placeholder for future message sending (returns 501 Not Implemented)
 - Proper TypeScript types for messages and responses
 - Error handling with descriptive error messages
-- TODO comments for future omniarchon integration
+- TODO comments for future omniintelligence integration
 
 **Demo Messages**:
 The endpoint returns 6 demo messages (3 Q&A pairs) showcasing AI assistant capabilities:
@@ -53,8 +53,8 @@ The endpoint returns 6 demo messages (3 Q&A pairs) showcasing AI assistant capab
 - **Removed**: Lines 38-86 (hardcoded mock data in queryFn)
 - **Added**: Real API fetch call to `http://localhost:3000/api/chat/history`
 - **Updated**: Refetch interval from 60000ms (1 minute) to 30000ms (30 seconds)
-- **Improved**: Error message from "Could not connect to omniarchon service at http://localhost:8053" to "Could not connect to chat API"
-- **Improved**: Loading message from "Fetching conversations from omniarchon..." to "Fetching conversations..."
+- **Improved**: Error message from "Could not connect to omniintelligence service at http://localhost:8053" to "Could not connect to chat API"
+- **Improved**: Loading message from "Fetching conversations from omniintelligence..." to "Fetching conversations..."
 
 **New Implementation** (lines 38-48):
 
@@ -127,8 +127,8 @@ curl http://localhost:3000/api/chat/history
 
 As documented in `server/chat-routes.ts`:
 
-1. **Omniarchon Integration**
-   - Connect to omniarchon service for real chat functionality
+1. **OmniIntelligence Integration**
+   - Connect to omniintelligence service for real chat functionality
    - Implement AI-powered responses based on platform metrics
 
 2. **Database Persistence**
@@ -143,7 +143,7 @@ As documented in `server/chat-routes.ts`:
 
 4. **Message Sending**
    - Complete POST `/api/chat/send` endpoint implementation
-   - Integrate with omniarchon AI query processing
+   - Integrate with omniintelligence AI query processing
    - Return AI-generated responses based on platform data
 
 ## Architecture Notes
@@ -154,11 +154,11 @@ As documented in `server/chat-routes.ts`:
 ChatInterface → API Fetch → Express /api/chat/history → JSON Response → ChatInterface
 ```
 
-### Future Data Flow (with Omniarchon)
+### Future Data Flow (with OmniIntelligence)
 
 ```
 ChatInterface → API POST → Express /api/chat/send
-  → Omniarchon Intelligence Service (port 8053)
+  → OmniIntelligence Intelligence Service (port 8053)
   → AI Query Processing
   → PostgreSQL Storage
   → JSON Response → ChatInterface
@@ -169,7 +169,7 @@ ChatInterface → API POST → Express /api/chat/send
 **Environment Variables** (from `.env`):
 
 - `PORT=3000` - Server port (used in API URLs)
-- `INTELLIGENCE_SERVICE_URL=http://localhost:8053` - Future omniarchon integration
+- `INTELLIGENCE_SERVICE_URL=http://localhost:8053` - Future omniintelligence integration
 
 **Related Components**:
 
@@ -187,11 +187,11 @@ ChatInterface → API POST → Express /api/chat/send
 - [x] Test frontend can fetch from API
 - [x] Verify error handling works correctly
 - [ ] Create database migration for chat_messages table (future)
-- [ ] Implement omniarchon integration (future)
+- [ ] Implement omniintelligence integration (future)
 - [ ] Add WebSocket support (future)
 
 ## Summary
 
-The ChatInterface component has been successfully migrated from hardcoded mock data to a real API-based implementation. The current implementation uses demo messages but provides a solid foundation for future integration with the omniarchon intelligence service and PostgreSQL database persistence.
+The ChatInterface component has been successfully migrated from hardcoded mock data to a real API-based implementation. The current implementation uses demo messages but provides a solid foundation for future integration with the omniintelligence intelligence service and PostgreSQL database persistence.
 
 **Impact**: Resolves PR #1 Issue #8 (HIGH priority) - ChatInterface now follows the same pattern as other dashboards by fetching data from API endpoints instead of hardcoded values.

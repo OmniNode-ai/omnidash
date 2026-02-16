@@ -127,7 +127,7 @@ describe('IntelligenceOperations page', () => {
               latencyTrend: [],
               serviceHealth: {
                 postgresql: { status: 'up', latencyMs: 30 },
-                omniarchon: { status: 'up', latencyMs: 45 },
+                omniintelligence: { status: 'up', latencyMs: 45 },
                 qdrant: { status: 'up', latencyMs: 50 },
               },
             }),

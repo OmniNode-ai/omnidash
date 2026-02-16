@@ -20,7 +20,7 @@ describe('PlatformHealthSource', () => {
         overallStatus: 'healthy',
         services: [
           { service: 'PostgreSQL', status: 'up', latencyMs: 15 },
-          { service: 'OmniArchon', status: 'up', latencyMs: 25 },
+          { service: 'OmniIntelligence', status: 'up', latencyMs: 25 },
           { service: 'Qdrant', status: 'up', latencyMs: 10 },
         ],
         summary: {
@@ -52,7 +52,7 @@ describe('PlatformHealthSource', () => {
         overallStatus: 'unhealthy',
         services: [
           { service: 'PostgreSQL', status: 'up' },
-          { service: 'OmniArchon', status: 'down' },
+          { service: 'OmniIntelligence', status: 'down' },
         ],
         summary: {
           total: 2,
@@ -283,7 +283,7 @@ describe('PlatformHealthSource', () => {
         overallStatus: 'healthy',
         services: [
           { service: 'PostgreSQL', status: 'up', latencyMs: 15 },
-          { service: 'OmniArchon', status: 'up', latencyMs: 25 },
+          { service: 'OmniIntelligence', status: 'up', latencyMs: 25 },
         ],
         summary: {
           total: 2,

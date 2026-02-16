@@ -270,7 +270,7 @@
 ```bash
 # Replace <your_password> with actual password from .env file
 PGPASSWORD='<your_password>' \
-  psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge
+  psql -h 192.168.86.200 -p 5436 -U postgres -d omnidash_analytics
 ```
 
 **Service Endpoints**:

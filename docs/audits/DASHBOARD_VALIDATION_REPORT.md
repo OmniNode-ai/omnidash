@@ -292,9 +292,9 @@ newPatternsToday: sql<number>`COUNT(*) FILTER (WHERE created_at >= ...)::int`;
 
 ```typescript
 // Query quality scores from Archon Intelligence
-const omniarchonUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+const omniintelligenceUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
 const qualityResponse = await fetch(
-  `${omniarchonUrl}/api/quality-trends/pattern/${patternId}/score`
+  `${omniintelligenceUrl}/api/quality-trends/pattern/${patternId}/score`
 );
 ```
 
