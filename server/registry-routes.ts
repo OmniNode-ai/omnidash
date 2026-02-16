@@ -59,6 +59,11 @@ function adaptNodeState(node: NodeState): Record<string, unknown> {
       if (!flatCapabilities.includes(c)) flatCapabilities.push(c);
     }
   }
+  if (node.capabilities?.contract) {
+    for (const c of node.capabilities.contract) {
+      if (!flatCapabilities.includes(c)) flatCapabilities.push(c);
+    }
+  }
 
   return {
     node_id: node.nodeId,
@@ -179,6 +184,11 @@ function filterProjectionNodes(nodes: NodeState[], params: FilterParams): NodeSt
     });
   }
 
+  if (params.namespace) {
+    const target = params.namespace.toLowerCase();
+    filtered = filtered.filter((n) => (n.metadata?.cluster ?? '').toLowerCase() === target);
+  }
+
   if (params.search) {
     const searchLower = params.search.toLowerCase();
     filtered = filtered.filter((n) => n.nodeId.toLowerCase().includes(searchLower));
@@ -295,6 +305,7 @@ router.get('/nodes', (req: Request, res: Response) => {
       state: req.query.state as string | undefined,
       type: req.query.type as string | undefined,
       capability: req.query.capability as string | undefined,
+      namespace: req.query.namespace as string | undefined,
       search: req.query.search as string | undefined,
     };
 
