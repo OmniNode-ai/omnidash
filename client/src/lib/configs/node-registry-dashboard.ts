@@ -155,26 +155,8 @@ export const nodeRegistryDashboardConfig: DashboardConfig = {
       },
     },
 
-    // Row 1-3: Status Grid (left) and Pie Chart (right)
-    {
-      widget_id: 'status-grid-nodes',
-      title: 'Node Status Overview',
-      description: 'All registered nodes with their current health status',
-      row: 1,
-      col: 0,
-      width: 7,
-      height: 3,
-      config: {
-        config_kind: 'status_grid',
-        items_key: 'nodeStatuses',
-        id_field: 'node_id',
-        label_field: 'node_id',
-        status_field: 'status',
-        columns: 3,
-        show_labels: true,
-        compact: false,
-      },
-    },
+    // Row 1-3: NodeDetailPanel (rendered directly by NodeRegistry.tsx, col 0-6)
+    //          Pie Chart (right, col 7-11)
     {
       widget_id: 'chart-node-types',
       title: 'Node Distribution by Type',

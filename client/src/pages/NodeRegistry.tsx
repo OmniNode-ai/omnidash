@@ -12,8 +12,9 @@
  * Falls back to mock data when the projection has no nodes.
  */
 
-import { useMemo, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { DashboardRenderer } from '@/lib/widgets';
+import type { OnWidgetRowClick } from '@/lib/widgets/DashboardRenderer';
 import {
   nodeRegistryDashboardConfig,
   generateNodeRegistryMockData,
@@ -26,11 +27,16 @@ import {
   type NodeRegistryPayload,
 } from '@/lib/data-sources/node-registry-projection-source';
 import type { DashboardData } from '@/lib/dashboard-schema';
+import type { NodeState } from '@shared/projection-types';
 import { SUFFIX_NODE_INTROSPECTION } from '@shared/topics';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { NodeDetailPanel } from '@/components/registry/NodeDetailPanel';
+import { RegistrationStateBadge } from '@/components/registry/RegistrationStateBadge';
 import { RefreshCw, Wifi, WifiOff, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import type { WidgetPropsMap } from '@/lib/widgets';
+import { formatRelativeTime } from '@/lib/date-utils';
 
 export default function NodeRegistry() {
   // Server-side projection stream: fetches snapshot, re-fetches on invalidation
@@ -48,6 +54,9 @@ export default function NodeRegistry() {
 
   // Determine if we have real data from the projection
   const hasProjectionData = data !== null && data.nodes.length > 0;
+
+  // ------ Node selection state ------
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   // Stable mock data — generated once and reused across re-renders to prevent
   // flickering when TanStack Query refetches return new object references.
@@ -103,7 +112,86 @@ export default function NodeRegistry() {
     return mockDashboard;
   })();
 
+  // ------ Resolve selected node (kept fresh as snapshot updates) ------
+
+  // Build a NodeState array from whichever data source is active.
+  // Live projection data has NodeState objects directly; mock data uses RegisteredNode
+  // (snake_case) which we convert to the canonical NodeState shape.
+  const nodeStates: NodeState[] = useMemo(() => {
+    if (data && data.nodes.length > 0) {
+      return data.nodes;
+    }
+    // Fall back: convert mock RegisteredNode[] to NodeState[]
+    const registered = dashboardData.registeredNodes;
+    if (!Array.isArray(registered)) return [];
+    return (registered as RegisteredNode[]).map((n) => ({
+      nodeId: n.node_id,
+      nodeType: n.node_type,
+      state: n.state,
+      version: n.version,
+      uptimeSeconds: n.uptime_seconds,
+      lastSeen: n.last_seen,
+      memoryUsageMb: n.memory_usage_mb,
+      cpuUsagePercent: n.cpu_usage_percent,
+    }));
+  }, [data, dashboardData.registeredNodes]);
+
+  // Resolve to the latest version of the selected node whenever the snapshot changes
+  const selectedNodeState: NodeState | null = useMemo(() => {
+    if (!selectedNodeId) return null;
+    return nodeStates.find((n) => n.nodeId === selectedNodeId) ?? null;
+  }, [selectedNodeId, nodeStates]);
+
+  // Handle table row click — map snake_case row data to nodeId for lookup
+  const handleWidgetRowClick: OnWidgetRowClick = useCallback((widgetId, row) => {
+    if (widgetId !== 'table-node-details') return;
+    const nodeId = (row.node_id ?? row.nodeId) as string | undefined;
+    if (!nodeId) return;
+    // Toggle: clicking the same row deselects it
+    setSelectedNodeId((prev) => (prev === nodeId ? null : nodeId));
+  }, []);
+
   const connectionStatus = isLoading ? 'connecting' : isConnected ? 'connected' : 'disconnected';
+
+  // Contextual empty-state messages for the Registration Events feed.
+  // When connected with real data but no state-change events, show the snapshot
+  // time so users understand the system is working — just quiet.
+  const eventFeedEmptyProps = useMemo(() => {
+    if (isLoading) {
+      return { emptyTitle: 'Loading event stream...' };
+    }
+    if (!isConnected) {
+      return {
+        emptyTitle: 'Disconnected',
+        emptyDescription: 'Waiting for connection to projection service',
+      };
+    }
+    // Connected — derive a human-readable snapshot timestamp
+    const snapshotMs = snapshot?.snapshotTimeMs;
+    if (snapshotMs) {
+      const formatted = formatRelativeTime(new Date(snapshotMs), { compact: true });
+      return {
+        emptyTitle: `No registration events since ${formatted}`,
+        emptyDescription: 'State changes will appear here in real time',
+      };
+    }
+    return {
+      emptyTitle: 'No registration events received',
+      emptyDescription: 'State changes will appear here in real time',
+    };
+  }, [isLoading, isConnected, snapshot?.snapshotTimeMs]);
+
+  const registryWidgetProps: WidgetPropsMap = useMemo(
+    () => ({
+      'event-feed-registrations': eventFeedEmptyProps,
+      'table-node-details': {
+        customCellRenderers: {
+          state: (value: unknown) => <RegistrationStateBadge state={String(value ?? '')} />,
+        },
+      },
+    }),
+    [eventFeedEmptyProps]
+  );
 
   return (
     <div className="space-y-6">
@@ -176,13 +264,13 @@ export default function NodeRegistry() {
               <div>
                 <span className="font-medium">Node Types:</span>
                 <div className="text-muted-foreground mt-1">
-                  EFFECT, COMPUTE, REDUCER, ORCHESTRATOR
+                  EFFECT, COMPUTE, REDUCER, ORCHESTRATOR, SERVICE
                 </div>
               </div>
               <div>
                 <span className="font-medium">Registration States:</span>
                 <div className="text-muted-foreground mt-1">
-                  pending → accepted → awaiting_ack → active
+                  pending_registration → accepted → awaiting_ack → ack_received → active
                 </div>
               </div>
               <div>
@@ -200,12 +288,20 @@ export default function NodeRegistry() {
         </div>
       </div>
 
-      {/* Dashboard grid */}
+      {/* Dashboard grid with NodeDetailPanel injected into the slot
+          previously occupied by status-grid-nodes (row 1-3, col 0-6). */}
       <DashboardRenderer
         config={nodeRegistryDashboardConfig}
         data={dashboardData}
         isLoading={isLoading}
-      />
+        onWidgetRowClick={handleWidgetRowClick}
+        widgetProps={registryWidgetProps}
+      >
+        {/* NodeDetailPanel: replaces status-grid-nodes in grid row 1-3, col 0-6 */}
+        <div style={{ gridColumn: '1 / span 7', gridRow: '2 / span 3' }}>
+          <NodeDetailPanel node={selectedNodeState} className="h-full" />
+        </div>
+      </DashboardRenderer>
     </div>
   );
 }
