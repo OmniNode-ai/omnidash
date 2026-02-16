@@ -9,6 +9,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import type { WidgetDefinition, WidgetConfigTable, DashboardData } from '@/lib/dashboard-schema';
 import {
   Table,
@@ -31,6 +32,12 @@ import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight } fro
  * and values can be any type (formatted by CellValue based on column config).
  */
 export type RowData = Record<string, unknown>;
+
+/**
+ * A function that renders a custom cell given the raw cell value.
+ * Return a ReactNode to replace the default CellValue output.
+ */
+export type CustomCellRenderer = (value: unknown) => ReactNode;
 
 /**
  * Props for the TableWidget component.
@@ -76,6 +83,15 @@ interface TableWidgetProps {
    * @param row - The data object for the clicked row
    */
   onRowClick?: (row: RowData) => void;
+
+  /**
+   * Optional map of column keys to custom cell renderer functions.
+   * When a column key is present in this map, the custom renderer is used
+   * instead of the default CellValue formatting. This allows parent
+   * components to inject domain-specific renderers (e.g. RegistrationStateBadge)
+   * without modifying the shared TableWidget.
+   */
+  customCellRenderers?: Record<string, CustomCellRenderer>;
 }
 
 /**
@@ -144,6 +160,7 @@ export function TableWidget({
   data,
   isLoading,
   onRowClick,
+  customCellRenderers,
 }: TableWidgetProps) {
   // Initialize sort state from config defaults
   const [sortState, setSortState] = useState<SortState>({
@@ -303,17 +320,24 @@ export function TableWidget({
                 )}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
-                {config.columns.map((column) => (
-                  <TableCell
-                    key={column.key}
-                    className={cn(
-                      column.align === 'center' && 'text-center',
-                      column.align === 'right' && 'text-right'
-                    )}
-                  >
-                    <CellValue value={row[column.key]} format={column.format} />
-                  </TableCell>
-                ))}
+                {config.columns.map((column) => {
+                  const customRenderer = customCellRenderers?.[column.key];
+                  return (
+                    <TableCell
+                      key={column.key}
+                      className={cn(
+                        column.align === 'center' && 'text-center',
+                        column.align === 'right' && 'text-right'
+                      )}
+                    >
+                      {customRenderer ? (
+                        customRenderer(row[column.key])
+                      ) : (
+                        <CellValue value={row[column.key]} format={column.format} />
+                      )}
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             ))}
           </TableBody>

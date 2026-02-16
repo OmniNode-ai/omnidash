@@ -130,7 +130,7 @@ export interface IntentProjectionPayload {
 // Node Registry domain types (OMN-2097)
 // ============================================================================
 
-export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
+export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR' | 'SERVICE';
 
 /**
  * Registration state values use lowercase. Canonical event handlers in EventConsumer
@@ -148,6 +148,43 @@ export type RegistrationState =
   | 'ack_timed_out'
   | 'liveness_expired';
 
+/**
+ * Introspection reason indicating why a node announced itself.
+ */
+export type IntrospectionReason =
+  | 'STARTUP'
+  | 'SHUTDOWN'
+  | 'HEARTBEAT'
+  | 'REQUESTED'
+  | 'CONFIG_CHANGE';
+
+/**
+ * Structured capabilities reported by a node during introspection.
+ */
+export interface NodeCapabilities {
+  /** Capabilities declared in the node manifest */
+  declared?: string[];
+  /** Capabilities discovered at runtime */
+  discovered?: string[];
+  /** Capabilities enforced by the node's contract */
+  contract?: string[];
+}
+
+/**
+ * Node metadata reported during introspection.
+ */
+export interface NodeMetadata {
+  environment?: string;
+  region?: string;
+  cluster?: string;
+  description?: string;
+  priority?: number;
+}
+
+/**
+ * Canonical node state used by both server projections and client rendering.
+ * This is the single source of truth replacing the deprecated RegistryNodeView.
+ */
 export interface NodeState {
   nodeId: string;
   nodeType: NodeType;
@@ -158,6 +195,12 @@ export interface NodeState {
   memoryUsageMb?: number;
   cpuUsagePercent?: number;
   endpoints?: Record<string, string>;
+  /** Structured capabilities from introspection events */
+  capabilities?: NodeCapabilities;
+  /** Node metadata from introspection events */
+  metadata?: NodeMetadata;
+  /** Reason for the most recent introspection announcement */
+  reason?: IntrospectionReason;
 }
 
 export interface NodeRegistryStats {

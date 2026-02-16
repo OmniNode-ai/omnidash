@@ -2,7 +2,7 @@
  * Contract-driven widgets for the dashboard rendering system.
  */
 
-export { DashboardRenderer, type OnWidgetRowClick } from './DashboardRenderer';
+export { DashboardRenderer, type OnWidgetRowClick, type WidgetPropsMap } from './DashboardRenderer';
 export { WidgetRenderer } from './WidgetRenderer';
 export { MetricCardWidget } from './MetricCardWidget';
 export { ChartWidget } from './ChartWidget';

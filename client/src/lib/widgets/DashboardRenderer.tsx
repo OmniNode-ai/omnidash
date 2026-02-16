@@ -24,6 +24,12 @@ import { cn } from '@/lib/utils';
 export type OnWidgetRowClick = (widgetId: string, row: Record<string, unknown>) => void;
 
 /**
+ * Extra props to forward to a specific widget, keyed by widget_id.
+ * Currently supports EventFeedWidget's empty-state customization.
+ */
+export type WidgetPropsMap = Record<string, Record<string, unknown>>;
+
+/**
  * Props for the DashboardRenderer component.
  *
  * @interface DashboardRendererProps
@@ -76,6 +82,21 @@ interface DashboardRendererProps {
    * @param row - The data object for the clicked row
    */
   onWidgetRowClick?: OnWidgetRowClick;
+
+  /**
+   * Optional map of extra props to forward to specific widgets by widget_id.
+   * For example, pass `{ 'event-feed-registrations': { emptyTitle: '...' } }`
+   * to customize the empty state of a particular EventFeedWidget.
+   */
+  widgetProps?: WidgetPropsMap;
+
+  /**
+   * Optional children rendered inside the CSS grid container.
+   * Use this to inject custom components (e.g. detail panels) into specific
+   * grid slots alongside the auto-rendered widgets. Children should set their
+   * own `gridColumn` / `gridRow` styles via a wrapper div.
+   */
+  children?: React.ReactNode;
 }
 
 /**
@@ -123,6 +144,8 @@ export function DashboardRenderer({
   className,
   onWidgetError,
   onWidgetRowClick,
+  widgetProps,
+  children,
 }: DashboardRendererProps) {
   // Validate config synchronously before first render (crash fast if invalid)
   const validationError = useMemo(() => {
@@ -180,11 +203,13 @@ export function DashboardRenderer({
                 onRowClick={
                   onWidgetRowClick ? (row) => onWidgetRowClick(widget.widget_id, row) : undefined
                 }
+                extraProps={widgetProps?.[widget.widget_id]}
               />
             </WidgetErrorBoundary>
           </div>
         );
       })}
+      {children}
     </div>
   );
 }

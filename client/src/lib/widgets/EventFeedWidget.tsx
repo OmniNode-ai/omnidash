@@ -53,6 +53,22 @@ interface EventFeedWidgetProps {
    * @default false
    */
   isLoading?: boolean;
+
+  /**
+   * Custom title text for the empty state. Replaces the default
+   * "No events to display" when the event array is empty.
+   *
+   * @default "No events to display"
+   */
+  emptyTitle?: string;
+
+  /**
+   * Custom description text for the empty state, rendered below emptyTitle.
+   * Useful for providing context (e.g. connection status, snapshot time).
+   *
+   * @default undefined (no description shown)
+   */
+  emptyDescription?: string;
 }
 
 /**
@@ -134,7 +150,14 @@ const DEFAULT_MAX_ITEMS = 50;
  * @param props - Component props
  * @returns A scrollable card containing event rows
  */
-export function EventFeedWidget({ widget, config, data, isLoading }: EventFeedWidgetProps) {
+export function EventFeedWidget({
+  widget,
+  config,
+  data,
+  isLoading,
+  emptyTitle,
+  emptyDescription,
+}: EventFeedWidgetProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const maxItems = config.max_items ?? DEFAULT_MAX_ITEMS;
 
@@ -175,8 +198,9 @@ export function EventFeedWidget({ widget, config, data, isLoading }: EventFeedWi
     return (
       <Card className="h-full p-4 flex flex-col">
         <h3 className="text-base font-semibold mb-4">{widget.title}</h3>
-        <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-          No events to display
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground text-sm gap-1">
+          <span>{emptyTitle ?? 'No events to display'}</span>
+          {emptyDescription && <span className="text-xs">{emptyDescription}</span>}
         </div>
       </Card>
     );

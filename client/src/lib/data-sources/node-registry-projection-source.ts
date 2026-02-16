@@ -1,5 +1,5 @@
 /**
- * Node Registry Projection Data Source (OMN-2097)
+ * Node Registry Projection Data Source (OMN-2097 / OMN-2320)
  *
  * Transforms the server-side NodeRegistryPayload into the DashboardData
  * shape expected by the NodeRegistry page and DashboardRenderer.
@@ -15,10 +15,22 @@ import type {
   NodeState,
   NodeRegistryStats,
   NodeRegistryPayload,
+  NodeCapabilities,
+  NodeMetadata,
+  IntrospectionReason,
 } from '@shared/projection-types';
 
 // Re-export for consumers that import from this module
-export type { NodeType, RegistrationState, NodeState, NodeRegistryStats, NodeRegistryPayload };
+export type {
+  NodeType,
+  RegistrationState,
+  NodeState,
+  NodeRegistryStats,
+  NodeRegistryPayload,
+  NodeCapabilities,
+  NodeMetadata,
+  IntrospectionReason,
+};
 
 // ============================================================================
 // Transform helpers
@@ -60,6 +72,26 @@ function stateToSeverity(state: RegistrationState): 'info' | 'success' | 'warnin
   }
 }
 
+/**
+ * Flatten structured capabilities into a single string array for display.
+ */
+function flattenCapabilities(caps: NodeCapabilities | undefined): string[] {
+  if (!caps) return [];
+  const result: string[] = [];
+  if (caps.declared) result.push(...caps.declared);
+  if (caps.discovered) {
+    for (const c of caps.discovered) {
+      if (!result.includes(c)) result.push(c);
+    }
+  }
+  if (caps.contract) {
+    for (const c of caps.contract) {
+      if (!result.includes(c)) result.push(c);
+    }
+  }
+  return result;
+}
+
 // ============================================================================
 // Main transform
 // ============================================================================
@@ -98,7 +130,7 @@ export function transformNodeRegistryPayload(payload: NodeRegistryPayload): Dash
     value,
   }));
 
-  // Transform nodes to client-expected snake_case format
+  // Transform nodes to client-expected snake_case format with extended fields
   const registeredNodes = nodes.map((n) => ({
     node_id: n.nodeId,
     node_type: n.nodeType,
@@ -108,6 +140,11 @@ export function transformNodeRegistryPayload(payload: NodeRegistryPayload): Dash
     last_seen: n.lastSeen,
     memory_usage_mb: n.memoryUsageMb,
     cpu_usage_percent: n.cpuUsagePercent,
+    endpoints: n.endpoints,
+    capabilities: flattenCapabilities(n.capabilities),
+    structured_capabilities: n.capabilities,
+    metadata: n.metadata,
+    reason: n.reason,
   }));
 
   // Transform recent state changes into RegistrationEvent format

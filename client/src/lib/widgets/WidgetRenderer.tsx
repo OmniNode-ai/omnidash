@@ -8,7 +8,7 @@
 import type { WidgetDefinition, DashboardData } from '@/lib/dashboard-schema';
 import { MetricCardWidget } from './MetricCardWidget';
 import { ChartWidget } from './ChartWidget';
-import { TableWidget } from './TableWidget';
+import { TableWidget, type CustomCellRenderer } from './TableWidget';
 import { StatusGridWidget } from './StatusGridWidget';
 import { EventFeedWidget } from './EventFeedWidget';
 import { Card } from '@/components/ui/card';
@@ -22,9 +22,20 @@ interface WidgetRendererProps {
    * Passed through from DashboardRenderer to enable row selection handling.
    */
   onRowClick?: (row: Record<string, unknown>) => void;
+  /**
+   * Extra props forwarded to the rendered widget component.
+   * Currently used to pass emptyTitle/emptyDescription to EventFeedWidget.
+   */
+  extraProps?: Record<string, unknown>;
 }
 
-export function WidgetRenderer({ widget, data, isLoading, onRowClick }: WidgetRendererProps) {
+export function WidgetRenderer({
+  widget,
+  data,
+  isLoading,
+  onRowClick,
+  extraProps,
+}: WidgetRendererProps) {
   const { config } = widget;
 
   switch (config.config_kind) {
@@ -42,6 +53,9 @@ export function WidgetRenderer({ widget, data, isLoading, onRowClick }: WidgetRe
           data={data}
           isLoading={isLoading}
           onRowClick={onRowClick}
+          customCellRenderers={
+            extraProps?.customCellRenderers as Record<string, CustomCellRenderer> | undefined
+          }
         />
       );
 
@@ -49,7 +63,16 @@ export function WidgetRenderer({ widget, data, isLoading, onRowClick }: WidgetRe
       return <StatusGridWidget widget={widget} config={config} data={data} isLoading={isLoading} />;
 
     case 'event_feed':
-      return <EventFeedWidget widget={widget} config={config} data={data} isLoading={isLoading} />;
+      return (
+        <EventFeedWidget
+          widget={widget}
+          config={config}
+          data={data}
+          isLoading={isLoading}
+          emptyTitle={extraProps?.emptyTitle as string | undefined}
+          emptyDescription={extraProps?.emptyDescription as string | undefined}
+        />
+      );
 
     default: {
       // Type-safe exhaustive check

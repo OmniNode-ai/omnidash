@@ -28,6 +28,9 @@ import type {
   NodeState,
   NodeRegistryStats,
   NodeRegistryPayload,
+  NodeCapabilities,
+  NodeMetadata,
+  IntrospectionReason,
 } from '@shared/projection-types';
 import { MonotonicMergeTracker, MISSING_TIMESTAMP_SENTINEL_MS } from '../monotonic-merge';
 
@@ -38,6 +41,9 @@ export type {
   NodeState,
   NodeRegistryStats,
   NodeRegistryPayload,
+  NodeCapabilities,
+  NodeMetadata,
+  IntrospectionReason,
 } from '@shared/projection-types';
 
 // ============================================================================
@@ -67,6 +73,84 @@ const HANDLED_EVENT_TYPES = new Set([
   'node-state-change',
   'node-registry-seed',
 ]);
+
+// ============================================================================
+// Extraction helpers for rich introspection fields
+// ============================================================================
+
+/**
+ * Extract structured capabilities from an event payload.
+ * Handles multiple shapes:
+ * - `{ capabilities: { declared: [...], discovered: [...], contract: [...] } }` (structured)
+ * - `{ capabilities: { key: value, ... } }` (canonical Record from infra)
+ * - `{ capabilities: [...] }` (legacy flat array → treated as declared)
+ * - `{ declared_capabilities: [...] }` (alternative field name)
+ */
+function extractCapabilities(
+  payload: Record<string, unknown>,
+  existing: NodeCapabilities | undefined
+): NodeCapabilities | undefined {
+  const raw = payload.capabilities ?? payload.declared_capabilities;
+  if (raw == null && existing == null) return undefined;
+
+  // Already structured { declared, discovered, contract }
+  if (raw != null && typeof raw === 'object' && !Array.isArray(raw)) {
+    const obj = raw as Record<string, unknown>;
+    // Check if it looks like NodeCapabilities (has declared/discovered/contract keys)
+    if (obj.declared || obj.discovered || obj.contract) {
+      return {
+        declared: Array.isArray(obj.declared) ? (obj.declared as string[]) : existing?.declared,
+        discovered: Array.isArray(obj.discovered)
+          ? (obj.discovered as string[])
+          : existing?.discovered,
+        contract: Array.isArray(obj.contract) ? (obj.contract as string[]) : existing?.contract,
+      };
+    }
+    // Canonical Record<string, unknown> from infra — extract keys as declared capabilities
+    const keys = Object.keys(obj);
+    if (keys.length > 0) {
+      return {
+        declared: keys,
+        discovered: existing?.discovered,
+        contract: existing?.contract,
+      };
+    }
+  }
+
+  // Flat string array → treat as declared
+  if (Array.isArray(raw)) {
+    return {
+      declared: raw as string[],
+      discovered: existing?.discovered,
+      contract: existing?.contract,
+    };
+  }
+
+  return existing;
+}
+
+/**
+ * Extract node metadata from an event payload.
+ */
+function extractMetadata(
+  payload: Record<string, unknown>,
+  existing: NodeMetadata | undefined
+): NodeMetadata | undefined {
+  const raw = payload.metadata as Record<string, unknown> | undefined;
+  if (raw == null && existing == null) return undefined;
+
+  if (raw != null && typeof raw === 'object') {
+    return {
+      environment: (raw.environment as string) ?? existing?.environment,
+      region: (raw.region as string) ?? existing?.region,
+      cluster: (raw.cluster as string) ?? existing?.cluster,
+      description: (raw.description as string) ?? existing?.description,
+      priority: (raw.priority as number) ?? existing?.priority,
+    };
+  }
+
+  return existing;
+}
 
 // ============================================================================
 // NodeRegistryProjection
@@ -222,6 +306,17 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
     const existing = this.nodes.get(nodeId);
     const oldState = existing?.state;
 
+    // Extract structured capabilities from the introspection payload.
+    // Infrastructure may send capabilities as a Record<string, unknown> (canonical)
+    // or as a flat string[] (legacy). Normalize both into NodeCapabilities.
+    const capabilities = extractCapabilities(payload, existing?.capabilities);
+
+    // Extract metadata if present in the payload
+    const metadata = extractMetadata(payload, existing?.metadata);
+
+    // Extract introspection reason
+    const reason = (payload.reason ?? existing?.reason) as IntrospectionReason | undefined;
+
     const node: NodeState = {
       nodeId,
       nodeType: (payload.nodeType ??
@@ -241,6 +336,9 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
       memoryUsageMb: existing?.memoryUsageMb,
       cpuUsagePercent: existing?.cpuUsagePercent,
       endpoints: (payload.endpoints ?? existing?.endpoints) as Record<string, string> | undefined,
+      capabilities,
+      metadata,
+      reason,
     };
 
     this.nodes.set(nodeId, node);
@@ -398,6 +496,9 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         memoryUsageMb: (raw.memoryUsageMb ?? raw.memory_usage_mb) as number | undefined,
         cpuUsagePercent: (raw.cpuUsagePercent ?? raw.cpu_usage_percent) as number | undefined,
         endpoints: raw.endpoints as Record<string, string> | undefined,
+        capabilities: extractCapabilities(raw, undefined),
+        metadata: extractMetadata(raw, undefined),
+        reason: raw.reason as IntrospectionReason | undefined,
       };
 
       this.nodes.set(nodeId, node);
