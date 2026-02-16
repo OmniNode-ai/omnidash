@@ -173,5 +173,9 @@ describe('extractActionFromTopic (OMN-2196)', () => {
     it('should return empty string for short dotted topic', () => {
       expect(extractActionFromTopic('onex.evt.platform')).toBe('');
     });
+
+    it('should return empty string for non-onex dotted topic with 5 segments', () => {
+      expect(extractActionFromTopic('some.other.topic.format.v1')).toBe('');
+    });
   });
 });
