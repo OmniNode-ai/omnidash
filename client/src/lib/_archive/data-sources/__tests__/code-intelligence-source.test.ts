@@ -14,7 +14,7 @@ describe('CodeIntelligenceDataSource', () => {
   });
 
   describe('fetchCodeAnalysis', () => {
-    it('should return real code analysis from OmniArchon', async () => {
+    it('should return real code analysis from OmniIntelligence', async () => {
       const mockAnalysis: CodeAnalysisData = {
         files_analyzed: 1000,
         avg_complexity: 7.5,
@@ -93,7 +93,7 @@ describe('CodeIntelligenceDataSource', () => {
       expect(result.data.files_analyzed).toBe(1250);
     });
 
-    it('should use custom OmniArchon URL from environment', async () => {
+    it('should use custom OmniIntelligence URL from environment', async () => {
       const originalEnv = import.meta.env.VITE_INTELLIGENCE_SERVICE_URL;
       import.meta.env.VITE_INTELLIGENCE_SERVICE_URL = 'http://custom-host:9000';
 

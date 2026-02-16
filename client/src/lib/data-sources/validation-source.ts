@@ -9,12 +9,13 @@
  * Part of OMN-1907: Cross-Repo Validation Dashboard Integration
  */
 
-import type { ValidationRun, RepoTrends } from '@shared/validation-types';
+import type { ValidationRun, RepoTrends, LifecycleSummary } from '@shared/validation-types';
 import {
   getMockRuns,
   getMockSummary,
   getMockRunDetail,
   getMockRepoTrends,
+  getMockLifecycleSummary,
 } from '@/lib/mock-data/validation-mock';
 
 // ===========================
@@ -151,7 +152,7 @@ class ValidationSource {
           completed_at: run.completed_at,
           duration_ms: run.duration_ms,
           total_violations: run.total_violations,
-          violations_by_severity: run.violations_by_severity,
+          violations_by_severity: run.violations_by_severity ?? {},
           violation_count: run.total_violations,
         }));
 
@@ -187,6 +188,43 @@ class ValidationSource {
         );
         this._isUsingMockData = true;
         return getMockRunDetail(runId);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get lifecycle summary with tier metrics and candidates.
+   *
+   * NOTE: The server endpoint GET /api/validation/lifecycle/summary is NOT YET
+   * IMPLEMENTED. The fetch will fail with a 404, and this method intentionally
+   * falls back to mock data via getMockLifecycleSummary(). When the real
+   * endpoint is created (in server/validation-routes.ts), this fetch path will
+   * start returning live data automatically with no client-side changes needed.
+   */
+  async getLifecycleSummary(options: ValidationFetchOptions = {}): Promise<LifecycleSummary> {
+    const { fallbackToMock = true } = options;
+
+    try {
+      const response = await fetch(`${this.baseUrl}/lifecycle/summary`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+      this._isUsingMockData = false;
+      // TODO(OMN-2152): Add a Zod schema for LifecycleSummary in
+      // shared/validation-types.ts and validate `data` here (e.g.
+      // LifecycleSummarySchema.parse(data)). Currently returns unvalidated
+      // JSON cast to LifecycleSummary, consistent with other methods in
+      // this class.
+      return data;
+    } catch (error) {
+      if (fallbackToMock) {
+        console.warn(
+          '[ValidationSource] API unavailable for lifecycle, using demo data:',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+        this._isUsingMockData = true;
+        return getMockLifecycleSummary();
       }
       throw error;
     }

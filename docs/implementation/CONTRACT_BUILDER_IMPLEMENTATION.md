@@ -42,7 +42,7 @@ Successfully implemented a comprehensive Contract Builder preview feature for th
 
 ### 6. Example Contracts
 
-- Real examples from `omninode_bridge/contracts`:
+- Real examples from `onex_runtime/contracts`:
   - `codegen_workflow.yaml` (Workflow)
   - `deployment_sender_effect.yaml` (Effect)
   - `codegen_metrics.yaml` (Reducer)
@@ -115,7 +115,7 @@ client/src/App.tsx                            # Added routing
 
 ### Contract Examples
 
-- Leverages real contracts from `omninode_bridge/contracts`
+- Leverages real contracts from `onex_runtime/contracts`
 - Maintains consistency with actual ONEX v2.0 standards
 - Provides realistic examples for each contract type
 

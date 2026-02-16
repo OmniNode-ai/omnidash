@@ -179,6 +179,17 @@ export const SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION = 'onex.evt.omniclaude.contex
 export const SUFFIX_OMNICLAUDE_AGENT_MATCH = 'onex.evt.omniclaude.agent-match.v1';
 export const SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN = 'onex.evt.omniclaude.latency-breakdown.v1';
 
+/** Extended OmniClaude events (routing, sessions, manifests, notifications) */
+export const SUFFIX_OMNICLAUDE_ROUTING_DECISION = 'onex.evt.omniclaude.routing-decision.v1';
+export const SUFFIX_OMNICLAUDE_SESSION_OUTCOME = 'onex.evt.omniclaude.session-outcome.v1';
+export const SUFFIX_OMNICLAUDE_MANIFEST_INJECTED = 'onex.evt.omniclaude.manifest-injected.v1';
+export const SUFFIX_OMNICLAUDE_PHASE_METRICS = 'onex.evt.omniclaude.phase-metrics.v1';
+export const SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED = 'onex.evt.omniclaude.notification-blocked.v1';
+export const SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED =
+  'onex.evt.omniclaude.notification-completed.v1';
+export const SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED =
+  'onex.evt.omniclaude.transformation.completed.v1';
+
 // ============================================================================
 // OmniIntelligence Topics
 // ============================================================================
@@ -216,6 +227,21 @@ export const SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED =
   'onex.evt.omniintelligence.pattern-learning-completed.v1';
 export const SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED =
   'onex.evt.omniintelligence.quality-assessment-completed.v1';
+
+/** Intelligence pattern lifecycle events */
+export const SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITION_CMD =
+  'onex.cmd.omniintelligence.pattern-lifecycle-transition.v1';
+export const SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED =
+  'onex.evt.omniintelligence.pattern-lifecycle-transitioned.v1';
+export const SUFFIX_INTELLIGENCE_PATTERN_PROMOTED = 'onex.evt.omniintelligence.pattern-promoted.v1';
+export const SUFFIX_INTELLIGENCE_PATTERN_STORED = 'onex.evt.omniintelligence.pattern-stored.v1';
+
+// ============================================================================
+// Miscellaneous Topics
+// ============================================================================
+
+export const SUFFIX_PATTERN_DISCOVERED = 'onex.evt.pattern.discovered.v1';
+export const SUFFIX_AGENT_STATUS = 'onex.evt.agent.status.v1';
 
 // ============================================================================
 // OmniMemory Topics
@@ -329,6 +355,17 @@ export const OMNICLAUDE_INJECTION_SUFFIXES = [
   SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
 ] as const;
 
+/** Extended OmniClaude topic suffixes (routing, sessions, manifests, notifications) */
+export const OMNICLAUDE_EXTENDED_SUFFIXES = [
+  SUFFIX_OMNICLAUDE_ROUTING_DECISION,
+  SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
+  SUFFIX_OMNICLAUDE_MANIFEST_INJECTED,
+  SUFFIX_OMNICLAUDE_PHASE_METRICS,
+  SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED,
+  SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED,
+  SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED,
+] as const;
+
 /** OmniIntelligence pipeline topic suffixes */
 export const INTELLIGENCE_PIPELINE_SUFFIXES = [
   SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD,
@@ -340,6 +377,15 @@ export const INTELLIGENCE_PIPELINE_SUFFIXES = [
   SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
   SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
+] as const;
+
+/** Intelligence pattern lifecycle topic suffixes */
+export const INTELLIGENCE_PATTERN_LIFECYCLE_SUFFIXES = [
+  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITION_CMD,
+  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
+  SUFFIX_INTELLIGENCE_PATTERN_PROMOTED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_PATTERN_DISCOVERED,
 ] as const;
 
 /** Intent topic suffixes */
@@ -376,9 +422,13 @@ export function buildSubscriptionTopics(): string[] {
     ...PLATFORM_NODE_SUFFIXES,
     SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
     SUFFIX_INTELLIGENCE_TOOL_CONTENT,
+    SUFFIX_INTELLIGENCE_SESSION_OUTCOME_CMD,
+    SUFFIX_AGENT_STATUS,
     ...OMNICLAUDE_SUFFIXES,
     ...OMNICLAUDE_INJECTION_SUFFIXES,
+    ...OMNICLAUDE_EXTENDED_SUFFIXES,
     ...INTELLIGENCE_PIPELINE_SUFFIXES,
+    ...INTELLIGENCE_PATTERN_LIFECYCLE_SUFFIXES,
     ...INTENT_SUFFIXES,
     ...VALIDATION_SUFFIXES,
   ];

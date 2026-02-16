@@ -138,7 +138,7 @@ describe('DrillDownPanel', () => {
         usageExamples: [
           {
             id: '1',
-            project: 'omniarchon',
+            project: 'omniintelligence',
             module: 'node_effect.py',
           },
         ],

@@ -715,7 +715,7 @@ describe('PlatformHealthMockData', () => {
       const health = PlatformHealthMockData.generateHealth();
 
       expect(Array.isArray(health.services)).toBe(true);
-      expect(health.services.length).toBe(4); // PostgreSQL, Kafka, Omniarchon, Event Consumer
+      expect(health.services.length).toBe(4); // PostgreSQL, Kafka, OmniIntelligence, Event Consumer
 
       health.services.forEach((service) => {
         expect(service).toHaveProperty('service');
@@ -1004,10 +1004,10 @@ describe('IntelligenceOperationsMockData', () => {
       const health = IntelligenceOperationsMockData.generateManifestHealth();
 
       expect(health.serviceHealth).toHaveProperty('postgresql');
-      expect(health.serviceHealth).toHaveProperty('omniarchon');
+      expect(health.serviceHealth).toHaveProperty('omniintelligence');
       expect(health.serviceHealth).toHaveProperty('qdrant');
 
-      ['postgresql', 'omniarchon', 'qdrant'].forEach((service) => {
+      ['postgresql', 'omniintelligence', 'qdrant'].forEach((service) => {
         expect(health.serviceHealth[service as keyof typeof health.serviceHealth]).toHaveProperty(
           'status'
         );

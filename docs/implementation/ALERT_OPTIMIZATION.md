@@ -13,7 +13,7 @@ The `/api/intelligence/alerts/active` endpoint was responding slowly:
 1. **Sequential execution** - 6 separate operations running one after another
 2. **No caching** - Recalculating same data every request
 3. **Missing indexes** - Time-based WHERE clauses without indexes
-4. **Expensive health checks** - Omniarchon timeout (2000ms) and DB check on every request
+4. **Expensive health checks** - OmniIntelligence timeout (2000ms) and DB check on every request
 
 ## Optimizations Implemented
 
@@ -32,7 +32,7 @@ The `/api/intelligence/alerts/active` endpoint was responding slowly:
 
 - **30-second cache** for health checks
 - Cached health checks:
-  - Omniarchon service availability
+  - OmniIntelligence service availability
   - Database connection status
 - Reduces redundant health checks
 
@@ -63,7 +63,7 @@ idx_agent_routing_decisions_created_at_routing_time
 
 ### 5. Reduced Timeout
 
-- Omniarchon health check timeout: **2000ms → 500ms**
+- OmniIntelligence health check timeout: **2000ms → 500ms**
 - Faster fail for unreachable services
 
 ## Results

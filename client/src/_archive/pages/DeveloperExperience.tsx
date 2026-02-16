@@ -34,7 +34,7 @@ interface ProductivityDataPoint {
   code_generated: number;
 }
 
-// Unified response from omniarchon /api/intelligence/developer/metrics
+// Unified response from omniintelligence /api/intelligence/developer/metrics
 interface DeveloperMetricsResponse {
   workflows: {
     workflows: Workflow[];
@@ -96,7 +96,7 @@ export default function DeveloperExperience() {
     debug: false,
   });
 
-  // Fetch unified developer metrics from omniarchon with standard polling
+  // Fetch unified developer metrics from omniintelligence with standard polling
   const {
     data: metricsData,
     isLoading: metricsLoading,

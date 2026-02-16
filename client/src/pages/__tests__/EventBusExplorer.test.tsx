@@ -91,7 +91,7 @@ describe('EventBusExplorer', () => {
         timestamp: new Date().toISOString(),
         tenant_id: 'default-tenant',
         namespace: 'development',
-        source: 'omniarchon',
+        source: 'omniintelligence',
         correlation_id: 'corr-123',
         schema_ref: 'registry://omninode/intelligence/query_requested/v1',
         payload: {},
