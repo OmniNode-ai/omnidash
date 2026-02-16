@@ -29,6 +29,7 @@ import {
   type EventBusPayload,
 } from '@/lib/data-sources/event-bus-projection-source';
 import { TIME_SERIES_BUCKET_MS } from '@shared/event-bus-payload';
+import { extractProducerFromTopicOrDefault, extractActionFromTopic } from '@shared/topics';
 import { extractParsedDetails, type ParsedDetails } from '@/components/event-bus/eventDetailUtils';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { Card } from '@/components/ui/card';
@@ -131,25 +132,6 @@ function mapSeverityToPriority(
   }
 }
 
-/**
- * Extract the producer segment from an ONEX canonical topic name.
- * Format: onex.<kind>.<producer>.<event-name>.v<version>
- * Also handles legacy env-prefixed form: <env>.onex.<kind>.<producer>...
- * Returns null for flat legacy topics (e.g. "agent-actions").
- */
-function extractProducerFromTopic(topic: string): string | null {
-  const segments = topic.split('.');
-  // Canonical: onex.<kind>.<producer>.<event-name>.v<version>  (5+ segments)
-  if (segments.length >= 5 && segments[0] === 'onex') {
-    return segments[2];
-  }
-  // Env-prefixed: <env>.onex.<kind>.<producer>.<event-name>.v<version>  (6+ segments)
-  if (segments.length >= 6 && segments[1] === 'onex') {
-    return segments[3];
-  }
-  return null;
-}
-
 function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   const payloadStr = JSON.stringify(event.payload);
   const parsedDetails = extractParsedDetails(payloadStr, event.type);
@@ -165,7 +147,7 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   const resolvedSource =
     event.source && event.source !== 'unknown'
       ? event.source
-      : (extractProducerFromTopic(event.topic) ?? 'system');
+      : extractProducerFromTopicOrDefault(event.topic);
 
   return {
     id: event.id,
@@ -192,14 +174,18 @@ function computeNormalizedType(eventType: string, details: ParsedDetails | null)
     return details?.actionName || details?.actionType || 'unknown';
   }
   // OMN-2196: Handle ONEX topic-style types (e.g. 'onex.cmd.omniintelligence.tool-content.v1').
-  // Extract the action name segment (second-to-last) from the canonical format.
+  // Use the shared extractActionFromTopic which correctly joins all segments between
+  // producer and version with hyphens (e.g. 'transformation.completed' → 'transformation-completed').
   if (
     eventType.startsWith('onex.') ||
     /^(dev|staging|prod|production|test|local)\.onex\./.test(eventType)
   ) {
+    const action = extractActionFromTopic(eventType);
+    if (action) return action;
+    // Fallback: extract second-to-last segment if shared function returns empty
     const segments = eventType.split('.');
     if (segments.length >= 5) {
-      return segments[segments.length - 2]; // event-name segment
+      return segments[segments.length - 2];
     }
   }
   return eventType;
@@ -691,7 +677,14 @@ export default function EventBusMonitor() {
       eventType,
       eventCount: count,
     }));
-    const eventTypeBreakdownData = bucketSmallTypes(eventTypeBreakdownRaw);
+    const eventTypeBreakdownData = bucketSmallTypes(eventTypeBreakdownRaw).sort((a, b) => {
+      // "Other" bucket always last (OMN-2308)
+      if (a.eventType === 'other') return 1;
+      if (b.eventType === 'other') return -1;
+      // Descending by count, alphabetical tiebreaker
+      if (b.eventCount !== a.eventCount) return b.eventCount - a.eventCount;
+      return a.name.localeCompare(b.name);
+    });
 
     const timeSeriesData = Object.entries(timeBuckets)
       .map(([time, count]) => {
