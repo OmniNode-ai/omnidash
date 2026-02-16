@@ -291,6 +291,10 @@ export interface AgentAction {
   debugMode?: boolean;
   durationMs: number;
   createdAt: Date;
+  /** Real Kafka topic this action originated from (OMN-2196) */
+  topic?: string;
+  /** Hoisted tool name for tool-executed events (OMN-2196) */
+  toolName?: string;
 }
 
 export interface RoutingDecision {
@@ -2185,6 +2189,10 @@ export class EventConsumer extends EventEmitter {
 
   /**
    * Handle omniclaude lifecycle events (session-started, session-ended, tool-executed).
+   *
+   * OMN-2196: Hoists `topic` (real Kafka topic) and `toolName` (strict extraction
+   * from payload) onto the AgentAction so downstream consumers (projection-bootstrap,
+   * EventBusMonitor) can display specific tool names instead of generic "tool_call".
    */
   private handleOmniclaudeLifecycleEvent(
     event: {
@@ -2194,8 +2202,24 @@ export class EventConsumer extends EventEmitter {
     },
     topic: string
   ): void {
-    const eventType = event.event_type || event.eventType || topic.split('.').slice(-2, -1)[0];
+    // Derive eventType with fallback guard for malformed topics (OMN-2196).
+    // topic.split('.').slice(-2, -1)[0] can return '' for single-segment topics.
+    const rawEventType = event.event_type || event.eventType;
+    const segmentFallback = topic.split('.').slice(-2, -1)[0];
+    const eventType = rawEventType || segmentFallback || topic;
     const payload = event.payload || {};
+
+    // OMN-2196: Extract toolName from payload, checking all known key variants.
+    // Matches client-side extractParsedDetails keys for consistency.
+    // Runtime typeof guards ensure non-string values (numbers, objects) are ignored.
+    // `tool` is last because it's the most ambiguous key — non-tool lifecycle
+    // events (e.g. session-started) may carry a `tool` field for other purposes.
+    const toolName =
+      (typeof payload.toolName === 'string' ? payload.toolName : undefined) ||
+      (typeof payload.tool_name === 'string' ? payload.tool_name : undefined) ||
+      (typeof payload.functionName === 'string' ? payload.functionName : undefined) ||
+      (typeof payload.function_name === 'string' ? payload.function_name : undefined) ||
+      (typeof payload.tool === 'string' ? payload.tool : undefined);
 
     const action: AgentAction = {
       id: crypto.randomUUID(),
@@ -2212,11 +2236,14 @@ export class EventConsumer extends EventEmitter {
       createdAt: new Date(
         (payload.emitted_at || payload.emittedAt || Date.now()) as string | number
       ),
+      topic,
+      // Converts empty string to undefined so client fallback logic activates
+      toolName: toolName || undefined,
     };
 
     this.recentActions.unshift(action);
     intentLogger.debug(
-      `Added omniclaude lifecycle: ${eventType}, queue size: ${this.recentActions.length}`
+      `Added omniclaude lifecycle: ${eventType}${toolName ? ` (tool: ${toolName})` : ''}, queue size: ${this.recentActions.length}`
     );
 
     if (this.recentActions.length > this.maxActions) {

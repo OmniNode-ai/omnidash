@@ -18,6 +18,7 @@ import {
   getTopicLabel,
   getTopicMetadata,
   getEventTypeLabel,
+  computeNormalizedType,
   getMonitoredTopics,
   topicMatchesSuffix,
   normalizeToSuffix,
@@ -29,7 +30,7 @@ import {
   type EventBusPayload,
 } from '@/lib/data-sources/event-bus-projection-source';
 import { TIME_SERIES_BUCKET_MS } from '@shared/event-bus-payload';
-import { extractProducerFromTopicOrDefault, extractActionFromTopic } from '@shared/topics';
+import { extractProducerFromTopicOrDefault } from '@shared/topics';
 import { extractParsedDetails, type ParsedDetails } from '@/components/event-bus/eventDetailUtils';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { Card } from '@/components/ui/card';
@@ -135,7 +136,7 @@ function mapSeverityToPriority(
 function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   const payloadStr = JSON.stringify(event.payload);
   const parsedDetails = extractParsedDetails(payloadStr, event.type);
-  const normalizedType = computeNormalizedType(event.type, parsedDetails);
+  const normalizedType = computeNormalizedType(event.type, parsedDetails, event.topic);
 
   // Use a single fallback time so timestamp and timestampRaw are always consistent
   const effectiveTimeMs = event.eventTimeMs > 0 ? event.eventTimeMs : Date.now();
@@ -166,30 +167,8 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   };
 }
 
-function computeNormalizedType(eventType: string, details: ParsedDetails | null): string {
-  if (details?.toolName) return details.toolName;
-  if (details?.actionName) return details.actionName;
-  if (details?.selectedAgent) return `route:${details.selectedAgent}`;
-  if (/^v\d+$/.test(eventType)) {
-    return details?.actionName || details?.actionType || 'unknown';
-  }
-  // OMN-2196: Handle ONEX topic-style types (e.g. 'onex.cmd.omniintelligence.tool-content.v1').
-  // Use the shared extractActionFromTopic which correctly joins all segments between
-  // producer and version with hyphens (e.g. 'transformation.completed' → 'transformation-completed').
-  if (
-    eventType.startsWith('onex.') ||
-    /^(dev|staging|prod|production|test|local)\.onex\./.test(eventType)
-  ) {
-    const action = extractActionFromTopic(eventType);
-    if (action) return action;
-    // Fallback: extract second-to-last segment if shared function returns empty
-    const segments = eventType.split('.');
-    if (segments.length >= 5) {
-      return segments[segments.length - 2];
-    }
-  }
-  return eventType;
-}
+// computeNormalizedType is imported from @/lib/configs/event-bus-dashboard
+// (extracted for testability — see OMN-2196).
 
 function generateSummary(
   eventType: string,
