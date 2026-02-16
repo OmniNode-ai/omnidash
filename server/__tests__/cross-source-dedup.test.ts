@@ -326,4 +326,128 @@ describe('OMN-2197: Cross-source correlation-ID dedup', () => {
     expect(snapshot.payload.totalEventsIngested).toBe(3);
     expect(snapshot.payload.events).toHaveLength(3);
   });
+
+  // -----------------------------------------------------------------------
+  // Scenario 8: Failed ingest does NOT mark correlation ID as seen
+  // -----------------------------------------------------------------------
+
+  it('should not mark correlation ID as seen when ingest throws', () => {
+    const correlationId = 'corr-ingest-throw-test';
+    const now = Date.now();
+
+    // Make projectionService.ingest throw on the first call, then restore
+    const originalIngest = projectionService.ingest.bind(projectionService);
+    let callCount = 0;
+    const ingestSpy = vi.spyOn(projectionService, 'ingest').mockImplementation((raw) => {
+      callCount++;
+      if (callCount === 1) {
+        throw new Error('Simulated ingest failure');
+      }
+      return originalIngest(raw);
+    });
+
+    // First delivery: EventBusDataSource sends the event, but ingest throws.
+    // The error is caught by the try/catch in wireProjectionSources, so the
+    // correlation ID should NOT be tracked in the dedup set.
+    emitFromDataSource({
+      event_id: 'evt-will-fail',
+      topic: 'onex.cmd.omniintelligence.tool-content.v1',
+      event_type: 'tool-content',
+      source: 'omniintelligence',
+      correlation_id: correlationId,
+      timestamp: now,
+      payload: { tool_name: 'Read' },
+    });
+
+    // Verify: nothing was ingested (ingest threw)
+    let snapshot = eventBusProjection.getSnapshot();
+    expect(snapshot.payload.totalEventsIngested).toBe(0);
+
+    // Second delivery: EventConsumer sends the same event (same correlation ID).
+    // Because the first ingest failed and dedup state was NOT tracked, this
+    // second delivery should succeed.
+    emitFromConsumer('actionUpdate', {
+      id: 'uuid-retry-success',
+      correlationId,
+      agentName: 'omniclaude',
+      actionType: 'tool',
+      actionName: 'Read',
+      timestamp: now,
+    });
+
+    // Verify: the retry succeeded — exactly 1 event ingested
+    snapshot = eventBusProjection.getSnapshot();
+    expect(snapshot.payload.totalEventsIngested).toBe(1);
+    expect(snapshot.payload.events).toHaveLength(1);
+
+    ingestSpy.mockRestore();
+  });
+
+  // -----------------------------------------------------------------------
+  // Scenario 9: Ring-buffer capacity eviction allows late duplicates
+  // -----------------------------------------------------------------------
+
+  it('should allow late duplicate after ring-buffer eviction (capacity = 5000)', () => {
+    // The correlation-ID dedup ring has capacity 5000. After filling it,
+    // the oldest entry is evicted. A late duplicate arriving with that
+    // evicted correlation ID should NOT be deduplicated — it will be
+    // ingested as a second copy. This is the intentional trade-off
+    // documented in the production code comments.
+    const CORR_DEDUP_CAPACITY = 5000;
+    const now = Date.now();
+
+    // The very first correlation ID — this will be evicted once the ring
+    // wraps around after CORR_DEDUP_CAPACITY entries.
+    const firstCorrId = 'corr-eviction-target-0';
+
+    // Emit the first event via EventBusDataSource
+    emitFromDataSource({
+      event_id: 'evt-evict-0',
+      topic: 'onex.cmd.omniintelligence.tool-content.v1',
+      event_type: 'tool-content',
+      source: 'omniintelligence',
+      correlation_id: firstCorrId,
+      timestamp: now,
+      payload: { tool_name: 'Read' },
+    });
+
+    // Fill the ring buffer to capacity by emitting CORR_DEDUP_CAPACITY - 1
+    // more unique events (total = 5000, filling slots 0..4999).
+    // Then emit one more to cause slot 0 (firstCorrId) to be evicted.
+    for (let i = 1; i <= CORR_DEDUP_CAPACITY; i++) {
+      emitFromDataSource({
+        event_id: `evt-fill-${i}`,
+        topic: 'onex.cmd.omniintelligence.tool-content.v1',
+        event_type: 'tool-content',
+        source: 'omniintelligence',
+        correlation_id: `corr-fill-${i}`,
+        timestamp: now + i,
+        payload: { tool_name: 'Read' },
+      });
+    }
+
+    // At this point we've emitted 5001 events. The ring buffer has
+    // wrapped: slot 0 now holds 'corr-fill-5000' and 'corr-eviction-target-0'
+    // has been evicted from the set.
+    const snapshotBefore = eventBusProjection.getSnapshot();
+    const countBefore = snapshotBefore.payload.totalEventsIngested;
+
+    // Now emit a "late duplicate" via EventConsumer with the evicted
+    // correlation ID. Because the ID was evicted from the ring, the dedup
+    // check will NOT catch it, and it will be ingested as a new event.
+    emitFromConsumer('actionUpdate', {
+      id: 'uuid-late-dup-after-eviction',
+      correlationId: firstCorrId,
+      agentName: 'omniclaude',
+      actionType: 'tool',
+      actionName: 'Read',
+      timestamp: now,
+    });
+
+    const snapshotAfter = eventBusProjection.getSnapshot();
+
+    // The late duplicate should have been ingested (not deduplicated),
+    // proving the ring-buffer eviction behavior.
+    expect(snapshotAfter.payload.totalEventsIngested).toBe(countBefore + 1);
+  }, 30_000); // Extended timeout: 5001 events through the projection pipeline
 });
