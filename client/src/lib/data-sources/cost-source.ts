@@ -52,10 +52,11 @@ class CostSource {
     this._mockEndpoints.add(endpoint);
   }
 
-  private buildParams(window: CostTimeWindow, includeEstimated?: boolean): string {
-    const params = new URLSearchParams({ window });
-    if (includeEstimated) params.set('includeEstimated', 'true');
-    return params.toString();
+  private buildParams(options: { window?: CostTimeWindow; includeEstimated?: boolean }): string {
+    const params = new URLSearchParams();
+    if (options.window) params.set('window', options.window);
+    if (options.includeEstimated) params.set('includeEstimated', 'true');
+    return params.toString() ? `?${params.toString()}` : '';
   }
 
   async summary(
@@ -65,7 +66,7 @@ class CostSource {
     const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
     try {
       const response = await fetch(
-        `${this.baseUrl}/summary?${this.buildParams(window, includeEstimated)}`
+        `${this.baseUrl}/summary${this.buildParams({ window, includeEstimated })}`
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
@@ -92,7 +93,7 @@ class CostSource {
     const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
     try {
       const response = await fetch(
-        `${this.baseUrl}/trend?${this.buildParams(window, includeEstimated)}`
+        `${this.baseUrl}/trend${this.buildParams({ window, includeEstimated })}`
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
@@ -115,8 +116,9 @@ class CostSource {
   async byModel(options: CostFetchOptions = {}): Promise<CostByModel[]> {
     const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
     try {
-      const params = includeEstimated ? '?includeEstimated=true' : '';
-      const response = await fetch(`${this.baseUrl}/by-model${params}`);
+      const response = await fetch(
+        `${this.baseUrl}/by-model${this.buildParams({ includeEstimated })}`
+      );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
@@ -138,8 +140,9 @@ class CostSource {
   async byRepo(options: CostFetchOptions = {}): Promise<CostByRepo[]> {
     const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
     try {
-      const params = includeEstimated ? '?includeEstimated=true' : '';
-      const response = await fetch(`${this.baseUrl}/by-repo${params}`);
+      const response = await fetch(
+        `${this.baseUrl}/by-repo${this.buildParams({ includeEstimated })}`
+      );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
@@ -161,8 +164,9 @@ class CostSource {
   async byPattern(options: CostFetchOptions = {}): Promise<CostByPattern[]> {
     const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
     try {
-      const params = includeEstimated ? '?includeEstimated=true' : '';
-      const response = await fetch(`${this.baseUrl}/by-pattern${params}`);
+      const response = await fetch(
+        `${this.baseUrl}/by-pattern${this.buildParams({ includeEstimated })}`
+      );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
@@ -188,7 +192,7 @@ class CostSource {
     const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
     try {
       const response = await fetch(
-        `${this.baseUrl}/token-usage?${this.buildParams(window, includeEstimated)}`
+        `${this.baseUrl}/token-usage${this.buildParams({ window, includeEstimated })}`
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();

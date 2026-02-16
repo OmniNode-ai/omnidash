@@ -136,7 +136,7 @@ export interface CostSummary {
   /** Spend from estimated/missing data. */
   estimated_cost_usd: number;
   /** Percentage of data that is API-reported (0-100). */
-  estimated_coverage_pct: number;
+  reported_coverage_pct: number;
   /** Total tokens consumed. */
   total_tokens: number;
   /** Total prompt tokens. */

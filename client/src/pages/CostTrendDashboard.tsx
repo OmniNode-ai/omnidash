@@ -545,7 +545,7 @@ export default function CostTrendDashboard() {
   // Local state
   // ---------------------------------------------------------------------------
 
-  const [window, setWindow] = useState<CostTimeWindow>('7d');
+  const [timeWindow, setTimeWindow] = useState<CostTimeWindow>('7d');
   const [includeEstimated, setIncludeEstimated] = useState(false);
 
   // ---------------------------------------------------------------------------
@@ -555,14 +555,14 @@ export default function CostTrendDashboard() {
   const fetchOpts = { mockOnEmpty: true, includeEstimated };
 
   const { data: summary, isLoading: summaryLoading } = useQuery<CostSummary>({
-    queryKey: [...queryKeys.costs.summary(window), includeEstimated],
-    queryFn: () => costSource.summary(window, fetchOpts),
+    queryKey: [...queryKeys.costs.summary(timeWindow), includeEstimated],
+    queryFn: () => costSource.summary(timeWindow, fetchOpts),
     refetchInterval: 15_000,
   });
 
   const { data: trend, isLoading: trendLoading } = useQuery<CostTrendPoint[]>({
-    queryKey: [...queryKeys.costs.trend(window), includeEstimated],
-    queryFn: () => costSource.trend(window, fetchOpts),
+    queryKey: [...queryKeys.costs.trend(timeWindow), includeEstimated],
+    queryFn: () => costSource.trend(timeWindow, fetchOpts),
     refetchInterval: 15_000,
   });
 
@@ -585,8 +585,8 @@ export default function CostTrendDashboard() {
   });
 
   const { data: tokenUsage, isLoading: tokenLoading } = useQuery<TokenUsagePoint[]>({
-    queryKey: [...queryKeys.costs.tokenUsage(window), includeEstimated],
-    queryFn: () => costSource.tokenUsage(window, fetchOpts),
+    queryKey: [...queryKeys.costs.tokenUsage(timeWindow), includeEstimated],
+    queryFn: () => costSource.tokenUsage(timeWindow, fetchOpts),
     refetchInterval: 15_000,
   });
 
@@ -621,16 +621,9 @@ export default function CostTrendDashboard() {
   // Handlers
   // ---------------------------------------------------------------------------
 
-  const handleWindowChange = useCallback(
-    (w: CostTimeWindow) => {
-      setWindow(w);
-      // Invalidate window-dependent queries to trigger immediate refetch
-      queryClient.invalidateQueries({ queryKey: queryKeys.costs.summary(w) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.costs.trend(w) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.costs.tokenUsage(w) });
-    },
-    [queryClient]
-  );
+  const handleWindowChange = useCallback((w: CostTimeWindow) => {
+    setTimeWindow(w);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Derived values
@@ -672,9 +665,9 @@ export default function CostTrendDashboard() {
           <EstimatedToggle
             checked={includeEstimated}
             onCheckedChange={setIncludeEstimated}
-            coveragePct={summary?.estimated_coverage_pct}
+            coveragePct={summary?.reported_coverage_pct}
           />
-          <WindowSelector value={window} onChange={handleWindowChange} />
+          <WindowSelector value={timeWindow} onChange={handleWindowChange} />
           <div className="flex items-center gap-1.5">
             <div
               className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}`}
@@ -688,7 +681,7 @@ export default function CostTrendDashboard() {
 
       {/* Hero Metric: Total Cost */}
       <HeroMetric
-        label={`Total Spend (${window})`}
+        label={`Total Spend (${timeWindow})`}
         value={heroValue}
         subtitle={heroSubtitle}
         status={heroStatus}
@@ -751,7 +744,7 @@ export default function CostTrendDashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-muted-foreground" />
-              Cost Over Time ({window})
+              Cost Over Time ({timeWindow})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -767,7 +760,7 @@ export default function CostTrendDashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-muted-foreground" />
-              Token Usage ({window})
+              Token Usage ({timeWindow})
             </CardTitle>
           </CardHeader>
           <CardContent>

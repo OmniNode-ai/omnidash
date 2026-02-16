@@ -44,7 +44,7 @@ router.get('/summary', async (req, res) => {
       total_cost_usd: 0,
       reported_cost_usd: 0,
       estimated_cost_usd: 0,
-      estimated_coverage_pct: 0,
+      reported_coverage_pct: 0,
       total_tokens: 0,
       prompt_tokens: 0,
       completion_tokens: 0,

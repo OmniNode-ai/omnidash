@@ -55,7 +55,7 @@ export function getMockCostSummary(window: CostTimeWindow = '7d'): CostSummary {
     total_cost_usd: +baseCost.toFixed(2),
     reported_cost_usd: +(baseCost * reportedPct).toFixed(2),
     estimated_cost_usd: +(baseCost * (1 - reportedPct)).toFixed(2),
-    estimated_coverage_pct: +(reportedPct * 100).toFixed(1) as unknown as number,
+    reported_coverage_pct: +(reportedPct * 100).toFixed(1),
     total_tokens: Math.round(248_000 * multiplier),
     prompt_tokens: Math.round(186_000 * multiplier),
     completion_tokens: Math.round(62_000 * multiplier),
