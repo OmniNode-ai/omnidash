@@ -388,7 +388,7 @@ function extractTimestamp(data: Record<string, unknown>): number | undefined {
  * @example 'dev.onex.evt.omniclaude.session-started.v1' → 'session-started'
  * @example 'agent-actions' → '' (legacy flat name, no action to extract)
  */
-function extractActionFromTopic(topic: string): string {
+export function extractActionFromTopic(topic: string): string {
   const canonical = extractSuffix(topic);
   const segments = canonical.split('.');
   // Canonical ONEX format has 5 segments: onex.<kind>.<producer>.<event-name>.v<N>
@@ -407,7 +407,7 @@ function extractActionFromTopic(topic: string): string {
  * @example 'onex.cmd.omniintelligence.tool-content.v1' → 'omniintelligence'
  * @example 'agent-actions' → 'system' (fallback for legacy flat names)
  */
-function extractProducerFromTopic(topic: string): string {
+export function extractProducerFromTopic(topic: string): string {
   const canonical = extractSuffix(topic);
   const segments = canonical.split('.');
   // Canonical ONEX format: onex.<kind>.<producer>.<event-name>.v<N>
