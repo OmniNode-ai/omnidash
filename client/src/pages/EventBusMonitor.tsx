@@ -599,7 +599,8 @@ export default function EventBusMonitor() {
     statusRows.sort((a, b) => {
       if (a.status === 'active' && b.status !== 'active') return -1;
       if (a.status !== 'active' && b.status === 'active') return 1;
-      return b.eventCount - a.eventCount;
+      if (b.eventCount !== a.eventCount) return b.eventCount - a.eventCount;
+      return a.label.localeCompare(b.label);
     });
 
     return statusRows;
