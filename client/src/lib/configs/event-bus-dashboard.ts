@@ -682,6 +682,10 @@ export function getEventDisplayLabel(opts: {
     // onex.<kind>.<producer>.<event-name>.v<N> => event-name
     // Guard: trailing dots produce empty segments — toTitleCase('') yields '',
     // so only return when the result is non-empty.
+    // Only the canonical 5-segment ONEX format is supported:
+    //   onex.<kind>.<producer>.<event-name>.v<N>
+    // Topics with extra trailing segments would extract the wrong segment;
+    // this is consistent with getTopicLabel's assumption elsewhere.
     if (segments.length >= 5 && segments[0] === 'onex') {
       const label = toTitleCase(segments[segments.length - 2]);
       if (label) return label;

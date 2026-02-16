@@ -2138,12 +2138,14 @@ export class EventConsumer extends EventEmitter {
     // OMN-2196: Extract toolName from payload, checking all known key variants.
     // Matches client-side extractParsedDetails keys for consistency.
     // Runtime typeof guards ensure non-string values (numbers, objects) are ignored.
+    // `tool` is last because it's the most ambiguous key — non-tool lifecycle
+    // events (e.g. session-started) may carry a `tool` field for other purposes.
     const toolName =
       (typeof payload.toolName === 'string' ? payload.toolName : undefined) ||
       (typeof payload.tool_name === 'string' ? payload.tool_name : undefined) ||
-      (typeof payload.tool === 'string' ? payload.tool : undefined) ||
       (typeof payload.functionName === 'string' ? payload.functionName : undefined) ||
-      (typeof payload.function_name === 'string' ? payload.function_name : undefined);
+      (typeof payload.function_name === 'string' ? payload.function_name : undefined) ||
+      (typeof payload.tool === 'string' ? payload.tool : undefined);
 
     const action: AgentAction = {
       id: crypto.randomUUID(),
