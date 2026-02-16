@@ -629,7 +629,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
           {
             key: 'timestamp',
             header: 'Time',
-            width: 100,
+            width: 180,
             sortable: true,
             sort_key: 'timestampSort',
           },
