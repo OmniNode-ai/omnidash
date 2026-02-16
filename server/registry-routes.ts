@@ -28,6 +28,7 @@ const router = Router();
 // Projection access
 // ============================================================================
 
+/** Retrieve the materialized node-registry projection, if bootstrapped. */
 function getProjection(): NodeRegistryProjection | undefined {
   return projectionService.getView('node-registry') as NodeRegistryProjection | undefined;
 }
@@ -51,19 +52,19 @@ function shouldUseMockData(projection: NodeRegistryProjection | undefined): bool
  * Uses snake_case keys matching the existing API contract.
  */
 function adaptNodeState(node: NodeState): Record<string, unknown> {
-  // Flatten capabilities for the capabilities array the frontend table/grid expects
-  const flatCapabilities: string[] = [];
-  if (node.capabilities?.declared) flatCapabilities.push(...node.capabilities.declared);
+  // Flatten capabilities for the capabilities array the frontend table/grid expects.
+  // Use a Set for consistent O(1) deduplication across all three sources.
+  const capSet = new Set<string>();
+  if (node.capabilities?.declared) {
+    for (const c of node.capabilities.declared) capSet.add(c);
+  }
   if (node.capabilities?.discovered) {
-    for (const c of node.capabilities.discovered) {
-      if (!flatCapabilities.includes(c)) flatCapabilities.push(c);
-    }
+    for (const c of node.capabilities.discovered) capSet.add(c);
   }
   if (node.capabilities?.contract) {
-    for (const c of node.capabilities.contract) {
-      if (!flatCapabilities.includes(c)) flatCapabilities.push(c);
-    }
+    for (const c of node.capabilities.contract) capSet.add(c);
   }
+  const flatCapabilities = Array.from(capSet);
 
   return {
     node_id: node.nodeId,
@@ -93,6 +94,7 @@ function adaptNodeState(node: NodeState): Record<string, unknown> {
 // Utility Functions
 // ============================================================================
 
+/** Build a timestamped error response conforming to RegistryErrorResponse. */
 function createErrorResponse(error: string, message: string): RegistryErrorResponse {
   return {
     error,
@@ -101,18 +103,21 @@ function createErrorResponse(error: string, message: string): RegistryErrorRespo
   };
 }
 
+/** Extract and clamp limit/offset pagination params from the query string. */
 function parsePaginationParams(req: Request): { limit: number; offset: number } {
   const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 250);
   const offset = Math.max(parseInt(req.query.offset as string, 10) || 0, 0);
   return { limit, offset };
 }
 
+/** Set response headers to prevent any client or proxy caching. */
 function setNoCacheHeaders(res: Response): void {
   res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
 }
 
+/** Set public Cache-Control header for cacheable responses. */
 function setStaticCacheHeaders(res: Response, maxAge: number = 60): void {
   res.set('Cache-Control', `public, max-age=${maxAge}`);
 }
@@ -135,14 +140,17 @@ function normalizeState(state: string): RegistrationState {
   return state.toLowerCase() as RegistrationState;
 }
 
+/** Return true if the normalized state equals 'active'. */
 function isActiveState(state: string): boolean {
   return normalizeState(state) === 'active';
 }
 
+/** Return true if the state is in the pending registration lifecycle (pre-active). */
 function isPendingState(state: string): boolean {
   return PENDING_STATES.includes(normalizeState(state));
 }
 
+/** Return true if the state indicates a terminal failure (timeout, expiry, rejection). */
 function isFailedState(state: string): boolean {
   return FAILED_STATES.includes(normalizeState(state));
 }
@@ -159,6 +167,7 @@ interface FilterParams {
   search?: string;
 }
 
+/** Apply query-string filters (state, type, capability, namespace, search) to projection nodes. */
 function filterProjectionNodes(nodes: NodeState[], params: FilterParams): NodeState[] {
   let filtered = nodes;
 
@@ -168,7 +177,8 @@ function filterProjectionNodes(nodes: NodeState[], params: FilterParams): NodeSt
   }
 
   if (params.type) {
-    filtered = filtered.filter((n) => n.nodeType === params.type);
+    const targetType = params.type.toUpperCase();
+    filtered = filtered.filter((n) => n.nodeType === targetType);
   }
 
   if (params.capability) {
@@ -346,7 +356,9 @@ router.get('/nodes', (req: Request, res: Response) => {
 /**
  * GET /api/registry/nodes/:id
  *
- * Single node detail.
+ * Single node detail. Looks up strictly by node_id (UUID) in both projection
+ * and mock modes. Name-based lookup is intentionally not supported here;
+ * use the `search` query parameter on GET /api/registry/nodes instead.
  */
 router.get('/nodes/:id', (req: Request, res: Response) => {
   try {
@@ -366,6 +378,8 @@ router.get('/nodes/:id', (req: Request, res: Response) => {
     }
 
     const snapshot = projection.getSnapshot();
+    // Lookup by nodeId only -- consistent with mock mode (see serveMockNodeDetail).
+    // NodeState has no separate name field, so name-based lookup is not possible.
     const node = snapshot.payload.nodes.find((n) => n.nodeId === id);
 
     if (!node) {
@@ -451,6 +465,7 @@ router.get('/health', (_req: Request, res: Response) => {
 // DEMO_MODE mock fallback handlers
 // ============================================================================
 
+/** DEMO_MODE fallback: serve the full discovery payload from the mock data store. */
 function serveMockDiscovery(req: Request, res: Response, limit: number, offset: number): void {
   const allNodes = mockDataStore.getNodes();
   const allInstances = mockDataStore.getInstances();
@@ -523,6 +538,7 @@ function serveMockDiscovery(req: Request, res: Response, limit: number, offset: 
   });
 }
 
+/** DEMO_MODE fallback: serve a filtered, paginated node list from mock data. */
 function serveMockNodes(req: Request, res: Response, limit: number, offset: number): void {
   const allNodes = mockDataStore.getNodes();
 
@@ -551,9 +567,13 @@ function serveMockNodes(req: Request, res: Response, limit: number, offset: numb
   });
 }
 
+/** DEMO_MODE fallback: serve a single node detail with its instances from mock data. */
 function serveMockNodeDetail(_req: Request, res: Response, id: string): void {
   const allNodes = mockDataStore.getNodes();
-  const node = allNodes.find((n) => n.node_id === id || n.name === id);
+  // Lookup by node_id only -- consistent with projection mode which matches
+  // on nodeId. NodeState has no separate name field, so name-based lookup
+  // would be a mock-only behavior that silently breaks when switching modes.
+  const node = allNodes.find((n) => n.node_id === id);
 
   if (!node) {
     res.status(404).json(createErrorResponse('not_found', `Node with ID '${id}' not found`));
