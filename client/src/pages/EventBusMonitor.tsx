@@ -533,23 +533,38 @@ export default function EventBusMonitor() {
     const FIVE_MINUTES_MS = 5 * 60 * 1000;
     const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
-    // Merge hardcoded monitored topics with dynamically observed topics from
-    // the projection snapshot's topicBreakdown (OMN-2193). Observed topics not
+    // OMN-2193: Merge hardcoded monitored topics with dynamically observed
+    // topics from the projection snapshot's topicBreakdown. Observed topics not
     // in the hardcoded list appear dynamically; known topics with no events
     // remain "Silent".
+    //
+    // Build a normalized suffix -> aggregate count map from topicBreakdown so
+    // that env-prefixed variants (dev.onex.cmd...) merge with canonical names.
     const allTopics = new Set<string>(monitoredTopics);
     const topicBreakdown = sourceData.topicBreakdown;
-    for (const observedTopic of Object.keys(topicBreakdown)) {
-      // Normalize env-prefixed topics to their canonical suffix form
+    const normalizedCounts = new Map<string, number>();
+
+    for (const [observedTopic, count] of Object.entries(topicBreakdown)) {
       const normalized = normalizeToSuffix(observedTopic);
       allTopics.add(normalized);
+      normalizedCounts.set(normalized, (normalizedCounts.get(normalized) ?? 0) + count);
+    }
+
+    // Build a map from normalized suffix -> newest event timestamp for last-seen
+    // display. Pre-compute once instead of O(topics * events) filtering.
+    const newestTimestamp = new Map<string, string>();
+    for (const event of sourceData.events) {
+      const suffix = normalizeToSuffix(event.topicRaw);
+      const existing = newestTimestamp.get(suffix);
+      if (!existing || event.timestampRaw > existing) {
+        newestTimestamp.set(suffix, event.timestampRaw);
+      }
     }
 
     const statusRows = Array.from(allTopics).map((topic) => {
-      const topicEvents = sourceData.events.filter((e) => topicMatchesSuffix(e.topicRaw, topic));
-      const eventCount = topicEvents.length;
-      const lastEvent = topicEvents.length > 0 ? topicEvents[0] : null;
-      const lastEventAt = lastEvent ? lastEvent.timestampRaw : null;
+      // Use server-provided aggregate count (authoritative for the buffer).
+      const eventCount = normalizedCounts.get(topic) ?? 0;
+      const lastEventAt = newestTimestamp.get(topic) ?? null;
 
       let lastEventFormatted: string;
       if (!lastEventAt) {
@@ -584,7 +599,8 @@ export default function EventBusMonitor() {
     statusRows.sort((a, b) => {
       if (a.status === 'active' && b.status !== 'active') return -1;
       if (a.status !== 'active' && b.status === 'active') return 1;
-      return b.eventCount - a.eventCount;
+      if (b.eventCount !== a.eventCount) return b.eventCount - a.eventCount;
+      return a.label.localeCompare(b.label);
     });
 
     return statusRows;

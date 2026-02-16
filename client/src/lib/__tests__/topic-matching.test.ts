@@ -90,4 +90,29 @@ describe('normalizeToSuffix', () => {
   it('returns unknown topic unchanged', () => {
     expect(normalizeToSuffix('unknown-topic', TOPICS)).toBe('unknown-topic');
   });
+
+  // OMN-2193: extractSuffix fallback for dynamically observed topics
+  it('strips env prefix for topics NOT in the known list (extractSuffix fallback)', () => {
+    // This topic is not in TOPICS, but has a known env prefix
+    const envPrefixed = 'dev.onex.cmd.omniintelligence.tool-content.v1';
+    const canonical = 'onex.cmd.omniintelligence.tool-content.v1';
+    expect(normalizeToSuffix(envPrefixed, TOPICS)).toBe(canonical);
+  });
+
+  it('strips staging prefix for dynamically observed topics', () => {
+    const envPrefixed = 'staging.onex.evt.omniclaude.session-started.v1';
+    const canonical = 'onex.evt.omniclaude.session-started.v1';
+    expect(normalizeToSuffix(envPrefixed, TOPICS)).toBe(canonical);
+  });
+
+  it('returns flat dynamic topics unchanged (no env prefix to strip)', () => {
+    // "actionUpdate" is not in TOPICS and has no env prefix
+    expect(normalizeToSuffix('actionUpdate', TOPICS)).toBe('actionUpdate');
+  });
+
+  it('uses default MONITORED_TOPICS when no topics arg provided', () => {
+    // Calling without explicit topics list should still work
+    expect(normalizeToSuffix(SUFFIX_NODE_HEARTBEAT)).toBe(SUFFIX_NODE_HEARTBEAT);
+    expect(normalizeToSuffix(`dev.${SUFFIX_NODE_HEARTBEAT}`)).toBe(SUFFIX_NODE_HEARTBEAT);
+  });
 });

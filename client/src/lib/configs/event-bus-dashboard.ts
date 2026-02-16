@@ -672,7 +672,12 @@ export function topicMatchesSuffix(eventTopicRaw: string, monitoredSuffix: strin
  * so that stored filter values are always suffix-only and can be compared directly
  * with TopicSelector row keys.
  *
- * Returns the original topic if no monitored suffix matches.
+ * Fallback chain:
+ *   1. Direct lookup in known topics list — return as-is
+ *   2. Suffix match against known topics — return the matching suffix
+ *   3. extractSuffix() — strip env prefix for dynamically observed topics
+ *      not in the known list (e.g. 'dev.onex.cmd.omniintelligence.tool-content.v1'
+ *      → 'onex.cmd.omniintelligence.tool-content.v1')
  */
 export function normalizeToSuffix(
   topic: string,
@@ -686,7 +691,10 @@ export function normalizeToSuffix(
     if (topicMatchesSuffix(topic, suffix)) return suffix;
   }
 
-  return topic;
+  // Fallback: strip env prefix even for topics not in the known list (OMN-2193).
+  // This handles dynamically observed topics like
+  // 'dev.onex.cmd.omniintelligence.tool-content.v1' that aren't in MONITORED_TOPICS.
+  return extractSuffix(topic);
 }
 
 // ============================================================================
