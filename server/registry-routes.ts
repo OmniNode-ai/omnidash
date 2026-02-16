@@ -219,7 +219,13 @@ router.get('/discovery', (req: Request, res: Response) => {
       return serveMockDiscovery(req, res, limit, offset);
     }
 
-    const snapshot = projection!.getSnapshot();
+    if (!projection) {
+      return res
+        .status(503)
+        .json(createErrorResponse('service_unavailable', 'Node registry projection not ready'));
+    }
+
+    const snapshot = projection.getSnapshot();
     const allNodes = snapshot.payload.nodes;
     const stats = snapshot.payload.stats;
 
@@ -298,7 +304,13 @@ router.get('/nodes', (req: Request, res: Response) => {
       return serveMockNodes(req, res, limit, offset);
     }
 
-    const snapshot = projection!.getSnapshot();
+    if (!projection) {
+      return res
+        .status(503)
+        .json(createErrorResponse('service_unavailable', 'Node registry projection not ready'));
+    }
+
+    const snapshot = projection.getSnapshot();
     const allNodes = snapshot.payload.nodes;
 
     const params: FilterParams = {
@@ -347,7 +359,13 @@ router.get('/nodes/:id', (req: Request, res: Response) => {
       return serveMockNodeDetail(req, res, id);
     }
 
-    const snapshot = projection!.getSnapshot();
+    if (!projection) {
+      return res
+        .status(503)
+        .json(createErrorResponse('service_unavailable', 'Node registry projection not ready'));
+    }
+
+    const snapshot = projection.getSnapshot();
     const node = snapshot.payload.nodes.find((n) => n.nodeId === id);
 
     if (!node) {
