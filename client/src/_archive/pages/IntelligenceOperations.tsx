@@ -59,7 +59,7 @@ interface ManifestInjectionHealth {
   }>;
   serviceHealth: {
     postgresql: { status: 'up' | 'down'; latencyMs?: number };
-    omniarchon: { status: 'up' | 'down'; latencyMs?: number };
+    omniintelligence: { status: 'up' | 'down'; latencyMs?: number };
     qdrant: { status: 'up' | 'down'; latencyMs?: number };
   };
 }
@@ -671,7 +671,7 @@ export default function IntelligenceOperations() {
               : [
                   {
                     id: 'm1',
-                    repository: 'omniarchon',
+                    repository: 'omniintelligence',
                     filePath: 'https://repo/docs/INTRO.md',
                     accessCount: 128,
                     lastAccessedAt: new Date().toISOString(),
@@ -680,7 +680,7 @@ export default function IntelligenceOperations() {
                   },
                   {
                     id: 'm2',
-                    repository: 'omniarchon',
+                    repository: 'omniintelligence',
                     filePath: 'https://repo/docs/API.md',
                     accessCount: 64,
                     lastAccessedAt: new Date(Date.now() - 86400000).toISOString(),
@@ -689,7 +689,7 @@ export default function IntelligenceOperations() {
                   },
                   {
                     id: 'm3',
-                    repository: 'omniarchon',
+                    repository: 'omniintelligence',
                     filePath: 'https://repo/docs/SETUP.md',
                     accessCount: 29,
                     lastAccessedAt: null,

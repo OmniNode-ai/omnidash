@@ -48,6 +48,23 @@ import {
   SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
   SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
+  // Pattern lifecycle topics
+  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITION_CMD,
+  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
+  SUFFIX_INTELLIGENCE_PATTERN_PROMOTED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_PATTERN_DISCOVERED,
+  // Session/Agent topics
+  SUFFIX_INTELLIGENCE_SESSION_OUTCOME_CMD,
+  SUFFIX_AGENT_STATUS,
+  // OmniClaude extended topics
+  SUFFIX_OMNICLAUDE_ROUTING_DECISION,
+  SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
+  SUFFIX_OMNICLAUDE_MANIFEST_INJECTED,
+  SUFFIX_OMNICLAUDE_PHASE_METRICS,
+  SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED,
+  SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED,
+  SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED,
   ENVIRONMENT_PREFIXES,
   extractSuffix,
 } from '@shared/topics';
@@ -114,12 +131,70 @@ export const NODE_TOPICS = [
 ] as const;
 
 /**
+ * Intelligence pipeline topics - commands and completion events from OmniIntelligence
+ */
+export const INTELLIGENCE_TOPICS = [
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED,
+  SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED,
+  SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
+  SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
+] as const;
+
+/**
+ * Pattern lifecycle topics - pattern discovery, promotion, and state transitions
+ */
+export const PATTERN_LIFECYCLE_TOPICS = [
+  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITION_CMD,
+  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
+  SUFFIX_INTELLIGENCE_PATTERN_PROMOTED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_PATTERN_DISCOVERED,
+] as const;
+
+/**
+ * Session/Agent topics - session outcomes and agent status
+ */
+export const SESSION_AGENT_TOPICS = [
+  SUFFIX_INTELLIGENCE_SESSION_OUTCOME_CMD,
+  SUFFIX_AGENT_STATUS,
+] as const;
+
+/**
+ * OmniClaude extended topics - routing, sessions, manifests, notifications
+ */
+export const OMNICLAUDE_EXTENDED_TOPICS = [
+  SUFFIX_OMNICLAUDE_ROUTING_DECISION,
+  SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
+  SUFFIX_OMNICLAUDE_MANIFEST_INJECTED,
+  SUFFIX_OMNICLAUDE_PHASE_METRICS,
+  SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED,
+  SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED,
+  SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED,
+] as const;
+
+/**
  * All monitored topics combined
  */
-export const MONITORED_TOPICS = [...AGENT_TOPICS, ...NODE_TOPICS] as const;
+export const MONITORED_TOPICS = [
+  ...AGENT_TOPICS,
+  ...NODE_TOPICS,
+  ...INTELLIGENCE_TOPICS,
+  ...PATTERN_LIFECYCLE_TOPICS,
+  ...SESSION_AGENT_TOPICS,
+  ...OMNICLAUDE_EXTENDED_TOPICS,
+] as const;
 
 export type AgentTopic = (typeof AGENT_TOPICS)[number];
 export type NodeTopic = (typeof NODE_TOPICS)[number];
+export type IntelligenceTopic = (typeof INTELLIGENCE_TOPICS)[number];
+export type PatternLifecycleTopic = (typeof PATTERN_LIFECYCLE_TOPICS)[number];
+export type SessionAgentTopic = (typeof SESSION_AGENT_TOPICS)[number];
+export type OmniclaudeExtendedTopic = (typeof OMNICLAUDE_EXTENDED_TOPICS)[number];
 export type MonitoredTopic = (typeof MONITORED_TOPICS)[number];
 
 // ============================================================================
@@ -291,6 +366,79 @@ export const TOPIC_METADATA: Record<
     description: 'Quality assessment completed successfully',
     category: 'intelligence',
   },
+  // Pattern lifecycle topics
+  [SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITION_CMD]: {
+    label: 'Lifecycle Transition Cmd',
+    description: 'Request pattern lifecycle state transition',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED]: {
+    label: 'Lifecycle Transitioned',
+    description: 'Pattern lifecycle state transition completed',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_PATTERN_PROMOTED]: {
+    label: 'Pattern Promoted',
+    description: 'Pattern promoted to higher confidence tier',
+    category: 'intelligence',
+  },
+  [SUFFIX_INTELLIGENCE_PATTERN_STORED]: {
+    label: 'Pattern Stored',
+    description: 'Pattern stored in knowledge base',
+    category: 'intelligence',
+  },
+  [SUFFIX_PATTERN_DISCOVERED]: {
+    label: 'Pattern Discovered',
+    description: 'New code pattern discovered',
+    category: 'intelligence',
+  },
+  // Session/Agent topics
+  [SUFFIX_INTELLIGENCE_SESSION_OUTCOME_CMD]: {
+    label: 'Session Outcome Cmd',
+    description: 'Report session outcome to OmniIntelligence',
+    category: 'session',
+  },
+  [SUFFIX_AGENT_STATUS]: {
+    label: 'Agent Status',
+    description: 'Agent health and status updates',
+    category: 'agent',
+  },
+  // OmniClaude extended topics
+  [SUFFIX_OMNICLAUDE_ROUTING_DECISION]: {
+    label: 'Routing Decision',
+    description: 'OmniClaude agent routing decision event',
+    category: 'omniclaude',
+  },
+  [SUFFIX_OMNICLAUDE_SESSION_OUTCOME]: {
+    label: 'Session Outcome',
+    description: 'OmniClaude session outcome summary',
+    category: 'omniclaude',
+  },
+  [SUFFIX_OMNICLAUDE_MANIFEST_INJECTED]: {
+    label: 'Manifest Injected',
+    description: 'Agent manifest injected into session',
+    category: 'omniclaude',
+  },
+  [SUFFIX_OMNICLAUDE_PHASE_METRICS]: {
+    label: 'Phase Metrics',
+    description: 'OmniClaude execution phase timing metrics',
+    category: 'omniclaude',
+  },
+  [SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED]: {
+    label: 'Notification Blocked',
+    description: 'Notification delivery blocked by policy',
+    category: 'omniclaude',
+  },
+  [SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED]: {
+    label: 'Notification Completed',
+    description: 'Notification delivered successfully',
+    category: 'omniclaude',
+  },
+  [SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED]: {
+    label: 'Transformation Done',
+    description: 'Polymorphic agent transformation completed',
+    category: 'omniclaude',
+  },
   // Error topics
   errors: {
     label: 'Errors',
@@ -350,7 +498,14 @@ export const eventBusDashboardConfig: DashboardConfig = {
   topic_metadata: TOPIC_METADATA,
 
   // List of all monitored Kafka topics
-  monitored_topics: [...AGENT_TOPICS, ...NODE_TOPICS],
+  monitored_topics: [
+    ...AGENT_TOPICS,
+    ...NODE_TOPICS,
+    ...INTELLIGENCE_TOPICS,
+    ...PATTERN_LIFECYCLE_TOPICS,
+    ...SESSION_AGENT_TOPICS,
+    ...OMNICLAUDE_EXTENDED_TOPICS,
+  ],
 
   widgets: [
     // Row 1: Metric Cards (3 widgets)

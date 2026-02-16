@@ -1,9 +1,9 @@
 /**
- * Verification test: no references to omninode_bridge in source code (OMN-2061)
+ * Verification test: no references to deprecated services in source code (OMN-2061)
  *
  * omnidash owns its own read-model database (omnidash_analytics).
  * There should be no references to the old shared database (omninode_bridge)
- * in any TypeScript, TSX, or JSON source files.
+ * or the deprecated omniarchon service in any TypeScript, TSX, or JSON source files.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -42,12 +42,23 @@ function findFiles(dir: string, extensions: string[], excludeDirs: string[]): st
   return results;
 }
 
-describe('DB-SPLIT-10: No omninode_bridge references', () => {
+describe('DB-SPLIT-10: No omninode_bridge or omniarchon references', () => {
   it('has no omninode_bridge references in TypeScript/JSON source files', () => {
     const sourceFiles = findFiles(
       PROJECT_ROOT,
       ['.ts', '.tsx', '.json'],
-      ['node_modules', 'dist', 'docs', '.git', '.claude', 'coverage']
+      [
+        'node_modules',
+        'dist',
+        'docs',
+        '.git',
+        '.claude',
+        'coverage',
+        'tmp',
+        'test-results',
+        'playwright-report',
+        '.playwright-mcp',
+      ]
     );
 
     const violations: string[] = [];
@@ -59,6 +70,41 @@ describe('DB-SPLIT-10: No omninode_bridge references', () => {
 
       const content = fs.readFileSync(filePath, 'utf-8');
       if (content.includes('omninode_bridge')) {
+        const relativePath = path.relative(PROJECT_ROOT, filePath);
+        violations.push(relativePath);
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('has no omniarchon references in TypeScript/JSON source files', () => {
+    const sourceFiles = findFiles(
+      PROJECT_ROOT,
+      ['.ts', '.tsx', '.json'],
+      [
+        'node_modules',
+        'dist',
+        'docs',
+        '.git',
+        '.claude',
+        'coverage',
+        'tmp',
+        'test-results',
+        'playwright-report',
+        '.playwright-mcp',
+      ]
+    );
+
+    const violations: string[] = [];
+
+    for (const filePath of sourceFiles) {
+      // Skip this test file itself and package-lock.json (transitive deps may mention it)
+      if (filePath.includes('no-omninode-bridge-refs.test.ts')) continue;
+      if (filePath.endsWith('package-lock.json')) continue;
+
+      const content = fs.readFileSync(filePath, 'utf-8');
+      if (content.includes('omniarchon')) {
         const relativePath = path.relative(PROJECT_ROOT, filePath);
         violations.push(relativePath);
       }

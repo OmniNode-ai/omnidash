@@ -12,7 +12,13 @@ import type {
   Violation,
   RepoTrends,
   RepoTrendPoint,
+  LifecycleCandidate,
+  LifecycleTierMetrics,
+  LifecycleSummary,
+  LifecycleTier,
+  CandidateStatus,
 } from '@shared/validation-types';
+import { LIFECYCLE_TIERS } from '@shared/validation-types';
 import { generateUUID } from '@shared/uuid';
 
 // ===========================
@@ -22,7 +28,7 @@ import { generateUUID } from '@shared/uuid';
 /** Realistic OmniNode repository names */
 const MOCK_REPOS = [
   'omnibase_core',
-  'omniarchon',
+  'omniintelligence',
   'omniclaude',
   'omnidash',
   'omnibase_infra',
@@ -344,7 +350,7 @@ export function generateMockSummary(runs: ValidationRun[]): {
       if (run.status === 'passed') passedRuns++;
     }
 
-    for (const [sev, count] of Object.entries(run.violations_by_severity)) {
+    for (const [sev, count] of Object.entries(run.violations_by_severity ?? {})) {
       totalBySeverity[sev] = (totalBySeverity[sev] ?? 0) + count;
     }
   }
@@ -400,10 +406,172 @@ export function generateMockRepoTrends(repo: string, runs: ValidationRun[]): Rep
 }
 
 // ===========================
+// Lifecycle Mock Data Generators (OMN-2152)
+// ===========================
+
+/** Realistic candidate rule names for lifecycle tracking */
+const LIFECYCLE_RULE_NAMES = [
+  'Enforce ONEX metadata stamp on all nodes',
+  'Require version field in manifests',
+  'Validate cross-repo type consistency',
+  'Ban circular dependency chains',
+  'Enforce API deprecation period (30 days)',
+  'Require caret range for shared dependencies',
+  'Validate contract field compatibility',
+  'Enforce lint-free shared modules',
+  'Pin Python runtime to 3.12+',
+  'Require unit test coverage >= 80%',
+  'Validate Kafka topic naming convention',
+  'Enforce PEP 604 union types',
+  'Ban Optional[] in new code',
+  'Require docstring on public functions',
+  'Validate event schema backward compat',
+  'Enforce node naming convention (Node<Name><Type>)',
+  'Require typed returns on all handlers',
+  'Ban any type in shared interfaces',
+  'Validate Drizzle schema matches DB',
+  'Enforce canonical topic prefix format',
+] as const;
+
+/**
+ * Generate a single mock lifecycle candidate.
+ */
+function generateMockCandidate(index: number): LifecycleCandidate {
+  // Distribute candidates across tiers with a funnel shape:
+  // observed(40%) > suggested(25%) > shadow_apply(18%) > promoted(12%) > default(5%)
+  const tierRoll = Math.random();
+  let tier: LifecycleTier;
+  if (tierRoll < 0.4) tier = 'observed';
+  else if (tierRoll < 0.65) tier = 'suggested';
+  else if (tierRoll < 0.83) tier = 'shadow_apply';
+  else if (tierRoll < 0.95) tier = 'promoted';
+  else tier = 'default';
+
+  // Status distribution depends on tier maturity
+  let status: CandidateStatus;
+  if (tier === 'default') {
+    // Default tier: mostly pass
+    status = Math.random() < 0.9 ? 'pass' : 'pending';
+  } else if (tier === 'promoted') {
+    // Promoted: high pass rate
+    const sRoll = Math.random();
+    if (sRoll < 0.7) status = 'pass';
+    else if (sRoll < 0.85) status = 'pending';
+    else if (sRoll < 0.95) status = 'fail';
+    else status = 'quarantine';
+  } else if (tier === 'shadow_apply') {
+    // Shadow apply: mixed results
+    const sRoll = Math.random();
+    if (sRoll < 0.45) status = 'pass';
+    else if (sRoll < 0.65) status = 'pending';
+    else if (sRoll < 0.85) status = 'fail';
+    else status = 'quarantine';
+  } else {
+    // Observed/suggested: more pending and failures
+    const sRoll = Math.random();
+    if (sRoll < 0.3) status = 'pass';
+    else if (sRoll < 0.55) status = 'pending';
+    else if (sRoll < 0.8) status = 'fail';
+    else status = 'quarantine';
+  }
+
+  const rule = MOCK_RULES[index % MOCK_RULES.length];
+  const ruleName = LIFECYCLE_RULE_NAMES[index % LIFECYCLE_RULE_NAMES.length];
+  const daysAtTier = randomFloat(0.5, 45, 1);
+  const totalRuns = randomInt(1, 50);
+  const passStreak = status === 'pass' ? randomInt(1, Math.min(totalRuns, 15)) : 0;
+  const failStreak = status === 'fail' ? randomInt(1, Math.min(totalRuns, 5)) : 0;
+
+  return {
+    candidate_id: generateUUID(),
+    rule_name: ruleName,
+    rule_id: rule.rule_id,
+    tier,
+    status,
+    source_repo: randomItem(MOCK_REPOS),
+    entered_tier_at: pastDate(daysAtTier),
+    last_validated_at: pastDate(randomFloat(0, 2, 1)),
+    pass_streak: passStreak,
+    fail_streak: failStreak,
+    total_runs: totalRuns,
+  };
+}
+
+/**
+ * Generate mock lifecycle tier metrics from a set of candidates.
+ */
+function generateTierMetrics(candidates: LifecycleCandidate[]): LifecycleTierMetrics[] {
+  return LIFECYCLE_TIERS.map((tier, tierIndex) => {
+    const tierCandidates = candidates.filter((c) => c.tier === tier);
+    const byStatus: Record<CandidateStatus, number> = {
+      pending: 0,
+      pass: 0,
+      fail: 0,
+      quarantine: 0,
+    };
+
+    for (const c of tierCandidates) {
+      byStatus[c.status]++;
+    }
+
+    // Transition rates increase with maturity
+    const baseTransitionRates = [0.35, 0.5, 0.6, 0.75, 0.0]; // default has no next tier
+    const transitionRate = randomFloat(
+      Math.max(0, baseTransitionRates[tierIndex] - 0.1),
+      Math.min(1, baseTransitionRates[tierIndex] + 0.1),
+      2
+    );
+
+    // Average days at tier decreases as maturity increases (faster promotion)
+    const baseDays = [14, 10, 7, 5, 0];
+    const avgDays = randomFloat(Math.max(1, baseDays[tierIndex] - 3), baseDays[tierIndex] + 5, 1);
+
+    return {
+      tier,
+      count: tierCandidates.length,
+      by_status: byStatus,
+      avg_days_at_tier: tier === 'default' ? 0 : avgDays,
+      transition_rate: tier === 'default' ? 0 : transitionRate,
+    };
+  });
+}
+
+/**
+ * Generate a complete lifecycle summary with candidates and tier metrics.
+ */
+export function generateMockLifecycleSummary(candidateCount = 30): LifecycleSummary {
+  const candidates: LifecycleCandidate[] = [];
+  for (let i = 0; i < candidateCount; i++) {
+    candidates.push(generateMockCandidate(i));
+  }
+
+  const tiers = generateTierMetrics(candidates);
+
+  const byStatus: Record<CandidateStatus, number> = {
+    pending: 0,
+    pass: 0,
+    fail: 0,
+    quarantine: 0,
+  };
+
+  for (const c of candidates) {
+    byStatus[c.status]++;
+  }
+
+  return {
+    total_candidates: candidates.length,
+    tiers,
+    by_status: byStatus,
+    candidates,
+  };
+}
+
+// ===========================
 // Singleton Cache
 // ===========================
 
 let cachedRuns: ValidationRun[] | null = null;
+let cachedLifecycle: LifecycleSummary | null = null;
 
 /**
  * Get cached mock validation runs (generates once per session).
@@ -437,8 +605,19 @@ export function getMockRunDetail(runId: string): ValidationRun | null {
 }
 
 /**
+ * Get cached mock lifecycle summary (generates once per session).
+ */
+export function getMockLifecycleSummary(): LifecycleSummary {
+  if (!cachedLifecycle) {
+    cachedLifecycle = generateMockLifecycleSummary(30);
+  }
+  return cachedLifecycle;
+}
+
+/**
  * Clear cached mock data (useful for testing).
  */
 export function clearValidationMockCache(): void {
   cachedRuns = null;
+  cachedLifecycle = null;
 }

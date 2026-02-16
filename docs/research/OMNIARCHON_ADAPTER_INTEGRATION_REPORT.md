@@ -1,4 +1,4 @@
-# OmniArchon Intelligence Adapter Integration Report
+# OmniIntelligence Intelligence Adapter Integration Report
 
 **Date**: 2025-10-31  
 **Status**: ✅ Ready for Integration  
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Omnidash now has a fully functional `IntelligenceEventAdapter` that publishes code analysis requests via Kafka. The handler (`IntelligenceAdapterHandler`) already exists in OmniArchon and processes these requests. This report documents the integration status and required changes to ensure end-to-end functionality.
+Omnidash now has a fully functional `IntelligenceEventAdapter` that publishes code analysis requests via Kafka. The handler (`IntelligenceAdapterHandler`) already exists in OmniIntelligence and processes these requests. This report documents the integration status and required changes to ensure end-to-end functionality.
 
 ## Current Status
 
@@ -20,7 +20,7 @@ Omnidash now has a fully functional `IntelligenceEventAdapter` that publishes co
   - Completed: `dev.archon-intelligence.intelligence.code-analysis-completed.v1`
   - Failed: `dev.archon-intelligence.intelligence.code-analysis-failed.v1`
 
-### ✅ OmniArchon Handler (Already Exists)
+### ✅ OmniIntelligence Handler (Already Exists)
 
 - **File**: `services/intelligence/src/handlers/intelligence_adapter_handler.py`
 - **Status**: Fully implemented
@@ -34,7 +34,7 @@ Omnidash now has a fully functional `IntelligenceEventAdapter` that publishes co
 
 The handler exists but may not be registered/active in the Kafka consumer. Verification needed.
 
-## Required Changes in OmniArchon
+## Required Changes in OmniIntelligence
 
 ### 1. Verify Handler Registration
 
@@ -106,7 +106,7 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
 
 ## Event Format Compatibility
 
-### Request Format (Omnidash → OmniArchon)
+### Request Format (Omnidash → OmniIntelligence)
 
 ```json
 {
@@ -127,7 +127,7 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
 }
 ```
 
-### Response Format (OmniArchon → Omnidash)
+### Response Format (OmniIntelligence → Omnidash)
 
 ```json
 {
@@ -164,7 +164,7 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
    curl "http://localhost:3000/api/intelligence/events/test/patterns?path=node_*_effect.py&lang=python"
    ```
 
-2. **Monitor OmniArchon Logs**:
+2. **Monitor OmniIntelligence Logs**:
 
    ```bash
    docker logs -f archon-intelligence | grep -E "(CODE_ANALYSIS|intelligence.*adapter|Processing.*request)"
@@ -187,7 +187,7 @@ grep -n "code-analysis-requested\|topics\|subscribe" services/intelligence/src/k
 
 - ✅ Omnidash receives response within timeout (default 5s)
 - ✅ Response contains expected payload structure
-- ✅ OmniArchon logs show successful processing
+- ✅ OmniIntelligence logs show successful processing
 - ✅ No errors in either service
 
 ## Troubleshooting
@@ -245,7 +245,7 @@ docker logs archon-intelligence | grep -i "error.*intelligence.*adapter"
 3. ✅ Correlation ID handling matches (UPPERCASE)
 4. ✅ Error extraction from failed responses
 
-### OmniArchon Handler (No Changes Needed)
+### OmniIntelligence Handler (No Changes Needed)
 
 - Handler already supports the event format we're sending
 - Handler already publishes correct response format
@@ -253,7 +253,7 @@ docker logs archon-intelligence | grep -i "error.*intelligence.*adapter"
 
 ## Next Steps
 
-1. **Verify Handler Registration** in OmniArchon
+1. **Verify Handler Registration** in OmniIntelligence
    - Check `services/intelligence/src/kafka_consumer.py`
    - Confirm handler is registered
    - Restart `archon-intelligence` service if needed
@@ -270,6 +270,6 @@ docker logs archon-intelligence | grep -i "error.*intelligence.*adapter"
 ## References
 
 - **OmniClaude Pattern**: `/Volumes/PRO-G40/Code/omniclaude/agents/lib/intelligence_event_client.py`
-- **OmniArchon Handler**: `/Volumes/PRO-G40/Code/omniarchon/services/intelligence/src/handlers/intelligence_adapter_handler.py`
+- **OmniIntelligence Handler**: `/Volumes/PRO-G40/Code/omniintelligence/services/intelligence/src/handlers/intelligence_adapter_handler.py`
 - **Omnidash Adapter**: `server/intelligence-event-adapter.ts`
-- **Event Schemas**: `/Volumes/PRO-G40/Code/omniarchon/services/intelligence/src/events/models/intelligence_adapter_events.py`
+- **Event Schemas**: `/Volumes/PRO-G40/Code/omniintelligence/services/intelligence/src/events/models/intelligence_adapter_events.py`

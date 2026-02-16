@@ -13,7 +13,11 @@ import { ProjectionService, type RawEventInput } from './projection-service';
 import { EventBusProjection } from './projections/event-bus-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
-import { extractSuffix } from '@shared/topics';
+import {
+  extractSuffix,
+  extractActionFromTopic,
+  extractProducerFromTopicOrDefault,
+} from '@shared/topics';
 
 // ============================================================================
 // Singleton instances
@@ -233,7 +237,9 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
         // EventBusDataSource, infer the producer from the topic name
         // (e.g. 'onex.evt.omniclaude.session-started.v1' → 'omniclaude').
         const source =
-          rawSource && rawSource !== 'unknown' ? rawSource : extractProducerFromTopic(topic);
+          rawSource && rawSource !== 'unknown'
+            ? rawSource
+            : extractProducerFromTopicOrDefault(topic);
 
         const raw: RawEventInput = {
           id: eventId,
@@ -385,40 +391,6 @@ function extractTimestamp(data: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-/**
- * Extract the action name (event-name segment) from an ONEX topic string.
- * Canonical format: onex.<kind>.<producer>.<event-name>.v<version>
- * Strips env prefix first via extractSuffix.
- *
- * @example 'onex.cmd.omniintelligence.tool-content.v1' → 'tool-content'
- * @example 'dev.onex.evt.omniclaude.session-started.v1' → 'session-started'
- * @example 'agent-actions' → '' (legacy flat name, no action to extract)
- */
-function extractActionFromTopic(topic: string): string {
-  const canonical = extractSuffix(topic);
-  const segments = canonical.split('.');
-  // Canonical ONEX format has 5 segments: onex.<kind>.<producer>.<event-name>.v<N>
-  if (segments.length >= 5 && segments[0] === 'onex') {
-    // event-name is the second-to-last segment (before version)
-    return segments[segments.length - 2];
-  }
-  return '';
-}
-
-/**
- * Extract the producer name from an ONEX topic string.
- * Canonical format: onex.<kind>.<producer>.<event-name>.v<version>
- *
- * @example 'onex.evt.omniclaude.session-started.v1' → 'omniclaude'
- * @example 'onex.cmd.omniintelligence.tool-content.v1' → 'omniintelligence'
- * @example 'agent-actions' → 'system' (fallback for legacy flat names)
- */
-function extractProducerFromTopic(topic: string): string {
-  const canonical = extractSuffix(topic);
-  const segments = canonical.split('.');
-  // Canonical ONEX format: onex.<kind>.<producer>.<event-name>.v<N>
-  if (segments.length >= 5 && segments[0] === 'onex') {
-    return segments[2]; // producer is the third segment
-  }
-  return 'system';
-}
+// Re-export shared topic parsers so existing importers (tests, etc.) continue to work.
+// The canonical implementations now live in @shared/topics.
+export { extractActionFromTopic, extractProducerFromTopicOrDefault };

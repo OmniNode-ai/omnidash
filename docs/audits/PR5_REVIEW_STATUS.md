@@ -107,7 +107,7 @@ const patterns = await intelligenceDb.execute(sql`
 #### 2. Infrastructure Details Exposed in Documentation
 
 - **File**: `ALERT_OPTIMIZATION.md` (line 134)
-- **Issue**: Hardcoded DB credentials (192.168.86.200:5436, omninode_bridge)
+- **Issue**: Hardcoded DB credentials (192.168.86.200:5436, omnidash_analytics)
 - **Fix**: Replaced with environment variable placeholders `${DB_HOST}`, `${DB_PORT}`, etc.
 - **Status**: ✅ Fixed in commit 5e884e9
 

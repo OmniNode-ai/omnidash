@@ -30,6 +30,7 @@ import {
   type EventBusPayload,
 } from '@/lib/data-sources/event-bus-projection-source';
 import { TIME_SERIES_BUCKET_MS } from '@shared/event-bus-payload';
+import { extractProducerFromTopicOrDefault } from '@shared/topics';
 import { extractParsedDetails, type ParsedDetails } from '@/components/event-bus/eventDetailUtils';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { Card } from '@/components/ui/card';
@@ -132,25 +133,6 @@ function mapSeverityToPriority(
   }
 }
 
-/**
- * Extract the producer segment from an ONEX canonical topic name.
- * Format: onex.<kind>.<producer>.<event-name>.v<version>
- * Also handles legacy env-prefixed form: <env>.onex.<kind>.<producer>...
- * Returns null for flat legacy topics (e.g. "agent-actions").
- */
-function extractProducerFromTopic(topic: string): string | null {
-  const segments = topic.split('.');
-  // Canonical: onex.<kind>.<producer>.<event-name>.v<version>  (5+ segments)
-  if (segments.length >= 5 && segments[0] === 'onex') {
-    return segments[2];
-  }
-  // Env-prefixed: <env>.onex.<kind>.<producer>.<event-name>.v<version>  (6+ segments)
-  if (segments.length >= 6 && segments[1] === 'onex') {
-    return segments[3];
-  }
-  return null;
-}
-
 function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   const payloadStr = JSON.stringify(event.payload);
   const parsedDetails = extractParsedDetails(payloadStr, event.type);
@@ -166,7 +148,7 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   const resolvedSource =
     event.source && event.source !== 'unknown'
       ? event.source
-      : (extractProducerFromTopic(event.topic) ?? 'system');
+      : extractProducerFromTopicOrDefault(event.topic);
 
   return {
     id: event.id,
@@ -674,7 +656,14 @@ export default function EventBusMonitor() {
       eventType,
       eventCount: count,
     }));
-    const eventTypeBreakdownData = bucketSmallTypes(eventTypeBreakdownRaw);
+    const eventTypeBreakdownData = bucketSmallTypes(eventTypeBreakdownRaw).sort((a, b) => {
+      // "Other" bucket always last (OMN-2308)
+      if (a.eventType === 'other') return 1;
+      if (b.eventType === 'other') return -1;
+      // Descending by count, alphabetical tiebreaker
+      if (b.eventCount !== a.eventCount) return b.eventCount - a.eventCount;
+      return a.name.localeCompare(b.name);
+    });
 
     const timeSeriesData = Object.entries(timeBuckets)
       .map(([time, count]) => {

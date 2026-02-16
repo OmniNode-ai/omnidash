@@ -11,7 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { knowledgeGraphSource } from '@/lib/data-sources';
 import { POLLING_INTERVAL_VERY_SLOW, getPollingInterval } from '@/lib/constants/query-config';
 
-// Graph data interfaces from omniarchon endpoint
+// Graph data interfaces from omniintelligence endpoint
 interface GraphNode {
   id: string;
   label: string;

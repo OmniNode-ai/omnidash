@@ -24,7 +24,7 @@ export interface ManifestInjectionHealth {
   }>;
   serviceHealth: {
     postgresql: { status: 'up' | 'down'; latencyMs?: number };
-    omniarchon: { status: 'up' | 'down'; latencyMs?: number };
+    omniintelligence: { status: 'up' | 'down'; latencyMs?: number };
     qdrant: { status: 'up' | 'down'; latencyMs?: number };
   };
 }
@@ -116,7 +116,7 @@ export class IntelligenceOperationsMockData {
           status: Math.random() > 0.05 ? 'up' : 'down',
           latencyMs: Gen.randomInt(10, 50),
         },
-        omniarchon: {
+        omniintelligence: {
           status: Math.random() > 0.05 ? 'up' : 'down',
           latencyMs: Gen.randomInt(30, 100),
         },
