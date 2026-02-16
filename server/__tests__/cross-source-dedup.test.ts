@@ -77,11 +77,19 @@ describe('OMN-2197: Cross-source correlation-ID dedup', () => {
   // Helper: simulate events from each source
   // -----------------------------------------------------------------------
 
-  function emitFromDataSource(event: Record<string, unknown>): void {
+  interface DataSourceEvent {
+    [key: string]: unknown;
+  }
+
+  interface ConsumerEvent {
+    [key: string]: unknown;
+  }
+
+  function emitFromDataSource(event: DataSourceEvent): void {
     mockEventBusDataSource.emit('event', event);
   }
 
-  function emitFromConsumer(eventName: string, data: Record<string, unknown>): void {
+  function emitFromConsumer(eventName: string, data: ConsumerEvent): void {
     mockEventConsumer.emit(eventName, data);
   }
 
@@ -393,11 +401,11 @@ describe('OMN-2197: Cross-source correlation-ID dedup', () => {
     // evicted correlation ID should NOT be deduplicated — it will be
     // ingested as a second copy. This is the intentional trade-off
     // documented in the production code comments.
-    const CORR_DEDUP_CAPACITY = 5000;
+    const corrDedupCapacity = 5000;
     const now = Date.now();
 
     // The very first correlation ID — this will be evicted once the ring
-    // wraps around after CORR_DEDUP_CAPACITY entries.
+    // wraps around after corrDedupCapacity entries.
     const firstCorrId = 'corr-eviction-target-0';
 
     // Emit the first event via EventBusDataSource
@@ -411,10 +419,10 @@ describe('OMN-2197: Cross-source correlation-ID dedup', () => {
       payload: { tool_name: 'Read' },
     });
 
-    // Fill the ring buffer to capacity by emitting CORR_DEDUP_CAPACITY - 1
+    // Fill the ring buffer to capacity by emitting corrDedupCapacity - 1
     // more unique events (total = 5000, filling slots 0..4999).
     // Then emit one more to cause slot 0 (firstCorrId) to be evicted.
-    for (let i = 1; i <= CORR_DEDUP_CAPACITY; i++) {
+    for (let i = 1; i <= corrDedupCapacity; i++) {
       emitFromDataSource({
         event_id: `evt-fill-${i}`,
         topic: 'onex.cmd.omniintelligence.tool-content.v1',
