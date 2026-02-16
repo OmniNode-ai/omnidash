@@ -268,6 +268,10 @@ export interface AgentAction {
   debugMode?: boolean;
   durationMs: number;
   createdAt: Date;
+  /** Real Kafka topic this action originated from (OMN-2196) */
+  topic?: string;
+  /** Hoisted tool name for tool-executed events (OMN-2196) */
+  toolName?: string;
 }
 
 export interface RoutingDecision {
@@ -2111,6 +2115,10 @@ export class EventConsumer extends EventEmitter {
 
   /**
    * Handle omniclaude lifecycle events (session-started, session-ended, tool-executed).
+   *
+   * OMN-2196: Hoists `topic` (real Kafka topic) and `toolName` (strict extraction
+   * from payload) onto the AgentAction so downstream consumers (projection-bootstrap,
+   * EventBusMonitor) can display specific tool names instead of generic "tool_call".
    */
   private handleOmniclaudeLifecycleEvent(
     event: {
@@ -2120,8 +2128,17 @@ export class EventConsumer extends EventEmitter {
     },
     topic: string
   ): void {
-    const eventType = event.event_type || event.eventType || topic.split('.').slice(-2, -1)[0];
+    // Derive eventType with fallback guard for malformed topics (OMN-2196).
+    // topic.split('.').slice(-2, -1)[0] can return '' for single-segment topics.
+    const rawEventType = event.event_type || event.eventType;
+    const segmentFallback = topic.split('.').slice(-2, -1)[0];
+    const eventType = rawEventType || segmentFallback || topic;
     const payload = event.payload || {};
+
+    // OMN-2196: Strict toolName extraction — check payload.toolName then payload.tool_name.
+    // Do NOT fall back to generic names; leave undefined so the client can decide.
+    const toolName =
+      (payload.toolName as string | undefined) || (payload.tool_name as string | undefined);
 
     const action: AgentAction = {
       id: crypto.randomUUID(),
@@ -2138,11 +2155,13 @@ export class EventConsumer extends EventEmitter {
       createdAt: new Date(
         (payload.emitted_at || payload.emittedAt || Date.now()) as string | number
       ),
+      topic,
+      toolName: toolName || undefined,
     };
 
     this.recentActions.unshift(action);
     intentLogger.debug(
-      `Added omniclaude lifecycle: ${eventType}, queue size: ${this.recentActions.length}`
+      `Added omniclaude lifecycle: ${eventType}${toolName ? ` (tool: ${toolName})` : ''}, queue size: ${this.recentActions.length}`
     );
 
     if (this.recentActions.length > this.maxActions) {

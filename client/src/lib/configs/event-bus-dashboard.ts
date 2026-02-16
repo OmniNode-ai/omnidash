@@ -640,6 +640,56 @@ export function getEventTypeLabel(eventType: string): string {
 }
 
 // ============================================================================
+// Centralized Display Label (OMN-2196)
+// ============================================================================
+
+/**
+ * Compute a short, human-readable display label for an event row.
+ *
+ * Priority chain (OMN-2196):
+ *   1. Hoisted toolName (e.g. "Read", "Write", "Bash") — most specific
+ *   2. actionName from parsed details
+ *   3. selectedAgent prefixed with "route:" for routing events
+ *   4. ONEX topic event-name segment extraction (e.g. "tool-content" from canonical topic)
+ *   5. EVENT_TYPE_METADATA lookup
+ *   6. Raw eventType fallback
+ *
+ * This centralizes the display logic that was previously scattered across
+ * computeNormalizedType in EventBusMonitor.tsx and various fallback paths.
+ */
+export function getEventDisplayLabel(opts: {
+  eventType: string;
+  toolName?: string;
+  actionName?: string;
+  selectedAgent?: string;
+  topic?: string;
+}): string {
+  const { eventType, toolName, actionName, selectedAgent, topic } = opts;
+
+  // 1. Specific tool name (e.g. "Read", "Write", "Bash")
+  if (toolName) return toolName;
+
+  // 2. Action name from parsed details
+  if (actionName) return actionName;
+
+  // 3. Routing events show the selected agent
+  if (selectedAgent) return `route:${selectedAgent}`;
+
+  // 4. ONEX canonical topic: extract event-name segment
+  const canonicalTopic = topic ? extractSuffix(topic) : '';
+  if (canonicalTopic) {
+    const segments = canonicalTopic.split('.');
+    // onex.<kind>.<producer>.<event-name>.v<N> => event-name
+    if (segments.length >= 5 && segments[0] === 'onex') {
+      return toTitleCase(segments[segments.length - 2]);
+    }
+  }
+
+  // 5. Try the eventType through getEventTypeLabel (handles metadata + extraction)
+  return getEventTypeLabel(eventType);
+}
+
+// ============================================================================
 // Topic Matching Utilities
 // ============================================================================
 

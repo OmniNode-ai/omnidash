@@ -18,6 +18,7 @@ import {
   getTopicLabel,
   getTopicMetadata,
   getEventTypeLabel,
+  getEventDisplayLabel,
   getMonitoredTopics,
   topicMatchesSuffix,
   normalizeToSuffix,
@@ -153,7 +154,7 @@ function extractProducerFromTopic(topic: string): string | null {
 function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   const payloadStr = JSON.stringify(event.payload);
   const parsedDetails = extractParsedDetails(payloadStr, event.type);
-  const normalizedType = computeNormalizedType(event.type, parsedDetails);
+  const normalizedType = computeNormalizedType(event.type, parsedDetails, event.topic);
 
   // Use a single fallback time so timestamp and timestampRaw are always consistent
   const effectiveTimeMs = event.eventTimeMs > 0 ? event.eventTimeMs : Date.now();
@@ -184,25 +185,30 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   };
 }
 
-function computeNormalizedType(eventType: string, details: ParsedDetails | null): string {
-  if (details?.toolName) return details.toolName;
-  if (details?.actionName) return details.actionName;
-  if (details?.selectedAgent) return `route:${details.selectedAgent}`;
+/**
+ * Compute a short display label for the Event Type column.
+ *
+ * OMN-2196: Delegates to the centralized getEventDisplayLabel() which uses
+ * the hoisted toolName from the server-side AgentAction. Falls back through
+ * actionName, selectedAgent, ONEX topic segment extraction, and metadata lookup.
+ */
+function computeNormalizedType(
+  eventType: string,
+  details: ParsedDetails | null,
+  topic?: string
+): string {
+  // Guard against bare version strings (e.g. "v1") that slip through
   if (/^v\d+$/.test(eventType)) {
-    return details?.actionName || details?.actionType || 'unknown';
+    return details?.toolName || details?.actionName || details?.actionType || 'unknown';
   }
-  // OMN-2196: Handle ONEX topic-style types (e.g. 'onex.cmd.omniintelligence.tool-content.v1').
-  // Extract the action name segment (second-to-last) from the canonical format.
-  if (
-    eventType.startsWith('onex.') ||
-    /^(dev|staging|prod|production|test|local)\.onex\./.test(eventType)
-  ) {
-    const segments = eventType.split('.');
-    if (segments.length >= 5) {
-      return segments[segments.length - 2]; // event-name segment
-    }
-  }
-  return eventType;
+
+  return getEventDisplayLabel({
+    eventType,
+    toolName: details?.toolName,
+    actionName: details?.actionName,
+    selectedAgent: details?.selectedAgent,
+    topic,
+  });
 }
 
 function generateSummary(
