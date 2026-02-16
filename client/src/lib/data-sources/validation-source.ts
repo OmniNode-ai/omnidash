@@ -195,6 +195,12 @@ class ValidationSource {
 
   /**
    * Get lifecycle summary with tier metrics and candidates.
+   *
+   * NOTE: The server endpoint GET /api/validation/lifecycle/summary is NOT YET
+   * IMPLEMENTED. The fetch will fail with a 404, and this method intentionally
+   * falls back to mock data via getMockLifecycleSummary(). When the real
+   * endpoint is created (in server/validation-routes.ts), this fetch path will
+   * start returning live data automatically with no client-side changes needed.
    */
   async getLifecycleSummary(options: ValidationFetchOptions = {}): Promise<LifecycleSummary> {
     const { fallbackToMock = true } = options;

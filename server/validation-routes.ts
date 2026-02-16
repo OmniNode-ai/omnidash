@@ -280,10 +280,7 @@ export async function handleValidationRunCompleted(
 // Helper: reconstruct a ValidationRun from DB rows
 // ============================================================================
 
-function toValidationRun(
-  row: ValidationRunRow,
-  violations: Violation[] = []
-): ValidationRun {
+function toValidationRun(row: ValidationRunRow, violations: Violation[] = []): ValidationRun {
   return {
     run_id: row.runId,
     repos: row.repos as string[],
@@ -355,7 +352,7 @@ router.get('/runs', async (req, res) => {
     }
     if (repo) {
       // Filter runs whose repos jsonb array contains the given repo
-      conditions.push(sql`${validationRuns.repos} @> ${JSON.stringify([repo])}::jsonb`);
+      conditions.push(sql`${validationRuns.repos} @> ${sql.param(JSON.stringify([repo]))}::jsonb`);
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -467,7 +464,7 @@ router.get('/repos/:repoId/trends', async (req, res) => {
       .from(validationRuns)
       .where(
         and(
-          sql`${validationRuns.repos} @> ${JSON.stringify([repoId])}::jsonb`,
+          sql`${validationRuns.repos} @> ${sql.param(JSON.stringify([repoId]))}::jsonb`,
           sql`${validationRuns.status} != 'running'`,
           gte(validationRuns.startedAt, cutoff)
         )
