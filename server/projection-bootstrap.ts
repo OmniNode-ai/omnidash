@@ -116,13 +116,18 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
     dedupIdx = (dedupIdx + 1) % DEDUP_CAPACITY;
   }
 
-  // OMN-2197: Secondary correlation-ID-based dedup ring.
-  // EventBusDataSource and EventConsumer may produce different event IDs and
-  // different derived fallback keys for the same underlying Kafka message
-  // (EventConsumer reshapes events into enriched objects with new fields).
-  // The correlation_id is preserved across both paths, so tracking it provides
-  // a reliable cross-source dedup dimension. EventBusDataSource tracks
-  // correlation IDs; EventConsumer checks them before ingestion.
+  // OMN-2197: Secondary correlation-ID-based dedup ring (bidirectional).
+  // The same tool call can appear on multiple Kafka topics (e.g. legacy
+  // `agent-actions` AND canonical `onex.cmd.omniintelligence.tool-content.v1`).
+  // EventBusDataSource and EventConsumer produce different event IDs for the
+  // same underlying action (EventConsumer reshapes with crypto.randomUUID()),
+  // making ID-based dedup insufficient. The correlation_id is preserved across
+  // both paths, so it provides a reliable cross-source dedup dimension.
+  //
+  // BIDIRECTIONAL: Both EventBusDataSource and EventConsumer CHECK the set
+  // before ingestion and TRACK after ingestion, so dedup works regardless of
+  // which source delivers first. This eliminates the race condition where
+  // EventConsumer-first delivery would bypass one-directional dedup.
   const CORR_DEDUP_CAPACITY = 5000;
   const corrDedupRing: (string | null)[] = new Array<string | null>(CORR_DEDUP_CAPACITY).fill(null);
   const corrDedupSet = new Set<string>();
@@ -195,11 +200,20 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
         const dedupKey = eventId || deriveFallbackDedupKey(event);
         trackEventId(dedupKey);
 
-        // OMN-2197: Track correlation_id for cross-source dedup.
-        // EventConsumer reshapes events with new IDs, making ID-based dedup
-        // insufficient. The correlation_id is preserved across both sources.
+        // OMN-2197: Bidirectional correlation-ID dedup.
+        // The same tool call can appear on multiple Kafka topics (e.g. legacy
+        // `agent-actions` AND canonical `onex.cmd.omniintelligence.tool-content.v1`).
+        // EventConsumer reshapes events with new crypto.randomUUID() IDs, so
+        // ID-based dedup misses cross-source duplicates. The correlation_id is
+        // preserved across both sources, so we use it as a secondary dedup key.
+        //
+        // Both sources CHECK and TRACK the corrDedupSet to handle either
+        // arrival order (EventBusDataSource-first or EventConsumer-first).
         const corrId = (event.correlation_id as string) || (event.correlationId as string) || '';
-        if (corrId) trackCorrelationId(corrId);
+        if (corrId) {
+          if (corrDedupSet.has(corrId)) return; // Already ingested via EventConsumer
+          trackCorrelationId(corrId);
+        }
 
         let payload: Record<string, unknown>;
         const rawPayload = event.payload;
@@ -281,12 +295,17 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
           const dedupKey = id || deriveFallbackDedupKey(data);
           if (dedupSet.has(dedupKey)) return;
 
-          // OMN-2197: Cross-source correlation-ID dedup.
+          // OMN-2197: Bidirectional correlation-ID dedup.
           // EventConsumer reshapes events with new crypto.randomUUID() IDs,
-          // so ID-based dedup misses cross-source duplicates. Check if the
-          // correlation_id was already ingested via EventBusDataSource.
+          // so ID-based dedup misses cross-source duplicates. The correlation_id
+          // is preserved across both sources. Both sources CHECK and TRACK the
+          // corrDedupSet so dedup works regardless of arrival order.
           const corrId = (data.correlationId as string) || (data.correlation_id as string) || '';
           if (corrId && corrDedupSet.has(corrId)) return;
+
+          // Track after check so subsequent arrivals (from EventBusDataSource
+          // or another EventConsumer event on a different topic) are deduped.
+          if (corrId) trackCorrelationId(corrId);
 
           const raw: RawEventInput = {
             id,
