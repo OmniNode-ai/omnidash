@@ -285,6 +285,27 @@ describe('extractActionFromTopic (shared)', () => {
     });
   });
 
+  describe('6-segment topics (multi-part event names)', () => {
+    it('should join segments between producer and version for 6-segment topic', () => {
+      // onex.evt.omniclaude.transformation.completed.v1 → 'transformation-completed'
+      expect(extractActionFromTopic('onex.evt.omniclaude.transformation.completed.v1')).toBe(
+        'transformation-completed'
+      );
+    });
+
+    it('should join segments for synthetic 6-segment topic', () => {
+      expect(extractActionFromTopic('onex.evt.platform.multi-part-name.extra.v1')).toBe(
+        'multi-part-name-extra'
+      );
+    });
+
+    it('should handle env-prefixed 6-segment topic', () => {
+      expect(extractActionFromTopic('dev.onex.evt.omniclaude.transformation.completed.v1')).toBe(
+        'transformation-completed'
+      );
+    });
+  });
+
   describe('edge cases', () => {
     it('should return empty string for empty input', () => {
       expect(extractActionFromTopic('')).toBe('');
@@ -296,10 +317,6 @@ describe('extractActionFromTopic (shared)', () => {
 
     it('should return empty string for non-onex dotted topic with 5 segments', () => {
       expect(extractActionFromTopic('some.other.topic.format.v1')).toBe('');
-    });
-
-    it('should extract second-to-last segment from ONEX topic with >5 segments', () => {
-      expect(extractActionFromTopic('onex.evt.platform.multi-part-name.extra.v1')).toBe('extra');
     });
   });
 });

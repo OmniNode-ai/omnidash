@@ -144,22 +144,24 @@ export function extractProducerFromTopicOrDefault(topic: string, defaultValue = 
  * Strips any environment prefix first via extractSuffix, then parses the
  * canonical format: onex.<kind>.<producer>.<event-name>.v<version>
  *
- * @note For topics with more than 5 segments (non-standard), returns the
- * second-to-last segment rather than the canonical event-name position (segments[3]).
- * For example, `onex.evt.platform.multi-part-name.extra.v1` returns `'extra'`,
- * not `'multi-part-name'`.
+ * For standard 5-segment topics the event-name is a single segment.
+ * For 6+-segment topics (e.g. `onex.evt.omniclaude.transformation.completed.v1`)
+ * all segments between the producer (index 2) and the version (last segment) are
+ * joined with a hyphen, producing `'transformation-completed'`.
  *
  * @example 'onex.cmd.omniintelligence.tool-content.v1' => 'tool-content'
  * @example 'dev.onex.evt.omniclaude.session-started.v1' => 'session-started'
+ * @example 'onex.evt.omniclaude.transformation.completed.v1' => 'transformation-completed'
  * @example 'agent-actions' => '' (legacy flat name, no action to extract)
  */
 export function extractActionFromTopic(topic: string): string {
   const canonical = extractSuffix(topic);
   const segments = canonical.split('.');
-  // Canonical ONEX format has 5 segments: onex.<kind>.<producer>.<event-name>.v<N>
+  // Canonical ONEX format: onex.<kind>.<producer>.<event-name...>.v<N>
+  // Minimum 5 segments; event-name spans segments[3] through segments[length-2].
   if (segments.length >= 5 && segments[0] === 'onex') {
-    // event-name is the second-to-last segment (before version)
-    return segments[segments.length - 2];
+    // Join all segments between producer (index 2) and version (last) with a hyphen.
+    return segments.slice(3, -1).join('-');
   }
   return '';
 }
