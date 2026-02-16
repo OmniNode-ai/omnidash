@@ -691,7 +691,14 @@ export default function EventBusMonitor() {
       eventType,
       eventCount: count,
     }));
-    const eventTypeBreakdownData = bucketSmallTypes(eventTypeBreakdownRaw);
+    const eventTypeBreakdownData = bucketSmallTypes(eventTypeBreakdownRaw).sort((a, b) => {
+      // "Other" bucket always last (OMN-2308)
+      if (a.eventType === 'other') return 1;
+      if (b.eventType === 'other') return -1;
+      // Descending by count, alphabetical tiebreaker
+      if (b.eventCount !== a.eventCount) return b.eventCount - a.eventCount;
+      return a.name.localeCompare(b.name);
+    });
 
     const timeSeriesData = Object.entries(timeBuckets)
       .map(([time, count]) => {
