@@ -49,9 +49,9 @@ interface RecentTrace {
   correlationId: string;
   selectedAgent: string;
   confidenceScore: number;
-  userRequest: string;
+  userRequest: string | null;
   routingTimeMs: number;
-  createdAt: string;
+  createdAt: string | null;
   eventCount: number;
 }
 
@@ -61,7 +61,7 @@ interface TraceEvent {
   eventType: 'routing' | 'action' | 'manifest' | 'error';
   timestamp: string;
   agentName?: string;
-  details: any;
+  details: Record<string, unknown>;
   durationMs?: number;
 }
 
@@ -134,7 +134,8 @@ const SAMPLE_TRACE: TraceResponse = (() => {
 // Helpers
 // ============================================================================
 
-function truncate(text: string, maxLen: number): string {
+function truncate(text: string | null | undefined, maxLen: number): string {
+  if (!text) return '--';
   if (text.length <= maxLen) return text;
   return text.slice(0, maxLen) + '...';
 }
@@ -317,7 +318,7 @@ export default function CorrelationTrace() {
       }
       return response.json();
     },
-    enabled: !!searchId || showingSample,
+    enabled: !!searchId,
   });
 
   // -------------------------------------------------------------------------
@@ -478,7 +479,7 @@ export default function CorrelationTrace() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                        {formatRelativeTime(trace.createdAt)}
+                        {trace.createdAt ? formatRelativeTime(trace.createdAt) : 'unknown'}
                       </TableCell>
                       <TableCell>
                         <span

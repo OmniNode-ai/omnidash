@@ -1537,7 +1537,7 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
  *     confidenceScore: 0.95,
  *     userRequest: "truncated to 120 chars...",
  *     routingTimeMs: 42,
- *     createdAt: "2026-02-16T...",
+ *     createdAt: "2026-02-16T..." | null,
  *     eventCount: 3
  *   }
  * ]
@@ -1604,7 +1604,7 @@ intelligenceRouter.get('/traces/recent', async (req, res) => {
           : d.userRequest
         : null,
       routingTimeMs: d.routingTimeMs,
-      createdAt: d.createdAt?.toISOString() || new Date().toISOString(),
+      createdAt: d.createdAt?.toISOString() || null,
       eventCount:
         1 + // the routing decision itself
         (actionCountMap.get(d.correlationId) || 0) +
