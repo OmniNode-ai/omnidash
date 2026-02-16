@@ -18,6 +18,12 @@ import type {
 } from '@shared/cost-types';
 
 // ============================================================================
+// Fixed reference date – ensures all mock generators are fully deterministic.
+// ============================================================================
+
+const REFERENCE_DATE = new Date('2025-01-15T12:00:00Z');
+
+// ============================================================================
 // Helpers
 // ============================================================================
 
@@ -80,7 +86,7 @@ export function getMockCostSummary(window: CostTimeWindow = '7d'): CostSummary {
  */
 export function getMockCostTrend(window: CostTimeWindow = '7d'): CostTrendPoint[] {
   const count = bucketCount(window);
-  const now = new Date();
+  const now = new Date(REFERENCE_DATE);
 
   return Array.from({ length: count }, (_, i) => {
     const d = new Date(now);
@@ -219,7 +225,7 @@ export function getMockCostByPattern(): CostByPattern[] {
  */
 export function getMockTokenUsage(window: CostTimeWindow = '7d'): TokenUsagePoint[] {
   const count = bucketCount(window);
-  const now = new Date();
+  const now = new Date(REFERENCE_DATE);
 
   return Array.from({ length: count }, (_, i) => {
     const d = new Date(now);
@@ -252,7 +258,7 @@ export function getMockTokenUsage(window: CostTimeWindow = '7d'): TokenUsagePoin
 
 /** Generate three budget alerts (daily, weekly, monthly). Weekly is pre-triggered. */
 export function getMockBudgetAlerts(): BudgetAlert[] {
-  const now = new Date().toISOString();
+  const now = REFERENCE_DATE.toISOString();
   return [
     {
       id: 'alert-001',

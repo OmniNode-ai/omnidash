@@ -80,6 +80,7 @@ Advanced Pages:
 - Event Stream: http://localhost:3000/events
 - Pipeline Metrics: http://localhost:3000/extraction
 - Injection Performance: http://localhost:3000/effectiveness
+- Cost Trends: http://localhost:3000/cost-trends
 - Intent Signals: http://localhost:3000/intents
 - Pattern Intelligence: http://localhost:3000/patterns
 - Node Registry: http://localhost:3000/registry
@@ -113,6 +114,7 @@ Three-directory monorepo with TypeScript path aliases:
 | **Advanced** | Monitoring | `/events` (+ `/`) | EventBusMonitor | Real-time Kafka event stream visualization |
 | **Advanced** | Monitoring | `/extraction` | ExtractionDashboard | Pattern extraction metrics and pipeline health |
 | **Advanced** | Monitoring | `/effectiveness` | EffectivenessSummary | Injection effectiveness metrics and A/B analysis |
+| **Advanced** | Monitoring | `/cost-trends` | CostTrendDashboard | LLM cost trends, budget alerts, token usage |
 | **Advanced** | Intelligence | `/intents` | IntentDashboard | Real-time intent classification and analysis |
 | **Advanced** | Intelligence | `/patterns` | PatternLearning | Code pattern discovery and learning analytics |
 | **Advanced** | System | `/registry` | NodeRegistry | Contract-driven node and service discovery |

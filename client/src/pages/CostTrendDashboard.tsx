@@ -16,7 +16,7 @@
  * Rows where usage_source = ESTIMATED | MISSING are visually flagged.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { costSource } from '@/lib/data-sources/cost-source';
@@ -50,6 +50,9 @@ import {
   AlertTriangle,
   Bell,
   BarChart3,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from 'lucide-react';
 import {
   LineChart,
@@ -85,7 +88,13 @@ const REPO_COLORS = ['#6366f1', '#10b981', '#f97316', '#ec4899', '#14b8a6', '#a8
 // Time Window Selector
 // ============================================================================
 
-/** Segmented toggle for selecting the dashboard time window (24h / 7d / 30d). */
+/**
+ * Segmented toggle for selecting the dashboard time window (24h / 7d / 30d).
+ *
+ * @param props - Component props.
+ * @param props.value - Currently selected time window.
+ * @param props.onChange - Callback fired when the user selects a different window.
+ */
 function WindowSelector({
   value,
   onChange,
@@ -120,6 +129,11 @@ function WindowSelector({
 /**
  * Switch control that toggles inclusion of estimated usage data.
  * When enabled, displays the reported-coverage percentage badge.
+ *
+ * @param props - Component props.
+ * @param props.checked - Whether estimated data is currently included.
+ * @param props.onCheckedChange - Callback fired when the switch is toggled.
+ * @param props.coveragePct - Percentage of data that is API-reported (shown as badge).
  */
 function EstimatedToggle({
   checked,
@@ -159,6 +173,9 @@ function EstimatedToggle({
 /**
  * Renders a colored badge for ESTIMATED or MISSING usage sources.
  * Returns null for API-reported rows (no badge needed).
+ *
+ * @param props - Component props.
+ * @param props.source - The usage source string (e.g. "API", "ESTIMATED", "MISSING").
  */
 function UsageSourceBadge({ source }: { source: string }) {
   if (source === 'API') return null;
@@ -185,6 +202,10 @@ function UsageSourceBadge({ source }: { source: string }) {
  * Line chart showing cost over time for the selected window.
  * When `includeEstimated` is true, renders separate Reported and Estimated
  * lines (dashed for estimated); otherwise renders a single Total line.
+ *
+ * @param props - Component props.
+ * @param props.data - Array of cost trend data points to plot.
+ * @param props.includeEstimated - Whether to split lines into Reported vs Estimated.
  */
 function CostTrendChart({
   data,
@@ -254,7 +275,13 @@ function CostTrendChart({
 // 2. Cost by Model Bar Chart
 // ============================================================================
 
-/** Bar chart ranking total cost by LLM model. */
+/**
+ * Bar chart ranking total cost by LLM model.
+ * Each bar is color-coded using the {@link MODEL_COLORS} palette.
+ *
+ * @param props - Component props.
+ * @param props.data - Array of per-model cost breakdowns.
+ */
 function CostByModelChart({ data }: { data: CostByModel[] | undefined }) {
   if (!data?.length) {
     return (
@@ -308,7 +335,13 @@ function CostByModelChart({ data }: { data: CostByModel[] | undefined }) {
 // 3. Cost by Repo Bar Chart
 // ============================================================================
 
-/** Bar chart ranking total cost by repository. */
+/**
+ * Bar chart ranking total cost by repository.
+ * Each bar is color-coded using the {@link REPO_COLORS} palette.
+ *
+ * @param props - Component props.
+ * @param props.data - Array of per-repo cost breakdowns.
+ */
 function CostByRepoChart({ data }: { data: CostByRepo[] | undefined }) {
   if (!data?.length) {
     return (
@@ -362,19 +395,88 @@ function CostByRepoChart({ data }: { data: CostByRepo[] | undefined }) {
 // 4. Cost by Pattern Table
 // ============================================================================
 
+/** Sortable columns in the cost-by-pattern table. */
+type PatternSortColumn = 'cost' | 'tokens' | 'injections' | 'avg_cost';
+
+/** Sort direction for table columns. */
+type SortDirection = 'asc' | 'desc';
+
+/**
+ * Extracts the numeric sort value for a given column from a pattern row.
+ *
+ * @param row - The cost-by-pattern data row.
+ * @param col - The column key to extract a numeric value for.
+ * @returns The numeric value used for sorting.
+ */
+function getPatternSortValue(row: CostByPattern, col: PatternSortColumn): number {
+  switch (col) {
+    case 'cost':
+      return row.total_cost_usd;
+    case 'tokens':
+      return row.prompt_tokens + row.completion_tokens;
+    case 'injections':
+      return row.injection_count;
+    case 'avg_cost':
+      return row.avg_cost_per_injection;
+  }
+}
+
 /**
  * Sortable table showing per-pattern costs, token counts, and injection frequency.
  * Rows with estimated or missing usage data are visually flagged with a
  * yellow background tint and warning icon.
+ *
+ * Headers for numeric columns are clickable to toggle ascending/descending sort.
+ * The active sort column displays an arrow indicator. Defaults to cost descending.
+ *
+ * @param props - Component props.
+ * @param props.data - Array of per-pattern cost breakdowns with usage source metadata.
  */
 function CostByPatternTable({ data }: { data: CostByPattern[] | undefined }) {
-  if (!data?.length) {
+  const [sortColumn, setSortColumn] = useState<PatternSortColumn>('cost');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  const sortedData = useMemo(() => {
+    if (!data?.length) return data;
+    return [...data].sort((a, b) => {
+      const aVal = getPatternSortValue(a, sortColumn);
+      const bVal = getPatternSortValue(b, sortColumn);
+      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+  }, [data, sortColumn, sortDirection]);
+
+  if (!sortedData?.length) {
     return (
       <div className="py-8 text-center text-muted-foreground text-sm">
         No pattern data available
       </div>
     );
   }
+
+  /** Toggles sort on a column: if already active, flips direction; otherwise sets desc. */
+  const handleSort = (col: PatternSortColumn) => {
+    if (sortColumn === col) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(col);
+      setSortDirection('desc');
+    }
+  };
+
+  /** Renders the sort indicator icon for a given column header. */
+  const SortIcon = ({ col }: { col: PatternSortColumn }) => {
+    if (sortColumn !== col) {
+      return <ArrowUpDown className="w-3 h-3 opacity-40" />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="w-3 h-3" />
+    ) : (
+      <ArrowDown className="w-3 h-3" />
+    );
+  };
+
+  const sortableThClass =
+    'text-right py-2 px-3 text-xs uppercase tracking-wider text-muted-foreground font-medium cursor-pointer select-none hover:text-foreground transition-colors';
 
   return (
     <div className="overflow-x-auto">
@@ -384,17 +486,25 @@ function CostByPatternTable({ data }: { data: CostByPattern[] | undefined }) {
             <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">
               Pattern
             </th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-              Cost
+            <th className={sortableThClass} onClick={() => handleSort('cost')}>
+              <span className="inline-flex items-center justify-end gap-1">
+                Cost <SortIcon col="cost" />
+              </span>
             </th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-              Tokens
+            <th className={sortableThClass} onClick={() => handleSort('tokens')}>
+              <span className="inline-flex items-center justify-end gap-1">
+                Tokens <SortIcon col="tokens" />
+              </span>
             </th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-              Injections
+            <th className={sortableThClass} onClick={() => handleSort('injections')}>
+              <span className="inline-flex items-center justify-end gap-1">
+                Injections <SortIcon col="injections" />
+              </span>
             </th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-              Avg $/Inj
+            <th className={sortableThClass} onClick={() => handleSort('avg_cost')}>
+              <span className="inline-flex items-center justify-end gap-1">
+                Avg $/Inj <SortIcon col="avg_cost" />
+              </span>
             </th>
             <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">
               Source
@@ -402,7 +512,7 @@ function CostByPatternTable({ data }: { data: CostByPattern[] | undefined }) {
           </tr>
         </thead>
         <tbody>
-          {data.map((p) => {
+          {sortedData.map((p) => {
             const isEstimated = p.usage_source !== 'API';
             return (
               <tr
@@ -447,7 +557,13 @@ function CostByPatternTable({ data }: { data: CostByPattern[] | undefined }) {
 // 5. Token Usage Stacked Bar
 // ============================================================================
 
-/** Stacked bar chart showing prompt vs completion token volume over time. */
+/**
+ * Stacked bar chart showing prompt vs completion token volume over time.
+ * Prompt and completion tokens are rendered as a stacked bar pair per bucket.
+ *
+ * @param props - Component props.
+ * @param props.data - Array of token-usage data points with prompt/completion splits.
+ */
 function TokenUsageChart({ data }: { data: TokenUsagePoint[] | undefined }) {
   if (!data?.length) {
     return (
@@ -499,6 +615,9 @@ function TokenUsageChart({ data }: { data: TokenUsagePoint[] | undefined }) {
 /**
  * Grid of budget alert cards, each showing spend vs threshold with a
  * progress bar. Cards with triggered alerts get a red left border and badge.
+ *
+ * @param props - Component props.
+ * @param props.data - Array of budget alert definitions with current spend and thresholds.
  */
 function BudgetAlertCards({ data }: { data: BudgetAlert[] | undefined }) {
   if (!data?.length) {
