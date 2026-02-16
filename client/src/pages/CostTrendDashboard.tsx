@@ -762,7 +762,7 @@ export default function CostTrendDashboard() {
   });
 
   const { data: alerts, isLoading: alertsLoading } = useQuery<BudgetAlert[]>({
-    queryKey: [...queryKeys.costs.alerts(), includeEstimated],
+    queryKey: queryKeys.costs.alerts(),
     queryFn: () => costSource.alerts(fetchOpts),
     refetchInterval: 30_000,
   });
