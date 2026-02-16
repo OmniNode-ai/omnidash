@@ -59,6 +59,11 @@ class CostSource {
     this._mockEndpoints.add(endpoint);
   }
 
+  /** Returns true if the summary response has no meaningful data. */
+  private isSummaryEmpty(data: CostSummary): boolean {
+    return data.session_count === 0 && data.total_tokens === 0;
+  }
+
   /** Build URL query string from window and includeEstimated options. */
   private buildParams(options: { window?: CostTimeWindow; includeEstimated?: boolean }): string {
     const params = new URLSearchParams();
@@ -79,7 +84,7 @@ class CostSource {
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      if (mockOnEmpty && data.total_tokens === 0) {
+      if (mockOnEmpty && this.isSummaryEmpty(data)) {
         this.markMock('summary');
         return getMockCostSummary(window);
       }

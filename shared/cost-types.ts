@@ -154,18 +154,3 @@ export interface CostSummary {
   /** Number of budget alerts currently triggered. */
   active_alerts: number;
 }
-
-// ============================================================================
-// Full API Response
-// ============================================================================
-
-/** Complete cost dashboard response bundling all views. */
-export interface CostDashboardResponse {
-  summary: CostSummary;
-  trend: CostTrendPoint[];
-  by_model: CostByModel[];
-  by_repo: CostByRepo[];
-  by_pattern: CostByPattern[];
-  token_usage: TokenUsagePoint[];
-  alerts: BudgetAlert[];
-}

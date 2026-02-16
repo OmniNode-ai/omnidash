@@ -203,12 +203,13 @@ function UsageSourceBadge({ source }: { source: string }) {
 
 /**
  * Line chart showing cost over time for the selected window.
- * When `includeEstimated` is true, renders separate Reported and Estimated
- * lines (dashed for estimated); otherwise renders a single Total line.
+ * Always renders a Total line. When `includeEstimated` is true, additionally
+ * renders Reported and Estimated lines (dashed for estimated) so users can
+ * see the breakdown alongside the total.
  *
  * @param props - Component props.
  * @param props.data - Array of cost trend data points to plot.
- * @param props.includeEstimated - Whether to split lines into Reported vs Estimated.
+ * @param props.includeEstimated - Whether to also show Reported and Estimated breakdown lines.
  * @returns A Recharts line chart, or an empty-state placeholder when data is absent.
  */
 function CostTrendChart({
@@ -228,9 +229,13 @@ function CostTrendChart({
 
   const chartData = data.map((p) => ({
     time: p.timestamp.length > 10 ? p.timestamp.slice(11, 16) : p.timestamp.slice(5),
-    Reported: +p.reported_cost_usd.toFixed(2),
-    ...(includeEstimated ? { Estimated: +p.estimated_cost_usd.toFixed(2) } : {}),
     Total: +p.total_cost_usd.toFixed(2),
+    ...(includeEstimated
+      ? {
+          Reported: +p.reported_cost_usd.toFixed(2),
+          Estimated: +p.estimated_cost_usd.toFixed(2),
+        }
+      : {}),
   }));
 
   return (
@@ -255,7 +260,8 @@ function CostTrendChart({
           formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name]}
         />
         <Legend wrapperStyle={{ fontSize: '12px' }} />
-        {includeEstimated ? (
+        <Line type="monotone" dataKey="Total" stroke="#3b82f6" strokeWidth={2} dot={false} />
+        {includeEstimated && (
           <>
             <Line type="monotone" dataKey="Reported" stroke="#22c55e" strokeWidth={2} dot={false} />
             <Line
@@ -267,8 +273,6 @@ function CostTrendChart({
               dot={false}
             />
           </>
-        ) : (
-          <Line type="monotone" dataKey="Total" stroke="#3b82f6" strokeWidth={2} dot={false} />
         )}
       </LineChart>
     </ResponsiveContainer>
@@ -804,8 +808,10 @@ export default function CostTrendDashboard() {
     ? summary.active_alerts > 0
       ? 'error'
       : summary.cost_change_pct > 20
-        ? 'warning'
-        : 'healthy'
+        ? 'error'
+        : summary.cost_change_pct > 5
+          ? 'warning'
+          : 'healthy'
     : undefined;
 
   const triggeredAlerts = alerts?.filter((a) => a.is_triggered).length ?? 0;
@@ -865,7 +871,11 @@ export default function CostTrendDashboard() {
               : '--'
           }
           subtitle="vs previous period"
-          icon={summary?.cost_change_pct && summary.cost_change_pct < 0 ? TrendingDown : TrendingUp}
+          icon={
+            summary?.cost_change_pct !== undefined && summary.cost_change_pct < 0
+              ? TrendingDown
+              : TrendingUp
+          }
           status={
             summary
               ? summary.cost_change_pct < -5

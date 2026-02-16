@@ -34,7 +34,7 @@ function parseWindow(raw: unknown): CostTimeWindow {
 // GET /api/costs/summary?window=7d&includeEstimated=false
 // ============================================================================
 
-router.get('/summary', async (req, res) => {
+router.get('/summary', (req, res) => {
   try {
     // TODO(OMN-2240): Replace with real Drizzle query against llm_cost_aggregates.
     const _window = parseWindow(req.query.window);
@@ -65,7 +65,7 @@ router.get('/summary', async (req, res) => {
 // GET /api/costs/trend?window=7d&includeEstimated=false
 // ============================================================================
 
-router.get('/trend', async (req, res) => {
+router.get('/trend', (req, res) => {
   try {
     const _window = parseWindow(req.query.window);
     const _includeEstimated = req.query.includeEstimated === 'true';
@@ -82,7 +82,7 @@ router.get('/trend', async (req, res) => {
 // GET /api/costs/by-model?includeEstimated=false
 // ============================================================================
 
-router.get('/by-model', async (req, res) => {
+router.get('/by-model', (req, res) => {
   try {
     const _includeEstimated = req.query.includeEstimated === 'true';
 
@@ -98,7 +98,7 @@ router.get('/by-model', async (req, res) => {
 // GET /api/costs/by-repo?includeEstimated=false
 // ============================================================================
 
-router.get('/by-repo', async (req, res) => {
+router.get('/by-repo', (req, res) => {
   try {
     const _includeEstimated = req.query.includeEstimated === 'true';
 
@@ -114,7 +114,7 @@ router.get('/by-repo', async (req, res) => {
 // GET /api/costs/by-pattern?includeEstimated=false
 // ============================================================================
 
-router.get('/by-pattern', async (req, res) => {
+router.get('/by-pattern', (req, res) => {
   try {
     const _includeEstimated = req.query.includeEstimated === 'true';
 
@@ -130,7 +130,7 @@ router.get('/by-pattern', async (req, res) => {
 // GET /api/costs/token-usage?window=7d&includeEstimated=false
 // ============================================================================
 
-router.get('/token-usage', async (req, res) => {
+router.get('/token-usage', (req, res) => {
   try {
     const _window = parseWindow(req.query.window);
     const _includeEstimated = req.query.includeEstimated === 'true';
@@ -147,7 +147,7 @@ router.get('/token-usage', async (req, res) => {
 // GET /api/costs/alerts
 // ============================================================================
 
-router.get('/alerts', async (_req, res) => {
+router.get('/alerts', (_req, res) => {
   try {
     // TODO(OMN-2240): Replace with real database query for budget alerts.
     const alerts: BudgetAlert[] = [];
