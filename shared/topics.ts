@@ -144,6 +144,11 @@ export function extractProducerFromTopicOrDefault(topic: string, defaultValue = 
  * Strips any environment prefix first via extractSuffix, then parses the
  * canonical format: onex.<kind>.<producer>.<event-name>.v<version>
  *
+ * @note For topics with more than 5 segments (non-standard), returns the
+ * second-to-last segment rather than the canonical event-name position (segments[3]).
+ * For example, `onex.evt.platform.multi-part-name.extra.v1` returns `'extra'`,
+ * not `'multi-part-name'`.
+ *
  * @example 'onex.cmd.omniintelligence.tool-content.v1' => 'tool-content'
  * @example 'dev.onex.evt.omniclaude.session-started.v1' => 'session-started'
  * @example 'agent-actions' => '' (legacy flat name, no action to extract)

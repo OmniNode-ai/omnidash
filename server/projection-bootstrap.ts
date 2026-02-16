@@ -387,9 +387,4 @@ function extractTimestamp(data: Record<string, unknown>): number | undefined {
 
 // Re-export shared topic parsers so existing importers (tests, etc.) continue to work.
 // The canonical implementations now live in @shared/topics.
-export { extractActionFromTopic };
-
-// Re-export extractProducerFromTopicOrDefault as extractProducerFromTopic to preserve
-// the previous 'system' fallback for server-side callers and existing test imports.
-// The shared extractProducerFromTopicOrDefault already defaults to 'system'.
-export { extractProducerFromTopicOrDefault as extractProducerFromTopic };
+export { extractActionFromTopic, extractProducerFromTopicOrDefault };

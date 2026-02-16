@@ -2,7 +2,7 @@
  * Projection Bootstrap Tests (OMN-2195, OMN-2196)
  *
  * Covers:
- * - extractProducerFromTopic: source inference from ONEX canonical topic names
+ * - extractProducerFromTopicOrDefault: source inference from ONEX canonical topic names
  * - extractActionFromTopic: event type inference from ONEX canonical topic names
  *
  * OMN-2195: Events ingested via EventBusDataSource must infer the source
@@ -11,107 +11,117 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { extractProducerFromTopic, extractActionFromTopic } from '../projection-bootstrap';
+import { extractProducerFromTopicOrDefault, extractActionFromTopic } from '../projection-bootstrap';
 
 // ============================================================================
-// extractProducerFromTopic
+// extractProducerFromTopicOrDefault
 // ============================================================================
 
-describe('extractProducerFromTopic (OMN-2195)', () => {
+describe('extractProducerFromTopicOrDefault (OMN-2195)', () => {
   describe('ONEX canonical topics', () => {
     it('should extract "omniintelligence" from onex.cmd.omniintelligence.tool-content.v1', () => {
-      expect(extractProducerFromTopic('onex.cmd.omniintelligence.tool-content.v1')).toBe(
+      expect(extractProducerFromTopicOrDefault('onex.cmd.omniintelligence.tool-content.v1')).toBe(
         'omniintelligence'
       );
     });
 
     it('should extract "omniclaude" from onex.evt.omniclaude.session-started.v1', () => {
-      expect(extractProducerFromTopic('onex.evt.omniclaude.session-started.v1')).toBe('omniclaude');
-    });
-
-    it('should extract "platform" from onex.evt.platform.node-heartbeat.v1', () => {
-      expect(extractProducerFromTopic('onex.evt.platform.node-heartbeat.v1')).toBe('platform');
-    });
-
-    it('should extract "omnimemory" from onex.evt.omnimemory.intent-stored.v1', () => {
-      expect(extractProducerFromTopic('onex.evt.omnimemory.intent-stored.v1')).toBe('omnimemory');
-    });
-
-    it('should extract "validation" from onex.evt.validation.cross-repo-run-started.v1', () => {
-      expect(extractProducerFromTopic('onex.evt.validation.cross-repo-run-started.v1')).toBe(
-        'validation'
+      expect(extractProducerFromTopicOrDefault('onex.evt.omniclaude.session-started.v1')).toBe(
+        'omniclaude'
       );
     });
 
+    it('should extract "platform" from onex.evt.platform.node-heartbeat.v1', () => {
+      expect(extractProducerFromTopicOrDefault('onex.evt.platform.node-heartbeat.v1')).toBe(
+        'platform'
+      );
+    });
+
+    it('should extract "omnimemory" from onex.evt.omnimemory.intent-stored.v1', () => {
+      expect(extractProducerFromTopicOrDefault('onex.evt.omnimemory.intent-stored.v1')).toBe(
+        'omnimemory'
+      );
+    });
+
+    it('should extract "validation" from onex.evt.validation.cross-repo-run-started.v1', () => {
+      expect(
+        extractProducerFromTopicOrDefault('onex.evt.validation.cross-repo-run-started.v1')
+      ).toBe('validation');
+    });
+
     it('should handle cmd topics the same as evt topics', () => {
-      expect(extractProducerFromTopic('onex.cmd.platform.request-introspection.v1')).toBe(
+      expect(extractProducerFromTopicOrDefault('onex.cmd.platform.request-introspection.v1')).toBe(
         'platform'
       );
     });
 
     it('should handle intent topics', () => {
-      expect(extractProducerFromTopic('onex.intent.platform.runtime-tick.v1')).toBe('platform');
+      expect(extractProducerFromTopicOrDefault('onex.intent.platform.runtime-tick.v1')).toBe(
+        'platform'
+      );
     });
 
     it('should handle snapshot topics', () => {
-      expect(extractProducerFromTopic('onex.snapshot.platform.registration-snapshots.v1')).toBe(
-        'platform'
-      );
+      expect(
+        extractProducerFromTopicOrDefault('onex.snapshot.platform.registration-snapshots.v1')
+      ).toBe('platform');
     });
   });
 
   describe('env-prefixed topics (legacy format)', () => {
     it('should strip "dev." prefix and extract producer', () => {
-      expect(extractProducerFromTopic('dev.onex.evt.omniclaude.session-started.v1')).toBe(
+      expect(extractProducerFromTopicOrDefault('dev.onex.evt.omniclaude.session-started.v1')).toBe(
         'omniclaude'
       );
     });
 
     it('should strip "staging." prefix and extract producer', () => {
-      expect(extractProducerFromTopic('staging.onex.cmd.omniintelligence.tool-content.v1')).toBe(
-        'omniintelligence'
-      );
+      expect(
+        extractProducerFromTopicOrDefault('staging.onex.cmd.omniintelligence.tool-content.v1')
+      ).toBe('omniintelligence');
     });
 
     it('should strip "prod." prefix and extract producer', () => {
-      expect(extractProducerFromTopic('prod.onex.evt.platform.node-heartbeat.v1')).toBe('platform');
+      expect(extractProducerFromTopicOrDefault('prod.onex.evt.platform.node-heartbeat.v1')).toBe(
+        'platform'
+      );
     });
   });
 
   describe('legacy flat topics (non-ONEX)', () => {
     it('should return "system" for agent-actions', () => {
-      expect(extractProducerFromTopic('agent-actions')).toBe('system');
+      expect(extractProducerFromTopicOrDefault('agent-actions')).toBe('system');
     });
 
     it('should return "system" for agent-routing-decisions', () => {
-      expect(extractProducerFromTopic('agent-routing-decisions')).toBe('system');
+      expect(extractProducerFromTopicOrDefault('agent-routing-decisions')).toBe('system');
     });
 
     it('should return "system" for agent-transformation-events', () => {
-      expect(extractProducerFromTopic('agent-transformation-events')).toBe('system');
+      expect(extractProducerFromTopicOrDefault('agent-transformation-events')).toBe('system');
     });
 
     it('should return "system" for router-performance-metrics', () => {
-      expect(extractProducerFromTopic('router-performance-metrics')).toBe('system');
+      expect(extractProducerFromTopicOrDefault('router-performance-metrics')).toBe('system');
     });
   });
 
   describe('edge cases', () => {
     it('should return "system" for empty string', () => {
-      expect(extractProducerFromTopic('')).toBe('system');
+      expect(extractProducerFromTopicOrDefault('')).toBe('system');
     });
 
     it('should return "system" for topic with fewer than 5 segments', () => {
-      expect(extractProducerFromTopic('onex.evt.platform')).toBe('system');
+      expect(extractProducerFromTopicOrDefault('onex.evt.platform')).toBe('system');
     });
 
     it('should return "system" for non-onex dotted topic', () => {
-      expect(extractProducerFromTopic('some.other.topic.format.v1')).toBe('system');
+      expect(extractProducerFromTopicOrDefault('some.other.topic.format.v1')).toBe('system');
     });
 
     it('should extract producer from ONEX topic with >5 segments', () => {
       // segments.length >= 5 guard still matches; segments[2] is the producer
-      expect(extractProducerFromTopic('onex.evt.platform.multi-part-name.extra.v1')).toBe(
+      expect(extractProducerFromTopicOrDefault('onex.evt.platform.multi-part-name.extra.v1')).toBe(
         'platform'
       );
     });
