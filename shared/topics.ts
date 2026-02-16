@@ -124,6 +124,22 @@ export function extractProducerFromTopic(topic: string): string | null {
 }
 
 /**
+ * Extract the producer name from an ONEX topic string, falling back to a
+ * default value for legacy flat-name topics.
+ *
+ * This is a convenience wrapper around `extractProducerFromTopic` that
+ * eliminates the need for callers to handle the `null` return. Use this
+ * when you always want a non-null string (e.g. for display purposes).
+ *
+ * @example extractProducerFromTopicOrDefault('onex.evt.omniclaude.session-started.v1') => 'omniclaude'
+ * @example extractProducerFromTopicOrDefault('agent-actions') => 'system'
+ * @example extractProducerFromTopicOrDefault('agent-actions', 'unknown') => 'unknown'
+ */
+export function extractProducerFromTopicOrDefault(topic: string, defaultValue = 'system'): string {
+  return extractProducerFromTopic(topic) ?? defaultValue;
+}
+
+/**
  * Extract the action name (event-name segment) from an ONEX topic string.
  * Strips any environment prefix first via extractSuffix, then parses the
  * canonical format: onex.<kind>.<producer>.<event-name>.v<version>

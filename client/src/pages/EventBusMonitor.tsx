@@ -29,7 +29,7 @@ import {
   type EventBusPayload,
 } from '@/lib/data-sources/event-bus-projection-source';
 import { TIME_SERIES_BUCKET_MS } from '@shared/event-bus-payload';
-import { extractProducerFromTopic } from '@shared/topics';
+import { extractProducerFromTopicOrDefault } from '@shared/topics';
 import { extractParsedDetails, type ParsedDetails } from '@/components/event-bus/eventDetailUtils';
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { Card } from '@/components/ui/card';
@@ -147,7 +147,7 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
   const resolvedSource =
     event.source && event.source !== 'unknown'
       ? event.source
-      : (extractProducerFromTopic(event.topic) ?? 'system');
+      : extractProducerFromTopicOrDefault(event.topic);
 
   return {
     id: event.id,

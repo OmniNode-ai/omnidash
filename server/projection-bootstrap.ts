@@ -16,7 +16,7 @@ import { eventBusDataSource } from './event-bus-data-source';
 import {
   extractSuffix,
   extractActionFromTopic,
-  extractProducerFromTopic as _extractProducerFromTopic,
+  extractProducerFromTopicOrDefault,
 } from '@shared/topics';
 
 // ============================================================================
@@ -237,7 +237,9 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
         // EventBusDataSource, infer the producer from the topic name
         // (e.g. 'onex.evt.omniclaude.session-started.v1' → 'omniclaude').
         const source =
-          rawSource && rawSource !== 'unknown' ? rawSource : extractProducerFromTopic(topic);
+          rawSource && rawSource !== 'unknown'
+            ? rawSource
+            : extractProducerFromTopicOrDefault(topic);
 
         const raw: RawEventInput = {
           id: eventId,
@@ -387,17 +389,7 @@ function extractTimestamp(data: Record<string, unknown>): number | undefined {
 // The canonical implementations now live in @shared/topics.
 export { extractActionFromTopic };
 
-// Wrap the shared extractProducerFromTopic to preserve the previous 'system' fallback
-// for server-side callers. The shared version returns null for non-ONEX topics.
-
-/**
- * Extract the producer name from an ONEX topic string.
- * Delegates to the shared implementation in @shared/topics, falling back to
- * 'system' for legacy flat-name topics (preserving the original server-side behavior).
- *
- * @example 'onex.evt.omniclaude.session-started.v1' => 'omniclaude'
- * @example 'agent-actions' => 'system'
- */
-export function extractProducerFromTopic(topic: string): string {
-  return _extractProducerFromTopic(topic) ?? 'system';
-}
+// Re-export extractProducerFromTopicOrDefault as extractProducerFromTopic to preserve
+// the previous 'system' fallback for server-side callers and existing test imports.
+// The shared extractProducerFromTopicOrDefault already defaults to 'system'.
+export { extractProducerFromTopicOrDefault as extractProducerFromTopic };
