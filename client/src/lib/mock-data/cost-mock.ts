@@ -115,8 +115,8 @@ export function getMockCostByModel(): CostByModel[] {
     { name: 'qwen2.5-72b', cost: 2.1, tokens: 38_000, source: 'ESTIMATED' },
   ];
 
-  return models.map((m) => {
-    const promptRatio = 0.72 + Math.random() * 0.08;
+  return models.map((m, i) => {
+    const promptRatio = 0.72 + (i % 5) * 0.02;
     const reportedRatio = m.source === 'API' ? 1.0 : 0.0;
     return {
       model_name: m.name,
