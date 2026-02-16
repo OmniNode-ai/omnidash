@@ -15,6 +15,7 @@ import {
   FlaskConical,
   Wrench,
   DollarSign,
+  TrendingUp,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -132,6 +133,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/baselines',
         icon: DollarSign,
         description: 'Cost + outcome comparison for A/B pattern evaluation',
+      },
+      {
+        title: 'Cost Trends',
+        url: '/cost-trends',
+        icon: TrendingUp,
+        description: 'LLM cost and token usage trends with drill-down',
       },
     ],
   },

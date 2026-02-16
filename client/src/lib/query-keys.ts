@@ -505,6 +505,39 @@ export const queryKeys = {
   },
 
   // ============================================================================
+  // Cost Trends (OMN-2242)
+  // ============================================================================
+
+  /**
+   * Cost trend query keys for LLM cost and token usage dashboard.
+   */
+  costs: {
+    /** Base key for all cost queries */
+    all: ['costs'] as const,
+
+    /** Summary metrics for a time window */
+    summary: (window: string) => [...queryKeys.costs.all, 'summary', window] as const,
+
+    /** Cost trend over time */
+    trend: (window: string) => [...queryKeys.costs.all, 'trend', window] as const,
+
+    /** Cost breakdown by model */
+    byModel: () => [...queryKeys.costs.all, 'by-model'] as const,
+
+    /** Cost breakdown by repo */
+    byRepo: () => [...queryKeys.costs.all, 'by-repo'] as const,
+
+    /** Cost breakdown by pattern */
+    byPattern: () => [...queryKeys.costs.all, 'by-pattern'] as const,
+
+    /** Token usage breakdown */
+    tokenUsage: (window: string) => [...queryKeys.costs.all, 'token-usage', window] as const,
+
+    /** Budget alerts */
+    alerts: () => [...queryKeys.costs.all, 'alerts'] as const,
+  },
+
+  // ============================================================================
   // Learned Insights (OMN-1407)
   // ============================================================================
 
