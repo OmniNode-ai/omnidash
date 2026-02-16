@@ -350,7 +350,7 @@ export function generateMockSummary(runs: ValidationRun[]): {
       if (run.status === 'passed') passedRuns++;
     }
 
-    for (const [sev, count] of Object.entries(run.violations_by_severity)) {
+    for (const [sev, count] of Object.entries(run.violations_by_severity ?? {})) {
       totalBySeverity[sev] = (totalBySeverity[sev] ?? 0) + count;
     }
   }

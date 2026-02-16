@@ -9,7 +9,7 @@
  */
 
 import { Router } from 'express';
-import { eq, and, desc, sql, gte } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, inArray } from 'drizzle-orm';
 import { tryGetIntelligenceDb } from './storage';
 import { validationRuns, validationViolations } from '@shared/intelligence-schema';
 import type {
@@ -485,10 +485,7 @@ router.get('/repos/:repoId/trends', async (req, res) => {
         })
         .from(validationViolations)
         .where(
-          and(
-            sql`${validationViolations.runId} = ANY(${runIds})`,
-            eq(validationViolations.repo, repoId)
-          )
+          and(inArray(validationViolations.runId, runIds), eq(validationViolations.repo, repoId))
         )
         .groupBy(validationViolations.runId, validationViolations.severity);
 

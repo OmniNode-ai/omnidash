@@ -529,7 +529,14 @@ export default function ValidationDashboard() {
             </Card>
           )}
 
-          {/* Runs Table */}
+          {/* Runs Table
+           *
+           * Type note: The list view uses RunSummary (from the /runs list API),
+           * which includes `violation_count` but omits the full `violations` array.
+           * When a row is expanded, the detail/drill-down fetches a full
+           * ValidationRun (from the /runs/:runId detail API) which carries the
+           * complete `violations` array for the nested violations table.
+           */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -646,7 +653,7 @@ export default function ValidationDashboard() {
                                     </TableHeader>
                                     <TableBody>
                                       {runDetail.violations.slice(0, 50).map((v, i) => (
-                                        <TableRow key={i}>
+                                        <TableRow key={`${v.rule_id}-${v.repo}-${i}`}>
                                           <TableCell>{severityBadge(v.severity)}</TableCell>
                                           <TableCell className="font-mono text-xs">
                                             {v.rule_id}
@@ -879,7 +886,11 @@ export default function ValidationDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {/* Cap rendered rows; real pagination should replace this when API is connected */}
+                      {/* Cap rendered rows client-side. The lifecycle server endpoint
+                         (GET /api/validation/lifecycle/summary) is not yet implemented,
+                         so all data comes from the mock fallback (see validation-source.ts).
+                         Server-side pagination should replace this .slice() once the
+                         real endpoint is available. */}
                       {lifecycle.candidates.slice(0, 50).map((candidate) => (
                         <TableRow key={candidate.candidate_id}>
                           <TableCell>

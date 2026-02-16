@@ -152,7 +152,7 @@ class ValidationSource {
           completed_at: run.completed_at,
           duration_ms: run.duration_ms,
           total_violations: run.total_violations,
-          violations_by_severity: run.violations_by_severity,
+          violations_by_severity: run.violations_by_severity ?? {},
           violation_count: run.total_violations,
         }));
 

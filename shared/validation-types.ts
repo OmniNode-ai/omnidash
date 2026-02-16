@@ -139,7 +139,7 @@ export interface ValidationRun {
   completed_at?: string;
   duration_ms?: number;
   total_violations: number;
-  violations_by_severity: Record<string, number>;
+  violations_by_severity?: Record<string, number>;
   violations: Violation[];
 }
 
