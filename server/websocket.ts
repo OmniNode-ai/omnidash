@@ -23,6 +23,7 @@ import {
   type IntentSessionEventPayload,
   type IntentRecentEventPayload,
 } from './intent-events';
+import { insightsEventEmitter } from './insights-events';
 import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
@@ -257,6 +258,8 @@ const VALID_TOPICS = [
   'extraction',
   // Projection invalidation events (OMN-2095/OMN-2096)
   'projections',
+  // Learned insights invalidation events (OMN-2306)
+  'insights',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -480,6 +483,14 @@ export function setupWebSocket(httpServer: HTTPServer) {
   registerEventListener('extraction-event', (data: { type: string }) => {
     broadcast('EXTRACTION_INVALIDATE', { type: data.type }, 'extraction');
   });
+
+  // Learned Insights invalidation listener (OMN-2306)
+  // Tells clients to re-fetch insights data when new patterns are learned.
+  // Uses insightsEventEmitter (not eventConsumer) so any module can trigger it.
+  const insightsUpdateHandler = () => {
+    broadcast('INSIGHTS_UPDATE', { timestamp: Date.now() }, 'insights');
+  };
+  insightsEventEmitter.on('insights-update', insightsUpdateHandler);
 
   // Node Registry event listeners
   registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {
@@ -1033,6 +1044,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
       emitter.removeListener(event, handler);
     });
     playbackListeners.length = 0;
+
+    // Remove insights event listener (OMN-2306)
+    insightsEventEmitter.removeListener('insights-update', insightsUpdateHandler);
 
     // Remove event bus data source listeners
     console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);
