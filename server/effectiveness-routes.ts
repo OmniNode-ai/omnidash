@@ -13,8 +13,10 @@
 import { Router } from 'express';
 import type { EffectivenessSummary, ThrottleStatus } from '@shared/effectiveness-types';
 import { projectionService } from './projection-bootstrap';
-import type { EffectivenessMetricsProjection } from './projections/effectiveness-metrics-projection';
-import type { EffectivenessMetricsPayload } from './projections/effectiveness-metrics-projection';
+import type {
+  EffectivenessMetricsProjection,
+  EffectivenessMetricsPayload,
+} from './projections/effectiveness-metrics-projection';
 
 const router = Router();
 

@@ -18,8 +18,10 @@ import type {
   ErrorRatesSummaryResponse,
 } from '@shared/extraction-types';
 import { projectionService } from './projection-bootstrap';
-import type { ExtractionMetricsProjection } from './projections/extraction-metrics-projection';
-import type { ExtractionMetricsPayload } from './projections/extraction-metrics-projection';
+import type {
+  ExtractionMetricsProjection,
+  ExtractionMetricsPayload,
+} from './projections/extraction-metrics-projection';
 
 const router = Router();
 
