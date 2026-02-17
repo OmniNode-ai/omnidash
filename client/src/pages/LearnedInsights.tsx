@@ -11,9 +11,10 @@
  * @see OMN-1407 - Learned Insights Panel (OmniClaude Integration)
  */
 
-import { useState, useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { insightsSource } from '@/lib/data-sources/insights-source';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { MetricCard } from '@/components/MetricCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -275,6 +276,27 @@ export default function LearnedInsights() {
     queryFn: () => insightsSource.trend(),
     refetchInterval: 30_000,
   });
+
+  // ---------------------------------------------------------------------------
+  // WebSocket invalidation -- real-time updates when new insights are learned
+  // ---------------------------------------------------------------------------
+  const queryClient = useQueryClient();
+  const { subscribe, unsubscribe, isConnected } = useWebSocket({
+    onMessage: (msg) => {
+      if (msg.type === 'INSIGHTS_UPDATE') {
+        queryClient.invalidateQueries({ queryKey: queryKeys.insights.all });
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (isConnected) {
+      subscribe(['insights']);
+    }
+    return () => {
+      unsubscribe(['insights']);
+    };
+  }, [isConnected, subscribe, unsubscribe]);
 
   // ---------------------------------------------------------------------------
   // Handlers

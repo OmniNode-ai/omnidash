@@ -2,15 +2,17 @@
  * Learned Insights API Routes
  *
  * REST endpoints for the learned insights dashboard: summary and trend.
- * Data originates from OmniMemory / OmniClaude session analysis.
+ * Data originates from the learned_patterns table (OmniMemory projections).
  *
- * Currently returns empty responses to trigger client-side mock fallback.
- * When OmniMemory is live, these endpoints will query the insights tables.
+ * Graceful degradation: when database is not configured, returns empty
+ * responses so the client falls back to mock data.
  *
+ * @see OMN-2306 - Connect Learned Insights page to OmniMemory API
  * @see OMN-1407 - Learned Insights Panel (OmniClaude Integration)
  */
 
 import { Router } from 'express';
+import { queryInsightsSummary, queryInsightsTrend } from './insight-queries';
 
 const router = Router();
 
@@ -21,16 +23,29 @@ const router = Router();
 
 router.get('/summary', async (_req, res) => {
   try {
-    // TODO: Query OmniMemory insights tables when available
-    // For now, return empty to trigger client-side mock fallback
-    res.json({
-      insights: [],
-      total: 0,
-      new_this_week: 0,
-      avg_confidence: 0,
-      total_sessions_analyzed: 0,
-      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+    const result = await queryInsightsSummary();
+
+    // Graceful degradation: database not configured
+    if (result === null) {
+      console.log('[Insights] Database not configured - returning empty response (demo mode)');
+      return res.json({
+        insights: [],
+        total: 0,
+        new_this_week: 0,
+        avg_confidence: 0,
+        total_sessions_analyzed: 0,
+        by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+      });
+    }
+
+    // No caching for real-time data
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
     });
+
+    res.json(result);
   } catch (error) {
     console.error('[insights] Error getting summary:', error);
     res.status(500).json({ error: 'Failed to get insights summary' });
@@ -39,13 +54,29 @@ router.get('/summary', async (_req, res) => {
 
 // ============================================================================
 // GET /api/insights/trend
-// Returns insight discovery trend over time
+// Returns insight discovery trend over time (default 14 days)
 // ============================================================================
 
-router.get('/trend', async (_req, res) => {
+router.get('/trend', async (req, res) => {
   try {
-    // TODO: Query OmniMemory insights tables when available
-    res.json([]);
+    const days = Math.min(Math.max(parseInt(String(req.query.days ?? '14'), 10) || 14, 1), 90);
+
+    const result = await queryInsightsTrend(days);
+
+    // Graceful degradation: database not configured
+    if (result === null) {
+      console.log('[Insights] Database not configured - returning empty trend (demo mode)');
+      return res.json([]);
+    }
+
+    // No caching for real-time data
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    });
+
+    res.json(result);
   } catch (error) {
     console.error('[insights] Error getting trend:', error);
     res.status(500).json({ error: 'Failed to get insights trend' });

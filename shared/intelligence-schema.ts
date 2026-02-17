@@ -491,7 +491,6 @@ export const learnedPatterns = pgTable('learned_patterns', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   signatureHash: text('signature_hash').notNull(),
-  projectedAt: timestamp('projected_at').defaultNow(),
 });
 
 // Export Zod schema for validation
