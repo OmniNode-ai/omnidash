@@ -2,6 +2,16 @@
 import { config } from 'dotenv';
 config();
 
+// Write PID file so `npm run kill-port` can terminate this exact process on the
+// next dev-server restart, preventing zombie Kafka consumers from stealing partitions.
+import { writeFileSync, unlinkSync } from 'fs';
+const SERVER_PID_FILE = '.server.pid';
+try {
+  writeFileSync(SERVER_PID_FILE, String(process.pid), 'utf-8');
+} catch {
+  // Non-fatal: PID file is a best-effort cleanup aid
+}
+
 // Suppress KafkaJS partitioner warning
 if (!process.env.KAFKAJS_NO_PARTITIONER_WARNING) {
   process.env.KAFKAJS_NO_PARTITIONER_WARNING = '1';
@@ -158,6 +168,10 @@ app.use((req, res, next) => {
   eventConsumer.on('nodeStateChangeUpdate', projectionBridgeListeners.nodeStateChangeUpdate);
   eventConsumer.on('nodeRegistryUpdate', projectionBridgeListeners.nodeRegistryUpdate);
 
+  // Wire intent-event → ProjectionService BEFORE consumer.start() so Phase A
+  // historical events are captured by the projection (not dropped silently).
+  initProjectionListeners();
+
   // Validate and start Kafka event consumer
   try {
     // First validate that Kafka broker is reachable
@@ -175,11 +189,6 @@ app.use((req, res, next) => {
     console.error('   Intelligence endpoints will not receive real-time data');
     console.error('   Application will continue with limited functionality');
   }
-
-  // Wire EventConsumer intent-event → ProjectionService (idempotent guard).
-  // Safe to call regardless of Kafka availability; events will flow once
-  // EventConsumer connects.
-  initProjectionListeners();
 
   // Validate and start Event Bus Data Source
   try {
@@ -331,6 +340,11 @@ app.use((req, res, next) => {
 
   process.on('SIGTERM', async () => {
     log('SIGTERM received, shutting down gracefully');
+    try {
+      unlinkSync(SERVER_PID_FILE);
+    } catch {
+      /* already gone */
+    }
     teardownProjectionListeners();
     cleanupProjectionBridge();
     cleanupProjectionSources?.();
@@ -347,6 +361,11 @@ app.use((req, res, next) => {
 
   process.on('SIGINT', async () => {
     log('SIGINT received, shutting down gracefully');
+    try {
+      unlinkSync(SERVER_PID_FILE);
+    } catch {
+      /* already gone */
+    }
     teardownProjectionListeners();
     cleanupProjectionBridge();
     cleanupProjectionSources?.();

@@ -16,6 +16,11 @@
 import { projectionService } from './projection-bootstrap';
 import { IntentProjectionView, INTENT_VIEW_ID } from './projections/intent-projection';
 import { eventConsumer } from './event-consumer';
+import {
+  INTENT_CLASSIFIED_TOPIC,
+  INTENT_STORED_TOPIC,
+  EVENT_TYPE_NAMES,
+} from '@shared/intent-types';
 
 // Re-export projectionService for backward-compatible imports
 export { projectionService };
@@ -43,6 +48,18 @@ function handleIntentEvent(event: {
   const payload = event.payload;
   if (!payload || typeof payload !== 'object') return;
 
+  // Resolve a short event-type name the projection view accepts.
+  // payload.event_type is preferred (upstream schema), but InternalIntentClassifiedEvent
+  // strips it — so fall back to a topic→type lookup instead of the raw Kafka topic string.
+  const TOPIC_TO_TYPE: Record<string, string> = {
+    [INTENT_CLASSIFIED_TOPIC]: EVENT_TYPE_NAMES.INTENT_CLASSIFIED,
+    [INTENT_STORED_TOPIC]: EVENT_TYPE_NAMES.INTENT_STORED,
+  };
+  const resolvedType =
+    typeof payload.event_type === 'string'
+      ? payload.event_type
+      : (TOPIC_TO_TYPE[event.topic] ?? event.topic);
+
   projectionService.ingest({
     id:
       payload.id != null
@@ -51,7 +68,7 @@ function handleIntentEvent(event: {
           ? String(payload.intent_id)
           : undefined,
     topic: event.topic,
-    type: typeof payload.event_type === 'string' ? payload.event_type : event.topic,
+    type: resolvedType,
     source: 'event-consumer',
     severity: 'info',
     payload,
