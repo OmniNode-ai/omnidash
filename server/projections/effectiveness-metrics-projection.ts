@@ -95,14 +95,17 @@ export class EffectivenessMetricsProjection extends DbBackedProjectionView<Effec
   }
 
   protected async querySnapshot(db: Db): Promise<EffectivenessMetricsPayload> {
-    const [summary, throttle, latency, utilization, ab, trend] = await Promise.all([
-      this.querySummary(db),
+    // Query throttle once, then pass the resolved result into querySummary()
+    // to avoid a duplicate queryThrottleStatus() call.
+    const [throttle, latency, utilization, ab, trend] = await Promise.all([
       this.queryThrottleStatus(db),
       this.queryLatency(db),
       this.queryUtilization(db),
       this.queryAB(db),
       this.queryTrend(db),
     ]);
+
+    const summary = await this.querySummary(db, throttle);
 
     return { summary, throttle, latency, utilization, ab, trend };
   }
@@ -111,7 +114,7 @@ export class EffectivenessMetricsProjection extends DbBackedProjectionView<Effec
   // Individual query methods (public for route-level granular access)
   // --------------------------------------------------------------------------
 
-  async querySummary(db: Db): Promise<EffectivenessSummary> {
+  async querySummary(db: Db, preResolvedThrottle?: ThrottleStatus): Promise<EffectivenessSummary> {
     const ie = injectionEffectiveness;
 
     const [totals, utilResult, accResult, latencyResult, throttle] = await Promise.all([
@@ -152,7 +155,9 @@ export class EffectivenessMetricsProjection extends DbBackedProjectionView<Effec
         )
         .groupBy(ie.cohort),
 
-      this.queryThrottleStatus(db),
+      // Re-use pre-resolved throttle if provided (avoids duplicate DB query
+      // when called from querySnapshot which already queried throttle).
+      preResolvedThrottle ? Promise.resolve(preResolvedThrottle) : this.queryThrottleStatus(db),
     ]);
 
     const t = totals[0] ?? { total: 0, injected: 0, treatment: 0, control: 0 };

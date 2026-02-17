@@ -41,6 +41,8 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
   private cacheExpiresAt = 0;
   private readonly cacheTtlMs: number;
   private snapshotSeq = 0;
+  /** Guard: coalesces concurrent refreshAsync() calls into a single DB query. */
+  private refreshInFlight: Promise<void> | null = null;
 
   constructor(cacheTtlMs?: number) {
     this.cacheTtlMs = cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
@@ -119,6 +121,7 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
     this.cachedSnapshot = null;
     this.cacheExpiresAt = 0;
     this.snapshotSeq = 0;
+    this.refreshInFlight = null;
   }
 
   // --------------------------------------------------------------------------
@@ -151,13 +154,19 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
   /**
    * Trigger an async DB query to refresh the cached snapshot.
    * Errors are caught and logged; the cache remains stale but valid.
+   *
+   * Uses an in-flight guard so that concurrent callers share the same
+   * pending query rather than hammering the DB with duplicate requests.
    */
   private refreshAsync(limit?: number): void {
+    // If a refresh is already in flight, let it finish — don't fire another.
+    if (this.refreshInFlight) return;
+
     const db = tryGetIntelligenceDb();
     if (!db) return;
 
     // Fire-and-forget: update cache when query completes
-    this.querySnapshot(db, limit)
+    this.refreshInFlight = this.querySnapshot(db, limit)
       .then((payload) => {
         this.snapshotSeq++;
         const now = Date.now();
@@ -171,6 +180,9 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
       })
       .catch((err) => {
         console.error(`[projection:${this.viewId}] DB query failed:`, err);
+      })
+      .finally(() => {
+        this.refreshInFlight = null;
       });
   }
 
