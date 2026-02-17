@@ -5,7 +5,7 @@
  * utilization, ab, trend) by mocking the EffectivenessMetricsProjection view.
  *
  * The routes now access data through projectionService.getView() rather than
- * direct DB queries. Tests mock the projection's forceRefresh() to return
+ * direct DB queries. Tests mock the projection's ensureFresh() to return
  * specific payloads without hitting the database.
  */
 
@@ -19,14 +19,15 @@ import type { EffectivenessMetricsPayload } from '../projections/effectiveness-m
 // ---------------------------------------------------------------------------
 
 // vi.hoisted() ensures this runs before vi.mock() factory execution
-const { mockForceRefresh } = vi.hoisted(() => ({
-  mockForceRefresh: vi.fn(),
+const { mockEnsureFresh } = vi.hoisted(() => ({
+  mockEnsureFresh: vi.fn(),
 }));
 
 vi.mock('../projection-bootstrap', () => {
   const mockView = {
     viewId: 'effectiveness-metrics',
-    forceRefresh: mockForceRefresh,
+    ensureFresh: mockEnsureFresh,
+    forceRefresh: mockEnsureFresh,
     getSnapshot: vi.fn(),
     getEventsSince: vi.fn(),
     applyEvent: vi.fn(() => false),
@@ -128,7 +129,7 @@ describe('Effectiveness Routes', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockForceRefresh.mockResolvedValue(emptyPayload());
+    mockEnsureFresh.mockResolvedValue(emptyPayload());
 
     app = express();
     app.use(express.json());
@@ -153,7 +154,7 @@ describe('Effectiveness Routes', () => {
     });
 
     it('should return aggregated summary with real data', async () => {
-      mockForceRefresh.mockResolvedValue(
+      mockEnsureFresh.mockResolvedValue(
         makePayload({
           summary: {
             injection_rate: 0.8,
@@ -196,7 +197,7 @@ describe('Effectiveness Routes', () => {
 
     it('should return 500 on projection error', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      mockForceRefresh.mockRejectedValue(new Error('DB connection lost'));
+      mockEnsureFresh.mockRejectedValue(new Error('DB connection lost'));
 
       const res = await request(app).get('/api/effectiveness/summary').expect(500);
 
@@ -219,7 +220,7 @@ describe('Effectiveness Routes', () => {
     });
 
     it('should return throttle status from projection', async () => {
-      mockForceRefresh.mockResolvedValue(
+      mockEnsureFresh.mockResolvedValue(
         makePayload({
           throttle: {
             active: true,
@@ -242,7 +243,7 @@ describe('Effectiveness Routes', () => {
 
     it('should return 500 on projection error', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      mockForceRefresh.mockRejectedValue(new Error('DB error'));
+      mockEnsureFresh.mockRejectedValue(new Error('DB error'));
 
       const res = await request(app).get('/api/effectiveness/throttle').expect(500);
       expect(res.body.error).toBe('Failed to get throttle status');
@@ -264,7 +265,7 @@ describe('Effectiveness Routes', () => {
     });
 
     it('should return latency data from projection', async () => {
-      mockForceRefresh.mockResolvedValue(
+      mockEnsureFresh.mockResolvedValue(
         makePayload({
           latency: {
             breakdowns: [
@@ -304,7 +305,7 @@ describe('Effectiveness Routes', () => {
 
     it('should return 500 on projection error', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      mockForceRefresh.mockRejectedValue(new Error('timeout'));
+      mockEnsureFresh.mockRejectedValue(new Error('timeout'));
 
       const res = await request(app).get('/api/effectiveness/latency').expect(500);
       expect(res.body.error).toBe('Failed to get latency details');
@@ -327,7 +328,7 @@ describe('Effectiveness Routes', () => {
     });
 
     it('should return utilization data from projection', async () => {
-      mockForceRefresh.mockResolvedValue(
+      mockEnsureFresh.mockResolvedValue(
         makePayload({
           utilization: {
             histogram: [{ range_start: 0.7, range_end: 0.8, count: 45 }],
@@ -356,7 +357,7 @@ describe('Effectiveness Routes', () => {
 
     it('should return 500 on projection error', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      mockForceRefresh.mockRejectedValue(new Error('DB error'));
+      mockEnsureFresh.mockRejectedValue(new Error('DB error'));
 
       const res = await request(app).get('/api/effectiveness/utilization').expect(500);
       expect(res.body.error).toBe('Failed to get utilization details');
@@ -377,7 +378,7 @@ describe('Effectiveness Routes', () => {
     });
 
     it('should return AB data from projection', async () => {
-      mockForceRefresh.mockResolvedValue(
+      mockEnsureFresh.mockResolvedValue(
         makePayload({
           ab: {
             cohorts: [
@@ -412,7 +413,7 @@ describe('Effectiveness Routes', () => {
 
     it('should return 500 on projection error', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      mockForceRefresh.mockRejectedValue(new Error('DB error'));
+      mockEnsureFresh.mockRejectedValue(new Error('DB error'));
 
       const res = await request(app).get('/api/effectiveness/ab').expect(500);
       expect(res.body.error).toBe('Failed to get A/B comparison');
@@ -432,7 +433,7 @@ describe('Effectiveness Routes', () => {
     });
 
     it('should return trend data points', async () => {
-      mockForceRefresh.mockResolvedValue(
+      mockEnsureFresh.mockResolvedValue(
         makePayload({
           trend: [
             {
@@ -462,7 +463,7 @@ describe('Effectiveness Routes', () => {
 
     it('should return 500 on projection error', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      mockForceRefresh.mockRejectedValue(new Error('DB error'));
+      mockEnsureFresh.mockRejectedValue(new Error('DB error'));
 
       const res = await request(app).get('/api/effectiveness/trend').expect(500);
       expect(res.body.error).toBe('Failed to get trend');

@@ -58,7 +58,7 @@ router.get('/summary', async (_req, res) => {
       return res.json(empty);
     }
 
-    const result = await view.forceRefresh();
+    const result = await view.ensureFresh();
     res.json(result.summary);
   } catch (error) {
     console.error('[extraction] Error getting summary:', error);
@@ -77,7 +77,7 @@ router.get('/health/pipeline', async (_req, res) => {
       return res.json({ cohorts: [] } satisfies PipelineHealthResponse);
     }
 
-    const result = await view.forceRefresh();
+    const result = await view.ensureFresh();
     res.json(result.pipelineHealth);
   } catch (error) {
     console.error('[extraction] Error getting pipeline health:', error);
@@ -144,7 +144,7 @@ router.get('/errors/summary', async (_req, res) => {
       return res.json(empty);
     }
 
-    const result = await view.forceRefresh();
+    const result = await view.ensureFresh();
     res.json(result.errorsSummary);
   } catch (error) {
     console.error('[extraction] Error getting error rates:', error);

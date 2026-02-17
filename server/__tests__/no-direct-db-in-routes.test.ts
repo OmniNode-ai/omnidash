@@ -28,7 +28,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const SERVER_DIR = path.resolve(import.meta.dirname || __dirname, '..');
+const SERVER_DIR = path.resolve(import.meta.dirname, '..');
 
 /**
  * Route files that are TEMPORARILY exempt from this rule.

@@ -175,6 +175,19 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
   }
 
   /**
+   * Return cached payload if TTL is still valid, otherwise refresh from DB.
+   * Unlike getSnapshot() (synchronous, may return stale/empty), this awaits
+   * the DB query when the cache is stale. Unlike forceRefresh() (always
+   * queries), this respects the TTL cache to avoid DB hammering.
+   */
+  async ensureFresh(limit?: number): Promise<TPayload> {
+    if (this.cachedSnapshot && Date.now() < this.cacheExpiresAt) {
+      return this.cachedSnapshot.payload;
+    }
+    return this.forceRefresh(limit);
+  }
+
+  /**
    * Force a synchronous cache update (for testing or initialization).
    * Returns the payload directly.
    */

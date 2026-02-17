@@ -42,7 +42,7 @@ router.get('/summary', async (_req, res) => {
       return res.json(emptySummary());
     }
 
-    const result = await view.forceRefresh();
+    const result = await view.ensureFresh();
     res.json(result.summary);
   } catch (error) {
     console.error('[effectiveness] Error getting summary:', error);
@@ -69,7 +69,7 @@ router.get('/throttle', async (_req, res) => {
       } satisfies ThrottleStatus);
     }
 
-    const result = await view.forceRefresh();
+    const result = await view.ensureFresh();
     res.json(result.throttle);
   } catch (error) {
     console.error('[effectiveness] Error getting throttle status:', error);
@@ -93,7 +93,7 @@ router.get('/latency', async (_req, res) => {
       });
     }
 
-    const result = await view.forceRefresh();
+    const result = await view.ensureFresh();
     res.json(result.latency);
   } catch (error) {
     console.error('[effectiveness] Error getting latency details:', error);
@@ -118,7 +118,7 @@ router.get('/utilization', async (_req, res) => {
       });
     }
 
-    const result = await view.forceRefresh();
+    const result = await view.ensureFresh();
     res.json(result.utilization);
   } catch (error) {
     console.error('[effectiveness] Error getting utilization details:', error);
@@ -138,7 +138,7 @@ router.get('/ab', async (_req, res) => {
       return res.json({ cohorts: [], total_sessions: 0 });
     }
 
-    const result = await view.forceRefresh();
+    const result = await view.ensureFresh();
     res.json(result.ab);
   } catch (error) {
     console.error('[effectiveness] Error getting A/B comparison:', error);
@@ -158,7 +158,7 @@ router.get('/trend', async (_req, res) => {
       return res.json([]);
     }
 
-    const result = await view.forceRefresh();
+    const result = await view.ensureFresh();
     res.json(result.trend);
   } catch (error) {
     console.error('[effectiveness] Error getting trend:', error);
