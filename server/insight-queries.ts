@@ -14,6 +14,7 @@
 import { tryGetIntelligenceDb } from './storage';
 import { learnedPatterns } from '@shared/intelligence-schema';
 import { desc, eq, and, count, sql, getTableName } from 'drizzle-orm';
+import { ensureNumeric } from '@shared/utils/number-utils';
 import type {
   Insight,
   InsightType,
@@ -92,6 +93,7 @@ const DOMAIN_TO_INSIGHT_TYPE: Record<string, InsightType> = {
   refactoring: 'pattern',
 };
 
+/** Map a domain_id value to an InsightType category, defaulting to 'pattern'. */
 function domainToInsightType(domainId: string): InsightType {
   return DOMAIN_TO_INSIGHT_TYPE[domainId] ?? 'pattern';
 }
@@ -198,6 +200,7 @@ interface PatternRow {
   successCountRolling20: number | null;
 }
 
+/** Transform a learned_patterns database row into an Insight DTO for the client. */
 function rowToInsight(row: PatternRow): Insight {
   const confidence = parseFloat(String(row.confidence));
   return {
@@ -352,7 +355,9 @@ export async function queryInsightsTrend(days: number = 14): Promise<InsightsTre
       )
     );
 
-  let cumulative = baselineResult[0]?.count ?? 0;
+  let cumulative = ensureNumeric('count', baselineResult[0]?.count, 0, {
+    context: 'insights-trend-baseline',
+  });
 
   const rows = (result as { rows?: unknown[] }).rows ?? [];
 
