@@ -11,13 +11,11 @@
 
 import { ProjectionService, type RawEventInput } from './projection-service';
 import { EventBusProjection } from './projections/event-bus-projection';
+import { ExtractionMetricsProjection } from './projections/extraction-metrics-projection';
+import { EffectivenessMetricsProjection } from './projections/effectiveness-metrics-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
-import {
-  extractSuffix,
-  extractActionFromTopic,
-  extractProducerFromTopicOrDefault,
-} from '@shared/topics';
+import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
 
 // ============================================================================
 // Singleton instances
@@ -55,6 +53,21 @@ export const eventBusProjection = new EventBusProjection();
 // rather than constructing their own instances.
 if (!projectionService.getView(eventBusProjection.viewId)) {
   projectionService.registerView(eventBusProjection);
+}
+
+/**
+ * DB-backed projection singletons (OMN-2325).
+ * These views query PostgreSQL on getSnapshot() with TTL-based caching,
+ * unlike event-driven views that build state from Kafka events.
+ */
+export const extractionMetricsProjection = new ExtractionMetricsProjection();
+export const effectivenessMetricsProjection = new EffectivenessMetricsProjection();
+
+if (!projectionService.getView(extractionMetricsProjection.viewId)) {
+  projectionService.registerView(extractionMetricsProjection);
+}
+if (!projectionService.getView(effectivenessMetricsProjection.viewId)) {
+  projectionService.registerView(effectivenessMetricsProjection);
 }
 
 // ============================================================================
