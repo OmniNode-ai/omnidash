@@ -37,6 +37,7 @@ import type {
   InsertAgentAction,
   InsertAgentTransformationEvent,
 } from '@shared/intelligence-schema';
+import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 
 /**
  * Derive a deterministic UUID-shaped string from Kafka message coordinates.
@@ -78,6 +79,7 @@ const READ_MODEL_TOPICS = [
   'agent-routing-decisions',
   'agent-actions',
   'agent-transformation-events',
+  'onex.evt.omniclaude.pattern-enforcement.v1',
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -246,6 +248,9 @@ export class ReadModelConsumer {
           break;
         case 'agent-transformation-events':
           projected = await this.projectTransformationEvent(parsed);
+          break;
+        case 'onex.evt.omniclaude.pattern-enforcement.v1':
+          projected = await this.projectEnforcementEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -442,6 +447,79 @@ export class ReadModelConsumer {
           agentTransformationEvents.createdAt,
         ],
       });
+
+    return true;
+  }
+
+  /**
+   * Project a pattern enforcement event into the `pattern_enforcement_events` table.
+   *
+   * The table is created by a SQL migration (see migrations/).
+   * Returns true when written, false when the DB is unavailable.
+   *
+   * Deduplication key: (correlation_id) -- each evaluation has a unique correlation ID.
+   * Falls back to a deterministic hash when correlation_id is absent.
+   */
+  private async projectEnforcementEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    // Coerce the raw event into a typed shape
+    const evt = data as Partial<PatternEnforcementEvent>;
+
+    const correlationId =
+      (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
+    const outcome = evt.outcome ?? 'hit';
+    if (!['hit', 'violation', 'corrected', 'false_positive'].includes(outcome)) {
+      console.warn('[ReadModelConsumer] Unknown enforcement outcome:', outcome, '-- skipping');
+      return true; // Treat as "handled" so we advance the watermark
+    }
+
+    try {
+      await db.execute(sql`
+        INSERT INTO pattern_enforcement_events (
+          correlation_id,
+          session_id,
+          repo,
+          language,
+          domain,
+          pattern_name,
+          pattern_lifecycle_state,
+          outcome,
+          confidence,
+          agent_name,
+          created_at
+        ) VALUES (
+          ${correlationId},
+          ${(evt.session_id as string) ?? null},
+          ${(evt.repo as string) ?? null},
+          ${(evt.language as string) ?? 'unknown'},
+          ${(evt.domain as string) ?? 'unknown'},
+          ${(evt.pattern_name as string) ?? 'unknown'},
+          ${(evt.pattern_lifecycle_state as string) ?? null},
+          ${outcome},
+          ${evt.confidence != null ? Number(evt.confidence) : null},
+          ${(evt.agent_name as string) ?? null},
+          ${safeParseDate(evt.timestamp)}
+        )
+        ON CONFLICT (correlation_id) DO NOTHING
+      `);
+    } catch (err) {
+      // If table doesn't exist yet, warn and return true to advance watermark.
+      // The table will be created by the migration; until then we skip gracefully.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('pattern_enforcement_events') && msg.includes('does not exist')) {
+        console.warn(
+          '[ReadModelConsumer] pattern_enforcement_events table not yet created -- ' +
+            'run migrations to enable enforcement projection'
+        );
+        return true;
+      }
+      throw err;
+    }
 
     return true;
   }
