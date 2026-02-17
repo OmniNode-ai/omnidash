@@ -50,6 +50,9 @@ export interface ExtractionMetricsPayload {
 
 const MAX_WINDOW_DAYS = 90;
 const MAX_WINDOW_HOURS = 2160;
+// Evaluated at import time. This is intentional: drizzle-orm's sql`` tagged
+// template builds an inert SQL fragment object with no side effects at
+// construction time — the actual query only executes when passed to db.select().
 const TRUNC_DAY = sql`date_trunc('day'`;
 const TRUNC_HOUR = sql`date_trunc('hour'`;
 

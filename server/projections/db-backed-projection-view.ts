@@ -200,7 +200,7 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
   }
 
   /**
-   * Force a synchronous cache update (for testing or initialization).
+   * Force an immediate (awaited) cache update (for testing or initialization).
    * Returns the payload directly.
    */
   async forceRefresh(limit?: number): Promise<TPayload> {

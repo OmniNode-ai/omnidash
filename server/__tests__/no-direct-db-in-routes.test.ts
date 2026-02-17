@@ -53,8 +53,15 @@ const EXEMPT_FILES = new Set([
   'golden-path-routes.ts',
 ]);
 
-/** Patterns that indicate direct DB access from route files. */
-const FORBIDDEN_IMPORTS = ['getIntelligenceDb', 'tryGetIntelligenceDb'];
+/**
+ * Patterns that indicate direct DB access from route files.
+ * Uses regex to match actual import statements, avoiding false positives
+ * from comments or string literals that happen to mention these identifiers.
+ */
+const FORBIDDEN_IMPORT_PATTERNS: Array<{ name: string; regex: RegExp }> = [
+  { name: 'getIntelligenceDb', regex: /import\s.*getIntelligenceDb/ },
+  { name: 'tryGetIntelligenceDb', regex: /import\s.*tryGetIntelligenceDb/ },
+];
 
 describe('OMN-2325: No direct DB access in route files', () => {
   it('route files do not import getIntelligenceDb or tryGetIntelligenceDb', () => {
@@ -70,9 +77,9 @@ describe('OMN-2325: No direct DB access in route files', () => {
       const filePath = path.join(SERVER_DIR, file);
       const content = fs.readFileSync(filePath, 'utf-8');
 
-      for (const pattern of FORBIDDEN_IMPORTS) {
-        if (content.includes(pattern)) {
-          violations.push(`${file} imports ${pattern}`);
+      for (const { name, regex } of FORBIDDEN_IMPORT_PATTERNS) {
+        if (regex.test(content)) {
+          violations.push(`${file} imports ${name}`);
         }
       }
     }
