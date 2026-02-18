@@ -26,6 +26,7 @@ import type {
 } from '@shared/intelligence-schema';
 import type { Express } from 'express';
 import { vi } from 'vitest';
+import { effectivenessMetricsProjection } from '../../projection-bootstrap';
 
 const { Pool } = pg;
 
@@ -327,9 +328,23 @@ export async function closeTestDb(): Promise<void> {
  * Calling this in beforeEach ensures each test starts with a fresh cache
  * that will be populated from the current (possibly empty) database state.
  *
- * Imports are dynamic to avoid circular dependency issues in test environments.
+ * Uses a static top-level import (not dynamic) so that this module and
+ * effectiveness-routes.ts share the same `effectivenessMetricsProjection`
+ * instance from Node's module cache. A dynamic import inside the function
+ * body would also be cached by the module registry within the same worker,
+ * but a static import makes the dependency explicit and avoids any ambiguity
+ * about evaluation order. If the instance is somehow different (e.g. due to
+ * path aliasing or test-runner module isolation), we detect it immediately
+ * via the viewId guard rather than silently leaving the route's cache live.
  */
-export async function resetEffectivenessProjectionCache(): Promise<void> {
-  const { effectivenessMetricsProjection } = await import('../../projection-bootstrap');
+export function resetEffectivenessProjectionCache(): void {
+  if (effectivenessMetricsProjection.viewId !== 'effectiveness-metrics') {
+    throw new Error(
+      `resetEffectivenessProjectionCache: module instance mismatch — ` +
+        `expected viewId "effectiveness-metrics" but got "${effectivenessMetricsProjection.viewId}". ` +
+        `The helper and the route are referencing different projection-bootstrap instances. ` +
+        `Check for path aliasing or vitest resetModules configuration.`
+    );
+  }
   effectivenessMetricsProjection.reset();
 }

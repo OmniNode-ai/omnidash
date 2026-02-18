@@ -114,6 +114,7 @@ import {
   isAgentMatchEvent,
   isLatencyBreakdownEvent,
 } from '@shared/extraction-types';
+import { emitEffectivenessUpdate } from './effectiveness-events';
 import { MonotonicMergeTracker, extractEventTimeMs, parseOffsetAsSeq } from './monotonic-merge';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
@@ -1547,6 +1548,7 @@ export class EventConsumer extends EventEmitter {
                   await this.extractionAggregator.handleContextUtilization(event);
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'context-utilization' });
+                    emitEffectivenessUpdate();
                   }
                 } else {
                   console.warn('[extraction] Dropped malformed context-utilization event');
@@ -1557,6 +1559,7 @@ export class EventConsumer extends EventEmitter {
                   await this.extractionAggregator.handleAgentMatch(event);
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'agent-match' });
+                    emitEffectivenessUpdate();
                   }
                 } else {
                   console.warn('[extraction] Dropped malformed agent-match event');
@@ -1567,6 +1570,7 @@ export class EventConsumer extends EventEmitter {
                   await this.extractionAggregator.handleLatencyBreakdown(event);
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'latency-breakdown' });
+                    emitEffectivenessUpdate();
                   }
                 } else {
                   console.warn('[extraction] Dropped malformed latency-breakdown event');
