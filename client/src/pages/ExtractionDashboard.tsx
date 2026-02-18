@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Activity, Clock, Zap, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { formatRelativeTime } from '@/lib/date-utils';
 import { MetricCard } from '@/components/MetricCard';
 import { PipelineHealthPanel } from '@/components/extraction/PipelineHealthPanel';
@@ -96,6 +97,11 @@ export default function ExtractionDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {extractionSource.isUsingMockData && (
+            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+              Demo Data
+            </Badge>
+          )}
           <Select value={timeWindow} onValueChange={setTimeWindow}>
             <SelectTrigger className="w-28 h-8 text-xs">
               <SelectValue />
