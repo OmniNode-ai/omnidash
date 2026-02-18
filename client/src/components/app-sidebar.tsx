@@ -16,6 +16,7 @@ import {
   Wrench,
   DollarSign,
   TrendingUp,
+  ShieldAlert,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -156,6 +157,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/patterns',
         icon: Sparkles,
         description: 'Code pattern discovery and learning analytics',
+      },
+      {
+        title: 'Pattern Enforcement',
+        url: '/enforcement',
+        icon: ShieldAlert,
+        description: 'Enforcement hit rate, violations, and correction rate',
       },
     ],
   },

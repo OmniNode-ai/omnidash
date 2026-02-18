@@ -1191,10 +1191,15 @@ export class EventConsumer extends EventEmitter {
             // Legacy flat topics like "agent-actions" have no dot-prefix and pass through.
             const topic = extractSuffix(rawTopic);
 
-            // Capture every Kafka event into the live event bus buffer so new
+            // Capture Kafka events into the live event bus buffer so new
             // WebSocket clients receive recent events in INITIAL_STATE, not just
             // the stale DB snapshot from server startup.
-            this.captureLiveEventBusEvent(event, rawTopic, partition, message);
+            // Heartbeats are excluded: they are high-frequency infra noise that
+            // would fill the 2000-event buffer and evict real events before the
+            // client display filter can hide them.
+            if (topic !== TOPIC.NODE_HEARTBEAT) {
+              this.captureLiveEventBusEvent(event, rawTopic, partition, message);
+            }
 
             // Monotonic merge gate: reject events whose timestamp is older than
             // the last applied event for this topic. This prevents DB-preloaded
