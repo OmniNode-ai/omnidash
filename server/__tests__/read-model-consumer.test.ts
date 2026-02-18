@@ -466,7 +466,7 @@ describe('ReadModelConsumer', () => {
             retry_delta: {},
             test_pass_rate_delta: {},
             review_iteration_delta: {},
-            recommendation: 'adopt',
+            recommendation: 'promote',
             confidence: 'high',
             rationale: 'looks good',
           },
@@ -479,7 +479,7 @@ describe('ReadModelConsumer', () => {
             comparisons_evaluated: 3,
           },
         ],
-        breakdown: [{ action: 'adopt', count: 5, avg_confidence: 0.9 }],
+        breakdown: [{ action: 'promote', count: 5, avg_confidence: 0.9 }],
         ...overrides,
       });
     }
@@ -547,6 +547,16 @@ describe('ReadModelConsumer', () => {
 
       // child row inserts: comparisons + trend + breakdown = 3
       expect(childInsertValues).toHaveBeenCalledTimes(3);
+
+      // The comparisons insert is the first child insert call (txInsertCount === 2).
+      // Verify the recommendation field is 'promote' (the valid happy-path value),
+      // not 'shadow' (which would indicate the invalid-value fallback coercion fired).
+      const comparisonsInsertArg = childInsertValues.mock.calls[0]?.[0];
+      expect(comparisonsInsertArg).toBeDefined();
+      const firstComparison = Array.isArray(comparisonsInsertArg)
+        ? comparisonsInsertArg[0]
+        : comparisonsInsertArg;
+      expect(firstComparison?.recommendation).toBe('promote');
 
       // watermark updated
       expect(executeMock).toHaveBeenCalled();
@@ -663,6 +673,61 @@ describe('ReadModelConsumer', () => {
         (row: Record<string, unknown>) => row.date === '2026-02-15'
       );
       expect(trendRow).toBeDefined();
+
+      warnSpy.mockRestore();
+    });
+
+    it('blank date filtering: trend rows with malformed date format are skipped with a warning', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+      const { db, childInsertValues } = makeMockDb();
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(db);
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeBaselinesPayload({
+          trend: [
+            // Row with MM/DD/YYYY format — should be filtered out (fails YYYY-MM-DD regex)
+            {
+              date: '02/15/2026',
+              avg_cost_savings: 0.1,
+              avg_outcome_improvement: 0.05,
+              comparisons_evaluated: 1,
+            },
+            // Row with a valid ISO date — should pass through
+            {
+              date: '2026-02-15',
+              avg_cost_savings: 0.3,
+              avg_outcome_improvement: 0.15,
+              comparisons_evaluated: 3,
+            },
+          ],
+        })
+      );
+
+      // Warning should fire for the malformed-format row
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping trend row with malformed date format'),
+        expect.any(String)
+      );
+
+      // comparisons + trend (1 valid row filtered from 2) + breakdown = 3 child inserts
+      expect(childInsertValues).toHaveBeenCalledTimes(3);
+
+      // Verify only the valid trend row made it into the insert
+      const allInsertArgs = childInsertValues.mock.calls.flatMap((call) =>
+        Array.isArray(call[0]) ? call[0] : []
+      );
+      const trendRow = allInsertArgs.find(
+        (row: Record<string, unknown>) => row.date === '2026-02-15'
+      );
+      expect(trendRow).toBeDefined();
+
+      const malformedRow = allInsertArgs.find(
+        (row: Record<string, unknown>) => row.date === '02/15/2026'
+      );
+      expect(malformedRow).toBeUndefined();
 
       warnSpy.mockRestore();
     });

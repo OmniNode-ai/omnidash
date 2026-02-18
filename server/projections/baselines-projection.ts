@@ -269,7 +269,22 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
       }
     }
 
-    // Average cost savings / outcome improvement across all trend points.
+    // Compute the global lifetime average cost savings and outcome improvement.
+    //
+    // Semantic: arithmetic mean of `avg_cost_savings` (and `avg_outcome_improvement`)
+    // across every trend point in the latest snapshot.
+    //
+    // Important caveats:
+    //   - NOT weighted by `comparisons_evaluated`: a day with 1 comparison contributes
+    //     equally to the mean as a day with 1 000 comparisons.
+    //   - Uses the FULL cached trend window — the same `trend` array that was fetched
+    //     for the latest snapshot without any day-filter applied.  ensureFreshForDays()
+    //     applies a post-hoc date filter to the trend array for per-request windowing,
+    //     but _deriveSummary() is called before that filter and therefore always reflects
+    //     the global lifetime average, not a windowed metric.
+    //   - This is a "mean of trend-point means": each `avg_cost_savings` value in
+    //     `baselinesTrend` is itself a per-day average stored by the upstream writer;
+    //     we are averaging those per-day averages here.
     const avgCostSavings =
       trend.length > 0 ? trend.reduce((sum, t) => sum + t.avg_cost_savings, 0) / trend.length : 0;
     const avgOutcomeImprovement =

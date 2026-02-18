@@ -763,6 +763,9 @@ export class ReadModelConsumer {
     // snapshot_id is required — it is the dedup key.
     // Fall back to a deterministic hash so that malformed events with a missing
     // snapshot_id still produce a stable key (idempotent on replay).
+    // NOTE: If this event is later re-delivered with a populated snapshot_id,
+    // a second orphaned snapshot row will result (no automatic reconciliation).
+    // This hash-based ID is a best-effort fallback for malformed events only.
     const snapshotId =
       (data.snapshot_id as string) ||
       deterministicCorrelationId('baselines-computed', partition, offset);
@@ -860,6 +863,13 @@ export class ReadModelConsumer {
               if (date == null || date === '') {
                 console.warn(
                   '[ReadModelConsumer] Skipping trend row with blank/null date:',
+                  JSON.stringify(t)
+                );
+                return false;
+              }
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+                console.warn(
+                  '[ReadModelConsumer] Skipping trend row with malformed date format (expected YYYY-MM-DD):',
                   JSON.stringify(t)
                 );
                 return false;
