@@ -238,6 +238,11 @@ export function RecentIntents({
   // Ref for animation cleanup timeouts (keyed by intent_id)
   const animationTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
+  // Track the previous propData reference so we only reset intents when the
+  // array identity genuinely changes (not on every parent re-render with a
+  // semantically-identical snapshot).
+  const prevPropDataRef = useRef<typeof propData>(undefined);
+
   // Fetch initial data (skipped when propData is provided)
   const { data, isLoading, isError, error } = useQuery<RecentIntentsResponse>({
     queryKey: ['/api/intents/recent', { limit }],
@@ -252,12 +257,23 @@ export function RecentIntents({
     enabled: propData === undefined,
   });
 
-  // Initialize intents: prefer propData, then fall back to query response
+  // Initialize intents: prefer propData, then fall back to query response.
+  //
+  // Guard: only overwrite the WS-prepended state when propData reference has
+  // actually changed (i.e., the parent produced a new array), not merely when
+  // the parent re-rendered with the same snapshot reference.  This prevents a
+  // stale propData snapshot from clobbering items that the WebSocket handler
+  // already prepended to `intents`.
   useEffect(() => {
     if (propData !== undefined) {
-      setIntents(propData.slice(0, limit));
+      if (propData !== prevPropDataRef.current) {
+        prevPropDataRef.current = propData;
+        setIntents(propData.slice(0, limit));
+      }
     } else if (data?.intents) {
-      setIntents(data.intents);
+      // Only seed from query data when the list is still empty so that WS
+      // state accumulated before the first query result is not discarded.
+      setIntents((prev) => (prev.length === 0 ? data.intents : prev));
     }
   }, [propData, data, limit]);
 

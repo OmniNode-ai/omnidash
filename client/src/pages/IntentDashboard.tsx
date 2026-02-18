@@ -304,16 +304,16 @@ export default function IntentDashboard() {
     if (!snapshot?.recentIntents?.length) return undefined;
     return snapshot.recentIntents.map((e) => ({
       intent_id: e.id,
-      session_ref: String(e.payload.sessionId ?? ''),
-      intent_category: String(e.payload.intentType ?? ''),
+      session_ref: String(e.payload.session_ref ?? ''),
+      intent_category: String(e.payload.intent_category ?? ''),
       confidence: Number(e.payload.confidence ?? 0),
       keywords: [],
-      created_at: e.payload.createdAt
-        ? String(e.payload.createdAt)
+      created_at: e.payload.created_at
+        ? String(e.payload.created_at)
         : new Date(e.eventTimeMs ?? Date.now()).toISOString(),
       user_context:
-        typeof e.payload.rawText === 'string' && e.payload.rawText.length > 0
-          ? e.payload.rawText
+        typeof e.payload.raw_text === 'string' && e.payload.raw_text.length > 0
+          ? e.payload.raw_text
           : undefined,
     }));
   }, [snapshot]);
