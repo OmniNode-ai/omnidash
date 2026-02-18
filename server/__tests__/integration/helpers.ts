@@ -256,7 +256,11 @@ export async function truncateEffectiveness(): Promise<void> {
 export async function createTestApp(
   registerRoutes: (app: Express) => void | Promise<void>
 ): Promise<Express> {
-  // Point storage.ts at the test database -- kept for the entire suite
+  // Point storage.ts at the test database -- kept for the entire suite.
+  // Both OMNIDASH_ANALYTICS_DB_URL (priority 1) and DATABASE_URL (priority 2)
+  // must be stubbed so that whichever env var is set in the host environment,
+  // storage.ts always connects to the test database.
+  vi.stubEnv('OMNIDASH_ANALYTICS_DB_URL', process.env.TEST_DATABASE_URL!);
   vi.stubEnv('DATABASE_URL', process.env.TEST_DATABASE_URL!);
 
   const { default: express } = await import('express');
@@ -313,4 +317,19 @@ export async function closeTestDb(): Promise<void> {
     pool = null;
     db = null;
   }
+}
+
+/**
+ * Reset the effectiveness metrics projection cache.
+ *
+ * The projection's TTL-based snapshot cache can persist stale data between
+ * integration tests (e.g. TC6 seeds rows that TC7 should not see).
+ * Calling this in beforeEach ensures each test starts with a fresh cache
+ * that will be populated from the current (possibly empty) database state.
+ *
+ * Imports are dynamic to avoid circular dependency issues in test environments.
+ */
+export async function resetEffectivenessProjectionCache(): Promise<void> {
+  const { effectivenessMetricsProjection } = await import('../../projection-bootstrap');
+  effectivenessMetricsProjection.reset();
 }

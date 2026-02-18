@@ -25,6 +25,7 @@ import {
 } from './intent-events';
 import { insightsEventEmitter } from './insights-events';
 import { baselinesEventEmitter } from './baselines-events';
+import { effectivenessEventEmitter } from './effectiveness-events';
 import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
@@ -506,6 +507,14 @@ export function setupWebSocket(httpServer: HTTPServer) {
     );
   };
   baselinesEventEmitter.on('baselines-update', baselinesUpdateHandler);
+
+  // Effectiveness invalidation listener (OMN-2328)
+  // Tells clients to re-fetch effectiveness data when new measurements are projected.
+  // Uses effectivenessEventEmitter so any module can trigger it without coupling to eventConsumer.
+  const effectivenessUpdateHandler = () => {
+    broadcast('EFFECTIVENESS_UPDATE', { timestamp: Date.now() }, 'effectiveness');
+  };
+  effectivenessEventEmitter.on('effectiveness-update', effectivenessUpdateHandler);
 
   // Node Registry event listeners
   registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {
@@ -1088,6 +1097,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Remove baselines event listener (OMN-2331)
     baselinesEventEmitter.removeListener('baselines-update', baselinesUpdateHandler);
+
+    // Remove effectiveness event listener (OMN-2328)
+    effectivenessEventEmitter.removeListener('effectiveness-update', effectivenessUpdateHandler);
 
     // Remove event bus data source listeners
     console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);
