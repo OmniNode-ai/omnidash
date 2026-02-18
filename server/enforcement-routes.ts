@@ -21,16 +21,9 @@ import type {
   EnforcementByDomain,
   ViolatedPattern,
   EnforcementTrendPoint,
-  EnforcementTimeWindow,
 } from '@shared/enforcement-types';
 
 const router = Router();
-
-/** Validate and normalize the time window query parameter. */
-function parseWindow(raw: unknown): EnforcementTimeWindow {
-  if (raw === '24h' || raw === '7d' || raw === '30d') return raw;
-  return '7d';
-}
 
 // ============================================================================
 // GET /api/enforcement/summary?window=7d

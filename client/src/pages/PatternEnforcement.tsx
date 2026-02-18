@@ -100,6 +100,7 @@ function relativeTime(isoTs: string): string {
   const ts = new Date(isoTs).getTime();
   if (isNaN(ts)) return 'never';
   const diff = Date.now() - ts;
+  if (diff < 60_000) return 'just now';
   const mins = Math.floor(diff / 60_000);
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
@@ -367,6 +368,7 @@ export default function PatternEnforcement() {
     onMessage: useCallback(
       (msg: { type: string; timestamp: string }) => {
         if (msg.type === 'ENFORCEMENT_INVALIDATE') {
+          // TODO: server will emit this when read-model-consumer projects new enforcement events
           queryClient.invalidateQueries({ queryKey: queryKeys.enforcement.all });
         }
       },

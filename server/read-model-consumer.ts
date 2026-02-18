@@ -471,7 +471,9 @@ export class ReadModelConsumer {
     const evt = data as Partial<PatternEnforcementEvent>;
 
     const correlationId =
-      (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
+      (evt.correlation_id as string) ||
+      (data.correlationId as string) || // camelCase fallback for producers that serialize without snake_case transform
+      fallbackId;
 
     // outcome is required -- a missing value indicates a malformed event.
     // Do NOT default to 'hit' or any other value; that would silently inflate
