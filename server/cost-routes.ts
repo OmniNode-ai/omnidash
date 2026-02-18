@@ -108,11 +108,13 @@ router.get('/summary', async (req, res) => {
     }
 
     const payload = await getPayloadForWindow(view, timeWindow);
-    // Propagate degraded/window fields when ensureFreshForWindow() fell back to
-    // the 7d cache so clients can detect the window mismatch.
+    // Communicate degradation via headers so clients always receive a consistent
+    // object shape regardless of degradation state. The body never changes shape.
+    if (payload.degraded) {
+      res.setHeader('X-Degraded', 'true');
+      if (payload.window !== undefined) res.setHeader('X-Degraded-Window', payload.window);
+    }
     const body: Record<string, unknown> = { ...payload.summary };
-    if (payload.degraded) body.degraded = true;
-    if (payload.window !== undefined) body.window = payload.window;
     return res.json(body);
   } catch (error) {
     console.error('[costs] Error fetching summary:', error);
@@ -137,10 +139,11 @@ router.get('/trend', async (req, res) => {
     }
 
     const payload = await getPayloadForWindow(view, timeWindow);
-    // Propagate degraded/window fields when ensureFreshForWindow() fell back to
-    // the 7d cache so clients can detect the window mismatch.
+    // Communicate degradation via headers so the response body always remains
+    // an array regardless of degradation state (fixes breaking contract change).
     if (payload.degraded) {
-      return res.json({ data: payload.trend, degraded: true, window: payload.window });
+      res.setHeader('X-Degraded', 'true');
+      if (payload.window !== undefined) res.setHeader('X-Degraded-Window', payload.window);
     }
     return res.json(payload.trend);
   } catch (error) {
@@ -241,10 +244,11 @@ router.get('/token-usage', async (req, res) => {
     }
 
     const payload = await getPayloadForWindow(view, timeWindow);
-    // Propagate degraded/window fields when ensureFreshForWindow() fell back to
-    // the 7d cache so clients can detect the window mismatch.
+    // Communicate degradation via headers so the response body always remains
+    // an array regardless of degradation state (fixes breaking contract change).
     if (payload.degraded) {
-      return res.json({ data: payload.tokenUsage, degraded: true, window: payload.window });
+      res.setHeader('X-Degraded', 'true');
+      if (payload.window !== undefined) res.setHeader('X-Degraded-Window', payload.window);
     }
     return res.json(payload.tokenUsage);
   } catch (error) {

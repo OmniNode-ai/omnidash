@@ -260,7 +260,7 @@ describe('Cost Routes', () => {
       expect(mockEnsureFreshForWindow).not.toHaveBeenCalled();
     });
 
-    it('should include degraded and window in response when ensureFreshForWindow returns a degraded payload', async () => {
+    it('should set X-Degraded headers and not include degraded/window in body when ensureFreshForWindow returns a degraded payload', async () => {
       const degradedPayload: CostMetricsPayload = {
         ...makePayload(),
         degraded: true,
@@ -271,8 +271,12 @@ describe('Cost Routes', () => {
       const res = await request(app).get('/api/costs/summary?window=24h').expect(200);
 
       expect(mockEnsureFreshForWindow).toHaveBeenCalledWith('24h');
-      expect(res.body.degraded).toBe(true);
-      expect(res.body.window).toBe('7d');
+      // Degradation communicated via headers only — body shape is unchanged
+      expect(res.headers['x-degraded']).toBe('true');
+      expect(res.headers['x-degraded-window']).toBe('7d');
+      // Body must not contain degraded/window fields (shape must be consistent)
+      expect(res.body.degraded).toBeUndefined();
+      expect(res.body.window).toBeUndefined();
     });
   });
 
@@ -343,6 +347,34 @@ describe('Cost Routes', () => {
       expect(res.body.error).toBe('Failed to fetch cost trend');
       expect(mockEnsureFreshForWindow).toHaveBeenCalledWith('24h');
       consoleErrorSpy.mockRestore();
+    });
+
+    it('should set X-Degraded headers and return array body when ensureFreshForWindow returns a degraded payload', async () => {
+      const trendData = [
+        {
+          timestamp: '2026-02-10 00:00:00+00',
+          total_cost_usd: 3.0,
+          reported_cost_usd: 3.0,
+          estimated_cost_usd: 0,
+          session_count: 5,
+        },
+      ];
+      const degradedPayload: CostMetricsPayload = {
+        ...makePayload({ trend: trendData }),
+        degraded: true,
+        window: '7d',
+      };
+      mockEnsureFreshForWindow.mockResolvedValue(degradedPayload);
+
+      const res = await request(app).get('/api/costs/trend?window=24h').expect(200);
+
+      // Body must remain a plain array regardless of degradation state
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].total_cost_usd).toBeCloseTo(3.0);
+      // Degradation communicated via headers only
+      expect(res.headers['x-degraded']).toBe('true');
+      expect(res.headers['x-degraded-window']).toBe('7d');
     });
   });
 
@@ -561,6 +593,34 @@ describe('Cost Routes', () => {
       expect(res.body.error).toBe('Failed to fetch token usage');
       expect(mockEnsureFreshForWindow).toHaveBeenCalledWith('24h');
       consoleErrorSpy.mockRestore();
+    });
+
+    it('should set X-Degraded headers and return array body when ensureFreshForWindow returns a degraded payload', async () => {
+      const tokenData = [
+        {
+          timestamp: '2026-02-10 00:00:00+00',
+          prompt_tokens: 120000,
+          completion_tokens: 80000,
+          total_tokens: 200000,
+          usage_source: 'API' as const,
+        },
+      ];
+      const degradedPayload: CostMetricsPayload = {
+        ...makePayload({ tokenUsage: tokenData }),
+        degraded: true,
+        window: '7d',
+      };
+      mockEnsureFreshForWindow.mockResolvedValue(degradedPayload);
+
+      const res = await request(app).get('/api/costs/token-usage?window=24h').expect(200);
+
+      // Body must remain a plain array regardless of degradation state
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].total_tokens).toBe(200000);
+      // Degradation communicated via headers only
+      expect(res.headers['x-degraded']).toBe('true');
+      expect(res.headers['x-degraded-window']).toBe('7d');
     });
   });
 

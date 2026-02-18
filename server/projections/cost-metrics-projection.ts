@@ -15,7 +15,12 @@
  *
  * Source table: llm_cost_aggregates (defined in shared/intelligence-schema.ts)
  * Zero-cost rows are excluded from aggregates (total_cost_usd = 0 is filtered out).
- * Null is impossible because the column is defined as .notNull().default('0').
+ *
+ * Note on NULL handling: even though numeric columns are declared NOT NULL with a
+ * DEFAULT of '0', PostgreSQL's SUM() aggregate returns NULL (not 0) when the
+ * input set is empty (i.e. no rows match the WHERE clause). COALESCE(..., 0) is
+ * therefore required around every SUM() to guarantee a non-null numeric result
+ * when there is no data for the requested window.
  */
 
 import { sql, gte, lt, and, gt, desc } from 'drizzle-orm';
@@ -132,7 +137,15 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
     };
   }
 
-  /** Override reset() to also clear the per-window caches maintained by this subclass. */
+  /**
+   * Override reset() to also clear the per-window caches maintained by this subclass.
+   *
+   * Known race: any in-flight Promises that were cleared from _windowRefreshInFlight
+   * may still resolve and write to _windowCache after this reset completes (because
+   * their .then() callbacks hold a reference to `this`). This is acceptable — the
+   * same race exists in the base class TTL cache — and the stale write is harmless
+   * because the next TTL check will expire and re-fetch the data.
+   */
   override reset(): void {
     super.reset();
     this._windowCache.clear();
@@ -538,13 +551,21 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         // DB query failed mid-flight (e.g. connection lost after tryGetIntelligenceDb()
         // returned non-null). Fall back to the TTL-cached 7d snapshot — same
         // degradation contract as the DB-unavailable path above. If ensureFresh()
-        // also throws, propagate: there is nothing left to degrade to.
+        // also throws, return an empty payload rather than re-throwing, to keep both
+        // degradation paths consistent (neither propagates an error to the caller).
         console.warn(
           `[cost-metrics] ensureFreshForWindow('${window}') DB query failed — degrading to 7d cache:`,
           err
         );
-        const fallback = await this.ensureFresh();
-        return { ...fallback, degraded: true, window: '7d' as const };
+        try {
+          const fallback = await this.ensureFresh();
+          return { ...fallback, degraded: true, window: '7d' as const };
+        } catch {
+          console.warn(
+            `[cost-metrics] ensureFreshForWindow('${window}') ensureFresh() also failed — returning empty payload`
+          );
+          return { ...this.emptyPayload(), degraded: true, window: '7d' as const };
+        }
       })
       .finally(() => {
         this._windowRefreshInFlight.delete(window);
