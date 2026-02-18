@@ -27,7 +27,7 @@ import type {
 import { tryGetIntelligenceDb } from '../storage';
 
 /** Default cache TTL: 5 seconds. Keeps DB load reasonable for polling clients. */
-const DEFAULT_CACHE_TTL_MS = 5_000;
+export const DEFAULT_CACHE_TTL_MS = 5_000;
 
 /**
  * Abstract base class for projection views backed by PostgreSQL queries.

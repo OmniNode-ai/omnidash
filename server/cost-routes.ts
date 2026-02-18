@@ -60,7 +60,13 @@ async function getPayloadForWindow(
   window: CostTimeWindow
 ): Promise<CostMetricsPayload> {
   if (window === '7d') {
-    // Default window — use cached snapshot
+    // '7d' is the default snapshot window pre-warmed by the base-class TTL cache
+    // (via querySnapshot → ensureFresh). Routing it through ensureFreshForWindow()
+    // would create a duplicate per-window cache entry for the same data, wasting
+    // memory and causing the two caches to drift slightly out of sync.
+    // Consequence: ensureFreshForWindow('7d') should never be called directly —
+    // use ensureFresh() for the default window and ensureFreshForWindow() only for
+    // '24h' and '30d'.
     return view.ensureFresh();
   }
   // Non-default window — the projection handles DB access internally

@@ -30,7 +30,7 @@ import type {
   CostTimeWindow,
   UsageSource,
 } from '@shared/cost-types';
-import { DbBackedProjectionView } from './db-backed-projection-view';
+import { DbBackedProjectionView, DEFAULT_CACHE_TTL_MS } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
 
 // ============================================================================
@@ -85,9 +85,9 @@ function truncUnit(window: CostTimeWindow): 'hour' | 'day' {
 // Per-window cache TTL — mirrors DbBackedProjectionView's DEFAULT_CACHE_TTL_MS
 // ============================================================================
 
-/** TTL for per-window snapshots cached by ensureFreshForWindow(). Must stay in
- *  sync with the base-class DEFAULT_CACHE_TTL_MS (5 s). */
-const WINDOW_CACHE_TTL_MS = 5_000;
+/** TTL for per-window snapshots cached by ensureFreshForWindow().
+ *  Uses the same value as the base-class default so all caches expire together. */
+const WINDOW_CACHE_TTL_MS = DEFAULT_CACHE_TTL_MS;
 
 // ============================================================================
 // Projection
@@ -100,6 +100,13 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
   private readonly _windowCache = new Map<CostTimeWindow, CostMetricsPayload>();
   /** Per-window cache expiry timestamps (ms since epoch). */
   private readonly _windowCacheExpiresAt = new Map<CostTimeWindow, number>();
+  /**
+   * In-flight coalescing guard for ensureFreshForWindow().
+   * When multiple concurrent callers request the same window before the cache
+   * is populated, all callers after the first share the same pending Promise
+   * rather than firing N duplicate DB queries.
+   */
+  private readonly _windowRefreshInFlight = new Map<CostTimeWindow, Promise<CostMetricsPayload>>();
 
   protected emptyPayload(): CostMetricsPayload {
     return {
@@ -414,6 +421,9 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
+      // Note: excludes zero-cost completions (e.g. cached responses or free-tier model calls)
+      // — this is intentional to filter noise, but means the token-usage series may undercount
+      // for models with free tiers or cache hits.
       .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
       .groupBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`)
       .orderBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`);
@@ -457,6 +467,15 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       return cachedPayload;
     }
 
+    // Coalesce concurrent requests for the same window into a single DB round-trip.
+    // Under burst traffic the TTL check above passes for all concurrent callers
+    // before any one of them has populated the cache. Without this guard, N callers
+    // would each independently start a full set of DB queries for the same window.
+    const inFlight = this._windowRefreshInFlight.get(window);
+    if (inFlight !== undefined) {
+      return inFlight;
+    }
+
     const db = tryGetIntelligenceDb();
     if (!db) {
       // DB unavailable — return cached snapshot or empty with degraded flag so
@@ -464,28 +483,38 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       const fallback = await this.ensureFresh();
       return { ...fallback, degraded: true, window: '7d' };
     }
-    const [summary, trend, byModel, byRepo, byPattern, tokenUsage] = await Promise.all([
+
+    const refreshPromise: Promise<CostMetricsPayload> = Promise.all([
       this.querySummary(db, window),
       this.queryTrend(db, window),
       this.queryByModel(db),
       this.queryByRepo(db),
       this.queryByPattern(db),
       this.queryTokenUsage(db, window),
-    ]);
-    const payload: CostMetricsPayload = {
-      summary,
-      trend,
-      byModel,
-      byRepo,
-      byPattern,
-      tokenUsage,
-      window,
-    };
+    ])
+      .then(([summary, trend, byModel, byRepo, byPattern, tokenUsage]) => {
+        const payload: CostMetricsPayload = {
+          summary,
+          trend,
+          byModel,
+          byRepo,
+          byPattern,
+          tokenUsage,
+          window,
+        };
 
-    // Store in per-window cache with TTL.
-    this._windowCache.set(window, payload);
-    this._windowCacheExpiresAt.set(window, Date.now() + WINDOW_CACHE_TTL_MS);
+        // Store in per-window cache with TTL.
+        this._windowCache.set(window, payload);
+        this._windowCacheExpiresAt.set(window, Date.now() + WINDOW_CACHE_TTL_MS);
 
-    return payload;
+        return payload;
+      })
+      .finally(() => {
+        this._windowRefreshInFlight.delete(window);
+      });
+
+    this._windowRefreshInFlight.set(window, refreshPromise);
+
+    return refreshPromise;
   }
 }
