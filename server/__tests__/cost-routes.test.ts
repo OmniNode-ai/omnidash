@@ -9,7 +9,7 @@
  * ensureFreshForWindow() to return specific payloads without hitting the DB.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express, { type Express } from 'express';
 import type { CostMetricsPayload } from '../projections/cost-metrics-projection';

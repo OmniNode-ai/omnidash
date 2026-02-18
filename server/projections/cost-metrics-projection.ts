@@ -266,7 +266,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
+      .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.modelName), gt(lca.totalCostUsd, '0')))
       .groupBy(lca.modelName)
       .orderBy(desc(sql`SUM(${lca.totalCostUsd}::numeric)`));
 
@@ -279,7 +279,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       prompt_tokens: Number(r.prompt_tokens),
       completion_tokens: Number(r.completion_tokens),
       request_count: Number(r.request_count),
-      usage_source: (r.usage_source as UsageSource) ?? 'API',
+      usage_source: (r.usage_source || 'API') as UsageSource,
     }));
   }
 
@@ -314,7 +314,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         estimated_cost_usd: parseFloat(r.estimated_cost),
         total_tokens: Number(r.total_tokens),
         session_count: Number(r.session_count),
-        usage_source: (r.usage_source as UsageSource) ?? 'API',
+        usage_source: (r.usage_source || 'API') as UsageSource,
       }));
   }
 
@@ -357,7 +357,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
           completion_tokens: Number(r.completion_tokens),
           injection_count: injectionCount,
           avg_cost_per_injection: injectionCount > 0 ? totalCost / injectionCount : 0,
-          usage_source: (r.usage_source as UsageSource) ?? 'API',
+          usage_source: (r.usage_source || 'API') as UsageSource,
         };
       });
   }
@@ -393,7 +393,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       prompt_tokens: Number(r.prompt_tokens),
       completion_tokens: Number(r.completion_tokens),
       total_tokens: Number(r.total_tokens),
-      usage_source: (r.usage_source as UsageSource) ?? 'API',
+      usage_source: (r.usage_source || 'API') as UsageSource,
     }));
   }
 
