@@ -11,7 +11,11 @@
 import { Router } from 'express';
 import { eq, ne, and, desc, sql, gte, inArray } from 'drizzle-orm';
 import { tryGetIntelligenceDb } from './storage';
-import { validationRuns, validationViolations } from '@shared/intelligence-schema';
+import {
+  validationRuns,
+  validationViolations,
+  validationCandidates,
+} from '@shared/intelligence-schema';
 import type {
   ValidationRun,
   Violation,
@@ -20,7 +24,13 @@ import type {
   ValidationRunStartedEvent,
   ValidationViolationsBatchEvent,
   ValidationRunCompletedEvent,
+  ValidationCandidateUpsertedEvent,
+  LifecycleSummary,
+  LifecycleTierMetrics,
+  LifecycleCandidate,
+  CandidateStatus,
 } from '@shared/validation-types';
+import { LIFECYCLE_TIERS } from '@shared/validation-types';
 
 const router = Router();
 
@@ -90,6 +100,36 @@ type ValidationViolationRow = {
   line: number | null;
   validator: string;
   createdAt: Date | null;
+};
+
+/** Explicit column selection for validation_candidates (excludes projected_at). */
+const validationCandidateColumns = {
+  candidateId: validationCandidates.candidateId,
+  ruleName: validationCandidates.ruleName,
+  ruleId: validationCandidates.ruleId,
+  tier: validationCandidates.tier,
+  status: validationCandidates.status,
+  sourceRepo: validationCandidates.sourceRepo,
+  enteredTierAt: validationCandidates.enteredTierAt,
+  lastValidatedAt: validationCandidates.lastValidatedAt,
+  passStreak: validationCandidates.passStreak,
+  failStreak: validationCandidates.failStreak,
+  totalRuns: validationCandidates.totalRuns,
+} as const;
+
+/** Row shape returned by selecting validationCandidateColumns */
+type ValidationCandidateRow = {
+  candidateId: string;
+  ruleName: string;
+  ruleId: string;
+  tier: string;
+  status: string;
+  sourceRepo: string;
+  enteredTierAt: Date;
+  lastValidatedAt: Date;
+  passStreak: number;
+  failStreak: number;
+  totalRuns: number;
 };
 
 // ============================================================================
@@ -276,6 +316,63 @@ export async function handleValidationRunCompleted(
   }
 }
 
+/**
+ * Ingest a ValidationCandidateUpserted event (OMN-2333).
+ * Creates or updates a lifecycle candidate in the validation_candidates table.
+ *
+ * Uses INSERT ... ON CONFLICT DO UPDATE (upsert) so event replay is idempotent.
+ * Called by the event consumer when a candidate event arrives from the
+ * OMN-2018 artifact store.
+ */
+export async function handleValidationCandidateUpserted(
+  event: ValidationCandidateUpsertedEvent
+): Promise<void> {
+  const db = tryGetIntelligenceDb();
+  if (!db) {
+    console.warn('[validation] Database not available, dropping candidate upsert event');
+    return;
+  }
+
+  try {
+    await db
+      .insert(validationCandidates)
+      .values({
+        candidateId: event.candidate_id,
+        ruleName: event.rule_name,
+        ruleId: event.rule_id,
+        tier: event.tier,
+        status: event.status,
+        sourceRepo: event.source_repo,
+        enteredTierAt: new Date(event.entered_tier_at),
+        lastValidatedAt: new Date(event.last_validated_at),
+        passStreak: event.pass_streak,
+        failStreak: event.fail_streak,
+        totalRuns: event.total_runs,
+      })
+      .onConflictDoUpdate({
+        target: validationCandidates.candidateId,
+        set: {
+          ruleName: event.rule_name,
+          ruleId: event.rule_id,
+          tier: event.tier,
+          status: event.status,
+          sourceRepo: event.source_repo,
+          enteredTierAt: new Date(event.entered_tier_at),
+          lastValidatedAt: new Date(event.last_validated_at),
+          passStreak: event.pass_streak,
+          failStreak: event.fail_streak,
+          totalRuns: event.total_runs,
+          projectedAt: new Date(),
+        },
+      });
+  } catch (error) {
+    console.error(
+      `[validation] Error persisting candidate upsert for ${event.candidate_id}:`,
+      error
+    );
+  }
+}
+
 // ============================================================================
 // Helper: reconstruct a ValidationRun from DB rows
 // ============================================================================
@@ -305,6 +402,23 @@ function toViolation(row: ValidationViolationRow): Violation {
     file_path: row.filePath ?? undefined,
     line: row.line ?? undefined,
     validator: row.validator,
+  };
+}
+
+/** Convert a ValidationCandidateRow to the LifecycleCandidate API type. */
+function toLifecycleCandidate(row: ValidationCandidateRow): LifecycleCandidate {
+  return {
+    candidate_id: row.candidateId,
+    rule_name: row.ruleName,
+    rule_id: row.ruleId,
+    tier: row.tier as LifecycleCandidate['tier'],
+    status: row.status as CandidateStatus,
+    source_repo: row.sourceRepo,
+    entered_tier_at: row.enteredTierAt.toISOString(),
+    last_validated_at: row.lastValidatedAt.toISOString(),
+    pass_streak: row.passStreak,
+    fail_streak: row.failStreak,
+    total_runs: row.totalRuns,
   };
 }
 
@@ -618,6 +732,167 @@ router.get('/summary', async (_req, res) => {
     console.error('Error getting validation summary:', error);
     res.status(500).json({
       error: 'Failed to get validation summary',
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * GET /api/validation/lifecycle/summary
+ * Get lifecycle candidate summary: tier metrics and candidate list.
+ *
+ * Returns aggregate counts by status, per-tier breakdown with transition rates
+ * and average time-at-tier, and the first `limit` candidates ordered by most
+ * recently validated.
+ *
+ * When no candidates exist (e.g. OMN-2018 artifact store not yet deployed),
+ * returns an empty summary so the client falls back to mock data gracefully.
+ *
+ * Query params:
+ *   limit  - Max candidates to return (default 50, max 200)
+ *   tier   - Filter candidates to a specific lifecycle tier
+ *   status - Filter candidates to a specific candidate status
+ */
+router.get('/lifecycle/summary', async (req, res) => {
+  try {
+    const db = tryGetIntelligenceDb();
+    if (!db) {
+      const empty: LifecycleSummary = {
+        total_candidates: 0,
+        tiers: LIFECYCLE_TIERS.map((tier) => ({
+          tier,
+          count: 0,
+          by_status: { pending: 0, pass: 0, fail: 0, quarantine: 0 },
+          avg_days_at_tier: 0,
+          transition_rate: 0,
+        })),
+        by_status: { pending: 0, pass: 0, fail: 0, quarantine: 0 },
+        candidates: [],
+      };
+      return res.json(empty);
+    }
+
+    const limitStr = req.query.limit as string | undefined;
+    const tierFilter = req.query.tier as string | undefined;
+    const statusFilter = req.query.status as string | undefined;
+
+    const limit = Math.min(Math.max(parseInt(limitStr || '50', 10) || 50, 1), 200);
+
+    const VALID_TIERS = ['observed', 'suggested', 'shadow_apply', 'promoted', 'default'];
+    const VALID_STATUSES = ['pending', 'pass', 'fail', 'quarantine'];
+
+    if (tierFilter && !VALID_TIERS.includes(tierFilter)) {
+      return res.status(400).json({ error: 'Invalid tier filter' });
+    }
+    if (statusFilter && !VALID_STATUSES.includes(statusFilter)) {
+      return res.status(400).json({ error: 'Invalid status filter' });
+    }
+
+    // -----------------------------------------------------------------------
+    // 1. Aggregate counts by tier and status in a single query
+    // -----------------------------------------------------------------------
+    const tierStatusCounts = await db
+      .select({
+        tier: validationCandidates.tier,
+        status: validationCandidates.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(validationCandidates)
+      .groupBy(validationCandidates.tier, validationCandidates.status);
+
+    // Build tier and status maps
+    const tierMap = new Map<string, Record<CandidateStatus, number>>();
+    const globalByStatus: Record<CandidateStatus, number> = {
+      pending: 0,
+      pass: 0,
+      fail: 0,
+      quarantine: 0,
+    };
+
+    for (const row of tierStatusCounts) {
+      const s = row.status as CandidateStatus;
+      if (!tierMap.has(row.tier)) {
+        tierMap.set(row.tier, { pending: 0, pass: 0, fail: 0, quarantine: 0 });
+      }
+      tierMap.get(row.tier)![s] = (tierMap.get(row.tier)![s] ?? 0) + row.count;
+      globalByStatus[s] = (globalByStatus[s] ?? 0) + row.count;
+    }
+
+    const totalCandidates = Object.values(globalByStatus).reduce((a, b) => a + b, 0);
+
+    // -----------------------------------------------------------------------
+    // 2. Compute average days at tier per tier in a single aggregate query
+    // -----------------------------------------------------------------------
+    const avgDaysRows = await db
+      .select({
+        tier: validationCandidates.tier,
+        avg_days: sql<number>`round(avg(extract(epoch from (now() - ${validationCandidates.enteredTierAt})) / 86400)::numeric, 1)::float`,
+      })
+      .from(validationCandidates)
+      .groupBy(validationCandidates.tier);
+
+    const avgDaysMap = new Map<string, number>();
+    for (const row of avgDaysRows) {
+      avgDaysMap.set(row.tier, row.avg_days ?? 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // 3. Build per-tier metrics (using static tier order from LIFECYCLE_TIERS)
+    // -----------------------------------------------------------------------
+    const tiers: LifecycleTierMetrics[] = LIFECYCLE_TIERS.map((tier) => {
+      const byStatus = tierMap.get(tier) ?? { pending: 0, pass: 0, fail: 0, quarantine: 0 };
+      const tierCount = Object.values(byStatus).reduce((a, b) => a + b, 0);
+      const avgDays = tier === 'default' ? 0 : (avgDaysMap.get(tier) ?? 0);
+
+      // Transition rate: pass count / total at this tier.
+      // Default tier has no next tier so transition_rate = 0.
+      const transitionRate = tier === 'default' || tierCount === 0 ? 0 : byStatus.pass / tierCount;
+
+      return {
+        tier,
+        count: tierCount,
+        by_status: byStatus,
+        avg_days_at_tier: avgDays,
+        transition_rate: parseFloat(transitionRate.toFixed(2)),
+      };
+    });
+
+    // -----------------------------------------------------------------------
+    // 4. Fetch candidate list with optional filters
+    // -----------------------------------------------------------------------
+    const filterConditions = [];
+    if (tierFilter) {
+      filterConditions.push(eq(validationCandidates.tier, tierFilter));
+    }
+    if (statusFilter) {
+      filterConditions.push(eq(validationCandidates.status, statusFilter));
+    }
+
+    const whereClause = filterConditions.length > 0 ? and(...filterConditions) : undefined;
+
+    const candidateRows = await db
+      .select(validationCandidateColumns)
+      .from(validationCandidates)
+      .where(whereClause)
+      .orderBy(desc(validationCandidates.lastValidatedAt))
+      .limit(limit);
+
+    const candidates: LifecycleCandidate[] = candidateRows.map((row: ValidationCandidateRow) =>
+      toLifecycleCandidate(row)
+    );
+
+    const result: LifecycleSummary = {
+      total_candidates: totalCandidates,
+      tiers,
+      by_status: globalByStatus,
+      candidates,
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error getting lifecycle summary:', error);
+    res.status(500).json({
+      error: 'Failed to get lifecycle summary',
       message: 'Internal server error',
     });
   }

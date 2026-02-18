@@ -755,6 +755,64 @@ export type InsertValidationRun = typeof validationRuns.$inferInsert;
 export type ValidationViolationRow = typeof validationViolations.$inferSelect;
 export type InsertValidationViolation = typeof validationViolations.$inferInsert;
 
+/**
+ * Validation Lifecycle Candidates Table (OMN-2333)
+ *
+ * Tracks validation lifecycle candidates — rules and patterns progressing
+ * through the tiers: observed -> suggested -> shadow_apply -> promoted -> default.
+ *
+ * Populated by Kafka events from the OMN-2018 artifact store and check results.
+ * Consumed by the lifecycle summary endpoint to drive the ValidationDashboard
+ * Lifecycle tab.
+ *
+ * Idempotency: candidate_id is the primary key sourced from the upstream artifact
+ * store, so upserts on conflict are safe for event replay.
+ */
+export const validationCandidates = pgTable(
+  'validation_candidates',
+  {
+    /** Upstream artifact ID from OMN-2018 artifact store (primary key). */
+    candidateId: text('candidate_id').primaryKey(),
+    /** Human-readable rule name. */
+    ruleName: text('rule_name').notNull(),
+    /** Rule ID matching a validation rule (e.g. SCHEMA-001). */
+    ruleId: text('rule_id').notNull(),
+    /** Current lifecycle tier: observed | suggested | shadow_apply | promoted | default */
+    tier: text('tier').notNull().default('observed'),
+    /** Current validation status: pending | pass | fail | quarantine */
+    status: text('status').notNull().default('pending'),
+    /** Repository where this candidate was discovered. */
+    sourceRepo: text('source_repo').notNull(),
+    /** ISO-8601 timestamp when candidate entered the current tier. */
+    enteredTierAt: timestamp('entered_tier_at', { withTimezone: true }).notNull().defaultNow(),
+    /** ISO-8601 timestamp of the most recent validation run for this candidate. */
+    lastValidatedAt: timestamp('last_validated_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Number of consecutive passes at current tier. */
+    passStreak: integer('pass_streak').notNull().default(0),
+    /** Number of consecutive failures at current tier. */
+    failStreak: integer('fail_streak').notNull().default(0),
+    /** Total validation runs across all tiers. */
+    totalRuns: integer('total_runs').notNull().default(0),
+    /** When this row was first created. */
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    /** When this row was last projected from Kafka. */
+    projectedAt: timestamp('projected_at').defaultNow(),
+  },
+  (table) => [
+    index('idx_validation_candidates_tier').on(table.tier),
+    index('idx_validation_candidates_status').on(table.status),
+    index('idx_validation_candidates_last_validated').on(table.lastValidatedAt),
+    index('idx_validation_candidates_source_repo').on(table.sourceRepo),
+  ]
+);
+
+// Export Zod schema for validation candidates
+export const insertValidationCandidateSchema = createInsertSchema(validationCandidates);
+
+// Export TypeScript types for validation candidates
+export type ValidationCandidateRow = typeof validationCandidates.$inferSelect;
+export type InsertValidationCandidate = typeof validationCandidates.$inferInsert;
+
 // NOTE: Injection Effectiveness tables (OMN-1891) are defined in the
 // Pattern Extraction Pipeline section above (OMN-1804) which shares
 // injectionEffectiveness, latencyBreakdowns, and patternHitRates.

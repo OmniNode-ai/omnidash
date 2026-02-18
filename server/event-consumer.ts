@@ -60,6 +60,7 @@ import {
   SUFFIX_VALIDATION_RUN_STARTED,
   SUFFIX_VALIDATION_VIOLATIONS_BATCH,
   SUFFIX_VALIDATION_RUN_COMPLETED,
+  SUFFIX_VALIDATION_CANDIDATE_UPSERTED,
   SUFFIX_NODE_REGISTRATION_ACKED,
   SUFFIX_NODE_REGISTRATION_RESULT,
   SUFFIX_NODE_REGISTRATION_ACK_RECEIVED,
@@ -99,11 +100,13 @@ import {
   isValidationRunStarted,
   isValidationViolationsBatch,
   isValidationRunCompleted,
+  isValidationCandidateUpserted,
 } from '@shared/validation-types';
 import {
   handleValidationRunStarted,
   handleValidationViolationsBatch,
   handleValidationRunCompleted,
+  handleValidationCandidateUpserted,
 } from './validation-routes';
 import { ExtractionMetricsAggregator } from './extraction-aggregator';
 import {
@@ -1517,6 +1520,22 @@ export class EventConsumer extends EventEmitter {
                 } else {
                   console.warn(
                     '[validation] Dropped malformed run-completed event on topic',
+                    topic
+                  );
+                }
+                break;
+              case SUFFIX_VALIDATION_CANDIDATE_UPSERTED:
+                if (isValidationCandidateUpserted(event)) {
+                  if (isDebug) {
+                    intentLogger.debug(
+                      `Processing validation candidate upserted: ${(event as { candidate_id: string }).candidate_id}`
+                    );
+                  }
+                  await handleValidationCandidateUpserted(event);
+                  this.emit('validation-event', { type: 'candidate-upserted', event });
+                } else {
+                  console.warn(
+                    '[validation] Dropped malformed candidate-upserted event on topic',
                     topic
                   );
                 }

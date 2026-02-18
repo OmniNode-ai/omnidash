@@ -269,6 +269,42 @@ export interface LifecycleSummary {
 }
 
 // ============================================================================
+// Lifecycle Candidate Kafka Event Types (OMN-2333)
+// ============================================================================
+
+/**
+ * Zod schema for the ValidationCandidateUpserted Kafka event.
+ *
+ * Emitted by the OMN-2018 artifact store when a lifecycle candidate is
+ * created or updated. Omnidash projects this into the validation_candidates
+ * read-model table.
+ */
+export const ValidationCandidateUpsertedSchema = z.object({
+  event_type: z.literal('ValidationCandidateUpserted'),
+  candidate_id: z.string(),
+  rule_name: z.string(),
+  rule_id: z.string(),
+  tier: z.enum(['observed', 'suggested', 'shadow_apply', 'promoted', 'default']),
+  status: z.enum(['pending', 'pass', 'fail', 'quarantine']),
+  source_repo: z.string(),
+  entered_tier_at: z.string().datetime(),
+  last_validated_at: z.string().datetime(),
+  pass_streak: z.number().int().min(0),
+  fail_streak: z.number().int().min(0),
+  total_runs: z.number().int().min(0),
+  timestamp: z.string().datetime(),
+});
+
+export type ValidationCandidateUpsertedEvent = z.infer<typeof ValidationCandidateUpsertedSchema>;
+
+/** Type guard for ValidationCandidateUpserted Kafka events. */
+export function isValidationCandidateUpserted(
+  event: unknown
+): event is ValidationCandidateUpsertedEvent {
+  return ValidationCandidateUpsertedSchema.safeParse(event).success;
+}
+
+// ============================================================================
 // Type Guards
 // ============================================================================
 
