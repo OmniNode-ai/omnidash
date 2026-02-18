@@ -227,6 +227,29 @@ describe('Cost Routes', () => {
       expect(res.body.error).toBe('Failed to fetch cost summary');
       consoleErrorSpy.mockRestore();
     });
+
+    it('should return 500 when ensureFreshForWindow rejects for window=24h', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockEnsureFreshForWindow.mockRejectedValue(new Error('DB query failed'));
+
+      const res = await request(app).get('/api/costs/summary?window=24h').expect(500);
+
+      expect(res.body.error).toBe('Failed to fetch cost summary');
+      expect(mockEnsureFreshForWindow).toHaveBeenCalledWith('24h');
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should default ?window=invalid to 7d and call ensureFresh', async () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      mockEnsureFresh.mockResolvedValue(emptyPayload());
+
+      const res = await request(app).get('/api/costs/summary?window=invalid').expect(200);
+
+      expect(mockEnsureFresh).toHaveBeenCalled();
+      expect(mockEnsureFreshForWindow).not.toHaveBeenCalled();
+      expect(res.body.total_cost_usd).toBe(0);
+      consoleWarnSpy.mockRestore();
+    });
   });
 
   // =========================================================================
@@ -284,6 +307,17 @@ describe('Cost Routes', () => {
       const res = await request(app).get('/api/costs/trend').expect(500);
 
       expect(res.body.error).toBe('Failed to fetch cost trend');
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should return 500 when ensureFreshForWindow rejects for window=24h', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockEnsureFreshForWindow.mockRejectedValue(new Error('DB query failed'));
+
+      const res = await request(app).get('/api/costs/trend?window=24h').expect(500);
+
+      expect(res.body.error).toBe('Failed to fetch cost trend');
+      expect(mockEnsureFreshForWindow).toHaveBeenCalledWith('24h');
       consoleErrorSpy.mockRestore();
     });
   });
@@ -491,6 +525,17 @@ describe('Cost Routes', () => {
       const res = await request(app).get('/api/costs/token-usage').expect(500);
 
       expect(res.body.error).toBe('Failed to fetch token usage');
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should return 500 when ensureFreshForWindow rejects for window=24h', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockEnsureFreshForWindow.mockRejectedValue(new Error('DB query failed'));
+
+      const res = await request(app).get('/api/costs/token-usage?window=24h').expect(500);
+
+      expect(res.body.error).toBe('Failed to fetch token usage');
+      expect(mockEnsureFreshForWindow).toHaveBeenCalledWith('24h');
       consoleErrorSpy.mockRestore();
     });
   });

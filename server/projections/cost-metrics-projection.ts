@@ -478,10 +478,15 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
 
     const db = tryGetIntelligenceDb();
     if (!db) {
-      // DB unavailable — return cached snapshot or empty with degraded flag so
-      // callers can detect the window mismatch.
-      const fallback = await this.ensureFresh();
-      return { ...fallback, degraded: true, window: '7d' };
+      // DB unavailable — fall back to the TTL-cached 7d snapshot (or empty payload
+      // if not yet warmed). If ensureFresh() itself throws, return an empty payload
+      // so callers are never left with an unhandled rejection from this degraded path.
+      try {
+        const fallback = await this.ensureFresh();
+        return { ...fallback, degraded: true, window: '7d' };
+      } catch {
+        return { ...this.emptyPayload(), degraded: true, window: '7d' };
+      }
     }
 
     const refreshPromise: Promise<CostMetricsPayload> = Promise.all([
@@ -508,6 +513,18 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         this._windowCacheExpiresAt.set(window, Date.now() + WINDOW_CACHE_TTL_MS);
 
         return payload;
+      })
+      .catch(async (err: unknown) => {
+        // DB query failed mid-flight (e.g. connection lost after tryGetIntelligenceDb()
+        // returned non-null). Fall back to the TTL-cached 7d snapshot — same
+        // degradation contract as the DB-unavailable path above. If ensureFresh()
+        // also throws, propagate: there is nothing left to degrade to.
+        console.warn(
+          `[cost-metrics] ensureFreshForWindow('${window}') DB query failed — degrading to 7d cache:`,
+          err
+        );
+        const fallback = await this.ensureFresh();
+        return { ...fallback, degraded: true, window: '7d' as const };
       })
       .finally(() => {
         this._windowRefreshInFlight.delete(window);
