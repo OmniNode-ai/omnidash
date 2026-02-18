@@ -12,7 +12,9 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  check,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 
 /**
@@ -871,16 +873,34 @@ export const llmCostAggregates = pgTable(
       .notNull()
       .default('0'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-    projectedAt: timestamp('projected_at').defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index('idx_llm_cost_agg_bucket_time').on(table.bucketTime),
     index('idx_llm_cost_agg_model').on(table.modelName),
-    index('idx_llm_cost_agg_repo').on(table.repoName),
-    index('idx_llm_cost_agg_pattern').on(table.patternId),
-    index('idx_llm_cost_agg_session').on(table.sessionId),
+    // Partial indexes: exclude NULL rows so the index is compact and queries
+    // filtering IS NOT NULL benefit without wasted space (mirrors the SQL migration).
+    index('idx_llm_cost_agg_repo')
+      .on(table.repoName)
+      .where(sql`${table.repoName} IS NOT NULL`),
+    index('idx_llm_cost_agg_pattern')
+      .on(table.patternId)
+      .where(sql`${table.patternId} IS NOT NULL`),
+    index('idx_llm_cost_agg_session')
+      .on(table.sessionId)
+      .where(sql`${table.sessionId} IS NOT NULL`),
     index('idx_llm_cost_agg_source').on(table.usageSource),
     index('idx_llm_cost_agg_bucket_model').on(table.bucketTime, table.modelName),
+    // Composite index for hourly/daily view switching (used when toggling granularity).
+    index('idx_llm_cost_agg_bucket_granularity').on(table.bucketTime, table.granularity),
+    // CHECK constraints mirror the SQL migration (0003_llm_cost_aggregates.sql).
+    // Without these, a future `db:push` would skip the constraints and allow
+    // invalid values that the migration enforces at the database level.
+    check('llm_cost_agg_granularity_check', sql`${table.granularity} IN ('hour', 'day')`),
+    check(
+      'llm_cost_agg_usage_source_check',
+      sql`${table.usageSource} IN ('API', 'ESTIMATED', 'MISSING')`
+    ),
   ]
 );
 
