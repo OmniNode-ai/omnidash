@@ -13,6 +13,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 
 /**
@@ -813,16 +814,26 @@ export const llmCostAggregates = pgTable(
       .notNull()
       .default('0'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-    projectedAt: timestamp('projected_at').defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index('idx_llm_cost_agg_bucket_time').on(table.bucketTime),
     index('idx_llm_cost_agg_model').on(table.modelName),
-    index('idx_llm_cost_agg_repo').on(table.repoName),
-    index('idx_llm_cost_agg_pattern').on(table.patternId),
-    index('idx_llm_cost_agg_session').on(table.sessionId),
+    // Partial indexes: exclude NULL rows so the index is compact and queries
+    // filtering IS NOT NULL benefit without wasted space (mirrors the SQL migration).
+    index('idx_llm_cost_agg_repo')
+      .on(table.repoName)
+      .where(sql`repo_name IS NOT NULL`),
+    index('idx_llm_cost_agg_pattern')
+      .on(table.patternId)
+      .where(sql`pattern_id IS NOT NULL`),
+    index('idx_llm_cost_agg_session')
+      .on(table.sessionId)
+      .where(sql`session_id IS NOT NULL`),
     index('idx_llm_cost_agg_source').on(table.usageSource),
     index('idx_llm_cost_agg_bucket_model').on(table.bucketTime, table.modelName),
+    // Composite index for hourly/daily view switching (used when toggling granularity).
+    index('idx_llm_cost_agg_bucket_granularity').on(table.bucketTime, table.granularity),
   ]
 );
 

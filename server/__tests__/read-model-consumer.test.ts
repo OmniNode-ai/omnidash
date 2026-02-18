@@ -168,9 +168,18 @@ describe('ReadModelConsumer', () => {
         values: vi.fn().mockResolvedValue(undefined),
       });
 
+      // Mock db.execute so that updateWatermark succeeds instead of throwing a TypeError.
+      // Without this mock, db.execute is undefined and updateWatermark silently swallows
+      // the error (non-fatal path), which means the test passes but the watermark code
+      // path is never exercised.
+      const executeMock = vi.fn().mockResolvedValue(undefined);
+
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
         insert: insertMock,
+        execute: executeMock,
       });
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const handleMessage = getHandleMessage(consumer);
       const payload = makeKafkaPayload('onex.evt.omniclaude.llm-cost-reported.v1', {
@@ -191,6 +200,16 @@ describe('ReadModelConsumer', () => {
 
       // insert should have been called with llmCostAggregates table
       expect(insertMock).toHaveBeenCalled();
+
+      // execute should have been called for the watermark upsert
+      expect(executeMock).toHaveBeenCalled();
+
+      // The watermark path should not have warned (i.e., db.execute succeeded)
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('Failed to update watermark')
+      );
+
+      warnSpy.mockRestore();
 
       // Stats should reflect a successfully projected event
       const stats = consumer.getStats();
