@@ -44,6 +44,21 @@ export interface CostMetricsPayload {
   byRepo: CostByRepo[];
   byPattern: CostByPattern[];
   tokenUsage: TokenUsagePoint[];
+  /**
+   * Set to `true` when the DB was unavailable and `ensureFreshForWindow()`
+   * fell back to the cached 7d snapshot instead of querying the requested
+   * window. Callers should treat the data as window-mismatched and may
+   * choose to surface a warning or retry later.
+   * Absent (undefined) when the payload reflects the actually-requested window.
+   */
+  degraded?: boolean;
+  /**
+   * The actual time window reflected in this payload. Equals the requested
+   * window when the DB was available; equals '7d' when degraded is true.
+   * Absent (undefined) when data came from the default 7d TTL cache path
+   * (i.e. the caller used ensureFresh() directly, not ensureFreshForWindow()).
+   */
+  window?: CostTimeWindow;
 }
 
 type Db = NonNullable<ReturnType<typeof tryGetIntelligenceDb>>;
@@ -266,21 +281,23 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.modelName), gt(lca.totalCostUsd, '0')))
+      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
       .groupBy(lca.modelName)
       .orderBy(desc(sql`SUM(${lca.totalCostUsd}::numeric)`));
 
-    return rows.map((r) => ({
-      model_name: r.model_name,
-      total_cost_usd: parseFloat(r.total_cost),
-      reported_cost_usd: parseFloat(r.reported_cost),
-      estimated_cost_usd: parseFloat(r.estimated_cost),
-      total_tokens: Number(r.total_tokens),
-      prompt_tokens: Number(r.prompt_tokens),
-      completion_tokens: Number(r.completion_tokens),
-      request_count: Number(r.request_count),
-      usage_source: (r.usage_source || 'API') as UsageSource,
-    }));
+    return rows
+      .filter((r) => r.model_name != null)
+      .map((r) => ({
+        model_name: r.model_name!,
+        total_cost_usd: parseFloat(r.total_cost),
+        reported_cost_usd: parseFloat(r.reported_cost),
+        estimated_cost_usd: parseFloat(r.estimated_cost),
+        total_tokens: Number(r.total_tokens),
+        prompt_tokens: Number(r.prompt_tokens),
+        completion_tokens: Number(r.completion_tokens),
+        request_count: Number(r.request_count),
+        usage_source: (r.usage_source || 'API') as UsageSource,
+      }));
   }
 
   async queryByRepo(db: Db): Promise<CostByRepo[]> {
@@ -409,21 +426,21 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
    * Falls back to cached/empty payload if the DB is unavailable.
    *
    * Degraded-state behavior: when `tryGetIntelligenceDb()` returns null (DB
-   * not configured or connection failed), this method silently falls back to
+   * not configured or connection failed), this method falls back to
    * `ensureFresh()`, which returns the most recent TTL-cached snapshot for the
    * default 7d window (or an empty payload if no snapshot has been warmed yet).
-   * The caller receives a successful response with potentially stale or
-   * window-mismatched data rather than an error. This is intentional — the
-   * dashboard should degrade gracefully rather than surface DB errors to users.
-   * Callers that need to distinguish "DB unavailable" from "no data" should
-   * check `tryGetIntelligenceDb()` directly before calling this method.
+   * The returned payload will have `degraded: true` and `window: '7d'` set so
+   * callers can detect that the data does not reflect the requested window.
+   * This is intentional — the dashboard should degrade gracefully rather than
+   * surface DB errors to users, but callers need to know the mismatch occurred.
    */
   async ensureFreshForWindow(window: CostTimeWindow): Promise<CostMetricsPayload> {
     const db = tryGetIntelligenceDb();
     if (!db) {
-      // DB unavailable — return cached snapshot or empty (see degraded-state
-      // behavior note in the JSDoc above).
-      return this.ensureFresh();
+      // DB unavailable — return cached snapshot or empty with degraded flag so
+      // callers can detect the window mismatch.
+      const fallback = await this.ensureFresh();
+      return { ...fallback, degraded: true, window: '7d' };
     }
     const [summary, trend, byModel, byRepo, byPattern, tokenUsage] = await Promise.all([
       this.querySummary(db, window),
@@ -433,6 +450,6 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       this.queryByPattern(db),
       this.queryTokenUsage(db, window),
     ]);
-    return { summary, trend, byModel, byRepo, byPattern, tokenUsage };
+    return { summary, trend, byModel, byRepo, byPattern, tokenUsage, window };
   }
 }

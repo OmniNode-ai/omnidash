@@ -256,10 +256,9 @@ export const SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED =
 /**
  * LLM cost reported by the omniclaude session-ended flow (OMN-2300 / OMN-2238).
  *
- * TODO: consumer not yet wired — cost events won't flow to llm_cost_aggregates
- * until this topic is added to buildSubscriptionTopics() in shared/topics.ts
- * and the CostMetricsProjection (or a dedicated read-model consumer) is wired
- * to handle it in server/projection-bootstrap.ts.
+ * Included in buildSubscriptionTopics() so the Kafka consumer ingests cost
+ * events and the read-model consumer (server/read-model-consumer.ts) can
+ * project them into the llm_cost_aggregates table.
  */
 export const SUFFIX_OMNICLAUDE_LLM_COST_REPORTED = 'onex.evt.omniclaude.llm-cost-reported.v1';
 
@@ -428,7 +427,7 @@ export const OMNICLAUDE_INJECTION_SUFFIXES = [
   SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
 ] as const;
 
-/** Extended OmniClaude topic suffixes (routing, sessions, manifests, notifications) */
+/** Extended OmniClaude topic suffixes (routing, sessions, manifests, notifications, cost) */
 export const OMNICLAUDE_EXTENDED_SUFFIXES = [
   SUFFIX_OMNICLAUDE_ROUTING_DECISION,
   SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
@@ -437,6 +436,7 @@ export const OMNICLAUDE_EXTENDED_SUFFIXES = [
   SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED,
   SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED,
   SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED,
+  SUFFIX_OMNICLAUDE_LLM_COST_REPORTED,
 ] as const;
 
 /** OmniIntelligence pipeline topic suffixes */

@@ -73,7 +73,7 @@ async function getPayloadForWindow(
 
 router.get('/summary', async (req, res) => {
   try {
-    const window = parseWindow(req.query.window);
+    const timeWindow = parseWindow(req.query.window);
     // NOTE: `includeEstimated` query parameter is accepted but not yet
     // implemented. The response always includes estimated costs.
     // TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
@@ -96,7 +96,7 @@ router.get('/summary', async (req, res) => {
       });
     }
 
-    const payload = await getPayloadForWindow(view, window);
+    const payload = await getPayloadForWindow(view, timeWindow);
     return res.json(payload.summary);
   } catch (error) {
     console.error('[costs] Error fetching summary:', error);
@@ -110,7 +110,7 @@ router.get('/summary', async (req, res) => {
 
 router.get('/trend', async (req, res) => {
   try {
-    const window = parseWindow(req.query.window);
+    const timeWindow = parseWindow(req.query.window);
     // NOTE: `includeEstimated` query parameter is accepted but not yet
     // implemented. The response always includes estimated costs.
     // TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
@@ -120,7 +120,7 @@ router.get('/trend', async (req, res) => {
       return res.json([]);
     }
 
-    const payload = await getPayloadForWindow(view, window);
+    const payload = await getPayloadForWindow(view, timeWindow);
     return res.json(payload.trend);
   } catch (error) {
     console.error('[costs] Error fetching trend:', error);
@@ -200,7 +200,7 @@ router.get('/by-pattern', async (_req, res) => {
 
 router.get('/token-usage', async (req, res) => {
   try {
-    const window = parseWindow(req.query.window);
+    const timeWindow = parseWindow(req.query.window);
     // NOTE: `includeEstimated` query parameter is accepted but not yet
     // implemented. The response always includes estimated costs.
     // TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
@@ -210,7 +210,7 @@ router.get('/token-usage', async (req, res) => {
       return res.json([]);
     }
 
-    const payload = await getPayloadForWindow(view, window);
+    const payload = await getPayloadForWindow(view, timeWindow);
     return res.json(payload.tokenUsage);
   } catch (error) {
     console.error('[costs] Error fetching token-usage:', error);

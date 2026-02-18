@@ -560,5 +560,29 @@ describe('Cost Routes', () => {
 
       expect(res.body).toEqual([]);
     });
+
+    it('GET /api/costs/by-model returns 200 with empty array', async () => {
+      const res = await request(app).get('/api/costs/by-model').expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
+    it('GET /api/costs/by-repo returns 200 with empty array', async () => {
+      const res = await request(app).get('/api/costs/by-repo').expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
+    it('GET /api/costs/by-pattern returns 200 with empty array', async () => {
+      const res = await request(app).get('/api/costs/by-pattern').expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
+    it('GET /api/costs/token-usage returns 200 with empty array', async () => {
+      const res = await request(app).get('/api/costs/token-usage').expect(200);
+
+      expect(res.body).toEqual([]);
+    });
   });
 });
