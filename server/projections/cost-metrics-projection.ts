@@ -18,7 +18,7 @@
  * Null is impossible because the column is defined as .notNull().default('0').
  */
 
-import { sql, gte, lt, and, gt, isNotNull, desc } from 'drizzle-orm';
+import { sql, gte, lt, and, gt, desc } from 'drizzle-orm';
 import { llmCostAggregates } from '@shared/intelligence-schema';
 import type {
   CostSummary,
@@ -82,11 +82,24 @@ function truncUnit(window: CostTimeWindow): 'hour' | 'day' {
 }
 
 // ============================================================================
+// Per-window cache TTL — mirrors DbBackedProjectionView's DEFAULT_CACHE_TTL_MS
+// ============================================================================
+
+/** TTL for per-window snapshots cached by ensureFreshForWindow(). Must stay in
+ *  sync with the base-class DEFAULT_CACHE_TTL_MS (5 s). */
+const WINDOW_CACHE_TTL_MS = 5_000;
+
+// ============================================================================
 // Projection
 // ============================================================================
 
 export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPayload> {
   readonly viewId = 'cost-metrics';
+
+  /** Per-window payload cache: keyed by CostTimeWindow, stores the last payload. */
+  private readonly _windowCache = new Map<CostTimeWindow, CostMetricsPayload>();
+  /** Per-window cache expiry timestamps (ms since epoch). */
+  private readonly _windowCacheExpiresAt = new Map<CostTimeWindow, number>();
 
   protected emptyPayload(): CostMetricsPayload {
     return {
@@ -296,7 +309,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         prompt_tokens: Number(r.prompt_tokens),
         completion_tokens: Number(r.completion_tokens),
         request_count: Number(r.request_count),
-        usage_source: (r.usage_source || 'API') as UsageSource,
+        usage_source: (r.usage_source || 'API') as UsageSource, // default to 'API' when no usageSource is recorded
       }));
   }
 
@@ -318,7 +331,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.repoName), gt(lca.totalCostUsd, '0')))
+      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
       .groupBy(lca.repoName)
       .orderBy(desc(sql`SUM(${lca.totalCostUsd}::numeric)`));
 
@@ -331,7 +344,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         estimated_cost_usd: parseFloat(r.estimated_cost),
         total_tokens: Number(r.total_tokens),
         session_count: Number(r.session_count),
-        usage_source: (r.usage_source || 'API') as UsageSource,
+        usage_source: (r.usage_source || 'API') as UsageSource, // default to 'API' when no usageSource is recorded
       }));
   }
 
@@ -355,7 +368,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.patternId), gt(lca.totalCostUsd, '0')))
+      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
       .groupBy(lca.patternId, lca.patternName)
       .orderBy(desc(sql`SUM(${lca.totalCostUsd}::numeric)`));
 
@@ -374,7 +387,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
           completion_tokens: Number(r.completion_tokens),
           injection_count: injectionCount,
           avg_cost_per_injection: injectionCount > 0 ? totalCost / injectionCount : 0,
-          usage_source: (r.usage_source || 'API') as UsageSource,
+          usage_source: (r.usage_source || 'API') as UsageSource, // default to 'API' when no usageSource is recorded
         };
       });
   }
@@ -419,8 +432,10 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
   // --------------------------------------------------------------------------
 
   /**
-   * Return payload for a specific time window, bypassing the 5s TTL cache.
+   * Return payload for a specific time window with per-window TTL caching.
    * Route handlers call this when window != '7d' (the default snapshot window).
+   * Results are cached per-window for WINDOW_CACHE_TTL_MS (5 s) to coalesce
+   * concurrent requests and avoid hammering the DB with repeated queries.
    * Encapsulates the DB access so routes don't need to import tryGetIntelligenceDb.
    *
    * Falls back to cached/empty payload if the DB is unavailable.
@@ -435,6 +450,13 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
    * surface DB errors to users, but callers need to know the mismatch occurred.
    */
   async ensureFreshForWindow(window: CostTimeWindow): Promise<CostMetricsPayload> {
+    // Return the per-window cached snapshot if it is still fresh.
+    const cachedPayload = this._windowCache.get(window);
+    const expiresAt = this._windowCacheExpiresAt.get(window) ?? 0;
+    if (cachedPayload !== undefined && Date.now() < expiresAt) {
+      return cachedPayload;
+    }
+
     const db = tryGetIntelligenceDb();
     if (!db) {
       // DB unavailable — return cached snapshot or empty with degraded flag so
@@ -450,6 +472,20 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       this.queryByPattern(db),
       this.queryTokenUsage(db, window),
     ]);
-    return { summary, trend, byModel, byRepo, byPattern, tokenUsage, window };
+    const payload: CostMetricsPayload = {
+      summary,
+      trend,
+      byModel,
+      byRepo,
+      byPattern,
+      tokenUsage,
+      window,
+    };
+
+    // Store in per-window cache with TTL.
+    this._windowCache.set(window, payload);
+    this._windowCacheExpiresAt.set(window, Date.now() + WINDOW_CACHE_TTL_MS);
+
+    return payload;
   }
 }

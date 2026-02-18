@@ -19,9 +19,11 @@ import type { CostMetricsPayload } from '../projections/cost-metrics-projection'
 // ---------------------------------------------------------------------------
 
 // vi.hoisted() ensures this runs before vi.mock() factory execution
-const { mockEnsureFresh, mockEnsureFreshForWindow } = vi.hoisted(() => ({
+const { mockEnsureFresh, mockEnsureFreshForWindow, mockForceRefresh } = vi.hoisted(() => ({
   mockEnsureFresh: vi.fn(),
   mockEnsureFreshForWindow: vi.fn(),
+  // Separate fn so accidental calls to forceRefresh() are detectable (not aliased to ensureFresh).
+  mockForceRefresh: vi.fn(),
 }));
 
 vi.mock('../projection-bootstrap', () => {
@@ -29,7 +31,7 @@ vi.mock('../projection-bootstrap', () => {
     viewId: 'cost-metrics',
     ensureFresh: mockEnsureFresh,
     ensureFreshForWindow: mockEnsureFreshForWindow,
-    forceRefresh: mockEnsureFresh,
+    forceRefresh: mockForceRefresh,
     getSnapshot: vi.fn(),
     getEventsSince: vi.fn(),
     applyEvent: vi.fn(() => false),

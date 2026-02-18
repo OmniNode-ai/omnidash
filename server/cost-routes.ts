@@ -135,6 +135,9 @@ router.get('/trend', async (req, res) => {
 // implemented. The response always includes estimated costs.
 // TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
 
+// NOTE: window parameter is intentionally ignored; these views always return 30d data.
+// byModel/byRepo/byPattern are context panels that need a stable long-horizon distribution.
+// See queryByModel() in cost-metrics-projection.ts for the full rationale.
 router.get('/by-model', async (_req, res) => {
   try {
     const view = getCostView();
@@ -157,6 +160,9 @@ router.get('/by-model', async (_req, res) => {
 // implemented. The response always includes estimated costs.
 // TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
 
+// NOTE: window parameter is intentionally ignored; these views always return 30d data.
+// byModel/byRepo/byPattern are context panels that need a stable long-horizon distribution.
+// See queryByRepo() in cost-metrics-projection.ts for the full rationale.
 router.get('/by-repo', async (_req, res) => {
   try {
     const view = getCostView();
@@ -179,6 +185,9 @@ router.get('/by-repo', async (_req, res) => {
 // implemented. The response always includes estimated costs.
 // TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
 
+// NOTE: window parameter is intentionally ignored; these views always return 30d data.
+// byModel/byRepo/byPattern are context panels that need a stable long-horizon distribution.
+// See queryByPattern() in cost-metrics-projection.ts for the full rationale.
 router.get('/by-pattern', async (_req, res) => {
   try {
     const view = getCostView();
