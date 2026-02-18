@@ -19,7 +19,7 @@
  * All child tables are joined against that snapshot_id.
  */
 
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, asc } from 'drizzle-orm';
 import {
   baselinesSnapshots,
   baselinesComparisons,
@@ -208,7 +208,8 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     const rows = await db
       .select()
       .from(baselinesTrend)
-      .where(eq(baselinesTrend.snapshotId, snapshotId));
+      .where(eq(baselinesTrend.snapshotId, snapshotId))
+      .orderBy(asc(baselinesTrend.date));
 
     return rows.map((r) => ({
       date: r.date,

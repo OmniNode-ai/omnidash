@@ -789,7 +789,10 @@ export class ReadModelConsumer {
     const rawBreakdown = Array.isArray(data.breakdown) ? data.breakdown : [];
 
     try {
-      // Upsert the snapshot header.
+      // Upsert the snapshot header and replace child rows atomically inside a
+      // single transaction. Keeping all writes together ensures a process crash
+      // between the header commit and the child-row writes cannot leave the DB
+      // with a snapshot row that has zero child rows (incorrect partial state).
       const snapshotRow: InsertBaselinesSnapshot = {
         snapshotId,
         contractVersion,
@@ -798,24 +801,25 @@ export class ReadModelConsumer {
         windowEndUtc: windowEndUtc ?? undefined,
       };
 
-      await db
-        .insert(baselinesSnapshots)
-        .values(snapshotRow)
-        .onConflictDoUpdate({
-          target: baselinesSnapshots.snapshotId,
-          set: {
-            contractVersion: snapshotRow.contractVersion,
-            computedAtUtc: snapshotRow.computedAtUtc,
-            windowStartUtc: snapshotRow.windowStartUtc,
-            windowEndUtc: snapshotRow.windowEndUtc,
-            projectedAt: new Date(),
-          },
-        });
-
-      // Replace child rows atomically: delete old, insert fresh — all inside a
-      // single transaction so a partial failure cannot leave the DB in a mixed
-      // state (e.g. comparisons from the new snapshot with trend from the old).
       await db.transaction(async (tx) => {
+        // 1. Upsert the snapshot header — first operation in the transaction.
+        await tx
+          .insert(baselinesSnapshots)
+          .values(snapshotRow)
+          .onConflictDoUpdate({
+            target: baselinesSnapshots.snapshotId,
+            set: {
+              contractVersion: snapshotRow.contractVersion,
+              computedAtUtc: snapshotRow.computedAtUtc,
+              windowStartUtc: snapshotRow.windowStartUtc,
+              windowEndUtc: snapshotRow.windowEndUtc,
+              projectedAt: new Date(),
+            },
+          });
+
+        // 2. Replace child rows: delete old, insert fresh — all inside the same
+        // transaction so a partial failure cannot leave the DB in a mixed state
+        // (e.g. comparisons from the new snapshot with trend from the old).
         await tx
           .delete(baselinesComparisons)
           .where(eq(baselinesComparisons.snapshotId, snapshotId));
@@ -850,18 +854,30 @@ export class ReadModelConsumer {
         await tx.delete(baselinesTrend).where(eq(baselinesTrend.snapshotId, snapshotId));
 
         if (rawTrend.length > 0) {
-          const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[]).map(
-            (t) => ({
+          const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[])
+            .filter((t) => {
+              const date = t.date ?? t.date;
+              if (date == null || date === '') {
+                console.warn(
+                  '[ReadModelConsumer] Skipping trend row with blank/null date:',
+                  JSON.stringify(t)
+                );
+                return false;
+              }
+              return true;
+            })
+            .map((t) => ({
               snapshotId,
-              date: String(t.date ?? ''),
+              date: String(t.date),
               avgCostSavings: String(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)),
               avgOutcomeImprovement: String(
                 Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
               ),
               comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
-            })
-          );
-          await tx.insert(baselinesTrend).values(trendRows);
+            }));
+          if (trendRows.length > 0) {
+            await tx.insert(baselinesTrend).values(trendRows);
+          }
         }
 
         await tx.delete(baselinesBreakdown).where(eq(baselinesBreakdown.snapshotId, snapshotId));
@@ -887,6 +903,12 @@ export class ReadModelConsumer {
       // Called here (inside the try block) so clients are only notified when
       // all DB writes have committed successfully.
       emitBaselinesUpdate(snapshotId);
+
+      console.log(
+        `[ReadModelConsumer] Projected baselines snapshot ${snapshotId} ` +
+          `(${rawComparisons.length} comparisons, ${rawTrend.length} trend points, ` +
+          `${rawBreakdown.length} breakdown rows)`
+      );
     } catch (err) {
       // Degrade gracefully: if the table doesn't exist yet (migration not run),
       // advance the watermark so the consumer is not stuck retrying indefinitely.
@@ -901,12 +923,6 @@ export class ReadModelConsumer {
       }
       throw err;
     }
-
-    console.log(
-      `[ReadModelConsumer] Projected baselines snapshot ${snapshotId} ` +
-        `(${rawComparisons.length} comparisons, ${rawTrend.length} trend points, ` +
-        `${rawBreakdown.length} breakdown rows)`
-    );
 
     return true;
   }
