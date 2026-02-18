@@ -219,8 +219,16 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     if (dedupeKey) {
       if (this.seenIds.has(dedupeKey)) return false;
       this.seenIds.add(dedupeKey);
-      // Bounded: clear when set grows large to prevent unbounded memory use.
-      if (this.seenIds.size > 10_000) this.seenIds.clear();
+      // Bounded: evict oldest ~10% when at capacity to preserve recent dedup coverage.
+      // Set preserves insertion order so iteration yields oldest entries first.
+      if (this.seenIds.size > 10_000) {
+        const evictCount = Math.floor(this.seenIds.size * 0.1) || 1;
+        let i = 0;
+        for (const id of this.seenIds) {
+          if (i++ >= evictCount) break;
+          this.seenIds.delete(id);
+        }
+      }
     }
 
     // Invalidate cached snapshot on any new event

@@ -322,8 +322,9 @@ export function IntentDistribution({
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          {displayTotal.toLocaleString()} total events in last{' '}
-          {queryData?.time_range_hours ?? timeRangeHours}h
+          {propData
+            ? `${displayTotal.toLocaleString()} total events (projection)`
+            : `${displayTotal.toLocaleString()} total events in last ${queryData?.time_range_hours ?? timeRangeHours}h`}
         </p>
       </CardHeader>
       <CardContent

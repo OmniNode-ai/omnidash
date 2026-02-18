@@ -189,6 +189,31 @@ router.post('/', (req: Request, res: Response) => {
     if (!intent?.intentId || !intent?.intentCategory) {
       return res.status(400).json({ ok: false, error: 'Missing required fields' });
     }
+    const MAX_TEXT_LENGTH = 2000;
+    if (
+      intent.raw_text &&
+      typeof intent.raw_text === 'string' &&
+      intent.raw_text.length > MAX_TEXT_LENGTH
+    ) {
+      return res
+        .status(400)
+        .json({
+          ok: false,
+          error: `raw_text exceeds maximum length of ${MAX_TEXT_LENGTH} characters`,
+        });
+    }
+    if (
+      intent.user_context &&
+      typeof intent.user_context === 'string' &&
+      intent.user_context.length > MAX_TEXT_LENGTH
+    ) {
+      return res
+        .status(400)
+        .json({
+          ok: false,
+          error: `user_context exceeds maximum length of ${MAX_TEXT_LENGTH} characters`,
+        });
+    }
     if (intent.confidence !== undefined) {
       if (
         typeof intent.confidence !== 'number' ||

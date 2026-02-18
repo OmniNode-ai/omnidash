@@ -2,15 +2,8 @@
 import { config } from 'dotenv';
 config();
 
-// Write PID file so `npm run kill-port` can terminate this exact process on the
-// next dev-server restart, preventing zombie Kafka consumers from stealing partitions.
 import { writeFileSync, unlinkSync } from 'fs';
 const SERVER_PID_FILE = '.server.pid';
-try {
-  writeFileSync(SERVER_PID_FILE, String(process.pid), 'utf-8');
-} catch {
-  // Non-fatal: PID file is a best-effort cleanup aid
-}
 
 // Suppress KafkaJS partitioner warning
 if (!process.env.KAFKAJS_NO_PARTITIONER_WARNING) {
@@ -316,6 +309,13 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || '3000', 10);
   server.listen(port, '0.0.0.0', () => {
     log(`serving on port ${port}`);
+    // Write PID file only after the server is successfully listening so that
+    // a startup failure never leaves a stale PID for kill-server.sh to chase.
+    try {
+      writeFileSync(SERVER_PID_FILE, String(process.pid), 'utf-8');
+    } catch {
+      // Non-fatal: PID file is a best-effort cleanup aid
+    }
   });
 
   // Graceful shutdown

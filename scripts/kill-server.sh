@@ -31,7 +31,10 @@ if [ -f "$PID_FILE" ]; then
     if kill -0 "$OLD_PID" 2>/dev/null; then
       echo "[kill-server] Phase 1: killing PID-file process $OLD_PID"
       kill -TERM "$OLD_PID" 2>/dev/null || true
-      sleep 0.3
+      # 3s grace period: KafkaJS needs time to complete the consumer group leave-group
+      # handshake and flush any pending offset commits before we SIGKILL. 0.3s was too
+      # short and caused consumer group rebalance storms on the next server startup.
+      sleep 3
       kill -9 "$OLD_PID" 2>/dev/null || true
     fi
   fi
