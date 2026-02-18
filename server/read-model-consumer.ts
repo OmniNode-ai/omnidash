@@ -856,7 +856,7 @@ export class ReadModelConsumer {
         if (rawTrend.length > 0) {
           const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[])
             .filter((t) => {
-              const date = t.date ?? t.date;
+              const date = t.date ?? t.dateStr;
               if (date == null || date === '') {
                 console.warn(
                   '[ReadModelConsumer] Skipping trend row with blank/null date:',
