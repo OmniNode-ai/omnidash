@@ -26,20 +26,30 @@
 import crypto from 'node:crypto';
 import { Kafka, Consumer, EachMessagePayload, KafkaMessage } from 'kafkajs';
 import { tryGetIntelligenceDb } from './storage';
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import {
   agentRoutingDecisions,
   agentActions,
   agentTransformationEvents,
   llmCostAggregates,
+  baselinesSnapshots,
+  baselinesComparisons,
+  baselinesTrend,
+  baselinesBreakdown,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
   InsertAgentAction,
   InsertAgentTransformationEvent,
   InsertLlmCostAggregate,
+  InsertBaselinesSnapshot,
+  InsertBaselinesComparison,
+  InsertBaselinesTrend,
+  InsertBaselinesBreakdown,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
+import { baselinesProjection } from './projection-bootstrap';
+import { emitBaselinesUpdate } from './baselines-events';
 
 /**
  * Derive a deterministic UUID-shaped string from Kafka message coordinates.
@@ -60,11 +70,27 @@ function deterministicCorrelationId(topic: string, partition: number, offset: st
 /**
  * Parse a date string safely, returning a fallback of `new Date()` when the
  * input is missing or produces an invalid Date (e.g. malformed ISO string).
+ *
+ * RISK: The "now" fallback causes a missing/malformed timestamp to be treated
+ * as the current time. For fields like computed_at_utc this can incorrectly
+ * rank a malformed event as the "latest" snapshot — callers should treat
+ * events that triggered this fallback with suspicion.
  */
 function safeParseDate(value: unknown): Date {
-  if (!value) return new Date();
+  if (!value) {
+    console.warn(
+      '[ReadModelConsumer] safeParseDate: missing timestamp value, falling back to now()'
+    );
+    return new Date();
+  }
   const d = new Date(value as string);
-  return Number.isFinite(d.getTime()) ? d : new Date();
+  if (!Number.isFinite(d.getTime())) {
+    console.warn(
+      `[ReadModelConsumer] safeParseDate: malformed timestamp "${value}", falling back to now()`
+    );
+    return new Date();
+  }
+  return d;
 }
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
@@ -83,6 +109,7 @@ const READ_MODEL_TOPICS = [
   'agent-transformation-events',
   'onex.evt.omniclaude.pattern-enforcement.v1',
   'onex.evt.omniclaude.llm-cost-reported.v1',
+  'onex.evt.omnibase-infra.baselines-computed.v1',
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -261,6 +288,9 @@ export class ReadModelConsumer {
           break;
         case 'onex.evt.omniclaude.llm-cost-reported.v1':
           projected = await this.projectLlmCostEvent(parsed);
+          break;
+        case 'onex.evt.omnibase-infra.baselines-computed.v1':
+          projected = await this.projectBaselinesSnapshot(parsed, partition, message.offset);
           break;
         default:
           console.warn(
@@ -703,6 +733,201 @@ export class ReadModelConsumer {
         console.warn(
           '[ReadModelConsumer] llm_cost_aggregates table not yet created -- ' +
             'run migrations to enable LLM cost projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  /**
+   * Project a baselines snapshot event into the baselines_* tables (OMN-2331).
+   *
+   * Upserts the snapshot header into baselines_snapshots, then atomically
+   * replaces child rows (comparisons, trend, breakdown) for that snapshot_id.
+   * The replacement is delete-then-insert: old rows for the same snapshot_id
+   * are deleted first so re-delivery of the same event is safe (idempotent).
+   *
+   * Returns true when written, false when the DB is unavailable.
+   */
+  private async projectBaselinesSnapshot(
+    data: Record<string, unknown>,
+    partition: number,
+    offset: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    // snapshot_id is required — it is the dedup key.
+    // Fall back to a deterministic hash so that malformed events with a missing
+    // snapshot_id still produce a stable key (idempotent on replay).
+    // NOTE: If this event is later re-delivered with a populated snapshot_id,
+    // a second orphaned snapshot row will result (no automatic reconciliation).
+    // This hash-based ID is a best-effort fallback for malformed events only.
+    const snapshotId =
+      (data.snapshot_id as string) ||
+      deterministicCorrelationId('baselines-computed', partition, offset);
+
+    const contractVersion = Number(data.contract_version ?? 1);
+    const computedAtUtc = safeParseDate(
+      data.computed_at_utc ?? data.computedAtUtc ?? data.computed_at
+    );
+    const windowStartUtc = data.window_start_utc
+      ? safeParseDate(data.window_start_utc)
+      : data.windowStartUtc
+        ? safeParseDate(data.windowStartUtc)
+        : null;
+    const windowEndUtc = data.window_end_utc
+      ? safeParseDate(data.window_end_utc)
+      : data.windowEndUtc
+        ? safeParseDate(data.windowEndUtc)
+        : null;
+
+    // Parse child arrays from the event payload.
+    // These may be under camelCase or snake_case keys depending on producer.
+    const rawComparisons = Array.isArray(data.comparisons) ? data.comparisons : [];
+    const rawTrend = Array.isArray(data.trend) ? data.trend : [];
+    const rawBreakdown = Array.isArray(data.breakdown) ? data.breakdown : [];
+
+    try {
+      // Upsert the snapshot header and replace child rows atomically inside a
+      // single transaction. Keeping all writes together ensures a process crash
+      // between the header commit and the child-row writes cannot leave the DB
+      // with a snapshot row that has zero child rows (incorrect partial state).
+      const snapshotRow: InsertBaselinesSnapshot = {
+        snapshotId,
+        contractVersion,
+        computedAtUtc,
+        windowStartUtc: windowStartUtc ?? undefined,
+        windowEndUtc: windowEndUtc ?? undefined,
+      };
+
+      await db.transaction(async (tx) => {
+        // 1. Upsert the snapshot header — first operation in the transaction.
+        await tx
+          .insert(baselinesSnapshots)
+          .values(snapshotRow)
+          .onConflictDoUpdate({
+            target: baselinesSnapshots.snapshotId,
+            set: {
+              contractVersion: snapshotRow.contractVersion,
+              computedAtUtc: snapshotRow.computedAtUtc,
+              windowStartUtc: snapshotRow.windowStartUtc,
+              windowEndUtc: snapshotRow.windowEndUtc,
+              projectedAt: new Date(),
+            },
+          });
+
+        // 2. Replace child rows: delete old, insert fresh — all inside the same
+        // transaction so a partial failure cannot leave the DB in a mixed state
+        // (e.g. comparisons from the new snapshot with trend from the old).
+        await tx
+          .delete(baselinesComparisons)
+          .where(eq(baselinesComparisons.snapshotId, snapshotId));
+
+        if (rawComparisons.length > 0) {
+          const comparisonRows: InsertBaselinesComparison[] = (
+            rawComparisons as Record<string, unknown>[]
+          ).map((c) => ({
+            snapshotId,
+            patternId: String(c.pattern_id ?? c.patternId ?? ''),
+            patternName: String(c.pattern_name ?? c.patternName ?? ''),
+            sampleSize: Number(c.sample_size ?? c.sampleSize ?? 0),
+            windowStart: String(c.window_start ?? c.windowStart ?? ''),
+            windowEnd: String(c.window_end ?? c.windowEnd ?? ''),
+            tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
+            timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
+            retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
+            testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
+              string,
+              unknown
+            >,
+            reviewIterationDelta: (c.review_iteration_delta ??
+              c.reviewIterationDelta ??
+              {}) as Record<string, unknown>,
+            recommendation: String(c.recommendation ?? 'shadow'),
+            confidence: String(c.confidence ?? 'low'),
+            rationale: String(c.rationale ?? ''),
+          }));
+          await tx.insert(baselinesComparisons).values(comparisonRows);
+        }
+
+        await tx.delete(baselinesTrend).where(eq(baselinesTrend.snapshotId, snapshotId));
+
+        if (rawTrend.length > 0) {
+          const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[])
+            .filter((t) => {
+              const date = t.date ?? t.dateStr;
+              if (date == null || date === '') {
+                console.warn(
+                  '[ReadModelConsumer] Skipping trend row with blank/null date:',
+                  JSON.stringify(t)
+                );
+                return false;
+              }
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+                console.warn(
+                  '[ReadModelConsumer] Skipping trend row with malformed date format (expected YYYY-MM-DD):',
+                  JSON.stringify(t)
+                );
+                return false;
+              }
+              return true;
+            })
+            .map((t) => ({
+              snapshotId,
+              date: String(t.date),
+              avgCostSavings: String(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)),
+              avgOutcomeImprovement: String(
+                Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
+              ),
+              comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
+            }));
+          if (trendRows.length > 0) {
+            await tx.insert(baselinesTrend).values(trendRows);
+          }
+        }
+
+        await tx.delete(baselinesBreakdown).where(eq(baselinesBreakdown.snapshotId, snapshotId));
+
+        if (rawBreakdown.length > 0) {
+          const breakdownRows: InsertBaselinesBreakdown[] = (
+            rawBreakdown as Record<string, unknown>[]
+          ).map((b) => ({
+            snapshotId,
+            action: String(b.action ?? 'shadow'),
+            count: Number(b.count ?? 0),
+            avgConfidence: String(Number(b.avg_confidence ?? b.avgConfidence ?? 0)),
+          }));
+          await tx.insert(baselinesBreakdown).values(breakdownRows);
+        }
+      });
+
+      // Invalidate the baselines projection cache so the next API request
+      // returns fresh data from the newly projected snapshot.
+      baselinesProjection.reset();
+
+      // Notify WebSocket clients subscribed to the 'baselines' topic.
+      // Called here (inside the try block) so clients are only notified when
+      // all DB writes have committed successfully.
+      emitBaselinesUpdate(snapshotId);
+
+      console.log(
+        `[ReadModelConsumer] Projected baselines snapshot ${snapshotId} ` +
+          `(${rawComparisons.length} comparisons, ${rawTrend.length} trend points, ` +
+          `${rawBreakdown.length} breakdown rows)`
+      );
+    } catch (err) {
+      // Degrade gracefully: if the table doesn't exist yet (migration not run),
+      // advance the watermark so the consumer is not stuck retrying indefinitely.
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (pgCode === '42P01' || (msg.includes('baselines_') && msg.includes('does not exist'))) {
+        console.warn(
+          '[ReadModelConsumer] baselines_* tables not yet created -- ' +
+            'run migrations to enable baselines projection'
         );
         return true;
       }
