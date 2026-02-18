@@ -286,32 +286,27 @@ export default function BaselinesROI() {
   // Data Fetching
   // ---------------------------------------------------------------------------
 
-  // mockOnEmpty: true shows demo data when the API returns empty (no baselines
-  // tables yet). Once real tables exist, remove mockOnEmpty to surface genuine
-  // empty states.
-  const fetchOpts = { mockOnEmpty: true };
-
   const { data: summary, isLoading: summaryLoading } = useQuery<BaselinesSummary>({
     queryKey: queryKeys.baselines.summary(),
-    queryFn: () => baselinesSource.summary(fetchOpts),
+    queryFn: () => baselinesSource.summary(),
     refetchInterval: 15_000,
   });
 
   const { data: comparisons, isLoading: comparisonsLoading } = useQuery<PatternComparison[]>({
     queryKey: queryKeys.baselines.comparisons(),
-    queryFn: () => baselinesSource.comparisons(fetchOpts),
+    queryFn: () => baselinesSource.comparisons(),
     refetchInterval: 15_000,
   });
 
   const { data: trend, isLoading: trendLoading } = useQuery<ROITrendPoint[]>({
     queryKey: queryKeys.baselines.trend(14),
-    queryFn: () => baselinesSource.trend(14, fetchOpts),
+    queryFn: () => baselinesSource.trend(14),
     refetchInterval: 15_000,
   });
 
   const { data: breakdown, isLoading: breakdownLoading } = useQuery<RecommendationBreakdown[]>({
     queryKey: queryKeys.baselines.breakdown(),
-    queryFn: () => baselinesSource.breakdown(fetchOpts),
+    queryFn: () => baselinesSource.breakdown(),
     refetchInterval: 15_000,
   });
 

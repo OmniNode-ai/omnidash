@@ -1,12 +1,15 @@
 /**
- * Baselines & ROI API Routes (OMN-2156)
+ * Baselines & ROI API Routes (OMN-2331)
  *
  * REST endpoints for the baselines/ROI dashboard: summary, comparisons,
  * trend, and recommendation breakdown.
  *
- * Currently returns empty/placeholder responses. When the upstream
- * baselines tables are created, replace with real Drizzle queries
- * following the same pattern as effectiveness-routes.ts.
+ * All responses are derived from the latest baselines snapshot stored in
+ * omnidash_analytics (populated by the ReadModelConsumer projecting
+ * onex.evt.omnibase-infra.baselines-computed.v1 events).
+ *
+ * "Latest snapshot" = row with MAX(computed_at_utc) in baselines_snapshots.
+ * Data is served via BaselinesProjection (DB-backed, TTL-cached).
  */
 
 import { Router } from 'express';
@@ -16,6 +19,7 @@ import type {
   ROITrendPoint,
   RecommendationBreakdown,
 } from '@shared/baselines-types';
+import { baselinesProjection } from './projection-bootstrap';
 
 const router = Router();
 
@@ -25,20 +29,8 @@ const router = Router();
 
 router.get('/summary', async (_req, res) => {
   try {
-    // TODO: Replace with real database query when baselines tables exist.
-    // For now, return an empty summary so the client falls back to mock data.
-    const summary: BaselinesSummary = {
-      total_comparisons: 0,
-      promote_count: 0,
-      shadow_count: 0,
-      suppress_count: 0,
-      fork_count: 0,
-      avg_cost_savings: 0,
-      avg_outcome_improvement: 0,
-      total_token_savings: 0,
-      total_time_savings_ms: 0,
-    };
-    return res.json(summary);
+    const payload = await baselinesProjection.ensureFresh();
+    return res.json(payload.summary);
   } catch (error) {
     console.error('[baselines] Error fetching summary:', error);
     return res.status(500).json({ error: 'Failed to fetch baselines summary' });
@@ -51,9 +43,8 @@ router.get('/summary', async (_req, res) => {
 
 router.get('/comparisons', async (_req, res) => {
   try {
-    // TODO: Replace with real database query when baselines tables exist.
-    const comparisons: PatternComparison[] = [];
-    return res.json(comparisons);
+    const payload = await baselinesProjection.ensureFresh();
+    return res.json(payload.comparisons);
   } catch (error) {
     console.error('[baselines] Error fetching comparisons:', error);
     return res.status(500).json({ error: 'Failed to fetch baselines comparisons' });
@@ -61,17 +52,14 @@ router.get('/comparisons', async (_req, res) => {
 });
 
 // ============================================================================
-// GET /api/baselines/trend?days=14
+// GET /api/baselines/trend?days=N
 // ============================================================================
 
 router.get('/trend', async (req, res) => {
   try {
-    // TODO: Replace with real database query when baselines tables exist.
-    // TODO(OMN-2156): Wire days parameter to database query when real data source is connected
     const days = Math.min(Math.max(parseInt(req.query.days as string) || 14, 1), 90);
-    void days;
-    const trend: ROITrendPoint[] = [];
-    return res.json(trend);
+    const payload = await baselinesProjection.ensureFreshForDays(days);
+    return res.json(payload.trend);
   } catch (error) {
     console.error('[baselines] Error fetching trend:', error);
     return res.status(500).json({ error: 'Failed to fetch baselines trend' });
@@ -84,9 +72,8 @@ router.get('/trend', async (req, res) => {
 
 router.get('/breakdown', async (_req, res) => {
   try {
-    // TODO: Replace with real database query when baselines tables exist.
-    const breakdown: RecommendationBreakdown[] = [];
-    return res.json(breakdown);
+    const payload = await baselinesProjection.ensureFresh();
+    return res.json(payload.breakdown);
   } catch (error) {
     console.error('[baselines] Error fetching breakdown:', error);
     return res.status(500).json({ error: 'Failed to fetch baselines breakdown' });
