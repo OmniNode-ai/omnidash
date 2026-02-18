@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS pattern_enforcement_events (
   pattern_name     TEXT NOT NULL,
   pattern_lifecycle_state TEXT,
   -- outcome: hit | violation | corrected | false_positive
-  outcome          TEXT NOT NULL,
+  outcome          TEXT NOT NULL CHECK (outcome IN ('hit', 'violation', 'corrected', 'false_positive')),
   confidence       NUMERIC(5, 4),
   agent_name       TEXT,
   -- When the enforcement event originally occurred

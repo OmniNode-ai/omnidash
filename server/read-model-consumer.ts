@@ -472,7 +472,18 @@ export class ReadModelConsumer {
 
     const correlationId =
       (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
-    const outcome = evt.outcome ?? 'hit';
+
+    // outcome is required -- a missing value indicates a malformed event.
+    // Do NOT default to 'hit' or any other value; that would silently inflate
+    // hit counts and corrupt the enforcement metrics.
+    if (evt.outcome == null) {
+      console.warn(
+        '[ReadModelConsumer] Enforcement event missing required "outcome" field ' +
+          `(correlation_id=${correlationId}) -- skipping malformed event`
+      );
+      return true; // Treat as "handled" so we advance the watermark
+    }
+    const outcome = evt.outcome;
     if (!['hit', 'violation', 'corrected', 'false_positive'].includes(outcome)) {
       console.warn('[ReadModelConsumer] Unknown enforcement outcome:', outcome, '-- skipping');
       return true; // Treat as "handled" so we advance the watermark
