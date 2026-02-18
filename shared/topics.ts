@@ -340,6 +340,9 @@ export const SUFFIX_VALIDATION_RUN_STARTED = 'onex.evt.validation.cross-repo-run
 export const SUFFIX_VALIDATION_VIOLATIONS_BATCH =
   'onex.evt.validation.cross-repo-violations-batch.v1';
 export const SUFFIX_VALIDATION_RUN_COMPLETED = 'onex.evt.validation.cross-repo-run-completed.v1';
+/** Lifecycle candidate upserted events from the OMN-2018 artifact store (OMN-2333). */
+export const SUFFIX_VALIDATION_CANDIDATE_UPSERTED =
+  'onex.evt.validation.lifecycle-candidate-upserted.v1';
 
 // ============================================================================
 // Legacy Agent Topics (flat names, no ONEX convention)
@@ -482,6 +485,7 @@ export const VALIDATION_SUFFIXES = [
   SUFFIX_VALIDATION_RUN_STARTED,
   SUFFIX_VALIDATION_VIOLATIONS_BATCH,
   SUFFIX_VALIDATION_RUN_COMPLETED,
+  SUFFIX_VALIDATION_CANDIDATE_UPSERTED,
 ] as const;
 
 /**
