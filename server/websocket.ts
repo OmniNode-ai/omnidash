@@ -264,6 +264,8 @@ const VALID_TOPICS = [
   'insights',
   // Execution graph live node events (OMN-2302)
   'execution-graph',
+  // Effectiveness metrics invalidation events (OMN-2328)
+  'effectiveness',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];

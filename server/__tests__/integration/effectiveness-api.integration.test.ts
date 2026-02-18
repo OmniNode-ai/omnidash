@@ -79,7 +79,7 @@ describe.skipIf(!canRunIntegrationTests)('Effectiveness API Integration Tests', 
     await truncateEffectiveness();
     // Reset the in-memory TTL cache so each test queries the (now-empty) DB
     // rather than serving stale rows from a prior test's seed data.
-    await resetEffectivenessProjectionCache();
+    resetEffectivenessProjectionCache();
   });
 
   afterAll(async () => {

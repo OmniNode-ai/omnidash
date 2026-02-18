@@ -1546,9 +1546,9 @@ export class EventConsumer extends EventEmitter {
               case SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION:
                 if (isContextUtilizationEvent(event)) {
                   await this.extractionAggregator.handleContextUtilization(event);
+                  emitEffectivenessUpdate();
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'context-utilization' });
-                    emitEffectivenessUpdate();
                   }
                 } else {
                   console.warn('[extraction] Dropped malformed context-utilization event');
@@ -1557,9 +1557,9 @@ export class EventConsumer extends EventEmitter {
               case SUFFIX_OMNICLAUDE_AGENT_MATCH:
                 if (isAgentMatchEvent(event)) {
                   await this.extractionAggregator.handleAgentMatch(event);
+                  emitEffectivenessUpdate();
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'agent-match' });
-                    emitEffectivenessUpdate();
                   }
                 } else {
                   console.warn('[extraction] Dropped malformed agent-match event');
@@ -1568,9 +1568,9 @@ export class EventConsumer extends EventEmitter {
               case SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN:
                 if (isLatencyBreakdownEvent(event)) {
                   await this.extractionAggregator.handleLatencyBreakdown(event);
+                  emitEffectivenessUpdate();
                   if (this.extractionAggregator.shouldBroadcast()) {
                     this.emit('extraction-event', { type: 'latency-breakdown' });
-                    emitEffectivenessUpdate();
                   }
                 } else {
                   console.warn('[extraction] Dropped malformed latency-breakdown event');

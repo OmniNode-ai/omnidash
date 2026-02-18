@@ -11,6 +11,7 @@
 import { EventEmitter } from 'events';
 
 export const effectivenessEventEmitter = new EventEmitter();
+effectivenessEventEmitter.setMaxListeners(20);
 
 /**
  * Notify subscribed clients that effectiveness data has changed.
