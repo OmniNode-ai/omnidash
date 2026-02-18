@@ -551,6 +551,37 @@ export const queryKeys = {
     /** Insight discovery trend */
     trend: () => [...queryKeys.insights.all, 'trend'] as const,
   },
+
+  // ============================================================================
+  // Pattern Enforcement (OMN-2275)
+  // ============================================================================
+
+  /**
+   * Pattern enforcement query keys for the enforcement metrics dashboard.
+   *
+   * On ENFORCEMENT_INVALIDATE WebSocket event, invalidate `queryKeys.enforcement.all`
+   * to trigger a full refetch of all enforcement panels.
+   */
+  enforcement: {
+    /** Base key for all enforcement queries */
+    all: ['enforcement'] as const,
+
+    /** Summary metrics (hero cards) for a time window */
+    summary: (window: string) => [...queryKeys.enforcement.all, 'summary', window] as const,
+
+    /** Hit rate breakdown by language */
+    byLanguage: (window: string) => [...queryKeys.enforcement.all, 'by-language', window] as const,
+
+    /** Hit rate breakdown by domain */
+    byDomain: (window: string) => [...queryKeys.enforcement.all, 'by-domain', window] as const,
+
+    /** Top violated patterns table */
+    violatedPatterns: (window: string) =>
+      [...queryKeys.enforcement.all, 'violated-patterns', window] as const,
+
+    /** Multi-metric trend data */
+    trend: (window: string) => [...queryKeys.enforcement.all, 'trend', window] as const,
+  },
 } as const;
 
 /**

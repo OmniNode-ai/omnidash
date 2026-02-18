@@ -87,6 +87,7 @@ Advanced Pages:
 - Validation: http://localhost:3000/validation
 - Correlation Trace: http://localhost:3000/trace
 - Learned Insights: http://localhost:3000/insights
+- Pattern Enforcement: http://localhost:3000/enforcement
 - Widget Showcase: http://localhost:3000/showcase
 
 **Environment**: Always verify `.env` before assuming defaults (see `~/.claude/CLAUDE.md` for full configuration priority rules). Omnidash runs on `PORT=3000` (configured in package.json dev script).
@@ -121,6 +122,7 @@ Three-directory monorepo with TypeScript path aliases:
 | **Advanced** | System | `/validation` | ValidationDashboard | Cross-repo validation runs and violation trends |
 | **Advanced** | Tools | `/trace` | CorrelationTrace | Trace events by correlation ID |
 | **Advanced** | Tools | `/insights` | LearnedInsights | Patterns and conventions from OmniClaude sessions |
+| **Advanced** | Intelligence | `/enforcement` | PatternEnforcement | Enforcement hit rate, violations, and correction rate |
 | **Advanced** | Preview | `/showcase` | WidgetShowcase | All 5 contract-driven widget types |
 
 **Component System**: Built on shadcn/ui (New York variant) with Radix UI primitives. All UI components live in `client/src/components/ui/` and follow shadcn conventions.
