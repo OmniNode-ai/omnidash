@@ -226,9 +226,11 @@ describe('ReadModelConsumer', () => {
 
       const insertValues = vi.fn().mockResolvedValue(undefined);
       const insertMock = vi.fn().mockReturnValue({ values: insertValues });
+      const executeMock = vi.fn().mockResolvedValue(undefined);
 
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
         insert: insertMock,
+        execute: executeMock,
       });
 
       const handleMessage = getHandleMessage(consumer);
@@ -250,6 +252,13 @@ describe('ReadModelConsumer', () => {
       expect(insertArg).toBeDefined();
       // total_tokens should be derived as 1500 + 600 = 2100
       expect(insertArg.totalTokens).toBe(2100);
+
+      // execute should have been called for the watermark upsert
+      expect(executeMock).toHaveBeenCalled();
+
+      // Stats should reflect a successfully projected event
+      const stats = consumer.getStats();
+      expect(stats.eventsProjected).toBe(1);
     });
 
     it('defaults model_name to "unknown" with warning when field is absent', async () => {
@@ -257,9 +266,11 @@ describe('ReadModelConsumer', () => {
 
       const insertValues = vi.fn().mockResolvedValue(undefined);
       const insertMock = vi.fn().mockReturnValue({ values: insertValues });
+      const executeMock = vi.fn().mockResolvedValue(undefined);
 
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
         insert: insertMock,
+        execute: executeMock,
       });
 
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -284,7 +295,14 @@ describe('ReadModelConsumer', () => {
       const insertArg = insertValues.mock.calls[0]?.[0];
       expect(insertArg?.modelName).toBe('unknown');
 
+      // execute should have been called for the watermark upsert
+      expect(executeMock).toHaveBeenCalled();
+
       warnSpy.mockRestore();
+
+      // Stats should reflect a successfully projected event
+      const stats = consumer.getStats();
+      expect(stats.eventsProjected).toBe(1);
     });
 
     it('defaults usage_source to "API" for unrecognised values', async () => {
@@ -292,9 +310,11 @@ describe('ReadModelConsumer', () => {
 
       const insertValues = vi.fn().mockResolvedValue(undefined);
       const insertMock = vi.fn().mockReturnValue({ values: insertValues });
+      const executeMock = vi.fn().mockResolvedValue(undefined);
 
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
         insert: insertMock,
+        execute: executeMock,
       });
 
       const handleMessage = getHandleMessage(consumer);
@@ -313,6 +333,13 @@ describe('ReadModelConsumer', () => {
 
       const insertArg = insertValues.mock.calls[0]?.[0];
       expect(insertArg?.usageSource).toBe('API');
+
+      // execute should have been called for the watermark upsert
+      expect(executeMock).toHaveBeenCalled();
+
+      // Stats should reflect a successfully projected event
+      const stats = consumer.getStats();
+      expect(stats.eventsProjected).toBe(1);
     });
 
     it('coerces non-finite cost values to 0', async () => {

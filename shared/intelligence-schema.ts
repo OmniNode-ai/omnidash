@@ -12,6 +12,7 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
@@ -834,6 +835,14 @@ export const llmCostAggregates = pgTable(
     index('idx_llm_cost_agg_bucket_model').on(table.bucketTime, table.modelName),
     // Composite index for hourly/daily view switching (used when toggling granularity).
     index('idx_llm_cost_agg_bucket_granularity').on(table.bucketTime, table.granularity),
+    // CHECK constraints mirror the SQL migration (0003_llm_cost_aggregates.sql).
+    // Without these, a future `db:push` would skip the constraints and allow
+    // invalid values that the migration enforces at the database level.
+    check('llm_cost_agg_granularity_check', sql`${table.granularity} IN ('hour', 'day')`),
+    check(
+      'llm_cost_agg_usage_source_check',
+      sql`${table.usageSource} IN ('API', 'ESTIMATED', 'MISSING')`
+    ),
   ]
 );
 
