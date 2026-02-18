@@ -945,7 +945,7 @@ export const baselinesSnapshots = pgTable(
     /** End of the evaluation window (null = rolling / open end). */
     windowEndUtc: timestamp('window_end_utc', { withTimezone: true }),
     /** When this row was inserted/updated by the projection. */
-    projectedAt: timestamp('projected_at', { withTimezone: true }).defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     /** Primary query: find the latest snapshot fast. */
@@ -968,7 +968,9 @@ export const baselinesComparisons = pgTable(
   'baselines_comparisons',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    snapshotId: uuid('snapshot_id').notNull(),
+    snapshotId: uuid('snapshot_id')
+      .notNull()
+      .references(() => baselinesSnapshots.snapshotId, { onDelete: 'cascade' }),
     patternId: text('pattern_id').notNull(),
     patternName: text('pattern_name').notNull(),
     sampleSize: integer('sample_size').notNull().default(0),
@@ -1013,7 +1015,9 @@ export const baselinesTrend = pgTable(
   'baselines_trend',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    snapshotId: uuid('snapshot_id').notNull(),
+    snapshotId: uuid('snapshot_id')
+      .notNull()
+      .references(() => baselinesSnapshots.snapshotId, { onDelete: 'cascade' }),
     /** ISO date string (YYYY-MM-DD) for the data point. */
     date: text('date').notNull(),
     avgCostSavings: numeric('avg_cost_savings', { precision: 8, scale: 6 }).notNull().default('0'),
@@ -1044,7 +1048,9 @@ export const baselinesBreakdown = pgTable(
   'baselines_breakdown',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    snapshotId: uuid('snapshot_id').notNull(),
+    snapshotId: uuid('snapshot_id')
+      .notNull()
+      .references(() => baselinesSnapshots.snapshotId, { onDelete: 'cascade' }),
     /** 'promote' | 'shadow' | 'suppress' | 'fork' */
     action: text('action').notNull(),
     count: integer('count').notNull().default(0),

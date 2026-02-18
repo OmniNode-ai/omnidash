@@ -26,7 +26,7 @@
 import crypto from 'node:crypto';
 import { Kafka, Consumer, EachMessagePayload, KafkaMessage } from 'kafkajs';
 import { tryGetIntelligenceDb } from './storage';
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import {
   agentRoutingDecisions,
   agentActions,
@@ -70,11 +70,27 @@ function deterministicCorrelationId(topic: string, partition: number, offset: st
 /**
  * Parse a date string safely, returning a fallback of `new Date()` when the
  * input is missing or produces an invalid Date (e.g. malformed ISO string).
+ *
+ * RISK: The "now" fallback causes a missing/malformed timestamp to be treated
+ * as the current time. For fields like computed_at_utc this can incorrectly
+ * rank a malformed event as the "latest" snapshot — callers should treat
+ * events that triggered this fallback with suspicion.
  */
 function safeParseDate(value: unknown): Date {
-  if (!value) return new Date();
+  if (!value) {
+    console.warn(
+      '[ReadModelConsumer] safeParseDate: missing timestamp value, falling back to now()'
+    );
+    return new Date();
+  }
   const d = new Date(value as string);
-  return Number.isFinite(d.getTime()) ? d : new Date();
+  if (!Number.isFinite(d.getTime())) {
+    console.warn(
+      `[ReadModelConsumer] safeParseDate: malformed timestamp "${value}", falling back to now()`
+    );
+    return new Date();
+  }
+  return d;
 }
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
@@ -796,73 +812,81 @@ export class ReadModelConsumer {
           },
         });
 
-      // Replace child rows: delete old, insert fresh.
-      // ON DELETE CASCADE (FK) means we only need to delete from the snapshots
-      // table to cascade. However, we upsert the snapshot above (not delete it),
-      // so we delete child rows explicitly.
-      await db
-        .delete(baselinesComparisons)
-        .where(sql`${baselinesComparisons.snapshotId} = ${snapshotId}`);
+      // Replace child rows atomically: delete old, insert fresh — all inside a
+      // single transaction so a partial failure cannot leave the DB in a mixed
+      // state (e.g. comparisons from the new snapshot with trend from the old).
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(baselinesComparisons)
+          .where(eq(baselinesComparisons.snapshotId, snapshotId));
 
-      if (rawComparisons.length > 0) {
-        const comparisonRows: InsertBaselinesComparison[] = (
-          rawComparisons as Record<string, unknown>[]
-        ).map((c) => ({
-          snapshotId,
-          patternId: String(c.pattern_id ?? c.patternId ?? ''),
-          patternName: String(c.pattern_name ?? c.patternName ?? ''),
-          sampleSize: Number(c.sample_size ?? c.sampleSize ?? 0),
-          windowStart: String(c.window_start ?? c.windowStart ?? ''),
-          windowEnd: String(c.window_end ?? c.windowEnd ?? ''),
-          tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
-          timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
-          retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
-          testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
-            string,
-            unknown
-          >,
-          reviewIterationDelta: (c.review_iteration_delta ??
-            c.reviewIterationDelta ??
-            {}) as Record<string, unknown>,
-          recommendation: String(c.recommendation ?? 'shadow'),
-          confidence: String(c.confidence ?? 'low'),
-          rationale: String(c.rationale ?? ''),
-        }));
-        await db.insert(baselinesComparisons).values(comparisonRows);
-      }
-
-      await db.delete(baselinesTrend).where(sql`${baselinesTrend.snapshotId} = ${snapshotId}`);
-
-      if (rawTrend.length > 0) {
-        const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[]).map(
-          (t) => ({
+        if (rawComparisons.length > 0) {
+          const comparisonRows: InsertBaselinesComparison[] = (
+            rawComparisons as Record<string, unknown>[]
+          ).map((c) => ({
             snapshotId,
-            date: String(t.date ?? ''),
-            avgCostSavings: String(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)),
-            avgOutcomeImprovement: String(
-              Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
-            ),
-            comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
-          })
-        );
-        await db.insert(baselinesTrend).values(trendRows);
-      }
+            patternId: String(c.pattern_id ?? c.patternId ?? ''),
+            patternName: String(c.pattern_name ?? c.patternName ?? ''),
+            sampleSize: Number(c.sample_size ?? c.sampleSize ?? 0),
+            windowStart: String(c.window_start ?? c.windowStart ?? ''),
+            windowEnd: String(c.window_end ?? c.windowEnd ?? ''),
+            tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
+            timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
+            retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
+            testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
+              string,
+              unknown
+            >,
+            reviewIterationDelta: (c.review_iteration_delta ??
+              c.reviewIterationDelta ??
+              {}) as Record<string, unknown>,
+            recommendation: String(c.recommendation ?? 'shadow'),
+            confidence: String(c.confidence ?? 'low'),
+            rationale: String(c.rationale ?? ''),
+          }));
+          await tx.insert(baselinesComparisons).values(comparisonRows);
+        }
 
-      await db
-        .delete(baselinesBreakdown)
-        .where(sql`${baselinesBreakdown.snapshotId} = ${snapshotId}`);
+        await tx.delete(baselinesTrend).where(eq(baselinesTrend.snapshotId, snapshotId));
 
-      if (rawBreakdown.length > 0) {
-        const breakdownRows: InsertBaselinesBreakdown[] = (
-          rawBreakdown as Record<string, unknown>[]
-        ).map((b) => ({
-          snapshotId,
-          action: String(b.action ?? 'shadow'),
-          count: Number(b.count ?? 0),
-          avgConfidence: String(Number(b.avg_confidence ?? b.avgConfidence ?? 0)),
-        }));
-        await db.insert(baselinesBreakdown).values(breakdownRows);
-      }
+        if (rawTrend.length > 0) {
+          const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[]).map(
+            (t) => ({
+              snapshotId,
+              date: String(t.date ?? ''),
+              avgCostSavings: String(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)),
+              avgOutcomeImprovement: String(
+                Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
+              ),
+              comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
+            })
+          );
+          await tx.insert(baselinesTrend).values(trendRows);
+        }
+
+        await tx.delete(baselinesBreakdown).where(eq(baselinesBreakdown.snapshotId, snapshotId));
+
+        if (rawBreakdown.length > 0) {
+          const breakdownRows: InsertBaselinesBreakdown[] = (
+            rawBreakdown as Record<string, unknown>[]
+          ).map((b) => ({
+            snapshotId,
+            action: String(b.action ?? 'shadow'),
+            count: Number(b.count ?? 0),
+            avgConfidence: String(Number(b.avg_confidence ?? b.avgConfidence ?? 0)),
+          }));
+          await tx.insert(baselinesBreakdown).values(breakdownRows);
+        }
+      });
+
+      // Invalidate the baselines projection cache so the next API request
+      // returns fresh data from the newly projected snapshot.
+      baselinesProjection.reset();
+
+      // Notify WebSocket clients subscribed to the 'baselines' topic.
+      // Called here (inside the try block) so clients are only notified when
+      // all DB writes have committed successfully.
+      emitBaselinesUpdate(snapshotId);
     } catch (err) {
       // Degrade gracefully: if the table doesn't exist yet (migration not run),
       // advance the watermark so the consumer is not stuck retrying indefinitely.
@@ -877,13 +901,6 @@ export class ReadModelConsumer {
       }
       throw err;
     }
-
-    // Invalidate the baselines projection cache so the next API request
-    // returns fresh data from the newly projected snapshot.
-    baselinesProjection.reset();
-
-    // Notify WebSocket clients subscribed to the 'baselines' topic.
-    emitBaselinesUpdate(snapshotId);
 
     console.log(
       `[ReadModelConsumer] Projected baselines snapshot ${snapshotId} ` +

@@ -154,6 +154,10 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
 
     return {
       ...payload,
+      // NOTE: This comparison relies on lexicographic string ordering.
+      // It is only correct when both `t.date` and `cutoff` are in strict
+      // YYYY-MM-DD format (zero-padded month and day). Any other format
+      // (e.g. M/D/YYYY, ISO with time component) will produce wrong results.
       trend: payload.trend.filter((t) => t.date >= cutoff),
     };
   }
