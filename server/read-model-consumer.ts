@@ -502,7 +502,7 @@ export class ReadModelConsumer {
         '[ReadModelConsumer] Enforcement event missing required "pattern_name" field ' +
           `(correlation_id=${correlationId}) -- skipping malformed event`
       );
-      return false;
+      return true; // Treat as "handled" so we advance the watermark
     }
 
     try {
