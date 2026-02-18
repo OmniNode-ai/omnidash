@@ -347,9 +347,11 @@ describe('ReadModelConsumer', () => {
 
       const insertValues = vi.fn().mockResolvedValue(undefined);
       const insertMock = vi.fn().mockReturnValue({ values: insertValues });
+      const executeMock = vi.fn().mockResolvedValue(undefined);
 
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
         insert: insertMock,
+        execute: executeMock,
       });
 
       const handleMessage = getHandleMessage(consumer);
@@ -370,6 +372,13 @@ describe('ReadModelConsumer', () => {
       expect(insertArg?.totalCostUsd).toBe('0');
       expect(insertArg?.reportedCostUsd).toBe('0');
       expect(insertArg?.estimatedCostUsd).toBe('0');
+
+      // execute should have been called for the watermark upsert
+      expect(executeMock).toHaveBeenCalled();
+
+      // Stats should reflect a successfully projected event
+      const stats = consumer.getStats();
+      expect(stats.eventsProjected).toBe(1);
     });
 
     it('gracefully handles the table-not-found error (42P01) and advances watermark', async () => {
