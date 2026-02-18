@@ -9,7 +9,7 @@
 CREATE TABLE IF NOT EXISTS pattern_enforcement_events (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   -- Unique correlation ID for idempotency (ON CONFLICT DO NOTHING)
-  correlation_id   TEXT NOT NULL,
+  correlation_id   TEXT NOT NULL UNIQUE,
   session_id       TEXT,
   repo             TEXT,
   language         TEXT NOT NULL DEFAULT 'unknown',

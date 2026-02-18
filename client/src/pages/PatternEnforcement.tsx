@@ -459,7 +459,7 @@ export default function PatternEnforcement() {
     if (allSettled) {
       setIsUsingMockData(enforcementSource.isUsingMockData);
     }
-  }, [allSettled]);
+  }, [allSettled, timeWindow]);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
