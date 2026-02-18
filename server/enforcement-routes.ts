@@ -40,8 +40,6 @@ router.get('/summary', (_req, res) => {
   try {
     // TODO(OMN-2275-followup): Replace with projectionService.getView('enforcement').getSnapshot()
     // once the enforcement projection is implemented.
-    const _window = parseWindow(_req.query.window);
-
     const empty: EnforcementSummary = {
       total_evaluations: 0,
       hit_rate: 0,
@@ -65,7 +63,6 @@ router.get('/summary', (_req, res) => {
 router.get('/by-language', (_req, res) => {
   try {
     // TODO(OMN-2275-followup): Replace with projection view query.
-    const _window = parseWindow(_req.query.window);
     const data: EnforcementByLanguage[] = [];
     return res.json(data);
   } catch (error) {
@@ -81,7 +78,6 @@ router.get('/by-language', (_req, res) => {
 router.get('/by-domain', (_req, res) => {
   try {
     // TODO(OMN-2275-followup): Replace with projection view query.
-    const _window = parseWindow(_req.query.window);
     const data: EnforcementByDomain[] = [];
     return res.json(data);
   } catch (error) {
@@ -97,7 +93,6 @@ router.get('/by-domain', (_req, res) => {
 router.get('/violated-patterns', (_req, res) => {
   try {
     // TODO(OMN-2275-followup): Replace with projection view query.
-    const _window = parseWindow(_req.query.window);
     const data: ViolatedPattern[] = [];
     return res.json(data);
   } catch (error) {
@@ -113,7 +108,6 @@ router.get('/violated-patterns', (_req, res) => {
 router.get('/trend', (_req, res) => {
   try {
     // TODO(OMN-2275-followup): Replace with projection view query.
-    const _window = parseWindow(_req.query.window);
     const data: EnforcementTrendPoint[] = [];
     return res.json(data);
   } catch (error) {

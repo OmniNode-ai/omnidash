@@ -63,7 +63,7 @@ export function getMockEnforcementSummary(window: EnforcementTimeWindow): Enforc
   return {
     total_evaluations: total,
     hit_rate: hits / total,
-    correction_rate: corrected / (violations + corrected),
+    correction_rate: corrected / Math.max(1, violations + corrected),
     false_positive_rate: false_positives / total,
     violated_pattern_count: 14,
     counts: {

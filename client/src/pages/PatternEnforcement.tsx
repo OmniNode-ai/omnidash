@@ -365,7 +365,7 @@ export default function PatternEnforcement() {
   // Invalidate all enforcement queries on WebSocket ENFORCEMENT_INVALIDATE event
   useWebSocket({
     onMessage: useCallback(
-      (msg: { type?: string }) => {
+      (msg: { type: string; timestamp: string }) => {
         if (msg.type === 'ENFORCEMENT_INVALIDATE') {
           queryClient.invalidateQueries({ queryKey: queryKeys.enforcement.all });
         }

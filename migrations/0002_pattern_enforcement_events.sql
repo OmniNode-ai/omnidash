@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS pattern_enforcement_events (
   repo             TEXT,
   language         TEXT NOT NULL DEFAULT 'unknown',
   domain           TEXT NOT NULL DEFAULT 'unknown',
+  -- Consumer inserts 'unknown' when absent; NULL is rejected to enforce presence
   pattern_name     TEXT NOT NULL,
   pattern_lifecycle_state TEXT,
   -- outcome: hit | violation | corrected | false_positive
