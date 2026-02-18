@@ -24,7 +24,7 @@ import type { LabelProps } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Activity, AlertCircle } from 'lucide-react';
+import { Activity, AlertCircle, X } from 'lucide-react';
 import { distributionToArray, type IntentCategoryCount } from '@shared/intent-types';
 import { getIntentColor } from '@/lib/intent-colors';
 
@@ -59,6 +59,17 @@ export interface IntentDistributionProps {
   className?: string;
   /** Optional custom title. Defaults to "Today's Session Intents". */
   title?: string;
+  /**
+   * Pre-fetched distribution data. When provided, skips the internal API fetch.
+   * Accepts projection snapshot distribution directly.
+   */
+  data?: IntentCategoryCount[];
+  /** Total intents count, used for subtitle when `data` prop is provided. */
+  totalIntents?: number;
+  /** Currently selected category for cross-panel filtering. Highlights this bar. */
+  selectedCategory?: string | null;
+  /** Fired when a bar is clicked. Pass null to clear the filter. */
+  onCategoryClick?: (category: string | null) => void;
 }
 
 /**
@@ -237,18 +248,28 @@ export function IntentDistribution({
   refreshInterval = 30000,
   className,
   title = "Today's Session Intents",
+  data: propData,
+  totalIntents: propTotalIntents,
+  selectedCategory,
+  onCategoryClick,
 }: IntentDistributionProps) {
-  const { data, isLoading, error } = useQuery({
+  const {
+    data: queryData,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['intent-distribution', timeRangeHours],
     queryFn: () => fetchIntentDistribution(timeRangeHours),
     refetchInterval: refreshInterval,
+    // Skip network fetch when data is provided directly
+    enabled: propData === undefined,
   });
 
-  if (isLoading) {
+  if (isLoading && propData === undefined) {
     return <IntentDistributionSkeleton title={title} className={className} />;
   }
 
-  if (error) {
+  if (error && propData === undefined) {
     return (
       <IntentDistributionError
         title={title}
@@ -258,8 +279,18 @@ export function IntentDistribution({
     );
   }
 
-  // Convert distribution object to array with percentages
-  const chartData = data ? distributionToArray(data.distribution, data.total_intents) : [];
+  // Use prop data directly (already IntentCategoryCount[]) or convert query response
+  const chartData: IntentCategoryCount[] =
+    propData !== undefined
+      ? propData
+      : queryData
+        ? distributionToArray(queryData.distribution, queryData.total_intents)
+        : [];
+
+  const displayTotal =
+    propTotalIntents ??
+    queryData?.total_intents ??
+    (propData ? propData.reduce((sum, c) => sum + c.count, 0) : 0);
 
   if (chartData.length === 0) {
     return <IntentDistributionEmpty title={title} className={className} />;
@@ -275,14 +306,27 @@ export function IntentDistribution({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">{title}</CardTitle>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Activity className="w-3.5 h-3.5 text-green-500 animate-pulse" />
-            <span>Live</span>
+          <div className="flex items-center gap-2">
+            {selectedCategory && onCategoryClick && (
+              <button
+                onClick={() => onCategoryClick(null)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                title="Clear filter"
+              >
+                <span className="capitalize">{selectedCategory.replace(/_/g, ' ')}</span>
+                <X className="w-3 h-3" />
+              </button>
+            )}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Activity className="w-3.5 h-3.5 text-green-500 animate-pulse" />
+              <span>Live</span>
+            </div>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          {data?.total_intents.toLocaleString() ?? 0} total events in last{' '}
-          {data?.time_range_hours ?? timeRangeHours}h
+          {propData
+            ? `${displayTotal.toLocaleString()} total events (projection)`
+            : `${displayTotal.toLocaleString()} total events in last ${queryData?.time_range_hours ?? timeRangeHours}h`}
         </p>
       </CardHeader>
       <CardContent
@@ -319,10 +363,24 @@ export function IntentDistribution({
               content={<CustomTooltip />}
               cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }}
             />
-            <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+            <Bar
+              dataKey="count"
+              radius={[0, 4, 4, 0]}
+              style={{ cursor: onCategoryClick ? 'pointer' : undefined }}
+              onClick={(data: { payload: IntentCategoryCount }, _index: number) => {
+                if (!onCategoryClick) return;
+                onCategoryClick(
+                  selectedCategory === data.payload.category ? null : data.payload.category
+                );
+              }}
+            >
               <LabelList dataKey="count" content={BarLabelContent} />
               {chartData.map((entry) => (
-                <Cell key={entry.category} fill={getIntentColor(entry.category)} />
+                <Cell
+                  key={entry.category}
+                  fill={getIntentColor(entry.category)}
+                  opacity={!selectedCategory || selectedCategory === entry.category ? 1 : 0.3}
+                />
               ))}
             </Bar>
           </BarChart>

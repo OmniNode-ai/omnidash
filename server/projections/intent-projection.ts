@@ -91,6 +91,9 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
   /** Cumulative count of all intent events ingested (never decremented on eviction). */
   private _totalIngested = 0;
 
+  /** Seen upstream event IDs for deduplication. Bounded to prevent unbounded growth. */
+  private seenIds = new Set<string>();
+
   /** Cached snapshot response, invalidated on each applyEvent call. */
   private _cachedSnapshot: {
     limit: number;
@@ -208,6 +211,26 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
   applyEvent(event: ProjectionEvent): boolean {
     if (!this.isIntentEvent(event)) return false;
 
+    // Deduplicate: the upstream omniintelligence service emits 3 identical Kafka
+    // messages per classification, each with a DIFFERENT event id but the SAME
+    // correlationId. Key on correlationId (from payload) as the dedup fingerprint.
+    // Fall back to a content fingerprint if correlationId is absent.
+    const dedupeKey = this.extractDedupeKey(event);
+    if (dedupeKey) {
+      if (this.seenIds.has(dedupeKey)) return false;
+      this.seenIds.add(dedupeKey);
+      // Bounded: evict oldest ~10% when at capacity to preserve recent dedup coverage.
+      // Set preserves insertion order so iteration yields oldest entries first.
+      if (this.seenIds.size > 10_000) {
+        const evictCount = Math.floor(this.seenIds.size * 0.1) || 1;
+        let i = 0;
+        for (const id of this.seenIds) {
+          if (i++ >= evictCount) break;
+          this.seenIds.delete(id);
+        }
+      }
+    }
+
     // Invalidate cached snapshot on any new event
     this._cachedSnapshot = null;
 
@@ -258,7 +281,7 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     return true;
   }
 
-  /** Clear all state (buffer, distribution, cursor, cache). */
+  /** Clear all state (buffer, distribution, cursor, cache, dedup set). */
   reset(): void {
     this.buffer = [];
     this.distributionMap.clear();
@@ -267,11 +290,41 @@ export class IntentProjectionView implements ProjectionView<IntentProjectionPayl
     this._lastEventTimeMs = null;
     this._totalIngested = 0;
     this._cachedSnapshot = null;
+    this.seenIds.clear();
   }
 
   // --------------------------------------------------------------------------
   // Internal helpers
   // --------------------------------------------------------------------------
+
+  /**
+   * Build a deduplication key for an intent event.
+   *
+   * The upstream omniintelligence service emits 3 Kafka messages per
+   * classification. Each message has a different event `id` but shares the
+   * same `correlationId`. We key on correlationId so all 3 copies are treated
+   * as the same event. Falls back to a content fingerprint when correlationId
+   * is absent (e.g., legacy or test events).
+   */
+  private extractDedupeKey(event: ProjectionEvent): string | null {
+    const p = event.payload;
+
+    // Primary: correlationId — unique per classification request, shared across duplicates
+    for (const field of ['correlationId', 'correlation_id']) {
+      const val = p[field];
+      if (typeof val === 'string' && val.length > 0) return `corr:${val}`;
+    }
+
+    // Fallback: sessionId + intentType + createdAt fingerprint
+    const session = p.sessionId ?? p.session_id ?? p.session_ref;
+    const intent = p.intentType ?? p.intent_type ?? p.intent_category;
+    const ts = p.createdAt ?? p.created_at ?? p.timestamp;
+    if (session && intent && ts) {
+      return `fp:${session}:${intent}:${ts}`;
+    }
+
+    return null; // No dedup possible — let it through
+  }
 
   private isIntentEvent(event: ProjectionEvent): boolean {
     return ACCEPTED_TYPES.has(event.type);

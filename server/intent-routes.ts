@@ -1,147 +1,40 @@
 /**
- * Intent Classification Routes
+ * Intent Routes
  *
- * REST API endpoints for querying intent classification data.
- * Uses event-based queries via Kafka for real-time intent data.
- *
- * Part of OMN-1516: Intent Classification Dashboard
+ * REST API endpoints for the Intent Dashboard (/intents).
+ * Manages a circular in-memory buffer of IntentRecord objects,
+ * provides time-range and session-based queries, and enforces
+ * per-IP rate limiting on all endpoints.
  */
 
-import { Router } from 'express';
-import { randomUUID } from 'crypto';
-import { z } from 'zod';
-import { getIntelligenceEvents } from './intelligence-event-adapter';
-import {
-  intentEventEmitter,
-  emitIntentUpdate,
-  emitIntentDistributionUpdate,
-  toSnakeCase,
-  type IntentRecord,
-  type IntentRecordPayload,
-} from './intent-events';
-
-export const intentRouter = Router();
+import { Router, type Request, type Response, type NextFunction } from 'express';
+import type { IntentRecord, IntentRecordPayload } from './intent-events';
+import { toSnakeCase } from './intent-events';
 
 // ============================================================================
-// Type Definitions
+// Constants
 // ============================================================================
 
-interface DistributionResponse {
-  ok: boolean;
-  distribution: Record<string, number>;
-  total_intents: number;
-  time_range_hours: number;
-}
+const _rawMaxStoredIntents = parseInt(process.env.MAX_STORED_INTENTS ?? '', 10);
+export const MAX_STORED_INTENTS =
+  isNaN(_rawMaxStoredIntents) || _rawMaxStoredIntents <= 0 ? 1000 : _rawMaxStoredIntents;
 
-interface SessionIntentsResponse {
-  intents: IntentRecordPayload[];
-  /** Number of intents returned in this response */
-  count: number;
-  /** Total intents available for this session (before limit applied) */
-  total_available: number;
-  session_ref: string;
-}
+const _rawRateLimitWindowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '', 10);
+export const RATE_LIMIT_WINDOW_MS =
+  isNaN(_rawRateLimitWindowMs) || _rawRateLimitWindowMs <= 0 ? 60000 : _rawRateLimitWindowMs;
 
-interface RecentIntentsResponse {
-  intents: IntentRecordPayload[];
-  /** Number of intents returned in this response */
-  count: number;
-  /** Total intents available (before limit applied) */
-  total_available: number;
-}
-
-interface StoreIntentResponse {
-  success: boolean;
-  intent_id: string;
-}
+const _rawRateLimitMaxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '', 10);
+export const RATE_LIMIT_MAX_REQUESTS =
+  isNaN(_rawRateLimitMaxRequests) || _rawRateLimitMaxRequests <= 0 ? 100 : _rawRateLimitMaxRequests;
 
 // ============================================================================
-// Input Sanitization
+// Circular Buffer
 // ============================================================================
 
-/**
- * Sanitize user-controlled strings for safe storage.
- *
- * This function:
- * - Trims leading/trailing whitespace
- * - Removes control characters that could cause issues in logs, databases, or JSON
- *
- * Security notes:
- * - HTML entity escaping is NOT applied here because:
- *   1. Data is returned via JSON API only (no server-side HTML rendering)
- *   2. React frontend auto-escapes text content in JSX (XSS protection built-in)
- *   3. Escaping here would cause double-encoding (e.g., "test & debug" → "test &amp; debug")
- * - If this data is ever rendered in server-side HTML templates, escape at render time
- *
- * @param input - The user-provided string to sanitize
- * @returns Sanitized string safe for storage and JSON API responses
- */
-function sanitizeString(input: string): string {
-  return (
-    input
-      .trim()
-      // Remove control characters (U+0000 to U+001F except tab/newline/carriage return, plus DEL)
-      // These can cause issues in logs, databases, terminals, and JSON parsing
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-  );
-}
+const intentBuffer: (IntentRecord | undefined)[] = new Array(MAX_STORED_INTENTS).fill(undefined);
+let bufferHead = 0;
+let bufferCount = 0;
 
-// Zod schema for POST /store request body validation
-const StoreIntentSchema = z.object({
-  sessionRef: z
-    .string()
-    .max(255)
-    .optional()
-    .transform((val) => (val ? sanitizeString(val) : val)),
-  intentCategory: z
-    .string()
-    .min(1, 'intentCategory cannot be empty')
-    .max(100)
-    .transform(sanitizeString),
-  // Use z.coerce.number() to handle both number and string inputs (e.g., 0.85 and "0.85")
-  confidence: z.coerce.number().min(0).max(1).optional().default(0.95),
-  keywords: z.array(z.string().max(100).transform(sanitizeString)).max(50).optional().default([]),
-});
-
-// Zod schemas for query parameter validation
-const DistributionQuerySchema = z.object({
-  time_range_hours: z.coerce.number().int().min(1).max(168).optional().default(24),
-});
-
-const SessionQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(1000).optional().default(100),
-  min_confidence: z.coerce.number().min(0).max(1).optional().default(0),
-});
-
-const RecentQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(1000).optional().default(50),
-  offset: z.coerce.number().int().min(0).max(10000).optional().default(0),
-  time_range_hours: z.coerce.number().int().min(1).max(168).optional().default(24),
-});
-
-const StoreQuerySchema = z.object({
-  emit_distribution: z.coerce.boolean().optional().default(true),
-});
-
-// ============================================================================
-// In-Memory Store (Circular Buffer for O(1) insertion)
-// ============================================================================
-
-// Configurable via environment variable, default 10000
-const MAX_STORED_INTENTS = parseInt(process.env.INTENT_STORE_MAX_SIZE || '10000', 10);
-
-// Circular buffer implementation for O(1) insertion
-// Instead of unshift() which is O(n), we use a fixed-size array with head tracking
-const intentBuffer: (IntentRecord | null)[] = new Array(MAX_STORED_INTENTS).fill(null);
-let bufferHead = 0; // Points to where the next item will be inserted
-let bufferCount = 0; // Number of items currently in buffer
-
-/**
- * Add intent to circular buffer with O(1) insertion time
- *
- * Performance: O(1) vs O(n) for unshift()
- * Memory: Fixed allocation of MAX_STORED_INTENTS slots
- */
 function addToStore(intent: IntentRecord): void {
   intentBuffer[bufferHead] = intent;
   bufferHead = (bufferHead + 1) % MAX_STORED_INTENTS;
@@ -150,138 +43,89 @@ function addToStore(intent: IntentRecord): void {
   }
 }
 
-/**
- * Get all intents from circular buffer in reverse chronological order (newest first)
- *
- * This maintains the same ordering as the previous unshift()-based implementation
- */
+function getBufferState(): { count: number; head: number } {
+  return { count: bufferCount, head: bufferHead };
+}
+
 function getAllIntentsFromBuffer(): IntentRecord[] {
   if (bufferCount === 0) return [];
-
   const result: IntentRecord[] = [];
-  // Start from the most recently added item (bufferHead - 1) and go backwards
   for (let i = 0; i < bufferCount; i++) {
-    const index = (bufferHead - 1 - i + MAX_STORED_INTENTS) % MAX_STORED_INTENTS;
-    // Defensive bounds check - should never trigger with correct modulo math,
-    // but guards against future refactoring errors
-    if (index < 0 || index >= MAX_STORED_INTENTS) {
-      console.error(`[intent-routes] Buffer index out of bounds: ${index}`);
-      continue;
-    }
-    const intent = intentBuffer[index];
-    if (intent !== null) {
-      result.push(intent);
+    const idx = (bufferHead - 1 - i + MAX_STORED_INTENTS) % MAX_STORED_INTENTS;
+    const item = intentBuffer[idx];
+    if (item !== undefined) {
+      result.push(item);
     }
   }
   return result;
 }
 
-/**
- * Get intents from circular buffer filtered by time range
- */
 function getIntentsFromStore(timeRangeHours: number): IntentRecord[] {
-  const cutoff = new Date(Date.now() - timeRangeHours * 60 * 60 * 1000);
-  return getAllIntentsFromBuffer().filter((intent) => new Date(intent.createdAt) >= cutoff);
+  const cutoff = Date.now() - timeRangeHours * 60 * 60 * 1000;
+  return getAllIntentsFromBuffer().filter(
+    (intent) => new Date(intent.createdAt).getTime() >= cutoff
+  );
 }
 
-/**
- * Get intents from circular buffer filtered by session
- * Returns both the sliced intents and the total available count before limiting
- */
 function getIntentsBySession(
   sessionRef: string,
   limit: number,
   minConfidence: number
 ): { intents: IntentRecord[]; totalAvailable: number } {
-  const filtered = getAllIntentsFromBuffer().filter(
+  const matching = getAllIntentsFromBuffer().filter(
     (intent) => intent.sessionRef === sessionRef && intent.confidence >= minConfidence
   );
   return {
-    intents: filtered.slice(0, limit),
-    totalAvailable: filtered.length,
+    intents: matching.slice(0, limit),
+    totalAvailable: matching.length,
   };
 }
 
+function resetBuffer(): void {
+  intentBuffer.fill(undefined);
+  bufferHead = 0;
+  bufferCount = 0;
+}
+
 // ============================================================================
-// Rate Limiting for POST /store
+// Rate Limiting
 // ============================================================================
 
-const rateLimitStore: Map<string, { count: number; resetTime: number }> = new Map();
-const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 100;
-// Maximum number of unique IPs to track. Prevents unbounded memory growth under attack.
-const RATE_LIMIT_MAX_IPS = parseInt(process.env.RATE_LIMIT_MAX_IPS || '10000', 10);
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+}
 
-/**
- * Evict expired entries from the rate limit store.
- * Returns the number of entries removed.
- */
-function evictExpiredRateLimitEntries(): number {
+const MAX_RATE_LIMIT_STORE_SIZE = 10000;
+
+const rateLimitStore = new Map<string, RateLimitEntry>();
+
+const rateLimitEvictionInterval = setInterval(() => {
   const now = Date.now();
-  let evictedCount = 0;
-  rateLimitStore.forEach((entry, ip) => {
-    if (now > entry.resetTime) {
-      rateLimitStore.delete(ip);
-      evictedCount++;
-    }
-  });
-  return evictedCount;
-}
+  for (const [ip, entry] of rateLimitStore) {
+    if (now > entry.resetTime) rateLimitStore.delete(ip);
+  }
+}, RATE_LIMIT_WINDOW_MS).unref();
 
-/**
- * Evict the oldest (soonest-to-expire) entry from the rate limit store.
- * Used as a fallback when max size is reached and no expired entries exist.
- */
-function evictOldestRateLimitEntry(): void {
-  let oldestIp: string | null = null;
-  let oldestResetTime = Infinity;
-
-  rateLimitStore.forEach((entry, ip) => {
-    if (entry.resetTime < oldestResetTime) {
-      oldestResetTime = entry.resetTime;
-      oldestIp = ip;
-    }
-  });
-
-  if (oldestIp !== null) {
-    rateLimitStore.delete(oldestIp);
+function pruneRateLimitStore(): void {
+  if (rateLimitStore.size <= MAX_RATE_LIMIT_STORE_SIZE) return;
+  // Sort all entries by resetTime and remove the oldest 20%
+  const entries = Array.from(rateLimitStore.entries()).sort(
+    ([, a], [, b]) => a.resetTime - b.resetTime
+  );
+  const pruneCount = Math.ceil(MAX_RATE_LIMIT_STORE_SIZE * 0.2);
+  for (let i = 0; i < pruneCount && i < entries.length; i++) {
+    rateLimitStore.delete(entries[i][0]);
   }
 }
 
-/**
- * Ensure the rate limit store does not exceed max size.
- * First clears expired entries, then evicts oldest if still at capacity.
- */
-function enforceRateLimitStoreMaxSize(): void {
-  if (rateLimitStore.size < RATE_LIMIT_MAX_IPS) {
-    return;
-  }
-
-  // First, try to clear expired entries
-  const evicted = evictExpiredRateLimitEntries();
-
-  // If still at max capacity, evict oldest entries until under limit
-  while (rateLimitStore.size >= RATE_LIMIT_MAX_IPS) {
-    evictOldestRateLimitEntry();
-  }
-}
-
-/**
- * Check if a request from the given IP is within rate limits.
- * Returns true if request is allowed, false if rate limit exceeded.
- *
- * Enforces max store size to prevent unbounded memory growth.
- */
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const entry = rateLimitStore.get(ip);
 
   if (!entry || now > entry.resetTime) {
-    // New entry needed - enforce max size before adding
-    if (!rateLimitStore.has(ip)) {
-      enforceRateLimitStoreMaxSize();
-    }
     rateLimitStore.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    pruneRateLimitStore();
     return true;
   }
 
@@ -293,527 +137,252 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-/**
- * Get remaining requests for an IP within the current window.
- */
 function getRateLimitRemaining(ip: string): number {
+  const now = Date.now();
   const entry = rateLimitStore.get(ip);
-  if (!entry || Date.now() > entry.resetTime) {
+
+  if (!entry || now > entry.resetTime) {
     return RATE_LIMIT_MAX_REQUESTS;
   }
+
   return Math.max(0, RATE_LIMIT_MAX_REQUESTS - entry.count);
 }
 
-/**
- * Get time until rate limit resets for an IP (in seconds).
- */
 function getRateLimitResetSeconds(ip: string): number {
+  const now = Date.now();
   const entry = rateLimitStore.get(ip);
-  if (!entry || Date.now() > entry.resetTime) {
+
+  if (!entry || now > entry.resetTime) {
     return Math.ceil(RATE_LIMIT_WINDOW_MS / 1000);
   }
-  return Math.ceil(Math.max(0, entry.resetTime - Date.now()) / 1000);
+
+  return Math.ceil((entry.resetTime - now) / 1000);
 }
 
-// Singleton guard to prevent multiple cleanup intervals during hot-reload.
-// In development with Vite HMR, module re-execution would otherwise create
-// duplicate intervals. Using globalThis ensures the interval reference survives
-// module replacement, preventing memory leaks and redundant cleanup operations.
-const RATE_LIMIT_CLEANUP_KEY = '__omnidash_intent_rate_limit_cleanup_interval__';
-
-// Clear any existing interval before setting a new one (handles HMR)
-if ((globalThis as Record<string, unknown>)[RATE_LIMIT_CLEANUP_KEY]) {
-  clearInterval((globalThis as Record<string, unknown>)[RATE_LIMIT_CLEANUP_KEY] as NodeJS.Timeout);
-}
-
-(globalThis as Record<string, unknown>)[RATE_LIMIT_CLEANUP_KEY] = setInterval(
-  () => {
-    const now = Date.now();
-    rateLimitStore.forEach((entry, ip) => {
-      if (now > entry.resetTime) {
-        rateLimitStore.delete(ip);
-      }
-    });
-  },
-  5 * 60 * 1000
-);
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Calculate distribution from intent records
- */
-function calculateDistribution(intents: IntentRecord[]): Record<string, number> {
-  const distribution: Record<string, number> = {};
-  for (const intent of intents) {
-    const category = intent.intentCategory || 'unknown';
-    distribution[category] = (distribution[category] || 0) + 1;
-  }
-  return distribution;
-}
-
-// ============================================================================
-// Routes
-// ============================================================================
-
-/**
- * GET /api/intents/distribution
- *
- * Returns category distribution counts for intents within the time range.
- *
- * Query parameters:
- * - time_range_hours: number (default: 24)
- *
- * Response:
- * {
- *   distribution: { [category]: count },
- *   total_intents: number,
- *   time_range_hours: number
- * }
- */
-intentRouter.get('/distribution', async (req, res) => {
-  try {
-    const queryResult = DistributionQuerySchema.safeParse(req.query);
-    if (!queryResult.success) {
-      return res.status(400).json({
-        ok: false,
-        error: 'Invalid query parameters',
-        message: queryResult.error.errors
-          .map((e) => `${e.path.join('.')}: ${e.message}`)
-          .join('; '),
-      });
-    }
-    const { time_range_hours: timeRangeHours } = queryResult.data;
-
-    // Try to get data from Kafka/intelligence service
-    // Check both that adapter exists AND is started (using public getter)
-    const intelligenceEvents = getIntelligenceEvents();
-    if (intelligenceEvents?.started) {
-      try {
-        const result = await intelligenceEvents.request(
-          'intent_distribution',
-          {
-            operation_type: 'INTENT_DISTRIBUTION',
-            time_range_hours: timeRangeHours,
-          },
-          5000
-        );
-
-        if (result?.distribution) {
-          const response: DistributionResponse = {
-            ok: true,
-            distribution: result.distribution,
-            total_intents: result.total_intents || 0,
-            time_range_hours: timeRangeHours,
-          };
-          return res.json(response);
-        }
-      } catch (kafkaError) {
-        if (process.env.DEBUG_INTENT_EVENTS === 'true') {
-          console.warn(
-            '[intent-routes] Kafka request failed, falling back to in-memory store:',
-            kafkaError
-          );
-        }
-      }
-    }
-
-    // Fallback: use in-memory store
-    const intents = getIntentsFromStore(timeRangeHours);
-    const distribution = calculateDistribution(intents);
-
-    const response: DistributionResponse = {
-      ok: true,
-      distribution,
-      total_intents: intents.length,
-      time_range_hours: timeRangeHours,
-    };
-
-    return res.json(response);
-  } catch (error) {
-    console.error('[intent-routes] Error fetching intent distribution:', error);
-    return res.status(500).json({
-      ok: false,
-      error: 'Failed to fetch intent distribution',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
-
-/**
- * GET /api/intents/session/:sessionId
- *
- * Returns intents for a specific session.
- *
- * Path parameters:
- * - sessionId: string
- *
- * Query parameters:
- * - limit: number (default: 100)
- * - min_confidence: number (default: 0.0)
- *
- * Response:
- * {
- *   intents: IntentRecord[],
- *   count: number,           // Number of intents returned in this response
- *   total_available: number, // Total intents matching filters (before limit applied)
- *   session_ref: string
- * }
- */
-intentRouter.get('/session/:sessionId', async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-
-    // Validate sessionId
-    if (!sessionId || sessionId.length === 0 || sessionId.length > 255) {
-      return res.status(400).json({
-        ok: false,
-        error: 'Invalid parameter',
-        message: 'sessionId must be between 1-255 characters',
-      });
-    }
-
-    const queryResult = SessionQuerySchema.safeParse(req.query);
-    if (!queryResult.success) {
-      return res.status(400).json({
-        ok: false,
-        error: 'Invalid query parameters',
-        message: queryResult.error.errors
-          .map((e) => `${e.path.join('.')}: ${e.message}`)
-          .join('; '),
-      });
-    }
-    const { limit, min_confidence: minConfidence } = queryResult.data;
-
-    // Try to get data from Kafka/intelligence service
-    // Check both that adapter exists AND is started (using public getter)
-    const intelligenceEvents = getIntelligenceEvents();
-    if (intelligenceEvents?.started) {
-      try {
-        const result = await intelligenceEvents.request(
-          'intent_session',
-          {
-            operation_type: 'INTENT_SESSION_QUERY',
-            session_ref: sessionId,
-            limit,
-            min_confidence: minConfidence,
-          },
-          5000
-        );
-
-        if (result?.intents) {
-          const response: SessionIntentsResponse = {
-            intents: result.intents,
-            count: result.intents.length,
-            total_available: result.total_count || result.intents.length,
-            session_ref: sessionId,
-          };
-          return res.json(response);
-        }
-      } catch (kafkaError) {
-        if (process.env.DEBUG_INTENT_EVENTS === 'true') {
-          console.warn(
-            '[intent-routes] Kafka request failed, falling back to in-memory store:',
-            kafkaError
-          );
-        }
-      }
-    }
-
-    // Fallback: use in-memory store
-    const { intents, totalAvailable } = getIntentsBySession(sessionId, limit, minConfidence);
-
-    const response: SessionIntentsResponse = {
-      intents: intents.map(toSnakeCase),
-      count: intents.length,
-      total_available: totalAvailable,
-      session_ref: sessionId,
-    };
-
-    return res.json(response);
-  } catch (error) {
-    console.error('[intent-routes] Error fetching session intents:', error);
-    return res.status(500).json({
-      ok: false,
-      error: 'Failed to fetch session intents',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
-
-/**
- * GET /api/intents/recent
- *
- * Returns recent intents across all sessions.
- *
- * Query parameters:
- * - limit: number (default: 50, max: 1000)
- * - offset: number (default: 0, max: 10000)
- * - time_range_hours: number (default: 24, max: 168)
- *
- * Response:
- * {
- *   intents: IntentRecord[],
- *   count: number,           // Number of intents returned in this response
- *   total_available: number  // Total intents in time range (before limit/offset applied)
- * }
- */
-intentRouter.get('/recent', async (req, res) => {
-  try {
-    const queryResult = RecentQuerySchema.safeParse(req.query);
-    if (!queryResult.success) {
-      return res.status(400).json({
-        ok: false,
-        error: 'Invalid query parameters',
-        message: queryResult.error.errors
-          .map((e) => `${e.path.join('.')}: ${e.message}`)
-          .join('; '),
-      });
-    }
-    const { limit, offset, time_range_hours: timeRangeHours } = queryResult.data;
-
-    // Try to get data from Kafka/intelligence service
-    // Check both that adapter exists AND is started (using public getter)
-    const intelligenceEvents = getIntelligenceEvents();
-    if (intelligenceEvents?.started) {
-      try {
-        const result = await intelligenceEvents.request(
-          'intent_recent',
-          {
-            operation_type: 'INTENT_RECENT_QUERY',
-            limit,
-            offset,
-            time_range_hours: timeRangeHours,
-          },
-          5000
-        );
-
-        if (result?.intents) {
-          // NOTE: Kafka service owns pagination - it applies offset/limit upstream.
-          // We trust the response is already paginated; do not slice again here.
-          const response: RecentIntentsResponse = {
-            intents: result.intents,
-            count: result.intents.length,
-            total_available: result.total_count || result.intents.length,
-          };
-          return res.json(response);
-        }
-      } catch (kafkaError) {
-        if (process.env.DEBUG_INTENT_EVENTS === 'true') {
-          console.warn(
-            '[intent-routes] Kafka request failed, falling back to in-memory store:',
-            kafkaError
-          );
-        }
-      }
-    }
-
-    // Fallback: use in-memory store
-    const allIntentsInRange = getIntentsFromStore(timeRangeHours);
-    const intents = allIntentsInRange.slice(offset, offset + limit);
-
-    const response: RecentIntentsResponse = {
-      intents: intents.map(toSnakeCase),
-      count: intents.length,
-      total_available: allIntentsInRange.length,
-    };
-
-    return res.json(response);
-  } catch (error) {
-    console.error('[intent-routes] Error fetching recent intents:', error);
-    return res.status(500).json({
-      ok: false,
-      error: 'Failed to fetch recent intents',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
-
-/**
- * POST /api/intents/store
- *
- * Store intent data for manual testing.
- * Emits to WebSocket subscribers for real-time updates.
- *
- * Query parameters:
- * - emit_distribution: boolean (default: true) - Whether to emit distribution update via WebSocket.
- *   Set to false for high-volume scenarios to reduce WebSocket traffic.
- *
- * Request body:
- * {
- *   sessionRef?: string,
- *   intentCategory: string,
- *   confidence?: number,
- *   keywords?: string[]
- * }
- *
- * Response:
- * {
- *   success: true,
- *   intent_id: string
- * }
- */
-intentRouter.post('/store', async (req, res) => {
-  try {
-    // Rate limiting check
-    // Attempt to get client IP from various sources
-    let clientIp = req.ip || req.socket.remoteAddress;
-    if (!clientIp) {
-      // Log when IP detection fails - helps debug proxy/load balancer issues
-      console.warn(
-        '[intent-routes] IP detection failed for rate limiting - falling back to "unknown". ' +
-          'Consider configuring trust proxy settings if behind a reverse proxy.'
-      );
-      clientIp = 'unknown';
-    }
-    if (!checkRateLimit(clientIp)) {
-      const remaining = getRateLimitRemaining(clientIp);
-      const resetSeconds = getRateLimitResetSeconds(clientIp);
-      res.set('X-RateLimit-Limit', String(RATE_LIMIT_MAX_REQUESTS));
-      res.set('X-RateLimit-Remaining', String(remaining));
-      res.set('X-RateLimit-Reset', String(resetSeconds));
-      res.set('Retry-After', String(resetSeconds));
-      return res.status(429).json({
-        ok: false,
-        error: 'Too Many Requests',
-        message: `Rate limit exceeded. Maximum ${RATE_LIMIT_MAX_REQUESTS} requests per minute.`,
-        retryAfterSeconds: resetSeconds,
-      });
-    }
-
-    // Validate request body with Zod
-    const parseResult = StoreIntentSchema.safeParse(req.body);
-
-    if (!parseResult.success) {
-      const errorMessages = parseResult.error.errors.map(
-        (err) => `${err.path.join('.')}: ${err.message}`
-      );
-      return res.status(400).json({
-        ok: false,
-        error: 'Validation failed',
-        message: errorMessages.join('; '),
-        details: parseResult.error.errors,
-      });
-    }
-
-    const { sessionRef, intentCategory, confidence, keywords } = parseResult.data;
-
-    // Validate query parameters
-    const queryResult = StoreQuerySchema.safeParse(req.query);
-    if (!queryResult.success) {
-      return res.status(400).json({
-        ok: false,
-        error: 'Invalid query parameters',
-        message: queryResult.error.errors
-          .map((e) => `${e.path.join('.')}: ${e.message}`)
-          .join('; '),
-      });
-    }
-    const { emit_distribution: emitDistribution } = queryResult.data;
-
-    // Create the intent record
-    const intent: IntentRecord = {
-      intentId: randomUUID(),
-      sessionRef: sessionRef || `session-${randomUUID().slice(0, 8)}`,
-      intentCategory,
-      confidence,
-      keywords,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Store in memory
-    addToStore(intent);
-
-    // Emit to WebSocket subscribers
-    emitIntentUpdate(intent);
-
-    // Conditionally emit updated distribution (can be disabled for high-volume scenarios)
-    if (emitDistribution) {
-      const recentIntents = getIntentsFromStore(24);
-      const distribution = calculateDistribution(recentIntents);
-      emitIntentDistributionUpdate({
-        distribution,
-        total_intents: recentIntents.length,
-        time_range_hours: 24,
-      });
-    }
-
-    const response: StoreIntentResponse = {
-      success: true,
-      intent_id: intent.intentId,
-    };
-
-    // Add rate limit headers to all responses (not just 429)
-    res.set('X-RateLimit-Limit', String(RATE_LIMIT_MAX_REQUESTS));
-    res.set('X-RateLimit-Remaining', String(getRateLimitRemaining(clientIp)));
-    res.set('X-RateLimit-Reset', String(getRateLimitResetSeconds(clientIp)));
-
-    return res.status(201).json(response);
-  } catch (error) {
-    console.error('[intent-routes] Error storing intent:', error);
-    return res.status(500).json({
-      ok: false,
-      error: 'Failed to store intent',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
-
-// ============================================================================
-// Test Exports (for unit testing internal functions)
-// ============================================================================
-
-/**
- * Reset circular buffer state (for testing purposes only)
- */
-function resetBuffer(): void {
-  intentBuffer.fill(null);
-  bufferHead = 0;
-  bufferCount = 0;
-}
-
-/**
- * Reset rate limit store (for testing purposes only)
- */
-function resetRateLimitStore(): void {
-  rateLimitStore.clear();
-}
-
-/**
- * Get current buffer state (for testing/debugging purposes)
- */
-function getBufferState(): { head: number; count: number; maxSize: number } {
-  return { head: bufferHead, count: bufferCount, maxSize: MAX_STORED_INTENTS };
-}
-
-/**
- * Get current rate limit store size (for testing/debugging purposes)
- */
 function getRateLimitStoreSize(): number {
   return rateLimitStore.size;
 }
 
-// Export internal functions for testing
-// These are prefixed with underscore to indicate they are internal/test-only
+function resetRateLimitStore(): void {
+  rateLimitStore.clear();
+}
+
+// ============================================================================
+// Graceful Shutdown
+// ============================================================================
+
+function gracefulShutdown(): void {
+  clearInterval(rateLimitEvictionInterval);
+  rateLimitStore.clear();
+}
+
+// Register SIGTERM handler so the module cleans up its interval and store.
+// server/index.ts owns the primary process.exit(); we only clear module state here.
+process.on('SIGTERM', () => {
+  gracefulShutdown();
+});
+
+// ============================================================================
+// Rate Limit Middleware
+// ============================================================================
+
+function rateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
+  // All unidentifiable clients share one rate-limit bucket
+  const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
+
+  if (!checkRateLimit(ip)) {
+    const resetSecs = getRateLimitResetSeconds(ip);
+    res.setHeader('X-RateLimit-Limit', RATE_LIMIT_MAX_REQUESTS);
+    res.setHeader('X-RateLimit-Remaining', 0);
+    res.setHeader('X-RateLimit-Reset', resetSecs);
+    res.status(429).json({
+      ok: false,
+      error: 'Rate limit exceeded',
+      retry_after_seconds: resetSecs,
+    });
+    return;
+  }
+
+  res.setHeader('X-RateLimit-Limit', RATE_LIMIT_MAX_REQUESTS);
+  res.setHeader('X-RateLimit-Remaining', getRateLimitRemaining(ip));
+  res.setHeader('X-RateLimit-Reset', getRateLimitResetSeconds(ip));
+  next();
+}
+
+// ============================================================================
+// Express Router
+// ============================================================================
+
+const router = Router();
+router.use(rateLimitMiddleware);
+
+/**
+ * POST /api/intents
+ * Store a new intent record in the circular buffer.
+ */
+router.post('/', (req: Request, res: Response) => {
+  const start = Date.now();
+  try {
+    const intent = req.body as IntentRecord;
+
+    // Validate all required fields are present and well-typed
+    const missingFields: string[] = [];
+    if (typeof intent?.intentId !== 'string' || intent.intentId === '') {
+      missingFields.push('intentId');
+    }
+    if (typeof intent?.intentCategory !== 'string' || intent.intentCategory === '') {
+      missingFields.push('intentCategory');
+    }
+    if (typeof intent?.sessionRef !== 'string' || intent.sessionRef === '') {
+      missingFields.push('sessionRef');
+    }
+    if (
+      typeof intent?.confidence !== 'number' ||
+      !isFinite(intent.confidence) ||
+      intent.confidence < 0 ||
+      intent.confidence > 1
+    ) {
+      missingFields.push('confidence');
+    }
+    if (typeof intent?.createdAt !== 'string' || isNaN(Date.parse(intent.createdAt))) {
+      missingFields.push('createdAt');
+    }
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        ok: false,
+        error: `Missing required fields: ${missingFields.join(', ')}`,
+      });
+    }
+
+    if (intent.keywords !== undefined && !Array.isArray(intent.keywords)) {
+      return res.status(400).json({ ok: false, error: 'keywords must be an array' });
+    }
+    addToStore(intent);
+    return res.json({
+      ok: true,
+      intentId: intent.intentId,
+      execution_time_ms: Date.now() - start,
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+/**
+ * GET /api/intents/recent?limit=N
+ * Returns the most recent intents, newest first (default 50, max 500).
+ */
+router.get('/recent', (_req: Request, res: Response) => {
+  const start = Date.now();
+  try {
+    const rawLimit = parseInt(String(_req.query.limit ?? '50'), 10);
+    if (isNaN(rawLimit) || rawLimit <= 0) {
+      return res.status(400).json({ error: 'Invalid limit' });
+    }
+    const limit = Math.min(rawLimit, 500);
+    const all = getAllIntentsFromBuffer();
+    const intents: IntentRecordPayload[] = all.slice(0, limit).map(toSnakeCase);
+    return res.json({
+      ok: true,
+      intents,
+      total_count: all.length,
+      time_range_hours: 24,
+      execution_time_ms: Date.now() - start,
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: String(err), intents: [], total_count: 0 });
+  }
+});
+
+/**
+ * GET /api/intents/distribution?time_range_hours=N
+ * Returns intent category counts for the given time range (default 24 hours).
+ */
+router.get('/distribution', (_req: Request, res: Response) => {
+  const start = Date.now();
+  try {
+    const timeRangeHours = parseFloat(String(_req.query.time_range_hours ?? '24'));
+    if (isNaN(timeRangeHours) || timeRangeHours <= 0 || !isFinite(timeRangeHours)) {
+      return res.status(400).json({ error: 'Invalid time_range_hours' });
+    }
+    const intents = getIntentsFromStore(timeRangeHours);
+    const distribution: Record<string, number> = {};
+    for (const intent of intents) {
+      distribution[intent.intentCategory] = (distribution[intent.intentCategory] ?? 0) + 1;
+    }
+    return res.json({
+      ok: true,
+      distribution,
+      total_intents: intents.length,
+      time_range_hours: timeRangeHours,
+      execution_time_ms: Date.now() - start,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      error: String(err),
+      distribution: {},
+      total_intents: 0,
+      time_range_hours: 24,
+    });
+  }
+});
+
+/**
+ * GET /api/intents/session/:sessionId?limit=N&min_confidence=0
+ * Returns intents for a specific session, newest first.
+ */
+router.get('/session/:sessionId', (req: Request, res: Response) => {
+  const start = Date.now();
+  try {
+    const sessionId = decodeURIComponent(req.params.sessionId);
+    const rawLimit = parseInt(String(req.query.limit ?? '100'), 10);
+    if (isNaN(rawLimit) || rawLimit <= 0) {
+      return res.status(400).json({ error: 'Invalid limit' });
+    }
+    const limit = Math.min(rawLimit, 500);
+    const minConfidence = parseFloat(String(req.query.min_confidence ?? '0'));
+    if (isNaN(minConfidence) || minConfidence < 0 || minConfidence > 1) {
+      return res.status(400).json({ error: 'Invalid min_confidence: must be 0–1' });
+    }
+    const { intents, totalAvailable } = getIntentsBySession(sessionId, limit, minConfidence);
+    const payload: IntentRecordPayload[] = intents.map(toSnakeCase);
+    return res.json({
+      ok: true,
+      intents: payload,
+      total_count: totalAvailable,
+      session_ref: sessionId,
+      execution_time_ms: Date.now() - start,
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: String(err), intents: [], total_count: 0 });
+  }
+});
+
+export default router;
+
+// ============================================================================
+// Test Helpers (exported for unit tests only — do not use in production code)
+// ============================================================================
+
 export const _testHelpers = {
-  // Buffer functions
-  addToStore,
-  getAllIntentsFromBuffer,
-  getIntentsFromStore,
-  getIntentsBySession,
-  resetBuffer,
-  getBufferState,
-  // Rate limit functions
-  checkRateLimit,
-  getRateLimitRemaining,
-  getRateLimitResetSeconds,
-  resetRateLimitStore,
-  getRateLimitStoreSize,
   // Constants
   MAX_STORED_INTENTS,
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX_REQUESTS,
-  RATE_LIMIT_MAX_IPS,
+
+  // Buffer operations
+  addToStore,
+  getBufferState,
+  getAllIntentsFromBuffer,
+  getIntentsFromStore,
+  getIntentsBySession,
+  resetBuffer,
+
+  // Rate limit operations
+  checkRateLimit,
+  getRateLimitRemaining,
+  getRateLimitResetSeconds,
+  getRateLimitStoreSize,
+  resetRateLimitStore,
 };
