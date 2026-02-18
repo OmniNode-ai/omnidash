@@ -461,6 +461,13 @@ export default function PatternEnforcement() {
     }
   }, [allSettled, timeWindow]);
 
+  // Reset the mock-data banner immediately when the time window changes so it
+  // does not persist while new queries are in-flight. The effect above will
+  // re-evaluate isUsingMockData once all queries settle for the new window.
+  useEffect(() => {
+    setIsUsingMockData(false);
+  }, [timeWindow]);
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (

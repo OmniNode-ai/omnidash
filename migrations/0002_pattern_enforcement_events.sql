@@ -9,7 +9,9 @@
 CREATE TABLE IF NOT EXISTS pattern_enforcement_events (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   -- Unique correlation ID for idempotency (ON CONFLICT DO NOTHING)
-  correlation_id   TEXT NOT NULL UNIQUE,
+  -- Uniqueness is enforced by the explicit index below (idx_pee_correlation_id);
+  -- the UNIQUE keyword is intentionally omitted here to avoid a redundant index.
+  correlation_id   TEXT NOT NULL,
   session_id       TEXT,
   repo             TEXT,
   language         TEXT NOT NULL DEFAULT 'unknown',
@@ -19,7 +21,7 @@ CREATE TABLE IF NOT EXISTS pattern_enforcement_events (
   pattern_lifecycle_state TEXT,
   -- outcome: hit | violation | corrected | false_positive
   outcome          TEXT NOT NULL CHECK (outcome IN ('hit', 'violation', 'corrected', 'false_positive')),
-  confidence       NUMERIC(5, 4),
+  confidence       NUMERIC(5, 4) CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
   agent_name       TEXT,
   -- When the enforcement event originally occurred
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),

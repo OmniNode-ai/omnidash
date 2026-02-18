@@ -465,6 +465,8 @@ export class ReadModelConsumer {
     fallbackId: string
   ): Promise<boolean> {
     const db = tryGetIntelligenceDb();
+    // Returning false means this event will be re-processed when the DB
+    // reconnects — the consumer watermark is not advanced.
     if (!db) return false;
 
     // Coerce the raw event into a typed shape
@@ -491,6 +493,18 @@ export class ReadModelConsumer {
       return true; // Treat as "handled" so we advance the watermark
     }
 
+    // pattern_name is required -- a missing value indicates a malformed event.
+    // Do NOT default to 'unknown'; that would silently aggregate unidentifiable
+    // patterns and corrupt per-pattern enforcement metrics.
+    const patternName = (evt.pattern_name as string) || (data.patternName as string);
+    if (!patternName) {
+      console.warn(
+        '[ReadModelConsumer] Enforcement event missing required "pattern_name" field ' +
+          `(correlation_id=${correlationId}) -- skipping malformed event`
+      );
+      return false;
+    }
+
     try {
       await db.execute(sql`
         INSERT INTO pattern_enforcement_events (
@@ -511,7 +525,7 @@ export class ReadModelConsumer {
           ${(evt.repo as string) ?? null},
           ${(evt.language as string) ?? 'unknown'},
           ${(evt.domain as string) ?? 'unknown'},
-          ${(evt.pattern_name as string) ?? 'unknown'},
+          ${patternName},
           ${(evt.pattern_lifecycle_state as string) ?? null},
           ${outcome},
           ${evt.confidence != null ? Number(evt.confidence) : null},

@@ -29,10 +29,17 @@ const router = Router();
 // GET /api/enforcement/summary?window=7d
 // ============================================================================
 
-router.get('/summary', (_req, res) => {
+router.get('/summary', (req, res) => {
   try {
+    const window = (req.query.window as string) || '7d';
+    const validWindows = ['24h', '7d', '30d'];
+    if (!validWindows.includes(window)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    }
     // TODO(OMN-2275-followup): Replace with projectionService.getView('enforcement').getSnapshot()
-    // once the enforcement projection is implemented.
+    // once the enforcement projection is implemented. Use `window` to scope the query.
     const empty: EnforcementSummary = {
       total_evaluations: 0,
       hit_rate: 0,
@@ -53,9 +60,16 @@ router.get('/summary', (_req, res) => {
 // GET /api/enforcement/by-language?window=7d
 // ============================================================================
 
-router.get('/by-language', (_req, res) => {
+router.get('/by-language', (req, res) => {
   try {
-    // TODO(OMN-2275-followup): Replace with projection view query.
+    const window = (req.query.window as string) || '7d';
+    const validWindows = ['24h', '7d', '30d'];
+    if (!validWindows.includes(window)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    }
+    // TODO(OMN-2275-followup): Replace with projection view query scoped to `window`.
     const data: EnforcementByLanguage[] = [];
     return res.json(data);
   } catch (error) {
@@ -68,9 +82,16 @@ router.get('/by-language', (_req, res) => {
 // GET /api/enforcement/by-domain?window=7d
 // ============================================================================
 
-router.get('/by-domain', (_req, res) => {
+router.get('/by-domain', (req, res) => {
   try {
-    // TODO(OMN-2275-followup): Replace with projection view query.
+    const window = (req.query.window as string) || '7d';
+    const validWindows = ['24h', '7d', '30d'];
+    if (!validWindows.includes(window)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    }
+    // TODO(OMN-2275-followup): Replace with projection view query scoped to `window`.
     const data: EnforcementByDomain[] = [];
     return res.json(data);
   } catch (error) {
@@ -83,9 +104,16 @@ router.get('/by-domain', (_req, res) => {
 // GET /api/enforcement/violated-patterns?window=7d
 // ============================================================================
 
-router.get('/violated-patterns', (_req, res) => {
+router.get('/violated-patterns', (req, res) => {
   try {
-    // TODO(OMN-2275-followup): Replace with projection view query.
+    const window = (req.query.window as string) || '7d';
+    const validWindows = ['24h', '7d', '30d'];
+    if (!validWindows.includes(window)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    }
+    // TODO(OMN-2275-followup): Replace with projection view query scoped to `window`.
     const data: ViolatedPattern[] = [];
     return res.json(data);
   } catch (error) {
@@ -98,9 +126,16 @@ router.get('/violated-patterns', (_req, res) => {
 // GET /api/enforcement/trend?window=7d
 // ============================================================================
 
-router.get('/trend', (_req, res) => {
+router.get('/trend', (req, res) => {
   try {
-    // TODO(OMN-2275-followup): Replace with projection view query.
+    const window = (req.query.window as string) || '7d';
+    const validWindows = ['24h', '7d', '30d'];
+    if (!validWindows.includes(window)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    }
+    // TODO(OMN-2275-followup): Replace with projection view query scoped to `window`.
     const data: EnforcementTrendPoint[] = [];
     return res.json(data);
   } catch (error) {

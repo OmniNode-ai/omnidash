@@ -39,9 +39,19 @@ class EnforcementSource {
   private baseUrl = buildApiUrl('/api/enforcement');
   private _mockEndpoints = new Set<string>();
 
-  /** True if any endpoint fell back to mock data. */
+  /**
+   * True if any of the main data endpoints fell back to mock data.
+   *
+   * Explicitly checks the three primary endpoints (summary, by-language,
+   * by-domain) so that an empty response from ANY of them triggers the
+   * demo-mode banner — not just a zero-evaluation summary.
+   */
   get isUsingMockData(): boolean {
-    return this._mockEndpoints.size > 0;
+    return (
+      this._mockEndpoints.has('summary') ||
+      this._mockEndpoints.has('by-language') ||
+      this._mockEndpoints.has('by-domain')
+    );
   }
 
   private markReal(endpoint: string): void {
