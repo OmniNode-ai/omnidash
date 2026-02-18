@@ -250,6 +250,30 @@ describe('Cost Routes', () => {
       expect(res.body.total_cost_usd).toBe(0);
       consoleWarnSpy.mockRestore();
     });
+
+    it('should use ensureFresh when no ?window= param is provided (same as explicit ?window=7d)', async () => {
+      mockEnsureFresh.mockResolvedValue(emptyPayload());
+
+      await request(app).get('/api/costs/summary').expect(200);
+
+      expect(mockEnsureFresh).toHaveBeenCalled();
+      expect(mockEnsureFreshForWindow).not.toHaveBeenCalled();
+    });
+
+    it('should include degraded and window in response when ensureFreshForWindow returns a degraded payload', async () => {
+      const degradedPayload: CostMetricsPayload = {
+        ...makePayload(),
+        degraded: true,
+        window: '7d',
+      };
+      mockEnsureFreshForWindow.mockResolvedValue(degradedPayload);
+
+      const res = await request(app).get('/api/costs/summary?window=24h').expect(200);
+
+      expect(mockEnsureFreshForWindow).toHaveBeenCalledWith('24h');
+      expect(res.body.degraded).toBe(true);
+      expect(res.body.window).toBe('7d');
+    });
   });
 
   // =========================================================================

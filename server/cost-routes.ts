@@ -108,7 +108,12 @@ router.get('/summary', async (req, res) => {
     }
 
     const payload = await getPayloadForWindow(view, timeWindow);
-    return res.json(payload.summary);
+    // Propagate degraded/window fields when ensureFreshForWindow() fell back to
+    // the 7d cache so clients can detect the window mismatch.
+    const body: Record<string, unknown> = { ...payload.summary };
+    if (payload.degraded) body.degraded = true;
+    if (payload.window !== undefined) body.window = payload.window;
+    return res.json(body);
   } catch (error) {
     console.error('[costs] Error fetching summary:', error);
     return res.status(500).json({ error: 'Failed to fetch cost summary' });
@@ -132,6 +137,11 @@ router.get('/trend', async (req, res) => {
     }
 
     const payload = await getPayloadForWindow(view, timeWindow);
+    // Propagate degraded/window fields when ensureFreshForWindow() fell back to
+    // the 7d cache so clients can detect the window mismatch.
+    if (payload.degraded) {
+      return res.json({ data: payload.trend, degraded: true, window: payload.window });
+    }
     return res.json(payload.trend);
   } catch (error) {
     console.error('[costs] Error fetching trend:', error);
@@ -231,6 +241,11 @@ router.get('/token-usage', async (req, res) => {
     }
 
     const payload = await getPayloadForWindow(view, timeWindow);
+    // Propagate degraded/window fields when ensureFreshForWindow() fell back to
+    // the 7d cache so clients can detect the window mismatch.
+    if (payload.degraded) {
+      return res.json({ data: payload.tokenUsage, degraded: true, window: payload.window });
+    }
     return res.json(payload.tokenUsage);
   } catch (error) {
     console.error('[costs] Error fetching token-usage:', error);

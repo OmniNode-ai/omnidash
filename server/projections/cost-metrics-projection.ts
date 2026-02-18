@@ -132,6 +132,14 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
     };
   }
 
+  /** Override reset() to also clear the per-window caches maintained by this subclass. */
+  override reset(): void {
+    super.reset();
+    this._windowCache.clear();
+    this._windowCacheExpiresAt.clear();
+    this._windowRefreshInFlight.clear();
+  }
+
   protected async querySnapshot(db: Db): Promise<CostMetricsPayload> {
     // Default window for the pre-warmed snapshot: 7d
     const window: CostTimeWindow = '7d';
@@ -298,7 +306,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         prompt_tokens: sql<number>`COALESCE(SUM(${lca.promptTokens}), 0)::bigint`,
         completion_tokens: sql<number>`COALESCE(SUM(${lca.completionTokens}), 0)::bigint`,
         request_count: sql<number>`COALESCE(SUM(${lca.requestCount}), 0)::int`,
-        usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
+        usage_source: sql<string | null>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
       .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
@@ -335,7 +343,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         estimated_cost: sql<string>`COALESCE(SUM(${lca.estimatedCostUsd}::numeric), 0)::text`,
         total_tokens: sql<number>`COALESCE(SUM(${lca.totalTokens}), 0)::bigint`,
         session_count: sql<number>`COUNT(DISTINCT ${lca.sessionId}) FILTER (WHERE ${lca.sessionId} IS NOT NULL)::int`,
-        usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
+        usage_source: sql<string | null>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
       .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
@@ -372,7 +380,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         prompt_tokens: sql<number>`COALESCE(SUM(${lca.promptTokens}), 0)::bigint`,
         completion_tokens: sql<number>`COALESCE(SUM(${lca.completionTokens}), 0)::bigint`,
         injection_count: sql<number>`COALESCE(SUM(${lca.requestCount}), 0)::int`,
-        usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
+        usage_source: sql<string | null>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
       .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
@@ -418,7 +426,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         completion_tokens: sql<number>`COALESCE(SUM(${lca.completionTokens}), 0)::bigint`,
         total_tokens: sql<number>`COALESCE(SUM(${lca.totalTokens}), 0)::bigint`,
         // Dominant usage source for the bucket
-        usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
+        usage_source: sql<string | null>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
       // Note: excludes zero-cost completions (e.g. cached responses or free-tier model calls)
@@ -460,6 +468,18 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
    * surface DB errors to users, but callers need to know the mismatch occurred.
    */
   async ensureFreshForWindow(window: CostTimeWindow): Promise<CostMetricsPayload> {
+    // Guard: '7d' must never be routed here — it is handled by the base-class
+    // TTL cache via ensureFresh(). Calling ensureFreshForWindow('7d') would
+    // create a duplicate per-window cache entry for the same data, wasting
+    // memory and causing the two caches to drift slightly out of sync.
+    if (window === '7d') {
+      console.warn(
+        '[cost-metrics] ensureFreshForWindow called with default window "7d" — redirecting to ensureFresh(). ' +
+          'Use ensureFresh() directly for the default window.'
+      );
+      return this.ensureFresh();
+    }
+
     // Return the per-window cached snapshot if it is still fresh.
     const cachedPayload = this._windowCache.get(window);
     const expiresAt = this._windowCacheExpiresAt.get(window) ?? 0;
