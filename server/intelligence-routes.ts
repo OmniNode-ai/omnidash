@@ -2929,7 +2929,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
  *   {
  *     id: "uuid",
  *     serviceName: "PostgreSQL",
- *     serviceUrl: "postgresql://192.168.86.200:5436",
+ *     serviceUrl: "postgresql://<host>:<port>",
  *     serviceType: "database",
  *     healthStatus: "healthy",
  *     lastHealthCheck: "2025-10-29T12:00:00Z"
