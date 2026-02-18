@@ -14,6 +14,7 @@ import { EventBusProjection } from './projections/event-bus-projection';
 import { ExtractionMetricsProjection } from './projections/extraction-metrics-projection';
 import { EffectivenessMetricsProjection } from './projections/effectiveness-metrics-projection';
 import { CostMetricsProjection } from './projections/cost-metrics-projection';
+import { BaselinesProjection } from './projections/baselines-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
@@ -65,6 +66,8 @@ export const extractionMetricsProjection = new ExtractionMetricsProjection();
 export const effectivenessMetricsProjection = new EffectivenessMetricsProjection();
 /** Cost trend projection (OMN-2300). Queries llm_cost_aggregates table. */
 export const costMetricsProjection = new CostMetricsProjection();
+/** Baselines & ROI projection (OMN-2331). Queries baselines_* tables. */
+export const baselinesProjection = new BaselinesProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
@@ -74,6 +77,9 @@ if (!projectionService.getView(effectivenessMetricsProjection.viewId)) {
 }
 if (!projectionService.getView(costMetricsProjection.viewId)) {
   projectionService.registerView(costMetricsProjection);
+}
+if (!projectionService.getView(baselinesProjection.viewId)) {
+  projectionService.registerView(baselinesProjection);
 }
 
 // ============================================================================

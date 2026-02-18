@@ -909,4 +909,157 @@ export const insertLlmCostAggregateSchema = createInsertSchema(llmCostAggregates
 
 // Export TypeScript types
 export type LlmCostAggregateRow = typeof llmCostAggregates.$inferSelect;
+
+// ============================================================================
+// Baselines & ROI Tables (OMN-2331)
+//
+// These tables persist snapshots produced by the upstream baselines-computed
+// Kafka event (onex.evt.omnibase-infra.baselines-computed.v1).
+//
+// Snapshot lifecycle:
+//   1. ReadModelConsumer receives BaselinesSnapshotEvent from Kafka.
+//   2. It upserts baselines_snapshots, then replaces the child rows for that
+//      snapshot_id (deletes old, inserts fresh) in a single transaction.
+//   3. baselines-routes.ts queries the latest snapshot (MAX computed_at_utc)
+//      and joins child tables to serve the four REST endpoints.
+// ============================================================================
+
+/**
+ * Baselines Snapshots Table
+ *
+ * One row per emitted snapshot. The "latest" snapshot is determined by
+ * MAX(computed_at_utc). Routes always query the latest snapshot — they do NOT
+ * aggregate across multiple snapshots.
+ */
+export const baselinesSnapshots = pgTable(
+  'baselines_snapshots',
+  {
+    /** UUID set by the upstream producer; used as the dedup/upsert key. */
+    snapshotId: uuid('snapshot_id').primaryKey(),
+    /** Schema version carried in the event (1 = initial). */
+    contractVersion: integer('contract_version').notNull().default(1),
+    /** When the upstream service computed this snapshot (UTC). */
+    computedAtUtc: timestamp('computed_at_utc', { withTimezone: true }).notNull(),
+    /** Start of the evaluation window (null = rolling / no fixed start). */
+    windowStartUtc: timestamp('window_start_utc', { withTimezone: true }),
+    /** End of the evaluation window (null = rolling / open end). */
+    windowEndUtc: timestamp('window_end_utc', { withTimezone: true }),
+    /** When this row was inserted/updated by the projection. */
+    projectedAt: timestamp('projected_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    /** Primary query: find the latest snapshot fast. */
+    index('idx_baselines_snapshots_computed').on(table.computedAtUtc),
+  ]
+);
+
+export const insertBaselinesSnapshotSchema = createInsertSchema(baselinesSnapshots);
+export type BaselinesSnapshotRow = typeof baselinesSnapshots.$inferSelect;
+export type InsertBaselinesSnapshot = typeof baselinesSnapshots.$inferInsert;
+
+/**
+ * Baselines Comparisons Table
+ *
+ * Mirrors BaselinesComparisonRow from the event payload.
+ * Each row belongs to exactly one snapshot_id.
+ * Replaced atomically on each new snapshot (delete-then-insert).
+ */
+export const baselinesComparisons = pgTable(
+  'baselines_comparisons',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    snapshotId: uuid('snapshot_id').notNull(),
+    patternId: text('pattern_id').notNull(),
+    patternName: text('pattern_name').notNull(),
+    sampleSize: integer('sample_size').notNull().default(0),
+    windowStart: text('window_start').notNull().default(''),
+    windowEnd: text('window_end').notNull().default(''),
+    /** Stored as JSONB: DeltaMetric */
+    tokenDelta: jsonb('token_delta').notNull(),
+    /** Stored as JSONB: DeltaMetric */
+    timeDelta: jsonb('time_delta').notNull(),
+    /** Stored as JSONB: DeltaMetric */
+    retryDelta: jsonb('retry_delta').notNull(),
+    /** Stored as JSONB: DeltaMetric */
+    testPassRateDelta: jsonb('test_pass_rate_delta').notNull(),
+    /** Stored as JSONB: DeltaMetric */
+    reviewIterationDelta: jsonb('review_iteration_delta').notNull(),
+    /** 'promote' | 'shadow' | 'suppress' | 'fork' */
+    recommendation: text('recommendation').notNull(),
+    /** 'high' | 'medium' | 'low' */
+    confidence: text('confidence').notNull(),
+    rationale: text('rationale').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_baselines_comparisons_snapshot').on(table.snapshotId),
+    index('idx_baselines_comparisons_pattern').on(table.patternId),
+    index('idx_baselines_comparisons_recommendation').on(table.recommendation),
+  ]
+);
+
+export const insertBaselinesComparisonSchema = createInsertSchema(baselinesComparisons);
+export type BaselinesComparisonRow = typeof baselinesComparisons.$inferSelect;
+export type InsertBaselinesComparison = typeof baselinesComparisons.$inferInsert;
+
+/**
+ * Baselines Trend Table
+ *
+ * Mirrors BaselinesTrendRow (ROITrendPoint) from the event payload.
+ * Each row belongs to exactly one snapshot_id.
+ * Replaced atomically on each new snapshot (delete-then-insert).
+ */
+export const baselinesTrend = pgTable(
+  'baselines_trend',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    snapshotId: uuid('snapshot_id').notNull(),
+    /** ISO date string (YYYY-MM-DD) for the data point. */
+    date: text('date').notNull(),
+    avgCostSavings: numeric('avg_cost_savings', { precision: 8, scale: 6 }).notNull().default('0'),
+    avgOutcomeImprovement: numeric('avg_outcome_improvement', { precision: 8, scale: 6 })
+      .notNull()
+      .default('0'),
+    comparisonsEvaluated: integer('comparisons_evaluated').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_baselines_trend_snapshot').on(table.snapshotId),
+    index('idx_baselines_trend_date').on(table.date),
+  ]
+);
+
+export const insertBaselinesTrendSchema = createInsertSchema(baselinesTrend);
+export type BaselinesTrendRow = typeof baselinesTrend.$inferSelect;
+export type InsertBaselinesTrend = typeof baselinesTrend.$inferInsert;
+
+/**
+ * Baselines Breakdown Table
+ *
+ * Mirrors RecommendationBreakdown from the event payload.
+ * Each row belongs to exactly one snapshot_id.
+ * Replaced atomically on each new snapshot (delete-then-insert).
+ */
+export const baselinesBreakdown = pgTable(
+  'baselines_breakdown',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    snapshotId: uuid('snapshot_id').notNull(),
+    /** 'promote' | 'shadow' | 'suppress' | 'fork' */
+    action: text('action').notNull(),
+    count: integer('count').notNull().default(0),
+    avgConfidence: numeric('avg_confidence', { precision: 5, scale: 4 }).notNull().default('0'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_baselines_breakdown_snapshot').on(table.snapshotId),
+    index('idx_baselines_breakdown_action').on(table.action),
+  ]
+);
+
+export const insertBaselinesBreakdownSchema = createInsertSchema(baselinesBreakdown);
+export type BaselinesBreakdownRow = typeof baselinesBreakdown.$inferSelect;
+export type InsertBaselinesBreakdown = typeof baselinesBreakdown.$inferInsert;
+
+// Previously at end of file — kept here for import compatibility
 export type InsertLlmCostAggregate = typeof llmCostAggregates.$inferInsert;

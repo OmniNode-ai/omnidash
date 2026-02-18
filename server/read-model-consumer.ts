@@ -32,14 +32,24 @@ import {
   agentActions,
   agentTransformationEvents,
   llmCostAggregates,
+  baselinesSnapshots,
+  baselinesComparisons,
+  baselinesTrend,
+  baselinesBreakdown,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
   InsertAgentAction,
   InsertAgentTransformationEvent,
   InsertLlmCostAggregate,
+  InsertBaselinesSnapshot,
+  InsertBaselinesComparison,
+  InsertBaselinesTrend,
+  InsertBaselinesBreakdown,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
+import { baselinesProjection } from './projection-bootstrap';
+import { emitBaselinesUpdate } from './baselines-events';
 
 /**
  * Derive a deterministic UUID-shaped string from Kafka message coordinates.
@@ -83,6 +93,7 @@ const READ_MODEL_TOPICS = [
   'agent-transformation-events',
   'onex.evt.omniclaude.pattern-enforcement.v1',
   'onex.evt.omniclaude.llm-cost-reported.v1',
+  'onex.evt.omnibase-infra.baselines-computed.v1',
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -261,6 +272,9 @@ export class ReadModelConsumer {
           break;
         case 'onex.evt.omniclaude.llm-cost-reported.v1':
           projected = await this.projectLlmCostEvent(parsed);
+          break;
+        case 'onex.evt.omnibase-infra.baselines-computed.v1':
+          projected = await this.projectBaselinesSnapshot(parsed, partition, message.offset);
           break;
         default:
           console.warn(
@@ -708,6 +722,174 @@ export class ReadModelConsumer {
       }
       throw err;
     }
+
+    return true;
+  }
+
+  /**
+   * Project a baselines snapshot event into the baselines_* tables (OMN-2331).
+   *
+   * Upserts the snapshot header into baselines_snapshots, then atomically
+   * replaces child rows (comparisons, trend, breakdown) for that snapshot_id.
+   * The replacement is delete-then-insert: old rows for the same snapshot_id
+   * are deleted first so re-delivery of the same event is safe (idempotent).
+   *
+   * Returns true when written, false when the DB is unavailable.
+   */
+  private async projectBaselinesSnapshot(
+    data: Record<string, unknown>,
+    partition: number,
+    offset: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    // snapshot_id is required — it is the dedup key.
+    // Fall back to a deterministic hash so that malformed events with a missing
+    // snapshot_id still produce a stable key (idempotent on replay).
+    const snapshotId =
+      (data.snapshot_id as string) ||
+      deterministicCorrelationId('baselines-computed', partition, offset);
+
+    const contractVersion = Number(data.contract_version ?? 1);
+    const computedAtUtc = safeParseDate(
+      data.computed_at_utc ?? data.computedAtUtc ?? data.computed_at
+    );
+    const windowStartUtc = data.window_start_utc
+      ? safeParseDate(data.window_start_utc)
+      : data.windowStartUtc
+        ? safeParseDate(data.windowStartUtc)
+        : null;
+    const windowEndUtc = data.window_end_utc
+      ? safeParseDate(data.window_end_utc)
+      : data.windowEndUtc
+        ? safeParseDate(data.windowEndUtc)
+        : null;
+
+    // Parse child arrays from the event payload.
+    // These may be under camelCase or snake_case keys depending on producer.
+    const rawComparisons = Array.isArray(data.comparisons) ? data.comparisons : [];
+    const rawTrend = Array.isArray(data.trend) ? data.trend : [];
+    const rawBreakdown = Array.isArray(data.breakdown) ? data.breakdown : [];
+
+    try {
+      // Upsert the snapshot header.
+      const snapshotRow: InsertBaselinesSnapshot = {
+        snapshotId,
+        contractVersion,
+        computedAtUtc,
+        windowStartUtc: windowStartUtc ?? undefined,
+        windowEndUtc: windowEndUtc ?? undefined,
+      };
+
+      await db
+        .insert(baselinesSnapshots)
+        .values(snapshotRow)
+        .onConflictDoUpdate({
+          target: baselinesSnapshots.snapshotId,
+          set: {
+            contractVersion: snapshotRow.contractVersion,
+            computedAtUtc: snapshotRow.computedAtUtc,
+            windowStartUtc: snapshotRow.windowStartUtc,
+            windowEndUtc: snapshotRow.windowEndUtc,
+            projectedAt: new Date(),
+          },
+        });
+
+      // Replace child rows: delete old, insert fresh.
+      // ON DELETE CASCADE (FK) means we only need to delete from the snapshots
+      // table to cascade. However, we upsert the snapshot above (not delete it),
+      // so we delete child rows explicitly.
+      await db
+        .delete(baselinesComparisons)
+        .where(sql`${baselinesComparisons.snapshotId} = ${snapshotId}`);
+
+      if (rawComparisons.length > 0) {
+        const comparisonRows: InsertBaselinesComparison[] = (
+          rawComparisons as Record<string, unknown>[]
+        ).map((c) => ({
+          snapshotId,
+          patternId: String(c.pattern_id ?? c.patternId ?? ''),
+          patternName: String(c.pattern_name ?? c.patternName ?? ''),
+          sampleSize: Number(c.sample_size ?? c.sampleSize ?? 0),
+          windowStart: String(c.window_start ?? c.windowStart ?? ''),
+          windowEnd: String(c.window_end ?? c.windowEnd ?? ''),
+          tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
+          timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
+          retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
+          testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
+            string,
+            unknown
+          >,
+          reviewIterationDelta: (c.review_iteration_delta ??
+            c.reviewIterationDelta ??
+            {}) as Record<string, unknown>,
+          recommendation: String(c.recommendation ?? 'shadow'),
+          confidence: String(c.confidence ?? 'low'),
+          rationale: String(c.rationale ?? ''),
+        }));
+        await db.insert(baselinesComparisons).values(comparisonRows);
+      }
+
+      await db.delete(baselinesTrend).where(sql`${baselinesTrend.snapshotId} = ${snapshotId}`);
+
+      if (rawTrend.length > 0) {
+        const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[]).map(
+          (t) => ({
+            snapshotId,
+            date: String(t.date ?? ''),
+            avgCostSavings: String(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)),
+            avgOutcomeImprovement: String(
+              Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
+            ),
+            comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
+          })
+        );
+        await db.insert(baselinesTrend).values(trendRows);
+      }
+
+      await db
+        .delete(baselinesBreakdown)
+        .where(sql`${baselinesBreakdown.snapshotId} = ${snapshotId}`);
+
+      if (rawBreakdown.length > 0) {
+        const breakdownRows: InsertBaselinesBreakdown[] = (
+          rawBreakdown as Record<string, unknown>[]
+        ).map((b) => ({
+          snapshotId,
+          action: String(b.action ?? 'shadow'),
+          count: Number(b.count ?? 0),
+          avgConfidence: String(Number(b.avg_confidence ?? b.avgConfidence ?? 0)),
+        }));
+        await db.insert(baselinesBreakdown).values(breakdownRows);
+      }
+    } catch (err) {
+      // Degrade gracefully: if the table doesn't exist yet (migration not run),
+      // advance the watermark so the consumer is not stuck retrying indefinitely.
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (pgCode === '42P01' || (msg.includes('baselines_') && msg.includes('does not exist'))) {
+        console.warn(
+          '[ReadModelConsumer] baselines_* tables not yet created -- ' +
+            'run migrations to enable baselines projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    // Invalidate the baselines projection cache so the next API request
+    // returns fresh data from the newly projected snapshot.
+    baselinesProjection.reset();
+
+    // Notify WebSocket clients subscribed to the 'baselines' topic.
+    emitBaselinesUpdate(snapshotId);
+
+    console.log(
+      `[ReadModelConsumer] Projected baselines snapshot ${snapshotId} ` +
+        `(${rawComparisons.length} comparisons, ${rawTrend.length} trend points, ` +
+        `${rawBreakdown.length} breakdown rows)`
+    );
 
     return true;
   }

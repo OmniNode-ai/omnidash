@@ -24,6 +24,7 @@ import {
   type IntentRecentEventPayload,
 } from './intent-events';
 import { insightsEventEmitter } from './insights-events';
+import { baselinesEventEmitter } from './baselines-events';
 import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
@@ -491,6 +492,18 @@ export function setupWebSocket(httpServer: HTTPServer) {
     broadcast('INSIGHTS_UPDATE', { timestamp: Date.now() }, 'insights');
   };
   insightsEventEmitter.on('insights-update', insightsUpdateHandler);
+
+  // Baselines invalidation listener (OMN-2331)
+  // Tells clients to re-fetch baselines data when a new snapshot is projected.
+  // Uses baselinesEventEmitter so ReadModelConsumer can trigger it after projecting.
+  const baselinesUpdateHandler = (data: { snapshotId: string }) => {
+    broadcast(
+      'BASELINES_UPDATE',
+      { snapshotId: data.snapshotId, timestamp: Date.now() },
+      'baselines'
+    );
+  };
+  baselinesEventEmitter.on('baselines-update', baselinesUpdateHandler);
 
   // Node Registry event listeners
   registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {
@@ -1047,6 +1060,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Remove insights event listener (OMN-2306)
     insightsEventEmitter.removeListener('insights-update', insightsUpdateHandler);
+
+    // Remove baselines event listener (OMN-2331)
+    baselinesEventEmitter.removeListener('baselines-update', baselinesUpdateHandler);
 
     // Remove event bus data source listeners
     console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);
