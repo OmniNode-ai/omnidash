@@ -74,6 +74,9 @@ async function getPayloadForWindow(
 router.get('/summary', async (req, res) => {
   try {
     const window = parseWindow(req.query.window);
+    // NOTE: `includeEstimated` query parameter is accepted but not yet
+    // implemented. The response always includes estimated costs.
+    // TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
 
     const view = getCostView();
     if (!view) {
@@ -108,6 +111,9 @@ router.get('/summary', async (req, res) => {
 router.get('/trend', async (req, res) => {
   try {
     const window = parseWindow(req.query.window);
+    // NOTE: `includeEstimated` query parameter is accepted but not yet
+    // implemented. The response always includes estimated costs.
+    // TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
 
     const view = getCostView();
     if (!view) {
@@ -125,6 +131,9 @@ router.get('/trend', async (req, res) => {
 // ============================================================================
 // GET /api/costs/by-model?includeEstimated=false
 // ============================================================================
+// NOTE: `includeEstimated` query parameter is accepted but not yet
+// implemented. The response always includes estimated costs.
+// TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
 
 router.get('/by-model', async (_req, res) => {
   try {
@@ -144,6 +153,9 @@ router.get('/by-model', async (_req, res) => {
 // ============================================================================
 // GET /api/costs/by-repo?includeEstimated=false
 // ============================================================================
+// NOTE: `includeEstimated` query parameter is accepted but not yet
+// implemented. The response always includes estimated costs.
+// TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
 
 router.get('/by-repo', async (_req, res) => {
   try {
@@ -163,6 +175,9 @@ router.get('/by-repo', async (_req, res) => {
 // ============================================================================
 // GET /api/costs/by-pattern?includeEstimated=false
 // ============================================================================
+// NOTE: `includeEstimated` query parameter is accepted but not yet
+// implemented. The response always includes estimated costs.
+// TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
 
 router.get('/by-pattern', async (_req, res) => {
   try {
@@ -186,6 +201,9 @@ router.get('/by-pattern', async (_req, res) => {
 router.get('/token-usage', async (req, res) => {
   try {
     const window = parseWindow(req.query.window);
+    // NOTE: `includeEstimated` query parameter is accepted but not yet
+    // implemented. The response always includes estimated costs.
+    // TODO(OMN-2242): honour includeEstimated to filter out estimated rows.
 
     const view = getCostView();
     if (!view) {

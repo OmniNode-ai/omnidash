@@ -114,6 +114,13 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
 
   // --------------------------------------------------------------------------
   // Public query methods (routes may call these directly for window-specific data)
+  //
+  // NOTE: These methods accept a `Db` parameter directly and execute SQL
+  // immediately — they do NOT include graceful-degradation logic (i.e., they
+  // will throw if the DB is unavailable rather than falling back to a cached
+  // snapshot). Callers that need graceful degradation should use
+  // `ensureFreshForWindow()` instead, which handles the DB-unavailable case
+  // by falling back to `ensureFresh()` transparently.
   // --------------------------------------------------------------------------
 
   async querySummary(db: Db, window: CostTimeWindow = '7d'): Promise<CostSummary> {
@@ -175,7 +182,12 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
 
     const reportedCoverage = totalCost > 0 ? (reportedCost / totalCost) * 100 : 0;
     const avgCostPerSession = sessionCount > 0 ? totalCost / sessionCount : 0;
-    const costChangePct = priorCost > 0 ? ((totalCost - priorCost) / priorCost) * 100 : 0;
+    // When current cost drops to zero from a positive prior cost, the change is a full -100%.
+    // Without this special case the formula ((0 - priorCost) / priorCost) * 100 = -100 is
+    // mathematically correct, but the guard `priorCost > 0` would short-circuit to 0 when
+    // totalCost is also 0 — so we handle the zero-current case explicitly.
+    const costChangePct =
+      priorCost > 0 ? (totalCost === 0 ? -100 : ((totalCost - priorCost) / priorCost) * 100) : 0;
 
     return {
       total_cost_usd: totalCost,
@@ -197,6 +209,15 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
     const lca = llmCostAggregates;
     const cutoff = windowCutoff(window);
     const unit = truncUnit(window);
+
+    // Explicit allowlist guard before sql.raw() interpolation.
+    // truncUnit() already constrains the type to 'hour' | 'day', but this
+    // runtime check ensures no future refactor can introduce an unsafe value.
+    if (unit !== 'hour' && unit !== 'day') {
+      throw new Error(
+        `queryTrend: invalid truncation unit '${unit as string}' — must be 'hour' or 'day'`
+      );
+    }
 
     const rows = await db
       .select({
@@ -335,6 +356,13 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
     const cutoff = windowCutoff(window);
     const unit = truncUnit(window);
 
+    // Explicit allowlist guard before sql.raw() interpolation (same pattern as queryTrend).
+    if (unit !== 'hour' && unit !== 'day') {
+      throw new Error(
+        `queryTokenUsage: invalid truncation unit '${unit as string}' — must be 'hour' or 'day'`
+      );
+    }
+
     const rows = await db
       .select({
         bucket: sql<string>`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})::text`,
@@ -345,7 +373,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(gte(lca.bucketTime, cutoff))
+      .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.totalCostUsd)))
       .groupBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`)
       .orderBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`);
 
@@ -368,11 +396,22 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
    * Encapsulates the DB access so routes don't need to import tryGetIntelligenceDb.
    *
    * Falls back to cached/empty payload if the DB is unavailable.
+   *
+   * Degraded-state behavior: when `tryGetIntelligenceDb()` returns null (DB
+   * not configured or connection failed), this method silently falls back to
+   * `ensureFresh()`, which returns the most recent TTL-cached snapshot for the
+   * default 7d window (or an empty payload if no snapshot has been warmed yet).
+   * The caller receives a successful response with potentially stale or
+   * window-mismatched data rather than an error. This is intentional — the
+   * dashboard should degrade gracefully rather than surface DB errors to users.
+   * Callers that need to distinguish "DB unavailable" from "no data" should
+   * check `tryGetIntelligenceDb()` directly before calling this method.
    */
   async ensureFreshForWindow(window: CostTimeWindow): Promise<CostMetricsPayload> {
     const db = tryGetIntelligenceDb();
     if (!db) {
-      // DB unavailable — return cached snapshot or empty
+      // DB unavailable — return cached snapshot or empty (see degraded-state
+      // behavior note in the JSDoc above).
       return this.ensureFresh();
     }
     const [summary, trend, byModel, byRepo, byPattern, tokenUsage] = await Promise.all([
