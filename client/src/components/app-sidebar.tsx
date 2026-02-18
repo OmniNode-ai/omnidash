@@ -17,6 +17,7 @@ import {
   DollarSign,
   TrendingUp,
   ShieldAlert,
+  Cpu,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -163,6 +164,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/enforcement',
         icon: ShieldAlert,
         description: 'Enforcement hit rate, violations, and correction rate',
+      },
+      {
+        title: 'Context Enrichment',
+        url: '/enrichment',
+        icon: Cpu,
+        description: 'Hit rate per channel, token savings, latency distribution',
       },
     ],
   },
