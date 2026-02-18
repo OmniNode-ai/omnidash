@@ -162,8 +162,14 @@ router.get('/trend', async (req, res) => {
 // NOTE: window parameter is intentionally ignored; these views always return 30d data.
 // byModel/byRepo/byPattern are context panels that need a stable long-horizon distribution.
 // See queryByModel() in cost-metrics-projection.ts for the full rationale.
-router.get('/by-model', async (_req, res) => {
+router.get('/by-model', async (req, res) => {
   try {
+    // Signal to clients that their ?window= param was received but not applied.
+    // These endpoints always use a fixed 30d window for stable distribution context.
+    if (req.query.window !== undefined) {
+      res.setHeader('X-Window-Ignored', 'true');
+    }
+
     const view = getCostView();
     if (!view) {
       return res.json([]);
@@ -187,8 +193,14 @@ router.get('/by-model', async (_req, res) => {
 // NOTE: window parameter is intentionally ignored; these views always return 30d data.
 // byModel/byRepo/byPattern are context panels that need a stable long-horizon distribution.
 // See queryByRepo() in cost-metrics-projection.ts for the full rationale.
-router.get('/by-repo', async (_req, res) => {
+router.get('/by-repo', async (req, res) => {
   try {
+    // Signal to clients that their ?window= param was received but not applied.
+    // These endpoints always use a fixed 30d window for stable distribution context.
+    if (req.query.window !== undefined) {
+      res.setHeader('X-Window-Ignored', 'true');
+    }
+
     const view = getCostView();
     if (!view) {
       return res.json([]);
@@ -212,8 +224,14 @@ router.get('/by-repo', async (_req, res) => {
 // NOTE: window parameter is intentionally ignored; these views always return 30d data.
 // byModel/byRepo/byPattern are context panels that need a stable long-horizon distribution.
 // See queryByPattern() in cost-metrics-projection.ts for the full rationale.
-router.get('/by-pattern', async (_req, res) => {
+router.get('/by-pattern', async (req, res) => {
   try {
+    // Signal to clients that their ?window= param was received but not applied.
+    // These endpoints always use a fixed 30d window for stable distribution context.
+    if (req.query.window !== undefined) {
+      res.setHeader('X-Window-Ignored', 'true');
+    }
+
     const view = getCostView();
     if (!view) {
       return res.json([]);

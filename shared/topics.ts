@@ -256,12 +256,18 @@ export const SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED =
 /**
  * LLM cost reported by the omniclaude session-ended flow (OMN-2300 / OMN-2238).
  *
- * Wired to two consumers:
+ * Wired to two consumers — both are intentional:
  * 1. Event bus (server/event-consumer.ts) — included via OMNICLAUDE_EXTENDED_SUFFIXES
- *    in buildSubscriptionTopics() so real-time cost events are streamed to WebSocket clients.
+ *    in buildSubscriptionTopics() so real-time cost events are forwarded to WebSocket
+ *    clients (e.g. the live event stream on the cost-trends dashboard). The event-consumer
+ *    passes this topic through generically without special handling — it is included
+ *    solely so the raw event appears in the live WebSocket feed.
  * 2. Read-model consumer (server/read-model-consumer.ts) — the projectLlmCostEvent()
  *    handler upserts each event into the llm_cost_aggregates table for durable
  *    cost trend queries.
+ *
+ * The dual-consumer routing is intentional: real-time clients see events immediately
+ * via WebSocket while the read-model materializes them for persistent aggregation.
  */
 export const SUFFIX_OMNICLAUDE_LLM_COST_REPORTED = 'onex.evt.omniclaude.llm-cost-reported.v1';
 

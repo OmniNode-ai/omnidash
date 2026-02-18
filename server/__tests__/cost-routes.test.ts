@@ -447,6 +447,24 @@ describe('Cost Routes', () => {
       expect(mockEnsureFreshForWindow).not.toHaveBeenCalled();
     });
 
+    it('should set X-Window-Ignored header when ?window= is provided', async () => {
+      // by-model ignores the window param and always returns 30d data.
+      // The X-Window-Ignored header tells clients their ?window= was received but not applied.
+      mockEnsureFresh.mockResolvedValue(makePayload({ byModel: [] }));
+
+      const res = await request(app).get('/api/costs/by-model?window=24h').expect(200);
+
+      expect(res.headers['x-window-ignored']).toBe('true');
+    });
+
+    it('should NOT set X-Window-Ignored header when no ?window= param is provided', async () => {
+      mockEnsureFresh.mockResolvedValue(makePayload({ byModel: [] }));
+
+      const res = await request(app).get('/api/costs/by-model').expect(200);
+
+      expect(res.headers['x-window-ignored']).toBeUndefined();
+    });
+
     it('should return 500 on projection error', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       mockEnsureFresh.mockRejectedValue(new Error('DB error'));
@@ -502,6 +520,24 @@ describe('Cost Routes', () => {
 
       expect(mockEnsureFresh).toHaveBeenCalled();
       expect(mockEnsureFreshForWindow).not.toHaveBeenCalled();
+    });
+
+    it('should set X-Window-Ignored header when ?window= is provided', async () => {
+      // by-repo ignores the window param and always returns 30d data.
+      // The X-Window-Ignored header tells clients their ?window= was received but not applied.
+      mockEnsureFresh.mockResolvedValue(makePayload({ byRepo: [] }));
+
+      const res = await request(app).get('/api/costs/by-repo?window=24h').expect(200);
+
+      expect(res.headers['x-window-ignored']).toBe('true');
+    });
+
+    it('should NOT set X-Window-Ignored header when no ?window= param is provided', async () => {
+      mockEnsureFresh.mockResolvedValue(makePayload({ byRepo: [] }));
+
+      const res = await request(app).get('/api/costs/by-repo').expect(200);
+
+      expect(res.headers['x-window-ignored']).toBeUndefined();
     });
 
     it('should return 500 on projection error', async () => {
@@ -562,6 +598,24 @@ describe('Cost Routes', () => {
 
       expect(mockEnsureFresh).toHaveBeenCalled();
       expect(mockEnsureFreshForWindow).not.toHaveBeenCalled();
+    });
+
+    it('should set X-Window-Ignored header when ?window= is provided', async () => {
+      // by-pattern ignores the window param and always returns 30d data.
+      // The X-Window-Ignored header tells clients their ?window= was received but not applied.
+      mockEnsureFresh.mockResolvedValue(makePayload({ byPattern: [] }));
+
+      const res = await request(app).get('/api/costs/by-pattern?window=24h').expect(200);
+
+      expect(res.headers['x-window-ignored']).toBe('true');
+    });
+
+    it('should NOT set X-Window-Ignored header when no ?window= param is provided', async () => {
+      mockEnsureFresh.mockResolvedValue(makePayload({ byPattern: [] }));
+
+      const res = await request(app).get('/api/costs/by-pattern').expect(200);
+
+      expect(res.headers['x-window-ignored']).toBeUndefined();
     });
 
     it('should return 500 on projection error', async () => {

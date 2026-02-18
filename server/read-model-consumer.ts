@@ -601,9 +601,15 @@ export class ReadModelConsumer {
       ? usageSourceRaw
       : 'API';
 
+    // granularity must be one of 'hour' | 'day'.
+    // Default to 'hour' for unrecognized values. Follow the exact same pattern
+    // as the usageSource allowlist validation above.
+    const granularityRaw = (data.granularity as string) || 'hour';
+    const granularity = ['hour', 'day'].includes(granularityRaw) ? granularityRaw : 'hour';
+
     const row: InsertLlmCostAggregate = {
       bucketTime,
-      granularity: (data.granularity as string) || 'hour',
+      granularity,
       modelName: (data.model_name as string) || (data.modelName as string) || 'unknown',
       repoName: (data.repo_name as string) || (data.repoName as string) || undefined,
       patternId: (data.pattern_id as string) || (data.patternId as string) || undefined,
@@ -614,9 +620,13 @@ export class ReadModelConsumer {
       promptTokens: Number(data.prompt_tokens ?? data.promptTokens ?? 0),
       completionTokens: Number(data.completion_tokens ?? data.completionTokens ?? 0),
       totalTokens: Number(data.total_tokens ?? data.totalTokens ?? 0),
-      totalCostUsd: String(data.total_cost_usd ?? data.totalCostUsd ?? '0'),
-      reportedCostUsd: String(data.reported_cost_usd ?? data.reportedCostUsd ?? '0'),
-      estimatedCostUsd: String(data.estimated_cost_usd ?? data.estimatedCostUsd ?? '0'),
+      // Use || '0' (not ?? '0') so that empty-string values are also defaulted
+      // to '0'. The ?? operator only coalesces null/undefined, not ''. An empty
+      // string would pass through to PostgreSQL and fail the NOT NULL constraint
+      // or produce a bad numeric value.
+      totalCostUsd: String(data.total_cost_usd || data.totalCostUsd || '0'),
+      reportedCostUsd: String(data.reported_cost_usd || data.reportedCostUsd || '0'),
+      estimatedCostUsd: String(data.estimated_cost_usd || data.estimatedCostUsd || '0'),
     };
 
     // Validate that model_name is not 'unknown' when the event carries one.

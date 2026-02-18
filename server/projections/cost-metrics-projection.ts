@@ -183,7 +183,16 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
   async querySummary(db: Db, window: CostTimeWindow = '7d'): Promise<CostSummary> {
     const lca = llmCostAggregates;
     const cutoff = windowCutoff(window);
-    // Prior period starts 2x the window width back
+    // Prior period starts 2x the window width back from `cutoff`, giving a total
+    // lookback of 2× the selected window (e.g. 14d for 7d, 60d for 30d, 48h for
+    // 24h). This is intentional: querySummary needs two consecutive same-length
+    // windows to compute the cost_change_pct delta.
+    //
+    // Note on asymmetry: the breakdown panels (queryByModel / queryByRepo /
+    // queryByPattern) always use a fixed 30d window regardless of the trend window
+    // selected by the user, so their effective lookback is always exactly 30d —
+    // they do NOT use a prior period. This is by design: breakdown panels are
+    // stable context panels, not time-comparison panels.
     const windowMs =
       window === '24h'
         ? 24 * 60 * 60 * 1000
@@ -335,7 +344,12 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       prompt_tokens: Number(r.prompt_tokens),
       completion_tokens: Number(r.completion_tokens),
       request_count: Number(r.request_count),
-      usage_source: (r.usage_source || 'API') as UsageSource, // default to 'API' when no usageSource is recorded
+      // `|| 'API'` coerces both null (SQL NULL from mode() on an empty group) and
+      // empty-string '' (a data quality issue — empty-string should not be stored,
+      // but if it is, we treat it as missing and default to 'API').
+      // Note: (r.usage_source ?? '') || 'API' would be equivalent but more verbose;
+      // the simpler `||` form is fine because null is already falsy in JS.
+      usage_source: (r.usage_source || 'API') as UsageSource,
     }));
   }
 
@@ -370,7 +384,8 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         estimated_cost_usd: parseFloat(r.estimated_cost),
         total_tokens: Number(r.total_tokens),
         session_count: Number(r.session_count),
-        usage_source: (r.usage_source || 'API') as UsageSource, // default to 'API' when no usageSource is recorded
+        // Same null/empty-string handling as queryByModel — see comment there.
+        usage_source: (r.usage_source || 'API') as UsageSource,
       }));
   }
 
@@ -413,7 +428,8 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
           completion_tokens: Number(r.completion_tokens),
           injection_count: injectionCount,
           avg_cost_per_injection: injectionCount > 0 ? totalCost / injectionCount : 0,
-          usage_source: (r.usage_source || 'API') as UsageSource, // default to 'API' when no usageSource is recorded
+          // Same null/empty-string handling as queryByModel — see comment there.
+          usage_source: (r.usage_source || 'API') as UsageSource,
         };
       });
   }
@@ -452,6 +468,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       prompt_tokens: Number(r.prompt_tokens),
       completion_tokens: Number(r.completion_tokens),
       total_tokens: Number(r.total_tokens),
+      // Same null/empty-string handling as queryByModel — see comment there.
       usage_source: (r.usage_source || 'API') as UsageSource,
     }));
   }
