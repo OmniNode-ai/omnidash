@@ -31,11 +31,13 @@ import {
   agentRoutingDecisions,
   agentActions,
   agentTransformationEvents,
+  llmCostAggregates,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
   InsertAgentAction,
   InsertAgentTransformationEvent,
+  InsertLlmCostAggregate,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 
@@ -80,6 +82,7 @@ const READ_MODEL_TOPICS = [
   'agent-actions',
   'agent-transformation-events',
   'onex.evt.omniclaude.pattern-enforcement.v1',
+  'onex.evt.omniclaude.llm-cost-reported.v1',
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -251,6 +254,9 @@ export class ReadModelConsumer {
           break;
         case 'onex.evt.omniclaude.pattern-enforcement.v1':
           projected = await this.projectEnforcementEvent(parsed, fallbackId);
+          break;
+        case 'onex.evt.omniclaude.llm-cost-reported.v1':
+          projected = await this.projectLlmCostEvent(parsed);
           break;
         default:
           console.warn(
@@ -554,6 +560,145 @@ export class ReadModelConsumer {
         console.warn(
           '[ReadModelConsumer] pattern_enforcement_events table not yet created -- ' +
             'run migrations to enable enforcement projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  /**
+   * Project a LLM cost reported event into the `llm_cost_aggregates` table.
+   *
+   * The event is published by the omniclaude session-ended flow (OMN-2300 / OMN-2238)
+   * once per session and carries pre-aggregated token usage and cost data.
+   * Each event is inserted as a single row with granularity='hour' so the cost
+   * trend queries can bucket them into hourly or daily series via date_trunc().
+   *
+   * Deduplication: there is no natural unique key on llm_cost_aggregates
+   * (multiple events for the same model+session are valid). Deduplication is
+   * therefore skipped here — INSERT without ON CONFLICT. Idempotent replay is
+   * achieved at the Kafka level via consumer group offset tracking.
+   *
+   * Returns true when written, false when the DB is unavailable.
+   */
+  private async projectLlmCostEvent(data: Record<string, unknown>): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    // Resolve bucket_time: use the event timestamp if present, fall back to now.
+    const bucketTime = safeParseDate(
+      data.bucket_time ?? data.bucketTime ?? data.timestamp ?? data.created_at
+    );
+
+    // usage_source must be one of 'API' | 'ESTIMATED' | 'MISSING'.
+    // Default to 'API' when absent — the event payload from omniclaude
+    // carries API-reported usage by default.
+    const usageSourceRaw = (data.usage_source as string) || (data.usageSource as string) || 'API';
+    const usageSource = ['API', 'ESTIMATED', 'MISSING'].includes(usageSourceRaw)
+      ? usageSourceRaw
+      : 'API';
+
+    // granularity must be one of 'hour' | 'day'.
+    // Default to 'hour' for unrecognized values. Follow the exact same pattern
+    // as the usageSource allowlist validation above.
+    const granularityRaw = (data.granularity as string) || 'hour';
+    const granularity = ['hour', 'day'].includes(granularityRaw) ? granularityRaw : 'hour';
+
+    const promptTokens = Number(data.prompt_tokens ?? data.promptTokens ?? 0);
+    const completionTokens = Number(data.completion_tokens ?? data.completionTokens ?? 0);
+    const rawTotalTokens = Number(data.total_tokens ?? data.totalTokens ?? 0);
+    const derivedTotal = promptTokens + completionTokens;
+
+    // Token total reconciliation:
+    // If the event reports total_tokens = 0 but component counts are non-zero,
+    // the upstream producer emitted an inconsistent payload — derive the total
+    // from its components so we never store a misleading 0.
+    // If all three are non-zero but the reported total disagrees with the sum,
+    // log a warning and trust the event-supplied total (don't silently correct it;
+    // the upstream source of truth may intentionally differ, e.g. cached tokens).
+    let totalTokens: number;
+    if (rawTotalTokens === 0 && derivedTotal > 0) {
+      totalTokens = derivedTotal;
+    } else {
+      if (rawTotalTokens !== 0 && derivedTotal !== 0 && rawTotalTokens !== derivedTotal) {
+        console.warn(
+          `[ReadModelConsumer] LLM cost event token total mismatch: ` +
+            `total_tokens=${rawTotalTokens} but prompt_tokens(${promptTokens}) + completion_tokens(${completionTokens}) = ${derivedTotal}. ` +
+            `Storing event-supplied total.`
+        );
+      }
+      totalTokens = rawTotalTokens;
+    }
+
+    // Coerce cost fields to a finite number, defaulting to 0 for any
+    // non-numeric value (including false, '', NaN, Infinity). String(false)
+    // would be 'false' which fails PostgreSQL's numeric column constraint, so
+    // we must guard against that before passing to Drizzle's decimal type.
+    const rawTotalCost = data.total_cost_usd ?? data.totalCostUsd;
+    const nTotalCost = Number(rawTotalCost);
+    const totalCostUsd = String(Number.isFinite(nTotalCost) ? nTotalCost : 0);
+
+    const rawReportedCost = data.reported_cost_usd ?? data.reportedCostUsd;
+    const nReportedCost = Number(rawReportedCost);
+    const reportedCostUsd = String(Number.isFinite(nReportedCost) ? nReportedCost : 0);
+
+    const rawEstimatedCost = data.estimated_cost_usd ?? data.estimatedCostUsd;
+    const nEstimatedCost = Number(rawEstimatedCost);
+    const estimatedCostUsd = String(Number.isFinite(nEstimatedCost) ? nEstimatedCost : 0);
+
+    const row: InsertLlmCostAggregate = {
+      bucketTime,
+      granularity,
+      modelName: (data.model_name as string) || (data.modelName as string) || 'unknown',
+      repoName: (data.repo_name as string) || (data.repoName as string) || undefined,
+      patternId: (data.pattern_id as string) || (data.patternId as string) || undefined,
+      patternName: (data.pattern_name as string) || (data.patternName as string) || undefined,
+      sessionId: (data.session_id as string) || (data.sessionId as string) || undefined,
+      usageSource,
+      requestCount: Number(data.request_count ?? data.requestCount ?? 1),
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      totalCostUsd,
+      reportedCostUsd,
+      estimatedCostUsd,
+    };
+
+    // Validate that model_name is not 'unknown' when the event carries one.
+    // Check the DERIVED row value rather than the raw event fields — the raw
+    // field check (data.model_name == null) misses the case where the event
+    // sends model_name: '' which is coerced to 'unknown' by the || fallback.
+    if (row.modelName === 'unknown') {
+      console.warn(
+        '[ReadModelConsumer] LLM cost event missing model_name — inserting as "unknown"'
+      );
+    }
+
+    try {
+      await db.insert(llmCostAggregates).values(row);
+    } catch (err) {
+      // If the table doesn't exist yet, warn and return true to advance the
+      // watermark so the consumer is not stuck retrying indefinitely.
+      // The table is created by a SQL migration; until that migration runs we
+      // degrade gracefully and skip LLM cost events.
+      //
+      // Primary check: PostgreSQL error code 42P01 ("undefined_table").
+      // The pg / @neondatabase/serverless driver surfaces this as a `.code`
+      // property on the thrown Error object.
+      // Fallback string check retained for defensive coverage in case the
+      // driver wraps the error in a way that omits the code property.
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('llm_cost_aggregates') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] llm_cost_aggregates table not yet created -- ' +
+            'run migrations to enable LLM cost projection'
         );
         return true;
       }
