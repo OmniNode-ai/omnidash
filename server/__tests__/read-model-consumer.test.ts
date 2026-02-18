@@ -33,15 +33,6 @@ vi.mock('kafkajs', () => ({
   })),
 }));
 
-// Mock the intelligence schema insert to track DB calls
-vi.mock('@shared/intelligence-schema', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@shared/intelligence-schema')>();
-  return {
-    ...actual,
-    llmCostAggregates: actual.llmCostAggregates,
-  };
-});
-
 import { ReadModelConsumer } from '../read-model-consumer';
 
 // ============================================================================
