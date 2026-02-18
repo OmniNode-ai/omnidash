@@ -15,9 +15,17 @@ import { toSnakeCase } from './intent-events';
 // Constants
 // ============================================================================
 
-export const MAX_STORED_INTENTS = parseInt(process.env.MAX_STORED_INTENTS ?? '10000', 10);
-export const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10);
-export const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10);
+const _rawMaxStoredIntents = parseInt(process.env.MAX_STORED_INTENTS ?? '', 10);
+export const MAX_STORED_INTENTS =
+  isNaN(_rawMaxStoredIntents) || _rawMaxStoredIntents <= 0 ? 1000 : _rawMaxStoredIntents;
+
+const _rawRateLimitWindowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '', 10);
+export const RATE_LIMIT_WINDOW_MS =
+  isNaN(_rawRateLimitWindowMs) || _rawRateLimitWindowMs <= 0 ? 60000 : _rawRateLimitWindowMs;
+
+const _rawRateLimitMaxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '', 10);
+export const RATE_LIMIT_MAX_REQUESTS =
+  isNaN(_rawRateLimitMaxRequests) || _rawRateLimitMaxRequests <= 0 ? 100 : _rawRateLimitMaxRequests;
 
 // ============================================================================
 // Circular Buffer
@@ -88,6 +96,8 @@ interface RateLimitEntry {
   resetTime: number;
 }
 
+const MAX_RATE_LIMIT_STORE_SIZE = 10000;
+
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
 const rateLimitEvictionInterval = setInterval(() => {
@@ -97,12 +107,25 @@ const rateLimitEvictionInterval = setInterval(() => {
   }
 }, RATE_LIMIT_WINDOW_MS).unref();
 
+function pruneRateLimitStore(): void {
+  if (rateLimitStore.size <= MAX_RATE_LIMIT_STORE_SIZE) return;
+  // Sort all entries by resetTime and remove the oldest 20%
+  const entries = Array.from(rateLimitStore.entries()).sort(
+    ([, a], [, b]) => a.resetTime - b.resetTime
+  );
+  const pruneCount = Math.ceil(MAX_RATE_LIMIT_STORE_SIZE * 0.2);
+  for (let i = 0; i < pruneCount && i < entries.length; i++) {
+    rateLimitStore.delete(entries[i][0]);
+  }
+}
+
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const entry = rateLimitStore.get(ip);
 
   if (!entry || now > entry.resetTime) {
     rateLimitStore.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    pruneRateLimitStore();
     return true;
   }
 
@@ -145,12 +168,27 @@ function resetRateLimitStore(): void {
 }
 
 // ============================================================================
+// Graceful Shutdown
+// ============================================================================
+
+function gracefulShutdown(): void {
+  clearInterval(rateLimitEvictionInterval);
+  rateLimitStore.clear();
+}
+
+// Register SIGTERM handler so the module cleans up its interval and store.
+// server/index.ts owns the primary process.exit(); we only clear module state here.
+process.on('SIGTERM', () => {
+  gracefulShutdown();
+});
+
+// ============================================================================
 // Rate Limit Middleware
 // ============================================================================
 
 function rateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const ip =
-    req.ip ?? req.socket?.remoteAddress ?? `unknown-${Math.random().toString(36).slice(2)}`;
+  // All unidentifiable clients share one rate-limit bucket
+  const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
 
   if (!checkRateLimit(ip)) {
     const resetSecs = getRateLimitResetSeconds(ip);
@@ -186,26 +224,36 @@ router.post('/', (req: Request, res: Response) => {
   const start = Date.now();
   try {
     const intent = req.body as IntentRecord;
-    if (!intent?.intentId || !intent?.intentCategory) {
-      return res.status(400).json({ ok: false, error: 'Missing required fields' });
+
+    // Validate all required fields are present and well-typed
+    const missingFields: string[] = [];
+    if (typeof intent?.intentId !== 'string' || intent.intentId === '') {
+      missingFields.push('intentId');
     }
-    if (intent.confidence !== undefined) {
-      if (
-        typeof intent.confidence !== 'number' ||
-        !isFinite(intent.confidence) ||
-        intent.confidence < 0 ||
-        intent.confidence > 1
-      ) {
-        return res
-          .status(400)
-          .json({ ok: false, error: 'confidence must be a finite number between 0 and 1' });
-      }
+    if (typeof intent?.intentCategory !== 'string' || intent.intentCategory === '') {
+      missingFields.push('intentCategory');
     }
-    if (intent.createdAt !== undefined) {
-      if (isNaN(Date.parse(String(intent.createdAt)))) {
-        return res.status(400).json({ ok: false, error: 'createdAt must be a valid date string' });
-      }
+    if (typeof intent?.sessionRef !== 'string' || intent.sessionRef === '') {
+      missingFields.push('sessionRef');
     }
+    if (
+      typeof intent?.confidence !== 'number' ||
+      !isFinite(intent.confidence) ||
+      intent.confidence < 0 ||
+      intent.confidence > 1
+    ) {
+      missingFields.push('confidence');
+    }
+    if (typeof intent?.createdAt !== 'string' || isNaN(Date.parse(intent.createdAt))) {
+      missingFields.push('createdAt');
+    }
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        ok: false,
+        error: `Missing required fields: ${missingFields.join(', ')}`,
+      });
+    }
+
     if (intent.keywords !== undefined && !Array.isArray(intent.keywords)) {
       return res.status(400).json({ ok: false, error: 'keywords must be an array' });
     }
@@ -228,7 +276,10 @@ router.get('/recent', (_req: Request, res: Response) => {
   const start = Date.now();
   try {
     const rawLimit = parseInt(String(_req.query.limit ?? '50'), 10);
-    const limit = Math.min(isNaN(rawLimit) ? 50 : rawLimit, 500);
+    if (isNaN(rawLimit) || rawLimit <= 0) {
+      return res.status(400).json({ error: 'Invalid limit' });
+    }
+    const limit = Math.min(rawLimit, 500);
     const all = getAllIntentsFromBuffer();
     const intents: IntentRecordPayload[] = all.slice(0, limit).map(toSnakeCase);
     return res.json({
@@ -251,6 +302,9 @@ router.get('/distribution', (_req: Request, res: Response) => {
   const start = Date.now();
   try {
     const timeRangeHours = parseFloat(String(_req.query.time_range_hours ?? '24'));
+    if (isNaN(timeRangeHours) || timeRangeHours <= 0 || !isFinite(timeRangeHours)) {
+      return res.status(400).json({ error: 'Invalid time_range_hours' });
+    }
     const intents = getIntentsFromStore(timeRangeHours);
     const distribution: Record<string, number> = {};
     for (const intent of intents) {
@@ -283,8 +337,14 @@ router.get('/session/:sessionId', (req: Request, res: Response) => {
   try {
     const sessionId = decodeURIComponent(req.params.sessionId);
     const rawLimit = parseInt(String(req.query.limit ?? '100'), 10);
-    const limit = Math.min(isNaN(rawLimit) ? 100 : rawLimit, 500);
+    if (isNaN(rawLimit) || rawLimit <= 0) {
+      return res.status(400).json({ error: 'Invalid limit' });
+    }
+    const limit = Math.min(rawLimit, 500);
     const minConfidence = parseFloat(String(req.query.min_confidence ?? '0'));
+    if (isNaN(minConfidence) || minConfidence < 0 || minConfidence > 1) {
+      return res.status(400).json({ error: 'Invalid min_confidence: must be 0–1' });
+    }
     const { intents, totalAvailable } = getIntentsBySession(sessionId, limit, minConfidence);
     const payload: IntentRecordPayload[] = intents.map(toSnakeCase);
     return res.json({

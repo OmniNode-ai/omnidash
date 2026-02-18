@@ -320,8 +320,13 @@ export function RecentIntents({
           // Track timeout for cleanup on unmount
           animationTimeoutsRef.current.set(intentId, timeoutId);
 
-          // Prepend new intent and cap at limit
-          setIntents((prev) => [newIntent, ...prev].slice(0, limit));
+          // Prepend new intent and cap at limit.
+          // Guard: when propData is provided, the parent owns the list — do not
+          // mutate local state or the parent's next render will either flicker
+          // (overwrite) or permanently diverge from the propData snapshot.
+          if (propData === undefined) {
+            setIntents((prev) => [newIntent, ...prev].slice(0, limit));
+          }
 
           // Debounced query invalidation to prevent excessive re-fetching under high event volume
           // Clear any pending invalidation (reset debounce timer)
@@ -336,7 +341,7 @@ export function RecentIntents({
         }
       }
     },
-    [limit, queryClient]
+    [limit, queryClient, propData]
   );
 
   // WebSocket connection

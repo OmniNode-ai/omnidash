@@ -288,7 +288,9 @@ export function IntentDistribution({
         : [];
 
   const displayTotal =
-    propTotalIntents !== undefined ? propTotalIntents : (queryData?.total_intents ?? 0);
+    propTotalIntents ??
+    queryData?.total_intents ??
+    (propData ? propData.reduce((sum, c) => sum + c.count, 0) : 0);
 
   if (chartData.length === 0) {
     return <IntentDistributionEmpty title={title} className={className} />;
@@ -365,9 +367,11 @@ export function IntentDistribution({
               dataKey="count"
               radius={[0, 4, 4, 0]}
               style={{ cursor: onCategoryClick ? 'pointer' : undefined }}
-              onClick={(data: IntentCategoryCount) => {
+              onClick={(data: { payload: IntentCategoryCount }, _index: number) => {
                 if (!onCategoryClick) return;
-                onCategoryClick(selectedCategory === data.category ? null : data.category);
+                onCategoryClick(
+                  selectedCategory === data.payload.category ? null : data.payload.category
+                );
               }}
             >
               <LabelList dataKey="count" content={BarLabelContent} />

@@ -299,7 +299,6 @@ export default function IntentDashboard() {
 
   // Transform projection snapshot → IntentItem[] for child components.
   // ProjectionEventItem wraps intent fields inside .payload; IntentItem expects them flat.
-  // Also maps rawText → user_context so the detail sheet can show the actual prompt.
   const projectionIntentItems = useMemo((): IntentItem[] | undefined => {
     if (!snapshot?.recentIntents?.length) return undefined;
     return snapshot.recentIntents.map((e) => ({
@@ -311,10 +310,7 @@ export default function IntentDashboard() {
       created_at: e.payload.created_at
         ? String(e.payload.created_at)
         : new Date(e.eventTimeMs ?? Date.now()).toISOString(),
-      user_context:
-        typeof e.payload.raw_text === 'string' && e.payload.raw_text.length > 0
-          ? e.payload.raw_text
-          : undefined,
+      user_context: undefined,
     }));
   }, [snapshot]);
 
