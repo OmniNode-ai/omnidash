@@ -253,6 +253,9 @@ export const SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED =
 export const SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED =
   'onex.evt.omniclaude.transformation.completed.v1';
 
+/** LLM cost reported by the omniclaude session-ended flow (OMN-2300 / OMN-2238). */
+export const SUFFIX_OMNICLAUDE_LLM_COST_REPORTED = 'onex.evt.omniclaude.llm-cost-reported.v1';
+
 // ============================================================================
 // OmniIntelligence Topics
 // ============================================================================
