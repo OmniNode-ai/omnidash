@@ -9,7 +9,7 @@
  * - Multi-metric trend chart (hit rate, correction rate, false positive rate)
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { enforcementSource } from '@/lib/data-sources/enforcement-source';
@@ -96,7 +96,10 @@ function fmtCount(n: number): string {
 }
 
 function relativeTime(isoTs: string): string {
-  const diff = Date.now() - new Date(isoTs).getTime();
+  if (!isoTs) return 'never';
+  const ts = new Date(isoTs).getTime();
+  if (isNaN(ts)) return 'never';
+  const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60_000);
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
@@ -444,19 +447,17 @@ export default function PatternEnforcement() {
     refetchTrend();
   };
 
-  // NOTE: enforcementSource.isUsingMockData is a getter on the singleton that
-  // reads from a mutable Set at call time. Reading it directly in the render
-  // body is not reactive -- React will not re-render when the Set changes.
-  // We initialise a local state from the singleton value so the banner is
-  // shown on mount when mock data is already active. The value will update on
-  // the next query refetch cycle because the query functions call the same
-  // source and TanStack Query triggers a re-render when query state changes.
-  //
-  // A fully reactive solution would require the singleton to expose an event
-  // emitter / callback that this component subscribes to; that is deferred as
-  // a follow-up given the low urgency of this banner's accuracy.
-
-  const [isUsingMockData] = useState(() => enforcementSource.isUsingMockData);
+  // enforcementSource.isUsingMockData reads a mutable Set on the singleton.
+  // It is always false at mount (before any query resolves), so we use an
+  // effect that re-reads it once all queries have settled.
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const allSettled =
+    !summaryLoading && !langLoading && !domainLoading && !violatedLoading && !trendLoading;
+  useEffect(() => {
+    if (allSettled) {
+      setIsUsingMockData(enforcementSource.isUsingMockData);
+    }
+  }, [allSettled]);
 
   // ── Render ───────────────────────────────────────────────────────────────
 

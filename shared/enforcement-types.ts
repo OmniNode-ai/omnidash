@@ -72,7 +72,7 @@ export interface EnforcementSummary {
     corrected: number;
     false_positives: number;
   };
-  /** 7-day rolling trend for correction rate (array of {date, value} points) */
+  /** Rolling trend for correction rate over the selected window (array of {date, value} points) */
   correction_rate_trend: Array<{ date: string; value: number }>;
 }
 
