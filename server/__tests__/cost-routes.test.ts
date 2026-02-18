@@ -328,6 +328,15 @@ describe('Cost Routes', () => {
       expect(mockEnsureFreshForWindow).toHaveBeenCalledWith('24h');
     });
 
+    it('should use ensureFreshForWindow for window=30d', async () => {
+      mockEnsureFreshForWindow.mockResolvedValue(makePayload({ trend: [] }));
+
+      await request(app).get('/api/costs/trend?window=30d').expect(200);
+
+      expect(mockEnsureFreshForWindow).toHaveBeenCalledWith('30d');
+      expect(mockEnsureFresh).not.toHaveBeenCalled();
+    });
+
     it('should return 500 on projection error', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       mockEnsureFresh.mockRejectedValue(new Error('DB error'));
@@ -427,6 +436,17 @@ describe('Cost Routes', () => {
       expect(res.body[1].model_name).toBe('gpt-4');
     });
 
+    it('should use ensureFresh (not ensureFreshForWindow) when ?window=24h is provided', async () => {
+      // by-model always shows 30d regardless of the selected trend window —
+      // window param is silently ignored for breakdown endpoints.
+      mockEnsureFresh.mockResolvedValue(makePayload({ byModel: [] }));
+
+      await request(app).get('/api/costs/by-model?window=24h').expect(200);
+
+      expect(mockEnsureFresh).toHaveBeenCalled();
+      expect(mockEnsureFreshForWindow).not.toHaveBeenCalled();
+    });
+
     it('should return 500 on projection error', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       mockEnsureFresh.mockRejectedValue(new Error('DB error'));
@@ -471,6 +491,17 @@ describe('Cost Routes', () => {
       expect(res.body).toHaveLength(1);
       expect(res.body[0].repo_name).toBe('my-repo');
       expect(res.body[0].session_count).toBe(45);
+    });
+
+    it('should use ensureFresh (not ensureFreshForWindow) when ?window=24h is provided', async () => {
+      // by-repo always shows 30d regardless of the selected trend window —
+      // window param is silently ignored for breakdown endpoints.
+      mockEnsureFresh.mockResolvedValue(makePayload({ byRepo: [] }));
+
+      await request(app).get('/api/costs/by-repo?window=24h').expect(200);
+
+      expect(mockEnsureFresh).toHaveBeenCalled();
+      expect(mockEnsureFreshForWindow).not.toHaveBeenCalled();
     });
 
     it('should return 500 on projection error', async () => {
@@ -520,6 +551,17 @@ describe('Cost Routes', () => {
       expect(res.body).toHaveLength(1);
       expect(res.body[0].pattern_id).toBe('P001');
       expect(res.body[0].avg_cost_per_injection).toBeCloseTo(0.2);
+    });
+
+    it('should use ensureFresh (not ensureFreshForWindow) when ?window=24h is provided', async () => {
+      // by-pattern always shows 30d regardless of the selected trend window —
+      // window param is silently ignored for breakdown endpoints.
+      mockEnsureFresh.mockResolvedValue(makePayload({ byPattern: [] }));
+
+      await request(app).get('/api/costs/by-pattern?window=24h').expect(200);
+
+      expect(mockEnsureFresh).toHaveBeenCalled();
+      expect(mockEnsureFreshForWindow).not.toHaveBeenCalled();
     });
 
     it('should return 500 on projection error', async () => {
@@ -572,6 +614,15 @@ describe('Cost Routes', () => {
       await request(app).get('/api/costs/token-usage?window=24h').expect(200);
 
       expect(mockEnsureFreshForWindow).toHaveBeenCalledWith('24h');
+    });
+
+    it('should use ensureFreshForWindow for window=30d', async () => {
+      mockEnsureFreshForWindow.mockResolvedValue(makePayload({ tokenUsage: [] }));
+
+      await request(app).get('/api/costs/token-usage?window=30d').expect(200);
+
+      expect(mockEnsureFreshForWindow).toHaveBeenCalledWith('30d');
+      expect(mockEnsureFresh).not.toHaveBeenCalled();
     });
 
     it('should return 500 on projection error', async () => {

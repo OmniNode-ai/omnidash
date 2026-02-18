@@ -256,9 +256,12 @@ export const SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED =
 /**
  * LLM cost reported by the omniclaude session-ended flow (OMN-2300 / OMN-2238).
  *
- * Included in buildSubscriptionTopics() so the Kafka consumer ingests cost
- * events and the read-model consumer (server/read-model-consumer.ts) can
- * project them into the llm_cost_aggregates table.
+ * Wired to two consumers:
+ * 1. Event bus (server/event-consumer.ts) — included via OMNICLAUDE_EXTENDED_SUFFIXES
+ *    in buildSubscriptionTopics() so real-time cost events are streamed to WebSocket clients.
+ * 2. Read-model consumer (server/read-model-consumer.ts) — the projectLlmCostEvent()
+ *    handler upserts each event into the llm_cost_aggregates table for durable
+ *    cost trend queries.
  */
 export const SUFFIX_OMNICLAUDE_LLM_COST_REPORTED = 'onex.evt.omniclaude.llm-cost-reported.v1';
 

@@ -31,11 +31,13 @@ import {
   agentRoutingDecisions,
   agentActions,
   agentTransformationEvents,
+  llmCostAggregates,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
   InsertAgentAction,
   InsertAgentTransformationEvent,
+  InsertLlmCostAggregate,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 
@@ -80,6 +82,7 @@ const READ_MODEL_TOPICS = [
   'agent-actions',
   'agent-transformation-events',
   'onex.evt.omniclaude.pattern-enforcement.v1',
+  'onex.evt.omniclaude.llm-cost-reported.v1',
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -251,6 +254,9 @@ export class ReadModelConsumer {
           break;
         case 'onex.evt.omniclaude.pattern-enforcement.v1':
           projected = await this.projectEnforcementEvent(parsed, fallbackId);
+          break;
+        case 'onex.evt.omniclaude.llm-cost-reported.v1':
+          projected = await this.projectLlmCostEvent(parsed);
           break;
         default:
           console.warn(
@@ -559,6 +565,70 @@ export class ReadModelConsumer {
       }
       throw err;
     }
+
+    return true;
+  }
+
+  /**
+   * Project a LLM cost reported event into the `llm_cost_aggregates` table.
+   *
+   * The event is published by the omniclaude session-ended flow (OMN-2300 / OMN-2238)
+   * once per session and carries pre-aggregated token usage and cost data.
+   * Each event is inserted as a single row with granularity='hour' so the cost
+   * trend queries can bucket them into hourly or daily series via date_trunc().
+   *
+   * Deduplication: there is no natural unique key on llm_cost_aggregates
+   * (multiple events for the same model+session are valid). Deduplication is
+   * therefore skipped here — INSERT without ON CONFLICT. Idempotent replay is
+   * achieved at the Kafka level via consumer group offset tracking.
+   *
+   * Returns true when written, false when the DB is unavailable.
+   */
+  private async projectLlmCostEvent(data: Record<string, unknown>): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    // Resolve bucket_time: use the event timestamp if present, fall back to now.
+    const bucketTime = safeParseDate(
+      data.bucket_time ?? data.bucketTime ?? data.timestamp ?? data.created_at
+    );
+
+    // usage_source must be one of 'API' | 'ESTIMATED' | 'MISSING'.
+    // Default to 'API' when absent — the event payload from omniclaude
+    // carries API-reported usage by default.
+    const usageSourceRaw = (data.usage_source as string) || (data.usageSource as string) || 'API';
+    const usageSource = ['API', 'ESTIMATED', 'MISSING'].includes(usageSourceRaw)
+      ? usageSourceRaw
+      : 'API';
+
+    const row: InsertLlmCostAggregate = {
+      bucketTime,
+      granularity: (data.granularity as string) || 'hour',
+      modelName: (data.model_name as string) || (data.modelName as string) || 'unknown',
+      repoName: (data.repo_name as string) || (data.repoName as string) || undefined,
+      patternId: (data.pattern_id as string) || (data.patternId as string) || undefined,
+      patternName: (data.pattern_name as string) || (data.patternName as string) || undefined,
+      sessionId: (data.session_id as string) || (data.sessionId as string) || undefined,
+      usageSource,
+      requestCount: Number(data.request_count ?? data.requestCount ?? 1),
+      promptTokens: Number(data.prompt_tokens ?? data.promptTokens ?? 0),
+      completionTokens: Number(data.completion_tokens ?? data.completionTokens ?? 0),
+      totalTokens: Number(data.total_tokens ?? data.totalTokens ?? 0),
+      totalCostUsd: String(data.total_cost_usd ?? data.totalCostUsd ?? '0'),
+      reportedCostUsd: String(data.reported_cost_usd ?? data.reportedCostUsd ?? '0'),
+      estimatedCostUsd: String(data.estimated_cost_usd ?? data.estimatedCostUsd ?? '0'),
+    };
+
+    // Validate that model_name is not 'unknown' when the event carries one.
+    // A missing model_name indicates a malformed event; we still insert with
+    // 'unknown' rather than skipping, so cost totals are not silently lost.
+    if (row.modelName === 'unknown' && data.model_name == null && data.modelName == null) {
+      console.warn(
+        '[ReadModelConsumer] LLM cost event missing model_name — inserting as "unknown"'
+      );
+    }
+
+    await db.insert(llmCostAggregates).values(row);
 
     return true;
   }

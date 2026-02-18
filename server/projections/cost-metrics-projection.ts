@@ -326,19 +326,17 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       .groupBy(lca.modelName)
       .orderBy(desc(sql`SUM(${lca.totalCostUsd}::numeric)`));
 
-    return rows
-      .filter((r) => r.model_name != null)
-      .map((r) => ({
-        model_name: r.model_name!,
-        total_cost_usd: parseFloat(r.total_cost),
-        reported_cost_usd: parseFloat(r.reported_cost),
-        estimated_cost_usd: parseFloat(r.estimated_cost),
-        total_tokens: Number(r.total_tokens),
-        prompt_tokens: Number(r.prompt_tokens),
-        completion_tokens: Number(r.completion_tokens),
-        request_count: Number(r.request_count),
-        usage_source: (r.usage_source || 'API') as UsageSource, // default to 'API' when no usageSource is recorded
-      }));
+    return rows.map((r) => ({
+      model_name: r.model_name,
+      total_cost_usd: parseFloat(r.total_cost),
+      reported_cost_usd: parseFloat(r.reported_cost),
+      estimated_cost_usd: parseFloat(r.estimated_cost),
+      total_tokens: Number(r.total_tokens),
+      prompt_tokens: Number(r.prompt_tokens),
+      completion_tokens: Number(r.completion_tokens),
+      request_count: Number(r.request_count),
+      usage_source: (r.usage_source || 'API') as UsageSource, // default to 'API' when no usageSource is recorded
+    }));
   }
 
   async queryByRepo(db: Db): Promise<CostByRepo[]> {
