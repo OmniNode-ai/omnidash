@@ -513,4 +513,52 @@ describe('Cost Routes', () => {
       expect(res.body).toEqual([]);
     });
   });
+
+  // =========================================================================
+  // Graceful degradation — projection view unavailable
+  //
+  // When projectionService.getView('cost-metrics') returns undefined (e.g.
+  // the view has not been registered yet during startup), every cost endpoint
+  // should fall back to a hardcoded zero/empty response rather than throwing.
+  // =========================================================================
+
+  describe('graceful degradation when cost-metrics view is unavailable', () => {
+    // Re-import projection-bootstrap mock so we can override getView locally
+    // for this describe block without affecting other suites.
+    let getViewSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(async () => {
+      // Dynamically import the (already mocked) projection-bootstrap module
+      // and override getView to return undefined for every call.
+      const bootstrap = await import('../projection-bootstrap');
+      getViewSpy = vi.spyOn(bootstrap.projectionService, 'getView').mockReturnValue(undefined);
+    });
+
+    afterEach(() => {
+      getViewSpy.mockRestore();
+    });
+
+    it('GET /api/costs/summary returns 200 with all-zero payload', async () => {
+      const res = await request(app).get('/api/costs/summary').expect(200);
+
+      expect(res.body.total_cost_usd).toBe(0);
+      expect(res.body.reported_cost_usd).toBe(0);
+      expect(res.body.estimated_cost_usd).toBe(0);
+      expect(res.body.reported_coverage_pct).toBe(0);
+      expect(res.body.total_tokens).toBe(0);
+      expect(res.body.prompt_tokens).toBe(0);
+      expect(res.body.completion_tokens).toBe(0);
+      expect(res.body.session_count).toBe(0);
+      expect(res.body.model_count).toBe(0);
+      expect(res.body.avg_cost_per_session).toBe(0);
+      expect(res.body.cost_change_pct).toBe(0);
+      expect(res.body.active_alerts).toBe(0);
+    });
+
+    it('GET /api/costs/trend returns 200 with empty array', async () => {
+      const res = await request(app).get('/api/costs/trend').expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+  });
 });

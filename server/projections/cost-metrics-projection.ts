@@ -14,10 +14,11 @@
  *   GET /api/costs/token-usage
  *
  * Source table: llm_cost_aggregates (defined in shared/intelligence-schema.ts)
- * Null costs are excluded from aggregates — not zero-filled.
+ * Zero-cost rows are excluded from aggregates (total_cost_usd = 0 is filtered out).
+ * Null is impossible because the column is defined as .notNull().default('0').
  */
 
-import { sql, gte, lt, and, isNotNull, desc } from 'drizzle-orm';
+import { sql, gte, lt, and, gt, isNotNull, desc } from 'drizzle-orm';
 import { llmCostAggregates } from '@shared/intelligence-schema';
 import type {
   CostSummary,
@@ -148,7 +149,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
           model_count: sql<number>`COUNT(DISTINCT ${lca.modelName})::int`,
         })
         .from(lca)
-        .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.totalCostUsd))),
+        .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0'))),
       db
         .select({
           total_cost: sql<string>`COALESCE(SUM(${lca.totalCostUsd}::numeric), 0)::text`,
@@ -158,7 +159,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
           and(
             gte(lca.bucketTime, priorCutoff),
             lt(lca.bucketTime, cutoff),
-            isNotNull(lca.totalCostUsd)
+            gt(lca.totalCostUsd, '0')
           )
         ),
     ]);
@@ -228,7 +229,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         session_count: sql<number>`COUNT(DISTINCT ${lca.sessionId}) FILTER (WHERE ${lca.sessionId} IS NOT NULL)::int`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.totalCostUsd)))
+      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
       .groupBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`)
       .orderBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`);
 
@@ -243,7 +244,13 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
 
   async queryByModel(db: Db): Promise<CostByModel[]> {
     const lca = llmCostAggregates;
-    // 30-day window for model breakdown (shows overall pattern)
+    // Intentionally hardcoded to 30d regardless of the active trend window.
+    // Model breakdowns are designed to show a stable, long-horizon cost
+    // distribution so users can compare model share over a meaningful period.
+    // Tying the breakdown to the selected trend window (e.g. 24h) would produce
+    // misleading percentages because short windows may not contain all models.
+    // The trend/summary endpoints respect the window parameter; byModel/byRepo/
+    // byPattern always show 30d for consistent context panels.
     const cutoff = windowCutoff('30d');
 
     const rows = await db
@@ -259,7 +266,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.totalCostUsd)))
+      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
       .groupBy(lca.modelName)
       .orderBy(desc(sql`SUM(${lca.totalCostUsd}::numeric)`));
 
@@ -278,6 +285,9 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
 
   async queryByRepo(db: Db): Promise<CostByRepo[]> {
     const lca = llmCostAggregates;
+    // Intentionally hardcoded to 30d — same rationale as queryByModel above.
+    // Repo breakdowns are context panels that need a stable long-horizon view,
+    // independent of the trend window selected by the user.
     const cutoff = windowCutoff('30d');
 
     const rows = await db
@@ -291,7 +301,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.repoName), isNotNull(lca.totalCostUsd)))
+      .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.repoName), gt(lca.totalCostUsd, '0')))
       .groupBy(lca.repoName)
       .orderBy(desc(sql`SUM(${lca.totalCostUsd}::numeric)`));
 
@@ -310,6 +320,9 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
 
   async queryByPattern(db: Db): Promise<CostByPattern[]> {
     const lca = llmCostAggregates;
+    // Intentionally hardcoded to 30d — same rationale as queryByModel above.
+    // Pattern breakdowns are context panels that need a stable long-horizon view,
+    // independent of the trend window selected by the user.
     const cutoff = windowCutoff('30d');
 
     const rows = await db
@@ -325,9 +338,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(
-        and(gte(lca.bucketTime, cutoff), isNotNull(lca.patternId), isNotNull(lca.totalCostUsd))
-      )
+      .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.patternId), gt(lca.totalCostUsd, '0')))
       .groupBy(lca.patternId, lca.patternName)
       .orderBy(desc(sql`SUM(${lca.totalCostUsd}::numeric)`));
 
@@ -373,7 +384,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), isNotNull(lca.totalCostUsd)))
+      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
       .groupBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`)
       .orderBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`);
 
