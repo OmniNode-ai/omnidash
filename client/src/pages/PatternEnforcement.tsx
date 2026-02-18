@@ -368,7 +368,8 @@ export default function PatternEnforcement() {
     onMessage: useCallback(
       (msg: { type: string; timestamp: string }) => {
         if (msg.type === 'ENFORCEMENT_INVALIDATE') {
-          // TODO: server will emit this when read-model-consumer projects new enforcement events
+          // TODO: Server does not yet emit ENFORCEMENT_INVALIDATE — wired client-side
+          // for when server-side broadcast is implemented (future ticket).
           queryClient.invalidateQueries({ queryKey: queryKeys.enforcement.all });
         }
       },

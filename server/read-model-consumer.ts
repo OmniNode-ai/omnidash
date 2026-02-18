@@ -239,6 +239,10 @@ export class ReadModelConsumer {
       if (!parsed) return;
 
       const topicKey = topic as ReadModelTopic;
+      // fallbackId: deterministic dedup key from partition+offset coordinates.
+      // Used when neither correlation_id nor correlationId is present in the event.
+      // Edge case: duplicate partition+offset (e.g. Kafka compaction artifact) will
+      // silently drop the second event via ON CONFLICT DO NOTHING — acceptable in practice.
       const fallbackId = deterministicCorrelationId(topic, partition, message.offset);
 
       let projected: boolean;

@@ -234,6 +234,14 @@ function IntentDetail({ intent, onClose }: IntentDetailProps) {
                 </div>
               </div>
             )}
+            {intent.user_context && (
+              <div>
+                <span className="text-muted-foreground block mb-2">Prompt:</span>
+                <div className="rounded-md bg-muted/50 border border-border p-3 text-xs font-mono leading-relaxed whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
+                  {intent.user_context}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </SheetContent>
@@ -249,6 +257,7 @@ export default function IntentDashboard() {
   // State
   const [timeRange, setTimeRange] = useState<TimeRangeHours>('24');
   const [selectedIntent, setSelectedIntent] = useState<IntentItem | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   // Server-side projection snapshot (OMN-2096 r4)
   // Fetches on mount, then re-fetches when WebSocket invalidation arrives.
@@ -287,6 +296,29 @@ export default function IntentDashboard() {
   };
 
   const timeRangeHours = parseInt(timeRange, 10);
+
+  // Transform projection snapshot → IntentItem[] for child components.
+  // ProjectionEventItem wraps intent fields inside .payload; IntentItem expects them flat.
+  const projectionIntentItems = useMemo((): IntentItem[] | undefined => {
+    if (!snapshot?.recentIntents?.length) return undefined;
+    return snapshot.recentIntents.map((e) => ({
+      intent_id: e.id,
+      session_ref: String(e.payload.session_ref ?? ''),
+      intent_category: String(e.payload.intent_category ?? ''),
+      confidence: Number(e.payload.confidence ?? 0),
+      keywords: [],
+      created_at: e.payload.created_at
+        ? String(e.payload.created_at)
+        : new Date(e.eventTimeMs ?? Date.now()).toISOString(),
+      user_context: undefined,
+    }));
+  }, [snapshot]);
+
+  // Apply category filter for cross-panel filtering
+  const filteredIntentItems = useMemo(() => {
+    if (!projectionIntentItems || !categoryFilter) return projectionIntentItems;
+    return projectionIntentItems.filter((i) => i.intent_category === categoryFilter);
+  }, [projectionIntentItems, categoryFilter]);
 
   return (
     <TooltipProvider>
@@ -372,6 +404,10 @@ export default function IntentDashboard() {
                 refreshInterval={30000}
                 title={`Intent Distribution (${TIME_RANGE_OPTIONS.find((o) => o.value === timeRange)?.label})`}
                 className="h-full"
+                data={snapshot?.distribution}
+                totalIntents={snapshot?.totalIntents}
+                selectedCategory={categoryFilter}
+                onCategoryClick={setCategoryFilter}
               />
             </IntentErrorBoundary>
           </div>
@@ -385,6 +421,7 @@ export default function IntentDashboard() {
                 maxHeight={400}
                 onIntentClick={handleIntentClick}
                 className="h-full"
+                data={filteredIntentItems}
               />
             </IntentErrorBoundary>
           </div>
@@ -399,6 +436,7 @@ export default function IntentDashboard() {
             defaultView="chart"
             showViewToggle={true}
             onIntentClick={handleIntentClick}
+            data={filteredIntentItems}
           />
         </IntentErrorBoundary>
 

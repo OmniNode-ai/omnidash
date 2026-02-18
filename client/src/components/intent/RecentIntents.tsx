@@ -57,6 +57,11 @@ export interface RecentIntentsProps {
   showCard?: boolean;
   /** Callback when an intent is clicked */
   onIntentClick?: (intent: IntentItem) => void;
+  /**
+   * Pre-fetched intent items. When provided, skips the internal API fetch.
+   * Accepts items transformed from the projection snapshot.
+   */
+  data?: IntentItem[];
 }
 
 interface RecentIntentsResponse {
@@ -218,6 +223,7 @@ export function RecentIntents({
   maxHeight = 400,
   showCard = true,
   onIntentClick,
+  data: propData,
 }: RecentIntentsProps) {
   const queryClient = useQueryClient();
   const [intents, setIntents] = useState<IntentItem[]>([]);
@@ -232,7 +238,12 @@ export function RecentIntents({
   // Ref for animation cleanup timeouts (keyed by intent_id)
   const animationTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Fetch initial data
+  // Track the previous propData reference so we only reset intents when the
+  // array identity genuinely changes (not on every parent re-render with a
+  // semantically-identical snapshot).
+  const prevPropDataRef = useRef<typeof propData>(undefined);
+
+  // Fetch initial data (skipped when propData is provided)
   const { data, isLoading, isError, error } = useQuery<RecentIntentsResponse>({
     queryKey: ['/api/intents/recent', { limit }],
     queryFn: async () => {
@@ -242,15 +253,29 @@ export function RecentIntents({
       }
       return response.json();
     },
-    refetchInterval: 30000, // Refresh every 30 seconds as fallback
+    refetchInterval: 30000,
+    enabled: propData === undefined,
   });
 
-  // Initialize intents from query data
+  // Initialize intents: prefer propData, then fall back to query response.
+  //
+  // Guard: only overwrite the WS-prepended state when propData reference has
+  // actually changed (i.e., the parent produced a new array), not merely when
+  // the parent re-rendered with the same snapshot reference.  This prevents a
+  // stale propData snapshot from clobbering items that the WebSocket handler
+  // already prepended to `intents`.
   useEffect(() => {
-    if (data?.intents) {
-      setIntents(data.intents);
+    if (propData !== undefined) {
+      if (propData !== prevPropDataRef.current) {
+        prevPropDataRef.current = propData;
+        setIntents(propData.slice(0, limit));
+      }
+    } else if (data?.intents) {
+      // Only seed from query data when the list is still empty so that WS
+      // state accumulated before the first query result is not discarded.
+      setIntents((prev) => (prev.length === 0 ? data.intents : prev));
     }
-  }, [data]);
+  }, [propData, data, limit]);
 
   // WebSocket message handler for real-time updates
   const handleMessage = useCallback(
@@ -295,8 +320,13 @@ export function RecentIntents({
           // Track timeout for cleanup on unmount
           animationTimeoutsRef.current.set(intentId, timeoutId);
 
-          // Prepend new intent and cap at limit
-          setIntents((prev) => [newIntent, ...prev].slice(0, limit));
+          // Prepend new intent and cap at limit.
+          // Guard: when propData is provided, the parent owns the list — do not
+          // mutate local state or the parent's next render will either flicker
+          // (overwrite) or permanently diverge from the propData snapshot.
+          if (propData === undefined) {
+            setIntents((prev) => [newIntent, ...prev].slice(0, limit));
+          }
 
           // Debounced query invalidation to prevent excessive re-fetching under high event volume
           // Clear any pending invalidation (reset debounce timer)
@@ -311,7 +341,7 @@ export function RecentIntents({
         }
       }
     },
-    [limit, queryClient]
+    [limit, queryClient, propData]
   );
 
   // WebSocket connection
@@ -365,8 +395,8 @@ export function RecentIntents({
         </div>
       </div>
 
-      {/* Loading state */}
-      {isLoading && (
+      {/* Loading state — only when using internal fetch (no propData) */}
+      {isLoading && propData === undefined && (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <IntentSkeleton key={i} />
@@ -374,8 +404,8 @@ export function RecentIntents({
         </div>
       )}
 
-      {/* Error state */}
-      {isError && (
+      {/* Error state — only when using internal fetch */}
+      {isError && propData === undefined && (
         <div className="p-6 text-center text-muted-foreground">
           <AlertCircle className="w-8 h-8 mx-auto mb-2 text-destructive" />
           <p className="text-sm">Failed to load intents</p>
@@ -384,30 +414,34 @@ export function RecentIntents({
       )}
 
       {/* Empty state */}
-      {!isLoading && !isError && intents.length === 0 && (
-        <div className="p-6 text-center text-muted-foreground">
-          <Brain className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No intents found</p>
-          <p className="text-xs mt-1">Waiting for new intent classifications...</p>
-        </div>
-      )}
+      {!(isLoading && propData === undefined) &&
+        !(isError && propData === undefined) &&
+        intents.length === 0 && (
+          <div className="p-6 text-center text-muted-foreground">
+            <Brain className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No intents found</p>
+            <p className="text-xs mt-1">Waiting for new intent classifications...</p>
+          </div>
+        )}
 
       {/* Intent list */}
-      {!isLoading && !isError && intents.length > 0 && (
-        <ScrollArea className="pr-4" style={{ maxHeight: `${maxHeight}px` }}>
-          <div className="space-y-2">
-            {intents.map((intent, index) => (
-              <IntentItemRow
-                key={`${intent.intent_id}-${intent.created_at}-${index}`}
-                intent={intent}
-                isNew={newItemIds.has(intent.intent_id)}
-                showConfidence={showConfidence}
-                onClick={onIntentClick ? () => onIntentClick(intent) : undefined}
-              />
-            ))}
-          </div>
-        </ScrollArea>
-      )}
+      {!(isLoading && propData === undefined) &&
+        !(isError && propData === undefined) &&
+        intents.length > 0 && (
+          <ScrollArea className="pr-4" style={{ maxHeight: `${maxHeight}px` }}>
+            <div className="space-y-2">
+              {intents.map((intent, index) => (
+                <IntentItemRow
+                  key={`${intent.intent_id}-${intent.created_at}-${index}`}
+                  intent={intent}
+                  isNew={newItemIds.has(intent.intent_id)}
+                  showConfidence={showConfidence}
+                  onClick={onIntentClick ? () => onIntentClick(intent) : undefined}
+                />
+              ))}
+            </div>
+          </ScrollArea>
+        )}
     </>
   );
 

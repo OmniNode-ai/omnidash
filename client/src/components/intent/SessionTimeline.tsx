@@ -73,6 +73,11 @@ export interface SessionTimelineProps {
   defaultView?: TimelineViewMode;
   /** Whether to show the view mode toggle (default: true) */
   showViewToggle?: boolean;
+  /**
+   * Pre-fetched intent items. When provided, skips the internal API fetch.
+   * Accepts items transformed from the projection snapshot.
+   */
+  data?: IntentItem[];
 }
 
 // ============================================================================
@@ -513,6 +518,7 @@ export function SessionTimeline({
   refetchInterval = 0,
   defaultView = 'chart',
   showViewToggle = true,
+  data: propData,
 }: SessionTimelineProps) {
   const [viewMode, setViewMode] = useState<TimelineViewMode>(defaultView);
 
@@ -542,23 +548,28 @@ export function SessionTimeline({
     },
     refetchInterval: refetchInterval > 0 ? refetchInterval : false,
     staleTime: 30000,
+    // Skip network fetch when data is provided directly
+    enabled: propData === undefined,
   });
+
+  // Use propData when available, otherwise fall back to query response
+  const intents = propData ?? data?.intents;
 
   // Sort intents by created_at (ascending for chart, descending for list)
   const sortedIntents = useMemo(() => {
-    if (!data?.intents) return [];
-    const intents = [...data.intents];
+    if (!intents) return [];
+    const sorted = [...intents];
     if (viewMode === 'chart') {
       // Ascending for chart (left to right = old to new)
-      return intents.sort(
+      return sorted.sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
     }
     // Descending for list (top to bottom = new to old)
-    return intents.sort(
+    return sorted.sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-  }, [data?.intents, viewMode]);
+  }, [intents, viewMode]);
 
   // Calculate chart height based on number of categories
   const chartHeight = useMemo(() => {
@@ -574,15 +585,15 @@ export function SessionTimeline({
 
   const content = (
     <>
-      {isLoading ? (
+      {isLoading && propData === undefined ? (
         viewMode === 'chart' ? (
           <ChartLoadingSkeleton />
         ) : (
           <LoadingSkeleton />
         )
-      ) : error ? (
+      ) : error && propData === undefined ? (
         <ErrorState error={error instanceof Error ? error.message : 'Unknown error'} />
-      ) : !data?.ok && data?.error ? (
+      ) : !data?.ok && data?.error && propData === undefined ? (
         <ErrorState error={data.error} />
       ) : sortedIntents.length === 0 ? (
         <EmptyState sessionId={sessionId || 'recent'} />
@@ -619,9 +630,10 @@ export function SessionTimeline({
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium">Session Timeline</CardTitle>
           <div className="flex items-center gap-2">
-            {data?.total_count !== undefined && data.total_count > 0 && (
+            {((propData?.length ?? 0) > 0 || (data?.total_count ?? 0) > 0) && (
               <Badge variant="secondary" className="text-xs">
-                {data.total_count} intent{data.total_count !== 1 ? 's' : ''}
+                {propData?.length ?? data?.total_count ?? 0} intent
+                {(propData?.length ?? data?.total_count ?? 0) !== 1 ? 's' : ''}
               </Badge>
             )}
             {showViewToggle && (
