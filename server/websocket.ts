@@ -266,6 +266,8 @@ const VALID_TOPICS = [
   'execution-graph',
   // Effectiveness metrics invalidation events (OMN-2328)
   'effectiveness',
+  // Baselines ROI invalidation events (OMN-2331)
+  'baselines',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
