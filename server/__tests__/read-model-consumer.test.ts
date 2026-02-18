@@ -338,11 +338,9 @@ describe('ReadModelConsumer', () => {
       const insertMock = vi.fn().mockReturnValue({
         values: vi.fn().mockRejectedValue(tableNotFoundErr),
       });
-      const executeMock = vi.fn().mockResolvedValue(undefined);
 
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
         insert: insertMock,
-        execute: executeMock,
       });
 
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});

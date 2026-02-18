@@ -64,18 +64,25 @@ CREATE INDEX IF NOT EXISTS idx_llm_cost_agg_bucket_time
 CREATE INDEX IF NOT EXISTS idx_llm_cost_agg_model
   ON llm_cost_aggregates (model_name);
 
+-- Partial indexes for nullable drill-down columns: excludes NULL rows so the
+-- index is compact and queries filtering IS NOT NULL benefit without wasted space.
 CREATE INDEX IF NOT EXISTS idx_llm_cost_agg_repo
-  ON llm_cost_aggregates (repo_name);
+  ON llm_cost_aggregates (repo_name) WHERE repo_name IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_llm_cost_agg_pattern
-  ON llm_cost_aggregates (pattern_id);
+  ON llm_cost_aggregates (pattern_id) WHERE pattern_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_llm_cost_agg_session
-  ON llm_cost_aggregates (session_id);
+  ON llm_cost_aggregates (session_id) WHERE session_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_llm_cost_agg_source
   ON llm_cost_aggregates (usage_source);
 
--- Composite index for the most common query pattern: window filter + model grouping
+-- Composite indexes for the most common query patterns
+-- window filter + model grouping (used by queryTrend, querySummary)
 CREATE INDEX IF NOT EXISTS idx_llm_cost_agg_bucket_model
   ON llm_cost_aggregates (bucket_time, model_name);
+
+-- window filter + granularity (used when switching hourly/daily view)
+CREATE INDEX IF NOT EXISTS idx_llm_cost_agg_bucket_granularity
+  ON llm_cost_aggregates (bucket_time, granularity);
