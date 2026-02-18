@@ -356,7 +356,7 @@ function ViolatedPatternsTable({
 // ============================================================================
 
 export default function PatternEnforcement() {
-  const [window, setWindow] = useState<EnforcementTimeWindow>('7d');
+  const [timeWindow, setTimeWindow] = useState<EnforcementTimeWindow>('7d');
   const queryClient = useQueryClient();
 
   // Invalidate all enforcement queries on WebSocket ENFORCEMENT_INVALIDATE event
@@ -380,8 +380,8 @@ export default function PatternEnforcement() {
     isError: summaryError,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: queryKeys.enforcement.summary(window),
-    queryFn: () => enforcementSource.summary(window, { mockOnEmpty: true }),
+    queryKey: queryKeys.enforcement.summary(timeWindow),
+    queryFn: () => enforcementSource.summary(timeWindow, { mockOnEmpty: true }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -392,8 +392,8 @@ export default function PatternEnforcement() {
     isError: langError,
     refetch: refetchLang,
   } = useQuery({
-    queryKey: queryKeys.enforcement.byLanguage(window),
-    queryFn: () => enforcementSource.byLanguage(window, { mockOnEmpty: true }),
+    queryKey: queryKeys.enforcement.byLanguage(timeWindow),
+    queryFn: () => enforcementSource.byLanguage(timeWindow, { mockOnEmpty: true }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -404,8 +404,8 @@ export default function PatternEnforcement() {
     isError: domainError,
     refetch: refetchDomain,
   } = useQuery({
-    queryKey: queryKeys.enforcement.byDomain(window),
-    queryFn: () => enforcementSource.byDomain(window, { mockOnEmpty: true }),
+    queryKey: queryKeys.enforcement.byDomain(timeWindow),
+    queryFn: () => enforcementSource.byDomain(timeWindow, { mockOnEmpty: true }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -416,8 +416,8 @@ export default function PatternEnforcement() {
     isError: violatedError,
     refetch: refetchViolated,
   } = useQuery({
-    queryKey: queryKeys.enforcement.violatedPatterns(window),
-    queryFn: () => enforcementSource.violatedPatterns(window, { mockOnEmpty: true }),
+    queryKey: queryKeys.enforcement.violatedPatterns(timeWindow),
+    queryFn: () => enforcementSource.violatedPatterns(timeWindow, { mockOnEmpty: true }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -428,8 +428,8 @@ export default function PatternEnforcement() {
     isError: trendError,
     refetch: refetchTrend,
   } = useQuery({
-    queryKey: queryKeys.enforcement.trend(window),
-    queryFn: () => enforcementSource.trend(window, { mockOnEmpty: true }),
+    queryKey: queryKeys.enforcement.trend(timeWindow),
+    queryFn: () => enforcementSource.trend(timeWindow, { mockOnEmpty: true }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -444,7 +444,19 @@ export default function PatternEnforcement() {
     refetchTrend();
   };
 
-  const isUsingMockData = enforcementSource.isUsingMockData;
+  // NOTE: enforcementSource.isUsingMockData is a getter on the singleton that
+  // reads from a mutable Set at call time. Reading it directly in the render
+  // body is not reactive -- React will not re-render when the Set changes.
+  // We initialise a local state from the singleton value so the banner is
+  // shown on mount when mock data is already active. The value will update on
+  // the next query refetch cycle because the query functions call the same
+  // source and TanStack Query triggers a re-render when query state changes.
+  //
+  // A fully reactive solution would require the singleton to expose an event
+  // emitter / callback that this component subscribes to; that is deferred as
+  // a follow-up given the low urgency of this banner's accuracy.
+
+  const [isUsingMockData] = useState(() => enforcementSource.isUsingMockData);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -459,7 +471,7 @@ export default function PatternEnforcement() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <WindowSelector value={window} onChange={setWindow} />
+          <WindowSelector value={timeWindow} onChange={setTimeWindow} />
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh

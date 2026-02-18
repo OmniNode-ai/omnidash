@@ -519,10 +519,22 @@ export class ReadModelConsumer {
         ON CONFLICT (correlation_id) DO NOTHING
       `);
     } catch (err) {
-      // If table doesn't exist yet, warn and return true to advance watermark.
-      // The table will be created by the migration; until then we skip gracefully.
+      // If the table doesn't exist yet, warn and return true to advance the
+      // watermark so the consumer is not stuck retrying indefinitely.
+      // The table is created by a SQL migration; until that migration runs we
+      // degrade gracefully and skip enforcement events.
+      //
+      // Primary check: PostgreSQL error code 42P01 ("undefined_table").
+      // The pg / @neondatabase/serverless driver surfaces this as a `.code`
+      // property on the thrown Error object.
+      // Fallback string check retained for defensive coverage in case the
+      // driver wraps the error in a way that omits the code property.
+      const pgCode = (err as { code?: string }).code;
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('pattern_enforcement_events') && msg.includes('does not exist')) {
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('pattern_enforcement_events') && msg.includes('does not exist'))
+      ) {
         console.warn(
           '[ReadModelConsumer] pattern_enforcement_events table not yet created -- ' +
             'run migrations to enable enforcement projection'
