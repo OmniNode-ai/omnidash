@@ -136,7 +136,7 @@ describe('ReadModelConsumer', () => {
       ).handleMessage.bind(c);
     }
 
-    it('returns false (skips projection) when DB is unavailable', async () => {
+    it('skips projection when DB is unavailable', async () => {
       const { tryGetIntelligenceDb } = await import('../storage');
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(null);
 
@@ -393,9 +393,11 @@ describe('ReadModelConsumer', () => {
       const insertMock = vi.fn().mockReturnValue({
         values: vi.fn().mockRejectedValue(tableNotFoundErr),
       });
+      const executeMock = vi.fn().mockResolvedValue(undefined);
 
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
         insert: insertMock,
+        execute: executeMock,
       });
 
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -419,6 +421,9 @@ describe('ReadModelConsumer', () => {
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('llm_cost_aggregates table not yet created')
       );
+
+      // Watermark should still be advanced even when the table is missing
+      expect(executeMock).toHaveBeenCalled();
 
       // Watermark should still be advanced (projected=1 because the error is treated as handled)
       const stats = consumer.getStats();

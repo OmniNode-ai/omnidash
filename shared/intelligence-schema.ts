@@ -824,13 +824,13 @@ export const llmCostAggregates = pgTable(
     // filtering IS NOT NULL benefit without wasted space (mirrors the SQL migration).
     index('idx_llm_cost_agg_repo')
       .on(table.repoName)
-      .where(sql`repo_name IS NOT NULL`),
+      .where(sql`${table.repoName} IS NOT NULL`),
     index('idx_llm_cost_agg_pattern')
       .on(table.patternId)
-      .where(sql`pattern_id IS NOT NULL`),
+      .where(sql`${table.patternId} IS NOT NULL`),
     index('idx_llm_cost_agg_session')
       .on(table.sessionId)
-      .where(sql`session_id IS NOT NULL`),
+      .where(sql`${table.sessionId} IS NOT NULL`),
     index('idx_llm_cost_agg_source').on(table.usageSource),
     index('idx_llm_cost_agg_bucket_model').on(table.bucketTime, table.modelName),
     // Composite index for hourly/daily view switching (used when toggling granularity).
