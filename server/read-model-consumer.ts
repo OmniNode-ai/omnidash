@@ -633,6 +633,22 @@ export class ReadModelConsumer {
       totalTokens = rawTotalTokens;
     }
 
+    // Coerce cost fields to a finite number, defaulting to 0 for any
+    // non-numeric value (including false, '', NaN, Infinity). String(false)
+    // would be 'false' which fails PostgreSQL's numeric column constraint, so
+    // we must guard against that before passing to Drizzle's decimal type.
+    const rawTotalCost = data.total_cost_usd ?? data.totalCostUsd;
+    const nTotalCost = Number(rawTotalCost);
+    const totalCostUsd = String(Number.isFinite(nTotalCost) ? nTotalCost : 0);
+
+    const rawReportedCost = data.reported_cost_usd ?? data.reportedCostUsd;
+    const nReportedCost = Number(rawReportedCost);
+    const reportedCostUsd = String(Number.isFinite(nReportedCost) ? nReportedCost : 0);
+
+    const rawEstimatedCost = data.estimated_cost_usd ?? data.estimatedCostUsd;
+    const nEstimatedCost = Number(rawEstimatedCost);
+    const estimatedCostUsd = String(Number.isFinite(nEstimatedCost) ? nEstimatedCost : 0);
+
     const row: InsertLlmCostAggregate = {
       bucketTime,
       granularity,
@@ -646,19 +662,16 @@ export class ReadModelConsumer {
       promptTokens,
       completionTokens,
       totalTokens,
-      // Use || '0' (not ?? '0') so that empty-string values are also defaulted
-      // to '0'. The ?? operator only coalesces null/undefined, not ''. An empty
-      // string would pass through to PostgreSQL and fail the NOT NULL constraint
-      // or produce a bad numeric value.
-      totalCostUsd: String(data.total_cost_usd || data.totalCostUsd || '0'),
-      reportedCostUsd: String(data.reported_cost_usd || data.reportedCostUsd || '0'),
-      estimatedCostUsd: String(data.estimated_cost_usd || data.estimatedCostUsd || '0'),
+      totalCostUsd,
+      reportedCostUsd,
+      estimatedCostUsd,
     };
 
     // Validate that model_name is not 'unknown' when the event carries one.
-    // A missing model_name indicates a malformed event; we still insert with
-    // 'unknown' rather than skipping, so cost totals are not silently lost.
-    if (row.modelName === 'unknown' && data.model_name == null && data.modelName == null) {
+    // Check the DERIVED row value rather than the raw event fields — the raw
+    // field check (data.model_name == null) misses the case where the event
+    // sends model_name: '' which is coerced to 'unknown' by the || fallback.
+    if (row.modelName === 'unknown') {
       console.warn(
         '[ReadModelConsumer] LLM cost event missing model_name — inserting as "unknown"'
       );
