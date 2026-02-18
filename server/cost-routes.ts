@@ -38,6 +38,11 @@ function getCostView(): CostMetricsProjection | undefined {
   // Duck-type check: CostMetricsProjection extends DbBackedProjectionView and
   // exposes ensureFresh + ensureFreshForWindow. If these are present, the view
   // is a compatible CostMetricsProjection instance.
+  // Known limitation: this check would also pass for any other
+  // DbBackedProjectionView subclass that happens to expose both methods with
+  // the same names. A stricter check (e.g. instanceof) is not possible here
+  // without importing the class directly, which would create a circular
+  // dependency through projection-bootstrap.
   if (typeof (view as CostMetricsProjection).ensureFresh !== 'function') return undefined;
   if (typeof (view as CostMetricsProjection).ensureFreshForWindow !== 'function') return undefined;
   return view as CostMetricsProjection;

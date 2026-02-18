@@ -90,8 +90,16 @@ function truncUnit(window: CostTimeWindow): 'hour' | 'day' {
 // Per-window cache TTL — mirrors DbBackedProjectionView's DEFAULT_CACHE_TTL_MS
 // ============================================================================
 
-/** TTL for per-window snapshots cached by ensureFreshForWindow().
- *  Uses the same value as the base-class default so all caches expire together. */
+/**
+ * TTL for per-window snapshots cached by ensureFreshForWindow().
+ *
+ * Intentionally mirrors DEFAULT_CACHE_TTL_MS (the base-class TTL used by
+ * ensureFresh()) so that the 7d default cache and every per-window cache all
+ * expire on the same schedule. If you change one without changing the other,
+ * requests for non-default windows will expire at a different rate than the
+ * 7d snapshot, which can cause inconsistent staleness behaviour (e.g. a 30d
+ * view staying stale long after the 7d view has refreshed).
+ */
 const WINDOW_CACHE_TTL_MS = DEFAULT_CACHE_TTL_MS;
 
 // ============================================================================
@@ -583,7 +591,13 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         }
       })
       .finally(() => {
-        this._windowRefreshInFlight.delete(window);
+        // Guard against a reset() + new in-flight race: only remove the in-flight
+        // entry if it still refers to this Promise. If reset() has already cleared
+        // it and a new caller registered a fresh Promise, deleting here would
+        // incorrectly discard the new in-flight, bypassing the coalescing guard.
+        if (this._windowRefreshInFlight.get(window) === refreshPromise) {
+          this._windowRefreshInFlight.delete(window);
+        }
       });
 
     this._windowRefreshInFlight.set(window, refreshPromise);

@@ -734,7 +734,8 @@ describe('Cost Routes', () => {
   // =========================================================================
 
   describe('GET /api/costs/alerts', () => {
-    it('should return empty array (budget alerts not yet implemented — update when OMN-2240 ships)', async () => {
+    it('should return empty array when budget alerts are not yet implemented', async () => {
+      // TODO: update when OMN-2240 ships
       const res = await request(app).get('/api/costs/alerts').expect(200);
 
       expect(res.body).toEqual([]);

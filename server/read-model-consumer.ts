@@ -607,6 +607,32 @@ export class ReadModelConsumer {
     const granularityRaw = (data.granularity as string) || 'hour';
     const granularity = ['hour', 'day'].includes(granularityRaw) ? granularityRaw : 'hour';
 
+    const promptTokens = Number(data.prompt_tokens ?? data.promptTokens ?? 0);
+    const completionTokens = Number(data.completion_tokens ?? data.completionTokens ?? 0);
+    const rawTotalTokens = Number(data.total_tokens ?? data.totalTokens ?? 0);
+    const derivedTotal = promptTokens + completionTokens;
+
+    // Token total reconciliation:
+    // If the event reports total_tokens = 0 but component counts are non-zero,
+    // the upstream producer emitted an inconsistent payload — derive the total
+    // from its components so we never store a misleading 0.
+    // If all three are non-zero but the reported total disagrees with the sum,
+    // log a warning and trust the event-supplied total (don't silently correct it;
+    // the upstream source of truth may intentionally differ, e.g. cached tokens).
+    let totalTokens: number;
+    if (rawTotalTokens === 0 && derivedTotal > 0) {
+      totalTokens = derivedTotal;
+    } else {
+      if (rawTotalTokens !== 0 && derivedTotal !== 0 && rawTotalTokens !== derivedTotal) {
+        console.warn(
+          `[ReadModelConsumer] LLM cost event token total mismatch: ` +
+            `total_tokens=${rawTotalTokens} but prompt_tokens(${promptTokens}) + completion_tokens(${completionTokens}) = ${derivedTotal}. ` +
+            `Storing event-supplied total.`
+        );
+      }
+      totalTokens = rawTotalTokens;
+    }
+
     const row: InsertLlmCostAggregate = {
       bucketTime,
       granularity,
@@ -617,9 +643,9 @@ export class ReadModelConsumer {
       sessionId: (data.session_id as string) || (data.sessionId as string) || undefined,
       usageSource,
       requestCount: Number(data.request_count ?? data.requestCount ?? 1),
-      promptTokens: Number(data.prompt_tokens ?? data.promptTokens ?? 0),
-      completionTokens: Number(data.completion_tokens ?? data.completionTokens ?? 0),
-      totalTokens: Number(data.total_tokens ?? data.totalTokens ?? 0),
+      promptTokens,
+      completionTokens,
+      totalTokens,
       // Use || '0' (not ?? '0') so that empty-string values are also defaulted
       // to '0'. The ?? operator only coalesces null/undefined, not ''. An empty
       // string would pass through to PostgreSQL and fail the NOT NULL constraint
@@ -638,7 +664,33 @@ export class ReadModelConsumer {
       );
     }
 
-    await db.insert(llmCostAggregates).values(row);
+    try {
+      await db.insert(llmCostAggregates).values(row);
+    } catch (err) {
+      // If the table doesn't exist yet, warn and return true to advance the
+      // watermark so the consumer is not stuck retrying indefinitely.
+      // The table is created by a SQL migration; until that migration runs we
+      // degrade gracefully and skip LLM cost events.
+      //
+      // Primary check: PostgreSQL error code 42P01 ("undefined_table").
+      // The pg / @neondatabase/serverless driver surfaces this as a `.code`
+      // property on the thrown Error object.
+      // Fallback string check retained for defensive coverage in case the
+      // driver wraps the error in a way that omits the code property.
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('llm_cost_aggregates') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] llm_cost_aggregates table not yet created -- ' +
+            'run migrations to enable LLM cost projection'
+        );
+        return true;
+      }
+      throw err;
+    }
 
     return true;
   }
