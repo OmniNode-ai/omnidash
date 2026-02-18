@@ -432,7 +432,7 @@ export default function EventBusMonitor() {
   const [selectedEvent, setSelectedEvent] = useState<EventDetailPanelProps['event']>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [hideHeartbeats, setHideHeartbeats] = useState(false);
+  const [hideHeartbeats, setHideHeartbeats] = useState(true);
 
   // Paused snapshot
   const pausedSnapshotRef = useRef<PausedSnapshot | null>(null);
