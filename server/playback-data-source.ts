@@ -59,8 +59,14 @@ export class PlaybackDataSource extends EventEmitter {
   }
 
   /**
-   * Start the playback data source
-   * Marks as active and emits connected event
+   * Start the playback data source.
+   * Marks as active and emits connected event.
+   *
+   * NOTE: Must only be called when demo mode is explicitly enabled by the user
+   * (e.g., via `?demo=true` URL parameter or the global demo toggle). Callers
+   * are responsible for enforcing this guard — this class does not verify
+   * demo mode internally. Starting playback outside of explicit demo mode
+   * violates the contract described in the module JSDoc.
    */
   start(): void {
     this.isActive = true;

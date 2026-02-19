@@ -152,7 +152,16 @@ export class IntelligenceEventAdapter {
   }
 
   /**
-   * Generic request method - matches OmniClaude/OmniArchon ONEX event format
+   * Generic request method - matches OmniClaude/OmniArchon ONEX event format.
+   *
+   * The `payload` parameter is spread at the end of the inner envelope payload
+   * object (see `...payload` inside the `envelope.payload` construction). This
+   * means any key in `payload` that matches a pre-set envelope field —
+   * including `source_path`, `content`, `language`, `operation_type`,
+   * `project_id`, `user_id`, etc. — will silently overwrite the default value.
+   * This is intentional: callers can use the spread to override any field.
+   * However, callers should be careful not to pass conflicting keys
+   * unintentionally, as there is no warning when an override occurs.
    */
   async request(
     requestType: string,

@@ -723,6 +723,12 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * Triggers lazy initialization if not yet attempted, so callers get an
  * accurate answer regardless of whether getEventBusDataSource() has been
  * called before.
+ *
+ * NOTE: This function calls getEventBusDataSource() as a side-effect. If the
+ * EventBusDataSource singleton has not yet been initialized, that call will
+ * attempt to initialize it (and cache either the instance or the error for
+ * subsequent calls). Callers should be aware that invoking this function may
+ * produce initialization-related console output and set module-level state.
  */
 export function isEventBusDataSourceAvailable(): boolean {
   getEventBusDataSource(); // trigger lazy init if not yet attempted

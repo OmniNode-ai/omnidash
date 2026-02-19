@@ -7,7 +7,10 @@
  * Design:
  * - Direct access: Fast, synchronous queries for dashboard APIs
  * - Event bus: Async, decoupled operations for write-heavy workloads
- * - Graceful fallback: Event bus failures fall back to direct DB
+ * - Event bus presence: When KAFKA_BROKERS is set, event bus integration is
+ *   enabled. When absent, the event bus is simply not active — the adapter
+ *   logs an error and continues serving direct DB queries. This is a
+ *   misconfiguration error state, not a "fallback" mechanism.
  *
  * Usage:
  *   const adapter = new PostgresAdapter();
@@ -48,9 +51,12 @@ export interface DeleteOptions {
 /**
  * PostgreSQL CRUD Adapter
  *
- * Provides direct database access with Drizzle ORM and event bus integration.
- * Kafka/Redpanda is required infrastructure — event bus integration is always
- * expected to be active. KAFKA_BROKERS must be set in the environment.
+ * Provides direct database access with Drizzle ORM and optional event bus
+ * integration. When KAFKA_BROKERS (or KAFKA_BOOTSTRAP_SERVERS) is present,
+ * event bus integration is enabled. When the variable is absent, the adapter
+ * logs an error and continues with event bus integration disabled (graceful
+ * degradation). A missing broker configuration is an error state, but it does
+ * not prevent the adapter from serving direct database queries.
  */
 export class PostgresAdapter {
   private get db() {
