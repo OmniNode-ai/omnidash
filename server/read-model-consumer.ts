@@ -71,26 +71,65 @@ function deterministicCorrelationId(topic: string, partition: number, offset: st
 }
 
 /**
- * Parse a date string safely, returning epoch-zero (`new Date(0)`) when the
- * input is missing or produces an invalid Date (e.g. malformed ISO string).
+ * Parse a date string safely, returning the current wall-clock time (`new
+ * Date()`) when the input is missing or produces an invalid Date (e.g.
+ * malformed ISO string).
  *
- * Epoch-zero is used instead of "now" so that rows with a missing/malformed
- * timestamp sort last (oldest) rather than first (newest) when the field is
- * used as an ordering key such as MAX(computed_at_utc) for "latest snapshot".
- * A wall-clock fallback would incorrectly rank a malformed event as the most
- * recent snapshot, hiding correct data from callers.
+ * Wall-clock is used as the fallback so that rows with a missing/malformed
+ * timestamp are stored with a "reasonable recent" time rather than 1970-01-01,
+ * which would make them appear as the oldest records in the system.
+ *
+ * Use `safeParseDateOrMin` instead when epoch-zero (sorting last as oldest) is
+ * the desired sentinel — currently only for `computedAtUtc` in baselines
+ * snapshots.
  */
 function safeParseDate(value: unknown): Date {
   if (!value) {
+    return new Date();
+  }
+  const d = new Date(value as string);
+  if (!Number.isFinite(d.getTime())) {
     console.warn(
-      '[ReadModelConsumer] safeParseDate: missing timestamp value, falling back to epoch-zero'
+      `[ReadModelConsumer] safeParseDate: malformed timestamp "${value}", falling back to wall-clock`
+    );
+    return new Date();
+  }
+  return d;
+}
+
+/**
+ * Parse a date string safely, returning epoch-zero (`new Date(0)`) when the
+ * input is missing or produces an invalid Date (e.g. malformed ISO string).
+ *
+ * Epoch-zero is used as a min-date sentinel so that rows with a
+ * missing/malformed timestamp sort last (oldest) rather than first (newest)
+ * when the field is used as an ordering key such as MAX(computed_at_utc) for
+ * "latest snapshot". A wall-clock fallback would incorrectly rank a malformed
+ * event as the most recent snapshot, hiding correct data from callers.
+ *
+ * Only use this variant for fields where epoch-zero-as-oldest is intentional.
+ * Use `safeParseDate` for all other timestamp fields.
+ */
+function safeParseDateOrMin(value: unknown): Date {
+  if (!value) {
+    console.warn(
+      '[ReadModelConsumer] safeParseDateOrMin: missing timestamp value, falling back to epoch-zero'
     );
     return new Date(0);
   }
   const d = new Date(value as string);
   if (!Number.isFinite(d.getTime())) {
     console.warn(
-      `[ReadModelConsumer] safeParseDate: malformed timestamp "${value}", falling back to epoch-zero`
+      `[ReadModelConsumer] safeParseDateOrMin: malformed timestamp "${value}", falling back to epoch-zero`
+    );
+    return new Date(0);
+  }
+  // Extra guard: a valid-but-suspiciously-old date (before 2020) almost
+  // certainly indicates a malformed value (e.g. an accidental epoch-seconds
+  // value interpreted as milliseconds). Treat it as missing.
+  if (d.getFullYear() < 2020) {
+    console.warn(
+      `[ReadModelConsumer] safeParseDateOrMin: timestamp "${value}" parsed to year ${d.getFullYear()} (< 2020), treating as epoch-zero sentinel`
     );
     return new Date(0);
   }
@@ -893,7 +932,10 @@ export class ReadModelConsumer {
         : deterministicCorrelationId('baselines-computed', partition, offset);
 
     const contractVersion = Number(data.contract_version ?? 1);
-    const computedAtUtc = safeParseDate(
+    // Use safeParseDateOrMin so that a missing/malformed computedAtUtc sorts
+    // as oldest (epoch-zero) rather than newest (wall-clock), preventing a
+    // bad event from masquerading as the latest snapshot.
+    const computedAtUtc = safeParseDateOrMin(
       data.computed_at_utc ?? data.computedAtUtc ?? data.computed_at
     );
     const windowStartUtc = data.window_start_utc
@@ -919,7 +961,7 @@ export class ReadModelConsumer {
     const rawComparisonsAll = Array.isArray(data.comparisons) ? data.comparisons : [];
     if (rawComparisonsAll.length > MAX_BATCH_ROWS) {
       console.warn(
-        `[ReadModelConsumer] baselines snapshot ${data.snapshot_id} contains ` +
+        `[ReadModelConsumer] baselines snapshot ${snapshotId} contains ` +
           `${rawComparisonsAll.length} comparison rows — capping at ${MAX_BATCH_ROWS} to avoid ` +
           `PostgreSQL parameter limit (65535). Excess rows will be dropped for this snapshot.`
       );
@@ -929,7 +971,7 @@ export class ReadModelConsumer {
     const rawTrendAll = Array.isArray(data.trend) ? data.trend : [];
     if (rawTrendAll.length > MAX_BATCH_ROWS) {
       console.warn(
-        `[ReadModelConsumer] baselines snapshot ${data.snapshot_id} contains ` +
+        `[ReadModelConsumer] baselines snapshot ${snapshotId} contains ` +
           `${rawTrendAll.length} trend rows — capping at ${MAX_BATCH_ROWS} to avoid ` +
           `PostgreSQL parameter limit (65535). Excess rows will be dropped for this snapshot.`
       );
@@ -939,7 +981,7 @@ export class ReadModelConsumer {
     const rawBreakdownAll = Array.isArray(data.breakdown) ? data.breakdown : [];
     if (rawBreakdownAll.length > MAX_BATCH_ROWS) {
       console.warn(
-        `[ReadModelConsumer] baselines snapshot ${data.snapshot_id} contains ` +
+        `[ReadModelConsumer] baselines snapshot ${snapshotId} contains ` +
           `${rawBreakdownAll.length} breakdown rows — capping at ${MAX_BATCH_ROWS} to avoid ` +
           `PostgreSQL parameter limit (65535). Excess rows will be dropped for this snapshot.`
       );

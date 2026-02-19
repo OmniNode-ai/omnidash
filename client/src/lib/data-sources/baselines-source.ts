@@ -53,6 +53,11 @@ class BaselinesSource {
         this.markMock('summary');
         return getMockBaselinesSummary();
       }
+      // Guard: older server versions may omit trend_point_count.  Ensure the
+      // field is always a number so callers never silently receive `undefined`.
+      if (typeof data.trend_point_count !== 'number') {
+        data.trend_point_count = 0;
+      }
       this.markReal('summary');
       return data;
     } catch {
