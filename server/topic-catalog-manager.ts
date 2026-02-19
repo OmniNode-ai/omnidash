@@ -28,11 +28,11 @@
 import { EventEmitter } from 'events';
 import crypto from 'node:crypto';
 import { Kafka, type Consumer, type Producer } from 'kafkajs';
-import { z } from 'zod';
 import {
   SUFFIX_PLATFORM_TOPIC_CATALOG_QUERY,
   SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE,
   SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED,
+  extractSuffix,
 } from '@shared/topics';
 import {
   TopicCatalogResponseSchema,
@@ -44,13 +44,16 @@ import type { TopicCatalogResponse, TopicCatalogChanged } from '@shared/schemas/
 // Configuration
 // ---------------------------------------------------------------------------
 
-const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
-
 /**
  * How long (ms) to wait for a catalog response before falling back to the
  * hardcoded topic list. Defaults to 5 s in production, 200 ms in tests.
+ * Can be overridden via the CATALOG_TIMEOUT_MS environment variable.
  */
-export const CATALOG_TIMEOUT_MS = isTestEnv ? 200 : 5000;
+export const CATALOG_TIMEOUT_MS = process.env.CATALOG_TIMEOUT_MS
+  ? parseInt(process.env.CATALOG_TIMEOUT_MS, 10)
+  : process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
+    ? 200
+    : 5000;
 
 // ---------------------------------------------------------------------------
 // Event Types
@@ -254,7 +257,7 @@ export class TopicCatalogManager extends EventEmitter {
     // Strip optional env prefix so comparisons work for both
     // "onex.evt.platform.topic-catalog-response.v1" and
     // "dev.onex.evt.platform.topic-catalog-response.v1".
-    const topic = this.stripEnvPrefix(rawTopic);
+    const topic = extractSuffix(rawTopic);
 
     if (topic === SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE) {
       this.handleCatalogResponse(rawValue);
@@ -354,20 +357,5 @@ export class TopicCatalogManager extends EventEmitter {
       `[TopicCatalogManager] Catalog changed: +${event.topicsAdded.length} -${event.topicsRemoved.length}`
     );
     this.emit('catalogChanged', event);
-  }
-
-  /**
-   * Strip a leading environment prefix (e.g. "dev.", "staging.") from a topic name.
-   * Mirrors the extractSuffix() logic in shared/topics.ts without importing it to
-   * keep the dependency surface minimal for unit testing.
-   */
-  private stripEnvPrefix(topic: string): string {
-    const PREFIXES = ['dev', 'staging', 'prod', 'production', 'test', 'local'];
-    for (const prefix of PREFIXES) {
-      if (topic.startsWith(prefix + '.')) {
-        return topic.slice(prefix.length + 1);
-      }
-    }
-    return topic;
   }
 }

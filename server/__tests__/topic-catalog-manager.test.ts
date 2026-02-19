@@ -104,6 +104,16 @@ async function bootstrapAndCapture(
         message: { value: Buffer.from(JSON.stringify(payload)) },
       });
     },
+    /**
+     * Simulate a Kafka message arriving with a raw string value (e.g. malformed JSON).
+     */
+    pushRawMessage: async (topic: string, rawValue: string) => {
+      if (!eachMessageCallback) throw new Error('consumer.run was never called');
+      await eachMessageCallback({
+        topic,
+        message: { value: Buffer.from(rawValue) },
+      });
+    },
     publishedQuery: mockProducerSend.mock.calls[0]?.[0],
   };
 }
@@ -355,16 +365,9 @@ describe('TopicCatalogManager', () => {
       const received = vi.fn();
       manager.on('catalogReceived', received);
 
-      // Bypass pushMessage helper — inject raw string
-      await bootstrapAndCapture(manager, mocks);
+      const { pushRawMessage } = await bootstrapAndCapture(manager, mocks);
 
-      // Simulate via handleMessage with bad JSON
-      // Access internal method through cast to any for testing
-
-      (manager as unknown as Record<string, (...args: unknown[]) => unknown>).handleMessage(
-        SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE,
-        'not-json{{{}'
-      );
+      await pushRawMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE, 'not-json{{{');
 
       expect(received).not.toHaveBeenCalled();
     });
@@ -387,7 +390,7 @@ describe('TopicCatalogManager', () => {
       const changed = vi.fn();
       manager.on('catalogChanged', changed);
 
-      const { pushMessage } = await bootstrapAndCapture(manager, mocks);
+      const { pushMessage, pushRawMessage } = await bootstrapAndCapture(manager, mocks);
 
       // Establish initial catalog first
       await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE, {
@@ -396,10 +399,7 @@ describe('TopicCatalogManager', () => {
         warnings: [],
       });
 
-      (manager as unknown as Record<string, (...args: unknown[]) => unknown>).handleMessage(
-        SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED,
-        'not-json'
-      );
+      await pushRawMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, 'not-json');
 
       expect(changed).not.toHaveBeenCalled();
     });

@@ -4005,6 +4005,12 @@ export class EventConsumer extends EventEmitter {
             this.emit('catalogWarnings', event.warnings);
           }
 
+          // Wire the ongoing catalog-changed event for dynamic add/remove.
+          // Only wired on the success path so a stopped manager is never referenced.
+          manager.on('catalogChanged', (event) => {
+            this.handleCatalogChanged(event.topicsAdded, event.topicsRemoved);
+          });
+
           resolve(event.topics);
         });
 
@@ -4017,6 +4023,7 @@ export class EventConsumer extends EventEmitter {
           manager.stop().catch((stopErr) => {
             console.warn('[EventConsumer] Error stopping catalog manager after timeout:', stopErr);
           });
+          this.catalogManager = null;
           resolve(buildSubscriptionTopics());
         });
 
@@ -4030,13 +4037,9 @@ export class EventConsumer extends EventEmitter {
               stopErr
             );
           });
+          this.catalogManager = null;
           resolve(buildSubscriptionTopics());
         });
-      });
-
-      // Wire the ongoing catalog-changed event for dynamic add/remove.
-      manager.on('catalogChanged', (event) => {
-        this.handleCatalogChanged(event.topicsAdded, event.topicsRemoved);
       });
 
       return topics;
