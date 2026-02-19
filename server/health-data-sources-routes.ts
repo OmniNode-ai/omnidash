@@ -277,8 +277,9 @@ async function probeInsights(): Promise<DataSourceInfo> {
   try {
     const summary = await queryInsightsSummary();
     if (summary === null) {
-      // Database not configured
-      return { status: 'mock', reason: 'empty_tables' };
+      // Database not configured — queryInsightsSummary returns null when no DB
+      // connection is available, not when the DB is reachable but empty.
+      return { status: 'mock', reason: 'no_db_connection' };
     }
     if (!Array.isArray(summary.insights) || summary.insights.length === 0) {
       return { status: 'mock', reason: 'empty_tables' };
@@ -363,8 +364,11 @@ function probeEnforcement(): DataSourceInfo {
 
 const router = Router();
 
-// Simple TTL cache — avoids re-running DB COUNT(*) queries on every request.
-// 30-second expiry is intentionally short so the panel stays fresh during demos.
+// Module-level TTL cache (30 s). Intentionally shared across all requests in
+// the same process — there is no per-request or data-change invalidation. If
+// upstream data changes mid-TTL, the cached response will be stale until
+// expiry. This is acceptable: data source status changes infrequently and the
+// 30 s window keeps the panel responsive during demos without hammering the DB.
 let healthCache: { result: DataSourcesHealthResponse; expiresAt: number } | null = null;
 
 /**
