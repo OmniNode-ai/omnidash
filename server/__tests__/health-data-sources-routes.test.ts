@@ -255,6 +255,64 @@ describe('GET /api/health/data-sources', () => {
     expect(res.body.dataSources.insights.reason).toBe('probe_threw');
   });
 
+  it('reports status: error for validation when db.select() throws', async () => {
+    vi.mocked(projectionService.getView).mockReturnValue(null);
+
+    // probeValidation is entered before probePatterns in the Promise.all array,
+    // so its tryGetIntelligenceDb() call fires first (call #1).  Give it a db
+    // whose .from() rejects; give probePatterns (call #2) a healthy db so only
+    // the validation status changes.
+    const throwingChain = { from: vi.fn().mockRejectedValue(new Error('select failed')) };
+    const throwingDb = { select: vi.fn().mockReturnValue(throwingChain) };
+    vi.mocked(tryGetIntelligenceDb)
+      .mockReturnValueOnce(throwingDb as any) // probeValidation → throws
+      .mockReturnValueOnce(makeMockDb([{ count: 0 }]) as any); // probePatterns → ok
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+    });
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.validation.status).toBe('error');
+    expect(res.body.dataSources.validation.reason).toBe('probe_threw');
+  });
+
+  it('reports status: error for patterns when db.select() throws', async () => {
+    vi.mocked(projectionService.getView).mockReturnValue(null);
+
+    // probeValidation fires first (call #1) and gets a healthy db.
+    // probePatterns fires second (call #2) and gets a db whose .from() rejects.
+    const throwingChain = { from: vi.fn().mockRejectedValue(new Error('select failed')) };
+    const throwingDb = { select: vi.fn().mockReturnValue(throwingChain) };
+    vi.mocked(tryGetIntelligenceDb)
+      .mockReturnValueOnce(makeMockDb([{ count: 0 }]) as any) // probeValidation → ok
+      .mockReturnValueOnce(throwingDb as any); // probePatterns → throws
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+    });
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.patterns.status).toBe('error');
+    expect(res.body.dataSources.patterns.reason).toBe('probe_threw');
+  });
+
   it('reports status: mock for patterns when DB returns 0 rows', async () => {
     vi.mocked(projectionService.getView).mockReturnValue(null);
     vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
