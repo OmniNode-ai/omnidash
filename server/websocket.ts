@@ -25,6 +25,7 @@ import {
 } from './intent-events';
 import { insightsEventEmitter } from './insights-events';
 import { baselinesEventEmitter } from './baselines-events';
+import { llmRoutingEventEmitter } from './llm-routing-events';
 import { effectivenessEventEmitter } from './effectiveness-events';
 import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
@@ -264,6 +265,8 @@ const VALID_TOPICS = [
   'insights',
   // Execution graph live node events (OMN-2302)
   'execution-graph',
+  // LLM routing invalidation events (OMN-2279)
+  'llm-routing',
   // Effectiveness metrics invalidation events (OMN-2328)
   'effectiveness',
   // Baselines ROI invalidation events (OMN-2331)
@@ -511,6 +514,19 @@ export function setupWebSocket(httpServer: HTTPServer) {
     );
   };
   baselinesEventEmitter.on('baselines-update', baselinesUpdateHandler);
+
+  // LLM routing invalidation listener (OMN-2279)
+  // Tells clients to re-fetch LLM routing data when a new routing decision is projected.
+  // Uses llmRoutingEventEmitter so ReadModelConsumer can trigger it after projecting.
+  // Invalidation-only broadcast: clients re-query the /api/llm-routing/* endpoints on receipt.
+  const llmRoutingInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast(
+      'LLM_ROUTING_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'llm-routing'
+    );
+  };
+  llmRoutingEventEmitter.on('llm-routing-invalidate', llmRoutingInvalidateHandler);
 
   // Effectiveness invalidation listener (OMN-2328)
   // Tells clients to re-fetch effectiveness data when new measurements are projected.
@@ -1101,6 +1117,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Remove baselines event listener (OMN-2331)
     baselinesEventEmitter.removeListener('baselines-update', baselinesUpdateHandler);
+
+    // Remove LLM routing event listener (OMN-2279)
+    llmRoutingEventEmitter.removeListener('llm-routing-invalidate', llmRoutingInvalidateHandler);
 
     // Remove effectiveness event listener (OMN-2328)
     effectivenessEventEmitter.removeListener('effectiveness-update', effectivenessUpdateHandler);

@@ -78,7 +78,25 @@ async function main(): Promise<void> {
 
     console.log(`[migrate] Found ${files.length} migration files`);
 
+    // Bootstrap migration tracking table outside any file transaction.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        filename TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    console.log('[migrate] schema_migrations tracking table ready');
+
     for (const file of files) {
+      // Check if this migration has already been applied.
+      const { rowCount } = await pool.query('SELECT 1 FROM schema_migrations WHERE filename = $1', [
+        file,
+      ]);
+      if (rowCount && rowCount > 0) {
+        console.log(`[migrate] Skipping (already applied): ${file}`);
+        continue;
+      }
+
       const filePath = path.join(migrationsDir, file);
       const sqlContent = fs.readFileSync(filePath, 'utf-8');
 
@@ -91,6 +109,7 @@ async function main(): Promise<void> {
       try {
         await pool.query('BEGIN');
         await pool.query(sqlContent);
+        await pool.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file]);
         await pool.query('COMMIT');
         console.log(`[migrate] OK: ${file}`);
       } catch (err) {

@@ -50,9 +50,14 @@ import type {
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
 import type { ContextEnrichmentEvent } from '@shared/enrichment-types';
-import { SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT } from '@shared/topics';
+import {
+  SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
+  SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
+} from '@shared/topics';
+import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import { baselinesProjection } from './projection-bootstrap';
 import { emitBaselinesUpdate } from './baselines-events';
+import { emitLlmRoutingInvalidate } from './llm-routing-events';
 
 /**
  * Derive a deterministic UUID-shaped string from Kafka message coordinates.
@@ -171,6 +176,7 @@ const READ_MODEL_TOPICS = [
   'onex.evt.omniclaude.llm-cost-reported.v1',
   'onex.evt.omnibase-infra.baselines-computed.v1',
   SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
+  SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -355,6 +361,9 @@ export class ReadModelConsumer {
           break;
         case SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT:
           projected = await this.projectEnrichmentEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION:
+          projected = await this.projectLlmRoutingDecisionEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -771,6 +780,118 @@ export class ReadModelConsumer {
       }
       throw err;
     }
+
+    return true;
+  }
+
+  /**
+   * Project an LLM routing decision event into the `llm_routing_decisions` table (OMN-2279).
+   *
+   * The table is created by SQL migration 0006_llm_routing_decisions.sql.
+   * Returns true when written, false when the DB is unavailable.
+   *
+   * Deduplication key: (correlation_id) — each routing decision has a unique
+   * correlation ID. Falls back to a deterministic hash when absent.
+   *
+   * GOLDEN METRIC: agreement_rate (agreed / (agreed + disagreed)) > 60%.
+   * Alert if disagreement rate exceeds 40%.
+   */
+  private async projectLlmRoutingDecisionEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const evt = data as Partial<LlmRoutingDecisionEvent>;
+
+    const correlationId =
+      (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
+
+    // llm_agent and fuzzy_agent are required fields.
+    const llmAgent = (evt.llm_agent as string) || (data.llmAgent as string);
+    const fuzzyAgent = (evt.fuzzy_agent as string) || (data.fuzzyAgent as string);
+    if (!llmAgent || !fuzzyAgent) {
+      console.warn(
+        '[ReadModelConsumer] LLM routing decision event missing required agent fields ' +
+          `(correlation_id=${correlationId}) -- skipping malformed event`
+      );
+      // Intentionally return true (advance the watermark) rather than throwing or
+      // routing to a dead-letter queue. This follows the established pattern used
+      // throughout this consumer for unrecoverable schema violations: logging a
+      // warning and moving on keeps the consumer unblocked and prevents a single
+      // malformed event from stalling the entire projection. If dead-letter queue
+      // support is added in the future, replace this return with a DLQ publish.
+      return true;
+    }
+
+    // routing_prompt_version is required — missing value makes longitudinal
+    // comparison by version impossible. Default to 'unknown' rather than
+    // dropping the event so overall agreement_rate metrics remain accurate.
+    const routingPromptVersion =
+      (evt.routing_prompt_version as string) || (data.routingPromptVersion as string) || 'unknown';
+
+    const agreement = evt.agreement != null ? Boolean(evt.agreement) : llmAgent === fuzzyAgent;
+
+    try {
+      await db.execute(sql`
+        INSERT INTO llm_routing_decisions (
+          correlation_id,
+          session_id,
+          llm_agent,
+          fuzzy_agent,
+          agreement,
+          llm_confidence,
+          fuzzy_confidence,
+          llm_latency_ms,
+          fuzzy_latency_ms,
+          used_fallback,
+          routing_prompt_version,
+          intent,
+          model,
+          cost_usd,
+          created_at
+        ) VALUES (
+          ${correlationId},
+          ${(evt.session_id as string) ?? null},
+          ${llmAgent},
+          ${fuzzyAgent},
+          ${agreement},
+          ${evt.llm_confidence != null && !Number.isNaN(Number(evt.llm_confidence)) ? Number(evt.llm_confidence) : null},
+          ${evt.fuzzy_confidence != null && !Number.isNaN(Number(evt.fuzzy_confidence)) ? Number(evt.fuzzy_confidence) : null},
+          ${Number.isNaN(Number(evt.llm_latency_ms)) ? 0 : Math.round(Number(evt.llm_latency_ms ?? 0))},
+          ${Number.isNaN(Number(evt.fuzzy_latency_ms)) ? 0 : Math.round(Number(evt.fuzzy_latency_ms ?? 0))},
+          ${Boolean(evt.used_fallback ?? false)},
+          ${routingPromptVersion},
+          ${(evt.intent as string) ?? null},
+          ${(evt.model as string) ?? null},
+          ${evt.cost_usd != null && !Number.isNaN(Number(evt.cost_usd)) ? Number(evt.cost_usd) : null},
+          ${safeParseDate(evt.timestamp)}
+        )
+        ON CONFLICT (correlation_id) DO NOTHING
+      `);
+    } catch (err) {
+      // If the table doesn't exist yet (migration not run), degrade gracefully
+      // and advance the watermark so the consumer is not stuck retrying.
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('llm_routing_decisions') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] llm_routing_decisions table not yet created -- ' +
+            'run migrations to enable LLM routing projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    // Notify WebSocket clients subscribed to the 'llm-routing' topic.
+    // Called here (after the try/catch) so clients are only notified when
+    // the DB write has committed successfully.
+    emitLlmRoutingInvalidate(correlationId);
 
     return true;
   }

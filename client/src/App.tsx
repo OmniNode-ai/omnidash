@@ -45,6 +45,7 @@ import BaselinesROI from '@/pages/BaselinesROI';
 import CostTrendDashboard from '@/pages/CostTrendDashboard';
 import PatternEnforcement from '@/pages/PatternEnforcement';
 import ContextEnrichmentDashboard from '@/pages/ContextEnrichmentDashboard';
+import LlmRoutingDashboard from '@/pages/LlmRoutingDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -124,6 +125,9 @@ function Router() {
 
       {/* Context Enrichment dashboard (OMN-2280) */}
       <Route path="/enrichment" component={ContextEnrichmentDashboard} />
+
+      {/* LLM Routing Effectiveness dashboard (OMN-2279) */}
+      <Route path="/llm-routing" component={LlmRoutingDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />
