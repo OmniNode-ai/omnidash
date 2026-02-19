@@ -320,7 +320,8 @@ export class TopicCatalogManager extends EventEmitter {
     try {
       response = TopicCatalogResponseSchema.parse(parsed);
     } catch (err) {
-      console.warn('[TopicCatalogManager] catalog-response failed schema validation:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[TopicCatalogManager] catalog-response failed schema validation:', msg);
       return;
     }
 
@@ -379,7 +380,8 @@ export class TopicCatalogManager extends EventEmitter {
     try {
       changed = TopicCatalogChangedSchema.parse(parsed);
     } catch (err) {
-      console.warn('[TopicCatalogManager] catalog-changed failed schema validation:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[TopicCatalogManager] catalog-changed failed schema validation:', msg);
       return;
     }
 
