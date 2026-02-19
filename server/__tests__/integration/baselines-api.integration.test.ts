@@ -25,6 +25,16 @@ import { resetIntelligenceDb } from '../../storage';
 const TEST_DB_URL = process.env.TEST_DATABASE_URL;
 const canRunIntegrationTests = !!TEST_DB_URL;
 
+// CI guard: fail fast at module scope so describe.skipIf cannot silently swallow
+// the missing URL. When CI=true and TEST_DB_URL is absent the suite would be
+// skipped before beforeAll runs, meaning a guard placed inside beforeAll would
+// never fire in the environment where it is most needed.
+if (process.env.CI && !TEST_DB_URL) {
+  throw new Error(
+    'TEST_DATABASE_URL is required in CI. Set it to a PostgreSQL database ending with _test.'
+  );
+}
+
 if (!canRunIntegrationTests) {
   console.warn(
     '\n⚠️  TEST_DATABASE_URL not set — skipping baselines integration tests.\n' +
@@ -40,12 +50,6 @@ describe.skipIf(!canRunIntegrationTests)('Baselines API Integration Tests', () =
   let app: Express;
 
   beforeAll(async () => {
-    if (process.env.CI && !TEST_DB_URL) {
-      throw new Error(
-        'TEST_DATABASE_URL is required in CI. Set it to a PostgreSQL database ending with _test.'
-      );
-    }
-
     getTestDb();
 
     app = await createTestApp(async (expressApp) => {

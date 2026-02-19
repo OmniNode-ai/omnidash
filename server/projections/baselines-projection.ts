@@ -149,10 +149,13 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
   async ensureFreshForDays(days: number): Promise<BaselinesPayload> {
     const payload = await this.ensureFresh();
 
-    // Edge case: days <= 0 returns the full unfiltered dataset (no date cutoff applied).
-    // In practice the API route clamps the caller-supplied value to the range [1, 90],
-    // so this branch should not be reachable through normal HTTP traffic.
-    if (days <= 0) return payload;
+    // Edge case: non-finite or non-positive days returns the full unfiltered dataset.
+    // Number.isFinite() rejects both NaN and ±Infinity; the days <= 0 guard covers
+    // zero and negative values. In practice the API route clamps the caller-supplied
+    // value to the range [1, 90], so this branch should not be reachable through
+    // normal HTTP traffic, but we guard defensively to avoid depending on the
+    // route's || 14 fallback for NaN-safety.
+    if (!Number.isFinite(days) || days <= 0) return payload;
 
     // Timezone limitation: the cutoff is derived from Date.now() (server wall-clock)
     // then converted to UTC via toISOString(). Trend dates are stored as YYYY-MM-DD
@@ -360,6 +363,3 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     };
   }
 }
-
-// Re-export DEFAULT_CACHE_TTL_MS so tests can use the same constant
-export { DEFAULT_CACHE_TTL_MS };

@@ -948,8 +948,8 @@ export const baselinesSnapshots = pgTable(
     projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    /** Primary query: find the latest snapshot fast. */
-    index('idx_baselines_snapshots_computed').on(table.computedAtUtc),
+    /** Primary query: find the latest snapshot fast (ORDER BY computed_at_utc DESC). */
+    index('idx_baselines_snapshots_computed').on(table.computedAtUtc.desc()),
   ]
 );
 

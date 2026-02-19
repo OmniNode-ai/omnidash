@@ -143,8 +143,11 @@ const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'tes
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // PostgreSQL hard limit is 65535 parameters per query.
-// The widest baselines child table (comparisons) has ~14 fields, giving ~4681 safe rows.
-// Use 4000 as a conservative cap with margin.
+// The widest baselines child table (comparisons) has 14 explicit user params
+// (snapshotId, patternId, patternName, sampleSize, windowStart, windowEnd,
+//  tokenDelta, timeDelta, retryDelta, testPassRateDelta, reviewIterationDelta,
+//  recommendation, confidence, rationale — DB handles id and createdAt).
+// floor(65535 / 14) = 4681 safe rows. Use 4000 as a conservative cap with margin.
 const MAX_BATCH_ROWS = 4000;
 
 // Hoisted to module scope — shared by both comparison and breakdown writers so validation
@@ -967,10 +970,10 @@ export class ReadModelConsumer {
     // These may be under camelCase or snake_case keys depending on producer.
     //
     // Guard against PostgreSQL's hard limit of 65535 parameters per query.
-    // Each child-table row has ~15 fields, so the safe ceiling is ~4369 rows.
-    // Cap at MAX_BATCH_ROWS (module-scope constant) to leave headroom. Log a
-    // warning when the cap fires so operators can investigate abnormally large
-    // upstream events.
+    // Each child-table row has at most 14 explicit user params (comparisons),
+    // giving a safe ceiling of 4681 rows. Cap at MAX_BATCH_ROWS (module-scope
+    // constant) to leave headroom. Log a warning when the cap fires so
+    // operators can investigate abnormally large upstream events.
     const rawComparisonsAll = Array.isArray(data.comparisons) ? data.comparisons : [];
     if (rawComparisonsAll.length > MAX_BATCH_ROWS) {
       console.warn(
@@ -1039,10 +1042,18 @@ export class ReadModelConsumer {
         comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
       }));
 
-    // Deduplicate trend rows by date (keep last occurrence) to prevent duplicate
-    // date inserts that would inflate projection averages. Migration 0005 adds a
-    // UNIQUE(snapshot_id, date) index as a DB-level guard; this dedup ensures
-    // duplicate-bearing payloads are silently handled rather than raising a DB error.
+    // Deduplicate trend rows by date to prevent duplicate date inserts that would
+    // inflate projection averages. Migration 0005 adds a UNIQUE(snapshot_id, date)
+    // index as a DB-level guard; this dedup ensures duplicate-bearing payloads are
+    // silently handled rather than raising a DB error.
+    //
+    // "Last wins" policy: the Map is iterated in insertion order, so each
+    // occurrence of a duplicate date overwrites the previous one, keeping the
+    // last row from the upstream payload. This is intentional — the upstream
+    // producer emits trend rows ordered oldest-to-newest, so the last occurrence
+    // of a given date represents the most recently computed value for that day.
+    // If the producer's ordering guarantee is ever removed, "last wins" should
+    // be revisited in favour of an explicit max-by-field selection.
     const trendRowsByDate = new Map<string, (typeof trendRows)[0]>();
     for (const row of trendRows) {
       trendRowsByDate.set(row.date, row);
@@ -1148,7 +1159,7 @@ export class ReadModelConsumer {
         await tx.delete(baselinesBreakdown).where(eq(baselinesBreakdown.snapshotId, snapshotId));
 
         if (rawBreakdown.length > 0) {
-          const breakdownRows: InsertBaselinesBreakdown[] = (
+          const breakdownRowsRaw: InsertBaselinesBreakdown[] = (
             rawBreakdown as Record<string, unknown>[]
           ).map((b) => {
             const rawAction = String(b.action ?? '');
@@ -1164,6 +1175,24 @@ export class ReadModelConsumer {
               ),
             };
           });
+
+          // Deduplicate breakdown rows by action (keep last occurrence) to prevent
+          // duplicate action entries that would cause _deriveSummary() to double-count
+          // promote_count/shadow_count/etc. Unlike the trend table there is no DB-level
+          // UNIQUE constraint on (snapshot_id, action), so we enforce dedup here at
+          // write time — consistent with the dedup already applied to trend rows above.
+          const breakdownByAction = new Map<string, (typeof breakdownRowsRaw)[0]>();
+          for (const row of breakdownRowsRaw) {
+            breakdownByAction.set(row.action, row);
+          }
+          const breakdownRows = [...breakdownByAction.values()];
+          if (breakdownRows.length < breakdownRowsRaw.length) {
+            console.warn(
+              `[read-model-consumer] Deduplicated ${breakdownRowsRaw.length - breakdownRows.length} ` +
+                `duplicate breakdown action(s) for snapshot ${snapshotId}`
+            );
+          }
+
           await tx.insert(baselinesBreakdown).values(breakdownRows);
           insertedBreakdownCount = breakdownRows.length;
         }
