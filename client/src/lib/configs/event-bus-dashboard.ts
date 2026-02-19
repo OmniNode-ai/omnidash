@@ -447,6 +447,32 @@ export const TOPIC_METADATA: Record<
   },
 };
 
+// ============================================================================
+// Widget ID and Column Key Constants
+// ============================================================================
+
+/**
+ * Widget ID for the recent-events table in eventBusDashboardConfig.
+ * Declared before the config object so the config can reference this constant
+ * directly — keeping string literals and their named constants in sync.
+ */
+export const RECENT_EVENTS_WIDGET_ID = 'table-recent-events';
+
+/**
+ * Column key for the topic cell in the recent-events table.
+ * This is the data key used in the columns array and matched by
+ * customCellRenderers in EventBusMonitor.tsx.
+ *
+ * Set to 'topicRaw' so that the table reads row.topicRaw (the raw topic
+ * suffix) as the cell value. The customCellRenderer intercepts this column
+ * and calls getTopicLabel() to display the friendly label — the raw value
+ * never appears as plain text in the UI.
+ *
+ * Declared before the config object so the config can reference this constant
+ * directly — keeping string literals and their named constants in sync.
+ */
+export const TOPIC_COLUMN_KEY = 'topicRaw';
+
 /**
  * Dashboard configuration for Event Bus Monitor
  *
@@ -605,7 +631,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
 
     // Row 3-5: Event Table (full width)
     {
-      widget_id: 'table-recent-events',
+      widget_id: RECENT_EVENTS_WIDGET_ID,
       title: 'Recent Events',
       description: 'Latest events from all topics',
       row: 3,
@@ -622,7 +648,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
         striped: true,
         hover_highlight: true,
         columns: [
-          { key: 'topic', header: 'Topic', width: 150, sortable: true },
+          { key: TOPIC_COLUMN_KEY, header: 'Topic', width: 150, sortable: true, sort_key: 'topic' },
           { key: 'eventType', header: 'Event Type', width: 130, sortable: true },
           { key: 'summary', header: 'Summary', width: 250, sortable: false },
           { key: 'source', header: 'Source', width: 120, sortable: true },
