@@ -1,3 +1,37 @@
+-- =============================================================================
+-- DEPLOYMENT NOTE: 3-MIGRATION SET — APPLY 0004, 0005, AND 0006 TOGETHER
+-- =============================================================================
+-- This migration (0004) is part of a 3-file set that must all be applied in
+-- the same deployment:
+--
+--   0004_baselines_roi.sql            — creates baselines_snapshots,
+--                                       baselines_comparisons, baselines_trend,
+--                                       baselines_breakdown (this file)
+--   0005_baselines_trend_unique.sql   — adds UNIQUE(snapshot_id, date) to
+--                                       baselines_trend
+--   0006_baselines_breakdown_unique.sql — adds UNIQUE(snapshot_id, action) to
+--                                       baselines_breakdown
+--
+-- Why split: each file runs in a separate transaction in the migration runner;
+-- 0004–0006 were not collapsed post-review.
+--
+-- Safety window: the app is safe to run between 0004 applying and 0005/0006
+-- applying because the projection's delete-then-reinsert pattern in
+-- ReadModelConsumer guards against duplicates at the application level.
+-- However, operators MUST verify all three migrations are applied before
+-- considering the deployment complete — a partially-applied set leaves
+-- baselines_trend and baselines_breakdown without their UNIQUE constraints,
+-- which means duplicate-detection relies solely on the app-level guard rather
+-- than the DB enforcing uniqueness.
+--
+-- Verification (run after deploy):
+--   SELECT indexname FROM pg_indexes
+--    WHERE tablename IN ('baselines_trend', 'baselines_breakdown')
+--      AND indexname LIKE '%unique%';
+--   -- Expect: baselines_trend_snapshot_date_unique
+--   --         baselines_breakdown_snapshot_action_unique
+-- =============================================================================
+
 -- Migration: Baselines & ROI Tables (OMN-2331)
 --
 -- Stores snapshots produced by the upstream baselines-computed Kafka event:

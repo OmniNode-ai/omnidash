@@ -116,6 +116,11 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     };
   }
 
+  // Limit does not apply to baselines — we always load the full latest snapshot in a single
+  // query. The parent signature is `querySnapshot(db, limit?)` but baselines never paginates:
+  // comparisons, trend, and breakdown are all fetched in full for the latest snapshot_id and
+  // then filtered/sliced at the route layer (e.g. ensureFreshForDays). Omitting `limit` here
+  // is intentional; do not add it without a corresponding pagination strategy in the queries.
   protected async querySnapshot(db: Db): Promise<BaselinesPayload> {
     const snapshotId = await this._queryLatestSnapshotId(db);
     if (!snapshotId) {
