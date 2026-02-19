@@ -275,6 +275,14 @@ export async function createTestApp(
         'Set it to a PostgreSQL connection string targeting a database ending with _test or -test.'
     );
   }
+  // Safety check: refuse to run against a non-test database name to prevent
+  // accidental writes to production or staging databases.
+  if (!/(_test|-test)(\/|$)/i.test(process.env.TEST_DATABASE_URL)) {
+    throw new Error(
+      `TEST_DATABASE_URL "${process.env.TEST_DATABASE_URL}" does not appear to target a test database. ` +
+        'The database name must end with _test or -test.'
+    );
+  }
   vi.stubEnv('OMNIDASH_ANALYTICS_DB_URL', process.env.TEST_DATABASE_URL);
   vi.stubEnv('DATABASE_URL', process.env.TEST_DATABASE_URL);
 
