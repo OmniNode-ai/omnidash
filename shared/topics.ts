@@ -271,7 +271,9 @@ export const SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED =
  */
 export const SUFFIX_OMNICLAUDE_LLM_COST_REPORTED = 'onex.evt.omniclaude.llm-cost-reported.v1';
 
-/** Context enrichment events emitted per enrichment operation (OMN-2280). */
+/** Context enrichment events emitted per enrichment operation (OMN-2280).
+ * NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
+ * consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
 export const SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT = 'onex.evt.omniclaude.context-enrichment.v1';
 
 // ============================================================================
