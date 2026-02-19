@@ -201,6 +201,10 @@ export function DataSourceHealthPanel() {
     // Refresh every 60 seconds — data source status changes infrequently
     refetchInterval: 60_000,
     staleTime: 30_000,
+    // One retry for transient failures; errors on a readiness panel should
+    // surface quickly rather than being hidden behind TanStack Query's default
+    // 3-retry / ~30 s delay.
+    retry: 1,
   });
 
   return (

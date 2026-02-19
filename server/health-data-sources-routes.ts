@@ -398,6 +398,7 @@ router.get('/data-sources', async (_req, res) => {
   try {
     // Serve cached result if still fresh.
     if (healthCache && Date.now() < healthCache.expiresAt) {
+      res.set('Cache-Control', 'no-store');
       res.json(healthCache.result);
       return;
     }
@@ -406,6 +407,7 @@ router.get('/data-sources', async (_req, res) => {
     // and return from cache instead of starting an independent probe suite.
     if (pendingProbe !== null) {
       const result = await pendingProbe;
+      res.set('Cache-Control', 'no-store');
       res.json(result);
       return;
     }
@@ -468,8 +470,10 @@ router.get('/data-sources', async (_req, res) => {
     })();
 
     const body = await pendingProbe;
+    res.set('Cache-Control', 'no-store');
     res.json(body);
   } catch {
+    res.set('Cache-Control', 'no-store');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
