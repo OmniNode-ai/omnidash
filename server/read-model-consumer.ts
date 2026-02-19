@@ -1070,6 +1070,11 @@ export class ReadModelConsumer {
       );
     }
     const finalTrendRows = dedupedTrendRows;
+    if (rawTrend.length > 0 && finalTrendRows.length === 0) {
+      console.warn(
+        `[baselines] all ${rawTrend.length} trend rows filtered out for snapshot ${snapshotId} — check upstream data`
+      );
+    }
 
     try {
       // Upsert the snapshot header and replace child rows atomically inside a
@@ -1150,7 +1155,13 @@ export class ReadModelConsumer {
               })(),
               rationale: String(c.rationale ?? ''),
             }));
-          await tx.insert(baselinesComparisons).values(comparisonRows);
+          if (comparisonRows.length === 0) {
+            console.warn(
+              `[baselines] all ${rawComparisons.length} comparison rows filtered out for snapshot ${snapshotId} — check upstream data`
+            );
+          } else {
+            await tx.insert(baselinesComparisons).values(comparisonRows);
+          }
           insertedComparisonCount = comparisonRows.length;
         }
 
@@ -1199,7 +1210,13 @@ export class ReadModelConsumer {
             );
           }
 
-          await tx.insert(baselinesBreakdown).values(breakdownRows);
+          if (breakdownRows.length === 0) {
+            console.warn(
+              `[baselines] all ${rawBreakdown.length} breakdown rows filtered out for snapshot ${snapshotId} — check upstream data`
+            );
+          } else {
+            await tx.insert(baselinesBreakdown).values(breakdownRows);
+          }
           insertedBreakdownCount = breakdownRows.length;
         }
       });

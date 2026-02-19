@@ -149,7 +149,7 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
    * This method re-uses that cache and applies a client-side filter on `date`
    * so the route does not need to re-query the DB per `days` value.
    *
-   * TTL: delegates to ensureFresh(), so the same 5-second TTL applies.
+   * TTL: delegates to ensureFresh(), so the same DEFAULT_CACHE_TTL_MS TTL applies.
    */
   async ensureFreshForDays(days: number): Promise<BaselinesPayload> {
     const payload = await this.ensureFresh();
