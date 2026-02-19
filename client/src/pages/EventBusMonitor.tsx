@@ -319,7 +319,7 @@ function toRecentEvent(event: DisplayEvent) {
     // to render the clickable label badge. The renderer never displays the raw value
     // directly; it calls getTopicLabel(raw) to produce the friendly label.
     topic: event.topic,
-    topicRaw: event.topicRaw, // must match TOPIC_COLUMN_KEY in event-bus-dashboard.ts
+    topicRaw: event.topicRaw,
     eventType: event.normalizedType,
     summary: event.summary,
     source: event.source,
@@ -803,12 +803,12 @@ export default function EventBusMonitor() {
       // Contract: rows in the 'table-recent-events' widget are produced exclusively
       // by toRecentEvent(), which stores the raw topic suffix in row.topicRaw and
       // the friendly label in row.topic. Always read rawTopic from row.topicRaw.
-      const rawTopic = String(row.topicRaw ?? '');
       if (import.meta.env.DEV && row.topicRaw === undefined) {
         console.warn(
           '[EventBusMonitor] handleEventClick: row.topicRaw is missing — rawTopic will be empty string. Ensure this row was produced by toRecentEvent().'
         );
       }
+      const rawTopic = String(row.topicRaw ?? '');
       setSelectedEvent({
         id: String(row.id || ''),
         topic: getTopicLabel(rawTopic),
