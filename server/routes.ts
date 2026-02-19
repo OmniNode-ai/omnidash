@@ -21,6 +21,7 @@ import { createGoldenPathRoutes } from './golden-path-routes';
 import enforcementRoutes from './enforcement-routes';
 import executionRoutes from './execution-routes';
 import enrichmentRoutes from './enrichment-routes';
+import topicCatalogRoutes from './topic-catalog-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -85,6 +86,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount context enrichment routes for enrichment metrics dashboard (OMN-2280)
   app.use('/api/enrichment', enrichmentRoutes);
+
+  // Mount topic catalog routes for catalog status and warnings (OMN-2315)
+  app.use('/api/catalog', topicCatalogRoutes);
 
   // Conditionally mount golden path test routes (OMN-2079)
   // Only enabled when ENABLE_TEST_ROUTES=true AND (NODE_ENV=test OR OMNIDASH_TEST_MODE=true)
