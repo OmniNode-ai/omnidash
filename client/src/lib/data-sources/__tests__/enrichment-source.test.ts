@@ -6,11 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import {
-  createMockResponse,
-  setupFetchMock,
-  resetFetchMock,
-} from '../../../tests/utils/mock-fetch';
+import { createMockResponse, setupFetchMock, resetFetchMock } from '@/tests/utils/mock-fetch';
 import type { EnrichmentSummary } from '@shared/enrichment-types';
 
 // Re-import fresh for each test to reset singleton state

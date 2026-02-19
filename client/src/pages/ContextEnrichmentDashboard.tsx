@@ -71,7 +71,13 @@ const TIME_WINDOWS: { value: EnrichmentTimeWindow; label: string }[] = [
 ];
 
 /** Bar colours for channel chart (cycled by index). */
-const CHANNEL_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#06b6d4'];
+const CHANNEL_COLORS = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-6))',
+];
 
 // ============================================================================
 // Helpers
@@ -640,7 +646,7 @@ export default function ContextEnrichmentDashboard() {
         <StatCard
           title="Total Enrichments"
           value={summaryLoading ? '—' : (summary?.total_enrichments ?? 0).toLocaleString()}
-          description={`${(summary?.counts.misses ?? 0).toLocaleString()} misses, ${(summary?.counts.errors ?? 0).toLocaleString()} errors`}
+          description={`${(summary?.counts?.misses ?? 0).toLocaleString()} misses, ${(summary?.counts?.errors ?? 0).toLocaleString()} errors`}
           icon={BarChart3}
           isLoading={summaryLoading}
         />
@@ -774,9 +780,24 @@ export default function ContextEnrichmentDashboard() {
                     contentStyle={{ fontSize: '12px' }}
                   />
                   <Legend formatter={(v) => v.replace('_ms', '').toUpperCase()} />
-                  <Bar dataKey="p50_ms" fill="#22c55e" name="p50_ms" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="p95_ms" fill="#f59e0b" name="p95_ms" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="p99_ms" fill="#ef4444" name="p99_ms" radius={[2, 2, 0, 0]} />
+                  <Bar
+                    dataKey="p50_ms"
+                    fill="hsl(var(--chart-2))"
+                    name="p50_ms"
+                    radius={[2, 2, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="p95_ms"
+                    fill="hsl(var(--chart-4))"
+                    name="p95_ms"
+                    radius={[2, 2, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="p99_ms"
+                    fill="hsl(var(--chart-5))"
+                    name="p99_ms"
+                    radius={[2, 2, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -845,14 +866,14 @@ export default function ContextEnrichmentDashboard() {
                 <Line
                   type="monotone"
                   dataKey="net_tokens_saved"
-                  stroke="#22c55e"
+                  stroke="hsl(var(--chart-2))"
                   strokeWidth={2.5}
                   dot={false}
                 />
                 <Line
                   type="monotone"
                   dataKey="avg_tokens_before"
-                  stroke="#94a3b8"
+                  stroke="hsl(var(--muted-foreground))"
                   strokeWidth={1.5}
                   dot={false}
                   strokeDasharray="4 3"
@@ -860,7 +881,7 @@ export default function ContextEnrichmentDashboard() {
                 <Line
                   type="monotone"
                   dataKey="avg_tokens_after"
-                  stroke="#3b82f6"
+                  stroke="hsl(var(--chart-1))"
                   strokeWidth={1.5}
                   dot={false}
                   strokeDasharray="4 3"
@@ -935,7 +956,7 @@ export default function ContextEnrichmentDashboard() {
                 <Line
                   type="monotone"
                   dataKey="avg_quality_score"
-                  stroke="#8b5cf6"
+                  stroke="hsl(var(--chart-3))"
                   strokeWidth={2}
                   dot={false}
                   strokeDasharray="4 3"

@@ -64,7 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_cee_model_name
 
 -- Composite index for window-based queries by channel
 CREATE INDEX IF NOT EXISTS idx_cee_created_channel
-  ON context_enrichment_events (created_at, channel);
+  ON context_enrichment_events (channel, created_at DESC);
 
 -- Index to support inflation alert queries (outcome = 'inflated', ordered by time)
 CREATE INDEX IF NOT EXISTS idx_cee_inflated_created

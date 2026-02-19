@@ -22,7 +22,7 @@ import {
   getMockSimilarityQuality,
   getMockInflationAlerts,
 } from '@/lib/mock-data/enrichment-mock';
-import { buildApiUrl } from './api-base';
+import { buildApiUrl } from '@/lib/data-sources/api-base';
 
 export interface EnrichmentFetchOptions {
   /** Fall back to mock data on network/HTTP errors (default: true). */
