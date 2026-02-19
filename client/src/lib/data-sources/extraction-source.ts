@@ -63,7 +63,10 @@ class ExtractionSource {
    * treated identically as "no data".
    */
   private isSummaryEmpty(data: ExtractionSummary): boolean {
-    return data.total_injections === 0 && data.last_event_at == null;
+    return (
+      (data.total_injections === 0 || !Number.isFinite(data.total_injections)) &&
+      data.last_event_at == null
+    );
   }
 
   async summary(

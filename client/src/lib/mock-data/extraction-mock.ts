@@ -43,6 +43,7 @@ export function getMockExtractionSummary(): ExtractionSummary {
     avg_utilization_score: 0.81,
     avg_latency_ms: 94,
     success_rate: 0.962,
+    // Non-null: mock represents an active system, not an empty table (null would signal empty)
     last_event_at: new Date(Date.now() - 4 * 60_000).toISOString(),
   };
 }

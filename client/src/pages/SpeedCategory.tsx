@@ -92,6 +92,7 @@ function LatencyPercentilesChart({ data }: { data: LatencyDetails | undefined })
 
 export default function SpeedCategory() {
   const queryClient = useQueryClient();
+  // Fixed to 24h on this overview page — no time-window selector in the SpeedCategory layout.
   const [timeWindow] = useState('24h');
 
   // ---------------------------------------------------------------------------
@@ -110,8 +111,9 @@ export default function SpeedCategory() {
     queryKey: queryKeys.effectiveness.latency(),
     queryFn: async () => {
       const data = await effectivenessSource.latencyDetails();
-      // Safe to read isUsingMockData here: JS is single-threaded; markMock/markReal
-      // fired synchronously inside latencyDetails() before it returned.
+      // SAFE: JavaScript's event loop guarantees that no other code can run
+      // between this await resumption and the next synchronous line. markMock/markReal
+      // were called synchronously inside latencyDetails() before it returned.
       const isMock = effectivenessSource.isUsingMockData;
       return { data, isMock };
     },

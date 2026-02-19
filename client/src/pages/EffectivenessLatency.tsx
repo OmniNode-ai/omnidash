@@ -105,8 +105,9 @@ export default function EffectivenessLatency() {
     queryKey: queryKeys.effectiveness.latency(),
     queryFn: async () => {
       const data = await effectivenessSource.latencyDetails();
-      // Safe to read isUsingMockData here: JS is single-threaded; markMock/markReal
-      // fired synchronously inside latencyDetails() before it returned.
+      // SAFE: JavaScript's event loop guarantees that no other code can run
+      // between this await resumption and the next synchronous line. markMock/markReal
+      // were called synchronously inside latencyDetails() before it returned.
       const isMock = effectivenessSource.isUsingMockData;
       return { data, isMock };
     },
