@@ -135,11 +135,16 @@ function WindowSelector({
   onChange: (w: EnrichmentTimeWindow) => void;
 }) {
   return (
-    <div className="flex rounded-md border border-border overflow-hidden">
+    <div
+      role="group"
+      aria-label="Time window"
+      className="flex rounded-md border border-border overflow-hidden"
+    >
       {TIME_WINDOWS.map((w) => (
         <button
           key={w.value}
           type="button"
+          aria-pressed={value === w.value}
           onClick={() => onChange(w.value)}
           className={cn(
             'px-3 py-1.5 text-xs font-medium transition-colors',
