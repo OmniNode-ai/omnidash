@@ -111,9 +111,9 @@ function relativeTime(isoTs: string): string {
 }
 
 function hitRateColor(rate: number): string {
-  if (rate >= 0.7) return 'text-green-500';
-  if (rate >= 0.5) return 'text-yellow-500';
-  return 'text-red-500';
+  if (rate >= 0.7) return 'text-[hsl(var(--chart-2))]';
+  if (rate >= 0.5) return 'text-[hsl(var(--chart-4))]';
+  return 'text-destructive';
 }
 
 function hitRateBadge(rate: number): 'default' | 'secondary' | 'destructive' {
@@ -123,9 +123,9 @@ function hitRateBadge(rate: number): 'default' | 'secondary' | 'destructive' {
 }
 
 function tokenSavingsColor(saved: number): string {
-  if (saved > 0) return 'text-green-500';
+  if (saved > 0) return 'text-[hsl(var(--chart-2))]';
   if (saved === 0) return 'text-muted-foreground';
-  return 'text-red-500';
+  return 'text-destructive';
 }
 
 // ============================================================================
@@ -225,13 +225,20 @@ function TokenSavingsHero({
     <Card
       className={cn(
         'col-span-full md:col-span-2 border-2',
-        isPositive ? 'border-green-500/40 bg-green-500/5' : 'border-red-500/40 bg-red-500/5'
+        isPositive
+          ? 'border-[hsl(var(--chart-2)_/_0.4)] bg-[hsl(var(--chart-2)_/_0.05)]'
+          : 'border-[hsl(var(--destructive)_/_0.4)] bg-[hsl(var(--destructive)_/_0.05)]'
       )}
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div>
           <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Coins className={cn('h-4 w-4', isPositive ? 'text-green-500' : 'text-red-500')} />
+            <Coins
+              className={cn(
+                'h-4 w-4',
+                isPositive ? 'text-[hsl(var(--chart-2))]' : 'text-destructive'
+              )}
+            />
             Net Tokens Saved
           </CardTitle>
           <CardDescription className="text-xs mt-0.5">
@@ -308,10 +315,10 @@ function InflationAlertTable({
   isError: boolean;
 }) {
   return (
-    <Card className="border-red-500/30">
+    <Card className="border-[hsl(var(--destructive)_/_0.3)]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-red-500" />
+          <AlertTriangle className="h-4 w-4 text-destructive" />
           Context Inflation Alerts
           {alerts.length > 0 && (
             <Badge variant="destructive" className="text-xs ml-1">
@@ -369,7 +376,7 @@ function InflationAlertTable({
                     {fmtTokens(a.tokens_after)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <span className="font-mono text-sm font-medium text-red-500">
+                    <span className="font-mono text-sm font-medium text-destructive">
                       {fmtTokens(a.net_tokens_saved)}
                     </span>
                   </TableCell>
@@ -560,9 +567,12 @@ export default function ContextEnrichmentDashboard() {
 
       {/* Demo Mode Banner */}
       {isUsingMockData && (
-        <Alert variant="default" className="border-yellow-500/50 bg-yellow-500/10">
-          <AlertCircle className="h-4 w-4 text-yellow-500" />
-          <AlertTitle className="text-yellow-500">Demo Mode</AlertTitle>
+        <Alert
+          variant="default"
+          className="border-[hsl(var(--chart-4)_/_0.5)] bg-[hsl(var(--chart-4)_/_0.1)]"
+        >
+          <AlertCircle className="h-4 w-4 text-[hsl(var(--chart-4))]" />
+          <AlertTitle className="text-[hsl(var(--chart-4))]">Demo Mode</AlertTitle>
           <AlertDescription className="text-muted-foreground">
             Database unavailable or no enrichment events yet. Showing representative demo data. The
             dashboard will show live data once{' '}
@@ -578,8 +588,8 @@ export default function ContextEnrichmentDashboard() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Context Inflation Detected</AlertTitle>
           <AlertDescription>
-            {summary.inflation_alert_count} enrichment operation
-            {summary.inflation_alert_count !== 1 ? 's' : ''} increased token count in this window.
+            {summary?.inflation_alert_count} enrichment operation
+            {summary?.inflation_alert_count !== 1 ? 's' : ''} increased token count in this window.
             Review the inflation alerts table below and tune context retrieval parameters.
           </AlertDescription>
         </Alert>
@@ -628,7 +638,9 @@ export default function ContextEnrichmentDashboard() {
           value={summaryLoading ? '—' : fmtMs(summary?.p95_latency_ms ?? 0)}
           description="95th percentile latency"
           icon={Gauge}
-          valueClass={(summary?.p95_latency_ms ?? 0) > 200 ? 'text-yellow-500' : 'text-foreground'}
+          valueClass={
+            (summary?.p95_latency_ms ?? 0) > 200 ? 'text-[hsl(var(--chart-4))]' : 'text-foreground'
+          }
           isLoading={summaryLoading}
         />
 
@@ -657,7 +669,11 @@ export default function ContextEnrichmentDashboard() {
           value={summaryLoading ? '—' : (summary?.inflation_alert_count ?? 0).toLocaleString()}
           description="Operations that increased token count"
           icon={TrendingDown}
-          valueClass={(summary?.inflation_alert_count ?? 0) > 0 ? 'text-red-500' : 'text-green-500'}
+          valueClass={
+            (summary?.inflation_alert_count ?? 0) > 0
+              ? 'text-destructive'
+              : 'text-[hsl(var(--chart-2))]'
+          }
           isLoading={summaryLoading}
         />
 
@@ -669,10 +685,10 @@ export default function ContextEnrichmentDashboard() {
           icon={AlertTriangle}
           valueClass={
             (summary?.error_rate ?? 0) < 0.02
-              ? 'text-green-500'
+              ? 'text-[hsl(var(--chart-2))]'
               : (summary?.error_rate ?? 0) < 0.05
-                ? 'text-yellow-500'
-                : 'text-red-500'
+                ? 'text-[hsl(var(--chart-4))]'
+                : 'text-destructive'
           }
           isLoading={summaryLoading}
         />
