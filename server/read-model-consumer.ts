@@ -948,14 +948,11 @@ export class ReadModelConsumer {
         : deterministicCorrelationId('baselines-computed', partition, offset);
 
     // String(null) → 'null', String(undefined) → 'undefined', String(0) → '0'.
-    // The ?? '' guard is unreachable for null/undefined because String() converts
-    // them to non-empty strings; parseInt('null', 10) and parseInt('undefined', 10)
-    // both return NaN, which falls through to the || 1 default below.
-    // For a missing field (undefined) the ?? '' path is also never taken because
-    // String(undefined) is 'undefined' not ''. The guard is kept for clarity but
-    // has no runtime effect for these two common missing-value types.
-    const rawContractVersion = parseInt(String(data.contract_version ?? ''), 10);
-    const contractVersion = isNaN(rawContractVersion) ? 1 : rawContractVersion;
+    // parseInt('null', 10) and parseInt('undefined', 10) both return NaN, which
+    // falls through to the || 1 default. A previous ?? '' guard was dead code:
+    // String() never produces '' for null or undefined, so the guard was never
+    // reached. Removed in favour of the simpler two-step form below.
+    const contractVersion = parseInt(String(data.contract_version), 10) || 1;
     // Use safeParseDateOrMin so that a missing/malformed computedAtUtc sorts
     // as oldest (epoch-zero) rather than newest (wall-clock), preventing a
     // bad event from masquerading as the latest snapshot.
@@ -1235,17 +1232,21 @@ export class ReadModelConsumer {
     } catch (err) {
       // Degrade gracefully: if the table doesn't exist yet (migration not run),
       // advance the watermark so the consumer is not stuck retrying indefinitely.
-      // Only degrade gracefully for the exact PostgreSQL "undefined_table" error
-      // (SQLSTATE 42P01). The pg / @neondatabase/serverless driver surfaces this
-      // as a `.code` property on the thrown Error object.
       //
-      // The string-heuristic fallback was intentionally removed: checking whether
-      // the error message contains "baselines_" and "does not exist" is too broad
-      // and will misfire on other DB errors whose message happens to mention a
-      // baselines_ table (e.g. FK violations, permission errors). A false-positive
-      // match would cause the function to return true, silently advancing the
-      // watermark and dropping the event instead of re-throwing for the caller.
-      if (err instanceof Error && (err as { code?: string }).code === '42P01') {
+      // Primary check: PostgreSQL error code 42P01 ("undefined_table").
+      // The pg / @neondatabase/serverless driver surfaces this as a `.code`
+      // property on the thrown Error object.
+      //
+      // Fallback string check: the driver may wrap the error in a way that drops
+      // the `.code` property (observed with @neondatabase/serverless in some
+      // connection-pool failure modes). The regex /does not exist/i matches the
+      // exact PostgreSQL 42P01 error message format ('relation "<table>" does not
+      // exist') while being narrow enough to exclude FK violation messages ('Key
+      // (x) is not present in table "y"') and permission error messages ('permission
+      // denied for table "y"'), neither of which contain the phrase 'does not exist'.
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (pgCode === '42P01' || /does not exist/i.test(msg)) {
         console.warn(
           '[ReadModelConsumer] baselines_* tables not yet created -- ' +
             'run migrations to enable baselines projection'

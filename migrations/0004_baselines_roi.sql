@@ -30,6 +30,10 @@
 --      AND indexname LIKE '%unique%';
 --   -- Expect: baselines_trend_snapshot_date_unique
 --   --         baselines_breakdown_snapshot_action_unique
+--
+-- TODO: implement GET /api/baselines/migration-health that runs the above query and
+-- returns 200 OK iff both UNIQUE indexes exist, so automated deploy pipelines can
+-- gate on this instead of relying on manual operator verification.
 -- =============================================================================
 
 -- Migration: Baselines & ROI Tables (OMN-2331)

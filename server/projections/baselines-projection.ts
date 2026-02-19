@@ -204,7 +204,7 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     const rows = await db
       .select({ snapshotId: baselinesSnapshots.snapshotId })
       .from(baselinesSnapshots)
-      .orderBy(desc(baselinesSnapshots.computedAtUtc))
+      .orderBy(desc(baselinesSnapshots.computedAtUtc), desc(baselinesSnapshots.projectedAt))
       .limit(1);
 
     return rows[0]?.snapshotId ?? null;
