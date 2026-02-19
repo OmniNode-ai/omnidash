@@ -805,7 +805,7 @@ export default function EventBusMonitor() {
       const rawTopic = String(row.topicRaw ?? '');
       if (process.env.NODE_ENV !== 'production' && row.topicRaw === undefined) {
         console.warn(
-          '[EventBusMonitor] handleEventClick: row.topicRaw is missing — falling back to row.topic. Check that row was produced by toRecentEvent().'
+          '[EventBusMonitor] handleEventClick: row.topicRaw is missing — rawTopic will be empty string. Ensure this row was produced by toRecentEvent().'
         );
       }
       setSelectedEvent({
