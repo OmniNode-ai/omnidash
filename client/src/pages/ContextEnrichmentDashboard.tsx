@@ -499,6 +499,7 @@ export default function ContextEnrichmentDashboard() {
     !tokenLoading &&
     !simLoading &&
     !alertsLoading;
+  // TODO(OMN-2280): When wiring real data, replace singleton mock-state with query data shape inspection (e.g. check if summary.total === 0) to avoid React tracking issues.
   const isUsingMockData = useMemo(
     () => allSettled && enrichmentSource.isUsingMockData,
     // eslint-disable-next-line react-hooks/exhaustive-deps
