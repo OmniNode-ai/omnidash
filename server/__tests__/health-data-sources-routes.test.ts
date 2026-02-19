@@ -173,6 +173,8 @@ describe('GET /api/health/data-sources', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.dataSources.eventBus.status).toBe('live');
+    // correlationTrace is a shallow copy of eventBus — it must also be live
+    expect(res.body.dataSources.correlationTrace.status).toBe('live');
   });
 
   it('reports status: live for effectiveness when total_sessions > 0', async () => {
@@ -216,7 +218,9 @@ describe('GET /api/health/data-sources', () => {
 
   it('reports status: live for validation when DB returns total_runs > 0', async () => {
     vi.mocked(projectionService.getView).mockReturnValue(null);
-    // validation probe queries validationRuns directly
+    // validation probe queries validationRuns directly; patterns probe also calls
+    // tryGetIntelligenceDb — using mockReturnValue (not Once) means both probes
+    // get the same db returning count: 12, so patterns will also be 'live'.
     vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 12 }]) as any);
     vi.mocked(queryInsightsSummary).mockResolvedValue({
       insights: [],
@@ -233,6 +237,8 @@ describe('GET /api/health/data-sources', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.dataSources.validation.status).toBe('live');
+    // patterns also receives count: 12 from the shared mockReturnValue, so it too is 'live'
+    expect(res.body.dataSources.patterns.status).toBe('live');
   });
 
   it('reports status: error for insights when queryInsightsSummary throws', async () => {

@@ -145,7 +145,7 @@ function DataSourceRow({ sourceKey, info }: { sourceKey: string; info: DataSourc
 // ============================================================================
 
 function SummaryBar({ summary }: { summary: { live: number; mock: number; error: number } }) {
-  const total = summary.live + summary.mock + summary.error;
+  const total = Object.values(summary).reduce((sum, n) => sum + n, 0);
   return (
     <div className="flex items-center gap-4 text-sm">
       <span className="flex items-center gap-1.5 text-green-400">
