@@ -22,6 +22,8 @@ import {
   getMonitoredTopics,
   topicMatchesSuffix,
   normalizeToSuffix,
+  RECENT_EVENTS_WIDGET_ID,
+  TOPIC_COLUMN_KEY,
 } from '@/lib/configs/event-bus-dashboard';
 import { useProjectionStream } from '@/hooks/useProjectionStream';
 import type { ProjectionEvent } from '@/hooks/useProjectionStream.types';
@@ -114,23 +116,9 @@ interface PausedSnapshot {
 const eventConfig = getEventMonitoringConfig();
 const monitoredTopics = getMonitoredTopics();
 
-// Widget ID for the recent-events table. Used in both the widgetProps key and
-// the handleEventClick guard so that a rename only needs to happen in one place.
-//
-// NOTE: These values must match the widget_id and column key in
-// eventBusDashboardConfig (event-bus-dashboard.ts). The DashboardConfig type
-// does not expose widget_id or column keys as named, importable constants, so
-// deriving them programmatically is not possible without structural changes to
-// the config module. A rename there requires updating these constants in sync.
-// Consider exporting RECENT_EVENTS_TABLE_WIDGET_ID and RECENT_EVENTS_TOPIC_COLUMN_KEY
-// from the config module to make the coupling a single-site update.
-const RECENT_EVENTS_TABLE_WIDGET_ID = 'table-recent-events';
-
-// Column key for the topic cell in the recent-events table.
-// Must match the `key` field of the corresponding column entry in
-// eventBusDashboardConfig (imported from @/lib/configs/event-bus-dashboard).
-// See NOTE above — a rename there requires updating this constant too.
-const RECENT_EVENTS_TOPIC_COLUMN_KEY = 'topic';
+// Widget ID and topic column key are imported from the config module as
+// RECENT_EVENTS_WIDGET_ID and TOPIC_COLUMN_KEY. A rename in the config
+// propagates automatically — no local constants to update in sync.
 
 // ============================================================================
 // Mapping: ProjectionEvent → DisplayEvent
@@ -325,22 +313,12 @@ function toLiveEvent(event: DisplayEvent) {
 function toRecentEvent(event: DisplayEvent) {
   return {
     id: event.id,
-    // DELIBERATE CONVENTION: row.topic holds the raw topic suffix (not a friendly
-    // label) for the table-recent-events widget.
-    //
-    // Why: customCellRenderers only receives `value = row[columnKey]`. The topic
-    // cell renderer is keyed to RECENT_EVENTS_TOPIC_COLUMN_KEY ("topic"), so
-    // `value` will be whatever row.topic holds. The renderer needs the raw suffix
-    // to (a) call getTopicLabel(raw) for display and (b) compare against
-    // filters.topic for the active-filter highlight. There is no mechanism to
-    // pass row.topicRaw alongside the value — only the column's value is forwarded.
-    //
-    // This is intentional and correct for this widget. DisplayEvent.topic holds a
-    // friendly label at the DisplayEvent level; toRecentEvent() intentionally
-    // overrides that with the raw suffix to satisfy the cell renderer contract.
-    // row.topicRaw remains a redundant copy kept for consistency with toLiveEvent()
-    // and for direct row access in handleEventClick (which reads both fields).
-    topic: event.topicRaw,
+    // row.topic holds the friendly display label (matches DisplayEvent.topic contract).
+    // row.topicRaw holds the raw suffix — this is the value the table reads for the
+    // 'topicRaw' column (TOPIC_COLUMN_KEY), which the customCellRenderer intercepts
+    // to render the clickable label badge. The renderer never displays the raw value
+    // directly; it calls getTopicLabel(raw) to produce the friendly label.
+    topic: event.topic,
     topicRaw: event.topicRaw,
     eventType: event.normalizedType,
     summary: event.summary,
@@ -820,14 +798,12 @@ export default function EventBusMonitor() {
   }, []);
 
   const handleEventClick = useCallback((widgetId: string, row: Record<string, unknown>) => {
-    if (widgetId === RECENT_EVENTS_TABLE_WIDGET_ID) {
+    if (widgetId === RECENT_EVENTS_WIDGET_ID) {
       // Contract: rows in the 'table-recent-events' widget are produced exclusively
-      // by toRecentEvent(), which stores the raw topic suffix in both row.topic AND
-      // row.topicRaw. The row.topicRaw fallback to row.topic is only safe here
-      // because of that invariant — do NOT rely on it for rows from other widgets
-      // where topic may hold a friendly display label instead.
-      const rawTopic = String(row.topicRaw || row.topic || '');
-      if (process.env.NODE_ENV !== 'production' && !row.topicRaw) {
+      // by toRecentEvent(), which stores the raw topic suffix in row.topicRaw and
+      // the friendly label in row.topic. Always read rawTopic from row.topicRaw.
+      const rawTopic = String(row.topicRaw ?? '');
+      if (process.env.NODE_ENV !== 'production' && row.topicRaw === undefined) {
         console.warn(
           '[EventBusMonitor] handleEventClick: row.topicRaw is missing — falling back to row.topic. Check that row was produced by toRecentEvent().'
         );
@@ -960,14 +936,23 @@ export default function EventBusMonitor() {
    * Explicitly typed as WidgetPropsMap so that the customCellRenderers shape is
    * captured and the object satisfies the widgetProps prop of DashboardRenderer
    * without relying on structural inference widening the renderer type to unknown.
+   *
+   * Re-render note: every filters.topic change recreates this renderer object,
+   * which causes DashboardRenderer to re-render the table widget (because
+   * widgetProps is a new reference). This is acceptable given the WidgetPropsMap
+   * infrastructure — the renderer must close over filters.topic to apply the
+   * active-filter highlight — but it is worth noting here as the intentional
+   * trade-off.
    */
   const tableWidgetProps = useMemo<WidgetPropsMap>(
     () => ({
-      [RECENT_EVENTS_TABLE_WIDGET_ID]: {
+      [RECENT_EVENTS_WIDGET_ID]: {
         customCellRenderers: {
-          // Keyed by RECENT_EVENTS_TOPIC_COLUMN_KEY to stay in sync with the
+          // Keyed by TOPIC_COLUMN_KEY ('topicRaw') to stay in sync with the
           // column definition in eventBusDashboardConfig (imported config).
-          [RECENT_EVENTS_TOPIC_COLUMN_KEY]: (value: unknown) => {
+          // The table reads row.topicRaw as the cell value; this renderer
+          // intercepts it and displays getTopicLabel(raw) as the friendly label.
+          [TOPIC_COLUMN_KEY]: (value: unknown) => {
             const raw = String(value ?? '');
             if (!raw) return null; // no topic value, nothing to render
             const label = getTopicLabel(raw);

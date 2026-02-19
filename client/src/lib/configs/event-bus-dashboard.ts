@@ -622,7 +622,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
         striped: true,
         hover_highlight: true,
         columns: [
-          { key: 'topic', header: 'Topic', width: 150, sortable: true },
+          { key: 'topicRaw', header: 'Topic', width: 150, sortable: true },
           { key: 'eventType', header: 'Event Type', width: 130, sortable: true },
           { key: 'summary', header: 'Summary', width: 250, sortable: false },
           { key: 'source', header: 'Source', width: 120, sortable: true },
@@ -955,6 +955,29 @@ export function normalizeToSuffix(
   // 'dev.onex.cmd.omniintelligence.tool-content.v1' that aren't in MONITORED_TOPICS.
   return extractSuffix(topic);
 }
+
+// ============================================================================
+// Widget ID and Column Key Constants
+// ============================================================================
+
+/**
+ * Widget ID for the recent-events table in eventBusDashboardConfig.
+ * Import this constant instead of hardcoding the string literal so that a
+ * rename only needs to happen in one place.
+ */
+export const RECENT_EVENTS_WIDGET_ID = 'table-recent-events';
+
+/**
+ * Column key for the topic cell in the recent-events table.
+ * This is the data key used in the columns array and matched by
+ * customCellRenderers in EventBusMonitor.tsx.
+ *
+ * Set to 'topicRaw' so that the table reads row.topicRaw (the raw topic
+ * suffix) as the cell value. The customCellRenderer intercepts this column
+ * and calls getTopicLabel() to display the friendly label — the raw value
+ * never appears as plain text in the UI.
+ */
+export const TOPIC_COLUMN_KEY = 'topicRaw';
 
 // ============================================================================
 // Config Accessor Functions
