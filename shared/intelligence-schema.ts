@@ -1055,7 +1055,7 @@ export const baselinesBreakdown = pgTable(
     action: text('action').notNull(),
     count: integer('count').notNull().default(0),
     avgConfidence: numeric('avg_confidence', { precision: 5, scale: 4 }).notNull().default('0'),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index('idx_baselines_breakdown_snapshot').on(table.snapshotId),

@@ -148,6 +148,9 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
   async ensureFreshForDays(days: number): Promise<BaselinesPayload> {
     const payload = await this.ensureFresh();
 
+    // Edge case: days <= 0 returns the full unfiltered dataset (no date cutoff applied).
+    // In practice the API route clamps the caller-supplied value to the range [1, 90],
+    // so this branch should not be reachable through normal HTTP traffic.
     if (days <= 0) return payload;
 
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10); // YYYY-MM-DD

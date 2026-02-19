@@ -261,6 +261,14 @@ export async function createTestApp(
   // Both OMNIDASH_ANALYTICS_DB_URL (priority 1) and DATABASE_URL (priority 2)
   // must be stubbed so that whichever env var is set in the host environment,
   // storage.ts always connects to the test database.
+  //
+  // Evaluation-order note: vi.stubEnv() must be called BEFORE the dynamic
+  // `await import('express')` (and any subsequent route imports) below.
+  // storage.ts initialises its connection pool lazily on first use, but the
+  // env vars are read at that point — not at test-file load time.  By
+  // stubbing here, before any module that transitively imports storage.ts is
+  // evaluated, we guarantee the live database URL is never seen inside the
+  // test process.
   vi.stubEnv('OMNIDASH_ANALYTICS_DB_URL', process.env.TEST_DATABASE_URL!);
   vi.stubEnv('DATABASE_URL', process.env.TEST_DATABASE_URL!);
 

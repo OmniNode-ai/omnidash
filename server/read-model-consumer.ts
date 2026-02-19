@@ -71,27 +71,28 @@ function deterministicCorrelationId(topic: string, partition: number, offset: st
 }
 
 /**
- * Parse a date string safely, returning a fallback of `new Date()` when the
+ * Parse a date string safely, returning epoch-zero (`new Date(0)`) when the
  * input is missing or produces an invalid Date (e.g. malformed ISO string).
  *
- * RISK: The "now" fallback causes a missing/malformed timestamp to be treated
- * as the current time. For fields like computed_at_utc this can incorrectly
- * rank a malformed event as the "latest" snapshot — callers should treat
- * events that triggered this fallback with suspicion.
+ * Epoch-zero is used instead of "now" so that rows with a missing/malformed
+ * timestamp sort last (oldest) rather than first (newest) when the field is
+ * used as an ordering key such as MAX(computed_at_utc) for "latest snapshot".
+ * A wall-clock fallback would incorrectly rank a malformed event as the most
+ * recent snapshot, hiding correct data from callers.
  */
 function safeParseDate(value: unknown): Date {
   if (!value) {
     console.warn(
-      '[ReadModelConsumer] safeParseDate: missing timestamp value, falling back to now()'
+      '[ReadModelConsumer] safeParseDate: missing timestamp value, falling back to epoch-zero'
     );
-    return new Date();
+    return new Date(0);
   }
   const d = new Date(value as string);
   if (!Number.isFinite(d.getTime())) {
     console.warn(
-      `[ReadModelConsumer] safeParseDate: malformed timestamp "${value}", falling back to now()`
+      `[ReadModelConsumer] safeParseDate: malformed timestamp "${value}", falling back to epoch-zero`
     );
-    return new Date();
+    return new Date(0);
   }
   return d;
 }
@@ -876,14 +877,20 @@ export class ReadModelConsumer {
     if (!db) return false;
 
     // snapshot_id is required — it is the dedup key.
-    // Fall back to a deterministic hash so that malformed events with a missing
-    // snapshot_id still produce a stable key (idempotent on replay).
-    // NOTE: If this event is later re-delivered with a populated snapshot_id,
+    // Fall back to a deterministic hash when snapshot_id is absent OR when it
+    // is present but not a valid UUID (e.g. a slug or opaque string). PostgreSQL
+    // uuid primary key columns reject malformed values with a runtime error; a
+    // truthy-but-non-UUID snapshot_id would bypass the falsy guard below and
+    // crash the DB transaction.
+    // NOTE: If this event is later re-delivered with a valid snapshot_id,
     // a second orphaned snapshot row will result (no automatic reconciliation).
     // This hash-based ID is a best-effort fallback for malformed events only.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const rawSnapshotId = data.snapshot_id as string | undefined;
     const snapshotId =
-      (data.snapshot_id as string) ||
-      deterministicCorrelationId('baselines-computed', partition, offset);
+      rawSnapshotId && UUID_RE.test(rawSnapshotId)
+        ? rawSnapshotId
+        : deterministicCorrelationId('baselines-computed', partition, offset);
 
     const contractVersion = Number(data.contract_version ?? 1);
     const computedAtUtc = safeParseDate(
@@ -993,7 +1000,7 @@ export class ReadModelConsumer {
             })
             .map((t) => ({
               snapshotId,
-              date: String(t.date),
+              date: String(t.date ?? t.dateStr),
               avgCostSavings: String(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)),
               avgOutcomeImprovement: String(
                 Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
@@ -1008,14 +1015,19 @@ export class ReadModelConsumer {
         await tx.delete(baselinesBreakdown).where(eq(baselinesBreakdown.snapshotId, snapshotId));
 
         if (rawBreakdown.length > 0) {
+          const VALID_PROMOTION_ACTIONS = new Set(['promote', 'shadow', 'suppress', 'fork']);
           const breakdownRows: InsertBaselinesBreakdown[] = (
             rawBreakdown as Record<string, unknown>[]
-          ).map((b) => ({
-            snapshotId,
-            action: String(b.action ?? 'shadow'),
-            count: Number(b.count ?? 0),
-            avgConfidence: String(Number(b.avg_confidence ?? b.avgConfidence ?? 0)),
-          }));
+          ).map((b) => {
+            const rawAction = String(b.action ?? '');
+            const action = VALID_PROMOTION_ACTIONS.has(rawAction) ? rawAction : 'shadow';
+            return {
+              snapshotId,
+              action,
+              count: Number(b.count ?? 0),
+              avgConfidence: String(Number(b.avg_confidence ?? b.avgConfidence ?? 0)),
+            };
+          });
           await tx.insert(baselinesBreakdown).values(breakdownRows);
         }
       });
