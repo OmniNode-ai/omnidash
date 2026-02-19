@@ -259,22 +259,36 @@ export const SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED =
   'onex.evt.omniclaude.transformation.completed.v1';
 
 /**
- * LLM cost reported by the omniclaude session-ended flow (OMN-2300 / OMN-2238).
+ * LLM cost reported — DEPRECATED (OMN-2371).
  *
- * Wired to two consumers — both are intentional:
- * 1. Event bus (server/event-consumer.ts) — included via OMNICLAUDE_EXTENDED_SUFFIXES
- *    in buildSubscriptionTopics() so real-time cost events are forwarded to WebSocket
- *    clients (e.g. the live event stream on the cost-trends dashboard). The event-consumer
- *    passes this topic through generically without special handling — it is included
- *    solely so the raw event appears in the live WebSocket feed.
- * 2. Read-model consumer (server/read-model-consumer.ts) — the projectLlmCostEvent()
- *    handler upserts each event into the llm_cost_aggregates table for durable
- *    cost trend queries.
+ * This topic had zero producers and is no longer consumed by the read-model-consumer.
+ * The canonical producer is NodeLlmInferenceEffect which emits per-call metrics to
+ * TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED (onex.evt.omniintelligence.llm-call-completed.v1).
+ * Kept as a constant so any remaining references compile; remove after full cleanup.
  *
- * The dual-consumer routing is intentional: real-time clients see events immediately
- * via WebSocket while the read-model materializes them for persistent aggregation.
+ * @deprecated Use TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED instead (OMN-2371).
  */
 export const SUFFIX_OMNICLAUDE_LLM_COST_REPORTED = 'onex.evt.omniclaude.llm-cost-reported.v1';
+
+/**
+ * Canonical LLM call completed topic emitted by NodeLlmInferenceEffect (omnibase_infra).
+ *
+ * Payload schema: ContractLlmCallMetrics (omnibase_spi) with fields:
+ *   - model_id: string — model identifier (maps to model_name in llm_cost_aggregates)
+ *   - prompt_tokens: number
+ *   - completion_tokens: number
+ *   - total_tokens: number
+ *   - estimated_cost_usd: number | null
+ *   - usage_normalized.source: 'API' | 'ESTIMATED' | 'MISSING'
+ *   - timestamp_iso: ISO-8601 string
+ *   - reporting_source: string — provenance label (maps to repo_name when it looks like a repo)
+ *
+ * This is the canonical producer for LLM cost data (OMN-2371 / GAP-5).
+ * The read-model-consumer projects these per-call events into llm_cost_aggregates
+ * so the cost trend dashboard has live data.
+ */
+export const TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED =
+  'onex.evt.omniintelligence.llm-call-completed.v1';
 
 /** Context enrichment events emitted per enrichment operation (OMN-2280).
  * NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
