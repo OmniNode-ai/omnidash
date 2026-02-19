@@ -276,10 +276,10 @@ async function probeValidation(): Promise<DataSourceInfo> {
 async function probeInsights(): Promise<DataSourceInfo> {
   try {
     const summary = await queryInsightsSummary();
-    // null means queryInsightsSummary found no DB connection (mirrors
-    // tryGetIntelligenceDb returning null internally) — it does NOT mean the
-    // DB is reachable but empty. Note: if queryInsightsSummary throws instead
-    // of returning null, the catch block below handles it with reason: 'probe_threw'.
+    // null is the explicit return value of queryInsightsSummary() when
+    // tryGetIntelligenceDb() returns null inside that function (see
+    // server/insight-queries.ts line ~233: `if (!db) return null`).
+    // It does NOT mean the DB is reachable but empty.
     if (summary === null) {
       return { status: 'mock', reason: 'no_db_connection' };
     }

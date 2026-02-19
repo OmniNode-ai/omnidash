@@ -370,4 +370,54 @@ describe('GET /api/health/data-sources', () => {
     expect(res.body.dataSources.baselines.status).toBe('mock');
     expect(res.body.dataSources.baselines.reason).toBe('empty_tables');
   });
+
+  // ==========================================================================
+  // Caching behaviour
+  // ==========================================================================
+
+  describe('caching behaviour', () => {
+    it('serves the second request from cache without re-probing', async () => {
+      vi.mocked(projectionService.getView).mockReturnValue(null);
+      setupEmptyDb();
+
+      const app = makeApp();
+
+      // First request — primes the cache.
+      const res1 = await request(app).get('/api/health/data-sources');
+      // Second request — should be served from the 30 s TTL cache.
+      const res2 = await request(app).get('/api/health/data-sources');
+
+      expect(res1.status).toBe(200);
+      expect(res2.status).toBe(200);
+      // Both responses must carry identical payload (same checkedAt timestamp).
+      expect(res2.body).toEqual(res1.body);
+      // getEventBusDataSource is called once per probe run (inside probeExecutionGraph).
+      // If the cache worked, it must have been called exactly once across both requests.
+      expect(vi.mocked(getEventBusDataSource)).toHaveBeenCalledTimes(1);
+    });
+
+    it('concurrent requests share the pending probe and probe only once', async () => {
+      vi.mocked(projectionService.getView).mockReturnValue(null);
+      setupEmptyDb();
+
+      const app = makeApp();
+
+      // Fire two requests concurrently. Because neither has a warm cache and
+      // both reach the pending-probe guard before either resolves, only one
+      // probe run should start; the second request attaches to the same promise.
+      const [res1, res2] = await Promise.all([
+        request(app).get('/api/health/data-sources'),
+        request(app).get('/api/health/data-sources'),
+      ]);
+
+      expect(res1.status).toBe(200);
+      expect(res2.status).toBe(200);
+      // Both responses must be well-formed.
+      expect(res1.body).toHaveProperty('dataSources');
+      expect(res2.body).toHaveProperty('dataSources');
+      // Only one probe run must have started: getEventBusDataSource is called
+      // once per probe run inside probeExecutionGraph.
+      expect(vi.mocked(getEventBusDataSource)).toHaveBeenCalledTimes(1);
+    });
+  });
 });
