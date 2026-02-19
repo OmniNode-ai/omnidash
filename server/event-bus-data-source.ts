@@ -721,7 +721,7 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * Check if EventBusDataSource is available
  */
 export function isEventBusDataSourceAvailable(): boolean {
-  return eventBusDataSourceInstance !== null || eventBusInitError === null;
+  return eventBusDataSourceInstance !== null;
 }
 
 /**
