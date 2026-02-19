@@ -57,6 +57,7 @@ import {
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import { baselinesProjection } from './projection-bootstrap';
 import { emitBaselinesUpdate } from './baselines-events';
+import { emitLlmRoutingInvalidate } from './llm-routing-events';
 
 /**
  * Derive a deterministic UUID-shaped string from Kafka message coordinates.
@@ -829,6 +830,11 @@ export class ReadModelConsumer {
       }
       throw err;
     }
+
+    // Notify WebSocket clients subscribed to the 'llm-routing' topic.
+    // Called here (after the try/catch) so clients are only notified when
+    // the DB write has committed successfully.
+    emitLlmRoutingInvalidate(correlationId);
 
     return true;
   }

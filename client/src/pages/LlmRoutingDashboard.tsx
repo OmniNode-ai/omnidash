@@ -398,8 +398,9 @@ export default function LlmRoutingDashboard() {
     onMessage: useCallback(
       (msg: { type: string; timestamp: string }) => {
         if (msg.type === 'LLM_ROUTING_INVALIDATE') {
-          // TODO: Server does not yet emit LLM_ROUTING_INVALIDATE — wired client-side
-          // for when server-side broadcast is implemented (future ticket).
+          // Server emits LLM_ROUTING_INVALIDATE via llmRoutingEventEmitter in
+          // server/llm-routing-events.ts, triggered by ReadModelConsumer after
+          // each successful llm_routing_decisions projection (OMN-2279).
           queryClient.invalidateQueries({ queryKey: queryKeys.llmRouting.all });
         }
       },

@@ -25,6 +25,7 @@ import {
 } from './intent-events';
 import { insightsEventEmitter } from './insights-events';
 import { baselinesEventEmitter } from './baselines-events';
+import { llmRoutingEventEmitter } from './llm-routing-events';
 import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
@@ -263,6 +264,8 @@ const VALID_TOPICS = [
   'insights',
   // Execution graph live node events (OMN-2302)
   'execution-graph',
+  // LLM routing invalidation events (OMN-2279)
+  'llm-routing',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -506,6 +509,19 @@ export function setupWebSocket(httpServer: HTTPServer) {
     );
   };
   baselinesEventEmitter.on('baselines-update', baselinesUpdateHandler);
+
+  // LLM routing invalidation listener (OMN-2279)
+  // Tells clients to re-fetch LLM routing data when a new routing decision is projected.
+  // Uses llmRoutingEventEmitter so ReadModelConsumer can trigger it after projecting.
+  // Invalidation-only broadcast: clients re-query the /api/llm-routing/* endpoints on receipt.
+  const llmRoutingInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast(
+      'LLM_ROUTING_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'llm-routing'
+    );
+  };
+  llmRoutingEventEmitter.on('llm-routing-invalidate', llmRoutingInvalidateHandler);
 
   // Node Registry event listeners
   registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {
@@ -1088,6 +1104,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Remove baselines event listener (OMN-2331)
     baselinesEventEmitter.removeListener('baselines-update', baselinesUpdateHandler);
+
+    // Remove LLM routing event listener (OMN-2279)
+    llmRoutingEventEmitter.removeListener('llm-routing-invalidate', llmRoutingInvalidateHandler);
 
     // Remove event bus data source listeners
     console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);
