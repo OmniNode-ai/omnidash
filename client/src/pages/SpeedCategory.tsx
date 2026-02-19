@@ -108,10 +108,7 @@ export default function SpeedCategory() {
 
   const { data: latencyDetails, isLoading: latencyLoading } = useQuery({
     queryKey: queryKeys.effectiveness.latency(),
-    queryFn: async () => {
-      const data = await effectivenessSource.latencyDetails();
-      return { data, isMock: effectivenessSource.isUsingMockData };
-    },
+    queryFn: () => effectivenessSource.latencyDetails(),
     refetchInterval: 30_000,
   });
 
@@ -129,6 +126,15 @@ export default function SpeedCategory() {
     mockFlags.current[panel] = isMock;
     setIsUsingMockData(Object.values(mockFlags.current).some(Boolean));
   }, []);
+
+  const onPipelineHealthMock = useCallback(
+    (v: boolean) => updateMockFlag('pipelineHealth', v),
+    [updateMockFlag]
+  );
+  const onLatencyHeatmapMock = useCallback(
+    (v: boolean) => updateMockFlag('latency', v),
+    [updateMockFlag]
+  );
 
   // Wire extraction result → mock flag.
   useEffect(() => {
@@ -290,16 +296,11 @@ export default function SpeedCategory() {
             <LatencyPercentilesChart data={latencyDetails?.data} />
           </CardContent>
         </Card>
-        <PipelineHealthPanel
-          onMockStateChange={(isMock) => updateMockFlag('pipelineHealth', isMock)}
-        />
+        <PipelineHealthPanel onMockStateChange={onPipelineHealthMock} />
       </div>
 
       {/* Latency Heatmap */}
-      <LatencyHeatmap
-        timeWindow={timeWindow}
-        onMockStateChange={(isMock) => updateMockFlag('latency', isMock)}
-      />
+      <LatencyHeatmap timeWindow={timeWindow} onMockStateChange={onLatencyHeatmapMock} />
 
       {/* Drill-Down Navigation */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

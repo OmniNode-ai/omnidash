@@ -30,11 +30,7 @@ import {
 } from '@/components/ui/table';
 import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
-import type {
-  LatencyDetails,
-  LatencyBreakdown,
-  LatencyTrendPoint,
-} from '@shared/effectiveness-types';
+import type { LatencyBreakdown, LatencyTrendPoint } from '@shared/effectiveness-types';
 import type { Payload } from 'recharts/types/component/DefaultLegendContent';
 import type { CategoricalChartState } from 'recharts/types/chart/types';
 import { Clock, ChevronLeft, RefreshCw, Zap, Database } from 'lucide-react';
@@ -101,11 +97,18 @@ export default function EffectivenessLatency() {
   // Data fetching
   // ---------------------------------------------------------------------------
 
-  const { data, isLoading, refetch } = useQuery<LatencyDetails>({
+  const {
+    data: latencyResult,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.effectiveness.latency(),
     queryFn: () => effectivenessSource.latencyDetails(),
     refetchInterval: 15_000,
   });
+
+  const data = latencyResult?.data;
+  const isMock = latencyResult?.isMock ?? false;
 
   const handleRefresh = () => {
     refetch();
@@ -210,7 +213,7 @@ export default function EffectivenessLatency() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {effectivenessSource.isUsingMockData && (
+          {isMock && (
             <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
               Demo Data
             </Badge>

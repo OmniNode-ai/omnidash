@@ -71,6 +71,17 @@ export default function ExtractionDashboard() {
     setIsUsingMockData(Object.values(mockFlags.current).some(Boolean));
   }, []);
 
+  const onPipelineHealthMock = useCallback(
+    (v: boolean) => updateMockFlag('pipelineHealth', v),
+    [updateMockFlag]
+  );
+  const onLatencyMock = useCallback((v: boolean) => updateMockFlag('latency', v), [updateMockFlag]);
+  const onPatternVolumeMock = useCallback(
+    (v: boolean) => updateMockFlag('patternVolume', v),
+    [updateMockFlag]
+  );
+  const onErrorsMock = useCallback((v: boolean) => updateMockFlag('errors', v), [updateMockFlag]);
+
   // Summary stats for metric cards
   const { data: summaryResult, isLoading: summaryLoading } = useQuery({
     queryKey: queryKeys.extraction.summary(),
@@ -203,16 +214,10 @@ export default function ExtractionDashboard() {
 
       {/* 2x2 Panel Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <PipelineHealthPanel onMockStateChange={(v) => updateMockFlag('pipelineHealth', v)} />
-        <LatencyHeatmap
-          timeWindow={timeWindow}
-          onMockStateChange={(v) => updateMockFlag('latency', v)}
-        />
-        <PatternVolumeChart
-          timeWindow={timeWindow}
-          onMockStateChange={(v) => updateMockFlag('patternVolume', v)}
-        />
-        <ErrorRatesPanel onMockStateChange={(v) => updateMockFlag('errors', v)} />
+        <PipelineHealthPanel onMockStateChange={onPipelineHealthMock} />
+        <LatencyHeatmap timeWindow={timeWindow} onMockStateChange={onLatencyMock} />
+        <PatternVolumeChart timeWindow={timeWindow} onMockStateChange={onPatternVolumeMock} />
+        <ErrorRatesPanel onMockStateChange={onErrorsMock} />
       </div>
     </div>
   );
