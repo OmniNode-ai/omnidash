@@ -162,6 +162,13 @@ export class IntelligenceEventAdapter {
    * This is intentional: callers can use the spread to override any field.
    * However, callers should be careful not to pass conflicting keys
    * unintentionally, as there is no warning when an override occurs.
+   *
+   * Callers should explicitly avoid passing envelope-level keys such as
+   * `event_id`, `correlation_id`, `event_type`, `source`, or `timestamp` in
+   * the `payload` parameter. Those fields belong to the outer event envelope
+   * and are set by this method. Passing them inside `payload` will cause them
+   * to appear (incorrectly) in the inner `envelope.payload` object, not in the
+   * outer envelope, and may confuse downstream consumers.
    */
   async request(
     requestType: string,
@@ -277,10 +284,14 @@ export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
 }
 
 /**
- * Check if IntelligenceEventAdapter is available, triggering lazy initialization if not yet attempted.
+ * Check if IntelligenceEventAdapter is available.
+ *
+ * Pure predicate — does NOT trigger initialization. Returns true only if the
+ * singleton was already successfully initialized. Call `getIntelligenceEvents()`
+ * first to trigger initialization. Returns false if initialization has not been
+ * attempted or failed.
  */
 export function isIntelligenceEventsAvailable(): boolean {
-  getIntelligenceEvents(); // trigger lazy init if not yet attempted
   return intelligenceEventsInstance !== null;
 }
 

@@ -67,9 +67,11 @@ export class PostgresAdapter {
   constructor() {
     // Check that KAFKA_BROKERS is set (required infrastructure)
     this.eventBusEnabled = !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS);
-    if (!this.eventBusEnabled) {
-      console.error('❌ KAFKA_BROKERS not configured. Event bus integration is disabled — this is an error state, not normal operation.');
-    }
+    // No logging here — dbAdapter is instantiated at module load time, so any
+    // console output would fire before the server has finished initializing.
+    // The event-bus modules (event-bus-data-source.ts, event-consumer.ts,
+    // intelligence-event-adapter.ts) emit the appropriate error when their
+    // singletons are first accessed.
   }
 
   /**

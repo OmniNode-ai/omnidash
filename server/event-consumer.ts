@@ -4301,11 +4301,16 @@ export function getEventConsumer(): EventConsumer | null {
 }
 
 /**
- * Check if EventConsumer is available, triggering lazy initialization if not yet attempted.
- * @returns true if EventConsumer is available, false otherwise
+ * Check if EventConsumer is available.
+ *
+ * Pure predicate — does NOT trigger initialization. Returns true only if the
+ * singleton was already successfully initialized. Call `getEventConsumer()`
+ * first to trigger initialization. Returns false if initialization has not been
+ * attempted or failed.
+ *
+ * @returns true if EventConsumer singleton is initialized, false otherwise
  */
 export function isEventConsumerAvailable(): boolean {
-  getEventConsumer(); // trigger lazy init if not yet attempted
   return eventConsumerInstance !== null;
 }
 

@@ -715,7 +715,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
     console.log('[WebSocket] EventBusDataSource listeners registered for real-time events');
   } else {
     console.error(
-      '[WebSocket] EventBusDataSource not available - event-bus topic will not receive real-time events'
+      '[WebSocket] EventBusDataSource not available - event-bus topic will not receive real-time events (logged once at startup)'
     );
   }
 
