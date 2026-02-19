@@ -317,11 +317,21 @@ function toLiveEvent(event: DisplayEvent) {
 function toRecentEvent(event: DisplayEvent) {
   return {
     id: event.id,
-    // DisplayEvent.topic normally holds a friendly label (e.g. "Agent Routing").
-    // In the table-recent-events widget specifically, we intentionally store the
-    // raw topic suffix here instead, so the topic cell renderer can pass it
-    // directly to the topic filter (which operates on raw suffixes). The friendly
-    // label is produced by the topicCellRenderer closure in EventBusMonitor.
+    // DELIBERATE CONVENTION: row.topic holds the raw topic suffix (not a friendly
+    // label) for the table-recent-events widget.
+    //
+    // Why: customCellRenderers only receives `value = row[columnKey]`. The topic
+    // cell renderer is keyed to RECENT_EVENTS_TOPIC_COLUMN_KEY ("topic"), so
+    // `value` will be whatever row.topic holds. The renderer needs the raw suffix
+    // to (a) call getTopicLabel(raw) for display and (b) compare against
+    // filters.topic for the active-filter highlight. There is no mechanism to
+    // pass row.topicRaw alongside the value — only the column's value is forwarded.
+    //
+    // This is intentional and correct for this widget. DisplayEvent.topic holds a
+    // friendly label at the DisplayEvent level; toRecentEvent() intentionally
+    // overrides that with the raw suffix to satisfy the cell renderer contract.
+    // row.topicRaw remains a redundant copy kept for consistency with toLiveEvent()
+    // and for direct row access in handleEventClick (which reads both fields).
     topic: event.topicRaw,
     topicRaw: event.topicRaw,
     eventType: event.normalizedType,
@@ -951,6 +961,7 @@ export default function EventBusMonitor() {
             return (
               <button
                 type="button"
+                aria-label={`Filter by topic: ${label}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   setFilters((prev) => ({
@@ -974,6 +985,8 @@ export default function EventBusMonitor() {
         },
       },
     }),
+    // setFilters is intentionally omitted: it is a stable React dispatch reference
+    // (guaranteed by useState) and never changes between renders.
     [filters.topic]
   );
 
