@@ -1030,6 +1030,7 @@ export const baselinesTrend = pgTable(
   (table) => [
     index('idx_baselines_trend_snapshot').on(table.snapshotId),
     index('idx_baselines_trend_date').on(table.date),
+    uniqueIndex('baselines_trend_snapshot_date_unique').on(table.snapshotId, table.date),
   ]
 );
 
