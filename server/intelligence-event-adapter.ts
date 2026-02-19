@@ -163,12 +163,20 @@ export class IntelligenceEventAdapter {
    * However, callers should be careful not to pass conflicting keys
    * unintentionally, as there is no warning when an override occurs.
    *
-   * Callers should explicitly avoid passing envelope-level keys such as
-   * `event_id`, `correlation_id`, `event_type`, `source`, or `timestamp` in
-   * the `payload` parameter. Those fields belong to the outer event envelope
-   * and are set by this method. Passing them inside `payload` will cause them
-   * to appear (incorrectly) in the inner `envelope.payload` object, not in the
-   * outer envelope, and may confuse downstream consumers.
+   * @param requestType - The type identifier for the intelligence request (e.g. `'code_analysis'`).
+   * @param payload - Additional fields merged into the envelope payload.
+   *   WARNING: The following envelope-level keys must NOT be included, as
+   *   they belong to the outer envelope and passing them here places them
+   *   in the wrong layer:
+   *   - `event_id`
+   *   - `correlation_id`
+   *   - `event_type`
+   *   - `source`
+   *   - `timestamp`
+   *   Any key matching a pre-constructed field (`source_path`, `content`,
+   *   `language`, `operation_type`, `project_id`, `user_id`) will silently
+   *   overwrite it.
+   * @param timeoutMs - Milliseconds before the request is rejected with a timeout error (default: 5000).
    */
   async request(
     requestType: string,
