@@ -27,6 +27,7 @@ import {
   closeTestDb,
   createTestApp,
   assertTableExists,
+  resetEffectivenessProjectionCache,
 } from './helpers';
 import { resetIntelligenceDb } from '../../storage';
 import { resetTableExistenceCache } from '../../pattern-queries';
@@ -76,6 +77,9 @@ describe.skipIf(!canRunIntegrationTests)('Effectiveness API Integration Tests', 
 
   beforeEach(async () => {
     await truncateEffectiveness();
+    // Reset the in-memory TTL cache so each test queries the (now-empty) DB
+    // rather than serving stale rows from a prior test's seed data.
+    resetEffectivenessProjectionCache();
   });
 
   afterAll(async () => {
