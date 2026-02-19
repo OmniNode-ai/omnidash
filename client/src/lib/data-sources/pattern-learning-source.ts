@@ -46,6 +46,11 @@ export interface PatlearnFetchOptions {
    * Default: true (graceful degradation enabled)
    */
   fallbackToMock?: boolean;
+  /**
+   * When true, skip the API call entirely and return canned demo data.
+   * Used when global demo mode is active (OMN-2298).
+   */
+  demoMode?: boolean;
 }
 
 // ===========================
@@ -129,7 +134,20 @@ class PatternLearningSource {
     params: PatlearnListParams = {},
     options: PatlearnFetchOptions = {}
   ): Promise<PatlearnArtifact[]> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      this._isUsingMockData = true;
+      let mockPatterns = getMockPatterns();
+      if (params.state) {
+        const states = Array.isArray(params.state) ? params.state : [params.state];
+        mockPatterns = mockPatterns.filter((p) =>
+          states.includes(p.lifecycleState as LifecycleState)
+        );
+      }
+      const offset = params.offset ?? 0;
+      const limit = params.limit ?? 50;
+      return mockPatterns.slice(offset, offset + limit);
+    }
 
     try {
       const query = new URLSearchParams();
@@ -200,7 +218,11 @@ class PatternLearningSource {
     window: '24h' | '7d' | '30d' = '24h',
     options: PatlearnFetchOptions = {}
   ): Promise<PatlearnSummary | null> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      this._isUsingMockData = true;
+      return getMockSummary(window);
+    }
 
     try {
       const response = await fetch(`${this.baseUrl}/summary?window=${window}`);

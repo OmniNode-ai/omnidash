@@ -11,7 +11,9 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
+import { DemoBanner } from '@/components/DemoBanner';
 import { formatRelativeTime } from '@/lib/date-utils';
 import { MetricCard } from '@/components/MetricCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -130,6 +132,8 @@ function SortableHeader({
  * for real-time responsiveness.
  */
 export default function EffectivenessUtilization() {
+  const { isDemoMode } = useDemoMode();
+
   // ---------------------------------------------------------------------------
   // WebSocket: subscribe to effectiveness topic for real-time invalidation
   // ---------------------------------------------------------------------------
@@ -155,7 +159,7 @@ export default function EffectivenessUtilization() {
 
   const { data, isLoading, refetch } = useQuery<UtilizationDetails>({
     queryKey: queryKeys.effectiveness.utilization(),
-    queryFn: () => effectivenessSource.utilizationDetails(),
+    queryFn: () => effectivenessSource.utilizationDetails({ demoMode: isDemoMode }),
     refetchInterval: 15_000,
   });
 
@@ -231,6 +235,9 @@ export default function EffectivenessUtilization() {
 
   return (
     <div className="space-y-6">
+      {/* Demo mode banner */}
+      <DemoBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

@@ -27,6 +27,11 @@ export interface EnforcementFetchOptions {
   fallbackToMock?: boolean;
   /** Also fall back to mock when the API returns empty results (default: false). */
   mockOnEmpty?: boolean;
+  /**
+   * When true, skip the API call entirely and return canned demo data.
+   * Used when global demo mode is active (OMN-2298).
+   */
+  demoMode?: boolean;
 }
 
 /**
@@ -71,7 +76,11 @@ class EnforcementSource {
     window: EnforcementTimeWindow = '7d',
     options: EnforcementFetchOptions = {}
   ): Promise<EnforcementSummary> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('summary');
+      return getMockEnforcementSummary(window);
+    }
     try {
       const response = await fetch(`${this.baseUrl}/summary${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -97,7 +106,11 @@ class EnforcementSource {
     window: EnforcementTimeWindow = '7d',
     options: EnforcementFetchOptions = {}
   ): Promise<EnforcementByLanguage[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('by-language');
+      return getMockEnforcementByLanguage(window);
+    }
     try {
       const response = await fetch(`${this.baseUrl}/by-language${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -123,7 +136,11 @@ class EnforcementSource {
     window: EnforcementTimeWindow = '7d',
     options: EnforcementFetchOptions = {}
   ): Promise<EnforcementByDomain[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('by-domain');
+      return getMockEnforcementByDomain(window);
+    }
     try {
       const response = await fetch(`${this.baseUrl}/by-domain${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -149,7 +166,11 @@ class EnforcementSource {
     window: EnforcementTimeWindow = '7d',
     options: EnforcementFetchOptions = {}
   ): Promise<ViolatedPattern[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('violated-patterns');
+      return getMockViolatedPatterns(window);
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/violated-patterns${this.buildWindowParam(window)}`
@@ -177,7 +198,11 @@ class EnforcementSource {
     window: EnforcementTimeWindow = '7d',
     options: EnforcementFetchOptions = {}
   ): Promise<EnforcementTrendPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('trend');
+      return getMockEnforcementTrend(window);
+    }
     try {
       const response = await fetch(`${this.baseUrl}/trend${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);

@@ -14,7 +14,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
+import { DemoBanner } from '@/components/DemoBanner';
 import { queryKeys } from '@/lib/query-keys';
 import {
   Select,
@@ -82,10 +84,12 @@ export default function ExtractionDashboard() {
   );
   const onErrorsMock = useCallback((v: boolean) => updateMockFlag('errors', v), [updateMockFlag]);
 
+  const { isDemoMode } = useDemoMode();
+
   // Summary stats for metric cards
   const { data: summaryResult, isLoading: summaryLoading } = useQuery({
-    queryKey: queryKeys.extraction.summary(),
-    queryFn: () => extractionSource.summary(),
+    queryKey: [...queryKeys.extraction.summary(), isDemoMode],
+    queryFn: () => extractionSource.summary({ demoMode: isDemoMode }),
     refetchInterval: 30_000,
   });
 
@@ -140,6 +144,8 @@ export default function ExtractionDashboard() {
 
   return (
     <div className="space-y-6">
+      <DemoBanner />
+
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>

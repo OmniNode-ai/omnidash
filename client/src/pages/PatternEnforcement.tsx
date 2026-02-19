@@ -12,7 +12,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { enforcementSource } from '@/lib/data-sources/enforcement-source';
+import { DemoBanner } from '@/components/DemoBanner';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -362,6 +364,7 @@ function ViolatedPatternsTable({
 export default function PatternEnforcement() {
   const [timeWindow, setTimeWindow] = useState<EnforcementTimeWindow>('7d');
   const queryClient = useQueryClient();
+  const { isDemoMode } = useDemoMode();
 
   // Invalidate all enforcement queries on WebSocket ENFORCEMENT_INVALIDATE event
   useWebSocket({
@@ -387,7 +390,8 @@ export default function PatternEnforcement() {
     refetch: refetchSummary,
   } = useQuery({
     queryKey: queryKeys.enforcement.summary(timeWindow),
-    queryFn: () => enforcementSource.summary(timeWindow, { mockOnEmpty: true }),
+    queryFn: () =>
+      enforcementSource.summary(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -399,7 +403,8 @@ export default function PatternEnforcement() {
     refetch: refetchLang,
   } = useQuery({
     queryKey: queryKeys.enforcement.byLanguage(timeWindow),
-    queryFn: () => enforcementSource.byLanguage(timeWindow, { mockOnEmpty: true }),
+    queryFn: () =>
+      enforcementSource.byLanguage(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -411,7 +416,8 @@ export default function PatternEnforcement() {
     refetch: refetchDomain,
   } = useQuery({
     queryKey: queryKeys.enforcement.byDomain(timeWindow),
-    queryFn: () => enforcementSource.byDomain(timeWindow, { mockOnEmpty: true }),
+    queryFn: () =>
+      enforcementSource.byDomain(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -423,7 +429,8 @@ export default function PatternEnforcement() {
     refetch: refetchViolated,
   } = useQuery({
     queryKey: queryKeys.enforcement.violatedPatterns(timeWindow),
-    queryFn: () => enforcementSource.violatedPatterns(timeWindow, { mockOnEmpty: true }),
+    queryFn: () =>
+      enforcementSource.violatedPatterns(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -435,7 +442,7 @@ export default function PatternEnforcement() {
     refetch: refetchTrend,
   } = useQuery({
     queryKey: queryKeys.enforcement.trend(timeWindow),
-    queryFn: () => enforcementSource.trend(timeWindow, { mockOnEmpty: true }),
+    queryFn: () => enforcementSource.trend(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -473,6 +480,9 @@ export default function PatternEnforcement() {
 
   return (
     <div className="space-y-6" data-testid="page-pattern-enforcement">
+      {/* Demo mode banner */}
+      <DemoBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>

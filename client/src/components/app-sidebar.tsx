@@ -24,6 +24,7 @@ import { Link, useLocation } from 'wouter';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -36,6 +37,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 /** A single sidebar navigation entry with its route, icon, and description. */
 interface NavItem {
@@ -371,6 +373,7 @@ function AdvancedNavSection({ location }: AdvancedNavSectionProps) {
 /** Primary application sidebar with category dashboards and collapsible Advanced section. */
 export function AppSidebar() {
   const [location] = useLocation();
+  const { isDemoMode, toggleDemoMode } = useDemoMode();
 
   return (
     <Sidebar>
@@ -378,6 +381,24 @@ export function AppSidebar() {
         <NavGroup label="Dashboards" items={categories} location={location} />
         <AdvancedNavSection location={location} />
       </SidebarContent>
+
+      <SidebarFooter className="p-2">
+        <SidebarSeparator className="mb-2" />
+        <button
+          onClick={toggleDemoMode}
+          className={cn(
+            'flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md transition-colors',
+            isDemoMode
+              ? 'text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+          )}
+          data-testid="demo-mode-toggle"
+        >
+          <FlaskConical className="h-4 w-4 flex-shrink-0" />
+          <span>Demo Mode</span>
+          {isDemoMode && <span className="ml-auto text-xs text-amber-400/70">ON</span>}
+        </button>
+      </SidebarFooter>
     </Sidebar>
   );
 }

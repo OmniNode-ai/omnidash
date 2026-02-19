@@ -28,6 +28,11 @@ import {
 
 export interface EffectivenessFetchOptions {
   fallbackToMock?: boolean;
+  /**
+   * When true, skip the API call entirely and return canned demo data.
+   * Used when global demo mode is active (OMN-2298).
+   */
+  demoMode?: boolean;
 }
 
 class EffectivenessSource {
@@ -53,7 +58,11 @@ class EffectivenessSource {
   }
 
   async summary(options: EffectivenessFetchOptions = {}): Promise<EffectivenessSummary> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('summary');
+      return getMockSummary();
+    }
     try {
       const response = await fetch(`${this.baseUrl}/summary`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -75,7 +84,11 @@ class EffectivenessSource {
   }
 
   async throttleStatus(options: EffectivenessFetchOptions = {}): Promise<ThrottleStatus> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('throttle');
+      return getMockThrottleStatus();
+    }
     try {
       const response = await fetch(`${this.baseUrl}/throttle`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -93,7 +106,11 @@ class EffectivenessSource {
   }
 
   async latencyDetails(options: EffectivenessFetchOptions = {}): Promise<LatencyDetails> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('latency');
+      return getMockLatencyDetails();
+    }
     try {
       const response = await fetch(`${this.baseUrl}/latency`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -116,7 +133,11 @@ class EffectivenessSource {
   }
 
   async utilizationDetails(options: EffectivenessFetchOptions = {}): Promise<UtilizationDetails> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('utilization');
+      return getMockUtilizationDetails();
+    }
     try {
       const response = await fetch(`${this.baseUrl}/utilization`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -139,7 +160,11 @@ class EffectivenessSource {
   }
 
   async abComparison(options: EffectivenessFetchOptions = {}): Promise<ABComparison> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('ab');
+      return getMockABComparison();
+    }
     try {
       const response = await fetch(`${this.baseUrl}/ab`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -165,7 +190,11 @@ class EffectivenessSource {
     sessionId: string,
     options: EffectivenessFetchOptions = {}
   ): Promise<SessionDetail> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('session');
+      return getMockSessionDetail(sessionId);
+    }
     try {
       const response = await fetch(`${this.baseUrl}/session/${encodeURIComponent(sessionId)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -186,7 +215,11 @@ class EffectivenessSource {
     days?: number,
     options: EffectivenessFetchOptions = {}
   ): Promise<EffectivenessTrendPoint[]> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('trend');
+      return getMockEffectivenessTrend();
+    }
     try {
       const response = await fetch(`${this.baseUrl}/trend?days=${days ?? 14}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);

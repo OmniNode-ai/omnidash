@@ -10,7 +10,7 @@
  *   GET /api/intelligence/trace/:correlationId   - Full trace detail
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search,
@@ -39,6 +39,8 @@ import {
 } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { formatRelativeTime } from '@/lib/date-utils';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DemoBanner } from '@/components/DemoBanner';
 
 // ============================================================================
 // Types
@@ -77,6 +79,107 @@ interface TraceResponse {
     totalDurationMs: number;
   };
 }
+
+// ============================================================================
+// Demo data (shown when demo mode is active)
+// ============================================================================
+
+/** Demo correlation ID matching the event-bus-demo.ts narrative. */
+const DEMO_CORRELATION_ID = 'cor-demo-7f3a';
+
+const DEMO_RECENT_TRACES: RecentTrace[] = [
+  {
+    correlationId: DEMO_CORRELATION_ID,
+    selectedAgent: 'frontend-developer',
+    confidenceScore: 0.94,
+    userRequest: 'feat(dash): implement demo mode toggle',
+    routingTimeMs: 38,
+    createdAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+    eventCount: 6,
+  },
+  {
+    correlationId: 'cor-demo-8b2c',
+    selectedAgent: 'debug',
+    confidenceScore: 0.88,
+    userRequest: 'fix(validation): add missing error boundaries',
+    routingTimeMs: 29,
+    createdAt: new Date(Date.now() - 3 * 60 * 1000).toISOString(),
+    eventCount: 4,
+  },
+];
+
+const DEMO_TRACE_DETAIL: TraceResponse = (() => {
+  const base = Date.now() - 12 * 60 * 1000;
+  return {
+    correlationId: DEMO_CORRELATION_ID,
+    events: [
+      {
+        id: 'demo-002',
+        eventType: 'routing' as const,
+        timestamp: new Date(base + 12_000).toISOString(),
+        agentName: 'omniclaude',
+        details: {
+          selectedAgent: 'frontend-developer',
+          confidence: 0.94,
+          candidateAgents: ['frontend-developer', 'python-fastapi-expert', 'code-quality-analyzer'],
+          routingStrategy: 'hook-classifier',
+        },
+        durationMs: 38,
+      },
+      {
+        id: 'demo-004',
+        eventType: 'manifest' as const,
+        timestamp: new Date(base + 30_000).toISOString(),
+        agentName: 'omniclaude',
+        details: {
+          patternsInjected: 8,
+          tokenCount: 1240,
+          injectionLatencyMs: 38,
+        },
+        durationMs: 38,
+      },
+      {
+        id: 'demo-005',
+        eventType: 'action' as const,
+        timestamp: new Date(base + 66_000).toISOString(),
+        agentName: 'frontend-developer',
+        details: {
+          actionType: 'Read',
+          file_path: 'client/src/contexts/DemoModeContext.tsx',
+          success: true,
+        },
+        durationMs: 42,
+      },
+      {
+        id: 'demo-009',
+        eventType: 'action' as const,
+        timestamp: new Date(base + 168_000).toISOString(),
+        agentName: 'frontend-developer',
+        details: {
+          actionType: 'Edit',
+          file_path: 'client/src/lib/mock-data/event-bus-demo.ts',
+          success: true,
+        },
+        durationMs: 88,
+      },
+      {
+        id: 'demo-012',
+        eventType: 'action' as const,
+        timestamp: new Date(base + 228_000).toISOString(),
+        agentName: 'frontend-developer',
+        details: { actionType: 'Bash', command: 'npm run check', success: true },
+        durationMs: 4210,
+      },
+    ],
+    summary: {
+      totalEvents: 6,
+      routingDecisions: 1,
+      actions: 3,
+      errors: 0,
+      totalDurationMs: 480_000,
+    },
+  };
+})();
 
 // ============================================================================
 // Sample data (shown as fallback when no live traces exist)
@@ -276,12 +379,26 @@ function EmptyRecentTraces({ onSelectSample }: { onSelectSample: () => void }) {
 // ============================================================================
 
 export default function CorrelationTrace() {
+  const { isDemoMode } = useDemoMode();
   const [correlationId, setCorrelationId] = useState('');
   const [searchId, setSearchId] = useState<string | null>(null);
   const [showingSample, setShowingSample] = useState(false);
 
+  // Pre-populate the demo correlation ID when demo mode is enabled,
+  // and clear it when demo mode is disabled.
+  useEffect(() => {
+    if (isDemoMode) {
+      setCorrelationId(DEMO_CORRELATION_ID);
+    } else {
+      setCorrelationId('');
+      setSearchId(null);
+      setShowingSample(false);
+    }
+  }, [isDemoMode]);
+
   // -------------------------------------------------------------------------
   // Recent traces query (auto-refreshes every 30s)
+  // In demo mode: returns the canned list immediately without fetching.
   // -------------------------------------------------------------------------
 
   const {
@@ -289,19 +406,21 @@ export default function CorrelationTrace() {
     isLoading: recentLoading,
     error: recentError,
   } = useQuery<RecentTrace[]>({
-    queryKey: ['/api/intelligence/traces/recent?limit=20'],
+    queryKey: ['/api/intelligence/traces/recent?limit=20', isDemoMode],
     queryFn: async () => {
+      if (isDemoMode) return DEMO_RECENT_TRACES;
       const response = await fetch('/api/intelligence/traces/recent?limit=20');
       if (!response.ok) {
         throw new Error(`Failed to fetch recent traces: ${response.status}`);
       }
       return response.json();
     },
-    refetchInterval: 30_000,
+    refetchInterval: isDemoMode ? false : 30_000,
   });
 
   // -------------------------------------------------------------------------
   // Trace detail query (fetches when a trace is selected)
+  // In demo mode: returns the canned trace detail for the demo correlation ID.
   // -------------------------------------------------------------------------
 
   const {
@@ -309,9 +428,10 @@ export default function CorrelationTrace() {
     isLoading: traceLoading,
     error: traceError,
   } = useQuery<TraceResponse>({
-    queryKey: ['/api/intelligence/trace/', searchId ?? '', showingSample],
+    queryKey: ['/api/intelligence/trace/', searchId ?? '', showingSample, isDemoMode],
     queryFn: async () => {
       if (showingSample) return SAMPLE_TRACE;
+      if (isDemoMode) return DEMO_TRACE_DETAIL;
       const response = await fetch(`/api/intelligence/trace/${searchId}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch trace: ${response.status}`);
@@ -365,6 +485,8 @@ export default function CorrelationTrace() {
 
   return (
     <div className="space-y-6">
+      <DemoBanner />
+
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight mb-2">Correlation Trace</h1>
