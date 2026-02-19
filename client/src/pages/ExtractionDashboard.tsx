@@ -91,6 +91,7 @@ export default function ExtractionDashboard() {
 
   // Mirror `isMock` from the summary query result into the aggregated flag.
   useEffect(() => {
+    // Only fire after the query has resolved to avoid overwriting child-panel mock state with undefined.
     if (summaryResult !== undefined) {
       updateMockFlag('summary', summaryResult.isMock);
     }

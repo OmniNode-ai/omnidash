@@ -24,14 +24,14 @@ const COHORTS = ['default', 'experimental', 'fast-path', 'legacy'] as const;
  *   24h → 24 buckets × 1 hr
  *   7d  → 14 buckets × 1 day  (two weeks of daily granularity)
  *   30d → 30 buckets × 1 day  (one bucket per calendar day)
- *   any other → same as 7d fallback
+ *   default: 14 days of daily buckets
  */
 function getWindowBuckets(window: string): { bucketCount: number; stepMs: number } {
   if (window === '1h') return { bucketCount: 12, stepMs: 300_000 };
   if (window === '6h') return { bucketCount: 6, stepMs: 3_600_000 };
   if (window === '24h') return { bucketCount: 24, stepMs: 3_600_000 };
   if (window === '30d') return { bucketCount: 30, stepMs: 86_400_000 };
-  // '7d' and any unknown window → 14 one-day buckets
+  // default: 14 days of daily buckets
   return { bucketCount: 14, stepMs: 86_400_000 };
 }
 

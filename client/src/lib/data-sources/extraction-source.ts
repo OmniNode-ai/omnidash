@@ -81,7 +81,8 @@ class ExtractionSource {
     } catch (error) {
       if (fallbackToMock) {
         if (error instanceof SyntaxError) {
-          // Parse errors get console.error (louder than warn) but still fall back to demo data — a 200 with invalid JSON is a backend bug developers should notice in DevTools.
+          // Parse errors (malformed JSON on 200) indicate a backend bug.
+          // Use console.error so it's visible in DevTools, but still fall back to demo data.
           console.error(
             '[ExtractionSource] Malformed JSON from API for summary, falling back to demo data',
             error
@@ -110,7 +111,8 @@ class ExtractionSource {
     } catch (error) {
       if (fallbackToMock) {
         if (error instanceof SyntaxError) {
-          // Parse errors get console.error (louder than warn) but still fall back to demo data — a 200 with invalid JSON is a backend bug developers should notice in DevTools.
+          // Parse errors (malformed JSON on 200) indicate a backend bug.
+          // Use console.error so it's visible in DevTools, but still fall back to demo data.
           console.error(
             '[ExtractionSource] Malformed JSON from API for pipeline health, falling back to demo data',
             error
@@ -142,7 +144,8 @@ class ExtractionSource {
     } catch (error) {
       if (fallbackToMock) {
         if (error instanceof SyntaxError) {
-          // Parse errors get console.error (louder than warn) but still fall back to demo data — a 200 with invalid JSON is a backend bug developers should notice in DevTools.
+          // Parse errors (malformed JSON on 200) indicate a backend bug.
+          // Use console.error so it's visible in DevTools, but still fall back to demo data.
           console.error(
             '[ExtractionSource] Malformed JSON from API for latency heatmap, falling back to demo data',
             error
@@ -174,7 +177,8 @@ class ExtractionSource {
     } catch (error) {
       if (fallbackToMock) {
         if (error instanceof SyntaxError) {
-          // Parse errors get console.error (louder than warn) but still fall back to demo data — a 200 with invalid JSON is a backend bug developers should notice in DevTools.
+          // Parse errors (malformed JSON on 200) indicate a backend bug.
+          // Use console.error so it's visible in DevTools, but still fall back to demo data.
           console.error(
             '[ExtractionSource] Malformed JSON from API for pattern volume, falling back to demo data',
             error
@@ -203,7 +207,8 @@ class ExtractionSource {
     } catch (error) {
       if (fallbackToMock) {
         if (error instanceof SyntaxError) {
-          // Parse errors get console.error (louder than warn) but still fall back to demo data — a 200 with invalid JSON is a backend bug developers should notice in DevTools.
+          // Parse errors (malformed JSON on 200) indicate a backend bug.
+          // Use console.error so it's visible in DevTools, but still fall back to demo data.
           console.error(
             '[ExtractionSource] Malformed JSON from API for error rates, falling back to demo data',
             error
