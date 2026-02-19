@@ -3956,6 +3956,15 @@ export class EventConsumer extends EventEmitter {
 
       await this.consumer.disconnect();
       this.isRunning = false;
+
+      // Stop the catalog manager (its own consumer/producer pair).
+      if (this.catalogManager) {
+        await this.catalogManager.stop().catch((err) => {
+          console.warn('[EventConsumer] Error stopping catalog manager:', err);
+        });
+        this.catalogManager = null;
+      }
+
       intentLogger.info('Event consumer stopped');
       this.emit('disconnected'); // Emit disconnected event
     } catch (error) {
@@ -4003,12 +4012,24 @@ export class EventConsumer extends EventEmitter {
           intentLogger.info(
             '[EventConsumer] Topic catalog timed out — using fallback subscription topics'
           );
+          // Stop the catalog manager connections on timeout — it will not receive
+          // a response, so its consumer/producer are no longer needed.
+          manager.stop().catch((stopErr) => {
+            console.warn('[EventConsumer] Error stopping catalog manager after timeout:', stopErr);
+          });
           resolve(buildSubscriptionTopics());
         });
 
         // Non-blocking: errors from bootstrap should not crash the consumer startup.
         manager.bootstrap().catch((err) => {
           console.warn('[EventConsumer] Topic catalog bootstrap error:', err);
+          // Clean up the partially-started manager before falling back.
+          manager.stop().catch((stopErr) => {
+            console.warn(
+              '[EventConsumer] Error stopping catalog manager after bootstrap error:',
+              stopErr
+            );
+          });
           resolve(buildSubscriptionTopics());
         });
       });
