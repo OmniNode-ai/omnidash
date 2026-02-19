@@ -276,9 +276,10 @@ async function probeValidation(): Promise<DataSourceInfo> {
 async function probeInsights(): Promise<DataSourceInfo> {
   try {
     const summary = await queryInsightsSummary();
+    // null means queryInsightsSummary found no DB connection (mirrors
+    // tryGetIntelligenceDb returning null internally) — it does NOT mean the
+    // DB is reachable but empty.
     if (summary === null) {
-      // Database not configured — queryInsightsSummary returns null when no DB
-      // connection is available, not when the DB is reachable but empty.
       return { status: 'mock', reason: 'no_db_connection' };
     }
     if (!Array.isArray(summary.insights) || summary.insights.length === 0) {

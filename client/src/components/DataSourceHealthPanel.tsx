@@ -145,6 +145,8 @@ function DataSourceRow({ sourceKey, info }: { sourceKey: string; info: DataSourc
 // ============================================================================
 
 function SummaryBar({ summary }: { summary: { live: number; mock: number; error: number } }) {
+  // total from summary object — should equal Object.keys(dataSources).length;
+  // if they diverge, a probe is returning a status not included in the summary count.
   const total = Object.values(summary).reduce((sum, n) => sum + n, 0);
   return (
     <div className="flex flex-wrap items-center gap-4 text-sm">

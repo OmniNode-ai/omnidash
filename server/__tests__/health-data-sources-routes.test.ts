@@ -277,7 +277,7 @@ describe('GET /api/health/data-sources', () => {
   });
 
   it('computes summary counts correctly', async () => {
-    // Set up: 2 live (event-bus, validation), rest mock
+    // Set up: 3 live (event-bus, validation, correlationTrace), rest mock
     const eventBusView = makeView({ totalEventsIngested: 5 });
     const noView = { getSnapshot: vi.fn().mockReturnValue(null) };
 
@@ -316,8 +316,8 @@ describe('GET /api/health/data-sources', () => {
 
     expect(res.status).toBe(200);
     const { summary } = res.body;
-    // summary.live >= 2 (event-bus + validation + correlationTrace mirrors event-bus)
-    expect(summary.live).toBeGreaterThanOrEqual(2);
+    // 3 live sources (event-bus, validation, correlationTrace)
+    expect(summary.live).toBe(3);
     expect(summary.live + summary.mock + summary.error).toBe(13); // 13 total sources
   });
 
