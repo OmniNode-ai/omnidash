@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import PatternLearning from '@/pages/PatternLearning';
 import { patlearnSource, type PatlearnArtifact, type PatlearnSummary } from '@/lib/data-sources';
+import { DemoModeProvider } from '@/contexts/DemoModeContext';
 
 // ===========================
 // Mocks
@@ -77,7 +78,11 @@ function renderWithClient(ui: ReactNode) {
     },
   });
 
-  const result = render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  const result = render(
+    <DemoModeProvider>
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+    </DemoModeProvider>
+  );
 
   return { queryClient, ...result };
 }
@@ -209,8 +214,11 @@ describe('PatternLearning page', () => {
       queryClient = result.queryClient;
 
       // Check for skeleton elements (loading state) - they have animate-pulse class
-      const skeletons = document.querySelectorAll('.animate-pulse');
-      expect(skeletons.length).toBeGreaterThan(0);
+      // Wrap in waitFor because TanStack Query's isLoading state may not be true synchronously
+      await waitFor(() => {
+        const skeletons = document.querySelectorAll('.animate-pulse');
+        expect(skeletons.length).toBeGreaterThan(0);
+      });
 
       result.unmount();
     });

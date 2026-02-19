@@ -43,6 +43,10 @@ vi.mock('@/components/ui/sidebar', () => ({
 
 vi.mock('@/contexts/DemoModeContext', () => ({
   DemoModeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useDemoMode: vi.fn(() => ({
+    isDemoMode: false,
+    toggleDemoMode: vi.fn(),
+  })),
 }));
 
 vi.mock('@/pages/NodeRegistry', () => ({

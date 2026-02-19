@@ -23,12 +23,14 @@ import {
   topicMatchesSuffix,
   normalizeToSuffix,
 } from '@/lib/configs/event-bus-dashboard';
-import { useProjectionStream } from '@/hooks/useProjectionStream';
+import { useDemoProjectionStream } from '@/hooks/useDemoProjectionStream';
 import type { ProjectionEvent } from '@/hooks/useProjectionStream.types';
 import {
   fetchEventBusSnapshot,
   type EventBusPayload,
 } from '@/lib/data-sources/event-bus-projection-source';
+import { getDemoEventBusSnapshot } from '@/lib/mock-data/event-bus-demo';
+import { DemoBanner } from '@/components/DemoBanner';
 import { TIME_SERIES_BUCKET_MS } from '@shared/event-bus-payload';
 import { extractProducerFromTopicOrDefault } from '@shared/topics';
 import { extractParsedDetails, type ParsedDetails } from '@/components/event-bus/eventDetailUtils';
@@ -361,15 +363,18 @@ function bucketSmallTypes(
 export default function EventBusMonitor() {
   const [maxEvents, setMaxEvents] = useState(eventConfig.max_events);
 
-  // Server-side projection replaces useEventBusStream
+  // Demo-aware projection stream: returns canned data in demo mode, live data otherwise.
   const {
     data: snapshot,
     isLoading,
     isConnected: wsConnected,
-  } = useProjectionStream<EventBusPayload>('event-bus', fetchEventBusSnapshot, {
-    limit: maxEvents,
-    refetchInterval: 2000,
-  });
+    isDemo,
+  } = useDemoProjectionStream<EventBusPayload>(
+    'event-bus',
+    getDemoEventBusSnapshot,
+    fetchEventBusSnapshot,
+    { limit: maxEvents, refetchInterval: 2000 }
+  );
 
   // Map ProjectionEvents to display format (memoized).
   //
@@ -900,6 +905,9 @@ export default function EventBusMonitor() {
 
   return (
     <div className="space-y-4">
+      {/* Demo mode banner */}
+      <DemoBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -911,7 +919,14 @@ export default function EventBusMonitor() {
         </div>
 
         <div className="flex items-center gap-4">
-          {isConnected && (
+          {isDemo ? (
+            <Badge variant="outline" className="border-amber-500/50 text-amber-400 gap-1">
+              <span className="relative flex h-2 w-2">
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+              Demo Data
+            </Badge>
+          ) : isConnected ? (
             <Badge variant="default" className="bg-green-600 hover:bg-green-700 gap-1">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -919,7 +934,7 @@ export default function EventBusMonitor() {
               </span>
               Live Data
             </Badge>
-          )}
+          ) : null}
 
           <div className="text-sm text-muted-foreground">
             Updated: {lastUpdate.toLocaleTimeString()}

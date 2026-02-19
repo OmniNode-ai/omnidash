@@ -56,6 +56,11 @@ export interface RunsListResponse {
 export interface ValidationFetchOptions {
   /** If true, fallback to mock data on error. Default: true */
   fallbackToMock?: boolean;
+  /**
+   * When true, skip the API call entirely and return canned demo data.
+   * Used when global demo mode is active (OMN-2298).
+   */
+  demoMode?: boolean;
 }
 
 // ===========================
@@ -77,7 +82,12 @@ class ValidationSource {
    * Get summary stats across all validation runs.
    */
   async summary(options: ValidationFetchOptions = {}): Promise<ValidationSummary> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+
+    if (demoMode) {
+      this._isUsingMockData = true;
+      return getMockSummary();
+    }
 
     try {
       const response = await fetch(`${this.baseUrl}/summary`);
@@ -106,7 +116,33 @@ class ValidationSource {
     params: { status?: string; limit?: number; offset?: number } = {},
     options: ValidationFetchOptions = {}
   ): Promise<RunsListResponse> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+
+    if (demoMode) {
+      this._isUsingMockData = true;
+      let runs = getMockRuns();
+      if (params.status && params.status !== 'all') {
+        runs = runs.filter((r) => r.status === params.status);
+      }
+      const total = runs.length;
+      const offset = params.offset ?? 0;
+      const limit = params.limit ?? 50;
+      const paged = runs.slice(offset, offset + limit);
+      const summaries: RunSummary[] = paged.map((run) => ({
+        run_id: run.run_id,
+        repos: run.repos,
+        validators: run.validators,
+        triggered_by: run.triggered_by,
+        status: run.status,
+        started_at: run.started_at,
+        completed_at: run.completed_at,
+        duration_ms: run.duration_ms,
+        total_violations: run.total_violations,
+        violations_by_severity: run.violations_by_severity ?? {},
+        violation_count: run.total_violations,
+      }));
+      return { runs: summaries, total, limit, offset };
+    }
 
     try {
       const query = new URLSearchParams();
@@ -169,7 +205,12 @@ class ValidationSource {
     runId: string,
     options: ValidationFetchOptions = {}
   ): Promise<ValidationRun | null> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+
+    if (demoMode) {
+      this._isUsingMockData = true;
+      return getMockRunDetail(runId);
+    }
 
     try {
       const response = await fetch(`${this.baseUrl}/runs/${encodeURIComponent(runId)}`);
@@ -203,7 +244,12 @@ class ValidationSource {
    * start returning live data automatically with no client-side changes needed.
    */
   async getLifecycleSummary(options: ValidationFetchOptions = {}): Promise<LifecycleSummary> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+
+    if (demoMode) {
+      this._isUsingMockData = true;
+      return getMockLifecycleSummary();
+    }
 
     try {
       const response = await fetch(`${this.baseUrl}/lifecycle/summary`);
@@ -234,7 +280,12 @@ class ValidationSource {
    * Get violation trends for a specific repo.
    */
   async getRepoTrends(repoId: string, options: ValidationFetchOptions = {}): Promise<RepoTrends> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+
+    if (demoMode) {
+      this._isUsingMockData = true;
+      return getMockRepoTrends(repoId);
+    }
 
     try {
       const response = await fetch(`${this.baseUrl}/repos/${encodeURIComponent(repoId)}/trends`);

@@ -34,6 +34,11 @@ import {
  */
 export interface ExtractionFetchOptions {
   fallbackToMock?: boolean;
+  /**
+   * When true, skip the API call entirely and return canned demo data.
+   * Used when global demo mode is active (OMN-2298).
+   */
+  demoMode?: boolean;
 }
 
 export interface ExtractionResult<T> {
@@ -72,7 +77,10 @@ class ExtractionSource {
   async summary(
     options: ExtractionFetchOptions = {}
   ): Promise<ExtractionResult<ExtractionSummary>> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      return { data: getMockExtractionSummary(), isMock: true };
+    }
     try {
       const response = await fetch(`${this.baseUrl}/summary`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -102,7 +110,10 @@ class ExtractionSource {
   async pipelineHealth(
     options: ExtractionFetchOptions = {}
   ): Promise<ExtractionResult<PipelineHealthResponse>> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      return { data: getMockPipelineHealth(), isMock: true };
+    }
     try {
       const response = await fetch(`${this.baseUrl}/health/pipeline`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -133,7 +144,10 @@ class ExtractionSource {
     window: string = '24h',
     options: ExtractionFetchOptions = {}
   ): Promise<ExtractionResult<LatencyHeatmapResponse>> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      return { data: getMockLatencyHeatmap(window), isMock: true };
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/latency/heatmap?window=${encodeURIComponent(window)}`
@@ -166,7 +180,10 @@ class ExtractionSource {
     window: string = '24h',
     options: ExtractionFetchOptions = {}
   ): Promise<ExtractionResult<PatternVolumeResponse>> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      return { data: getMockPatternVolume(window), isMock: true };
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/patterns/volume?window=${encodeURIComponent(window)}`
@@ -198,7 +215,10 @@ class ExtractionSource {
   async errorsSummary(
     options: ExtractionFetchOptions = {}
   ): Promise<ExtractionResult<ErrorRatesSummaryResponse>> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      return { data: getMockErrorRatesSummary(), isMock: true };
+    }
     try {
       const response = await fetch(`${this.baseUrl}/errors/summary`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);

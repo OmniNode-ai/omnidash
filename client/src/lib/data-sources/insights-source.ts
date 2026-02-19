@@ -12,6 +12,11 @@ import { getMockInsightsSummary, getMockInsightsTrend } from '@/lib/mock-data/in
 
 export interface InsightsFetchOptions {
   fallbackToMock?: boolean;
+  /**
+   * When true, skip the API call entirely and return canned demo data.
+   * Used when global demo mode is active (OMN-2298).
+   */
+  demoMode?: boolean;
 }
 
 class InsightsSource {
@@ -32,7 +37,11 @@ class InsightsSource {
   }
 
   async summary(options: InsightsFetchOptions = {}): Promise<InsightsSummary> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('summary');
+      return getMockInsightsSummary();
+    }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     try {
@@ -58,7 +67,11 @@ class InsightsSource {
   }
 
   async trend(options: InsightsFetchOptions = {}): Promise<InsightsTrendPoint[]> {
-    const { fallbackToMock = true } = options;
+    const { fallbackToMock = true, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('trend');
+      return getMockInsightsTrend();
+    }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     try {

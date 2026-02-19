@@ -52,6 +52,8 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { patlearnSource, type PatlearnArtifact, type LifecycleState } from '@/lib/data-sources';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DemoBanner } from '@/components/DemoBanner';
 import {
   LifecycleStateBadge,
   PatternScoreDebugger,
@@ -264,6 +266,8 @@ function StatsCard({
 // ===========================
 
 function PatternLearningContent() {
+  const { isDemoMode } = useDemoMode();
+
   // Get URL search string for initial filter state
   const searchString = useSearch();
 
@@ -311,7 +315,7 @@ function PatternLearningContent() {
     refetch: refetchSummary,
   } = useQuery({
     queryKey: queryKeys.patlearn.summary('24h'),
-    queryFn: () => patlearnSource.summary('24h'),
+    queryFn: () => patlearnSource.summary('24h', { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000, // 30 seconds - prevents unnecessary refetches on remount
   });
@@ -329,12 +333,15 @@ function PatternLearningContent() {
   } = useInfiniteQuery({
     queryKey: queryKeys.patlearn.list('infinite'),
     queryFn: ({ pageParam = 0 }) =>
-      patlearnSource.list({
-        limit: PAGE_SIZE,
-        offset: pageParam,
-        sort: 'score',
-        order: 'desc',
-      }),
+      patlearnSource.list(
+        {
+          limit: PAGE_SIZE,
+          offset: pageParam,
+          sort: 'score',
+          order: 'desc',
+        },
+        { demoMode: isDemoMode }
+      ),
     getNextPageParam: (lastPage, allPages) => {
       // If we got a full page, there might be more
       if (lastPage.length === PAGE_SIZE) {
@@ -429,6 +436,9 @@ function PatternLearningContent() {
 
   return (
     <div className="space-y-6" data-testid="page-pattern-learning">
+      {/* Demo mode banner */}
+      <DemoBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

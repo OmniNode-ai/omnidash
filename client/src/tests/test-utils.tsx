@@ -2,6 +2,7 @@ import { render, type RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactElement, ReactNode } from 'react';
 import { vi } from 'vitest';
+import { DemoModeProvider } from '../contexts/DemoModeContext';
 
 /**
  * Standard QueryClient configuration for tests
@@ -60,7 +61,11 @@ export function renderWithQueryClient(ui: ReactElement, options?: Omit<RenderOpt
   const queryClient = createTestQueryClient();
 
   function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    return (
+      <QueryClientProvider client={queryClient}>
+        <DemoModeProvider>{children}</DemoModeProvider>
+      </QueryClientProvider>
+    );
   }
 
   const result = render(ui, { wrapper: Wrapper, ...options });

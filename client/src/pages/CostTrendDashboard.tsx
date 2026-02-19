@@ -19,8 +19,10 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { costSource } from '@/lib/data-sources/cost-source';
 import { queryKeys } from '@/lib/query-keys';
+import { DemoBanner } from '@/components/DemoBanner';
 import { MetricCard } from '@/components/MetricCard';
 import { HeroMetric } from '@/components/HeroMetric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -711,6 +713,7 @@ function BudgetAlertCards({ data }: { data: BudgetAlert[] | undefined }) {
  */
 export default function CostTrendDashboard() {
   const queryClient = useQueryClient();
+  const { isDemoMode } = useDemoMode();
 
   // ---------------------------------------------------------------------------
   // Local state
@@ -723,7 +726,7 @@ export default function CostTrendDashboard() {
   // Data Fetching
   // ---------------------------------------------------------------------------
 
-  const fetchOpts = { mockOnEmpty: true, includeEstimated };
+  const fetchOpts = { mockOnEmpty: true, includeEstimated, demoMode: isDemoMode };
 
   const { data: summary, isLoading: summaryLoading } = useQuery<CostSummary>({
     queryKey: [...queryKeys.costs.summary(timeWindow), includeEstimated],
@@ -818,6 +821,9 @@ export default function CostTrendDashboard() {
 
   return (
     <div className="space-y-6" data-testid="page-cost-trends">
+      {/* Demo mode banner */}
+      <DemoBanner />
+
       {/* Page Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>

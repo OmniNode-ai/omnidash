@@ -28,6 +28,8 @@
 import { useState, useMemo } from 'react';
 import { IntentDistribution, RecentIntents, SessionTimeline } from '@/components/intent';
 import { useIntentProjectionStream } from '@/hooks/useIntentProjectionStream';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DemoBanner } from '@/components/DemoBanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -60,7 +62,137 @@ import {
 } from 'lucide-react';
 import React from 'react';
 import type { IntentItem } from '@/components/intent';
-import type { IntentProjectionPayload } from '@shared/projection-types';
+import type { IntentProjectionPayload, ProjectionEventItem } from '@shared/projection-types';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Demo snapshot factory
+// ─────────────────────────────────────────────────────────────────────────────
+
+function makeDemoIntentSnapshot(): IntentProjectionPayload {
+  const now = Date.now();
+  const recentIntents: ProjectionEventItem[] = [
+    {
+      id: 'di-001',
+      eventTimeMs: now - 720_000,
+      ingestSeq: 1,
+      type: 'intent-classified',
+      topic: 'intent.classified.v1',
+      source: 'omniclaude',
+      severity: 'info',
+      payload: {
+        intent_category: 'code_generation',
+        confidence: 0.94,
+        session_ref: 'ses-demo-7f3a',
+        created_at: new Date(now - 720_000).toISOString(),
+      },
+    },
+    {
+      id: 'di-002',
+      eventTimeMs: now - 600_000,
+      ingestSeq: 2,
+      type: 'intent-classified',
+      topic: 'intent.classified.v1',
+      source: 'omniclaude',
+      severity: 'info',
+      payload: {
+        intent_category: 'debugging',
+        confidence: 0.88,
+        session_ref: 'ses-demo-8b2c',
+        created_at: new Date(now - 600_000).toISOString(),
+      },
+    },
+    {
+      id: 'di-003',
+      eventTimeMs: now - 480_000,
+      ingestSeq: 3,
+      type: 'intent-classified',
+      topic: 'intent.classified.v1',
+      source: 'omniclaude',
+      severity: 'info',
+      payload: {
+        intent_category: 'code_generation',
+        confidence: 0.91,
+        session_ref: 'ses-demo-7f3a',
+        created_at: new Date(now - 480_000).toISOString(),
+      },
+    },
+    {
+      id: 'di-004',
+      eventTimeMs: now - 360_000,
+      ingestSeq: 4,
+      type: 'intent-classified',
+      topic: 'intent.classified.v1',
+      source: 'omniclaude',
+      severity: 'info',
+      payload: {
+        intent_category: 'refactoring',
+        confidence: 0.79,
+        session_ref: 'ses-demo-9c4d',
+        created_at: new Date(now - 360_000).toISOString(),
+      },
+    },
+    {
+      id: 'di-005',
+      eventTimeMs: now - 240_000,
+      ingestSeq: 5,
+      type: 'intent-classified',
+      topic: 'intent.classified.v1',
+      source: 'omniclaude',
+      severity: 'info',
+      payload: {
+        intent_category: 'code_review',
+        confidence: 0.85,
+        session_ref: 'ses-demo-9c4d',
+        created_at: new Date(now - 240_000).toISOString(),
+      },
+    },
+    {
+      id: 'di-006',
+      eventTimeMs: now - 120_000,
+      ingestSeq: 6,
+      type: 'intent-classified',
+      topic: 'intent.classified.v1',
+      source: 'omniclaude',
+      severity: 'info',
+      payload: {
+        intent_category: 'debugging',
+        confidence: 0.92,
+        session_ref: 'ses-demo-8b2c',
+        created_at: new Date(now - 120_000).toISOString(),
+      },
+    },
+    {
+      id: 'di-007',
+      eventTimeMs: now - 60_000,
+      ingestSeq: 7,
+      type: 'intent-classified',
+      topic: 'intent.classified.v1',
+      source: 'omniclaude',
+      severity: 'info',
+      payload: {
+        intent_category: 'code_generation',
+        confidence: 0.96,
+        session_ref: 'ses-demo-7f3a',
+        created_at: new Date(now - 60_000).toISOString(),
+      },
+    },
+  ];
+
+  const distribution = [
+    { category: 'code_generation', count: 3, percentage: 42.9 },
+    { category: 'debugging', count: 2, percentage: 28.6 },
+    { category: 'refactoring', count: 1, percentage: 14.3 },
+    { category: 'code_review', count: 1, percentage: 14.3 },
+  ];
+
+  return {
+    recentIntents,
+    distribution,
+    totalIntents: 7,
+    categoryCount: 4,
+    lastEventTimeMs: now - 60_000,
+  };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -254,6 +386,8 @@ function IntentDetail({ intent, onClose }: IntentDetailProps) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function IntentDashboard() {
+  const { isDemoMode } = useDemoMode();
+
   // State
   const [timeRange, setTimeRange] = useState<TimeRangeHours>('24');
   const [selectedIntent, setSelectedIntent] = useState<IntentItem | null>(null);
@@ -261,8 +395,19 @@ export default function IntentDashboard() {
 
   // Server-side projection snapshot (OMN-2096 r4)
   // Fetches on mount, then re-fetches when WebSocket invalidation arrives.
-  const { snapshot, isConnected, connectionStatus, refresh } =
-    useIntentProjectionStream<IntentProjectionPayload>('intent', { limit: 100 });
+  // When demo mode is active, fetchOnMount is disabled so we don't poll live data.
+  const liveStream = useIntentProjectionStream<IntentProjectionPayload>('intent', {
+    limit: 100,
+    fetchOnMount: !isDemoMode,
+  });
+
+  // In demo mode, override the live stream with canned data.
+  const demoSnapshot = useMemo(() => (isDemoMode ? makeDemoIntentSnapshot() : null), [isDemoMode]);
+
+  const snapshot = isDemoMode ? demoSnapshot : liveStream.snapshot;
+  const isConnected = isDemoMode ? false : liveStream.isConnected;
+  const connectionStatus = isDemoMode ? ('disconnected' as const) : liveStream.connectionStatus;
+  const refresh = isDemoMode ? () => {} : liveStream.refresh;
 
   // Derive stat card values from the projection snapshot
   const categoryCount = snapshot?.categoryCount ?? 0;
@@ -323,6 +468,8 @@ export default function IntentDashboard() {
   return (
     <TooltipProvider>
       <div className="space-y-6">
+        <DemoBanner />
+
         {/* Page Header */}
         <DashboardPageHeader
           title="Intent Classification Dashboard"

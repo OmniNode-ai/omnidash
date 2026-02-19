@@ -12,7 +12,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { enrichmentSource } from '@/lib/data-sources/enrichment-source';
+import { DemoBanner } from '@/components/DemoBanner';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -403,6 +405,7 @@ function InflationAlertTable({
 export default function ContextEnrichmentDashboard() {
   const [timeWindow, setTimeWindow] = useState<EnrichmentTimeWindow>('7d');
   const queryClient = useQueryClient();
+  const { isDemoMode } = useDemoMode();
 
   // Clear stale mock-endpoint state whenever the time window changes so that
   // the previous window's mock/real determination does not carry over into the
@@ -436,7 +439,8 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchSummary,
   } = useQuery({
     queryKey: queryKeys.enrichment.summary(timeWindow),
-    queryFn: () => enrichmentSource.summary(timeWindow, { mockOnEmpty: true }),
+    queryFn: () =>
+      enrichmentSource.summary(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -448,7 +452,8 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchChannel,
   } = useQuery({
     queryKey: queryKeys.enrichment.byChannel(timeWindow),
-    queryFn: () => enrichmentSource.byChannel(timeWindow, { mockOnEmpty: true }),
+    queryFn: () =>
+      enrichmentSource.byChannel(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -460,7 +465,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchLatency,
   } = useQuery({
     queryKey: queryKeys.enrichment.latencyDistribution(timeWindow),
-    queryFn: () => enrichmentSource.latencyDistribution(timeWindow),
+    queryFn: () => enrichmentSource.latencyDistribution(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -472,7 +477,8 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchToken,
   } = useQuery({
     queryKey: queryKeys.enrichment.tokenSavings(timeWindow),
-    queryFn: () => enrichmentSource.tokenSavings(timeWindow, { mockOnEmpty: true }),
+    queryFn: () =>
+      enrichmentSource.tokenSavings(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -484,7 +490,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchSim,
   } = useQuery({
     queryKey: queryKeys.enrichment.similarityQuality(timeWindow),
-    queryFn: () => enrichmentSource.similarityQuality(timeWindow),
+    queryFn: () => enrichmentSource.similarityQuality(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -496,7 +502,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchAlerts,
   } = useQuery({
     queryKey: queryKeys.enrichment.inflationAlerts(timeWindow),
-    queryFn: () => enrichmentSource.inflationAlerts(timeWindow),
+    queryFn: () => enrichmentSource.inflationAlerts(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -548,6 +554,9 @@ export default function ContextEnrichmentDashboard() {
 
   return (
     <div className="space-y-6" data-testid="page-context-enrichment">
+      {/* Demo mode banner */}
+      <DemoBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
