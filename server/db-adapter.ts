@@ -8,9 +8,11 @@
  * - Direct access: Fast, synchronous queries for dashboard APIs
  * - Event bus: Async, decoupled operations for write-heavy workloads
  * - Event bus presence: When KAFKA_BROKERS is set, event bus integration is
- *   enabled. When absent, the event bus is simply not active — the adapter
- *   logs an error and continues serving direct DB queries. This is a
- *   misconfiguration error state, not a "fallback" mechanism.
+ *   enabled. When absent, the event bus is simply not active — no error is
+ *   logged by this class. The event-bus modules (event-bus-data-source.ts,
+ *   event-consumer.ts, intelligence-event-adapter.ts) emit diagnostics when
+ *   their singletons are first accessed. This is a misconfiguration error
+ *   state, not a "fallback" mechanism.
  *
  * Usage:
  *   const adapter = new PostgresAdapter();
@@ -53,10 +55,12 @@ export interface DeleteOptions {
  *
  * Provides direct database access with Drizzle ORM and optional event bus
  * integration. When KAFKA_BROKERS (or KAFKA_BOOTSTRAP_SERVERS) is present,
- * event bus integration is enabled. When the variable is absent, the adapter
- * logs an error and event bus integration is disabled — this is a
- * misconfiguration error state, not normal operation. The adapter continues
- * serving direct database queries in this error state.
+ * event bus integration is enabled. When the variable is absent, event bus
+ * integration is disabled — this class does not log anything. The event-bus
+ * modules (event-bus-data-source.ts, event-consumer.ts,
+ * intelligence-event-adapter.ts) emit the appropriate diagnostics when their
+ * singletons are first accessed. This is a misconfiguration error state, not
+ * normal operation. The adapter continues serving direct database queries.
  */
 export class PostgresAdapter {
   private get db() {
