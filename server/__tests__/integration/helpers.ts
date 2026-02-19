@@ -17,6 +17,10 @@ import {
   injectionEffectiveness,
   latencyBreakdowns,
   patternHitRates,
+  baselinesBreakdown,
+  baselinesTrend,
+  baselinesComparisons,
+  baselinesSnapshots,
 } from '@shared/intelligence-schema';
 import type {
   InsertLearnedPattern,
@@ -234,6 +238,26 @@ export async function truncateEffectiveness(): Promise<void> {
   await testDb.delete(patternHitRates);
   await testDb.delete(latencyBreakdowns);
   await testDb.delete(injectionEffectiveness);
+}
+
+/**
+ * Delete all rows from baselines_* tables.
+ *
+ * Child tables (baselines_breakdown, baselines_trend, baselines_comparisons)
+ * reference baselines_snapshots via FK with ON DELETE CASCADE, so deleting
+ * the parent snapshot rows would also remove children. We delete children
+ * explicitly first to mirror the migration order and keep behavior clear,
+ * then delete the parent. Uses DELETE (not TRUNCATE) to avoid permission
+ * issues.
+ */
+export async function truncateBaselines(): Promise<void> {
+  const testDb = getTestDb();
+  // Delete child tables first (FK references baselinesSnapshots.snapshotId)
+  await testDb.delete(baselinesBreakdown);
+  await testDb.delete(baselinesTrend);
+  await testDb.delete(baselinesComparisons);
+  // Delete parent last
+  await testDb.delete(baselinesSnapshots);
 }
 
 // ---------------------------------------------------------------------------

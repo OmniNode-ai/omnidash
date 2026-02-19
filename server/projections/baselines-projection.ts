@@ -35,7 +35,7 @@ import type {
   PromotionAction,
   ConfidenceLevel,
 } from '@shared/baselines-types';
-import { DbBackedProjectionView, DEFAULT_CACHE_TTL_MS } from './db-backed-projection-view';
+import { DbBackedProjectionView } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
 
 // ============================================================================

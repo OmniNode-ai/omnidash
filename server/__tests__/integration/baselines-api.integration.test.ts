@@ -6,7 +6,8 @@
  *
  * Requires TEST_DATABASE_URL pointing to a PostgreSQL database whose name
  * ends with _test or -test. The baselines_* tables must already exist
- * (run migrations/0004_baselines_roi.sql and 0005_baselines_trend_unique.sql).
+ * (run migrations/0004_baselines_roi.sql, 0005_baselines_trend_unique.sql,
+ * and 0006_baselines_breakdown_unique.sql).
  *
  * In CI, missing TEST_DATABASE_URL is a hard failure.
  * Outside CI, tests are skipped with a warning.
@@ -15,7 +16,13 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
-import { getTestDb, closeTestDb, createTestApp, resetBaselinesProjectionCache } from './helpers';
+import {
+  getTestDb,
+  closeTestDb,
+  createTestApp,
+  resetBaselinesProjectionCache,
+  truncateBaselines,
+} from './helpers';
 import { resetIntelligenceDb } from '../../storage';
 
 // ---------------------------------------------------------------------------
@@ -59,6 +66,11 @@ describe.skipIf(!canRunIntegrationTests)('Baselines API Integration Tests', () =
   });
 
   beforeEach(async () => {
+    // Truncate all baselines_* tables so prior test runs cannot leave rows
+    // that cause TC1 ('returns empty-state payload when no snapshot data exists')
+    // to fail non-deterministically. Child tables are deleted before the parent
+    // to satisfy FK constraints (same order used by truncateBaselines()).
+    await truncateBaselines();
     // Reset the in-memory TTL cache so each test queries the (now-empty) DB
     // rather than serving stale rows from a prior test's seed data.
     resetBaselinesProjectionCache();

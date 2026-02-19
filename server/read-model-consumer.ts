@@ -1178,9 +1178,11 @@ export class ReadModelConsumer {
 
           // Deduplicate breakdown rows by action (keep last occurrence) to prevent
           // duplicate action entries that would cause _deriveSummary() to double-count
-          // promote_count/shadow_count/etc. Unlike the trend table there is no DB-level
-          // UNIQUE constraint on (snapshot_id, action), so we enforce dedup here at
-          // write time — consistent with the dedup already applied to trend rows above.
+          // promote_count/shadow_count/etc. A DB-level UNIQUE(snapshot_id, action)
+          // index is added by migrations/0006_baselines_breakdown_unique.sql as a
+          // backup guard; this app-level dedup remains as the primary defence so
+          // the transaction never surfaces a constraint violation to callers.
+          // (Analogous to the dedup applied to trend rows above, backed by 0005.)
           const breakdownByAction = new Map<string, (typeof breakdownRowsRaw)[0]>();
           for (const row of breakdownRowsRaw) {
             breakdownByAction.set(row.action, row);
