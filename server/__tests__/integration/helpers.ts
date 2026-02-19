@@ -304,10 +304,12 @@ export async function createTestApp(
   // Anchored to the final path segment (database name) after the last slash.
   // DB name must END with _test or -test (immediately before query/fragment or end of string).
   // Expected URL format: postgresql://host:port/database_test  (no query params after db name)
-  // Known limitation: the regex matches the db-name segment before the first '?' or '#', so a
-  // URL like postgresql://host/mydb?sslmode=require would pass (mydb doesn't end in _test/-test
-  // but the regex never sees past '?'). In practice all test URLs in this codebase use the plain
-  // postgresql://host:port/database_test form with no query params, so this is not a live concern.
+  // The character class [^/?#]* stops at the first '?', '#', or end-of-string, so query
+  // parameters after the database name (e.g. postgresql://host/mydb?sslmode=require) are not
+  // included in the match — 'mydb' alone is tested and correctly rejected. The actual limitation
+  // is that any db name containing '_test' or '-test' anywhere (e.g. 'my_test_db') would satisfy
+  // the suffix check even though the suffix isn't at the very end. This is acceptable: such names
+  // are sufficiently test-scoped for this guard's purpose.
   if (!/\/[^/?#]*(_test|-test)([?#]|$)/i.test(process.env.TEST_DATABASE_URL)) {
     throw new Error(
       `TEST_DATABASE_URL "${process.env.TEST_DATABASE_URL}" does not appear to target a test database. ` +
