@@ -389,15 +389,6 @@ export function clearHealthCache(): void {
 }
 
 /**
- * Clear the pending-probe singleton only.
- * Exported for tests that need to reset mid-flight state independently of the
- * result cache.
- */
-export function clearPendingProbe(): void {
-  pendingProbe = null;
-}
-
-/**
  * GET /api/health/data-sources
  *
  * Returns a snapshot of every dashboard data source reporting whether it is
