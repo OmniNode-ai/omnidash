@@ -114,6 +114,8 @@ import {
   isAgentMatchEvent,
   isLatencyBreakdownEvent,
 } from '@shared/extraction-types';
+import { emitEffectivenessUpdate } from './effectiveness-events';
+import { effectivenessMetricsProjection } from './projection-bootstrap';
 import { MonotonicMergeTracker, extractEventTimeMs, parseOffsetAsSeq } from './monotonic-merge';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
@@ -1546,6 +1548,8 @@ export class EventConsumer extends EventEmitter {
                 if (isContextUtilizationEvent(event)) {
                   await this.extractionAggregator.handleContextUtilization(event);
                   if (this.extractionAggregator.shouldBroadcast()) {
+                    effectivenessMetricsProjection.reset();
+                    emitEffectivenessUpdate();
                     this.emit('extraction-event', { type: 'context-utilization' });
                   }
                 } else {
@@ -1556,6 +1560,8 @@ export class EventConsumer extends EventEmitter {
                 if (isAgentMatchEvent(event)) {
                   await this.extractionAggregator.handleAgentMatch(event);
                   if (this.extractionAggregator.shouldBroadcast()) {
+                    effectivenessMetricsProjection.reset();
+                    emitEffectivenessUpdate();
                     this.emit('extraction-event', { type: 'agent-match' });
                   }
                 } else {
@@ -1566,6 +1572,8 @@ export class EventConsumer extends EventEmitter {
                 if (isLatencyBreakdownEvent(event)) {
                   await this.extractionAggregator.handleLatencyBreakdown(event);
                   if (this.extractionAggregator.shouldBroadcast()) {
+                    effectivenessMetricsProjection.reset();
+                    emitEffectivenessUpdate();
                     this.emit('extraction-event', { type: 'latency-breakdown' });
                   }
                 } else {

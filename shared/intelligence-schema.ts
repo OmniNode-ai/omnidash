@@ -948,8 +948,8 @@ export const baselinesSnapshots = pgTable(
     projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    /** Primary query: find the latest snapshot fast. */
-    index('idx_baselines_snapshots_computed').on(table.computedAtUtc),
+    /** Primary query: find the latest snapshot fast (ORDER BY computed_at_utc DESC). */
+    index('idx_baselines_snapshots_computed').on(table.computedAtUtc.desc()),
   ]
 );
 
@@ -991,7 +991,7 @@ export const baselinesComparisons = pgTable(
     /** 'high' | 'medium' | 'low' */
     confidence: text('confidence').notNull(),
     rationale: text('rationale').notNull().default(''),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index('idx_baselines_comparisons_snapshot').on(table.snapshotId),
@@ -1025,11 +1025,12 @@ export const baselinesTrend = pgTable(
       .notNull()
       .default('0'),
     comparisonsEvaluated: integer('comparisons_evaluated').notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index('idx_baselines_trend_snapshot').on(table.snapshotId),
     index('idx_baselines_trend_date').on(table.date),
+    uniqueIndex('baselines_trend_snapshot_date_unique').on(table.snapshotId, table.date),
   ]
 );
 
@@ -1055,11 +1056,12 @@ export const baselinesBreakdown = pgTable(
     action: text('action').notNull(),
     count: integer('count').notNull().default(0),
     avgConfidence: numeric('avg_confidence', { precision: 5, scale: 4 }).notNull().default('0'),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index('idx_baselines_breakdown_snapshot').on(table.snapshotId),
     index('idx_baselines_breakdown_action').on(table.action),
+    uniqueIndex('baselines_breakdown_snapshot_action_unique').on(table.snapshotId, table.action),
   ]
 );
 
@@ -1067,5 +1069,4 @@ export const insertBaselinesBreakdownSchema = createInsertSchema(baselinesBreakd
 export type BaselinesBreakdownRow = typeof baselinesBreakdown.$inferSelect;
 export type InsertBaselinesBreakdown = typeof baselinesBreakdown.$inferInsert;
 
-// Previously at end of file — kept here for import compatibility
 export type InsertLlmCostAggregate = typeof llmCostAggregates.$inferInsert;

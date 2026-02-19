@@ -98,6 +98,7 @@ function createMockSummary(overrides: Partial<BaselinesSummary> = {}): Baselines
     avg_outcome_improvement: 0.12,
     total_token_savings: 34_800,
     total_time_savings_ms: 8_600,
+    trend_point_count: 30,
     ...overrides,
   };
 }

@@ -33,6 +33,19 @@ vi.mock('kafkajs', () => ({
   })),
 }));
 
+// Mock projection-bootstrap so baselinesProjection.reset() is a no-op spy
+// that does not interact with the DB or bleed state across tests.
+vi.mock('../projection-bootstrap', () => ({
+  baselinesProjection: {
+    reset: vi.fn(),
+  },
+}));
+
+// Mock baselines-events so emitBaselinesUpdate() is a no-op spy.
+vi.mock('../baselines-events', () => ({
+  emitBaselinesUpdate: vi.fn(),
+}));
+
 import { ReadModelConsumer } from '../read-model-consumer';
 
 // ============================================================================
@@ -67,8 +80,8 @@ describe('ReadModelConsumer', () => {
   let consumer: ReadModelConsumer;
 
   beforeEach(() => {
-    consumer = new ReadModelConsumer();
     vi.clearAllMocks();
+    consumer = new ReadModelConsumer();
   });
 
   describe('getStats', () => {
@@ -451,7 +464,7 @@ describe('ReadModelConsumer', () => {
      */
     function makeBaselinesPayload(overrides: Record<string, unknown> = {}): EachMessagePayload {
       return makeKafkaPayload('onex.evt.omnibase-infra.baselines-computed.v1', {
-        snapshot_id: 'snap-abc-001',
+        snapshot_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
         contract_version: 1,
         computed_at_utc: '2026-02-18T00:00:00Z',
         comparisons: [
@@ -533,6 +546,8 @@ describe('ReadModelConsumer', () => {
 
     it('happy path: writes all 4 tables and advances watermark', async () => {
       const { tryGetIntelligenceDb } = await import('../storage');
+      const { baselinesProjection } = await import('../projection-bootstrap');
+      const { emitBaselinesUpdate } = await import('../baselines-events');
       const { db, deleteMock, childInsertValues, executeMock } = makeMockDb();
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(db);
 
@@ -561,12 +576,19 @@ describe('ReadModelConsumer', () => {
       // watermark updated
       expect(executeMock).toHaveBeenCalled();
 
+      // projection cache should have been invalidated after the DB writes committed
+      expect(baselinesProjection.reset).toHaveBeenCalledTimes(1);
+
+      // WebSocket clients should have been notified with the correct snapshot ID
+      expect(emitBaselinesUpdate).toHaveBeenCalledTimes(1);
+      expect(emitBaselinesUpdate).toHaveBeenCalledWith('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+
       const stats = consumer.getStats();
       expect(stats.eventsProjected).toBe(1);
       expect(stats.errorsCount).toBe(0);
     });
 
-    it('idempotency: processing the same snapshotId twice does not double-insert', async () => {
+    it('idempotency: re-delivering the same UUID snapshot_id upserts the header and re-projects child rows without double-inserting', async () => {
       const { tryGetIntelligenceDb } = await import('../storage');
       const { db, childInsertValues } = makeMockDb();
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(db);
@@ -656,7 +678,8 @@ describe('ReadModelConsumer', () => {
         })
       );
 
-      // Warning should fire for each of the two bad rows
+      // Warning should fire exactly once for each of the two bad rows
+      expect(warnSpy).toHaveBeenCalledTimes(2);
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('Skipping trend row with blank/null date'),
         expect.any(String)
@@ -730,6 +753,43 @@ describe('ReadModelConsumer', () => {
       expect(malformedRow).toBeUndefined();
 
       warnSpy.mockRestore();
+    });
+
+    it('coerces invalid confidence and recommendation values to safe defaults', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+      const { db, childInsertValues } = makeMockDb();
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(db);
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeBaselinesPayload({
+          comparisons: [
+            {
+              pattern_id: 'pat-1',
+              pattern_name: 'Test Pattern',
+              recommendation: 'DEMOTE', // invalid — should coerce to 'shadow'
+              confidence: 'VERY_HIGH', // invalid — should coerce to 'low'
+              rationale: 'test',
+              cost_delta: 0,
+              outcome_improvement: 0,
+              test_pass_rate_delta: {},
+              review_iteration_delta: {},
+              window_start: '2026-02-01',
+              window_end: '2026-02-15',
+            },
+          ],
+        })
+      );
+
+      const allInsertArgs = childInsertValues.mock.calls.flatMap((call) =>
+        Array.isArray(call[0]) ? call[0] : []
+      );
+      const compRow = allInsertArgs.find(
+        (row: Record<string, unknown>) => row.patternId === 'pat-1'
+      );
+      expect(compRow).toBeDefined();
+      expect(compRow?.recommendation).toBe('shadow');
+      expect(compRow?.confidence).toBe('low');
     });
   });
 });
