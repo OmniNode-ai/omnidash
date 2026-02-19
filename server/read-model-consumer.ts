@@ -53,11 +53,20 @@ import type { ContextEnrichmentEvent } from '@shared/enrichment-types';
 import {
   SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
   SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
+  SUFFIX_OMNICLAUDE_TASK_DELEGATED,
+  SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
+import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
+import { delegationEvents, delegationShadowComparisons } from '@shared/intelligence-schema';
+import type {
+  InsertDelegationEvent,
+  InsertDelegationShadowComparison,
+} from '@shared/intelligence-schema';
 import { baselinesProjection } from './projection-bootstrap';
 import { emitBaselinesUpdate } from './baselines-events';
 import { emitLlmRoutingInvalidate } from './llm-routing-events';
+import { emitDelegationInvalidate } from './delegation-events';
 
 /**
  * Derive a deterministic UUID-shaped string from Kafka message coordinates.
@@ -177,6 +186,8 @@ const READ_MODEL_TOPICS = [
   'onex.evt.omnibase-infra.baselines-computed.v1',
   SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
   SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
+  SUFFIX_OMNICLAUDE_TASK_DELEGATED,
+  SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -364,6 +375,12 @@ export class ReadModelConsumer {
           break;
         case SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION:
           projected = await this.projectLlmRoutingDecisionEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_TASK_DELEGATED:
+          projected = await this.projectTaskDelegatedEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON:
+          projected = await this.projectDelegationShadowComparisonEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -893,6 +910,173 @@ export class ReadModelConsumer {
     // the DB write has committed successfully.
     emitLlmRoutingInvalidate(correlationId);
 
+    return true;
+  }
+
+  /**
+   * Project a task-delegated event into the `delegation_events` table (OMN-2284).
+   *
+   * Deduplication key: (correlation_id) — each delegation has a unique correlation ID.
+   * Falls back to a deterministic hash when absent.
+   *
+   * GOLDEN METRIC: quality_gate_pass_rate > 80%.
+   */
+  private async projectTaskDelegatedEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const evt = data as Partial<TaskDelegatedEvent>;
+
+    const correlationId =
+      (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
+
+    const taskType = (evt.task_type as string) || (data.taskType as string);
+    const delegatedTo = (evt.delegated_to as string) || (data.delegatedTo as string);
+    if (!taskType || !delegatedTo) {
+      console.warn(
+        '[ReadModelConsumer] task-delegated event missing required fields ' +
+          `(correlation_id=${correlationId}) -- skipping malformed event`
+      );
+      return true;
+    }
+
+    const row: InsertDelegationEvent = {
+      correlationId,
+      sessionId: (evt.session_id as string) || (data.sessionId as string) || null,
+      timestamp: safeParseDate(evt.timestamp),
+      taskType,
+      delegatedTo,
+      delegatedBy: (evt.delegated_by as string) || (data.delegatedBy as string) || null,
+      qualityGatePassed: Boolean(evt.quality_gate_passed ?? data.qualityGatePassed ?? false),
+      qualityGatesChecked: evt.quality_gates_checked ?? data.qualityGatesChecked ?? null,
+      qualityGatesFailed: evt.quality_gates_failed ?? data.qualityGatesFailed ?? null,
+      costUsd: (() => {
+        const v = evt.cost_usd ?? data.costUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      costSavingsUsd: (() => {
+        const v = evt.cost_savings_usd ?? data.costSavingsUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      delegationLatencyMs: (() => {
+        const v = evt.delegation_latency_ms ?? data.delegationLatencyMs;
+        return v != null && !Number.isNaN(Number(v)) ? Math.round(Number(v)) : null;
+      })(),
+      repo: (evt.repo as string) || (data.repo as string) || null,
+      isShadow: Boolean(evt.is_shadow ?? data.isShadow ?? false),
+    };
+
+    try {
+      await db
+        .insert(delegationEvents)
+        .values(row)
+        .onConflictDoNothing({ target: delegationEvents.correlationId });
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('delegation_events') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] delegation_events table not yet created -- ' +
+            'run migrations to enable delegation projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    emitDelegationInvalidate(correlationId);
+    return true;
+  }
+
+  /**
+   * Project a delegation-shadow-comparison event into the
+   * `delegation_shadow_comparisons` table (OMN-2284).
+   *
+   * Deduplication key: (correlation_id) — each comparison has a unique correlation ID.
+   */
+  private async projectDelegationShadowComparisonEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const evt = data as Partial<DelegationShadowComparisonEvent>;
+
+    const correlationId =
+      (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
+
+    const taskType = (evt.task_type as string) || (data.taskType as string);
+    const primaryAgent = (evt.primary_agent as string) || (data.primaryAgent as string);
+    const shadowAgent = (evt.shadow_agent as string) || (data.shadowAgent as string);
+    if (!taskType || !primaryAgent || !shadowAgent) {
+      console.warn(
+        '[ReadModelConsumer] delegation-shadow-comparison event missing required fields ' +
+          `(correlation_id=${correlationId}) -- skipping malformed event`
+      );
+      return true;
+    }
+
+    const row: InsertDelegationShadowComparison = {
+      correlationId,
+      sessionId: (evt.session_id as string) || (data.sessionId as string) || null,
+      timestamp: safeParseDate(evt.timestamp),
+      taskType,
+      primaryAgent,
+      shadowAgent,
+      divergenceDetected: Boolean(evt.divergence_detected ?? data.divergenceDetected ?? false),
+      divergenceScore: (() => {
+        const v = evt.divergence_score ?? data.divergenceScore;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      primaryLatencyMs: (() => {
+        const v = evt.primary_latency_ms ?? data.primaryLatencyMs;
+        return v != null && !Number.isNaN(Number(v)) ? Math.round(Number(v)) : null;
+      })(),
+      shadowLatencyMs: (() => {
+        const v = evt.shadow_latency_ms ?? data.shadowLatencyMs;
+        return v != null && !Number.isNaN(Number(v)) ? Math.round(Number(v)) : null;
+      })(),
+      primaryCostUsd: (() => {
+        const v = evt.primary_cost_usd ?? data.primaryCostUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      shadowCostUsd: (() => {
+        const v = evt.shadow_cost_usd ?? data.shadowCostUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      divergenceReason:
+        (evt.divergence_reason as string) || (data.divergenceReason as string) || null,
+    };
+
+    try {
+      await db
+        .insert(delegationShadowComparisons)
+        .values(row)
+        .onConflictDoNothing({ target: delegationShadowComparisons.correlationId });
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('delegation_shadow_comparisons') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] delegation_shadow_comparisons table not yet created -- ' +
+            'run migrations to enable delegation shadow projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    emitDelegationInvalidate(correlationId);
     return true;
   }
 

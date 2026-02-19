@@ -24,6 +24,7 @@ import enrichmentRoutes from './enrichment-routes';
 import topicCatalogRoutes from './topic-catalog-routes';
 import healthDataSourcesRoutes from './health-data-sources-routes';
 import llmRoutingRoutes from './llm-routing-routes';
+import delegationRoutes from './delegation-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -97,6 +98,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount LLM routing effectiveness routes (OMN-2279)
   app.use('/api/llm-routing', llmRoutingRoutes);
+
+  // Mount delegation metrics routes (OMN-2284)
+  app.use('/api/delegation', delegationRoutes);
 
   // Conditionally mount golden path test routes (OMN-2079)
   // Only enabled when ENABLE_TEST_ROUTES=true AND (NODE_ENV=test OR OMNIDASH_TEST_MODE=true)

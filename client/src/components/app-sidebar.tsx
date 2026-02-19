@@ -19,6 +19,7 @@ import {
   ShieldAlert,
   Cpu,
   GitFork,
+  GitBranch,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -179,6 +180,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/llm-routing',
         icon: GitFork,
         description: 'LLM vs fuzzy routing agreement rate, latency, cost per decision',
+      },
+      {
+        title: 'Delegation Metrics',
+        url: '/delegation',
+        icon: GitBranch,
+        description: 'Delegation rate, cost savings, quality gates, shadow divergence',
       },
     ],
   },
