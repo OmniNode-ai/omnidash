@@ -117,7 +117,7 @@ const DEMO_TRACE_DETAIL: TraceResponse = (() => {
         id: 'demo-002',
         eventType: 'routing' as const,
         timestamp: new Date(base + 12_000).toISOString(),
-        agentName: 'omniarchon',
+        agentName: 'omniclaude',
         details: {
           selectedAgent: 'frontend-developer',
           confidence: 0.94,

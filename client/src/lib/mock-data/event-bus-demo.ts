@@ -65,7 +65,7 @@ const DEMO_EVENTS: ProjectionEvent[] = [
     ingestSeq: 2,
     topic: 'agent-routing-decisions',
     type: 'routing-decision',
-    source: 'omniarchon',
+    source: 'omniclaude',
     severity: 'info',
     payload: {
       correlationId: 'cor-demo-7f3a',
@@ -84,7 +84,7 @@ const DEMO_EVENTS: ProjectionEvent[] = [
     ingestSeq: 3,
     topic: 'agent-transformation-events',
     type: 'agent-transformation',
-    source: 'omniarchon',
+    source: 'omniclaude',
     severity: 'info',
     payload: {
       correlationId: 'cor-demo-7f3a',
@@ -263,7 +263,7 @@ const DEMO_EVENTS: ProjectionEvent[] = [
     ingestSeq: 13,
     topic: 'router-performance-metrics',
     type: 'router-performance',
-    source: 'omniarchon',
+    source: 'omniclaude',
     severity: 'info',
     payload: {
       routingAccuracyRate: 0.97,
@@ -402,7 +402,7 @@ const DEMO_EVENTS: ProjectionEvent[] = [
     ingestSeq: 21,
     topic: 'agent-routing-decisions',
     type: 'routing-decision',
-    source: 'omniarchon',
+    source: 'omniclaude',
     severity: 'info',
     payload: {
       correlationId: 'cor-demo-8b2c',
