@@ -21,6 +21,7 @@ import { createGoldenPathRoutes } from './golden-path-routes';
 import enforcementRoutes from './enforcement-routes';
 import executionRoutes from './execution-routes';
 import enrichmentRoutes from './enrichment-routes';
+import topicCatalogRoutes from './topic-catalog-routes';
 import healthDataSourcesRoutes from './health-data-sources-routes';
 import llmRoutingRoutes from './llm-routing-routes';
 
@@ -87,6 +88,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount context enrichment routes for enrichment metrics dashboard (OMN-2280)
   app.use('/api/enrichment', enrichmentRoutes);
+
+  // Mount topic catalog routes for catalog status and warnings (OMN-2315)
+  app.use('/api/catalog', topicCatalogRoutes);
 
   // Mount data-source health audit endpoint (OMN-2307)
   app.use('/api/health', healthDataSourcesRoutes);

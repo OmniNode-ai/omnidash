@@ -6,3 +6,6 @@ export * from './dashboard-events';
 
 // Re-export shared constants for cleanup timing
 export * from './constants';
+
+// Re-export topic catalog schemas (OMN-2315)
+export * from './topic-catalog';

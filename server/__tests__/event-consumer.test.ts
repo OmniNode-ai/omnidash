@@ -52,6 +52,11 @@ vi.mock('kafkajs', () => ({
       subscribe: mockConsumerSubscribe,
       run: mockConsumerRun,
     }),
+    producer: vi.fn().mockReturnValue({
+      connect: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+      send: vi.fn().mockResolvedValue(undefined),
+    }),
     admin: vi.fn().mockReturnValue({
       connect: mockAdminConnect,
       disconnect: mockAdminDisconnect,
@@ -68,6 +73,30 @@ const mockDb = {
 vi.mock('../storage', () => ({
   getIntelligenceDb: vi.fn(() => mockDb),
 }));
+
+// Mock TopicCatalogManager so it immediately falls back (catalogTimeout)
+// without calling kafka.consumer() and polluting the shared consumer mock
+vi.mock('../topic-catalog-manager', async () => {
+  const { EventEmitter } = await import('events');
+  return {
+    TopicCatalogManager: vi.fn().mockImplementation(() => {
+      const emitter = new EventEmitter();
+      return {
+        bootstrap: vi.fn().mockImplementation(() => {
+          // Emit catalogTimeout after current microtask so once() listeners
+          // are registered first, matching the real production code path
+          Promise.resolve().then(() => emitter.emit('catalogTimeout'));
+          return Promise.resolve();
+        }),
+        stop: vi.fn().mockResolvedValue(undefined),
+        once: emitter.once.bind(emitter),
+        on: emitter.on.bind(emitter),
+        instanceUuid: null,
+      };
+    }),
+    CATALOG_TIMEOUT_MS: 200,
+  };
+});
 
 // Import after mocks are set up - this will use our mocks
 import { EventConsumer } from '../event-consumer';

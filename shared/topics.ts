@@ -230,6 +230,11 @@ export const SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT =
 export const SUFFIX_REGISTRY_REQUEST_INTROSPECTION =
   'onex.evt.platform.registry-request-introspection.v1';
 
+/** Topic catalog query/response topics (OMN-2315) */
+export const SUFFIX_PLATFORM_TOPIC_CATALOG_QUERY = 'onex.cmd.platform.topic-catalog-query.v1';
+export const SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE = 'onex.evt.platform.topic-catalog-response.v1';
+export const SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED = 'onex.evt.platform.topic-catalog-changed.v1';
+
 // ============================================================================
 // OmniClaude Topics
 // ============================================================================

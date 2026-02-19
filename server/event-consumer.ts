@@ -17,6 +17,8 @@ import {
 } from '@shared/intent-types';
 // Import intentEventEmitter for WebSocket broadcasting of intent events
 import { getIntentEventEmitter } from './intent-events';
+// Import topic catalog manager (OMN-2315)
+import { TopicCatalogManager } from './topic-catalog-manager';
 // Import canonical topic constants
 import {
   buildSubscriptionTopics,
@@ -890,6 +892,12 @@ export class EventConsumer extends EventEmitter {
   private playbackEventsInjected: number = 0;
   private playbackEventsFailed: number = 0;
 
+  // Topic catalog state (OMN-2315)
+  private catalogTopics: string[] = [];
+  private catalogWarnings: string[] = [];
+  private catalogSource: 'catalog' | 'fallback' = 'fallback';
+  private catalogManager: TopicCatalogManager | null = null;
+
   // Raw event bus event rows loaded during preloadFromDatabase().
   // Exposed via getPreloadedEventBusEvents() so WebSocket INITIAL_STATE
   // can serve them from memory instead of re-querying PostgreSQL.
@@ -1151,6 +1159,17 @@ export class EventConsumer extends EventEmitter {
         }
       }
 
+      // -----------------------------------------------------------------------
+      // Topic Catalog Bootstrap (OMN-2315)
+      //
+      // Query the platform topic-catalog service to get the dynamic topic list.
+      // If the catalog responds within CATALOG_TIMEOUT_MS, subscribe to those
+      // topics instead of the hardcoded fallback list.  If the catalog does not
+      // respond in time (or Kafka is unavailable for the catalog consumer),
+      // fall through to buildSubscriptionTopics() as the hardcoded fallback.
+      // -----------------------------------------------------------------------
+      const subscriptionTopics = await this.fetchCatalogTopics();
+
       // Phase B: Subscribe at committed consumer-group offsets, NOT from the
       // beginning. Historical data is already covered by the Phase A DB preload.
       // Using fromBeginning: true would replay 3-7 days of Kafka retention,
@@ -1162,11 +1181,11 @@ export class EventConsumer extends EventEmitter {
       // TRADE-OFF: If downtime exceeds PRELOAD_WINDOW_MINUTES, events in the
       // gap (after preload cutoff but before consumer reconnects) will be missed.
       await this.consumer.subscribe({
-        topics: buildSubscriptionTopics(),
+        topics: subscriptionTopics,
         fromBeginning: false,
       });
       intentLogger.info(
-        'Phase B: Kafka subscription started at committed group offsets (not from beginning)'
+        `Phase B: Kafka subscription started (source=${this.catalogSource}, topics=${subscriptionTopics.length})`
       );
 
       await this.consumer.run({
@@ -3945,6 +3964,15 @@ export class EventConsumer extends EventEmitter {
 
       await this.consumer.disconnect();
       this.isRunning = false;
+
+      // Stop the catalog manager (its own consumer/producer pair).
+      if (this.catalogManager) {
+        await this.catalogManager.stop().catch((err) => {
+          console.warn('[EventConsumer] Error stopping catalog manager:', err);
+        });
+        this.catalogManager = null;
+      }
+
       intentLogger.info('Event consumer stopped');
       this.emit('disconnected'); // Emit disconnected event
     } catch (error) {
@@ -3952,6 +3980,138 @@ export class EventConsumer extends EventEmitter {
       this.isRunning = false;
       this.emit('error', error); // Emit error event
     }
+  }
+
+  // ============================================================================
+  // Topic Catalog Bootstrap (OMN-2315)
+  // ============================================================================
+
+  /**
+   * Attempt to fetch the topic list from the platform topic-catalog service.
+   *
+   * Creates a TopicCatalogManager, bootstraps it (subscribe + publish query),
+   * and waits for either a catalog response or a timeout.  On success the
+   * discovered topics are stored and 'catalogSource' is set to 'catalog'.
+   * On timeout/error the hardcoded buildSubscriptionTopics() list is returned
+   * and 'catalogSource' is reset to 'fallback'.
+   *
+   * Catalog state (catalogSource, catalogTopics, catalogWarnings) is reset at
+   * the start of every call so that a second bootstrap attempt after an
+   * in-process restart never returns stale data from a prior successful run.
+   *
+   * Wire catalog-changed events so future catalog updates adjust subscriptions.
+   */
+  private async fetchCatalogTopics(): Promise<string[]> {
+    // Reset stale state from any prior bootstrap attempt
+    this.catalogSource = 'fallback';
+    this.catalogTopics = [];
+    this.catalogWarnings = [];
+
+    try {
+      const manager = new TopicCatalogManager();
+      this.catalogManager = manager;
+
+      const topics = await new Promise<string[]>((resolve) => {
+        manager.once('catalogReceived', (event) => {
+          this.catalogTopics = event.topics;
+          this.catalogWarnings = event.warnings;
+          this.catalogSource = 'catalog';
+
+          if (event.warnings.length > 0) {
+            console.warn(`[EventConsumer] Topic catalog warnings: ${event.warnings.join('; ')}`);
+            this.emit('catalogWarnings', event.warnings);
+          }
+
+          // Wire the ongoing catalog-changed event for dynamic add/remove.
+          // Only wired on the success path so a stopped manager is never referenced.
+          manager.on('catalogChanged', (event) => {
+            this.handleCatalogChanged(event.topicsAdded, event.topicsRemoved);
+          });
+
+          resolve(event.topics);
+        });
+
+        manager.once('catalogTimeout', () => {
+          intentLogger.info(
+            '[EventConsumer] Topic catalog timed out — using fallback subscription topics'
+          );
+          // Stop the catalog manager connections on timeout — it will not receive
+          // a response, so its consumer/producer are no longer needed.
+          manager.stop().catch((stopErr) => {
+            console.warn('[EventConsumer] Error stopping catalog manager after timeout:', stopErr);
+          });
+          this.catalogManager = null;
+          resolve(buildSubscriptionTopics());
+        });
+
+        // Non-blocking: errors from bootstrap should not crash the consumer startup.
+        manager.bootstrap().catch((err) => {
+          console.warn('[EventConsumer] Topic catalog bootstrap error:', err);
+          // Clean up the partially-started manager before falling back.
+          manager.stop().catch((stopErr) => {
+            console.warn(
+              '[EventConsumer] Error stopping catalog manager after bootstrap error:',
+              stopErr
+            );
+          });
+          this.catalogManager = null;
+          resolve(buildSubscriptionTopics());
+        });
+      });
+
+      return topics;
+    } catch (err) {
+      console.warn(
+        '[EventConsumer] Topic catalog manager failed to initialise — using fallback topics:',
+        err
+      );
+      return buildSubscriptionTopics();
+    }
+  }
+
+  /**
+   * Handle a catalog-changed delta event.
+   *
+   * NOTE: KafkaJS does not support adding new topic subscriptions to a running
+   * consumer without stopping and restarting it.  Rather than incur that churn
+   * on every catalog change event, we record the updated topic set and log the
+   * delta.  A full subscription update would require consumer restart which is
+   * left as a future improvement.  The current consumer continues serving the
+   * originally subscribed topics; added topics will be included on next restart.
+   */
+  private handleCatalogChanged(topicsAdded: string[], topicsRemoved: string[]): void {
+    if (topicsAdded.length === 0 && topicsRemoved.length === 0) return;
+
+    // Update in-memory catalog state
+    const currentSet = new Set(this.catalogTopics);
+    for (const t of topicsAdded) currentSet.add(t);
+    for (const t of topicsRemoved) currentSet.delete(t);
+    this.catalogTopics = [...currentSet];
+
+    console.log(
+      `[EventConsumer] Catalog changed: +${topicsAdded.length} topics, -${topicsRemoved.length} topics. ` +
+        `Updated set has ${this.catalogTopics.length} entries. ` +
+        `Note: subscription changes take effect on next server restart.`
+    );
+
+    this.emit('catalogChanged', { topicsAdded, topicsRemoved });
+  }
+
+  /**
+   * Return the current catalog status for the REST endpoint.
+   */
+  public getCatalogStatus(): {
+    topics: string[];
+    warnings: string[];
+    source: 'catalog' | 'fallback';
+    instanceUuid: string | null;
+  } {
+    return {
+      topics: this.catalogSource === 'catalog' ? this.catalogTopics : buildSubscriptionTopics(),
+      warnings: this.catalogWarnings,
+      source: this.catalogSource,
+      instanceUuid: this.catalogManager?.instanceUuid ?? null,
+    };
   }
 
   /**
@@ -4237,6 +4397,18 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
       }
       if (prop === 'getActionsByAgent') {
         return () => [];
+      }
+      /**
+       * No-Kafka fallback: getCatalogStatus returns a safe default shape when
+       * Kafka is not configured and no real EventConsumer instance exists.
+       */
+      if (prop === 'getCatalogStatus') {
+        return () => ({
+          topics: [] as string[],
+          warnings: [] as string[],
+          source: 'fallback' as const,
+          instanceUuid: null,
+        });
       }
       // For event emitter methods, return no-op functions
       if (prop === 'on' || prop === 'once' || prop === 'emit' || prop === 'removeListener') {
