@@ -1237,16 +1237,16 @@ export class ReadModelConsumer {
       // The pg / @neondatabase/serverless driver surfaces this as a `.code`
       // property on the thrown Error object.
       //
-      // Fallback string check: the driver may wrap the error in a way that drops
-      // the `.code` property (observed with @neondatabase/serverless in some
-      // connection-pool failure modes). The regex /does not exist/i matches the
-      // exact PostgreSQL 42P01 error message format ('relation "<table>" does not
-      // exist') while being narrow enough to exclude FK violation messages ('Key
-      // (x) is not present in table "y"') and permission error messages ('permission
-      // denied for table "y"'), neither of which contain the phrase 'does not exist'.
+      // Fallback string check retained for defensive coverage in case the
+      // driver wraps the error in a way that omits the code property.
+      // Anchored to the primary table name so that 42703 "column does not exist"
+      // errors from schema bugs are not silently swallowed as missing migrations.
       const pgCode = (err as { code?: string }).code;
       const msg = err instanceof Error ? err.message : String(err);
-      if (pgCode === '42P01' || /does not exist/i.test(msg)) {
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('baselines_snapshots') && msg.includes('does not exist'))
+      ) {
         console.warn(
           '[ReadModelConsumer] baselines_* tables not yet created -- ' +
             'run migrations to enable baselines projection'
