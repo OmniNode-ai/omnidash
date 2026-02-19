@@ -20,7 +20,11 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
-import { TopicCatalogManager, CATALOG_TIMEOUT_MS } from '../topic-catalog-manager';
+import {
+  TopicCatalogManager,
+  CATALOG_TIMEOUT_MS,
+  CATALOG_REQUERY_INTERVAL_MS,
+} from '../topic-catalog-manager';
 import {
   SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE,
   SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED,
@@ -424,6 +428,223 @@ describe('TopicCatalogManager', () => {
       });
 
       expect(received).toHaveBeenCalledOnce();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Gap detection & re-query (OMN-2316)
+  // -------------------------------------------------------------------------
+
+  describe('gap detection', () => {
+    /** Helper: establish the initial catalog so changed events are processed. */
+    async function bootstrapWithCatalog(
+      m: TopicCatalogManager,
+      mk: ReturnType<typeof makeMockKafka>
+    ) {
+      const helpers = await bootstrapAndCapture(m, mk);
+      await helpers.pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE, {
+        correlation_id: TEST_CORRELATION_ID,
+        topics: [{ topic_name: 'onex.evt.platform.node-heartbeat.v1' }],
+        warnings: [],
+      });
+      return helpers;
+    }
+
+    it('emits catalogRequery with reason=gap when received_version > lastSeenVersion + 1', async () => {
+      const requery = vi.fn();
+      manager.on('catalogRequery', requery);
+
+      const { pushMessage } = await bootstrapWithCatalog(manager, mocks);
+
+      // Push version 2 (first changed event sets lastSeenVersion = 2)
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+        catalog_version: 2,
+      });
+      expect(requery).not.toHaveBeenCalled();
+
+      // Now push version 5 — gap: 3 and 4 were skipped
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+        catalog_version: 5,
+      });
+
+      expect(requery).toHaveBeenCalledOnce();
+      expect(requery.mock.calls[0][0]).toMatchObject({
+        reason: 'gap',
+        lastSeenVersion: 2,
+      });
+    });
+
+    it('emits catalogRequery with reason=version_unknown when catalog_version === -1', async () => {
+      const requery = vi.fn();
+      manager.on('catalogRequery', requery);
+
+      const { pushMessage } = await bootstrapWithCatalog(manager, mocks);
+
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+        catalog_version: -1,
+      });
+
+      expect(requery).toHaveBeenCalledOnce();
+      expect(requery.mock.calls[0][0]).toMatchObject({
+        reason: 'version_unknown',
+      });
+    });
+
+    it('emits catalogRequery with reason=version_unknown when catalog_version is absent', async () => {
+      const requery = vi.fn();
+      manager.on('catalogRequery', requery);
+
+      const { pushMessage } = await bootstrapWithCatalog(manager, mocks);
+
+      // No catalog_version field
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+      });
+
+      expect(requery).toHaveBeenCalledOnce();
+      expect(requery.mock.calls[0][0]).toMatchObject({
+        reason: 'version_unknown',
+      });
+    });
+
+    it('does NOT emit catalogRequery when received_version === lastSeenVersion + 1', async () => {
+      const requery = vi.fn();
+      manager.on('catalogRequery', requery);
+
+      const { pushMessage } = await bootstrapWithCatalog(manager, mocks);
+
+      // Push version 1 — lastSeenVersion becomes 1
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+        catalog_version: 1,
+      });
+
+      // Push version 2 — contiguous, no gap
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+        catalog_version: 2,
+      });
+
+      expect(requery).not.toHaveBeenCalled();
+    });
+
+    it('updates lastSeenVersion correctly on contiguous versions', async () => {
+      const requery = vi.fn();
+      manager.on('catalogRequery', requery);
+
+      const { pushMessage } = await bootstrapWithCatalog(manager, mocks);
+
+      // Three contiguous versions
+      for (const v of [10, 11, 12]) {
+        await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+          topics_added: [],
+          topics_removed: [],
+          catalog_version: v,
+        });
+      }
+
+      expect(requery).not.toHaveBeenCalled();
+
+      // Version 14 skips 13 — should trigger gap
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+        catalog_version: 14,
+      });
+
+      expect(requery).toHaveBeenCalledOnce();
+      expect(requery.mock.calls[0][0]).toMatchObject({ reason: 'gap', lastSeenVersion: 12 });
+    });
+
+    it('publishes a new catalog query when a gap re-query is triggered', async () => {
+      const { pushMessage } = await bootstrapWithCatalog(manager, mocks);
+
+      // Clear the initial bootstrap query call
+      mocks.mockProducerSend.mockClear();
+
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+        catalog_version: 5, // gap: lastSeen was null → no gap on first, so set it first
+      });
+
+      // First changed event sets lastSeenVersion=5 (no gap since lastSeenVersion was null)
+      expect(mocks.mockProducerSend).not.toHaveBeenCalled();
+
+      // Now trigger a real gap
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+        catalog_version: 10,
+      });
+
+      // A new query should have been published
+      expect(mocks.mockProducerSend).toHaveBeenCalledOnce();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Periodic requery (OMN-2316)
+  // -------------------------------------------------------------------------
+
+  describe('periodic requery', () => {
+    it('emits catalogRequery with reason=periodic after CATALOG_REQUERY_INTERVAL_MS', async () => {
+      const requery = vi.fn();
+      manager.on('catalogRequery', requery);
+
+      await bootstrapAndCapture(manager, mocks);
+
+      // Advance past one interval
+      vi.advanceTimersByTime(CATALOG_REQUERY_INTERVAL_MS);
+
+      expect(requery).toHaveBeenCalledOnce();
+      expect(requery.mock.calls[0][0]).toMatchObject({ reason: 'periodic' });
+    });
+
+    it('publishes a new catalog query on each periodic tick', async () => {
+      await bootstrapAndCapture(manager, mocks);
+
+      // Clear the initial bootstrap query call count
+      mocks.mockProducerSend.mockClear();
+
+      vi.advanceTimersByTime(CATALOG_REQUERY_INTERVAL_MS);
+
+      // Allow the async publishQuery to resolve
+      await Promise.resolve();
+
+      expect(mocks.mockProducerSend).toHaveBeenCalledOnce();
+    });
+
+    it('fires multiple times across multiple intervals', async () => {
+      const requery = vi.fn();
+      manager.on('catalogRequery', requery);
+
+      await bootstrapAndCapture(manager, mocks);
+
+      vi.advanceTimersByTime(CATALOG_REQUERY_INTERVAL_MS * 3);
+
+      expect(requery).toHaveBeenCalledTimes(3);
+    });
+
+    it('does NOT fire after stop() is called', async () => {
+      const requery = vi.fn();
+      manager.on('catalogRequery', requery);
+
+      await bootstrapAndCapture(manager, mocks);
+      await manager.stop();
+
+      vi.advanceTimersByTime(CATALOG_REQUERY_INTERVAL_MS * 5);
+
+      expect(requery).not.toHaveBeenCalled();
     });
   });
 });

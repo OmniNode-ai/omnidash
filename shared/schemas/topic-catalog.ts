@@ -70,11 +70,17 @@ export type TopicCatalogResponse = z.infer<typeof TopicCatalogResponseSchema>;
 /**
  * Delta event emitted when the topic catalog changes after initial bootstrap.
  *
- * - `topics_added`:   New topics that should be added to active subscriptions.
- * - `topics_removed`: Topics that should be unsubscribed.
+ * - `topics_added`:    New topics that should be added to active subscriptions.
+ * - `topics_removed`:  Topics that should be unsubscribed.
+ * - `catalog_version`: Monotonically increasing sequence number for this delta event.
+ *                      Used for gap detection: if a version is skipped, the manager
+ *                      will re-query for the full catalog.  `-1` means the version is
+ *                      unknown (triggers a re-query).  Absent / undefined is treated
+ *                      the same as unknown.
  */
 export const TopicCatalogChangedSchema = z.object({
   topics_added: z.array(z.string()).default([]),
   topics_removed: z.array(z.string()).default([]),
+  catalog_version: z.number().int().optional(),
 });
 export type TopicCatalogChanged = z.infer<typeof TopicCatalogChangedSchema>;
