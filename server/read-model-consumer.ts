@@ -48,6 +48,7 @@ import type {
   InsertBaselinesBreakdown,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
+import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
 import type { ContextEnrichmentEvent } from '@shared/enrichment-types';
 import { baselinesProjection } from './projection-bootstrap';
 import { emitBaselinesUpdate } from './baselines-events';
@@ -642,7 +643,7 @@ export class ReadModelConsumer {
       );
       return true; // Advance watermark so consumer is not stuck
     }
-    if (!['hit', 'miss', 'error', 'inflated'].includes(outcome)) {
+    if (!(ENRICHMENT_OUTCOMES as readonly string[]).includes(outcome)) {
       console.warn('[ReadModelConsumer] Unknown enrichment outcome:', outcome, '-- skipping');
       return true;
     }

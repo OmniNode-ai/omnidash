@@ -35,8 +35,8 @@ const router = Router();
 
 router.get('/summary', (req, res) => {
   try {
-    const window = req.query.window as string | undefined;
-    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+    const windowParam = typeof req.query.window === 'string' ? req.query.window : undefined;
+    if (windowParam !== undefined && !['24h', '7d', '30d'].includes(windowParam)) {
       return res
         .status(400)
         .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
@@ -67,8 +67,8 @@ router.get('/summary', (req, res) => {
 
 router.get('/by-channel', (req, res) => {
   try {
-    const window = req.query.window as string | undefined;
-    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+    const windowParam = typeof req.query.window === 'string' ? req.query.window : undefined;
+    if (windowParam !== undefined && !['24h', '7d', '30d'].includes(windowParam)) {
       return res
         .status(400)
         .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
@@ -88,8 +88,8 @@ router.get('/by-channel', (req, res) => {
 
 router.get('/latency-distribution', (req, res) => {
   try {
-    const window = req.query.window as string | undefined;
-    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+    const windowParam = typeof req.query.window === 'string' ? req.query.window : undefined;
+    if (windowParam !== undefined && !['24h', '7d', '30d'].includes(windowParam)) {
       return res
         .status(400)
         .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
@@ -109,8 +109,8 @@ router.get('/latency-distribution', (req, res) => {
 
 router.get('/token-savings', (req, res) => {
   try {
-    const window = req.query.window as string | undefined;
-    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+    const windowParam = typeof req.query.window === 'string' ? req.query.window : undefined;
+    if (windowParam !== undefined && !['24h', '7d', '30d'].includes(windowParam)) {
       return res
         .status(400)
         .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
@@ -130,8 +130,8 @@ router.get('/token-savings', (req, res) => {
 
 router.get('/similarity-quality', (req, res) => {
   try {
-    const window = req.query.window as string | undefined;
-    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+    const windowParam = typeof req.query.window === 'string' ? req.query.window : undefined;
+    if (windowParam !== undefined && !['24h', '7d', '30d'].includes(windowParam)) {
       return res
         .status(400)
         .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
@@ -151,8 +151,8 @@ router.get('/similarity-quality', (req, res) => {
 
 router.get('/inflation-alerts', (req, res) => {
   try {
-    const window = req.query.window as string | undefined;
-    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+    const windowParam = typeof req.query.window === 'string' ? req.query.window : undefined;
+    if (windowParam !== undefined && !['24h', '7d', '30d'].includes(windowParam)) {
       return res
         .status(400)
         .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });

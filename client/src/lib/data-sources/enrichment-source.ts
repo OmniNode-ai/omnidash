@@ -39,7 +39,7 @@ export interface EnrichmentFetchOptions {
  */
 class EnrichmentSource {
   private baseUrl = buildApiUrl('/api/enrichment');
-  // NOTE(OMN-2280): This Set has a known race on parallel refetches — markReal/markMock calls may interleave during concurrent window-change fetches. Acceptable for scaffold; replace with query-data-shape detection when real data lands.
+  // NOTE(OMN-2280): This Set has a known race on parallel refetches — markReal/markMock calls may interleave during concurrent window-change fetches. Acceptable for scaffold; replace with query-data-shape detection when real data lands. Call clearMockState() before a window switch to avoid stale mock state carrying over between windows.
   private _mockEndpoints = new Set<string>();
 
   /**
@@ -61,6 +61,12 @@ class EnrichmentSource {
       this._mockEndpoints.has('by-channel') ||
       this._mockEndpoints.has('token-savings')
     );
+  }
+
+  /** Clear all mock-endpoint tracking state. Call this before a time-window switch
+   * to prevent stale mock state from carrying over into the new window's fetches. */
+  clearMockState(): void {
+    this._mockEndpoints.clear();
   }
 
   private markReal(endpoint: string): void {

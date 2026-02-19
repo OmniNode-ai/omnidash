@@ -6,6 +6,15 @@
  */
 
 // ============================================================================
+// Shared Constants
+// ============================================================================
+
+/** Readonly tuple of valid enrichment outcome values — single source of truth. */
+export const ENRICHMENT_OUTCOMES = ['hit', 'miss', 'error', 'inflated'] as const;
+/** Union type derived from ENRICHMENT_OUTCOMES. */
+export type EnrichmentOutcome = (typeof ENRICHMENT_OUTCOMES)[number];
+
+// ============================================================================
 // Kafka Event Schema
 // ============================================================================
 
@@ -41,7 +50,7 @@ export interface ContextEnrichmentEvent {
    * - error: enrichment failed (service error)
    * - inflated: enrichment INCREASED token count (context inflation alert)
    */
-  outcome: 'hit' | 'miss' | 'error' | 'inflated';
+  outcome: EnrichmentOutcome;
   /** Latency for this enrichment operation in milliseconds */
   latency_ms: number;
   /** Tokens in the original context (pre-enrichment) */

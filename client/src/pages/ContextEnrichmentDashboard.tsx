@@ -9,7 +9,7 @@
  * - Context inflation alert table (enrichment increasing token count)
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { enrichmentSource } from '@/lib/data-sources/enrichment-source';
@@ -385,6 +385,13 @@ function InflationAlertTable({
 export default function ContextEnrichmentDashboard() {
   const [timeWindow, setTimeWindow] = useState<EnrichmentTimeWindow>('7d');
   const queryClient = useQueryClient();
+
+  // Clear stale mock-endpoint state whenever the time window changes so that
+  // the previous window's mock/real determination does not carry over into the
+  // new window's parallel fetches (fixes singleton race condition).
+  useEffect(() => {
+    enrichmentSource.clearMockState();
+  }, [timeWindow]);
 
   // Invalidate all enrichment queries on WebSocket ENRICHMENT_INVALIDATE event
   useWebSocket({
