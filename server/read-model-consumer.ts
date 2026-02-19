@@ -1024,12 +1024,35 @@ export class ReadModelConsumer {
       .map((t) => ({
         snapshotId,
         date: String(t.date ?? t.dateStr),
-        avgCostSavings: String(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)),
+        // NUMERIC(8,6) column: max 99.999999. Clamp to [0, 99] to prevent
+        // PostgreSQL overflow if producer sends percentage-scale values (e.g. 12.5%).
+        avgCostSavings: String(
+          Math.min(Math.max(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0), 0), 99)
+        ),
         avgOutcomeImprovement: String(
-          Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
+          Math.min(
+            Math.max(Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0), 0),
+            99
+          )
         ),
         comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
       }));
+
+    // Deduplicate trend rows by date (keep last occurrence) to prevent duplicate
+    // date inserts that would inflate projection averages. The migration has no
+    // UNIQUE(snapshot_id, date) constraint; dedup here guards against bad producers.
+    const trendRowsByDate = new Map<string, (typeof trendRows)[0]>();
+    for (const row of trendRows) {
+      trendRowsByDate.set(row.date, row);
+    }
+    const dedupedTrendRows = [...trendRowsByDate.values()];
+    if (dedupedTrendRows.length < trendRows.length) {
+      console.warn(
+        `[read-model-consumer] Deduplicated ${trendRows.length - dedupedTrendRows.length} ` +
+          `duplicate trend date(s) for snapshot ${snapshotId}`
+      );
+    }
+    const finalTrendRows = dedupedTrendRows;
 
     try {
       // Upsert the snapshot header and replace child rows atomically inside a
@@ -1113,8 +1136,8 @@ export class ReadModelConsumer {
 
         await tx.delete(baselinesTrend).where(eq(baselinesTrend.snapshotId, snapshotId));
 
-        if (trendRows.length > 0) {
-          await tx.insert(baselinesTrend).values(trendRows);
+        if (finalTrendRows.length > 0) {
+          await tx.insert(baselinesTrend).values(finalTrendRows);
         }
 
         await tx.delete(baselinesBreakdown).where(eq(baselinesBreakdown.snapshotId, snapshotId));
@@ -1129,7 +1152,11 @@ export class ReadModelConsumer {
               snapshotId,
               action,
               count: Number(b.count ?? 0),
-              avgConfidence: String(Number(b.avg_confidence ?? b.avgConfidence ?? 0)),
+              // NUMERIC(5,4) column: max 9.9999. Clamp to [0, 1] since confidence
+              // is a 0-1 ratio; guard against out-of-range producer values.
+              avgConfidence: String(
+                Math.min(Math.max(Number(b.avg_confidence ?? b.avgConfidence ?? 0), 0), 1)
+              ),
             };
           });
           await tx.insert(baselinesBreakdown).values(breakdownRows);
@@ -1158,7 +1185,7 @@ export class ReadModelConsumer {
 
       console.log(
         `[ReadModelConsumer] Projected baselines snapshot ${snapshotId} ` +
-          `(${rawComparisons.length} comparisons, ${trendRows.length} trend points, ` +
+          `(${rawComparisons.length} comparisons, ${finalTrendRows.length} trend points, ` +
           `${rawBreakdown.length} breakdown rows)`
       );
     } catch (err) {

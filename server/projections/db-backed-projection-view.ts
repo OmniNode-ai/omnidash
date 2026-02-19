@@ -222,7 +222,15 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
     const db = tryGetIntelligenceDb();
     if (!db) return this.emptyPayload();
 
+    // Capture generation before the await so a concurrent reset() call is
+    // detected and the stale result is discarded rather than overwriting the
+    // freshly-reset state.
+    const generation = this.resetGeneration;
     const payload = await this.querySnapshot(db, limit);
+    if (this.resetGeneration !== generation) {
+      // reset() was called during the query — discard the result and return empty.
+      return this.emptyPayload();
+    }
     this.snapshotSeq++;
     const now = Date.now();
     this.cachedSnapshot = {

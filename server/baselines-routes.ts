@@ -13,12 +13,6 @@
  */
 
 import { Router } from 'express';
-import type {
-  BaselinesSummary,
-  PatternComparison,
-  ROITrendPoint,
-  RecommendationBreakdown,
-} from '@shared/baselines-types';
 import { baselinesProjection } from './projection-bootstrap';
 
 const router = Router();
