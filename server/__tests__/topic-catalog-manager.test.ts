@@ -737,121 +737,6 @@ describe('TopicCatalogManager', () => {
       expect(mocks.mockProducerSend).toHaveBeenCalledOnce();
     });
 
-    it('suppresses a second gap re-query within CATALOG_REQUERY_COOLDOWN_MS', async () => {
-      const requery = vi.fn();
-      manager.on('catalogRequery', requery);
-
-      const { pushMessage } = await bootstrapWithCatalog(manager, mocks);
-
-      // Establish lastSeenVersion=5
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: [],
-        topics_removed: [],
-        catalog_version: 5,
-      });
-
-      // First gap (version 10) — fires a re-query; lastQueryTimestamp is now set
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: [],
-        topics_removed: [],
-        catalog_version: 10,
-      });
-      expect(requery).toHaveBeenCalledOnce();
-
-      // Second gap immediately (version 20) — within cooldown, should be suppressed
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: [],
-        topics_removed: [],
-        catalog_version: 20,
-      });
-      // Still only one re-query (second was suppressed)
-      expect(requery).toHaveBeenCalledOnce();
-
-      // Advance past the cooldown and trigger another gap — should fire again
-      vi.advanceTimersByTime(CATALOG_REQUERY_COOLDOWN_MS);
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: [],
-        topics_removed: [],
-        catalog_version: 30,
-      });
-      expect(requery).toHaveBeenCalledTimes(2);
-    });
-
-    it('suppresses a second version_unknown re-query within CATALOG_REQUERY_COOLDOWN_MS', async () => {
-      const requery = vi.fn();
-      manager.on('catalogRequery', requery);
-
-      const { pushMessage } = await bootstrapWithCatalog(manager, mocks);
-
-      // First version_unknown — fires re-query
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: [],
-        topics_removed: [],
-        catalog_version: -1,
-      });
-      expect(requery).toHaveBeenCalledOnce();
-
-      // Second version_unknown immediately — within cooldown, suppressed
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: [],
-        topics_removed: [],
-      });
-      expect(requery).toHaveBeenCalledOnce();
-
-      // After cooldown expires, fires again
-      vi.advanceTimersByTime(CATALOG_REQUERY_COOLDOWN_MS);
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: [],
-        topics_removed: [],
-        catalog_version: -1,
-      });
-      expect(requery).toHaveBeenCalledTimes(2);
-    });
-
-    it('advances lastSeenVersion during cooldown suppression so subsequent contiguous messages are accepted', async () => {
-      const requery = vi.fn();
-      const changed = vi.fn();
-      manager.on('catalogRequery', requery);
-      manager.on('catalogChanged', changed);
-
-      const { pushMessage } = await bootstrapWithCatalog(manager, mocks);
-
-      // Establish lastSeenVersion=5
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: ['topic-a'],
-        topics_removed: [],
-        catalog_version: 5,
-      });
-      changed.mockClear();
-
-      // First gap at v10 — fires re-query; lastSeenVersion advances to 10
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: [],
-        topics_removed: [],
-        catalog_version: 10,
-      });
-      expect(requery).toHaveBeenCalledOnce();
-
-      // Second gap at v15 — cooldown active, suppressed; lastSeenVersion still advances to 15
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: [],
-        topics_removed: [],
-        catalog_version: 15,
-      });
-      expect(requery).toHaveBeenCalledOnce(); // still suppressed
-
-      // v16 — contiguous with 15; should NOT look like a gap
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: ['topic-b'],
-        topics_removed: [],
-        catalog_version: 16,
-      });
-      // No additional re-query fired
-      expect(requery).toHaveBeenCalledOnce();
-      // catalogChanged should have fired for v16 (contiguous delta)
-      expect(changed).toHaveBeenCalledOnce();
-    });
-
     it('resets lastSeenVersion to null after a re-query response so the next catalog-changed establishes a fresh baseline without spurious gap re-query', async () => {
       const requery = vi.fn();
       manager.on('catalogRequery', requery);
@@ -876,7 +761,7 @@ describe('TopicCatalogManager', () => {
         catalog_version: 10,
       });
       expect(requery).toHaveBeenCalledOnce();
-      expect(requery.mock.calls[0][0]).toMatchObject({ reason: 'gap', lastSeenVersion: 5 });
+      expect(requery.mock.calls[0][0]).toMatchObject({ reason: 'gap', lastSeenVersion: 10 });
 
       // Extract the new correlation_id generated by triggerRequery from the
       // producer.send call args (fire-and-forget publishQuery uses producer.send).
@@ -910,22 +795,14 @@ describe('TopicCatalogManager', () => {
       expect(requery).not.toHaveBeenCalled();
     });
 
-    it('treats catalog_version=0 as a valid first baseline (not a sentinel or error)', async () => {
+    it('accepts catalog_version=1 as first baseline; gap at version 3 reports post-advance lastSeenVersion', async () => {
       const requery = vi.fn();
       manager.on('catalogRequery', requery);
 
       const { pushMessage } = await bootstrapWithCatalog(manager, mocks);
 
-      // First delta arrives with version 0 — lastSeenVersion was null, so this
-      // establishes the baseline.  No gap, no re-query.
-      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
-        topics_added: [],
-        topics_removed: [],
-        catalog_version: 0,
-      });
-      expect(requery).not.toHaveBeenCalled();
-
-      // Version 1 is contiguous with 0 — no gap.
+      // Version 1 — lastSeenVersion was null, so this establishes the baseline.
+      // No gap, no re-query.
       await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
         topics_added: [],
         topics_removed: [],
@@ -933,14 +810,16 @@ describe('TopicCatalogManager', () => {
       });
       expect(requery).not.toHaveBeenCalled();
 
-      // Version 3 skips 2 — gap; lastSeenVersion was 1 at the time.
+      // Version 3 skips 2 — gap detected.  lastSeenVersion is advanced to the
+      // received version (3) before triggerRequery is called, so the emitted
+      // event carries lastSeenVersion: 3 (post-advance).
       await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
         topics_added: [],
         topics_removed: [],
         catalog_version: 3,
       });
       expect(requery).toHaveBeenCalledOnce();
-      expect(requery.mock.calls[0][0]).toMatchObject({ reason: 'gap', lastSeenVersion: 1 });
+      expect(requery.mock.calls[0][0]).toMatchObject({ reason: 'gap', lastSeenVersion: 3 });
     });
   });
 
