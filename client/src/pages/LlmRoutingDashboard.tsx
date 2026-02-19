@@ -340,8 +340,10 @@ function DisagreementsTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {disagreements.map((d) => (
-                <TableRow key={`${d.llm_agent}:${d.fuzzy_agent}:${d.routing_prompt_version}`}>
+              {disagreements.map((d, idx) => (
+                <TableRow
+                  key={`${d.llm_agent}:${d.fuzzy_agent}:${d.routing_prompt_version}:${idx}`}
+                >
                   <TableCell>
                     <span className="font-mono text-xs text-blue-400">{d.llm_agent}</span>
                   </TableCell>
