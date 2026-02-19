@@ -8,8 +8,8 @@
  * - Direct access: Fast, synchronous queries for dashboard APIs
  * - Event bus: Async, decoupled operations for write-heavy workloads
  * - Event bus presence: When KAFKA_BROKERS is set, event bus integration is
- *   enabled. When absent, the event bus is simply not active — no error is
- *   logged by this class. The event-bus modules (event-bus-data-source.ts,
+ *   enabled. When absent, the event bus is simply not active — the constructor
+ *   does not log (it runs at module load time). The event-bus modules (event-bus-data-source.ts,
  *   event-consumer.ts, intelligence-event-adapter.ts) emit diagnostics when
  *   their singletons are first accessed. This is a misconfiguration error
  *   state, not a "fallback" mechanism.
@@ -56,7 +56,8 @@ export interface DeleteOptions {
  * Provides direct database access with Drizzle ORM and optional event bus
  * integration. When KAFKA_BROKERS (or KAFKA_BOOTSTRAP_SERVERS) is present,
  * event bus integration is enabled. When the variable is absent, event bus
- * integration is disabled — this class does not log anything. The event-bus
+ * integration is disabled — the constructor does not log anything (it runs at
+ * module load time, before the server finishes initializing). The event-bus
  * modules (event-bus-data-source.ts, event-consumer.ts,
  * intelligence-event-adapter.ts) emit the appropriate diagnostics when their
  * singletons are first accessed. This is a misconfiguration error state, not
