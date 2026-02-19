@@ -278,8 +278,8 @@ export async function createTestApp(
   // Safety check: refuse to run against a non-test database name to prevent
   // accidental writes to production or staging databases.
   // Anchored to the final path segment (database name) after the last slash.
-  // Extract DB name before any query string / fragment, anchored to last path segment.
-  if (!/\/[^/?#]*(_test|-test)[^/?#]*([?#]|$)/i.test(process.env.TEST_DATABASE_URL)) {
+  // DB name must END with _test or -test (immediately before query/fragment or end of string).
+  if (!/\/[^/?#]*(_test|-test)([?#]|$)/i.test(process.env.TEST_DATABASE_URL)) {
     throw new Error(
       `TEST_DATABASE_URL "${process.env.TEST_DATABASE_URL}" does not appear to target a test database. ` +
         'The database name must end with _test or -test.'

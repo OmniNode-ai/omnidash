@@ -1040,8 +1040,9 @@ export class ReadModelConsumer {
       }));
 
     // Deduplicate trend rows by date (keep last occurrence) to prevent duplicate
-    // date inserts that would inflate projection averages. The migration has no
-    // UNIQUE(snapshot_id, date) constraint; dedup here guards against bad producers.
+    // date inserts that would inflate projection averages. Migration 0005 adds a
+    // UNIQUE(snapshot_id, date) index as a DB-level guard; this dedup ensures
+    // duplicate-bearing payloads are silently handled rather than raising a DB error.
     const trendRowsByDate = new Map<string, (typeof trendRows)[0]>();
     for (const row of trendRows) {
       trendRowsByDate.set(row.date, row);
@@ -1069,6 +1070,7 @@ export class ReadModelConsumer {
       };
 
       let insertedComparisonCount = 0;
+      let insertedBreakdownCount = 0;
       await db.transaction(async (tx) => {
         // 1. Upsert the snapshot header — first operation in the transaction.
         await tx
@@ -1163,6 +1165,7 @@ export class ReadModelConsumer {
             };
           });
           await tx.insert(baselinesBreakdown).values(breakdownRows);
+          insertedBreakdownCount = breakdownRows.length;
         }
       });
 
@@ -1189,7 +1192,7 @@ export class ReadModelConsumer {
       console.log(
         `[ReadModelConsumer] Projected baselines snapshot ${snapshotId} ` +
           `(${insertedComparisonCount} comparisons, ${finalTrendRows.length} trend points, ` +
-          `${rawBreakdown.length} breakdown rows)`
+          `${insertedBreakdownCount} breakdown rows)`
       );
     } catch (err) {
       // Degrade gracefully: if the table doesn't exist yet (migration not run),

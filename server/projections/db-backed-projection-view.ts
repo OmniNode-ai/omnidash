@@ -224,10 +224,13 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
    */
   async forceRefresh(limit?: number): Promise<TPayload> {
     // Coalesce: if already refreshing, piggyback on the in-flight query.
-    if (this.forceRefreshInFlight) return this.forceRefreshInFlight;
+    // Capture the reference before returning so a concurrent .finally() clearing
+    // this.forceRefreshInFlight doesn't cause a second caller to receive null.
+    const inflight = this.forceRefreshInFlight;
+    if (inflight) return inflight;
 
     const generation = this.resetGeneration;
-    this.forceRefreshInFlight = (async () => {
+    const promise = (async () => {
       const db = tryGetIntelligenceDb();
       if (!db) return this.emptyPayload();
 
@@ -253,6 +256,7 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
       this.forceRefreshInFlight = null;
     });
 
-    return this.forceRefreshInFlight;
+    this.forceRefreshInFlight = promise;
+    return promise;
   }
 }
