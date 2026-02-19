@@ -947,6 +947,13 @@ export class ReadModelConsumer {
         ? rawSnapshotId
         : deterministicCorrelationId('baselines-computed', partition, offset);
 
+    // String(null) → 'null', String(undefined) → 'undefined', String(0) → '0'.
+    // The ?? '' guard is unreachable for null/undefined because String() converts
+    // them to non-empty strings; parseInt('null', 10) and parseInt('undefined', 10)
+    // both return NaN, which falls through to the || 1 default below.
+    // For a missing field (undefined) the ?? '' path is also never taken because
+    // String(undefined) is 'undefined' not ''. The guard is kept for clarity but
+    // has no runtime effect for these two common missing-value types.
     const rawContractVersion = parseInt(String(data.contract_version ?? ''), 10);
     const contractVersion = isNaN(rawContractVersion) ? 1 : rawContractVersion;
     // Use safeParseDateOrMin so that a missing/malformed computedAtUtc sorts

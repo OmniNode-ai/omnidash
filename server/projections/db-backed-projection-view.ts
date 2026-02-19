@@ -43,8 +43,13 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
   private snapshotSeq = 0;
   /** Guard: coalesces concurrent refreshAsync() calls into a single DB query. */
   private refreshInFlight: Promise<void> | null = null;
-  /** Guard: coalesces concurrent forceRefresh() (awaited) calls into a single DB query. */
-  private forceRefreshInFlight: Promise<TPayload> | null = null;
+  /**
+   * Guard: coalesces concurrent forceRefresh() calls into a single DB query
+   * per unique limit value. Keyed by String(limit ?? 'all') so that calls
+   * with different limits run independently while calls with the same limit
+   * are coalesced onto the same in-flight promise.
+   */
+  private forceRefreshInFlight = new Map<string, Promise<TPayload>>();
   /**
    * Incremented on every reset(). Captured at the start of each refreshAsync()
    * and checked in the .then() callback so that a stale in-flight query
@@ -130,7 +135,7 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
     this.cacheExpiresAt = 0;
     this.snapshotSeq = 0;
     this.refreshInFlight = null;
-    this.forceRefreshInFlight = null;
+    this.forceRefreshInFlight.clear();
     // Bump the generation so any in-flight query self-discards its result rather
     // than overwriting the fresh cache that the next getSnapshot() will populate.
     this.resetGeneration++;
@@ -223,11 +228,17 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
    * forceRefresh() is already in flight, all callers wait for the same query.
    */
   async forceRefresh(limit?: number): Promise<TPayload> {
-    // Coalesce: if already refreshing, piggyback on the in-flight query.
-    // Capture the reference before returning so a concurrent .finally() clearing
-    // this.forceRefreshInFlight doesn't cause a second caller to receive null.
-    const inflight = this.forceRefreshInFlight;
-    if (inflight) return inflight;
+    // Derive a stable key so that calls with the same limit are coalesced onto
+    // the same in-flight promise, while calls with different limits run
+    // independently (fixing the bug where forceRefresh(14) would piggyback on
+    // an in-flight forceRefresh(undefined) and receive wrong results).
+    const key = String(limit ?? 'all');
+
+    // Coalesce: if a refresh for this exact limit is already in flight, return
+    // the same promise. Capture the reference before returning so a concurrent
+    // .finally() that removes the key from the Map doesn't race with this read.
+    const inflight = this.forceRefreshInFlight.get(key);
+    if (inflight !== undefined) return inflight;
 
     const generation = this.resetGeneration;
     const promise = (async () => {
@@ -253,10 +264,10 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
       this.cacheExpiresAt = now + this.cacheTtlMs;
       return payload;
     })().finally(() => {
-      this.forceRefreshInFlight = null;
+      this.forceRefreshInFlight.delete(key);
     });
 
-    this.forceRefreshInFlight = promise;
+    this.forceRefreshInFlight.set(key, promise);
     return promise;
   }
 }

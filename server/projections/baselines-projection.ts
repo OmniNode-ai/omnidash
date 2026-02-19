@@ -338,6 +338,10 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     //   - This is a "mean of trend-point means": each `avg_cost_savings` value in
     //     `baselinesTrend` is itself a per-day average stored by the upstream writer;
     //     we are averaging those per-day averages here.
+    // TODO(UI): Surface `trend_point_count` in the BaselinesROI page alongside
+    // avg_cost_savings and avg_outcome_improvement so end users can judge the
+    // statistical weight behind these means (1 day of data vs. 365 days of data
+    // both yield a single number today with no visibility into sample size).
     const avgCostSavings =
       trend.length > 0 ? trend.reduce((sum, t) => sum + t.avg_cost_savings, 0) / trend.length : 0;
     const avgOutcomeImprovement =

@@ -24,7 +24,12 @@ import {
   resetBaselinesProjectionCache,
   truncateBaselines,
 } from './helpers';
-import { baselinesSnapshots, baselinesTrend } from '@shared/intelligence-schema';
+import {
+  baselinesSnapshots,
+  baselinesTrend,
+  baselinesComparisons,
+  baselinesBreakdown,
+} from '@shared/intelligence-schema';
 import { resetIntelligenceDb } from '../../storage';
 
 // ---------------------------------------------------------------------------
@@ -192,5 +197,95 @@ describe.skipIf(!canRunIntegrationTests)('Baselines API Integration Tests', () =
     // The out-of-window row (10 days ago) must not appear.
     const returnedDates: string[] = response.body.map((r: { date: string }) => r.date);
     expect(returnedDates).not.toContain(dateTenDaysAgo);
+  });
+
+  // -------------------------------------------------------------------------
+  // TC6: /summary reflects comparisons and breakdown rows seeded in the DB
+  //
+  // Seeds a snapshot with one trend row, one comparisons row (recommendation
+  // 'promote'), and one breakdown row (action 'promote', count 3).
+  // Asserts that _deriveSummary() propagates these into the summary fields
+  // total_comparisons, promote_count, and trend_point_count so that the
+  // end-to-end path from DB rows through BaselinesProjection to the API
+  // response is exercised for all three child tables simultaneously.
+  // -------------------------------------------------------------------------
+  it('TC6: /summary correctly derives summary fields from comparisons and breakdown rows', async () => {
+    const db = getTestDb();
+    const snapshotId = randomUUID();
+
+    // Insert the parent snapshot row (required by FK constraint on all child tables).
+    await db.insert(baselinesSnapshots).values({
+      snapshotId,
+      contractVersion: 1,
+      computedAtUtc: new Date(),
+    });
+
+    // Seed one trend row so trend_point_count is non-zero.
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const dateYesterday = new Date(Date.now() - 1 * msPerDay).toISOString().slice(0, 10);
+    await db.insert(baselinesTrend).values({
+      snapshotId,
+      date: dateYesterday,
+      avgCostSavings: '0.300000',
+      avgOutcomeImprovement: '0.200000',
+      comparisonsEvaluated: 8,
+    });
+
+    // Seed one comparisons row with recommendation 'promote' so total_comparisons = 1.
+    const emptyDelta = {
+      label: '',
+      baseline: 0,
+      candidate: 0,
+      delta: 0,
+      direction: 'lower_is_better',
+      unit: '',
+    };
+    await db.insert(baselinesComparisons).values({
+      snapshotId,
+      patternId: `pattern-${randomUUID().slice(0, 8)}`,
+      patternName: 'test-pattern',
+      sampleSize: 10,
+      windowStart: dateYesterday,
+      windowEnd: dateYesterday,
+      tokenDelta: emptyDelta,
+      timeDelta: emptyDelta,
+      retryDelta: emptyDelta,
+      testPassRateDelta: emptyDelta,
+      reviewIterationDelta: emptyDelta,
+      recommendation: 'promote',
+      confidence: 'high',
+      rationale: 'TC6 seeded row',
+    });
+
+    // Seed one breakdown row with action 'promote' and count 3 so promote_count = 3.
+    await db.insert(baselinesBreakdown).values({
+      snapshotId,
+      action: 'promote',
+      count: 3,
+      avgConfidence: '0.9000',
+    });
+
+    // Reset the projection cache so the route re-queries the newly seeded DB.
+    resetBaselinesProjectionCache();
+
+    const response = await request(app).get('/api/baselines/summary').expect(200);
+
+    // total_comparisons counts rows in the comparisons table → must be 1.
+    expect(response.body.total_comparisons).toBe(1);
+
+    // promote_count comes from the breakdown table (count field) → must be 3.
+    expect(response.body.promote_count).toBe(3);
+
+    // shadow/suppress/fork breakdown rows were not seeded → must be 0.
+    expect(response.body.shadow_count).toBe(0);
+    expect(response.body.suppress_count).toBe(0);
+    expect(response.body.fork_count).toBe(0);
+
+    // trend_point_count reflects the one seeded trend row → must be 1.
+    expect(response.body.trend_point_count).toBe(1);
+
+    // avg_cost_savings is the mean of the single trend row's value → ~0.3.
+    expect(typeof response.body.avg_cost_savings).toBe('number');
+    expect(response.body.avg_cost_savings).toBeCloseTo(0.3, 4);
   });
 });
