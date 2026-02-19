@@ -909,6 +909,39 @@ describe('TopicCatalogManager', () => {
 
       expect(requery).not.toHaveBeenCalled();
     });
+
+    it('treats catalog_version=0 as a valid first baseline (not a sentinel or error)', async () => {
+      const requery = vi.fn();
+      manager.on('catalogRequery', requery);
+
+      const { pushMessage } = await bootstrapWithCatalog(manager, mocks);
+
+      // First delta arrives with version 0 — lastSeenVersion was null, so this
+      // establishes the baseline.  No gap, no re-query.
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+        catalog_version: 0,
+      });
+      expect(requery).not.toHaveBeenCalled();
+
+      // Version 1 is contiguous with 0 — no gap.
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+        catalog_version: 1,
+      });
+      expect(requery).not.toHaveBeenCalled();
+
+      // Version 3 skips 2 — gap; lastSeenVersion was 1 at the time.
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: [],
+        topics_removed: [],
+        catalog_version: 3,
+      });
+      expect(requery).toHaveBeenCalledOnce();
+      expect(requery.mock.calls[0][0]).toMatchObject({ reason: 'gap', lastSeenVersion: 1 });
+    });
   });
 
   // -------------------------------------------------------------------------
