@@ -83,6 +83,9 @@ class LlmRoutingSource {
       const response = await fetch(`${this.baseUrl}/summary${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: LlmRoutingSummary = await response.json();
+      if (data.total_decisions === undefined) {
+        throw new Error('Malformed response: missing total_decisions');
+      }
       if (mockOnEmpty && data.total_decisions === 0) {
         this.markMock('summary');
         return getMockLlmRoutingSummary(window);
@@ -109,7 +112,10 @@ class LlmRoutingSource {
       const response = await fetch(`${this.baseUrl}/latency${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: LlmRoutingLatencyPoint[] = await response.json();
-      if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
+      if (!Array.isArray(data)) {
+        throw new Error('Malformed response: expected array');
+      }
+      if (mockOnEmpty && data.length === 0) {
         this.markMock('latency');
         return getMockLlmRoutingLatency(window);
       }
@@ -135,7 +141,10 @@ class LlmRoutingSource {
       const response = await fetch(`${this.baseUrl}/by-version${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: LlmRoutingByVersion[] = await response.json();
-      if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
+      if (!Array.isArray(data)) {
+        throw new Error('Malformed response: expected array');
+      }
+      if (mockOnEmpty && data.length === 0) {
         this.markMock('by-version');
         return getMockLlmRoutingByVersion(window);
       }
@@ -161,7 +170,10 @@ class LlmRoutingSource {
       const response = await fetch(`${this.baseUrl}/disagreements${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: LlmRoutingDisagreement[] = await response.json();
-      if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
+      if (!Array.isArray(data)) {
+        throw new Error('Malformed response: expected array');
+      }
+      if (mockOnEmpty && data.length === 0) {
         this.markMock('disagreements');
         return getMockLlmRoutingDisagreements(window);
       }
@@ -187,7 +199,10 @@ class LlmRoutingSource {
       const response = await fetch(`${this.baseUrl}/trend${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: LlmRoutingTrendPoint[] = await response.json();
-      if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
+      if (!Array.isArray(data)) {
+        throw new Error('Malformed response: expected array');
+      }
+      if (mockOnEmpty && data.length === 0) {
         this.markMock('trend');
         return getMockLlmRoutingTrend(window);
       }

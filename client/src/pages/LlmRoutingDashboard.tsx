@@ -483,25 +483,20 @@ export default function LlmRoutingDashboard() {
   // llmRoutingSource.isUsingMockData reads a mutable Set on the singleton.
   const [isUsingMockData, setIsUsingMockData] = useState(false);
 
-  // Eagerly clear mock state whenever timeWindow changes. This runs before the
-  // allSettled effect so that the banner is hidden immediately on window switch,
-  // even in the edge case where TanStack Query returns cached data synchronously
-  // and allSettled never transitions to false (making the else-branch below
-  // unreachable). A separate effect keyed on timeWindow guarantees the clear
-  // always runs first, independent of allSettled's value.
-  useEffect(() => {
-    llmRoutingSource.clearMockState();
-    setIsUsingMockData(false);
-  }, [timeWindow]);
-
   const allSettled =
     !summaryLoading && !latencyLoading && !versionLoading && !disagreementsLoading && !trendLoading;
+
+  // Single effect keyed on [allSettled, timeWindow].
+  // - When timeWindow changes and queries are not yet settled: clear mock state
+  //   so the banner is hidden immediately during in-flight requests.
+  // - When all queries are settled: read the mock state to decide whether to
+  //   show the banner.
   useEffect(() => {
     if (allSettled) {
       setIsUsingMockData(llmRoutingSource.isUsingMockData);
     } else {
-      // Queries are in-flight (first load or a window switch where the cache
-      // miss caused loading states). Clear and hide the banner until settled.
+      // Queries are in-flight (first load or a window switch that caused a
+      // cache miss). Clear and hide the banner until settled.
       llmRoutingSource.clearMockState();
       setIsUsingMockData(false);
     }
@@ -774,14 +769,14 @@ export default function LlmRoutingDashboard() {
                   />
                   <Legend formatter={(v) => v.replace('_ms', '').toUpperCase()} />
                   <Bar dataKey="p50_ms" radius={[4, 4, 0, 0]}>
-                    {(latency ?? []).map((l, idx) => (
-                      <Cell key={idx} fill={METHOD_COLORS[l.method] ?? '#6366f1'} />
+                    {(latency ?? []).map((l) => (
+                      <Cell key={l.method} fill={METHOD_COLORS[l.method] ?? '#6366f1'} />
                     ))}
                   </Bar>
                   <Bar dataKey="p95_ms" radius={[4, 4, 0, 0]}>
-                    {(latency ?? []).map((l, idx) => (
+                    {(latency ?? []).map((l) => (
                       <Cell
-                        key={idx}
+                        key={l.method}
                         fill={METHOD_COLORS[l.method] ?? '#6366f1'}
                         fillOpacity={0.55}
                       />
