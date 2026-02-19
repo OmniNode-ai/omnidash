@@ -1061,6 +1061,7 @@ export const baselinesBreakdown = pgTable(
   (table) => [
     index('idx_baselines_breakdown_snapshot').on(table.snapshotId),
     index('idx_baselines_breakdown_action').on(table.action),
+    uniqueIndex('baselines_breakdown_snapshot_action_unique').on(table.snapshotId, table.action),
   ]
 );
 
