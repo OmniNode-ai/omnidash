@@ -686,9 +686,12 @@ let eventBusInitError: Error | null = null;
  * Get EventBusDataSource singleton with lazy initialization
  *
  * This pattern prevents the application from crashing at module load time
- * if KAFKA_BROKERS environment variable is not configured.
+ * when KAFKA_BROKERS is absent. Note: a missing KAFKA_BROKERS is a
+ * misconfiguration error — Kafka is required infrastructure. A null return
+ * from this function means the application is not connected to Kafka and
+ * is in a degraded/error state.
  *
- * @returns EventBusDataSource instance or null if initialization failed
+ * @returns EventBusDataSource instance or null if initialization failed (error state)
  */
 export function getEventBusDataSource(): EventBusDataSource | null {
   // Return cached instance if already initialized
@@ -707,9 +710,9 @@ export function getEventBusDataSource(): EventBusDataSource | null {
     return eventBusDataSourceInstance;
   } catch (error) {
     eventBusInitError = error instanceof Error ? error : new Error(String(error));
-    console.warn('⚠️  EventBusDataSource initialization failed:', eventBusInitError.message);
-    console.warn('   Event storage and querying will be disabled');
-    console.warn('   Set KAFKA_BROKERS in .env file to enable event bus integration');
+    console.error('❌ EventBusDataSource initialization failed:', eventBusInitError.message);
+    console.error('   Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.');
+    console.error('   Event storage and querying are unavailable — this is an error state, not normal operation.');
     return null;
   }
 }
@@ -745,7 +748,7 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
         prop === 'initializeSchema'
       ) {
         return async () => {
-          console.warn('⚠️  EventBusDataSource not available (Kafka not configured)');
+          console.error('❌ EventBusDataSource not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
         };
       }
       if (prop === 'queryEvents' || prop === 'queryEventChainsOLD' || prop === 'queryEventChains') {

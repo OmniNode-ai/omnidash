@@ -1,10 +1,14 @@
 /**
  * Playback Data Source
  *
- * Lightweight data source for demo playback that works without Kafka.
- * Emits events for WebSocket broadcasting without database storage.
+ * Lightweight data source for demo/recording playback. Replays pre-recorded
+ * event sequences for stakeholder demos and offline UI review. It does not
+ * replace the live Kafka pipeline — Kafka/Redpanda is required infrastructure
+ * for all non-demo operation.
  *
- * Used when EventBusDataSource is unavailable (no Kafka configured).
+ * This class should only be active when the user has explicitly enabled demo
+ * mode (e.g., `?demo=true` URL parameter or the demo toggle). It must NOT
+ * be used as a fallback when Kafka is unreachable.
  *
  * Events emitted:
  * - 'event': When new event is injected (EventBusEvent)

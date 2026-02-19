@@ -9,7 +9,7 @@
 
 - Information density over white space - maximize data visibility
 - Scanability and quick comprehension for monitoring scenarios
-- Consistent interaction patterns across all 8 dashboard views
+- Consistent interaction patterns across all dashboards (4 category + 15+ advanced pages)
 - Performance-optimized for real-time data updates
 
 ---
@@ -54,11 +54,11 @@
 - Main content area: Uses CSS Grid with gap-6 for card layouts
 - Responsive breakpoints: md (768px), lg (1024px), xl (1280px), 2xl (1536px)
 
-**Dashboard Layout Pattern** (All 8 Dashboards):
+**Dashboard Layout Pattern** (All Dashboards):
 
 ```
 Header (h-16): Logo, Dashboard Title, Global Controls
-Sidebar (w-64): Navigation to 8 dashboards
+Sidebar (w-64): Navigation (4 category dashboards + collapsible Advanced section)
 Main Content (flex-1): Grid of metric cards and visualizations
 ```
 

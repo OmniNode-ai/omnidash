@@ -1043,7 +1043,7 @@ export class EventConsumer extends EventEmitter {
     const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
 
     if (!brokers) {
-      console.warn('⚠️  KAFKA_BROKERS not configured - real-time event streaming disabled');
+      console.error('❌ KAFKA_BROKERS not configured - Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.');
       return false;
     }
 
@@ -4260,15 +4260,18 @@ let initializationError: Error | null = null;
  * Get EventConsumer singleton with lazy initialization
  *
  * This pattern prevents the application from crashing at module load time
- * if KAFKA_BROKERS environment variable is not configured.
+ * when KAFKA_BROKERS is absent. Note: a missing KAFKA_BROKERS is a
+ * misconfiguration error — Kafka is required infrastructure. A null return
+ * from this function means the application is not connected to Kafka and
+ * is in a degraded/error state.
  *
- * @returns EventConsumer instance or null if initialization failed
+ * @returns EventConsumer instance or null if initialization failed (error state)
  *
  * @example
  * ```typescript
  * const consumer = getEventConsumer();
  * if (!consumer) {
- *   return res.status(503).json({ error: 'Event consumer not available' });
+ *   return res.status(503).json({ error: 'Event consumer not available - check KAFKA_BROKERS configuration' });
  * }
  * const metrics = consumer.getAgentMetrics();
  * ```
@@ -4290,9 +4293,9 @@ export function getEventConsumer(): EventConsumer | null {
     return eventConsumerInstance;
   } catch (error) {
     initializationError = error instanceof Error ? error : new Error(String(error));
-    console.warn('⚠️  EventConsumer initialization failed:', initializationError.message);
-    console.warn('   Real-time event streaming will be disabled');
-    console.warn('   Set KAFKA_BROKERS in .env file to enable event streaming');
+    console.error('❌ EventConsumer initialization failed:', initializationError.message);
+    console.error('   Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.');
+    console.error('   Real-time event streaming is unavailable — this is an error state, not normal operation.');
     return null;
   }
 }
@@ -4329,13 +4332,13 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
       // Return dummy implementations that log warnings
       if (prop === 'validateConnection') {
         return async () => {
-          console.warn('⚠️  EventConsumer not available (Kafka not configured)');
+          console.error('❌ EventConsumer not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
           return false;
         };
       }
       if (prop === 'start' || prop === 'stop') {
         return async () => {
-          console.warn('⚠️  EventConsumer not available (Kafka not configured)');
+          console.error('❌ EventConsumer not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
         };
       }
       if (prop === 'getHealthStatus') {

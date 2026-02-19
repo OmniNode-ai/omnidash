@@ -276,11 +276,11 @@ router.post('/start', async (req: Request, res: Response) => {
       currentEventHandler = null;
     }
 
-    // Get playback data source (works without Kafka)
+    // Get playback data source (demo playback only — not a Kafka replacement)
     const playbackDataSource = getPlaybackDataSource();
 
-    // Forward ALL playback events through PlaybackDataSource
-    // This ensures events stream to WebSocket without requiring Kafka
+    // Forward ALL playback events through PlaybackDataSource for WebSocket broadcast
+    // Note: this is for demo/recording replay only. Live operation requires Kafka.
     currentEventHandler = (recordedEvent) => {
       const event = recordedEvent as { topic: string; value: unknown };
       // Use PlaybackDataSource for direct WebSocket broadcast

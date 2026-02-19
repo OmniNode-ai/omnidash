@@ -797,7 +797,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
     },
   ];
 
-  // PlaybackDataSource listener (works without Kafka for demo playback)
+  // PlaybackDataSource listener (demo/recording replay only — not a Kafka replacement)
   const playbackDataSource = getPlaybackDataSource();
 
   const playbackDataEventHandler = (event: EventBusEvent) => {

@@ -48,7 +48,9 @@ export interface DeleteOptions {
 /**
  * PostgreSQL CRUD Adapter
  *
- * Provides direct database access with Drizzle ORM and optional event bus integration.
+ * Provides direct database access with Drizzle ORM and event bus integration.
+ * Kafka/Redpanda is required infrastructure — event bus integration is always
+ * expected to be active. KAFKA_BROKERS must be set in the environment.
  */
 export class PostgresAdapter {
   private get db() {
@@ -57,7 +59,7 @@ export class PostgresAdapter {
   private eventBusEnabled: boolean;
 
   constructor() {
-    // Enable event bus if Kafka is configured
+    // Check that KAFKA_BROKERS is set (required infrastructure)
     this.eventBusEnabled = !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS);
   }
 

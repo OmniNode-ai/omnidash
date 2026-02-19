@@ -233,9 +233,12 @@ let intelligenceInitError: Error | null = null;
  * Get IntelligenceEventAdapter singleton with lazy initialization
  *
  * This pattern prevents the application from crashing at module load time
- * if KAFKA_BROKERS environment variable is not configured.
+ * when KAFKA_BROKERS is absent. Note: a missing KAFKA_BROKERS is a
+ * misconfiguration error — Kafka is required infrastructure. A null return
+ * from this function means the application is not connected to Kafka and
+ * is in a degraded/error state.
  *
- * @returns IntelligenceEventAdapter instance or null if initialization failed
+ * @returns IntelligenceEventAdapter instance or null if initialization failed (error state)
  */
 export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
   // Return cached instance if already initialized
@@ -254,12 +257,12 @@ export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
     return intelligenceEventsInstance;
   } catch (error) {
     intelligenceInitError = error instanceof Error ? error : new Error(String(error));
-    console.warn(
-      '⚠️  IntelligenceEventAdapter initialization failed:',
+    console.error(
+      '❌ IntelligenceEventAdapter initialization failed:',
       intelligenceInitError.message
     );
-    console.warn('   Intelligence event operations will be disabled');
-    console.warn('   Set KAFKA_BROKERS in .env file to enable intelligence events');
+    console.error('   Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.');
+    console.error('   Intelligence event operations are unavailable — this is an error state, not normal operation.');
     return null;
   }
 }
@@ -290,7 +293,7 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
       // Return dummy implementations
       if (prop === 'start' || prop === 'stop') {
         return async () => {
-          console.warn('⚠️  IntelligenceEventAdapter not available (Kafka not configured)');
+          console.error('❌ IntelligenceEventAdapter not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
         };
       }
       if (prop === 'request' || prop === 'requestPatternDiscovery') {
