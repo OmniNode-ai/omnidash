@@ -141,6 +141,12 @@ describe('EnrichmentSource', () => {
 
       expect(result.total_enrichments).toBeGreaterThan(0);
       expect(enrichmentSource.isUsingMockData).toBe(true);
+      // Structural assertions: verify the returned object has the expected EnrichmentSummary shape
+      expect(result).toHaveProperty('hit_rate');
+      expect(result).toHaveProperty('miss_rate');
+      expect(result).toHaveProperty('error_rate');
+      expect(result).toHaveProperty('total_enrichments');
+      expect(result).toHaveProperty('net_tokens_saved');
     });
 
     it('returns live empty result when total_enrichments is 0 and mockOnEmpty is false (default)', async () => {

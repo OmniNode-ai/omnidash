@@ -520,9 +520,6 @@ export default function ContextEnrichmentDashboard() {
   useEffect(() => {
     if (allSettled) {
       setIsUsingMockData(enrichmentSource.isUsingMockData);
-    } else {
-      // Reset while loading to avoid stale banner during window switch refetch
-      setIsUsingMockData(false);
     }
   }, [allSettled, timeWindow]);
 
@@ -565,13 +562,13 @@ export default function ContextEnrichmentDashboard() {
       )}
 
       {/* Context Inflation Alert Banner */}
-      {showInflationWarning && (
+      {showInflationWarning && summary && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Context Inflation Detected</AlertTitle>
           <AlertDescription>
-            {summary!.inflation_alert_count} enrichment operation
-            {summary!.inflation_alert_count !== 1 ? 's' : ''} increased token count in this window.
+            {summary.inflation_alert_count} enrichment operation
+            {summary.inflation_alert_count !== 1 ? 's' : ''} increased token count in this window.
             Review the inflation alerts table below and tune context retrieval parameters.
           </AlertDescription>
         </Alert>

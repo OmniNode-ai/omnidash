@@ -650,7 +650,8 @@ export class ReadModelConsumer {
     }
 
     // channel is required — missing value indicates a malformed event.
-    const channel = (evt.channel as string) || (data.channel as string);
+    // evt = data as Partial<ContextEnrichmentEvent>, so evt.channel already covers data.channel.
+    const channel = evt.channel as string | undefined;
     if (!channel) {
       console.warn(
         '[ReadModelConsumer] Enrichment event missing required "channel" field ' +
