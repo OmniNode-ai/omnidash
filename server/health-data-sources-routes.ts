@@ -357,6 +357,7 @@ function probeEnforcement(): DataSourceInfo {
   // because the upstream projection is not yet implemented (see enforcement-routes.ts
   // TODO comments referencing OMN-2275-followup). Return mock directly rather
   // than making an HTTP round-trip to confirm the zero.
+  // TODO: wire up real enforcement projection when available (update this probe at that time)
   return { status: 'mock', reason: 'not_implemented' };
 }
 
@@ -490,6 +491,11 @@ router.get('/data-sources', async (_req, res) => {
   } catch {
     // Short negative cache to prevent a thundering herd of re-probes on
     // sustained failure. 5 s TTL vs the normal 30 s for successful results.
+    //
+    // Note: pendingProbe is already null here (cleared in the IIFE's finally)
+    // — a concurrent request arriving in this narrow window starts a fresh
+    // probe run rather than attaching to the error cache; this is acceptable
+    // as the window is sub-millisecond.
     healthCache = {
       result: {} as DataSourcesHealthResponse,
       expiresAt: Date.now() + 5_000,
