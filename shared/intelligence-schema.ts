@@ -991,7 +991,7 @@ export const baselinesComparisons = pgTable(
     /** 'high' | 'medium' | 'low' */
     confidence: text('confidence').notNull(),
     rationale: text('rationale').notNull().default(''),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index('idx_baselines_comparisons_snapshot').on(table.snapshotId),
@@ -1025,7 +1025,7 @@ export const baselinesTrend = pgTable(
       .notNull()
       .default('0'),
     comparisonsEvaluated: integer('comparisons_evaluated').notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index('idx_baselines_trend_snapshot').on(table.snapshotId),
