@@ -154,8 +154,30 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     // so this branch should not be reachable through normal HTTP traffic.
     if (days <= 0) return payload;
 
+    // Timezone limitation: the cutoff is derived from Date.now() (server wall-clock)
+    // then converted to UTC via toISOString(). Trend dates are stored as YYYY-MM-DD
+    // strings in UTC (written by the upstream producer). If the server's local timezone
+    // is behind UTC (e.g. UTC-8), Date.now() at 23:00 local is already the next UTC
+    // date, so the cutoff may be one day ahead of what the operator expects. This is
+    // a cosmetic off-by-one; no data is lost, but the filtered window may appear one
+    // day shorter than requested in western-hemisphere deployments.
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10); // YYYY-MM-DD
 
+    // INTENTIONAL DESIGN: summary.trend_point_count in the returned payload
+    // reflects the LIFETIME count (i.e. all trend points in the latest snapshot),
+    // NOT the filtered view window (trend.length after applying the days cutoff).
+    //
+    // This is by design: the summary averages (avg_cost_savings,
+    // avg_outcome_improvement) are computed by _deriveSummary() over the full
+    // lifetime trend before any date filter is applied.  trend_point_count
+    // documents the statistical basis for those averages — how many trend
+    // points were used to compute them — so it must match the lifetime count,
+    // not the view window.
+    //
+    // Callers that need the number of points visible in the filtered trend
+    // array should use `payload.trend.length` directly after this call.
+    //
+    // See also: BaselinesSummary.trend_point_count JSDoc in shared/baselines-types.ts.
     return {
       ...payload,
       // NOTE: This comparison relies on lexicographic string ordering.

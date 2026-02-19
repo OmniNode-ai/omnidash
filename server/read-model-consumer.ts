@@ -138,6 +138,10 @@ function safeParseDateOrMin(value: unknown): Date {
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 
+// UUID validation regex — hoisted to module scope so it is compiled once rather
+// than once per Kafka message inside projectBaselinesSnapshot().
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Consumer configuration
 const CONSUMER_GROUP_ID = process.env.READ_MODEL_CONSUMER_GROUP_ID || 'omnidash-read-model-v1';
 const CLIENT_ID = process.env.READ_MODEL_CLIENT_ID || 'omnidash-read-model-consumer';
@@ -924,7 +928,6 @@ export class ReadModelConsumer {
     // NOTE: If this event is later re-delivered with a valid snapshot_id,
     // a second orphaned snapshot row will result (no automatic reconciliation).
     // This hash-based ID is a best-effort fallback for malformed events only.
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const rawSnapshotId = data.snapshot_id as string | undefined;
     const snapshotId =
       rawSnapshotId && UUID_RE.test(rawSnapshotId)
@@ -1125,9 +1128,17 @@ export class ReadModelConsumer {
     } catch (err) {
       // Degrade gracefully: if the table doesn't exist yet (migration not run),
       // advance the watermark so the consumer is not stuck retrying indefinitely.
-      const pgCode = (err as { code?: string }).code;
-      const msg = err instanceof Error ? err.message : String(err);
-      if (pgCode === '42P01' || (msg.includes('baselines_') && msg.includes('does not exist'))) {
+      // Only degrade gracefully for the exact PostgreSQL "undefined_table" error
+      // (SQLSTATE 42P01). The pg / @neondatabase/serverless driver surfaces this
+      // as a `.code` property on the thrown Error object.
+      //
+      // The string-heuristic fallback was intentionally removed: checking whether
+      // the error message contains "baselines_" and "does not exist" is too broad
+      // and will misfire on other DB errors whose message happens to mention a
+      // baselines_ table (e.g. FK violations, permission errors). A false-positive
+      // match would cause the function to return true, silently advancing the
+      // watermark and dropping the event instead of re-throwing for the caller.
+      if (err instanceof Error && (err as { code?: string }).code === '42P01') {
         console.warn(
           '[ReadModelConsumer] baselines_* tables not yet created -- ' +
             'run migrations to enable baselines projection'

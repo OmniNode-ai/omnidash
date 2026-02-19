@@ -104,11 +104,19 @@ export interface BaselinesSummary {
   /** Total time savings in ms (baseline - candidate). */
   total_time_savings_ms: number;
   /**
-   * Number of trend data points used to compute avg_cost_savings and
-   * avg_outcome_improvement. Both averages are unweighted means across this
-   * many trend points. A value of 0 means no trend data was available and
-   * both averages are 0. A value of 1 means the averages reflect a single
-   * snapshot point and carry no temporal smoothing.
+   * Total number of trend points in the latest snapshot used to compute
+   * avg_cost_savings and avg_outcome_improvement. Both averages are unweighted
+   * means across this many trend points. A value of 0 means no trend data was
+   * available and both averages are 0. A value of 1 means the averages reflect
+   * a single snapshot point and carry no temporal smoothing.
+   *
+   * IMPORTANT: This count reflects the LIFETIME statistical basis — all trend
+   * points in the snapshot — regardless of any date-window filter applied by
+   * the caller. When `ensureFreshForDays(N)` is used, the returned `trend`
+   * array may contain fewer entries than this count (it is filtered to the
+   * most recent N days), but trend_point_count always describes how many
+   * points were used to compute the summary averages. Callers that need the
+   * number of points in the filtered view should use `trend.length` directly.
    */
   trend_point_count: number;
 }

@@ -9,11 +9,12 @@
 import { EventEmitter } from 'events';
 
 export const baselinesEventEmitter = new EventEmitter();
-// Prevent MaxListenersExceededWarning if the WebSocket setup path is exercised
-// multiple times in-process (e.g. during hot-reload or test runs). Each setup
-// call adds a 'baselines-update' listener, so without a raised cap Node.js
-// will emit a warning after the default limit of 10 is reached.
-baselinesEventEmitter.setMaxListeners(20);
+// Disable the MaxListenersExceededWarning entirely for this module-scoped emitter.
+// The listener count is bounded but unpredictable (WebSocket setup, hot-reload,
+// test runs), and any arbitrary numeric cap can still trigger the warning.
+// setMaxListeners(0) is the correct choice for module-scoped emitters where the
+// listener count is managed by the module itself rather than external callers.
+baselinesEventEmitter.setMaxListeners(0);
 
 /**
  * Notify subscribed clients that a new baselines snapshot has been projected.

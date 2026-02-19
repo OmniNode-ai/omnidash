@@ -269,8 +269,14 @@ export async function createTestApp(
   // stubbing here, before any module that transitively imports storage.ts is
   // evaluated, we guarantee the live database URL is never seen inside the
   // test process.
-  vi.stubEnv('OMNIDASH_ANALYTICS_DB_URL', process.env.TEST_DATABASE_URL!);
-  vi.stubEnv('DATABASE_URL', process.env.TEST_DATABASE_URL!);
+  if (!process.env.TEST_DATABASE_URL) {
+    throw new Error(
+      'TEST_DATABASE_URL must be set for integration tests. ' +
+        'Set it to a PostgreSQL connection string targeting a database ending with _test or -test.'
+    );
+  }
+  vi.stubEnv('OMNIDASH_ANALYTICS_DB_URL', process.env.TEST_DATABASE_URL);
+  vi.stubEnv('DATABASE_URL', process.env.TEST_DATABASE_URL);
 
   const { default: express } = await import('express');
   const app = express();
