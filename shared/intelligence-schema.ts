@@ -642,7 +642,7 @@ export const patternHitRates = pgTable(
     index('idx_phr_session_id').on(table.sessionId),
     index('idx_phr_pattern_id').on(table.patternId),
     index('idx_phr_created_at').on(table.createdAt),
-    uniqueIndex('uq_phr_session_pattern').on(table.sessionId, table.patternId),
+    uniqueIndex('uq_phr_session_pattern').on(table.patternId, table.sessionId),
   ]
 );
 

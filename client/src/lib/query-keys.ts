@@ -582,6 +582,42 @@ export const queryKeys = {
     /** Multi-metric trend data */
     trend: (window: string) => [...queryKeys.enforcement.all, 'trend', window] as const,
   },
+  // ============================================================================
+  // Context Enrichment (OMN-2280)
+  // ============================================================================
+
+  /**
+   * Context enrichment query keys for the enrichment metrics dashboard.
+   *
+   * On ENRICHMENT_INVALIDATE WebSocket event, invalidate `queryKeys.enrichment.all`
+   * to trigger a full refetch of all enrichment panels.
+   */
+  enrichment: {
+    /** Base key for all enrichment queries */
+    all: ['enrichment'] as const,
+
+    /** Summary metrics (hero cards) for a time window */
+    summary: (window: string) => [...queryKeys.enrichment.all, 'summary', window] as const,
+
+    /** Hit rate breakdown by channel */
+    byChannel: (window: string) => [...queryKeys.enrichment.all, 'by-channel', window] as const,
+
+    /** Latency distribution per model */
+    latencyDistribution: (window: string) =>
+      [...queryKeys.enrichment.all, 'latency-distribution', window] as const,
+
+    /** Token savings trend */
+    tokenSavings: (window: string) =>
+      [...queryKeys.enrichment.all, 'token-savings', window] as const,
+
+    /** Similarity search quality trend */
+    similarityQuality: (window: string) =>
+      [...queryKeys.enrichment.all, 'similarity-quality', window] as const,
+
+    /** Context inflation alerts */
+    inflationAlerts: (window: string) =>
+      [...queryKeys.enrichment.all, 'inflation-alerts', window] as const,
+  },
 } as const;
 
 /**
