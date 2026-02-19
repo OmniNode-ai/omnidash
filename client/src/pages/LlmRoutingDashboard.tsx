@@ -479,21 +479,26 @@ export default function LlmRoutingDashboard() {
   };
 
   // llmRoutingSource.isUsingMockData reads a mutable Set on the singleton.
-  // Re-read once all queries settle (same pattern as PatternEnforcement).
+  // Both the clear and the re-read live in a single effect so they are always
+  // evaluated in the correct order: clear when queries are loading (timeWindow
+  // just changed), then read the settled value once all queries finish. Having
+  // them in two separate effects caused a brief flash because React ran the
+  // allSettled effect before the clearMockState effect when timeWindow changed
+  // while allSettled was still true from the previous window's settled state.
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const allSettled =
     !summaryLoading && !latencyLoading && !versionLoading && !disagreementsLoading && !trendLoading;
   useEffect(() => {
     if (allSettled) {
       setIsUsingMockData(llmRoutingSource.isUsingMockData);
+    } else {
+      // Queries are in-flight (timeWindow just changed or first load). Clear
+      // the singleton's mock-state tracking and hide the banner until the new
+      // window's results settle.
+      llmRoutingSource.clearMockState();
+      setIsUsingMockData(false);
     }
   }, [allSettled, timeWindow]);
-
-  // Reset demo-mode banner immediately on window change; re-evaluate after settle.
-  useEffect(() => {
-    llmRoutingSource.clearMockState();
-    setIsUsingMockData(false);
-  }, [timeWindow]);
 
   const disagreementRate = summary ? 1 - summary.agreement_rate : 0;
   const showDisagreementAlert =

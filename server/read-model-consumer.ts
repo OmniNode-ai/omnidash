@@ -758,7 +758,13 @@ export class ReadModelConsumer {
         '[ReadModelConsumer] LLM routing decision event missing required agent fields ' +
           `(correlation_id=${correlationId}) -- skipping malformed event`
       );
-      return true; // Advance watermark so consumer is not stuck
+      // Intentionally return true (advance the watermark) rather than throwing or
+      // routing to a dead-letter queue. This follows the established pattern used
+      // throughout this consumer for unrecoverable schema violations: logging a
+      // warning and moving on keeps the consumer unblocked and prevents a single
+      // malformed event from stalling the entire projection. If dead-letter queue
+      // support is added in the future, replace this return with a DLQ publish.
+      return true;
     }
 
     // routing_prompt_version is required — missing value makes longitudinal

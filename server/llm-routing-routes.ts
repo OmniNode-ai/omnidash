@@ -14,7 +14,7 @@
  * the llm-routing projection is wired (future ticket).
  */
 
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import type {
   LlmRoutingSummary,
   LlmRoutingLatencyPoint,
@@ -27,10 +27,7 @@ const router = Router();
 
 const VALID_WINDOWS = ['24h', '7d', '30d'] as const;
 
-function validateWindow(
-  req: Parameters<Parameters<typeof router.get>[1]>[0],
-  res: Parameters<Parameters<typeof router.get>[1]>[1]
-): string | null {
+function validateWindow(req: Request, res: Response): string | null {
   const timeWindow = typeof req.query.window === 'string' ? req.query.window : '7d';
   if (!VALID_WINDOWS.includes(timeWindow as (typeof VALID_WINDOWS)[number])) {
     res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });

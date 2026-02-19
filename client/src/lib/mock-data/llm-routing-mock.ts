@@ -56,8 +56,12 @@ const AGREEMENT_TREND_24H = Array.from({ length: 24 }, (_, i) => ({
 }));
 
 export function getMockLlmRoutingSummary(window: LlmRoutingTimeWindow): LlmRoutingSummary {
-  const windowMultiplier = window === '24h' ? 1 : window === '7d' ? 7 : 30;
-  const base = 480 * windowMultiplier;
+  // Base is derived from the per-period decision rate used in getMockLlmRoutingTrend
+  // so that summary.total_decisions is consistent with the sum of the trend points:
+  //   24h  → 24 hourly points × 420 decisions/hr  ≈ 10,080
+  //   7d   → 7 daily points   × 480 decisions/day ≈  3,360
+  //   30d  → 30 daily points  × 480 decisions/day ≈ 14,400
+  const base = window === '24h' ? 420 * 24 : window === '7d' ? 480 * 7 : 480 * 30;
 
   const agreed = Math.round(base * 0.64);
   const disagreed = Math.round(base * 0.27);
