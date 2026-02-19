@@ -12,7 +12,9 @@
 import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
+import { DemoBanner } from '@/components/DemoBanner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -252,6 +254,8 @@ function CohortCard({
  * for real-time responsiveness.
  */
 export default function EffectivenessAB() {
+  const { isDemoMode } = useDemoMode();
+
   // ---------------------------------------------------------------------------
   // WebSocket: subscribe to effectiveness topic for real-time invalidation
   // ---------------------------------------------------------------------------
@@ -277,7 +281,7 @@ export default function EffectivenessAB() {
 
   const { data, isLoading, refetch } = useQuery<ABComparison>({
     queryKey: queryKeys.effectiveness.ab(),
-    queryFn: () => effectivenessSource.abComparison(),
+    queryFn: () => effectivenessSource.abComparison({ demoMode: isDemoMode }),
     refetchInterval: 15_000,
   });
 
@@ -337,6 +341,9 @@ export default function EffectivenessAB() {
 
   return (
     <div className="space-y-6">
+      {/* Demo mode banner */}
+      <DemoBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

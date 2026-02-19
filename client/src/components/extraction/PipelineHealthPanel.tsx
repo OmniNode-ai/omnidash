@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -39,14 +40,15 @@ interface PipelineHealthPanelProps {
 
 export function PipelineHealthPanel({ onMockStateChange }: PipelineHealthPanelProps) {
   const [selectedDetail, setSelectedDetail] = useState<CohortDetail | null>(null);
+  const { isDemoMode } = useDemoMode();
 
   const {
     data: result,
     isLoading,
     error,
   } = useQuery({
-    queryKey: queryKeys.extraction.health(),
-    queryFn: () => extractionSource.pipelineHealth(),
+    queryKey: [...queryKeys.extraction.health(), isDemoMode],
+    queryFn: () => extractionSource.pipelineHealth({ demoMode: isDemoMode }),
     refetchInterval: 30_000,
   });
 

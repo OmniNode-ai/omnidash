@@ -29,6 +29,11 @@ export interface EnrichmentFetchOptions {
   fallbackToMock?: boolean;
   /** Also fall back to mock when the API returns empty results (default: false). */
   mockOnEmpty?: boolean;
+  /**
+   * When true, skip the API call entirely and return canned demo data.
+   * Used when global demo mode is active (OMN-2298).
+   */
+  demoMode?: boolean;
 }
 
 /**
@@ -86,7 +91,11 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<EnrichmentSummary> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('summary');
+      return getMockEnrichmentSummary(window);
+    }
     try {
       const response = await fetch(`${this.baseUrl}/summary${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -112,7 +121,11 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<EnrichmentByChannel[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('by-channel');
+      return getMockEnrichmentByChannel(window);
+    }
     try {
       const response = await fetch(`${this.baseUrl}/by-channel${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -138,7 +151,11 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<LatencyDistributionPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('latency-distribution');
+      return getMockLatencyDistribution(window);
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/latency-distribution${this.buildWindowParam(window)}`
@@ -166,7 +183,11 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<TokenSavingsTrendPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('token-savings');
+      return getMockTokenSavingsTrend(window);
+    }
     try {
       const response = await fetch(`${this.baseUrl}/token-savings${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -192,7 +213,11 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<SimilarityQualityPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('similarity-quality');
+      return getMockSimilarityQuality(window);
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/similarity-quality${this.buildWindowParam(window)}`
@@ -220,7 +245,11 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<InflationAlert[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('inflation-alerts');
+      return getMockInflationAlerts(window);
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/inflation-alerts${this.buildWindowParam(window)}`

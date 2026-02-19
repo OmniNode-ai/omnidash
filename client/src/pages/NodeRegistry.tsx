@@ -21,7 +21,9 @@ import {
   type RegisteredNode,
   type RegistrationEvent,
 } from '@/lib/configs/node-registry-dashboard';
-import { useProjectionStream } from '@/hooks/useProjectionStream';
+import { useDemoProjectionStream } from '@/hooks/useDemoProjectionStream';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DemoBanner } from '@/components/DemoBanner';
 import {
   transformNodeRegistryPayload,
   type NodeRegistryPayload,
@@ -38,8 +40,51 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import type { WidgetPropsMap } from '@/lib/widgets';
 import { formatRelativeTime } from '@/lib/date-utils';
 
+// ============================================================================
+// Demo payload factory
+// ============================================================================
+
+/**
+ * Builds a NodeRegistryPayload from the existing mock data generator.
+ * Used by useDemoProjectionStream when demo mode is active.
+ */
+function getDemoNodeRegistryPayload(): NodeRegistryPayload {
+  const mockData = generateNodeRegistryMockData();
+  const registered = mockData.registeredNodes as RegisteredNode[];
+
+  const byState: Record<string, number> = {};
+  for (const n of registered) {
+    byState[n.state] = (byState[n.state] ?? 0) + 1;
+  }
+
+  const nodes: NodeState[] = registered.map((n) => ({
+    nodeId: n.node_id,
+    nodeType: n.node_type,
+    state: n.state,
+    version: n.version,
+    uptimeSeconds: n.uptime_seconds,
+    lastSeen: n.last_seen,
+    memoryUsageMb: n.memory_usage_mb,
+    cpuUsagePercent: n.cpu_usage_percent,
+  }));
+
+  return {
+    nodes,
+    recentStateChanges: [],
+    stats: {
+      totalNodes: registered.length,
+      activeNodes: registered.filter((n) => n.state === 'active').length,
+      byState,
+    },
+  };
+}
+
 export default function NodeRegistry() {
-  // Server-side projection stream: fetches snapshot, re-fetches on invalidation
+  const { isDemoMode } = useDemoMode();
+
+  // Server-side projection stream: fetches snapshot, re-fetches on invalidation.
+  // In demo mode, useDemoProjectionStream returns a static canned snapshot and
+  // disables the live network connection.
   const {
     data: snapshot,
     cursor,
@@ -47,7 +92,12 @@ export default function NodeRegistry() {
     error,
     isConnected,
     refresh,
-  } = useProjectionStream<NodeRegistryPayload>('node-registry');
+  } = useDemoProjectionStream<NodeRegistryPayload>(
+    'node-registry',
+    getDemoNodeRegistryPayload,
+    undefined,
+    {}
+  );
 
   // Unwrap the projection envelope to get the domain payload
   const data = snapshot?.payload ?? null;
@@ -197,6 +247,8 @@ export default function NodeRegistry() {
 
   return (
     <div className="space-y-6">
+      <DemoBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -213,8 +265,11 @@ export default function NodeRegistry() {
           )}
 
           {/* Data source badge */}
-          <Badge variant={hasProjectionData ? 'default' : 'secondary'}>
-            {hasProjectionData ? 'Live Data' : 'Mock Data'}
+          <Badge
+            variant={isDemoMode ? 'outline' : hasProjectionData ? 'default' : 'secondary'}
+            className={isDemoMode ? 'border-amber-500/50 text-amber-400' : undefined}
+          >
+            {isDemoMode ? 'Demo Data' : hasProjectionData ? 'Live Data' : 'Mock Data'}
           </Badge>
 
           {/* Connection status */}

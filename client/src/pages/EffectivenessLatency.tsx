@@ -11,7 +11,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
+import { DemoBanner } from '@/components/DemoBanner';
 import { MetricCard } from '@/components/MetricCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -74,6 +76,8 @@ const CHART_COLORS = {
  * for real-time responsiveness.
  */
 export default function EffectivenessLatency() {
+  const { isDemoMode } = useDemoMode();
+
   // ---------------------------------------------------------------------------
   // WebSocket: subscribe to effectiveness topic for real-time invalidation
   // ---------------------------------------------------------------------------
@@ -104,7 +108,7 @@ export default function EffectivenessLatency() {
   } = useQuery({
     queryKey: queryKeys.effectiveness.latency(),
     queryFn: async () => {
-      const data = await effectivenessSource.latencyDetails();
+      const data = await effectivenessSource.latencyDetails({ demoMode: isDemoMode });
       // SAFE: JavaScript's event loop guarantees that no other code can run
       // between this await resumption and the next synchronous line. markMock/markReal
       // were called synchronously inside latencyDetails() before it returned.
@@ -201,6 +205,9 @@ export default function EffectivenessLatency() {
 
   return (
     <div className="space-y-6">
+      {/* Demo mode banner */}
+      <DemoBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

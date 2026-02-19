@@ -8,6 +8,7 @@
 
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -53,6 +54,7 @@ export function PatternVolumeChart({
   timeWindow = '24h',
   onMockStateChange,
 }: PatternVolumeChartProps) {
+  const { isDemoMode } = useDemoMode();
   const legend = useToggleableLegend();
 
   const {
@@ -60,8 +62,8 @@ export function PatternVolumeChart({
     isLoading,
     error,
   } = useQuery({
-    queryKey: queryKeys.extraction.volume(timeWindow),
-    queryFn: () => extractionSource.patternVolume(timeWindow),
+    queryKey: [...queryKeys.extraction.volume(timeWindow), isDemoMode],
+    queryFn: () => extractionSource.patternVolume(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: 30_000,
   });
 

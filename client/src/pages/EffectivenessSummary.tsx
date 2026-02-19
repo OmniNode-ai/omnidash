@@ -12,7 +12,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
+import { DemoBanner } from '@/components/DemoBanner';
 import { MetricCard } from '@/components/MetricCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -67,6 +69,8 @@ import {
  * for real-time responsiveness.
  */
 export default function EffectivenessSummary() {
+  const { isDemoMode } = useDemoMode();
+
   // ---------------------------------------------------------------------------
   // WebSocket: subscribe to effectiveness topic for real-time invalidation
   // ---------------------------------------------------------------------------
@@ -109,7 +113,7 @@ export default function EffectivenessSummary() {
     refetch: refetchSummary,
   } = useQuery<SummaryType>({
     queryKey: queryKeys.effectiveness.summary(),
-    queryFn: () => effectivenessSource.summary(),
+    queryFn: () => effectivenessSource.summary({ demoMode: isDemoMode }),
     refetchInterval: 15_000,
   });
 
@@ -119,13 +123,13 @@ export default function EffectivenessSummary() {
     refetch: refetchThrottle,
   } = useQuery<ThrottleStatus>({
     queryKey: queryKeys.effectiveness.throttle(),
-    queryFn: () => effectivenessSource.throttleStatus(),
+    queryFn: () => effectivenessSource.throttleStatus({ demoMode: isDemoMode }),
     refetchInterval: 15_000,
   });
 
   const { data: trend, isLoading: trendLoading } = useQuery<EffectivenessTrendPoint[]>({
     queryKey: [...queryKeys.effectiveness.trend(), trendDays],
-    queryFn: () => effectivenessSource.trend(trendDays),
+    queryFn: () => effectivenessSource.trend(trendDays, { demoMode: isDemoMode }),
     refetchInterval: 15_000,
   });
 
@@ -192,6 +196,9 @@ export default function EffectivenessSummary() {
 
   return (
     <div className="space-y-6">
+      {/* Demo mode banner */}
+      <DemoBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

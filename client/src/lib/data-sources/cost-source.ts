@@ -33,6 +33,11 @@ export interface CostFetchOptions {
   mockOnEmpty?: boolean;
   /** Include estimated data (default: false -- API-reported only). */
   includeEstimated?: boolean;
+  /**
+   * When true, skip the API call entirely and return canned demo data.
+   * Used when global demo mode is active (OMN-2298).
+   */
+  demoMode?: boolean;
 }
 
 /**
@@ -77,7 +82,16 @@ class CostSource {
     window: CostTimeWindow = '7d',
     options: CostFetchOptions = {}
   ): Promise<CostSummary> {
-    const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
+    const {
+      fallbackToMock = true,
+      mockOnEmpty = false,
+      includeEstimated,
+      demoMode = false,
+    } = options;
+    if (demoMode) {
+      this.markMock('summary');
+      return getMockCostSummary(window);
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/summary${this.buildParams({ window, includeEstimated })}`
@@ -105,7 +119,16 @@ class CostSource {
     window: CostTimeWindow = '7d',
     options: CostFetchOptions = {}
   ): Promise<CostTrendPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
+    const {
+      fallbackToMock = true,
+      mockOnEmpty = false,
+      includeEstimated,
+      demoMode = false,
+    } = options;
+    if (demoMode) {
+      this.markMock('trend');
+      return getMockCostTrend(window);
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/trend${this.buildParams({ window, includeEstimated })}`
@@ -130,7 +153,16 @@ class CostSource {
 
   /** Fetch aggregate cost breakdown grouped by LLM model. */
   async byModel(options: CostFetchOptions = {}): Promise<CostByModel[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
+    const {
+      fallbackToMock = true,
+      mockOnEmpty = false,
+      includeEstimated,
+      demoMode = false,
+    } = options;
+    if (demoMode) {
+      this.markMock('by-model');
+      return getMockCostByModel();
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/by-model${this.buildParams({ includeEstimated })}`
@@ -155,7 +187,16 @@ class CostSource {
 
   /** Fetch aggregate cost breakdown grouped by repository. */
   async byRepo(options: CostFetchOptions = {}): Promise<CostByRepo[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
+    const {
+      fallbackToMock = true,
+      mockOnEmpty = false,
+      includeEstimated,
+      demoMode = false,
+    } = options;
+    if (demoMode) {
+      this.markMock('by-repo');
+      return getMockCostByRepo();
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/by-repo${this.buildParams({ includeEstimated })}`
@@ -180,7 +221,16 @@ class CostSource {
 
   /** Fetch per-pattern cost and injection frequency data. */
   async byPattern(options: CostFetchOptions = {}): Promise<CostByPattern[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
+    const {
+      fallbackToMock = true,
+      mockOnEmpty = false,
+      includeEstimated,
+      demoMode = false,
+    } = options;
+    if (demoMode) {
+      this.markMock('by-pattern');
+      return getMockCostByPattern();
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/by-pattern${this.buildParams({ includeEstimated })}`
@@ -208,7 +258,16 @@ class CostSource {
     window: CostTimeWindow = '7d',
     options: CostFetchOptions = {}
   ): Promise<TokenUsagePoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, includeEstimated } = options;
+    const {
+      fallbackToMock = true,
+      mockOnEmpty = false,
+      includeEstimated,
+      demoMode = false,
+    } = options;
+    if (demoMode) {
+      this.markMock('token-usage');
+      return getMockTokenUsage(window);
+    }
     try {
       const response = await fetch(
         `${this.baseUrl}/token-usage${this.buildParams({ window, includeEstimated })}`
@@ -233,7 +292,11 @@ class CostSource {
 
   /** Fetch configured budget threshold alerts and their current status. */
   async alerts(options: CostFetchOptions = {}): Promise<BudgetAlert[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    if (demoMode) {
+      this.markMock('alerts');
+      return getMockBudgetAlerts();
+    }
     try {
       const response = await fetch(`${this.baseUrl}/alerts`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
