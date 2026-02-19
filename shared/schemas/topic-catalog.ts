@@ -73,10 +73,12 @@ export type TopicCatalogResponse = z.infer<typeof TopicCatalogResponseSchema>;
  * - `topics_added`:    New topics that should be added to active subscriptions.
  * - `topics_removed`:  Topics that should be unsubscribed.
  * - `catalog_version`: Monotonically increasing sequence number for this delta event.
- *                      Valid values: integer ≥ 1 (monotone sequence) or -1 (unknown
- *                      sentinel, triggers a re-query).  Absent / undefined is treated
- *                      the same as unknown.  Invalid values (0, negatives other than
- *                      -1) are rejected by schema validation.
+ *                      Used for gap detection: if a version is skipped, the manager
+ *                      will re-query for the full catalog.  Valid values: integer ≥ 1
+ *                      (monotone sequence) or -1 (unknown sentinel, triggers a
+ *                      re-query).  Absent / undefined is treated the same as -1.
+ *                      Invalid values (0, negatives other than -1) are rejected by
+ *                      schema validation and warn-logged (not routed through re-query).
  */
 export const TopicCatalogChangedSchema = z.object({
   topics_added: z.array(z.string()).default([]),

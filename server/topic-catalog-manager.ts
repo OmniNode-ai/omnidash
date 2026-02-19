@@ -208,6 +208,14 @@ export class TopicCatalogManager extends EventEmitter {
       return;
     }
 
+    // Clear any running periodic re-query interval from a previous bootstrap so
+    // that a re-invocation on reconnect doesn't leave a stale interval firing
+    // during the new bootstrap window and corrupting outstandingCorrelationId.
+    if (this.requeryIntervalHandle !== null) {
+      clearInterval(this.requeryIntervalHandle);
+      this.requeryIntervalHandle = null;
+    }
+
     const corrId = correlationId ?? crypto.randomUUID();
     this.outstandingCorrelationId = corrId;
     this.catalogReceived = false;
@@ -527,6 +535,14 @@ export class TopicCatalogManager extends EventEmitter {
       this.lastSeenVersion = receivedVersion;
       this.triggerRequery('gap');
     } else {
+      // Check for stale / duplicate delivery (at-least-once Kafka semantics).
+      if (this.lastSeenVersion !== null && receivedVersion <= this.lastSeenVersion) {
+        console.debug(
+          `[TopicCatalogManager] catalog-changed: stale/duplicate version ignored ` +
+            `(lastSeen=${this.lastSeenVersion}, received=${receivedVersion})`
+        );
+        return;
+      }
       // Contiguous or first version — update lastSeenVersion normally.
       this.lastSeenVersion = receivedVersion;
     }
