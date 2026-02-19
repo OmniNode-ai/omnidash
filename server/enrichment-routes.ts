@@ -35,6 +35,12 @@ const router = Router();
 
 router.get('/summary', (req, res) => {
   try {
+    const window = req.query.window as string | undefined;
+    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    }
     // TODO(OMN-2280-followup): Replace with projectionService.getView('enrichment').getSnapshot()
     // once the enrichment projection is implemented. Use req.query.window to scope the query.
     const empty: EnrichmentSummary = {
@@ -61,6 +67,12 @@ router.get('/summary', (req, res) => {
 
 router.get('/by-channel', (req, res) => {
   try {
+    const window = req.query.window as string | undefined;
+    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    }
     // TODO(OMN-2280-followup): Replace with projection view query scoped to req.query.window.
     const data: EnrichmentByChannel[] = [];
     return res.json(data);
@@ -76,6 +88,12 @@ router.get('/by-channel', (req, res) => {
 
 router.get('/latency-distribution', (req, res) => {
   try {
+    const window = req.query.window as string | undefined;
+    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    }
     // TODO(OMN-2280-followup): Replace with projection view query scoped to req.query.window.
     const data: LatencyDistributionPoint[] = [];
     return res.json(data);
@@ -91,6 +109,12 @@ router.get('/latency-distribution', (req, res) => {
 
 router.get('/token-savings', (req, res) => {
   try {
+    const window = req.query.window as string | undefined;
+    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    }
     // TODO(OMN-2280-followup): Replace with projection view query scoped to req.query.window.
     const data: TokenSavingsTrendPoint[] = [];
     return res.json(data);
@@ -106,6 +130,12 @@ router.get('/token-savings', (req, res) => {
 
 router.get('/similarity-quality', (req, res) => {
   try {
+    const window = req.query.window as string | undefined;
+    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    }
     // TODO(OMN-2280-followup): Replace with projection view query scoped to req.query.window.
     const data: SimilarityQualityPoint[] = [];
     return res.json(data);
@@ -121,6 +151,12 @@ router.get('/similarity-quality', (req, res) => {
 
 router.get('/inflation-alerts', (req, res) => {
   try {
+    const window = req.query.window as string | undefined;
+    if (window !== undefined && !['24h', '7d', '30d'].includes(window)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    }
     // TODO(OMN-2280-followup): Replace with projection view query scoped to req.query.window.
     const data: InflationAlert[] = [];
     return res.json(data);
