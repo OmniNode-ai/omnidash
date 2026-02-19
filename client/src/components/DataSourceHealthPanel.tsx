@@ -172,12 +172,19 @@ function SummaryBar({ summary }: { summary: { live: number; mock: number; error:
 // ============================================================================
 
 export function DataSourceHealthPanel() {
+  // Error handling: the queryFn throws on non-ok HTTP responses, so any fetch
+  // or parse failure is captured by TanStack Query and surfaced via the `error`
+  // state below.  The render branch at {error && !isLoading} displays an error
+  // card, so no additional try/catch is needed here.  Shape mismatches are a
+  // TypeScript-only concern at runtime; the component degrades gracefully
+  // because undefined fields are simply not rendered (optional chaining / null
+  // checks throughout DataSourceRow and SummaryBar).
   const { data, isLoading, error } = useQuery<DataSourcesHealthResponse>({
     queryKey: ['health', 'data-sources'],
     queryFn: async () => {
       const response = await fetch('/api/health/data-sources');
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
+      return response.json() as Promise<DataSourcesHealthResponse>;
     },
     // Refresh every 60 seconds — data source status changes infrequently
     refetchInterval: 60_000,

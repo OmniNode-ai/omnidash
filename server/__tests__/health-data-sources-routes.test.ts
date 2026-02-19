@@ -280,8 +280,13 @@ describe('GET /api/health/data-sources', () => {
       return noView as any;
     });
 
-    // validation returns live (count > 0), patterns returns mock (count = 0)
-    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 5 }]) as any);
+    // validation returns live (count > 0), patterns returns mock (count = 0).
+    // tryGetIntelligenceDb() is called in Promise.all order: probeValidation first,
+    // probePatterns second. Use mockReturnValueOnce to sequence them so the test
+    // actually exercises the scenario described in the comment.
+    vi.mocked(tryGetIntelligenceDb)
+      .mockReturnValueOnce(makeMockDb([{ count: 5 }]) as any) // probeValidation → live
+      .mockReturnValueOnce(makeMockDb([{ count: 0 }]) as any); // probePatterns → mock
     vi.mocked(queryInsightsSummary).mockResolvedValue({
       insights: [],
       total: 0,

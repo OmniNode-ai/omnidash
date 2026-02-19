@@ -349,7 +349,7 @@ async function probeExecutionGraph(): Promise<DataSourceInfo> {
  * The enforcement projection is not yet implemented (OMN-2275 follow-up),
  * so this always returns mock until the projection is wired up.
  */
-async function probeEnforcement(): Promise<DataSourceInfo> {
+function probeEnforcement(): DataSourceInfo {
   // The enforcement-routes.ts handler always returns total_evaluations: 0
   // because the upstream projection is not yet implemented (see enforcement-routes.ts
   // TODO comments referencing OMN-2275-followup). Return mock directly rather
@@ -374,6 +374,10 @@ function probeCorrelationTrace(): DataSourceInfo {
 
 const router = Router();
 
+// Simple TTL cache — avoids re-running DB COUNT(*) queries on every request.
+// 30-second expiry is intentionally short so the panel stays fresh during demos.
+let healthCache: { result: DataSourcesHealthResponse; expiresAt: number } | null = null;
+
 /**
  * GET /api/health/data-sources
  *
@@ -381,6 +385,12 @@ const router = Router();
  * currently using live data or falling back to mock/demo data.
  */
 router.get('/data-sources', async (_req, res) => {
+  // Serve cached result if still fresh.
+  if (healthCache && Date.now() < healthCache.expiresAt) {
+    res.json(healthCache.result);
+    return;
+  }
+
   // Run all probes in parallel. Projection-based probes are synchronous;
   // DB-based probes are async. All are called directly without HTTP self-calls.
   const [validation, insights, patterns, executionGraph, enforcement] = await Promise.all([
@@ -391,15 +401,19 @@ router.get('/data-sources', async (_req, res) => {
     probeEnforcement(),
   ]);
 
+  // Probe the event bus once and reuse the result for correlationTrace, which
+  // derives its live/mock status from the same event-bus projection.
+  const eventBus = probeEventBus();
+
   const dataSources: Record<string, DataSourceInfo> = {
-    eventBus: probeEventBus(),
+    eventBus,
     effectiveness: probeEffectiveness(),
     extraction: probeExtraction(),
     baselines: probeBaselines(),
     costTrends: probeCost(),
     intents: probeIntents(),
     nodeRegistry: probeNodeRegistry(),
-    correlationTrace: probeCorrelationTrace(),
+    correlationTrace: eventBus,
     validation,
     insights,
     patterns,
@@ -420,6 +434,8 @@ router.get('/data-sources', async (_req, res) => {
     summary: counts,
     checkedAt: new Date().toISOString(),
   };
+
+  healthCache = { result: body, expiresAt: Date.now() + 30_000 };
 
   res.json(body);
 });
