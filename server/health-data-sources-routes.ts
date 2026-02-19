@@ -37,9 +37,14 @@ import type {
 import type { BaselinesProjection, BaselinesPayload } from './projections/baselines-projection';
 import type { IntentProjectionPayload, NodeRegistryPayload } from '@shared/projection-types';
 import type { EventBusPayload } from '@shared/event-bus-payload';
-import { tryGetIntelligenceDb } from './storage';
-import { validationRuns, patternLearningArtifacts } from '@shared/intelligence-schema';
-import { sql } from 'drizzle-orm';
+import type {
+  ValidationProjection,
+  ValidationProjectionPayload,
+} from './projections/validation-projection';
+import type {
+  PatternsProjection,
+  PatternsProjectionPayload,
+} from './projections/patterns-projection';
 import { queryInsightsSummary } from './insight-queries';
 import { getEventBusDataSource } from './event-bus-data-source';
 
@@ -249,18 +254,22 @@ function probeNodeRegistry(): DataSourceInfo {
 }
 
 /**
- * Probe the validation data source by querying the database directly.
- * Live if at least one validation run exists (total_runs > 0).
+ * Probe the validation projection.
+ * Live if at least one validation run exists (totalRuns > 0).
  */
-async function probeValidation(): Promise<DataSourceInfo> {
+function probeValidation(): DataSourceInfo {
   try {
-    const db = tryGetIntelligenceDb();
-    if (!db) {
-      return { status: 'mock', reason: 'no_db_connection' };
+    const view = projectionService.getView<ValidationProjectionPayload>('validation') as
+      | ValidationProjection
+      | undefined;
+    if (!view) {
+      return { status: 'mock', reason: 'no_projection_registered' };
     }
-    const result = await db.select({ count: sql<number>`count(*)::int` }).from(validationRuns);
-    const totalRuns = result[0]?.count ?? 0;
-    if (totalRuns === 0) {
+    const snapshot = view.getSnapshot();
+    if (!snapshot) {
+      return { status: 'mock', reason: 'empty_projection' };
+    }
+    if (snapshot.payload.totalRuns === 0) {
       return { status: 'mock', reason: 'empty_tables' };
     }
     return { status: 'live' };
@@ -293,20 +302,22 @@ async function probeInsights(): Promise<DataSourceInfo> {
 }
 
 /**
- * Probe the pattern learning (patlearn) data source by querying the database
- * directly. Live if at least one pattern artifact exists.
+ * Probe the patterns projection.
+ * Live if at least one pattern artifact exists (totalPatterns > 0).
  */
-async function probePatterns(): Promise<DataSourceInfo> {
+function probePatterns(): DataSourceInfo {
   try {
-    const db = tryGetIntelligenceDb();
-    if (!db) {
-      return { status: 'mock', reason: 'no_db_connection' };
+    const view = projectionService.getView<PatternsProjectionPayload>('patterns') as
+      | PatternsProjection
+      | undefined;
+    if (!view) {
+      return { status: 'mock', reason: 'no_projection_registered' };
     }
-    const result = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(patternLearningArtifacts);
-    const totalPatterns = result[0]?.count ?? 0;
-    if (totalPatterns === 0) {
+    const snapshot = view.getSnapshot();
+    if (!snapshot) {
+      return { status: 'mock', reason: 'empty_projection' };
+    }
+    if (snapshot.payload.totalPatterns === 0) {
       return { status: 'mock', reason: 'empty_tables' };
     }
     return { status: 'live' };
@@ -432,15 +443,16 @@ router.get('/data-sources', async (_req, res) => {
     // store the promise so concurrent requests can attach to it.
     pendingProbe = (async (): Promise<DataSourcesHealthResponse> => {
       try {
-        // Run all probes in parallel. Projection-based probes are synchronous;
-        // DB-based probes are async. All are called directly without HTTP self-calls.
-        const [validation, insights, patterns, executionGraph, enforcement] = await Promise.all([
-          probeValidation(),
+        // Run all probes. Projection-based probes are synchronous; async probes
+        // (insights, executionGraph) are awaited via Promise.all. All are called
+        // directly without HTTP self-calls.
+        const [insights, executionGraph] = await Promise.all([
           probeInsights(),
-          probePatterns(),
           probeExecutionGraph(),
-          probeEnforcement(),
         ]);
+        const validation = probeValidation();
+        const patterns = probePatterns();
+        const enforcement = probeEnforcement();
 
         // Probe the event bus once and reuse the result for correlationTrace, which
         // derives its live/mock status from the same event-bus projection.

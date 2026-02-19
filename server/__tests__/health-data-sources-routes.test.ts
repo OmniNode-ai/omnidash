@@ -216,12 +216,15 @@ describe('GET /api/health/data-sources', () => {
     expect(res.body.dataSources.extraction.lastEvent).toBe('2026-02-16T00:01:23Z');
   });
 
-  it('reports status: live for validation when DB returns total_runs > 0', async () => {
-    vi.mocked(projectionService.getView).mockReturnValue(null);
-    // validation probe queries validationRuns directly; patterns probe also calls
-    // tryGetIntelligenceDb — using mockReturnValue (not Once) means both probes
-    // get the same db returning count: 12, so patterns will also be 'live'.
-    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 12 }]) as any);
+  it('reports status: live for validation when projection has totalRuns > 0', async () => {
+    const validationView = makeView({ totalRuns: 12 });
+    const patternsView = makeView({ totalPatterns: 5 });
+
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'validation') return validationView as any;
+      if (viewId === 'patterns') return patternsView as any;
+      return null;
+    });
     vi.mocked(queryInsightsSummary).mockResolvedValue({
       insights: [],
       total: 0,
@@ -237,7 +240,6 @@ describe('GET /api/health/data-sources', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.dataSources.validation.status).toBe('live');
-    // patterns also receives count: 12 from the shared mockReturnValue, so it too is 'live'
     expect(res.body.dataSources.patterns.status).toBe('live');
   });
 
@@ -255,18 +257,19 @@ describe('GET /api/health/data-sources', () => {
     expect(res.body.dataSources.insights.reason).toBe('probe_threw');
   });
 
-  it('reports status: error for validation when db.select() throws', async () => {
-    vi.mocked(projectionService.getView).mockReturnValue(null);
+  it('reports status: error for validation when projection getSnapshot() throws', async () => {
+    const throwingView = {
+      getSnapshot: vi.fn().mockImplementation(() => {
+        throw new Error('getSnapshot failed');
+      }),
+    };
+    const patternsView = makeView({ totalPatterns: 0 });
 
-    // probeValidation is entered before probePatterns in the Promise.all array,
-    // so its tryGetIntelligenceDb() call fires first (call #1).  Give it a db
-    // whose .from() rejects; give probePatterns (call #2) a healthy db so only
-    // the validation status changes.
-    const throwingChain = { from: vi.fn().mockRejectedValue(new Error('select failed')) };
-    const throwingDb = { select: vi.fn().mockReturnValue(throwingChain) };
-    vi.mocked(tryGetIntelligenceDb)
-      .mockReturnValueOnce(throwingDb as any) // probeValidation → throws
-      .mockReturnValueOnce(makeMockDb([{ count: 0 }]) as any); // probePatterns → ok
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'validation') return throwingView as any;
+      if (viewId === 'patterns') return patternsView as any;
+      return null;
+    });
     vi.mocked(queryInsightsSummary).mockResolvedValue({
       insights: [],
       total: 0,
@@ -285,16 +288,19 @@ describe('GET /api/health/data-sources', () => {
     expect(res.body.dataSources.validation.reason).toBe('probe_threw');
   });
 
-  it('reports status: error for patterns when db.select() throws', async () => {
-    vi.mocked(projectionService.getView).mockReturnValue(null);
+  it('reports status: error for patterns when projection getSnapshot() throws', async () => {
+    const validationView = makeView({ totalRuns: 0 });
+    const throwingView = {
+      getSnapshot: vi.fn().mockImplementation(() => {
+        throw new Error('getSnapshot failed');
+      }),
+    };
 
-    // probeValidation fires first (call #1) and gets a healthy db.
-    // probePatterns fires second (call #2) and gets a db whose .from() rejects.
-    const throwingChain = { from: vi.fn().mockRejectedValue(new Error('select failed')) };
-    const throwingDb = { select: vi.fn().mockReturnValue(throwingChain) };
-    vi.mocked(tryGetIntelligenceDb)
-      .mockReturnValueOnce(makeMockDb([{ count: 0 }]) as any) // probeValidation → ok
-      .mockReturnValueOnce(throwingDb as any); // probePatterns → throws
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'validation') return validationView as any;
+      if (viewId === 'patterns') return throwingView as any;
+      return null;
+    });
     vi.mocked(queryInsightsSummary).mockResolvedValue({
       insights: [],
       total: 0,
@@ -313,9 +319,13 @@ describe('GET /api/health/data-sources', () => {
     expect(res.body.dataSources.patterns.reason).toBe('probe_threw');
   });
 
-  it('reports status: mock for patterns when DB returns 0 rows', async () => {
-    vi.mocked(projectionService.getView).mockReturnValue(null);
-    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
+  it('reports status: mock for patterns when projection has totalPatterns === 0', async () => {
+    const patternsView = makeView({ totalPatterns: 0 });
+
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'patterns') return patternsView as any;
+      return null;
+    });
     vi.mocked(queryInsightsSummary).mockResolvedValue({
       insights: [],
       total: 0,
@@ -335,30 +345,20 @@ describe('GET /api/health/data-sources', () => {
   });
 
   it('computes summary counts correctly', async () => {
-    // Set up: 3 live (event-bus, validation, correlationTrace), rest mock
+    // Set up: 3 live (event-bus, validation, correlationTrace), rest mock.
+    // validation live (totalRuns: 5), patterns mock (totalPatterns: 0).
     const eventBusView = makeView({ totalEventsIngested: 5 });
+    const validationView = makeView({ totalRuns: 5 });
+    const patternsView = makeView({ totalPatterns: 0 });
     const noView = { getSnapshot: vi.fn().mockReturnValue(null) };
 
     vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
       if (viewId === 'event-bus') return eventBusView as any;
+      if (viewId === 'validation') return validationView as any;
+      if (viewId === 'patterns') return patternsView as any;
       return noView as any;
     });
 
-    // validation returns live (count > 0), patterns returns mock (count = 0).
-    //
-    // WHY the mockReturnValueOnce sequence is deterministic:
-    //   1. JS evaluates array literals left-to-right, so the Promise.all([probeValidation(),
-    //      probeInsights(), probePatterns(), ...]) call invokes probeValidation() before
-    //      probePatterns() — both functions are entered (and their synchronous preamble runs)
-    //      before the event-loop yields to any async continuation.
-    //   2. In probeValidation(), `tryGetIntelligenceDb()` is the very first statement —
-    //      it executes synchronously before the `await db.select(...)` on the next line.
-    //   3. In probePatterns(), `tryGetIntelligenceDb()` is likewise the very first statement,
-    //      before its own `await db.select(...)`.
-    //   Therefore call #1 → probeValidation, call #2 → probePatterns, guaranteed.
-    vi.mocked(tryGetIntelligenceDb)
-      .mockReturnValueOnce(makeMockDb([{ count: 5 }]) as any) // probeValidation → live
-      .mockReturnValueOnce(makeMockDb([{ count: 0 }]) as any); // probePatterns → mock
     vi.mocked(queryInsightsSummary).mockResolvedValue({
       insights: [],
       total: 0,
