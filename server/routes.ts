@@ -19,6 +19,7 @@ import costRoutes from './cost-routes';
 import intentRoutes from './intent-routes';
 import { createGoldenPathRoutes } from './golden-path-routes';
 import enforcementRoutes from './enforcement-routes';
+import executionRoutes from './execution-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -77,6 +78,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount pattern enforcement routes for enforcement metrics dashboard (OMN-2275)
   app.use('/api/enforcement', enforcementRoutes);
+
+  // Mount execution graph routes for live ONEX node graph page (OMN-2302)
+  app.use('/api/executions', executionRoutes);
 
   // Conditionally mount golden path test routes (OMN-2079)
   // Only enabled when ENABLE_TEST_ROUTES=true AND (NODE_ENV=test OR OMNIDASH_TEST_MODE=true)

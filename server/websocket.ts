@@ -261,6 +261,8 @@ const VALID_TOPICS = [
   'projections',
   // Learned insights invalidation events (OMN-2306)
   'insights',
+  // Execution graph live node events (OMN-2302)
+  'execution-graph',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -687,6 +689,29 @@ export function setupWebSocket(httpServer: HTTPServer) {
       '[WebSocket] EventBusDataSource not available - event-bus topic will not receive real-time events'
     );
   }
+
+  // Execution graph event listener (OMN-2302)
+  // Re-broadcasts AGENT_ACTION, ROUTING_DECISION, and AGENT_TRANSFORMATION events to clients
+  // subscribed to the 'execution-graph' topic so the graph page can build live graphs.
+  registerEventListener('actionUpdate', (action) => {
+    broadcast('EXECUTION_GRAPH_EVENT', { type: 'AGENT_ACTION', data: action }, 'execution-graph');
+  });
+
+  registerEventListener('routingUpdate', (decision) => {
+    broadcast(
+      'EXECUTION_GRAPH_EVENT',
+      { type: 'ROUTING_DECISION', data: decision },
+      'execution-graph'
+    );
+  });
+
+  registerEventListener('transformationUpdate', (transformation) => {
+    broadcast(
+      'EXECUTION_GRAPH_EVENT',
+      { type: 'AGENT_TRANSFORMATION', data: transformation },
+      'execution-graph'
+    );
+  });
 
   // Projection invalidation bridge (OMN-2095)
   // Bridges the server-side ProjectionService EventEmitter to WebSocket clients.
