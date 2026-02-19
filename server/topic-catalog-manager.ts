@@ -1,5 +1,5 @@
 /**
- * TopicCatalogManager (OMN-2315)
+ * TopicCatalogManager (OMN-2315, OMN-2316)
  *
  * Encapsulates the topic-catalog bootstrap protocol for the dashboard:
  *
@@ -23,6 +23,16 @@
  *   - The consumer group `omnidash.catalog.{instanceUuid}` is unique per process,
  *     preventing Kafka consumer group accumulation across page reloads (which do
  *     not restart the server process).
+ *
+ * Gap detection (OMN-2316):
+ *   - `catalog-changed` events carry an optional `catalog_version` integer.
+ *   - `lastSeenVersion` tracks the most recently processed version.
+ *   - When a new version arrives that is more than one ahead of `lastSeenVersion`,
+ *     one or more delta events were missed; a full re-query is triggered.
+ *   - INVARIANT: `lastSeenVersion` is always advanced to the received version
+ *     BEFORE `triggerRequery` is called.  This prevents a requery storm: without
+ *     the advance, every subsequent message whose version exceeds the stale
+ *     `lastSeenVersion + 1` would re-trigger an additional requery.
  */
 
 import { EventEmitter } from 'events';
@@ -333,6 +343,12 @@ export class TopicCatalogManager extends EventEmitter {
    *
    * Generates a fresh correlation_id, updates the outstanding query, publishes a
    * new ModelTopicCatalogQuery, and emits the 'catalogRequery' event.
+   *
+   * PRE-CONDITION: the caller must have already advanced `lastSeenVersion`
+   * to the received version before calling this method (storm prevention).
+   *
+   * @param reason Expected values: `'gap'` (missed delta), `'version_unknown'`
+   *   (explicit -1 sentinel), or `'periodic'` (scheduled maintenance).
    */
   private triggerRequery(reason: 'gap' | 'version_unknown' | 'periodic'): void {
     const newCorrId = crypto.randomUUID();
@@ -355,6 +371,14 @@ export class TopicCatalogManager extends EventEmitter {
     this.emit('catalogRequery', event);
   }
 
+  /**
+   * Dispatch a raw Kafka message to the appropriate handler.
+   *
+   * Strips any environment prefix from `rawTopic` via `extractSuffix` before
+   * comparing, so the same code handles both bare topic names
+   * (`onex.evt.platform.topic-catalog-response.v1`) and prefixed names
+   * (`dev.onex.evt.platform.topic-catalog-response.v1`).
+   */
   private handleMessage(rawTopic: string, rawValue: string | undefined): void {
     if (this.stopped) return;
 
@@ -374,6 +398,14 @@ export class TopicCatalogManager extends EventEmitter {
     }
   }
 
+  /**
+   * Handle an incoming `catalog-response` message.
+   *
+   * Validates the payload against `TopicCatalogResponseSchema`, then checks
+   * that `correlation_id` matches the outstanding query (cross-talk prevention).
+   * On success: cancels the bootstrap timeout, sets `catalogReceived = true`,
+   * and emits `'catalogReceived'` with the full topic list.
+   */
   private handleCatalogResponse(rawValue: string | undefined): void {
     if (!rawValue) return;
 
@@ -410,6 +442,7 @@ export class TopicCatalogManager extends EventEmitter {
     }
 
     this.catalogReceived = true;
+    this.lastSeenVersion = null;
     const topics = response.topics.map((t) => t.topic_name);
 
     console.log(
@@ -425,6 +458,28 @@ export class TopicCatalogManager extends EventEmitter {
     this.emit('catalogReceived', event);
   }
 
+  /**
+   * Handle an incoming `catalog-changed` delta message.
+   *
+   * Ignores the message if the initial catalog has not yet been received
+   * (the full snapshot is the source of truth; deltas are only meaningful
+   * once a baseline exists).
+   *
+   * After schema validation, the `catalog_version` field drives the
+   * `lastSeenVersion` state machine:
+   *
+   *   - **version absent or -1 (unknown sentinel)**: triggers
+   *     `triggerRequery('version_unknown')` to resync; the delta is still
+   *     applied optimistically.
+   *
+   *   - **gap detected** (`receivedVersion > lastSeenVersion + 1`): one or more
+   *     delta events were missed.  `lastSeenVersion` is advanced to
+   *     `receivedVersion` FIRST (storm prevention — see class JSDoc invariant),
+   *     then `triggerRequery('gap')` is called; the delta is still applied.
+   *
+   *   - **contiguous or first version**: advances `lastSeenVersion` normally
+   *     and emits `'catalogChanged'`.
+   */
   private handleCatalogChanged(rawValue: string | undefined): void {
     if (!rawValue) return;
 
@@ -463,11 +518,13 @@ export class TopicCatalogManager extends EventEmitter {
       console.log('[TopicCatalogManager] catalog-changed: version unknown — triggering re-query');
       this.triggerRequery('version_unknown');
     } else if (this.lastSeenVersion !== null && receivedVersion > this.lastSeenVersion + 1) {
-      // A version was skipped — re-query to recover the missed delta(s).
+      // A version was skipped — advance lastSeenVersion FIRST (storm prevention),
+      // then re-query to recover the missed delta(s).
       console.log(
         `[TopicCatalogManager] catalog-changed: version gap detected ` +
           `(lastSeen=${this.lastSeenVersion}, received=${receivedVersion}) — triggering re-query`
       );
+      this.lastSeenVersion = receivedVersion;
       this.triggerRequery('gap');
     } else {
       // Contiguous or first version — update lastSeenVersion normally.

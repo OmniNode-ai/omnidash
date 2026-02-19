@@ -361,6 +361,152 @@ describe('TopicCatalogManager', () => {
   });
 
   // -------------------------------------------------------------------------
+  // Gap detection (version sequencing)
+  // -------------------------------------------------------------------------
+
+  describe('gap detection', () => {
+    /** Helper: push a valid catalog-response to establish initial catalog. */
+    async function establishCatalog(
+      pushMessage: Awaited<ReturnType<typeof bootstrapAndCapture>>['pushMessage']
+    ) {
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE, {
+        correlation_id: TEST_CORRELATION_ID,
+        topics: [{ topic_name: 'onex.evt.platform.node-heartbeat.v1' }],
+        warnings: [],
+      });
+    }
+
+    it('emits catalogChanged normally when version is in order', async () => {
+      const changed = vi.fn();
+      manager.on('catalogChanged', changed);
+
+      const { pushMessage } = await bootstrapAndCapture(manager, mocks);
+      await establishCatalog(pushMessage);
+
+      // version 1, then 2 — sequential, no gap
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: ['a'],
+        topics_removed: [],
+        catalog_version: 1,
+      });
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: ['b'],
+        topics_removed: [],
+        catalog_version: 2,
+      });
+
+      expect(changed).toHaveBeenCalledTimes(2);
+    });
+
+    it('triggers requery when a version gap is detected and still emits catalogChanged', async () => {
+      const changed = vi.fn();
+      manager.on('catalogChanged', changed);
+
+      const { pushMessage } = await bootstrapAndCapture(manager, mocks);
+      await establishCatalog(pushMessage);
+
+      // version 1 is fine — establishes baseline
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: ['a'],
+        topics_removed: [],
+        catalog_version: 1,
+      });
+      expect(changed).toHaveBeenCalledTimes(1);
+
+      // version 5 skips over 2, 3, 4 — gap detected
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: ['b'],
+        topics_removed: [],
+        catalog_version: 5,
+      });
+
+      // Gap triggers a requery AND still emits catalogChanged (optimistic apply)
+      expect(changed).toHaveBeenCalledTimes(2);
+      // A new query must have been published (initial query at index 0, requery at index 1)
+      expect(mocks.mockProducer.send).toHaveBeenCalledTimes(2);
+    });
+
+    it('does NOT trigger a second requery for the next event after a gap (no requery storm)', async () => {
+      const changed = vi.fn();
+      manager.on('catalogChanged', changed);
+
+      const { pushMessage } = await bootstrapAndCapture(manager, mocks);
+      await establishCatalog(pushMessage);
+
+      // Establish baseline at version 1
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: ['a'],
+        topics_removed: [],
+        catalog_version: 1,
+      });
+
+      // Gap: version 5 triggers the first requery
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: ['b'],
+        topics_removed: [],
+        catalog_version: 5,
+      });
+      // Exactly one requery after the initial query
+      expect(mocks.mockProducer.send).toHaveBeenCalledTimes(2);
+
+      // Version 6 is the next sequential event after 5 — must NOT trigger another requery
+      // (if lastSeenVersion were still the stale pre-gap value, 6 > stale + 1 would fire again)
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: ['c'],
+        topics_removed: [],
+        catalog_version: 6,
+      });
+
+      // Still only two sends (initial + one requery), not three
+      expect(mocks.mockProducer.send).toHaveBeenCalledTimes(2);
+    });
+
+    it('treats catalog_version === -1 as unknown sentinel and triggers version_unknown requery', async () => {
+      const changed = vi.fn();
+      manager.on('catalogChanged', changed);
+
+      const { pushMessage } = await bootstrapAndCapture(manager, mocks);
+      await establishCatalog(pushMessage);
+
+      // Sentinel -1 means "unknown version" — triggers version_unknown requery each time
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: ['a'],
+        topics_removed: [],
+        catalog_version: -1,
+      });
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: ['b'],
+        topics_removed: [],
+        catalog_version: -1,
+      });
+
+      // Both deltas still applied (optimistic)
+      expect(changed).toHaveBeenCalledTimes(2);
+      // initial query + 1 requery per -1 event = 3 sends
+      expect(mocks.mockProducer.send).toHaveBeenCalledTimes(3);
+    });
+
+    it('treats absent catalog_version as unknown and triggers version_unknown requery', async () => {
+      const changed = vi.fn();
+      manager.on('catalogChanged', changed);
+
+      const { pushMessage } = await bootstrapAndCapture(manager, mocks);
+      await establishCatalog(pushMessage);
+
+      // No version field — treated same as -1 (unknown), triggers requery
+      await pushMessage(SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED, {
+        topics_added: ['a'],
+        topics_removed: [],
+      });
+
+      // Delta still applied (optimistic)
+      expect(changed).toHaveBeenCalledTimes(1);
+      // initial query + 1 requery = 2 sends
+      expect(mocks.mockProducer.send).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Malformed / invalid messages
   // -------------------------------------------------------------------------
 
@@ -435,7 +581,7 @@ describe('TopicCatalogManager', () => {
   // Gap detection & re-query (OMN-2316)
   // -------------------------------------------------------------------------
 
-  describe('gap detection', () => {
+  describe('gap detection — requery events', () => {
     /** Helper: establish the initial catalog so changed events are processed. */
     async function bootstrapWithCatalog(
       m: TopicCatalogManager,
@@ -474,7 +620,7 @@ describe('TopicCatalogManager', () => {
       expect(requery).toHaveBeenCalledOnce();
       expect(requery.mock.calls[0][0]).toMatchObject({
         reason: 'gap',
-        lastSeenVersion: 2,
+        lastSeenVersion: 5, // advanced to receivedVersion before triggerRequery (storm prevention)
       });
     });
 
@@ -562,7 +708,7 @@ describe('TopicCatalogManager', () => {
       });
 
       expect(requery).toHaveBeenCalledOnce();
-      expect(requery.mock.calls[0][0]).toMatchObject({ reason: 'gap', lastSeenVersion: 12 });
+      expect(requery.mock.calls[0][0]).toMatchObject({ reason: 'gap', lastSeenVersion: 14 }); // advanced to receivedVersion before triggerRequery
     });
 
     it('publishes a new catalog query when a gap re-query is triggered', async () => {
