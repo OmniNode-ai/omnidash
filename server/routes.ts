@@ -21,6 +21,7 @@ import { createGoldenPathRoutes } from './golden-path-routes';
 import enforcementRoutes from './enforcement-routes';
 import executionRoutes from './execution-routes';
 import enrichmentRoutes from './enrichment-routes';
+import healthDataSourcesRoutes from './health-data-sources-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -85,6 +86,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount context enrichment routes for enrichment metrics dashboard (OMN-2280)
   app.use('/api/enrichment', enrichmentRoutes);
+
+  // Mount data-source health audit endpoint (OMN-2307)
+  app.use('/api/health', healthDataSourcesRoutes);
 
   // Conditionally mount golden path test routes (OMN-2079)
   // Only enabled when ENABLE_TEST_ROUTES=true AND (NODE_ENV=test OR OMNIDASH_TEST_MODE=true)

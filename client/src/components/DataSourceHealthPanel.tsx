@@ -1,0 +1,232 @@
+/**
+ * DataSourceHealthPanel (OMN-2307)
+ *
+ * Renders the live/mock/error status of every dashboard data source by
+ * querying GET /api/health/data-sources.  Designed to be embedded in the
+ * System Health category page as a pre-demo readiness section.
+ */
+
+import { useQuery } from '@tanstack/react-query';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Activity, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+
+// ============================================================================
+// Types (mirrors server/health-data-sources-routes.ts)
+// ============================================================================
+
+export type DataSourceStatus = 'live' | 'mock' | 'error';
+
+export interface DataSourceInfo {
+  status: DataSourceStatus;
+  reason?: string;
+  lastEvent?: string;
+}
+
+export interface DataSourcesHealthResponse {
+  dataSources: Record<string, DataSourceInfo>;
+  summary: { live: number; mock: number; error: number };
+  checkedAt: string;
+}
+
+// ============================================================================
+// Human-readable labels for each data source key
+// ============================================================================
+
+const DATA_SOURCE_LABELS: Record<string, string> = {
+  eventBus: 'Event Bus Monitor',
+  effectiveness: 'Injection Effectiveness',
+  extraction: 'Pattern Extraction',
+  baselines: 'Baselines & ROI',
+  costTrends: 'Cost Trends',
+  intents: 'Intent Signals',
+  nodeRegistry: 'Node Registry',
+  correlationTrace: 'Correlation Trace',
+  validation: 'Validation Dashboard',
+  insights: 'Learned Insights',
+  patterns: 'Pattern Learning',
+  executionGraph: 'Execution Graph',
+  enforcement: 'Pattern Enforcement',
+};
+
+// Human-readable reason descriptions
+const REASON_LABELS: Record<string, string> = {
+  empty_tables: 'Empty tables',
+  empty_projection: 'Projection not populated',
+  no_projection_registered: 'Projection not registered',
+  no_events_ingested: 'No Kafka events received',
+  no_intents_classified: 'No intents classified',
+  no_nodes_registered: 'No nodes registered',
+  no_execution_data: 'No execution data',
+  api_unavailable: 'API unavailable',
+  probe_threw: 'Probe error',
+  mockOnEmpty: 'Empty — mock fallback active',
+  USE_MOCK_DATA_flag: 'Mock flag enabled',
+  demo_flag: 'Demo flag active',
+  no_api_connection: 'No API connection',
+};
+
+function formatReason(reason: string | undefined): string {
+  if (!reason) return '';
+  return REASON_LABELS[reason] ?? reason.replace(/_/g, ' ');
+}
+
+// ============================================================================
+// Status indicator helpers
+// ============================================================================
+
+function StatusIcon({ status }: { status: DataSourceStatus }) {
+  switch (status) {
+    case 'live':
+      return <CheckCircle className="w-4 h-4 text-green-500" />;
+    case 'mock':
+      return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+    case 'error':
+      return <XCircle className="w-4 h-4 text-red-500" />;
+  }
+}
+
+function StatusBadge({ status }: { status: DataSourceStatus }) {
+  switch (status) {
+    case 'live':
+      return (
+        <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">
+          Live
+        </Badge>
+      );
+    case 'mock':
+      return (
+        <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-[10px]">
+          Mock
+        </Badge>
+      );
+    case 'error':
+      return (
+        <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px]">Error</Badge>
+      );
+  }
+}
+
+// ============================================================================
+// Individual data source row
+// ============================================================================
+
+function DataSourceRow({ sourceKey, info }: { sourceKey: string; info: DataSourceInfo }) {
+  const label = DATA_SOURCE_LABELS[sourceKey] ?? sourceKey;
+  const reason = info.status !== 'live' ? formatReason(info.reason) : null;
+  const lastEvent = info.lastEvent
+    ? new Date(info.lastEvent).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : null;
+
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
+      <div className="flex items-center gap-2 min-w-0">
+        <StatusIcon status={info.status} />
+        <span className="text-sm font-medium truncate">{label}</span>
+      </div>
+      <div className="flex items-center gap-2 shrink-0 ml-2">
+        {reason && (
+          <span className="text-[11px] text-muted-foreground hidden sm:block">{reason}</span>
+        )}
+        {lastEvent && info.status === 'live' && (
+          <span className="text-[11px] text-muted-foreground hidden sm:block">{lastEvent}</span>
+        )}
+        <StatusBadge status={info.status} />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Summary counts bar
+// ============================================================================
+
+function SummaryBar({ summary }: { summary: { live: number; mock: number; error: number } }) {
+  const total = summary.live + summary.mock + summary.error;
+  return (
+    <div className="flex items-center gap-4 text-sm">
+      <span className="flex items-center gap-1.5 text-green-400">
+        <CheckCircle className="w-3.5 h-3.5" />
+        {summary.live} live
+      </span>
+      <span className="flex items-center gap-1.5 text-yellow-400">
+        <AlertTriangle className="w-3.5 h-3.5" />
+        {summary.mock} mock
+      </span>
+      {summary.error > 0 && (
+        <span className="flex items-center gap-1.5 text-red-400">
+          <XCircle className="w-3.5 h-3.5" />
+          {summary.error} error
+        </span>
+      )}
+      <span className="text-muted-foreground text-xs ml-auto">{total} total sources</span>
+    </div>
+  );
+}
+
+// ============================================================================
+// Main exported component
+// ============================================================================
+
+export function DataSourceHealthPanel() {
+  const { data, isLoading, error } = useQuery<DataSourcesHealthResponse>({
+    queryKey: ['health', 'data-sources'],
+    queryFn: async () => {
+      const response = await fetch('/api/health/data-sources');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    },
+    // Refresh every 60 seconds — data source status changes infrequently
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Activity className="w-4 h-4 text-muted-foreground" />
+          Data Source Health
+          {data && !isLoading && (
+            <span className="text-xs text-muted-foreground font-normal ml-auto">
+              checked{' '}
+              {new Date(data.checkedAt).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              })}
+            </span>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading && (
+          <div className="space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-full rounded" />
+            ))}
+          </div>
+        )}
+
+        {error && !isLoading && (
+          <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+            <XCircle className="w-4 h-4 text-red-500" />
+            Failed to load data source health
+          </div>
+        )}
+
+        {data && !isLoading && (
+          <div className="space-y-3">
+            <SummaryBar summary={data.summary} />
+            <div>
+              {Object.entries(data.dataSources).map(([key, info]) => (
+                <DataSourceRow key={key} sourceKey={key} info={info} />
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
