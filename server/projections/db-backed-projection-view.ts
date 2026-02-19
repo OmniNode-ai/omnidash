@@ -43,6 +43,8 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
   private snapshotSeq = 0;
   /** Guard: coalesces concurrent refreshAsync() calls into a single DB query. */
   private refreshInFlight: Promise<void> | null = null;
+  /** Guard: coalesces concurrent forceRefresh() (awaited) calls into a single DB query. */
+  private forceRefreshInFlight: Promise<TPayload> | null = null;
   /**
    * Incremented on every reset(). Captured at the start of each refreshAsync()
    * and checked in the .then() callback so that a stale in-flight query
@@ -128,6 +130,7 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
     this.cacheExpiresAt = 0;
     this.snapshotSeq = 0;
     this.refreshInFlight = null;
+    this.forceRefreshInFlight = null;
     // Bump the generation so any in-flight query self-discards its result rather
     // than overwriting the fresh cache that the next getSnapshot() will populate.
     this.resetGeneration++;
@@ -216,30 +219,40 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
 
   /**
    * Force an immediate (awaited) cache update (for testing or initialization).
-   * Returns the payload directly.
+   * Returns the payload directly. Concurrent calls are coalesced — if a
+   * forceRefresh() is already in flight, all callers wait for the same query.
    */
   async forceRefresh(limit?: number): Promise<TPayload> {
-    const db = tryGetIntelligenceDb();
-    if (!db) return this.emptyPayload();
+    // Coalesce: if already refreshing, piggyback on the in-flight query.
+    if (this.forceRefreshInFlight) return this.forceRefreshInFlight;
 
-    // Capture generation before the await so a concurrent reset() call is
-    // detected and the stale result is discarded rather than overwriting the
-    // freshly-reset state.
     const generation = this.resetGeneration;
-    const payload = await this.querySnapshot(db, limit);
-    if (this.resetGeneration !== generation) {
-      // reset() was called during the query — discard the result and return empty.
-      return this.emptyPayload();
-    }
-    this.snapshotSeq++;
-    const now = Date.now();
-    this.cachedSnapshot = {
-      viewId: this.viewId,
-      cursor: this.snapshotSeq,
-      snapshotTimeMs: now,
-      payload,
-    };
-    this.cacheExpiresAt = now + this.cacheTtlMs;
-    return payload;
+    this.forceRefreshInFlight = (async () => {
+      const db = tryGetIntelligenceDb();
+      if (!db) return this.emptyPayload();
+
+      // Capture generation before the await so a concurrent reset() call is
+      // detected and the stale result is discarded rather than overwriting the
+      // freshly-reset state.
+      const payload = await this.querySnapshot(db, limit);
+      if (this.resetGeneration !== generation) {
+        // reset() was called during the query — discard and return empty.
+        return this.emptyPayload();
+      }
+      this.snapshotSeq++;
+      const now = Date.now();
+      this.cachedSnapshot = {
+        viewId: this.viewId,
+        cursor: this.snapshotSeq,
+        snapshotTimeMs: now,
+        payload,
+      };
+      this.cacheExpiresAt = now + this.cacheTtlMs;
+      return payload;
+    })().finally(() => {
+      this.forceRefreshInFlight = null;
+    });
+
+    return this.forceRefreshInFlight;
   }
 }
