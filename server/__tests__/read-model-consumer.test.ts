@@ -754,5 +754,42 @@ describe('ReadModelConsumer', () => {
 
       warnSpy.mockRestore();
     });
+
+    it('coerces invalid confidence and recommendation values to safe defaults', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+      const { db, childInsertValues } = makeMockDb();
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(db);
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeBaselinesPayload({
+          comparisons: [
+            {
+              pattern_id: 'pat-1',
+              pattern_name: 'Test Pattern',
+              recommendation: 'DEMOTE', // invalid — should coerce to 'shadow'
+              confidence: 'VERY_HIGH', // invalid — should coerce to 'low'
+              rationale: 'test',
+              cost_delta: 0,
+              outcome_improvement: 0,
+              test_pass_rate_delta: {},
+              review_iteration_delta: {},
+              window_start: '2026-02-01',
+              window_end: '2026-02-15',
+            },
+          ],
+        })
+      );
+
+      const allInsertArgs = childInsertValues.mock.calls.flatMap((call) =>
+        Array.isArray(call[0]) ? call[0] : []
+      );
+      const compRow = allInsertArgs.find(
+        (row: Record<string, unknown>) => row.patternId === 'pat-1'
+      );
+      expect(compRow).toBeDefined();
+      expect(compRow?.recommendation).toBe('shadow');
+      expect(compRow?.confidence).toBe('low');
+    });
   });
 });

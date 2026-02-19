@@ -336,6 +336,10 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
         ? trend.reduce((sum, t) => sum + t.avg_outcome_improvement, 0) / trend.length
         : 0;
 
+    // NOTE: total_comparisons counts rows in the comparisons table (may be capped at
+    // MAX_BATCH_ROWS on ingest), while promote_count/shadow_count/etc. come from the
+    // breakdown table (pre-aggregated by the producer). If the batch cap fired, these
+    // two sources will disagree. This is expected and documented behaviour.
     return {
       total_comparisons: comparisons.length,
       promote_count: promoteCounts.promote,

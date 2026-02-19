@@ -150,6 +150,7 @@ const MAX_BATCH_ROWS = 4000;
 // Hoisted to module scope — shared by both comparison and breakdown writers so validation
 // is applied consistently at ingest time (write-time) rather than silently at read-time.
 const VALID_PROMOTION_ACTIONS = new Set(['promote', 'shadow', 'suppress', 'fork']);
+const VALID_CONFIDENCE_LEVELS = new Set(['high', 'medium', 'low']);
 
 // Consumer configuration
 const CONSUMER_GROUP_ID = process.env.READ_MODEL_CONSUMER_GROUP_ID || 'omnidash-read-model-v1';
@@ -1090,7 +1091,10 @@ export class ReadModelConsumer {
               const raw = String(c.recommendation ?? '');
               return VALID_PROMOTION_ACTIONS.has(raw) ? raw : 'shadow';
             })(),
-            confidence: String(c.confidence ?? 'low'),
+            confidence: (() => {
+              const raw = String(c.confidence ?? '').toLowerCase();
+              return VALID_CONFIDENCE_LEVELS.has(raw) ? raw : 'low';
+            })(),
             rationale: String(c.rationale ?? ''),
           }));
           await tx.insert(baselinesComparisons).values(comparisonRows);
