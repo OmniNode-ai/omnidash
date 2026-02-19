@@ -307,7 +307,9 @@ function toLiveEvent(event: DisplayEvent) {
 function toRecentEvent(event: DisplayEvent) {
   return {
     id: event.id,
-    topic: event.topic,
+    // Store raw suffix so the custom topic cell renderer can filter by it directly.
+    // The friendly display label is rendered by the topicCellRenderer closure in EventBusMonitor.
+    topic: event.topicRaw,
     topicRaw: event.topicRaw,
     eventType: event.normalizedType,
     summary: event.summary,
@@ -783,10 +785,12 @@ export default function EventBusMonitor() {
 
   const handleEventClick = useCallback((widgetId: string, row: Record<string, unknown>) => {
     if (widgetId === 'table-recent-events') {
+      // row.topic now holds the raw suffix (topicRaw); derive the friendly label for the panel.
+      const rawTopic = String(row.topicRaw || row.topic || '');
       setSelectedEvent({
         id: String(row.id || ''),
-        topic: String(row.topic || ''),
-        topicRaw: String(row.topicRaw || row.topic || ''),
+        topic: getTopicLabel(rawTopic),
+        topicRaw: rawTopic,
         eventType: String(row.eventType || ''),
         source: String(row.source || ''),
         timestamp: String(row.timestamp || ''),
@@ -892,6 +896,49 @@ export default function EventBusMonitor() {
         .map((w) => ({ ...w, row: 0 })),
     }),
     []
+  );
+
+  // Custom cell renderer for the Topic column (OMN-2198).
+  //
+  // Displays the friendly label (from TOPIC_METADATA / suffix extraction) and makes
+  // each topic cell clickable — clicking sets the topic filter to the raw suffix,
+  // simultaneously highlighting the matching row in the TopicSelector sidebar.
+  // stopPropagation prevents the row-click from opening the EventDetailPanel.
+  const tableWidgetProps = useMemo(
+    () => ({
+      'table-recent-events': {
+        customCellRenderers: {
+          topic: (value: unknown) => {
+            const raw = String(value ?? '');
+            const label = getTopicLabel(raw);
+            const isActive = filters.topic === raw;
+            return (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFilters((prev) => ({
+                    ...prev,
+                    topic: prev.topic === raw ? null : raw,
+                  }));
+                }}
+                className={[
+                  'inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium transition-colors',
+                  'hover:bg-primary/15 hover:text-primary cursor-pointer select-none',
+                  isActive
+                    ? 'bg-primary/20 text-primary ring-1 ring-primary/40'
+                    : 'bg-muted/60 text-foreground',
+                ].join(' ')}
+                title={raw === label ? undefined : raw}
+              >
+                {label}
+              </button>
+            );
+          },
+        },
+      },
+    }),
+    [filters.topic]
   );
 
   // ============================================================================
@@ -1132,6 +1179,7 @@ export default function EventBusMonitor() {
         data={filteredData}
         isLoading={isLoading}
         onWidgetRowClick={handleEventClick}
+        widgetProps={tableWidgetProps}
       />
 
       {/* Event Detail Panel */}
