@@ -5,7 +5,11 @@ import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 
 let queryClient: QueryClient | null = null;
 
-function renderWithClient(ui: React.ReactNode) {
+async function renderWithClient(ui: React.ReactNode) {
+  // Dynamically import DemoModeProvider so that after vi.resetModules() the
+  // provider and the component under test share the same Context instance.
+  const { DemoModeProvider } = await import('../../contexts/DemoModeContext');
+
   queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -18,7 +22,11 @@ function renderWithClient(ui: React.ReactNode) {
     },
   });
 
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <DemoModeProvider>{ui}</DemoModeProvider>
+    </QueryClientProvider>
+  );
 }
 
 describe('CorrelationTrace page', () => {
@@ -52,7 +60,7 @@ describe('CorrelationTrace page', () => {
 
     const { default: CorrelationTrace } = await import('../CorrelationTrace');
 
-    const result = renderWithClient(<CorrelationTrace />);
+    const result = await renderWithClient(<CorrelationTrace />);
 
     // Wait for the fetch to resolve and empty state to render
     await waitFor(() => {
@@ -87,7 +95,7 @@ describe('CorrelationTrace page', () => {
 
     const { default: CorrelationTrace } = await import('../CorrelationTrace');
 
-    const result = renderWithClient(<CorrelationTrace />);
+    const result = await renderWithClient(<CorrelationTrace />);
 
     await waitFor(() => {
       expect(screen.getByText('code-analyst')).toBeInTheDocument();
@@ -116,7 +124,7 @@ describe('CorrelationTrace page', () => {
 
     const { default: CorrelationTrace } = await import('../CorrelationTrace');
 
-    const result = renderWithClient(<CorrelationTrace />);
+    const result = await renderWithClient(<CorrelationTrace />);
 
     expect(screen.getByText('Failed to load recent traces')).toBeInTheDocument();
     expect(screen.getByText('Failed to fetch trace')).toBeInTheDocument();
