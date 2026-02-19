@@ -52,13 +52,6 @@ CREATE TABLE IF NOT EXISTS delegation_events (
   projected_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Named alias for the unique index backing the inline UNIQUE constraint on
--- correlation_id. PostgreSQL creates an unnamed index for the inline UNIQUE;
--- this named index makes it referenceable in EXPLAIN plans and monitoring.
--- IF NOT EXISTS prevents failure on re-runs or partial migrations.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_delegation_events_correlation
-  ON delegation_events (correlation_id);
-
 -- Primary time-series index (most dashboard queries are time-window scoped)
 CREATE INDEX IF NOT EXISTS idx_delegation_events_timestamp
   ON delegation_events (timestamp DESC);
@@ -113,11 +106,6 @@ CREATE TABLE IF NOT EXISTS delegation_shadow_comparisons (
   -- When this row was projected from Kafka into the read model
   projected_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
--- Named alias for the unique index backing the inline UNIQUE constraint on
--- correlation_id (same rationale as delegation_events above).
-CREATE UNIQUE INDEX IF NOT EXISTS idx_delegation_shadow_correlation
-  ON delegation_shadow_comparisons (correlation_id);
 
 -- Primary time-series index
 CREATE INDEX IF NOT EXISTS idx_delegation_shadow_timestamp

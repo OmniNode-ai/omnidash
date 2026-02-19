@@ -272,6 +272,8 @@ const VALID_TOPICS = [
   'effectiveness',
   // Baselines ROI invalidation events (OMN-2331)
   'baselines',
+  // Delegation metrics invalidation events (OMN-2284)
+  'delegation',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];

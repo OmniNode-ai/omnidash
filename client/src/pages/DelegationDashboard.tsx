@@ -17,6 +17,15 @@ import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { delegationSource } from '@/lib/data-sources/delegation-source';
+import {
+  getMockDelegationSummary,
+  getMockDelegationByTaskType,
+  getMockDelegationCostSavings,
+  getMockDelegationQualityGates,
+  getMockDelegationShadowDivergence,
+  getMockDelegationTrend,
+} from '@/lib/mock-data/delegation-mock';
+import { MetricCard } from '@/components/MetricCard';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -252,42 +261,6 @@ function QualityGateHero({
   );
 }
 
-/** Simple metric stat card. */
-function StatCard({
-  title,
-  value,
-  description,
-  icon: Icon,
-  valueClass,
-  isLoading,
-}: {
-  title: string;
-  value: string;
-  description?: string;
-  icon: React.ElementType;
-  valueClass?: string;
-  isLoading: boolean;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <Skeleton className="h-8 w-24" />
-        ) : (
-          <>
-            <div className={cn('text-2xl font-bold tabular-nums', valueClass)}>{value}</div>
-            {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
 /** Shadow divergence table. */
 function ShadowDivergenceTable({
   divergences,
@@ -420,6 +393,7 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.summary(timeWindow), isDemoMode],
     queryFn: () => delegationSource.summary(timeWindow, fetchOptions),
+    placeholderData: getMockDelegationSummary(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -432,6 +406,7 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.byTaskType(timeWindow), isDemoMode],
     queryFn: () => delegationSource.byTaskType(timeWindow, fetchOptions),
+    placeholderData: getMockDelegationByTaskType(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -444,6 +419,7 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.costSavings(timeWindow), isDemoMode],
     queryFn: () => delegationSource.costSavings(timeWindow, fetchOptions),
+    placeholderData: getMockDelegationCostSavings(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -456,6 +432,7 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.qualityGates(timeWindow), isDemoMode],
     queryFn: () => delegationSource.qualityGates(timeWindow, fetchOptions),
+    placeholderData: getMockDelegationQualityGates(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -468,6 +445,7 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.shadowDivergence(timeWindow), isDemoMode],
     queryFn: () => delegationSource.shadowDivergence(timeWindow, fetchOptions),
+    placeholderData: getMockDelegationShadowDivergence(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -480,6 +458,7 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.trend(timeWindow), isDemoMode],
     queryFn: () => delegationSource.trend(timeWindow, fetchOptions),
+    placeholderData: getMockDelegationTrend(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -594,53 +573,50 @@ export default function DelegationDashboard() {
         />
 
         {/* Total Delegations */}
-        <StatCard
-          title="Total Delegations"
+        <MetricCard
+          label="Total Delegations"
           value={summaryLoading ? '—' : fmtCount(summary?.total_delegations ?? 0)}
-          description={`${fmtPct(summary?.delegation_rate ?? 0)} delegation rate`}
+          subtitle={`${fmtPct(summary?.delegation_rate ?? 0)} delegation rate`}
           icon={BarChart3}
           isLoading={summaryLoading}
         />
 
         {/* Total Cost Savings */}
-        <StatCard
-          title="Total Cost Savings"
+        <MetricCard
+          label="Total Cost Savings"
           value={summaryLoading ? '—' : fmtCost(summary?.total_cost_savings_usd ?? 0)}
-          description={`${fmtCost(summary?.avg_cost_savings_usd ?? 0)} avg per delegation`}
+          subtitle={`${fmtCost(summary?.avg_cost_savings_usd ?? 0)} avg per delegation`}
           icon={DollarSign}
-          valueClass="text-green-500"
+          status="healthy"
           isLoading={summaryLoading}
         />
 
         {/* Shadow Divergence Rate */}
-        <StatCard
-          title="Shadow Divergence Rate"
+        <MetricCard
+          label="Shadow Divergence Rate"
           value={summaryLoading ? '—' : fmtPct(summary?.shadow_divergence_rate ?? 0)}
-          description={`${fmtCount(summary?.total_shadow_comparisons ?? 0)} comparisons`}
+          subtitle={`${fmtCount(summary?.total_shadow_comparisons ?? 0)} comparisons`}
           icon={GitBranch}
-          valueClass={
-            (summary?.shadow_divergence_rate ?? 0) < 0.2 ? 'text-green-500' : 'text-yellow-500'
-          }
+          status={(summary?.shadow_divergence_rate ?? 0) < 0.2 ? 'healthy' : 'warning'}
           isLoading={summaryLoading}
         />
 
         {/* Quality Gate Passed */}
-        <StatCard
-          title="Quality Gates Passed"
+        <MetricCard
+          label="Quality Gates Passed"
           value={summaryLoading ? '—' : fmtCount(summary?.counts.quality_gate_passed ?? 0)}
-          description={`${fmtCount(summary?.counts.quality_gate_failed ?? 0)} failed`}
+          subtitle={`${fmtCount(summary?.counts.quality_gate_failed ?? 0)} failed`}
           icon={CheckCircle2}
-          valueClass="text-green-500"
+          status="healthy"
           isLoading={summaryLoading}
         />
 
         {/* Avg Delegation Latency */}
-        <StatCard
-          title="Avg Delegation Latency"
+        <MetricCard
+          label="Avg Delegation Latency"
           value={summaryLoading ? '—' : fmtMs(summary?.avg_delegation_latency_ms ?? 0)}
-          description="handoff overhead"
+          subtitle="handoff overhead"
           icon={Clock}
-          valueClass="text-blue-400"
           isLoading={summaryLoading}
         />
       </div>

@@ -20,7 +20,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
-import { createTestLifecycle } from '../../tests/test-utils';
+import { createTestLifecycle } from '@/tests/test-utils';
 import {
   getMockDelegationSummary,
   getMockDelegationByTaskType,

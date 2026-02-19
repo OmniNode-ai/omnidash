@@ -945,28 +945,28 @@ export class ReadModelConsumer {
 
     const row: InsertDelegationEvent = {
       correlationId,
-      sessionId: (evt.session_id as string) ?? null,
+      sessionId: (evt.session_id as string) || (data.sessionId as string) || null,
       timestamp: safeParseDate(evt.timestamp),
       taskType,
       delegatedTo,
-      delegatedBy: (evt.delegated_by as string) ?? null,
-      qualityGatePassed: Boolean(evt.quality_gate_passed ?? false),
-      qualityGatesChecked: evt.quality_gates_checked ?? null,
-      qualityGatesFailed: evt.quality_gates_failed ?? null,
-      costUsd:
-        evt.cost_usd != null && !Number.isNaN(Number(evt.cost_usd))
-          ? String(Number(evt.cost_usd))
-          : null,
-      costSavingsUsd:
-        evt.cost_savings_usd != null && !Number.isNaN(Number(evt.cost_savings_usd))
-          ? String(Number(evt.cost_savings_usd))
-          : null,
-      delegationLatencyMs:
-        evt.delegation_latency_ms != null && !Number.isNaN(Number(evt.delegation_latency_ms))
-          ? Math.round(Number(evt.delegation_latency_ms))
-          : null,
-      repo: (evt.repo as string) ?? null,
-      isShadow: Boolean(evt.is_shadow ?? false),
+      delegatedBy: (evt.delegated_by as string) || (data.delegatedBy as string) || null,
+      qualityGatePassed: Boolean(evt.quality_gate_passed ?? data.qualityGatePassed ?? false),
+      qualityGatesChecked: evt.quality_gates_checked ?? data.qualityGatesChecked ?? null,
+      qualityGatesFailed: evt.quality_gates_failed ?? data.qualityGatesFailed ?? null,
+      costUsd: (() => {
+        const v = evt.cost_usd ?? data.costUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      costSavingsUsd: (() => {
+        const v = evt.cost_savings_usd ?? data.costSavingsUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      delegationLatencyMs: (() => {
+        const v = evt.delegation_latency_ms ?? data.delegationLatencyMs;
+        return v != null && !Number.isNaN(Number(v)) ? Math.round(Number(v)) : null;
+      })(),
+      repo: (evt.repo as string) || (data.repo as string) || null,
+      isShadow: Boolean(evt.is_shadow ?? data.isShadow ?? false),
     };
 
     try {
@@ -1025,33 +1025,34 @@ export class ReadModelConsumer {
 
     const row: InsertDelegationShadowComparison = {
       correlationId,
-      sessionId: (evt.session_id as string) ?? null,
+      sessionId: (evt.session_id as string) || (data.sessionId as string) || null,
       timestamp: safeParseDate(evt.timestamp),
       taskType,
       primaryAgent,
       shadowAgent,
-      divergenceDetected: Boolean(evt.divergence_detected ?? false),
-      divergenceScore:
-        evt.divergence_score != null && !Number.isNaN(Number(evt.divergence_score))
-          ? String(Number(evt.divergence_score))
-          : null,
-      primaryLatencyMs:
-        evt.primary_latency_ms != null && !Number.isNaN(Number(evt.primary_latency_ms))
-          ? Math.round(Number(evt.primary_latency_ms))
-          : null,
-      shadowLatencyMs:
-        evt.shadow_latency_ms != null && !Number.isNaN(Number(evt.shadow_latency_ms))
-          ? Math.round(Number(evt.shadow_latency_ms))
-          : null,
-      primaryCostUsd:
-        evt.primary_cost_usd != null && !Number.isNaN(Number(evt.primary_cost_usd))
-          ? String(Number(evt.primary_cost_usd))
-          : null,
-      shadowCostUsd:
-        evt.shadow_cost_usd != null && !Number.isNaN(Number(evt.shadow_cost_usd))
-          ? String(Number(evt.shadow_cost_usd))
-          : null,
-      divergenceReason: (evt.divergence_reason as string) ?? null,
+      divergenceDetected: Boolean(evt.divergence_detected ?? data.divergenceDetected ?? false),
+      divergenceScore: (() => {
+        const v = evt.divergence_score ?? data.divergenceScore;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      primaryLatencyMs: (() => {
+        const v = evt.primary_latency_ms ?? data.primaryLatencyMs;
+        return v != null && !Number.isNaN(Number(v)) ? Math.round(Number(v)) : null;
+      })(),
+      shadowLatencyMs: (() => {
+        const v = evt.shadow_latency_ms ?? data.shadowLatencyMs;
+        return v != null && !Number.isNaN(Number(v)) ? Math.round(Number(v)) : null;
+      })(),
+      primaryCostUsd: (() => {
+        const v = evt.primary_cost_usd ?? data.primaryCostUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      shadowCostUsd: (() => {
+        const v = evt.shadow_cost_usd ?? data.shadowCostUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      divergenceReason:
+        (evt.divergence_reason as string) || (data.divergenceReason as string) || null,
     };
 
     try {
