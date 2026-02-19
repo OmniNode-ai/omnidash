@@ -44,6 +44,7 @@ import LearnedInsights from '@/pages/LearnedInsights';
 import BaselinesROI from '@/pages/BaselinesROI';
 import CostTrendDashboard from '@/pages/CostTrendDashboard';
 import PatternEnforcement from '@/pages/PatternEnforcement';
+import ContextEnrichmentDashboard from '@/pages/ContextEnrichmentDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -120,6 +121,9 @@ function Router() {
 
       {/* Pattern Enforcement dashboard (OMN-2275) */}
       <Route path="/enforcement" component={PatternEnforcement} />
+
+      {/* Context Enrichment dashboard (OMN-2280) */}
+      <Route path="/enrichment" component={ContextEnrichmentDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

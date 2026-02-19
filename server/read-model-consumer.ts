@@ -48,6 +48,9 @@ import type {
   InsertBaselinesBreakdown,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
+import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
+import type { ContextEnrichmentEvent } from '@shared/enrichment-types';
+import { SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT } from '@shared/topics';
 import { baselinesProjection } from './projection-bootstrap';
 import { emitBaselinesUpdate } from './baselines-events';
 
@@ -110,6 +113,7 @@ const READ_MODEL_TOPICS = [
   'onex.evt.omniclaude.pattern-enforcement.v1',
   'onex.evt.omniclaude.llm-cost-reported.v1',
   'onex.evt.omnibase-infra.baselines-computed.v1',
+  SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -291,6 +295,9 @@ export class ReadModelConsumer {
           break;
         case 'onex.evt.omnibase-infra.baselines-computed.v1':
           projected = await this.projectBaselinesSnapshot(parsed, partition, message.offset);
+          break;
+        case SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT:
+          projected = await this.projectEnrichmentEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -594,6 +601,114 @@ export class ReadModelConsumer {
         console.warn(
           '[ReadModelConsumer] pattern_enforcement_events table not yet created -- ' +
             'run migrations to enable enforcement projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  /**
+   * Project a context enrichment event into the `context_enrichment_events` table.
+   *
+   * The table is created by SQL migration 0005_context_enrichment_events.sql.
+   * Returns true when written, false when the DB is unavailable.
+   *
+   * Deduplication key: (correlation_id) — each enrichment operation has a
+   * unique correlation ID. Falls back to a deterministic hash when absent.
+   *
+   * GOLDEN METRIC: net_tokens_saved > 0 means the enrichment delivered value.
+   * Rows with outcome = 'inflated' are context inflation alerts.
+   */
+  private async projectEnrichmentEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const evt = data as Partial<ContextEnrichmentEvent>;
+
+    const correlationId =
+      (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
+
+    // outcome is required — missing value indicates a malformed event.
+    // Do NOT default; that would silently corrupt enrichment metrics.
+    const outcome = evt.outcome;
+    if (outcome == null) {
+      console.warn(
+        '[ReadModelConsumer] Enrichment event missing required "outcome" field ' +
+          `(correlation_id=${correlationId}) -- skipping malformed event`
+      );
+      return true; // Advance watermark so consumer is not stuck
+    }
+    if (!(ENRICHMENT_OUTCOMES as readonly string[]).includes(outcome)) {
+      console.warn('[ReadModelConsumer] Unknown enrichment outcome:', outcome, '-- skipping');
+      return true;
+    }
+
+    // channel is required — missing value indicates a malformed event.
+    // evt = data as Partial<ContextEnrichmentEvent>, so evt.channel already covers data.channel.
+    const channel = evt.channel as string | undefined;
+    if (!channel) {
+      console.warn(
+        '[ReadModelConsumer] Enrichment event missing required "channel" field ' +
+          `(correlation_id=${correlationId}) -- skipping malformed event`
+      );
+      return true;
+    }
+
+    try {
+      await db.execute(sql`
+        INSERT INTO context_enrichment_events (
+          correlation_id,
+          session_id,
+          channel,
+          model_name,
+          cache_hit,
+          outcome,
+          latency_ms,
+          tokens_before,
+          tokens_after,
+          net_tokens_saved,
+          similarity_score,
+          quality_score,
+          repo,
+          agent_name,
+          created_at
+        ) VALUES (
+          ${correlationId},
+          ${(evt.session_id as string) ?? null},
+          ${channel},
+          ${(evt.model_name as string) ?? 'unknown'},
+          ${Boolean(evt.cache_hit ?? false)},
+          ${outcome},
+          ${Number.isNaN(Number(evt.latency_ms)) ? 0 : Number(evt.latency_ms ?? 0)},
+          ${Number.isNaN(Number(evt.tokens_before)) ? 0 : Number(evt.tokens_before ?? 0)},
+          ${Number.isNaN(Number(evt.tokens_after)) ? 0 : Number(evt.tokens_after ?? 0)},
+          ${Number.isNaN(Number(evt.net_tokens_saved)) ? 0 : Number(evt.net_tokens_saved ?? 0)},
+          ${evt.similarity_score != null && !Number.isNaN(Number(evt.similarity_score)) ? Number(evt.similarity_score) : null},
+          ${evt.quality_score != null && !Number.isNaN(Number(evt.quality_score)) ? Number(evt.quality_score) : null},
+          ${(evt.repo as string) ?? null},
+          ${(evt.agent_name as string) ?? null},
+          ${safeParseDate(evt.timestamp)}
+        )
+        ON CONFLICT (correlation_id) DO NOTHING
+      `);
+    } catch (err) {
+      // If the table doesn't exist yet (migration not run), degrade gracefully
+      // and advance the watermark so the consumer is not stuck retrying.
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('context_enrichment_events') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] context_enrichment_events table not yet created -- ' +
+            'run migrations to enable enrichment projection'
         );
         return true;
       }
