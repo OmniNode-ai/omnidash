@@ -637,7 +637,7 @@ export class ReadModelConsumer {
     // outcome is required — missing value indicates a malformed event.
     // Do NOT default; that would silently corrupt enrichment metrics.
     const outcome = evt.outcome;
-    if (outcome == null) {
+    if (outcome === undefined) {
       console.warn(
         '[ReadModelConsumer] Enrichment event missing required "outcome" field ' +
           `(correlation_id=${correlationId}) -- skipping malformed event`

@@ -515,6 +515,11 @@ export default function ContextEnrichmentDashboard() {
   // Acceptance criteria: derive from summaryQuery.data — if summary.total_enrichments === 0
   // after a successful fetch, treat as live-but-empty (not mock). Use useState updated
   // in summaryQuery's onSettled callback to make the banner reactive.
+  //
+  // Current approach: allSettled transitions false→true on every refetch cycle (TanStack
+  // Query sets isFetching:true for all refetches including background ones), so this
+  // effect re-fires after every fetch cycle and reads fresh singleton state each time.
+  // The else-reset was intentionally removed to prevent flickering on polling refetches.
   const [isUsingMockData, setIsUsingMockData] = useState(false);
 
   useEffect(() => {
