@@ -15,6 +15,26 @@ import type {
 
 const COHORTS = ['default', 'experimental', 'fast-path', 'legacy'] as const;
 
+/**
+ * Shared bucket layout for time-windowed mock generators.
+ *
+ * Window → { bucketCount, stepMs }:
+ *   1h  → 12 buckets × 5 min
+ *   6h  →  6 buckets × 1 hr
+ *   24h → 24 buckets × 1 hr
+ *   7d  → 14 buckets × 1 day  (two weeks of daily granularity)
+ *   30d → 30 buckets × 1 day  (one bucket per calendar day)
+ *   any other → same as 7d fallback
+ */
+function getWindowBuckets(window: string): { bucketCount: number; stepMs: number } {
+  if (window === '1h') return { bucketCount: 12, stepMs: 300_000 };
+  if (window === '6h') return { bucketCount: 6, stepMs: 3_600_000 };
+  if (window === '24h') return { bucketCount: 24, stepMs: 3_600_000 };
+  if (window === '30d') return { bucketCount: 30, stepMs: 86_400_000 };
+  // '7d' and any unknown window → 14 one-day buckets
+  return { bucketCount: 14, stepMs: 86_400_000 };
+}
+
 export function getMockExtractionSummary(): ExtractionSummary {
   return {
     total_injections: 1423,
@@ -66,23 +86,7 @@ export function getMockPipelineHealth(): PipelineHealthResponse {
 }
 
 export function getMockLatencyHeatmap(window: string = '24h'): LatencyHeatmapResponse {
-  // Bucket layout per window:
-  //   1h  → 12 buckets × 5 min
-  //   6h  → 6 buckets  × 1 hr
-  //   24h → 24 buckets × 1 hr
-  //   7d (or any unknown) → /* 7d */ 14 buckets × 1 day
-  // The fallback of 14 one-day buckets provides ~two weeks of daily granularity,
-  // which matches the '7d' selector shown in the UI time-window picker.
-  const bucketCount =
-    window === '1h' ? 12 : window === '6h' ? 6 : window === '24h' ? 24 : /* 7d */ 14;
-  const stepMs =
-    window === '1h'
-      ? 300_000
-      : window === '6h'
-        ? 3_600_000
-        : window === '24h'
-          ? 3_600_000
-          : /* 7d: 1-day step */ 86_400_000;
+  const { bucketCount, stepMs } = getWindowBuckets(window);
 
   const buckets = Array.from({ length: bucketCount }, (_, i) => {
     const t = new Date(Date.now() - (bucketCount - 1 - i) * stepMs);
@@ -100,23 +104,7 @@ export function getMockLatencyHeatmap(window: string = '24h'): LatencyHeatmapRes
 }
 
 export function getMockPatternVolume(window: string = '24h'): PatternVolumeResponse {
-  // Bucket layout per window:
-  //   1h  → 12 buckets × 5 min
-  //   6h  → 6 buckets  × 1 hr
-  //   24h → 24 buckets × 1 hr
-  //   7d (or any unknown) → /* 7d */ 14 buckets × 1 day
-  // The fallback of 14 one-day buckets provides ~two weeks of daily granularity,
-  // which matches the '7d' selector shown in the UI time-window picker.
-  const bucketCount =
-    window === '1h' ? 12 : window === '6h' ? 6 : window === '24h' ? 24 : /* 7d */ 14;
-  const stepMs =
-    window === '1h'
-      ? 300_000
-      : window === '6h'
-        ? 3_600_000
-        : window === '24h'
-          ? 3_600_000
-          : /* 7d: 1-day step */ 86_400_000;
+  const { bucketCount, stepMs } = getWindowBuckets(window);
 
   const points = Array.from({ length: bucketCount }, (_, i) => {
     const t = new Date(Date.now() - (bucketCount - 1 - i) * stepMs);

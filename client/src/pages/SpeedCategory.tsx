@@ -9,7 +9,7 @@
  * Sources: ExtractionDashboard + EffectivenessLatency views
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
@@ -112,22 +112,32 @@ export default function SpeedCategory() {
     refetchInterval: 30_000,
   });
 
-  // Mirror the mutable `isUsingMockData` getter into reactive state so the
-  // "Demo Data" badge re-renders correctly after the async fetch settles.
-  // We read the getter only after `latencyDetails` is defined (i.e., the
-  // query has resolved), because `markMock`/`markReal` are called inside the
-  // queryFn and are observable only after it returns.
-  // Also incorporate `extractionResult?.isMock` so that if the extraction
-  // endpoint falls back to demo data while latency is real, the badge still
-  // appears.
+  // Ref-based mock-flag aggregation (mirrors ExtractionDashboard).
+  // Each data source writes its mock status into `mockFlags.current[key]`
+  // via `updateMockFlag`, which then derives the combined boolean and flushes
+  // it into reactive state.  This avoids:
+  //   - The `(prev) => prev || isMock` latch that can never go back to false.
+  //   - Reading a mutable getter (`effectivenessSource.isUsingMockData`)
+  //     directly in a useEffect dep array (React can't observe mutations).
   const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const mockFlags = useRef<Record<string, boolean>>({});
+
+  const updateMockFlag = useCallback((panel: string, isMock: boolean) => {
+    mockFlags.current[panel] = isMock;
+    setIsUsingMockData(Object.values(mockFlags.current).some(Boolean));
+  }, []);
+
+  // Wire extraction result → mock flag.
   useEffect(() => {
-    if (latencyDetails !== undefined || extractionResult !== undefined) {
-      setIsUsingMockData(
-        effectivenessSource.isUsingMockData || (extractionResult?.isMock ?? false)
-      );
-    }
-  }, [latencyDetails, extractionResult]);
+    updateMockFlag('extraction', extractionResult?.isMock ?? false);
+  }, [extractionResult, updateMockFlag]);
+
+  // Wire effectiveness source → mock flag.  We use `latencyDetails` as the
+  // trigger because `effectivenessSource.isUsingMockData` is set during the
+  // queryFn and is only observable after the query resolves.
+  useEffect(() => {
+    updateMockFlag('effectiveness', effectivenessSource.isUsingMockData);
+  }, [latencyDetails, updateMockFlag]);
 
   // ---------------------------------------------------------------------------
   // WebSocket: invalidation-driven re-fetch
@@ -278,7 +288,7 @@ export default function SpeedCategory() {
           </CardContent>
         </Card>
         <PipelineHealthPanel
-          onMockStateChange={(isMock) => setIsUsingMockData((prev) => prev || isMock)}
+          onMockStateChange={(isMock) => updateMockFlag('pipelineHealth', isMock)}
         />
       </div>
 

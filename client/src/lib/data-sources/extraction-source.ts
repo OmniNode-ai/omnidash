@@ -79,9 +79,17 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
-      // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
-      if (fallbackToMock && !(error instanceof SyntaxError)) {
-        console.warn('[ExtractionSource] API unavailable for summary, using demo data');
+      if (fallbackToMock) {
+        if (error instanceof SyntaxError) {
+          // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
+          // Log as error (not warn) so developers notice, but still fall back to demo data.
+          console.error(
+            '[ExtractionSource] Malformed JSON from API for summary, falling back to demo data',
+            error
+          );
+        } else {
+          console.warn('[ExtractionSource] API unavailable for summary, using demo data');
+        }
         return { data: getMockExtractionSummary(), isMock: true };
       }
       throw error;
@@ -101,9 +109,17 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
-      // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
-      if (fallbackToMock && !(error instanceof SyntaxError)) {
-        console.warn('[ExtractionSource] API unavailable for pipeline health, using demo data');
+      if (fallbackToMock) {
+        if (error instanceof SyntaxError) {
+          // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
+          // Log as error (not warn) so developers notice, but still fall back to demo data.
+          console.error(
+            '[ExtractionSource] Malformed JSON from API for pipeline health, falling back to demo data',
+            error
+          );
+        } else {
+          console.warn('[ExtractionSource] API unavailable for pipeline health, using demo data');
+        }
         return { data: getMockPipelineHealth(), isMock: true };
       }
       throw error;
@@ -126,9 +142,17 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
-      // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
-      if (fallbackToMock && !(error instanceof SyntaxError)) {
-        console.warn('[ExtractionSource] API unavailable for latency heatmap, using demo data');
+      if (fallbackToMock) {
+        if (error instanceof SyntaxError) {
+          // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
+          // Log as error (not warn) so developers notice, but still fall back to demo data.
+          console.error(
+            '[ExtractionSource] Malformed JSON from API for latency heatmap, falling back to demo data',
+            error
+          );
+        } else {
+          console.warn('[ExtractionSource] API unavailable for latency heatmap, using demo data');
+        }
         return { data: getMockLatencyHeatmap(window), isMock: true };
       }
       throw error;
@@ -151,9 +175,17 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
-      // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
-      if (fallbackToMock && !(error instanceof SyntaxError)) {
-        console.warn('[ExtractionSource] API unavailable for pattern volume, using demo data');
+      if (fallbackToMock) {
+        if (error instanceof SyntaxError) {
+          // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
+          // Log as error (not warn) so developers notice, but still fall back to demo data.
+          console.error(
+            '[ExtractionSource] Malformed JSON from API for pattern volume, falling back to demo data',
+            error
+          );
+        } else {
+          console.warn('[ExtractionSource] API unavailable for pattern volume, using demo data');
+        }
         return { data: getMockPatternVolume(window), isMock: true };
       }
       throw error;
@@ -173,9 +205,17 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
-      // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
-      if (fallbackToMock && !(error instanceof SyntaxError)) {
-        console.warn('[ExtractionSource] API unavailable for error rates, using demo data');
+      if (fallbackToMock) {
+        if (error instanceof SyntaxError) {
+          // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
+          // Log as error (not warn) so developers notice, but still fall back to demo data.
+          console.error(
+            '[ExtractionSource] Malformed JSON from API for error rates, falling back to demo data',
+            error
+          );
+        } else {
+          console.warn('[ExtractionSource] API unavailable for error rates, using demo data');
+        }
         return { data: getMockErrorRatesSummary(), isMock: true };
       }
       throw error;
