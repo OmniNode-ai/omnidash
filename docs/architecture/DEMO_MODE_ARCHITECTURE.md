@@ -234,4 +234,4 @@ return (
 
 - Demo mode is **client-side only**. The server never knows demo mode is active — all API routes remain functional and serve real data. The client simply does not call them.
 - Demo mode does not affect WebSocket connections at the server level. The `useProjectionStream` hook is disabled client-side (`enabled: false`), but the server continues broadcasting events to any other connected clients.
-- Demo mode state is **not shared** across browser tabs. Each tab tracks its own `localStorage` entry independently.
+- Demo mode state does **not synchronize reactively** across browser tabs. `localStorage` is shared by the Web Storage API, but omnidash does not register a `storage` event listener, so toggling demo mode in one tab does not update other open tabs until they are refreshed.

@@ -56,7 +56,7 @@
 
 **Dashboard Layout Pattern** (All Dashboards):
 
-```
+```text
 Header (h-16): Logo, Dashboard Title, Global Controls
 Sidebar (w-64): Navigation (4 category dashboards + collapsible Advanced section)
 Main Content (flex-1): Grid of metric cards and visualizations

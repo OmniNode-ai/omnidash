@@ -95,7 +95,7 @@ These routes remain accessible but are not in the active sidebar navigation. The
 
 ## Data Source File Inventory
 
-All data source files live in `client/src/lib/data-sources/`. Each implements an API-first pattern with transparent mock fallback. See `DATA_SOURCE_PATTERN.md` or `DEMO_MODE_ARCHITECTURE.md` for the pattern details.
+All data source files live in `client/src/lib/data-sources/`. Each implements an API-first pattern with transparent mock fallback. See `docs/conventions/DATA_SOURCE_CONTRACTS.md` or `DEMO_MODE_ARCHITECTURE.md` for the pattern details.
 
 | File | Dashboard(s) |
 |---|---|

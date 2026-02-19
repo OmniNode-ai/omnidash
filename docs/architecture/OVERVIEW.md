@@ -6,7 +6,7 @@ Omnidash is a real-time monitoring dashboard for the OmniNode AI agent system. I
 
 ## Monorepo Structure
 
-```
+```text
 omnidash/
 ├── client/          # React frontend (Vite, TanStack Query, Wouter)
 │   └── src/
@@ -54,7 +54,7 @@ omnidash/
 
 Events from the OmniNode platform are published to Kafka topics and consumed by omnidash's `ReadModelConsumer`, which projects them into the local `omnidash_analytics` PostgreSQL database. The Express API reads from this database to serve dashboard data.
 
-```
+```text
 OmniNode platform services
         |
         | publish events
@@ -106,7 +106,7 @@ OmniNode platform services
 
 A second consumer group (`omnidash-consumers-v2`) runs in `event-consumer.ts` for low-latency in-memory aggregation. Events from this consumer are broadcast over WebSocket to subscribed clients with sub-100ms latency.
 
-```
+```text
 Kafka topics
         |
         | KafkaJS consumer

@@ -111,7 +111,7 @@ This means that after server startup, the set of topics the event stream monitor
 
 ## Timeout and Fallback
 
-If no catalog response arrives within `CATALOG_TIMEOUT_MS` (default 5000ms, 200ms in tests):
+If no catalog response arrives within `CATALOG_TIMEOUT_MS` (default 5000 ms, 200 ms in tests):
 
 ```typescript
 this.timeoutHandle = setTimeout(() => {

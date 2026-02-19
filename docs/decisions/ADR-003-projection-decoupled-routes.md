@@ -30,7 +30,7 @@ Each major dashboard domain gets its own isolated projection scope. Concretely:
 
 `read-model-consumer.ts` contains one dedicated `project*()` method for each Kafka topic. Each method handles its own database write, its own error boundary, and its own watermark update. No method shares mutable state with another.
 
-```
+```text
 projectRoutingDecision()   -> agent_routing_decisions
 projectAgentAction()       -> agent_actions
 projectTransformationEvent() -> agent_transformation_events

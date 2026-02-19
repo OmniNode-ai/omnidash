@@ -18,7 +18,7 @@ The `ReadModelConsumer` class (`server/read-model-consumer.ts`) is the heart of 
 
 ### Lifecycle
 
-```
+```text
 server startup
      |
      v
