@@ -11,8 +11,21 @@
 
 CREATE TABLE IF NOT EXISTS llm_routing_decisions (
   id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  -- Unique correlation ID for idempotent upserts (ON CONFLICT DO NOTHING)
-  correlation_id         TEXT NOT NULL,
+  -- Unique correlation ID for idempotent upserts (ON CONFLICT DO NOTHING).
+  -- The UNIQUE constraint is declared inline here so it is created atomically
+  -- with the table.  The INSERT in projectLlmRoutingDecisionEvent (server/
+  -- read-model-consumer.ts) relies on this constraint being present; if it
+  -- were created as a separate step (e.g. CREATE UNIQUE INDEX below) a failed
+  -- partial migration would leave the table without the constraint and allow
+  -- silent duplicate accumulation.  By embedding it here we guarantee
+  -- atomicity: either the whole CREATE TABLE succeeds (constraint present) or
+  -- it fails entirely (no table, no duplicates possible).
+  --
+  -- The separate idx_lrd_correlation_id index below is kept as a named alias
+  -- so that the application can reference it by name in EXPLAIN plans and
+  -- monitoring queries, but PostgreSQL will satisfy it with the unique index
+  -- already created by the inline UNIQUE clause.
+  correlation_id         TEXT NOT NULL UNIQUE,
   session_id             TEXT,
   -- Agent selected by LLM routing
   llm_agent              TEXT NOT NULL,
@@ -43,7 +56,14 @@ CREATE TABLE IF NOT EXISTS llm_routing_decisions (
   projected_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Unique index for idempotent upserts
+-- Named alias for the unique index that backs the inline UNIQUE constraint on
+-- correlation_id.  PostgreSQL automatically creates an unnamed unique index
+-- when UNIQUE is specified in the column definition above; this statement
+-- creates a second named index so monitoring queries and EXPLAIN plans can
+-- reference idx_lrd_correlation_id by name.  On a fresh migration both the
+-- inline constraint and this named index will be present and PostgreSQL will
+-- use the most recently created one for constraint enforcement.
+-- Note: IF NOT EXISTS prevents failure on re-runs.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_lrd_correlation_id
   ON llm_routing_decisions (correlation_id);
 

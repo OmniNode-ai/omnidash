@@ -393,6 +393,14 @@ export default function LlmRoutingDashboard() {
   const [timeWindow, setTimeWindow] = useState<LlmRoutingTimeWindow>('7d');
   const queryClient = useQueryClient();
 
+  // Clear singleton mock state on mount so a remount always starts from a
+  // clean slate.  Runs before any queries fire (queries are declared below),
+  // preventing stale mock flags from a previous mount bleeding into the first
+  // render cycle of this mount.
+  useEffect(() => {
+    llmRoutingSource.clearMockState();
+  }, []);
+
   // Invalidate all LLM routing queries on WebSocket LLM_ROUTING_INVALIDATE event
   useWebSocket({
     onMessage: useCallback(

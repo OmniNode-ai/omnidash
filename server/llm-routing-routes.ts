@@ -48,7 +48,7 @@ router.get('/summary', (req, res) => {
     // llm-routing projection is wired (see TODO below).
     // TODO(OMN-2279-followup): Replace with projectionService.getView('llm-routing').getSnapshot()
     // once the llm-routing projection is implemented. Use `_timeWindow` to scope the query.
-    const empty: LlmRoutingSummary = {
+    return res.json({
       total_decisions: 0,
       agreement_rate: 0,
       fallback_rate: 0,
@@ -59,8 +59,7 @@ router.get('/summary', (req, res) => {
       fuzzy_p95_latency_ms: 0,
       counts: { total: 0, agreed: 0, disagreed: 0, fallback: 0 },
       agreement_rate_trend: [],
-    };
-    return res.json(empty);
+    } satisfies LlmRoutingSummary);
   } catch (error) {
     console.error('[llm-routing] Error fetching summary:', error);
     return res.status(500).json({ error: 'Failed to fetch LLM routing summary' });
@@ -77,8 +76,7 @@ router.get('/latency', (req, res) => {
     if (_timeWindow === null) return;
     // _timeWindow is validated above and will be passed to the DB query when wired.
     // TODO(OMN-2279-followup): Replace with projection view query scoped to `_timeWindow`.
-    const data: LlmRoutingLatencyPoint[] = [];
-    return res.json(data);
+    return res.json([] satisfies LlmRoutingLatencyPoint[]);
   } catch (error) {
     console.error('[llm-routing] Error fetching latency:', error);
     return res.status(500).json({ error: 'Failed to fetch LLM routing latency' });
@@ -95,8 +93,7 @@ router.get('/by-version', (req, res) => {
     if (_timeWindow === null) return;
     // _timeWindow is validated above and will be passed to the DB query when wired.
     // TODO(OMN-2279-followup): Replace with projection view query scoped to `_timeWindow`.
-    const data: LlmRoutingByVersion[] = [];
-    return res.json(data);
+    return res.json([] satisfies LlmRoutingByVersion[]);
   } catch (error) {
     console.error('[llm-routing] Error fetching by-version:', error);
     return res.status(500).json({ error: 'Failed to fetch LLM routing by version' });
@@ -113,8 +110,7 @@ router.get('/disagreements', (req, res) => {
     if (_timeWindow === null) return;
     // _timeWindow is validated above and will be passed to the DB query when wired.
     // TODO(OMN-2279-followup): Replace with projection view query scoped to `_timeWindow`.
-    const data: LlmRoutingDisagreement[] = [];
-    return res.json(data);
+    return res.json([] satisfies LlmRoutingDisagreement[]);
   } catch (error) {
     console.error('[llm-routing] Error fetching disagreements:', error);
     return res.status(500).json({ error: 'Failed to fetch LLM routing disagreements' });
@@ -131,8 +127,7 @@ router.get('/trend', (req, res) => {
     if (_timeWindow === null) return;
     // _timeWindow is validated above and will be passed to the DB query when wired.
     // TODO(OMN-2279-followup): Replace with projection view query scoped to `_timeWindow`.
-    const data: LlmRoutingTrendPoint[] = [];
-    return res.json(data);
+    return res.json([] satisfies LlmRoutingTrendPoint[]);
   } catch (error) {
     console.error('[llm-routing] Error fetching trend:', error);
     return res.status(500).json({ error: 'Failed to fetch LLM routing trend' });

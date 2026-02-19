@@ -83,7 +83,7 @@ class LlmRoutingSource {
       const response = await fetch(`${this.baseUrl}/summary${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: LlmRoutingSummary = await response.json();
-      if (data.total_decisions === undefined) {
+      if (data.total_decisions == null) {
         throw new Error('Malformed response: missing total_decisions');
       }
       if (mockOnEmpty && data.total_decisions === 0) {
