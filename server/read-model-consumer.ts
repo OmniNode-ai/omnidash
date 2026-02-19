@@ -76,32 +76,89 @@ function deterministicCorrelationId(topic: string, partition: number, offset: st
 }
 
 /**
- * Parse a date string safely, returning a fallback of `new Date()` when the
- * input is missing or produces an invalid Date (e.g. malformed ISO string).
+ * Parse a date string safely, returning the current wall-clock time (`new
+ * Date()`) when the input is missing or produces an invalid Date (e.g.
+ * malformed ISO string).
  *
- * RISK: The "now" fallback causes a missing/malformed timestamp to be treated
- * as the current time. For fields like computed_at_utc this can incorrectly
- * rank a malformed event as the "latest" snapshot — callers should treat
- * events that triggered this fallback with suspicion.
+ * Wall-clock is used as the fallback so that rows with a missing/malformed
+ * timestamp are stored with a "reasonable recent" time rather than 1970-01-01,
+ * which would make them appear as the oldest records in the system.
+ *
+ * Use `safeParseDateOrMin` instead when epoch-zero (sorting last as oldest) is
+ * the desired sentinel — currently only for `computedAtUtc` in baselines
+ * snapshots.
  */
 function safeParseDate(value: unknown): Date {
   if (!value) {
-    console.warn(
-      '[ReadModelConsumer] safeParseDate: missing timestamp value, falling back to now()'
-    );
     return new Date();
   }
   const d = new Date(value as string);
   if (!Number.isFinite(d.getTime())) {
     console.warn(
-      `[ReadModelConsumer] safeParseDate: malformed timestamp "${value}", falling back to now()`
+      `[ReadModelConsumer] safeParseDate: malformed timestamp "${value}", falling back to wall-clock`
     );
     return new Date();
   }
   return d;
 }
 
+/**
+ * Parse a date string safely, returning epoch-zero (`new Date(0)`) when the
+ * input is missing or produces an invalid Date (e.g. malformed ISO string).
+ *
+ * Epoch-zero is used as a min-date sentinel so that rows with a
+ * missing/malformed timestamp sort last (oldest) rather than first (newest)
+ * when the field is used as an ordering key such as MAX(computed_at_utc) for
+ * "latest snapshot". A wall-clock fallback would incorrectly rank a malformed
+ * event as the most recent snapshot, hiding correct data from callers.
+ *
+ * Only use this variant for fields where epoch-zero-as-oldest is intentional.
+ * Use `safeParseDate` for all other timestamp fields.
+ */
+function safeParseDateOrMin(value: unknown): Date {
+  if (!value) {
+    console.warn(
+      '[ReadModelConsumer] safeParseDateOrMin: missing timestamp value, falling back to epoch-zero'
+    );
+    return new Date(0);
+  }
+  const d = new Date(value as string);
+  if (!Number.isFinite(d.getTime())) {
+    console.warn(
+      `[ReadModelConsumer] safeParseDateOrMin: malformed timestamp "${value}", falling back to epoch-zero`
+    );
+    return new Date(0);
+  }
+  // Extra guard: a valid-but-suspiciously-old date (before 2020) almost
+  // certainly indicates a malformed value (e.g. an accidental epoch-seconds
+  // value interpreted as milliseconds). Treat it as missing.
+  if (d.getFullYear() < 2020) {
+    console.warn(
+      `[ReadModelConsumer] safeParseDateOrMin: timestamp "${value}" parsed to year ${d.getFullYear()} (< 2020), treating as epoch-zero sentinel`
+    );
+    return new Date(0);
+  }
+  return d;
+}
+
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
+
+// UUID validation regex — hoisted to module scope so it is compiled once rather
+// than once per Kafka message inside projectBaselinesSnapshot().
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// PostgreSQL hard limit is 65535 parameters per query.
+// The widest baselines child table (comparisons) has 14 explicit user params
+// (snapshotId, patternId, patternName, sampleSize, windowStart, windowEnd,
+//  tokenDelta, timeDelta, retryDelta, testPassRateDelta, reviewIterationDelta,
+//  recommendation, confidence, rationale — DB handles id and createdAt).
+// floor(65535 / 14) = 4681 safe rows. Use 4000 as a conservative cap with margin.
+const MAX_BATCH_ROWS = 4000;
+
+// Hoisted to module scope — shared by both comparison and breakdown writers so validation
+// is applied consistently at ingest time (write-time) rather than silently at read-time.
+const VALID_PROMOTION_ACTIONS = new Set(['promote', 'shadow', 'suppress', 'fork']);
+const VALID_CONFIDENCE_LEVELS = new Set(['high', 'medium', 'low']);
 
 // Consumer configuration
 const CONSUMER_GROUP_ID = process.env.READ_MODEL_CONSUMER_GROUP_ID || 'omnidash-read-model-v1';
@@ -997,17 +1054,30 @@ export class ReadModelConsumer {
     if (!db) return false;
 
     // snapshot_id is required — it is the dedup key.
-    // Fall back to a deterministic hash so that malformed events with a missing
-    // snapshot_id still produce a stable key (idempotent on replay).
-    // NOTE: If this event is later re-delivered with a populated snapshot_id,
+    // Fall back to a deterministic hash when snapshot_id is absent OR when it
+    // is present but not a valid UUID (e.g. a slug or opaque string). PostgreSQL
+    // uuid primary key columns reject malformed values with a runtime error; a
+    // truthy-but-non-UUID snapshot_id would bypass the falsy guard below and
+    // crash the DB transaction.
+    // NOTE: If this event is later re-delivered with a valid snapshot_id,
     // a second orphaned snapshot row will result (no automatic reconciliation).
     // This hash-based ID is a best-effort fallback for malformed events only.
+    const rawSnapshotId = data.snapshot_id as string | undefined;
     const snapshotId =
-      (data.snapshot_id as string) ||
-      deterministicCorrelationId('baselines-computed', partition, offset);
+      rawSnapshotId && UUID_RE.test(rawSnapshotId)
+        ? rawSnapshotId
+        : deterministicCorrelationId('baselines-computed', partition, offset);
 
-    const contractVersion = Number(data.contract_version ?? 1);
-    const computedAtUtc = safeParseDate(
+    // String(null) → 'null', String(undefined) → 'undefined', String(0) → '0'.
+    // parseInt('null', 10) and parseInt('undefined', 10) both return NaN, which
+    // falls through to the || 1 default. A previous ?? '' guard was dead code:
+    // String() never produces '' for null or undefined, so the guard was never
+    // reached. Removed in favour of the simpler two-step form below.
+    const contractVersion = parseInt(String(data.contract_version), 10) || 1;
+    // Use safeParseDateOrMin so that a missing/malformed computedAtUtc sorts
+    // as oldest (epoch-zero) rather than newest (wall-clock), preventing a
+    // bad event from masquerading as the latest snapshot.
+    const computedAtUtc = safeParseDateOrMin(
       data.computed_at_utc ?? data.computedAtUtc ?? data.computed_at
     );
     const windowStartUtc = data.window_start_utc
@@ -1023,9 +1093,109 @@ export class ReadModelConsumer {
 
     // Parse child arrays from the event payload.
     // These may be under camelCase or snake_case keys depending on producer.
-    const rawComparisons = Array.isArray(data.comparisons) ? data.comparisons : [];
-    const rawTrend = Array.isArray(data.trend) ? data.trend : [];
-    const rawBreakdown = Array.isArray(data.breakdown) ? data.breakdown : [];
+    //
+    // Guard against PostgreSQL's hard limit of 65535 parameters per query.
+    // Each child-table row has at most 14 explicit user params (comparisons),
+    // giving a safe ceiling of 4681 rows. Cap at MAX_BATCH_ROWS (module-scope
+    // constant) to leave headroom. Log a warning when the cap fires so
+    // operators can investigate abnormally large upstream events.
+    const rawComparisonsAll = Array.isArray(data.comparisons) ? data.comparisons : [];
+    if (rawComparisonsAll.length > MAX_BATCH_ROWS) {
+      console.warn(
+        `[ReadModelConsumer] baselines snapshot ${snapshotId} contains ` +
+          `${rawComparisonsAll.length} comparison rows — capping at ${MAX_BATCH_ROWS} to avoid ` +
+          `PostgreSQL parameter limit (65535). Excess rows will be dropped for this snapshot.`
+      );
+    }
+    const rawComparisons = rawComparisonsAll.slice(0, MAX_BATCH_ROWS);
+
+    const rawTrendAll = Array.isArray(data.trend) ? data.trend : [];
+    if (rawTrendAll.length > MAX_BATCH_ROWS) {
+      console.warn(
+        `[ReadModelConsumer] baselines snapshot ${snapshotId} contains ` +
+          `${rawTrendAll.length} trend rows — capping at ${MAX_BATCH_ROWS} to avoid ` +
+          `PostgreSQL parameter limit (65535). Excess rows will be dropped for this snapshot.`
+      );
+    }
+    const rawTrend = rawTrendAll.slice(0, MAX_BATCH_ROWS);
+
+    const rawBreakdownAll = Array.isArray(data.breakdown) ? data.breakdown : [];
+    if (rawBreakdownAll.length > MAX_BATCH_ROWS) {
+      console.warn(
+        `[ReadModelConsumer] baselines snapshot ${snapshotId} contains ` +
+          `${rawBreakdownAll.length} breakdown rows — capping at ${MAX_BATCH_ROWS} to avoid ` +
+          `PostgreSQL parameter limit (65535). Excess rows will be dropped for this snapshot.`
+      );
+    }
+    const rawBreakdown = rawBreakdownAll.slice(0, MAX_BATCH_ROWS);
+
+    // Build the filtered trend rows outside the transaction so the post-filter
+    // count is accessible for the success log below (Issue 1 fix).
+    const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[])
+      .filter((t) => {
+        const date = t.date ?? t.dateStr;
+        if (date == null || date === '') {
+          console.warn(
+            '[ReadModelConsumer] Skipping trend row with blank/null date:',
+            JSON.stringify(t)
+          );
+          return false;
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+          console.warn(
+            '[ReadModelConsumer] Skipping trend row with malformed date format (expected YYYY-MM-DD):',
+            JSON.stringify(t)
+          );
+          return false;
+        }
+        return true;
+      })
+      .map((t) => ({
+        snapshotId,
+        date: String(t.date ?? t.dateStr),
+        // NUMERIC(8,6) column: max 99.999999. Clamp to [0, 99] to prevent
+        // PostgreSQL overflow if producer sends percentage-scale values (e.g. 12.5%).
+        avgCostSavings: String(
+          Math.min(Math.max(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0), 0), 99)
+        ),
+        avgOutcomeImprovement: String(
+          Math.min(
+            Math.max(Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0), 0),
+            99
+          )
+        ),
+        comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
+      }));
+
+    // Deduplicate trend rows by date to prevent duplicate date inserts that would
+    // inflate projection averages. Migration 0005 adds a UNIQUE(snapshot_id, date)
+    // index as a DB-level guard; this dedup ensures duplicate-bearing payloads are
+    // silently handled rather than raising a DB error.
+    //
+    // "Last wins" policy: the Map is iterated in insertion order, so each
+    // occurrence of a duplicate date overwrites the previous one, keeping the
+    // last row from the upstream payload. This is intentional — the upstream
+    // producer emits trend rows ordered oldest-to-newest, so the last occurrence
+    // of a given date represents the most recently computed value for that day.
+    // If the producer's ordering guarantee is ever removed, "last wins" should
+    // be revisited in favour of an explicit max-by-field selection.
+    const trendRowsByDate = new Map<string, (typeof trendRows)[0]>();
+    for (const row of trendRows) {
+      trendRowsByDate.set(row.date, row);
+    }
+    const dedupedTrendRows = [...trendRowsByDate.values()];
+    if (dedupedTrendRows.length < trendRows.length) {
+      console.warn(
+        `[read-model-consumer] Deduplicated ${trendRows.length - dedupedTrendRows.length} ` +
+          `duplicate trend date(s) for snapshot ${snapshotId}`
+      );
+    }
+    const finalTrendRows = dedupedTrendRows;
+    if (rawTrend.length > 0 && finalTrendRows.length === 0) {
+      console.warn(
+        `[baselines] all ${rawTrend.length} trend rows filtered out for snapshot ${snapshotId} — check upstream data`
+      );
+    }
 
     try {
       // Upsert the snapshot header and replace child rows atomically inside a
@@ -1040,6 +1210,8 @@ export class ReadModelConsumer {
         windowEndUtc: windowEndUtc ?? undefined,
       };
 
+      let insertedComparisonCount = 0;
+      let insertedBreakdownCount = 0;
       await db.transaction(async (tx) => {
         // 1. Upsert the snapshot header — first operation in the transaction.
         await tx
@@ -1066,101 +1238,153 @@ export class ReadModelConsumer {
         if (rawComparisons.length > 0) {
           const comparisonRows: InsertBaselinesComparison[] = (
             rawComparisons as Record<string, unknown>[]
-          ).map((c) => ({
-            snapshotId,
-            patternId: String(c.pattern_id ?? c.patternId ?? ''),
-            patternName: String(c.pattern_name ?? c.patternName ?? ''),
-            sampleSize: Number(c.sample_size ?? c.sampleSize ?? 0),
-            windowStart: String(c.window_start ?? c.windowStart ?? ''),
-            windowEnd: String(c.window_end ?? c.windowEnd ?? ''),
-            tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
-            timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
-            retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
-            testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
-              string,
-              unknown
-            >,
-            reviewIterationDelta: (c.review_iteration_delta ??
-              c.reviewIterationDelta ??
-              {}) as Record<string, unknown>,
-            recommendation: String(c.recommendation ?? 'shadow'),
-            confidence: String(c.confidence ?? 'low'),
-            rationale: String(c.rationale ?? ''),
-          }));
-          await tx.insert(baselinesComparisons).values(comparisonRows);
-        }
-
-        await tx.delete(baselinesTrend).where(eq(baselinesTrend.snapshotId, snapshotId));
-
-        if (rawTrend.length > 0) {
-          const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[])
-            .filter((t) => {
-              const date = t.date ?? t.dateStr;
-              if (date == null || date === '') {
+          )
+            .filter((c) => {
+              const pid = String(c.pattern_id ?? c.patternId ?? '').trim();
+              if (!pid) {
                 console.warn(
-                  '[ReadModelConsumer] Skipping trend row with blank/null date:',
-                  JSON.stringify(t)
-                );
-                return false;
-              }
-              if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
-                console.warn(
-                  '[ReadModelConsumer] Skipping trend row with malformed date format (expected YYYY-MM-DD):',
-                  JSON.stringify(t)
+                  `[read-model-consumer] Skipping comparison row with blank pattern_id for snapshot ${snapshotId}`
                 );
                 return false;
               }
               return true;
             })
-            .map((t) => ({
+            .map((c) => ({
               snapshotId,
-              date: String(t.date),
-              avgCostSavings: String(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)),
-              avgOutcomeImprovement: String(
-                Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
-              ),
-              comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
+              patternId: String(c.pattern_id ?? c.patternId ?? ''),
+              patternName: String(c.pattern_name ?? c.patternName ?? ''),
+              sampleSize: Number(c.sample_size ?? c.sampleSize ?? 0),
+              windowStart: String(c.window_start ?? c.windowStart ?? ''),
+              windowEnd: String(c.window_end ?? c.windowEnd ?? ''),
+              tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
+              timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
+              retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
+              testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
+                string,
+                unknown
+              >,
+              reviewIterationDelta: (c.review_iteration_delta ??
+                c.reviewIterationDelta ??
+                {}) as Record<string, unknown>,
+              recommendation: (() => {
+                const raw = String(c.recommendation ?? '');
+                return VALID_PROMOTION_ACTIONS.has(raw) ? raw : 'shadow';
+              })(),
+              confidence: (() => {
+                const raw = String(c.confidence ?? '').toLowerCase();
+                return VALID_CONFIDENCE_LEVELS.has(raw) ? raw : 'low';
+              })(),
+              rationale: String(c.rationale ?? ''),
             }));
-          if (trendRows.length > 0) {
-            await tx.insert(baselinesTrend).values(trendRows);
+          if (comparisonRows.length === 0) {
+            console.warn(
+              `[baselines] all ${rawComparisons.length} comparison rows filtered out for snapshot ${snapshotId} — check upstream data`
+            );
+          } else {
+            await tx.insert(baselinesComparisons).values(comparisonRows);
           }
+          insertedComparisonCount = comparisonRows.length;
+        }
+
+        await tx.delete(baselinesTrend).where(eq(baselinesTrend.snapshotId, snapshotId));
+
+        if (finalTrendRows.length > 0) {
+          await tx.insert(baselinesTrend).values(finalTrendRows);
         }
 
         await tx.delete(baselinesBreakdown).where(eq(baselinesBreakdown.snapshotId, snapshotId));
 
         if (rawBreakdown.length > 0) {
-          const breakdownRows: InsertBaselinesBreakdown[] = (
+          const breakdownRowsRaw: InsertBaselinesBreakdown[] = (
             rawBreakdown as Record<string, unknown>[]
-          ).map((b) => ({
-            snapshotId,
-            action: String(b.action ?? 'shadow'),
-            count: Number(b.count ?? 0),
-            avgConfidence: String(Number(b.avg_confidence ?? b.avgConfidence ?? 0)),
-          }));
-          await tx.insert(baselinesBreakdown).values(breakdownRows);
+          ).map((b) => {
+            const rawAction = String(b.action ?? '');
+            const action = VALID_PROMOTION_ACTIONS.has(rawAction) ? rawAction : 'shadow';
+            return {
+              snapshotId,
+              action,
+              count: Number(b.count ?? 0),
+              // NUMERIC(5,4) column: max 9.9999. Clamp to [0, 1] since confidence
+              // is a 0-1 ratio; guard against out-of-range producer values.
+              avgConfidence: String(
+                Math.min(Math.max(Number(b.avg_confidence ?? b.avgConfidence ?? 0), 0), 1)
+              ),
+            };
+          });
+
+          // Deduplicate breakdown rows by action (keep last occurrence) to prevent
+          // duplicate action entries that would cause _deriveSummary() to double-count
+          // promote_count/shadow_count/etc. A DB-level UNIQUE(snapshot_id, action)
+          // index is added by migrations/0006_baselines_breakdown_unique.sql as a
+          // backup guard; this app-level dedup remains as the primary defence so
+          // the transaction never surfaces a constraint violation to callers.
+          // (Analogous to the dedup applied to trend rows above, backed by 0005.)
+          const breakdownByAction = new Map<string, (typeof breakdownRowsRaw)[0]>();
+          for (const row of breakdownRowsRaw) {
+            breakdownByAction.set(row.action, row);
+          }
+          const breakdownRows = [...breakdownByAction.values()];
+          if (breakdownRows.length < breakdownRowsRaw.length) {
+            console.warn(
+              `[read-model-consumer] Deduplicated ${breakdownRowsRaw.length - breakdownRows.length} ` +
+                `duplicate breakdown action(s) for snapshot ${snapshotId}`
+            );
+          }
+
+          if (breakdownRows.length === 0) {
+            console.warn(
+              `[baselines] all ${rawBreakdown.length} breakdown rows filtered out for snapshot ${snapshotId} — check upstream data`
+            );
+          } else {
+            await tx.insert(baselinesBreakdown).values(breakdownRows);
+          }
+          insertedBreakdownCount = breakdownRows.length;
         }
       });
 
       // Invalidate the baselines projection cache so the next API request
       // returns fresh data from the newly projected snapshot.
-      baselinesProjection.reset();
+      // Wrapped defensively: a failure here must not block watermark advancement —
+      // the DB writes have already committed successfully.
+      try {
+        baselinesProjection.reset();
+      } catch (e) {
+        console.warn('[read-model-consumer] baselinesProjection.reset() failed post-commit:', e);
+      }
 
       // Notify WebSocket clients subscribed to the 'baselines' topic.
-      // Called here (inside the try block) so clients are only notified when
+      // Called here (after transaction commits) so clients are only notified when
       // all DB writes have committed successfully.
-      emitBaselinesUpdate(snapshotId);
+      // Wrapped defensively: a failure here must not block watermark advancement.
+      try {
+        emitBaselinesUpdate(snapshotId);
+      } catch (e) {
+        console.warn('[read-model-consumer] emitBaselinesUpdate() failed post-commit:', e);
+      }
 
       console.log(
         `[ReadModelConsumer] Projected baselines snapshot ${snapshotId} ` +
-          `(${rawComparisons.length} comparisons, ${rawTrend.length} trend points, ` +
-          `${rawBreakdown.length} breakdown rows)`
+          `(${insertedComparisonCount} comparisons, ${finalTrendRows.length} trend points, ` +
+          `${insertedBreakdownCount} breakdown rows)`
       );
     } catch (err) {
       // Degrade gracefully: if the table doesn't exist yet (migration not run),
       // advance the watermark so the consumer is not stuck retrying indefinitely.
+      //
+      // Primary check: PostgreSQL error code 42P01 ("undefined_table").
+      // The pg / @neondatabase/serverless driver surfaces this as a `.code`
+      // property on the thrown Error object.
+      //
+      // Fallback string check retained for defensive coverage in case the
+      // driver wraps the error in a way that omits the code property.
+      // Anchored to the primary table name so that 42703 "column does not exist"
+      // errors from schema bugs are not silently swallowed as missing migrations.
       const pgCode = (err as { code?: string }).code;
       const msg = err instanceof Error ? err.message : String(err);
-      if (pgCode === '42P01' || (msg.includes('baselines_') && msg.includes('does not exist'))) {
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('baselines_snapshots') && msg.includes('does not exist'))
+      ) {
         console.warn(
           '[ReadModelConsumer] baselines_* tables not yet created -- ' +
             'run migrations to enable baselines projection'

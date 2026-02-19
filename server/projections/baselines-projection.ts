@@ -35,7 +35,7 @@ import type {
   PromotionAction,
   ConfidenceLevel,
 } from '@shared/baselines-types';
-import { DbBackedProjectionView, DEFAULT_CACHE_TTL_MS } from './db-backed-projection-view';
+import { DbBackedProjectionView } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
 
 // ============================================================================
@@ -108,6 +108,7 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
         avg_outcome_improvement: 0,
         total_token_savings: 0,
         total_time_savings_ms: 0,
+        trend_point_count: 0,
       },
       comparisons: [],
       trend: [],
@@ -115,6 +116,11 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     };
   }
 
+  // Limit does not apply to baselines — we always load the full latest snapshot in a single
+  // query. The parent signature is `querySnapshot(db, limit?)` but baselines never paginates:
+  // comparisons, trend, and breakdown are all fetched in full for the latest snapshot_id and
+  // then filtered/sliced at the route layer (e.g. ensureFreshForDays). Omitting `limit` here
+  // is intentional; do not add it without a corresponding pagination strategy in the queries.
   protected async querySnapshot(db: Db): Promise<BaselinesPayload> {
     const snapshotId = await this._queryLatestSnapshotId(db);
     if (!snapshotId) {
@@ -143,15 +149,43 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
    * This method re-uses that cache and applies a client-side filter on `date`
    * so the route does not need to re-query the DB per `days` value.
    *
-   * TTL: delegates to ensureFresh(), so the same 5-second TTL applies.
+   * TTL: delegates to ensureFresh(), so the same DEFAULT_CACHE_TTL_MS TTL applies.
    */
   async ensureFreshForDays(days: number): Promise<BaselinesPayload> {
     const payload = await this.ensureFresh();
 
-    if (days <= 0) return payload;
+    // Edge case: non-finite or non-positive days returns the full unfiltered dataset.
+    // Number.isFinite() rejects both NaN and ±Infinity; the days <= 0 guard covers
+    // zero and negative values. In practice the API route clamps the caller-supplied
+    // value to the range [1, 90], so this branch should not be reachable through
+    // normal HTTP traffic, but we guard defensively to avoid depending on the
+    // route's || 14 fallback for NaN-safety.
+    if (!Number.isFinite(days) || days <= 0) return payload;
 
+    // Timezone limitation: the cutoff is derived from Date.now() (server wall-clock)
+    // then converted to UTC via toISOString(). Trend dates are stored as YYYY-MM-DD
+    // strings in UTC (written by the upstream producer). If the server's local timezone
+    // is behind UTC (e.g. UTC-8), Date.now() at 23:00 local is already the next UTC
+    // date, so the cutoff may be one day ahead of what the operator expects. This is
+    // a cosmetic off-by-one; no data is lost, but the filtered window may appear one
+    // day shorter than requested in western-hemisphere deployments.
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10); // YYYY-MM-DD
 
+    // INTENTIONAL DESIGN: summary.trend_point_count in the returned payload
+    // reflects the LIFETIME count (i.e. all trend points in the latest snapshot),
+    // NOT the filtered view window (trend.length after applying the days cutoff).
+    //
+    // This is by design: the summary averages (avg_cost_savings,
+    // avg_outcome_improvement) are computed by _deriveSummary() over the full
+    // lifetime trend before any date filter is applied.  trend_point_count
+    // documents the statistical basis for those averages — how many trend
+    // points were used to compute them — so it must match the lifetime count,
+    // not the view window.
+    //
+    // Callers that need the number of points visible in the filtered trend
+    // array should use `payload.trend.length` directly after this call.
+    //
+    // See also: BaselinesSummary.trend_point_count JSDoc in shared/baselines-types.ts.
     return {
       ...payload,
       // NOTE: This comparison relies on lexicographic string ordering.
@@ -170,7 +204,7 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     const rows = await db
       .select({ snapshotId: baselinesSnapshots.snapshotId })
       .from(baselinesSnapshots)
-      .orderBy(desc(baselinesSnapshots.computedAtUtc))
+      .orderBy(desc(baselinesSnapshots.computedAtUtc), desc(baselinesSnapshots.projectedAt))
       .limit(1);
 
     return rows[0]?.snapshotId ?? null;
@@ -180,7 +214,8 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     const rows = await db
       .select()
       .from(baselinesComparisons)
-      .where(eq(baselinesComparisons.snapshotId, snapshotId));
+      .where(eq(baselinesComparisons.snapshotId, snapshotId))
+      .orderBy(asc(baselinesComparisons.patternName));
 
     return rows.map((r) => {
       const recommendation = isValidPromotionAction(r.recommendation) ? r.recommendation : 'shadow';
@@ -211,25 +246,42 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
       .where(eq(baselinesTrend.snapshotId, snapshotId))
       .orderBy(asc(baselinesTrend.date));
 
-    return rows.map((r) => ({
-      date: r.date,
-      avg_cost_savings: parseFloat(r.avgCostSavings),
-      avg_outcome_improvement: parseFloat(r.avgOutcomeImprovement),
-      comparisons_evaluated: r.comparisonsEvaluated,
-    }));
+    return rows.map((r) => {
+      const rawCostSavings = parseFloat(r.avgCostSavings);
+      const rawOutcomeImprovement = parseFloat(r.avgOutcomeImprovement);
+      return {
+        date: r.date,
+        avg_cost_savings: isFinite(rawCostSavings) ? rawCostSavings : 0,
+        avg_outcome_improvement: isFinite(rawOutcomeImprovement) ? rawOutcomeImprovement : 0,
+        comparisons_evaluated: r.comparisonsEvaluated,
+      };
+    });
   }
 
   private async _queryBreakdown(db: Db, snapshotId: string): Promise<RecommendationBreakdown[]> {
     const rows = await db
       .select()
       .from(baselinesBreakdown)
-      .where(eq(baselinesBreakdown.snapshotId, snapshotId));
+      .where(eq(baselinesBreakdown.snapshotId, snapshotId))
+      .orderBy(asc(baselinesBreakdown.action));
 
-    return rows.map((r) => ({
-      action: (isValidPromotionAction(r.action) ? r.action : 'shadow') as PromotionAction,
-      count: r.count,
-      avg_confidence: parseFloat(r.avgConfidence),
-    }));
+    return rows.map((r) => {
+      const rawConfidence = parseFloat(r.avgConfidence);
+      let action: PromotionAction;
+      if (isValidPromotionAction(r.action)) {
+        action = r.action;
+      } else {
+        console.warn(
+          `[baselines-projection] Unknown recommendation '${r.action}' for snapshot ${snapshotId}, defaulting to 'shadow'`
+        );
+        action = 'shadow';
+      }
+      return {
+        action,
+        count: r.count,
+        avg_confidence: isFinite(rawConfidence) ? rawConfidence : 0,
+      };
+    });
   }
 
   // --------------------------------------------------------------------------
@@ -257,15 +309,21 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     }
 
     // Aggregate token and time savings across all comparison rows.
-    // Savings = baseline - candidate for 'lower_is_better' metrics.
+    // For 'lower_is_better' metrics (e.g. token cost): savings = baseline - candidate
+    // For 'higher_is_better' metrics (e.g. throughput): savings = candidate - baseline
+    // Both formulas produce a positive value when the candidate improves on the baseline.
     let totalTokenSavings = 0;
     let totalTimeSavingsMs = 0;
     for (const c of comparisons) {
       if (c.token_delta.direction === 'lower_is_better') {
         totalTokenSavings += c.token_delta.baseline - c.token_delta.candidate;
+      } else if (c.token_delta.direction === 'higher_is_better') {
+        totalTokenSavings += c.token_delta.candidate - c.token_delta.baseline;
       }
       if (c.time_delta.direction === 'lower_is_better') {
         totalTimeSavingsMs += c.time_delta.baseline - c.time_delta.candidate;
+      } else if (c.time_delta.direction === 'higher_is_better') {
+        totalTimeSavingsMs += c.time_delta.candidate - c.time_delta.baseline;
       }
     }
 
@@ -285,6 +343,10 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     //   - This is a "mean of trend-point means": each `avg_cost_savings` value in
     //     `baselinesTrend` is itself a per-day average stored by the upstream writer;
     //     we are averaging those per-day averages here.
+    // TODO(UI): Surface `trend_point_count` in the BaselinesROI page alongside
+    // avg_cost_savings and avg_outcome_improvement so end users can judge the
+    // statistical weight behind these means (1 day of data vs. 365 days of data
+    // both yield a single number today with no visibility into sample size).
     const avgCostSavings =
       trend.length > 0 ? trend.reduce((sum, t) => sum + t.avg_cost_savings, 0) / trend.length : 0;
     const avgOutcomeImprovement =
@@ -292,6 +354,10 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
         ? trend.reduce((sum, t) => sum + t.avg_outcome_improvement, 0) / trend.length
         : 0;
 
+    // NOTE: total_comparisons counts rows in the comparisons table (may be capped at
+    // MAX_BATCH_ROWS on ingest), while promote_count/shadow_count/etc. come from the
+    // breakdown table (pre-aggregated by the producer). If the batch cap fired, these
+    // two sources will disagree. This is expected and documented behaviour.
     return {
       total_comparisons: comparisons.length,
       promote_count: promoteCounts.promote,
@@ -302,9 +368,7 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
       avg_outcome_improvement: avgOutcomeImprovement,
       total_token_savings: totalTokenSavings,
       total_time_savings_ms: totalTimeSavingsMs,
+      trend_point_count: trend.length,
     };
   }
 }
-
-// Re-export DEFAULT_CACHE_TTL_MS so tests can use the same constant
-export { DEFAULT_CACHE_TTL_MS };

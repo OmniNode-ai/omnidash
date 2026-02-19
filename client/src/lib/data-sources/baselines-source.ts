@@ -53,8 +53,14 @@ class BaselinesSource {
         this.markMock('summary');
         return getMockBaselinesSummary();
       }
+      // Guard: older server versions may omit trend_point_count. Return a new
+      // object rather than mutating the deserialized API response in place.
+      const summary: BaselinesSummary =
+        typeof data.trend_point_count === 'number'
+          ? (data as BaselinesSummary)
+          : { ...data, trend_point_count: 0 };
       this.markReal('summary');
-      return data;
+      return summary;
     } catch {
       if (fallbackToMock) {
         console.warn('[BaselinesSource] API unavailable for summary, using demo data');

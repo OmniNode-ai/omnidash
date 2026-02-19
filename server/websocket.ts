@@ -26,6 +26,7 @@ import {
 import { insightsEventEmitter } from './insights-events';
 import { baselinesEventEmitter } from './baselines-events';
 import { llmRoutingEventEmitter } from './llm-routing-events';
+import { effectivenessEventEmitter } from './effectiveness-events';
 import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
@@ -266,6 +267,10 @@ const VALID_TOPICS = [
   'execution-graph',
   // LLM routing invalidation events (OMN-2279)
   'llm-routing',
+  // Effectiveness metrics invalidation events (OMN-2328)
+  'effectiveness',
+  // Baselines ROI invalidation events (OMN-2331)
+  'baselines',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -522,6 +527,14 @@ export function setupWebSocket(httpServer: HTTPServer) {
     );
   };
   llmRoutingEventEmitter.on('llm-routing-invalidate', llmRoutingInvalidateHandler);
+
+  // Effectiveness invalidation listener (OMN-2328)
+  // Tells clients to re-fetch effectiveness data when new measurements are projected.
+  // Uses effectivenessEventEmitter so any module can trigger it without coupling to eventConsumer.
+  const effectivenessUpdateHandler = () => {
+    broadcast('EFFECTIVENESS_UPDATE', { timestamp: Date.now() }, 'effectiveness');
+  };
+  effectivenessEventEmitter.on('effectiveness-update', effectivenessUpdateHandler);
 
   // Node Registry event listeners
   registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {
@@ -1107,6 +1120,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Remove LLM routing event listener (OMN-2279)
     llmRoutingEventEmitter.removeListener('llm-routing-invalidate', llmRoutingInvalidateHandler);
+
+    // Remove effectiveness event listener (OMN-2328)
+    effectivenessEventEmitter.removeListener('effectiveness-update', effectivenessUpdateHandler);
 
     // Remove event bus data source listeners
     console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);

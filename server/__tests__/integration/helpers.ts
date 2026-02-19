@@ -17,6 +17,10 @@ import {
   injectionEffectiveness,
   latencyBreakdowns,
   patternHitRates,
+  baselinesBreakdown,
+  baselinesTrend,
+  baselinesComparisons,
+  baselinesSnapshots,
 } from '@shared/intelligence-schema';
 import type {
   InsertLearnedPattern,
@@ -26,6 +30,7 @@ import type {
 } from '@shared/intelligence-schema';
 import type { Express } from 'express';
 import { vi } from 'vitest';
+import { effectivenessMetricsProjection, baselinesProjection } from '../../projection-bootstrap';
 
 const { Pool } = pg;
 
@@ -235,6 +240,26 @@ export async function truncateEffectiveness(): Promise<void> {
   await testDb.delete(injectionEffectiveness);
 }
 
+/**
+ * Delete all rows from baselines_* tables.
+ *
+ * Child tables (baselines_breakdown, baselines_trend, baselines_comparisons)
+ * reference baselines_snapshots via FK with ON DELETE CASCADE, so deleting
+ * the parent snapshot rows would also remove children. We delete children
+ * explicitly first to mirror the migration order and keep behavior clear,
+ * then delete the parent. Uses DELETE (not TRUNCATE) to avoid permission
+ * issues.
+ */
+export async function truncateBaselines(): Promise<void> {
+  const testDb = getTestDb();
+  // Delete child tables first (FK references baselinesSnapshots.snapshotId)
+  await testDb.delete(baselinesBreakdown);
+  await testDb.delete(baselinesTrend);
+  await testDb.delete(baselinesComparisons);
+  // Delete parent last
+  await testDb.delete(baselinesSnapshots);
+}
+
 // ---------------------------------------------------------------------------
 // Express app factory
 // ---------------------------------------------------------------------------
@@ -256,8 +281,43 @@ export async function truncateEffectiveness(): Promise<void> {
 export async function createTestApp(
   registerRoutes: (app: Express) => void | Promise<void>
 ): Promise<Express> {
-  // Point storage.ts at the test database -- kept for the entire suite
-  vi.stubEnv('DATABASE_URL', process.env.TEST_DATABASE_URL!);
+  // Point storage.ts at the test database -- kept for the entire suite.
+  // Both OMNIDASH_ANALYTICS_DB_URL (priority 1) and DATABASE_URL (priority 2)
+  // must be stubbed so that whichever env var is set in the host environment,
+  // storage.ts always connects to the test database.
+  //
+  // Evaluation-order note: vi.stubEnv() must be called BEFORE the dynamic
+  // `await import('express')` (and any subsequent route imports) below.
+  // storage.ts initialises its connection pool lazily on first use, but the
+  // env vars are read at that point — not at test-file load time.  By
+  // stubbing here, before any module that transitively imports storage.ts is
+  // evaluated, we guarantee the live database URL is never seen inside the
+  // test process.
+  if (!process.env.TEST_DATABASE_URL) {
+    throw new Error(
+      'TEST_DATABASE_URL must be set for integration tests. ' +
+        'Set it to a PostgreSQL connection string targeting a database ending with _test or -test.'
+    );
+  }
+  // Safety check: refuse to run against a non-test database name to prevent
+  // accidental writes to production or staging databases.
+  // Anchored to the final path segment (database name) after the last slash.
+  // DB name must END with _test or -test (immediately before query/fragment or end of string).
+  // Expected URL format: postgresql://host:port/database_test  (no query params after db name)
+  // The character class [^/?#]* stops at the first '?', '#', or end-of-string, so query
+  // parameters after the database name (e.g. postgresql://host/mydb?sslmode=require) are not
+  // included in the match — 'mydb' alone is tested and correctly rejected. The actual limitation
+  // is that any db name containing '_test' or '-test' anywhere (e.g. 'my_test_db') would satisfy
+  // the suffix check even though the suffix isn't at the very end. This is acceptable: such names
+  // are sufficiently test-scoped for this guard's purpose.
+  if (!/\/[^/?#]*(_test|-test)([?#]|$)/i.test(process.env.TEST_DATABASE_URL)) {
+    throw new Error(
+      `TEST_DATABASE_URL "${process.env.TEST_DATABASE_URL}" does not appear to target a test database. ` +
+        'The database name must end with _test or -test.'
+    );
+  }
+  vi.stubEnv('OMNIDASH_ANALYTICS_DB_URL', process.env.TEST_DATABASE_URL);
+  vi.stubEnv('DATABASE_URL', process.env.TEST_DATABASE_URL);
 
   const { default: express } = await import('express');
   const app = express();
@@ -313,4 +373,49 @@ export async function closeTestDb(): Promise<void> {
     pool = null;
     db = null;
   }
+}
+
+/**
+ * Reset the effectiveness metrics projection cache.
+ *
+ * The projection's TTL-based snapshot cache can persist stale data between
+ * integration tests (e.g. TC6 seeds rows that TC7 should not see).
+ * Calling this in beforeEach ensures each test starts with a fresh cache
+ * that will be populated from the current (possibly empty) database state.
+ *
+ * Uses a static top-level import (not dynamic) so that this module and
+ * effectiveness-routes.ts share the same `effectivenessMetricsProjection`
+ * instance from Node's module cache. A dynamic import inside the function
+ * body would also be cached by the module registry within the same worker,
+ * but a static import makes the dependency explicit and avoids any ambiguity
+ * about evaluation order. If the instance is somehow different (e.g. due to
+ * path aliasing or test-runner module isolation), we detect it immediately
+ * via the viewId guard rather than silently leaving the route's cache live.
+ */
+export function resetEffectivenessProjectionCache(): void {
+  if (effectivenessMetricsProjection.viewId !== 'effectiveness-metrics') {
+    throw new Error(
+      `resetEffectivenessProjectionCache: module instance mismatch — ` +
+        `expected viewId "effectiveness-metrics" but got "${effectivenessMetricsProjection.viewId}". ` +
+        `The helper and the route are referencing different projection-bootstrap instances. ` +
+        `Check for path aliasing or vitest resetModules configuration.`
+    );
+  }
+  effectivenessMetricsProjection.reset();
+}
+
+/**
+ * Resets the BaselinesProjection in-memory cache between integration test cases.
+ * Call in afterEach to prevent stale cache state from leaking between tests.
+ */
+export function resetBaselinesProjectionCache(): void {
+  if (baselinesProjection.viewId !== 'baselines') {
+    throw new Error(
+      `resetBaselinesProjectionCache: module instance mismatch — ` +
+        `expected viewId "baselines" but got "${baselinesProjection.viewId}". ` +
+        `The helper and the route are referencing different projection-bootstrap instances. ` +
+        `Check for path aliasing or vitest resetModules configuration.`
+    );
+  }
+  baselinesProjection.reset();
 }
