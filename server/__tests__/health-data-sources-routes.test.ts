@@ -429,6 +429,31 @@ describe('GET /api/health/data-sources', () => {
     expect(res.body.dataSources.baselines.reason).toBe('empty_tables');
   });
 
+  it('reports status: error for executionGraph when probe throws', async () => {
+    vi.mocked(projectionService.getView).mockReturnValue(null);
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+    });
+    // Return a non-null data source whose queryEvents() rejects — exercises the
+    // catch branch in probeExecutionGraph that returns { status: 'error', reason: 'probe_threw' }.
+    vi.mocked(getEventBusDataSource).mockReturnValue({
+      queryEvents: vi.fn().mockRejectedValue(new Error('queryEvents failed')),
+    } as any);
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.executionGraph.status).toBe('error');
+    expect(res.body.dataSources.executionGraph.reason).toBe('probe_threw');
+  });
+
   // ==========================================================================
   // Caching behaviour
   // ==========================================================================
