@@ -1070,33 +1070,44 @@ export class ReadModelConsumer {
         if (rawComparisons.length > 0) {
           const comparisonRows: InsertBaselinesComparison[] = (
             rawComparisons as Record<string, unknown>[]
-          ).map((c) => ({
-            snapshotId,
-            patternId: String(c.pattern_id ?? c.patternId ?? ''),
-            patternName: String(c.pattern_name ?? c.patternName ?? ''),
-            sampleSize: Number(c.sample_size ?? c.sampleSize ?? 0),
-            windowStart: String(c.window_start ?? c.windowStart ?? ''),
-            windowEnd: String(c.window_end ?? c.windowEnd ?? ''),
-            tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
-            timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
-            retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
-            testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
-              string,
-              unknown
-            >,
-            reviewIterationDelta: (c.review_iteration_delta ??
-              c.reviewIterationDelta ??
-              {}) as Record<string, unknown>,
-            recommendation: (() => {
-              const raw = String(c.recommendation ?? '');
-              return VALID_PROMOTION_ACTIONS.has(raw) ? raw : 'shadow';
-            })(),
-            confidence: (() => {
-              const raw = String(c.confidence ?? '').toLowerCase();
-              return VALID_CONFIDENCE_LEVELS.has(raw) ? raw : 'low';
-            })(),
-            rationale: String(c.rationale ?? ''),
-          }));
+          )
+            .filter((c) => {
+              const pid = String(c.pattern_id ?? c.patternId ?? '').trim();
+              if (!pid) {
+                console.warn(
+                  `[read-model-consumer] Skipping comparison row with blank pattern_id for snapshot ${snapshotId}`
+                );
+                return false;
+              }
+              return true;
+            })
+            .map((c) => ({
+              snapshotId,
+              patternId: String(c.pattern_id ?? c.patternId ?? ''),
+              patternName: String(c.pattern_name ?? c.patternName ?? ''),
+              sampleSize: Number(c.sample_size ?? c.sampleSize ?? 0),
+              windowStart: String(c.window_start ?? c.windowStart ?? ''),
+              windowEnd: String(c.window_end ?? c.windowEnd ?? ''),
+              tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
+              timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
+              retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
+              testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
+                string,
+                unknown
+              >,
+              reviewIterationDelta: (c.review_iteration_delta ??
+                c.reviewIterationDelta ??
+                {}) as Record<string, unknown>,
+              recommendation: (() => {
+                const raw = String(c.recommendation ?? '');
+                return VALID_PROMOTION_ACTIONS.has(raw) ? raw : 'shadow';
+              })(),
+              confidence: (() => {
+                const raw = String(c.confidence ?? '').toLowerCase();
+                return VALID_CONFIDENCE_LEVELS.has(raw) ? raw : 'low';
+              })(),
+              rationale: String(c.rationale ?? ''),
+            }));
           await tx.insert(baselinesComparisons).values(comparisonRows);
         }
 

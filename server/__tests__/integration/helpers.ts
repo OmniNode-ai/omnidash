@@ -26,7 +26,7 @@ import type {
 } from '@shared/intelligence-schema';
 import type { Express } from 'express';
 import { vi } from 'vitest';
-import { effectivenessMetricsProjection } from '../../projection-bootstrap';
+import { effectivenessMetricsProjection, baselinesProjection } from '../../projection-bootstrap';
 
 const { Pool } = pg;
 
@@ -369,4 +369,20 @@ export function resetEffectivenessProjectionCache(): void {
     );
   }
   effectivenessMetricsProjection.reset();
+}
+
+/**
+ * Resets the BaselinesProjection in-memory cache between integration test cases.
+ * Call in afterEach to prevent stale cache state from leaking between tests.
+ */
+export function resetBaselinesProjectionCache(): void {
+  if (baselinesProjection.viewId !== 'baselines') {
+    throw new Error(
+      `resetBaselinesProjectionCache: module instance mismatch — ` +
+        `expected viewId "baselines" but got "${baselinesProjection.viewId}". ` +
+        `The helper and the route are referencing different projection-bootstrap instances. ` +
+        `Check for path aliasing or vitest resetModules configuration.`
+    );
+  }
+  baselinesProjection.reset();
 }

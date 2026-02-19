@@ -301,15 +301,21 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     }
 
     // Aggregate token and time savings across all comparison rows.
-    // Savings = baseline - candidate for 'lower_is_better' metrics.
+    // For 'lower_is_better' metrics (e.g. token cost): savings = baseline - candidate
+    // For 'higher_is_better' metrics (e.g. throughput): savings = candidate - baseline
+    // Both formulas produce a positive value when the candidate improves on the baseline.
     let totalTokenSavings = 0;
     let totalTimeSavingsMs = 0;
     for (const c of comparisons) {
       if (c.token_delta.direction === 'lower_is_better') {
         totalTokenSavings += c.token_delta.baseline - c.token_delta.candidate;
+      } else if (c.token_delta.direction === 'higher_is_better') {
+        totalTokenSavings += c.token_delta.candidate - c.token_delta.baseline;
       }
       if (c.time_delta.direction === 'lower_is_better') {
         totalTimeSavingsMs += c.time_delta.baseline - c.time_delta.candidate;
+      } else if (c.time_delta.direction === 'higher_is_better') {
+        totalTimeSavingsMs += c.time_delta.candidate - c.time_delta.baseline;
       }
     }
 
