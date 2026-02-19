@@ -76,10 +76,14 @@ CREATE INDEX IF NOT EXISTS idx_baselines_comparisons_recommendation
 -- NOTE: This table intentionally has no UNIQUE constraint on (snapshot_id, date)
 -- at this migration step. The constraint is added in the subsequent migration:
 --   migrations/0005_baselines_trend_unique.sql
--- Both migrations MUST be applied atomically (i.e. in the same deployment) before
--- any data operations begin. Running only 0004 without 0005 leaves the table
--- without duplicate-date protection and will cause projection inserts to silently
+-- The migration runner applies each file in a separate per-file transaction; 0004
+-- and 0005 are NOT applied atomically. If 0004 succeeds but 0005 fails (e.g. due
+-- to a deploy error or partial rollout), baselines_trend will be left without
+-- duplicate-date protection. In that window, projection inserts can silently
 -- corrupt trend averages if the upstream producer emits duplicate dates.
+-- Operators should verify both migrations applied successfully after deployment
+-- (e.g. confirm the baselines_trend_snapshot_date_unique index exists).
+-- A future improvement would be to combine 0004 and 0005 into a single migration.
 --
 
 CREATE TABLE IF NOT EXISTS baselines_trend (

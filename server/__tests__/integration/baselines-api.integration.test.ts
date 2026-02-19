@@ -14,6 +14,7 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
+import { randomUUID } from 'crypto';
 import request from 'supertest';
 import type { Express } from 'express';
 import {
@@ -23,6 +24,7 @@ import {
   resetBaselinesProjectionCache,
   truncateBaselines,
 } from './helpers';
+import { baselinesSnapshots, baselinesTrend } from '@shared/intelligence-schema';
 import { resetIntelligenceDb } from '../../storage';
 
 // ---------------------------------------------------------------------------
@@ -136,9 +138,59 @@ describe.skipIf(!canRunIntegrationTests)('Baselines API Integration Tests', () =
 
   // -------------------------------------------------------------------------
   // TC5: /trend respects the ?days query parameter
+  //
+  // Seeds a snapshot with two trend rows: one 10 days ago (outside the 7-day
+  // window) and one 3 days ago (inside the window). Asserts that ?days=7
+  // returns exactly the in-window row and excludes the out-of-window row,
+  // verifying that ensureFreshForDays() actually filters by cutoff date.
   // -------------------------------------------------------------------------
   it('TC5: /trend respects valid ?days parameter', async () => {
+    const db = getTestDb();
+    const snapshotId = randomUUID();
+
+    // Insert the parent snapshot row (required by FK constraint).
+    await db.insert(baselinesSnapshots).values({
+      snapshotId,
+      contractVersion: 1,
+      computedAtUtc: new Date(),
+    });
+
+    // Build ISO date strings for the two trend points.
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const dateTenDaysAgo = new Date(Date.now() - 10 * msPerDay).toISOString().slice(0, 10);
+    const dateThreeDaysAgo = new Date(Date.now() - 3 * msPerDay).toISOString().slice(0, 10);
+
+    // Insert trend row outside the 7-day window (10 days ago).
+    await db.insert(baselinesTrend).values({
+      snapshotId,
+      date: dateTenDaysAgo,
+      avgCostSavings: '0.100000',
+      avgOutcomeImprovement: '0.050000',
+      comparisonsEvaluated: 5,
+    });
+
+    // Insert trend row inside the 7-day window (3 days ago).
+    await db.insert(baselinesTrend).values({
+      snapshotId,
+      date: dateThreeDaysAgo,
+      avgCostSavings: '0.200000',
+      avgOutcomeImprovement: '0.150000',
+      comparisonsEvaluated: 10,
+    });
+
+    // Reset the projection cache so the route re-queries the newly seeded DB.
+    resetBaselinesProjectionCache();
+
     const response = await request(app).get('/api/baselines/trend?days=7').expect(200);
+
     expect(Array.isArray(response.body)).toBe(true);
+
+    // Exactly the in-window row (3 days ago) must be present.
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0]).toMatchObject({ date: dateThreeDaysAgo });
+
+    // The out-of-window row (10 days ago) must not appear.
+    const returnedDates: string[] = response.body.map((r: { date: string }) => r.date);
+    expect(returnedDates).not.toContain(dateTenDaysAgo);
   });
 });
