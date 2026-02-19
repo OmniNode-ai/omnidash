@@ -3985,11 +3985,20 @@ export class EventConsumer extends EventEmitter {
    * and waits for either a catalog response or a timeout.  On success the
    * discovered topics are stored and 'catalogSource' is set to 'catalog'.
    * On timeout/error the hardcoded buildSubscriptionTopics() list is returned
-   * and 'catalogSource' remains 'fallback'.
+   * and 'catalogSource' is reset to 'fallback'.
+   *
+   * Catalog state (catalogSource, catalogTopics, catalogWarnings) is reset at
+   * the start of every call so that a second bootstrap attempt after an
+   * in-process restart never returns stale data from a prior successful run.
    *
    * Wire catalog-changed events so future catalog updates adjust subscriptions.
    */
   private async fetchCatalogTopics(): Promise<string[]> {
+    // Reset stale state from any prior bootstrap attempt
+    this.catalogSource = 'fallback';
+    this.catalogTopics = [];
+    this.catalogWarnings = [];
+
     try {
       const manager = new TopicCatalogManager();
       this.catalogManager = manager;
@@ -4380,6 +4389,18 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
       }
       if (prop === 'getActionsByAgent') {
         return () => [];
+      }
+      /**
+       * No-Kafka fallback: getCatalogStatus returns a safe default shape when
+       * Kafka is not configured and no real EventConsumer instance exists.
+       */
+      if (prop === 'getCatalogStatus') {
+        return () => ({
+          topics: [] as string[],
+          warnings: [] as string[],
+          source: 'fallback' as const,
+          instanceUuid: null,
+        });
       }
       // For event emitter methods, return no-op functions
       if (prop === 'on' || prop === 'once' || prop === 'emit' || prop === 'removeListener') {

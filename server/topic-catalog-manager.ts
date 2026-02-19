@@ -46,14 +46,22 @@ import type { TopicCatalogResponse, TopicCatalogChanged } from '@shared/schemas/
 
 /**
  * How long (ms) to wait for a catalog response before falling back to the
- * hardcoded topic list. Defaults to 5 s in production, 200 ms in tests.
- * Can be overridden via the CATALOG_TIMEOUT_MS environment variable.
+ * hardcoded topic list. Defaults to 5 000 ms in production, 200 ms in tests.
+ *
+ * Can be overridden via the `CATALOG_TIMEOUT_MS` environment variable.
+ * The parsed value is validated: if the env var is absent, empty, non-numeric
+ * (e.g. `"abc"`), or non-positive, `parseInt` returns `NaN` or a value ≤ 0 —
+ * both of which would cause `setTimeout` to fire immediately. In those cases
+ * the constant falls back to the environment-appropriate default (200 ms in
+ * test, 5 000 ms in production).
  */
-export const CATALOG_TIMEOUT_MS = process.env.CATALOG_TIMEOUT_MS
-  ? parseInt(process.env.CATALOG_TIMEOUT_MS, 10)
-  : process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
-    ? 200
-    : 5000;
+const _catalogTimeoutEnv = parseInt(process.env.CATALOG_TIMEOUT_MS ?? '', 10);
+const _catalogTimeoutDefault =
+  process.env.VITEST === 'true' || process.env.NODE_ENV === 'test' ? 200 : 5000;
+export const CATALOG_TIMEOUT_MS =
+  Number.isNaN(_catalogTimeoutEnv) || _catalogTimeoutEnv <= 0
+    ? _catalogTimeoutDefault
+    : _catalogTimeoutEnv;
 
 // ---------------------------------------------------------------------------
 // Event Types
@@ -142,12 +150,19 @@ export class TopicCatalogManager extends EventEmitter {
 
   /**
    * Bootstrap the catalog:
-   *   1. Connect a dedicated consumer + producer.
-   *   2. Subscribe to response + changed topics.
-   *   3. Publish a ModelTopicCatalogQuery with a fresh correlation_id.
-   *   4. Arm a timeout — if no response arrives, emit 'catalogTimeout'.
+   *   1. Connect the dedicated producer.
+   *   2. Connect the dedicated consumer.
+   *   3. Subscribe to the catalog-response and catalog-changed topics.
+   *   4. Start the consumer run loop.
+   *   5. Publish a ModelTopicCatalogQuery with a fresh correlation_id.
+   *   6. Arm a timeout — if no response arrives within CATALOG_TIMEOUT_MS, emit 'catalogTimeout'.
    *
-   * @param correlationId Optional — if not provided, a UUID is generated.
+   * A `stopped` guard is evaluated after each of the five async steps above.
+   * If `stop()` has been called mid-startup, `stop()` is awaited to disconnect
+   * any already-connected resources and the method returns immediately.
+   *
+   * @param correlationId Optional override for the outgoing correlation_id.
+   *   When omitted, a UUID is generated for this bootstrap call.
    */
   async bootstrap(correlationId?: string): Promise<void> {
     if (this.stopped) {
@@ -161,6 +176,10 @@ export class TopicCatalogManager extends EventEmitter {
     // Build producer
     this.producer = this.kafka.producer();
     await this.producer.connect();
+    if (this.stopped) {
+      await this.stop();
+      return;
+    }
 
     // Build consumer with stable per-process group
     this.consumer = this.kafka.consumer({
@@ -169,12 +188,20 @@ export class TopicCatalogManager extends EventEmitter {
       heartbeatInterval: 10000,
     });
     await this.consumer.connect();
+    if (this.stopped) {
+      await this.stop();
+      return;
+    }
 
     // Subscribe to response topic (where the catalog service replies)
     await this.consumer.subscribe({
       topics: [SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE, SUFFIX_PLATFORM_TOPIC_CATALOG_CHANGED],
       fromBeginning: false,
     });
+    if (this.stopped) {
+      await this.stop();
+      return;
+    }
 
     // Start consuming
     await this.consumer.run({
@@ -182,9 +209,17 @@ export class TopicCatalogManager extends EventEmitter {
         this.handleMessage(topic, message.value?.toString());
       },
     });
+    if (this.stopped) {
+      await this.stop();
+      return;
+    }
 
     // Publish the query
     await this.publishQuery(corrId);
+    if (this.stopped) {
+      await this.stop();
+      return;
+    }
 
     // Arm the timeout fallback
     this.timeoutHandle = setTimeout(() => {
