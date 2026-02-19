@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { DashboardRenderer } from '@/lib/widgets';
+import { DashboardRenderer, type WidgetPropsMap } from '@/lib/widgets';
 import {
   eventBusDashboardConfig,
   getEventMonitoringConfig,
@@ -618,10 +618,15 @@ export default function EventBusMonitor() {
             if (filters.priority && event.priority !== filters.priority) return false;
             if (filters.search) {
               const searchLower = filters.search.toLowerCase();
+              // Search both the friendly label (event.topic) and the raw topic name
+              // (event.topicRaw) so that either form matches unambiguously. In
+              // toRecentEvent, topic holds the raw suffix — but DisplayEvent.topic
+              // always holds the label — so checking both covers all call sites.
               const matchesSearch =
                 event.eventType.toLowerCase().includes(searchLower) ||
                 event.source.toLowerCase().includes(searchLower) ||
                 event.topic.toLowerCase().includes(searchLower) ||
+                event.topicRaw.toLowerCase().includes(searchLower) ||
                 event.summary.toLowerCase().includes(searchLower) ||
                 (event.parsedDetails?.toolName?.toLowerCase().includes(searchLower) ?? false) ||
                 (event.parsedDetails?.nodeId?.toLowerCase().includes(searchLower) ?? false) ||
@@ -785,7 +790,11 @@ export default function EventBusMonitor() {
 
   const handleEventClick = useCallback((widgetId: string, row: Record<string, unknown>) => {
     if (widgetId === 'table-recent-events') {
-      // row.topic now holds the raw suffix (topicRaw); derive the friendly label for the panel.
+      // Contract: rows in the 'table-recent-events' widget are produced exclusively
+      // by toRecentEvent(), which stores the raw topic suffix in both row.topic AND
+      // row.topicRaw. The row.topicRaw fallback to row.topic is only safe here
+      // because of that invariant — do NOT rely on it for rows from other widgets
+      // where topic may hold a friendly display label instead.
       const rawTopic = String(row.topicRaw || row.topic || '');
       setSelectedEvent({
         id: String(row.id || ''),
@@ -904,7 +913,10 @@ export default function EventBusMonitor() {
   // each topic cell clickable — clicking sets the topic filter to the raw suffix,
   // simultaneously highlighting the matching row in the TopicSelector sidebar.
   // stopPropagation prevents the row-click from opening the EventDetailPanel.
-  const tableWidgetProps = useMemo(
+  // Explicitly typed as WidgetPropsMap so that the customCellRenderers shape is
+  // captured and the object satisfies the widgetProps prop of DashboardRenderer
+  // without relying on structural inference widening the renderer type to unknown.
+  const tableWidgetProps = useMemo<WidgetPropsMap>(
     () => ({
       'table-recent-events': {
         customCellRenderers: {
