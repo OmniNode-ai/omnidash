@@ -31,12 +31,12 @@ function validateWindow(
   req: Parameters<Parameters<typeof router.get>[1]>[0],
   res: Parameters<Parameters<typeof router.get>[1]>[1]
 ): string | null {
-  const window = typeof req.query.window === 'string' ? req.query.window : '7d';
-  if (!VALID_WINDOWS.includes(window as (typeof VALID_WINDOWS)[number])) {
+  const timeWindow = typeof req.query.window === 'string' ? req.query.window : '7d';
+  if (!VALID_WINDOWS.includes(timeWindow as (typeof VALID_WINDOWS)[number])) {
     res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
     return null;
   }
-  return window;
+  return timeWindow;
 }
 
 // ============================================================================
@@ -45,10 +45,10 @@ function validateWindow(
 
 router.get('/summary', (req, res) => {
   try {
-    const window = validateWindow(req, res);
-    if (window === null) return;
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
     // TODO(OMN-2279-followup): Replace with projectionService.getView('llm-routing').getSnapshot()
-    // once the llm-routing projection is implemented. Use `window` to scope the query.
+    // once the llm-routing projection is implemented. Use `timeWindow` to scope the query.
     const empty: LlmRoutingSummary = {
       total_decisions: 0,
       agreement_rate: 0,
@@ -74,9 +74,9 @@ router.get('/summary', (req, res) => {
 
 router.get('/latency', (req, res) => {
   try {
-    const window = validateWindow(req, res);
-    if (window === null) return;
-    // TODO(OMN-2279-followup): Replace with projection view query scoped to `window`.
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    // TODO(OMN-2279-followup): Replace with projection view query scoped to `timeWindow`.
     const data: LlmRoutingLatencyPoint[] = [];
     return res.json(data);
   } catch (error) {
@@ -91,9 +91,9 @@ router.get('/latency', (req, res) => {
 
 router.get('/by-version', (req, res) => {
   try {
-    const window = validateWindow(req, res);
-    if (window === null) return;
-    // TODO(OMN-2279-followup): Replace with projection view query scoped to `window`.
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    // TODO(OMN-2279-followup): Replace with projection view query scoped to `timeWindow`.
     const data: LlmRoutingByVersion[] = [];
     return res.json(data);
   } catch (error) {
@@ -108,9 +108,9 @@ router.get('/by-version', (req, res) => {
 
 router.get('/disagreements', (req, res) => {
   try {
-    const window = validateWindow(req, res);
-    if (window === null) return;
-    // TODO(OMN-2279-followup): Replace with projection view query scoped to `window`.
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    // TODO(OMN-2279-followup): Replace with projection view query scoped to `timeWindow`.
     const data: LlmRoutingDisagreement[] = [];
     return res.json(data);
   } catch (error) {
@@ -125,9 +125,9 @@ router.get('/disagreements', (req, res) => {
 
 router.get('/trend', (req, res) => {
   try {
-    const window = validateWindow(req, res);
-    if (window === null) return;
-    // TODO(OMN-2279-followup): Replace with projection view query scoped to `window`.
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    // TODO(OMN-2279-followup): Replace with projection view query scoped to `timeWindow`.
     const data: LlmRoutingTrendPoint[] = [];
     return res.json(data);
   } catch (error) {

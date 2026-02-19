@@ -32,10 +32,10 @@ export interface LlmRoutingDecisionEvent {
   fuzzy_agent: string;
   /** Whether LLM and fuzzy agreed on the same agent */
   agreement: boolean;
-  /** Confidence score from LLM routing decision (0–1) */
-  llm_confidence: number;
-  /** Confidence score from fuzzy-string routing (0–1) */
-  fuzzy_confidence: number;
+  /** Confidence score from LLM routing decision (0–1); nullable when not reported. */
+  llm_confidence: number | null | undefined;
+  /** Confidence score from fuzzy-string routing (0–1); nullable when not reported. */
+  fuzzy_confidence: number | null | undefined;
   /** Latency for LLM routing decision in milliseconds */
   llm_latency_ms: number;
   /** Latency for fuzzy routing decision in milliseconds */
@@ -117,7 +117,11 @@ export interface LlmRoutingLatencyPoint {
 export interface LlmRoutingByVersion {
   /** Prompt version string (e.g. "v1.0.0", "v1.1.0") */
   routing_prompt_version: string;
-  /** Total decisions for this version */
+  /**
+   * Total decisions for this version.
+   * Includes fallback decisions (where LLM was unavailable and fuzzy was used
+   * exclusively), so: total = agreed + disagreed + fallbacks.
+   */
   total: number;
   /** Number of decisions where LLM and fuzzy agreed */
   agreed: number;

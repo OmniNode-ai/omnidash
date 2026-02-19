@@ -128,6 +128,17 @@ function agreementColor(rate: number): string {
   return 'text-red-500';
 }
 
+/**
+ * Color bucket for a confidence score (0–1).
+ * Uses separate thresholds from agreementColor because confidence scores
+ * (typically 0.7–0.95) have a different meaningful range than agreement rates.
+ */
+function confidenceColor(score: number): string {
+  if (score >= 0.7) return 'text-green-500';
+  if (score >= 0.5) return 'text-yellow-500';
+  return 'text-red-500';
+}
+
 function agreementBadge(rate: number): 'default' | 'secondary' | 'destructive' {
   if (rate >= AGREEMENT_TARGET) return 'default';
   if (rate >= 0.5) return 'secondary';
@@ -329,8 +340,8 @@ function DisagreementsTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {disagreements.map((d, idx) => (
-                <TableRow key={idx}>
+              {disagreements.map((d) => (
+                <TableRow key={`${d.llm_agent}:${d.fuzzy_agent}:${d.routing_prompt_version}`}>
                   <TableCell>
                     <span className="font-mono text-xs text-blue-400">{d.llm_agent}</span>
                   </TableCell>
@@ -341,13 +352,15 @@ function DisagreementsTable({
                     {fmtCount(d.count)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <span className={cn('font-mono text-xs', agreementColor(d.avg_llm_confidence))}>
+                    <span
+                      className={cn('font-mono text-xs', confidenceColor(d.avg_llm_confidence))}
+                    >
                       {fmtPct(d.avg_llm_confidence)}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
                     <span
-                      className={cn('font-mono text-xs', agreementColor(d.avg_fuzzy_confidence))}
+                      className={cn('font-mono text-xs', confidenceColor(d.avg_fuzzy_confidence))}
                     >
                       {fmtPct(d.avg_fuzzy_confidence)}
                     </span>
