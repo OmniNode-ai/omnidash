@@ -1069,5 +1069,4 @@ export const insertBaselinesBreakdownSchema = createInsertSchema(baselinesBreakd
 export type BaselinesBreakdownRow = typeof baselinesBreakdown.$inferSelect;
 export type InsertBaselinesBreakdown = typeof baselinesBreakdown.$inferInsert;
 
-// Previously at end of file — kept here for import compatibility
 export type InsertLlmCostAggregate = typeof llmCostAggregates.$inferInsert;
