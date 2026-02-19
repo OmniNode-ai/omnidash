@@ -9,7 +9,7 @@
  * - Context inflation alert table (enrichment increasing token count)
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { enrichmentSource } from '@/lib/data-sources/enrichment-source';
@@ -510,11 +510,16 @@ export default function ContextEnrichmentDashboard() {
   // Acceptance criteria: derive from summaryQuery.data — if summary.total_enrichments === 0
   // after a successful fetch, treat as live-but-empty (not mock). Use useState updated
   // in summaryQuery's onSettled callback to make the banner reactive.
-  const isUsingMockData = useMemo(
-    () => allSettled && enrichmentSource.isUsingMockData,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allSettled, timeWindow] // timeWindow forces re-evaluation after window switch
-  );
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
+
+  useEffect(() => {
+    if (allSettled) {
+      setIsUsingMockData(enrichmentSource.isUsingMockData);
+    } else {
+      // Reset while loading to avoid stale banner during window switch refetch
+      setIsUsingMockData(false);
+    }
+  }, [allSettled, timeWindow]);
 
   // Context inflation alert badge — show if inflation_alert_count > 0
   const showInflationWarning = (summary?.inflation_alert_count ?? 0) > 0 && !summaryLoading;
@@ -811,18 +816,12 @@ export default function ContextEnrichmentDashboard() {
                 />
                 <Tooltip
                   formatter={(v: number, name: string) => [
-                    name === 'net_tokens_saved'
-                      ? fmtTokens(v)
-                      : name === 'total_enrichments'
-                        ? v.toLocaleString()
-                        : fmtTokens(v),
+                    fmtTokens(v),
                     name === 'net_tokens_saved'
                       ? 'Net Tokens Saved'
-                      : name === 'total_enrichments'
-                        ? 'Total Enrichments'
-                        : name === 'avg_tokens_before'
-                          ? 'Avg Before'
-                          : 'Avg After',
+                      : name === 'avg_tokens_before'
+                        ? 'Avg Before'
+                        : 'Avg After',
                   ]}
                   labelFormatter={(l) => String(l).slice(0, 16)}
                   contentStyle={{ fontSize: '12px' }}
@@ -902,7 +901,7 @@ export default function ContextEnrichmentDashboard() {
                 />
                 <YAxis
                   tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
-                  domain={[0.5, 1]}
+                  domain={[0, 1]}
                   tick={{ fontSize: 11 }}
                   stroke="hsl(var(--muted-foreground))"
                 />
