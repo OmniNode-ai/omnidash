@@ -913,6 +913,37 @@ export class ReadModelConsumer {
     const rawTrend = Array.isArray(data.trend) ? data.trend : [];
     const rawBreakdown = Array.isArray(data.breakdown) ? data.breakdown : [];
 
+    // Build the filtered trend rows outside the transaction so the post-filter
+    // count is accessible for the success log below (Issue 1 fix).
+    const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[])
+      .filter((t) => {
+        const date = t.date ?? t.dateStr;
+        if (date == null || date === '') {
+          console.warn(
+            '[ReadModelConsumer] Skipping trend row with blank/null date:',
+            JSON.stringify(t)
+          );
+          return false;
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+          console.warn(
+            '[ReadModelConsumer] Skipping trend row with malformed date format (expected YYYY-MM-DD):',
+            JSON.stringify(t)
+          );
+          return false;
+        }
+        return true;
+      })
+      .map((t) => ({
+        snapshotId,
+        date: String(t.date ?? t.dateStr),
+        avgCostSavings: String(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)),
+        avgOutcomeImprovement: String(
+          Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
+        ),
+        comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
+      }));
+
     try {
       // Upsert the snapshot header and replace child rows atomically inside a
       // single transaction. Keeping all writes together ensures a process crash
@@ -978,38 +1009,8 @@ export class ReadModelConsumer {
 
         await tx.delete(baselinesTrend).where(eq(baselinesTrend.snapshotId, snapshotId));
 
-        if (rawTrend.length > 0) {
-          const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[])
-            .filter((t) => {
-              const date = t.date ?? t.dateStr;
-              if (date == null || date === '') {
-                console.warn(
-                  '[ReadModelConsumer] Skipping trend row with blank/null date:',
-                  JSON.stringify(t)
-                );
-                return false;
-              }
-              if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
-                console.warn(
-                  '[ReadModelConsumer] Skipping trend row with malformed date format (expected YYYY-MM-DD):',
-                  JSON.stringify(t)
-                );
-                return false;
-              }
-              return true;
-            })
-            .map((t) => ({
-              snapshotId,
-              date: String(t.date ?? t.dateStr),
-              avgCostSavings: String(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)),
-              avgOutcomeImprovement: String(
-                Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
-              ),
-              comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
-            }));
-          if (trendRows.length > 0) {
-            await tx.insert(baselinesTrend).values(trendRows);
-          }
+        if (trendRows.length > 0) {
+          await tx.insert(baselinesTrend).values(trendRows);
         }
 
         await tx.delete(baselinesBreakdown).where(eq(baselinesBreakdown.snapshotId, snapshotId));
@@ -1043,7 +1044,7 @@ export class ReadModelConsumer {
 
       console.log(
         `[ReadModelConsumer] Projected baselines snapshot ${snapshotId} ` +
-          `(${rawComparisons.length} comparisons, ${rawTrend.length} trend points, ` +
+          `(${rawComparisons.length} comparisons, ${trendRows.length} trend points, ` +
           `${rawBreakdown.length} breakdown rows)`
       );
     } catch (err) {

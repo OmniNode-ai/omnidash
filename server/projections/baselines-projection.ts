@@ -183,7 +183,8 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     const rows = await db
       .select()
       .from(baselinesComparisons)
-      .where(eq(baselinesComparisons.snapshotId, snapshotId));
+      .where(eq(baselinesComparisons.snapshotId, snapshotId))
+      .orderBy(asc(baselinesComparisons.patternName));
 
     return rows.map((r) => {
       const recommendation = isValidPromotionAction(r.recommendation) ? r.recommendation : 'shadow';
@@ -226,7 +227,8 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
     const rows = await db
       .select()
       .from(baselinesBreakdown)
-      .where(eq(baselinesBreakdown.snapshotId, snapshotId));
+      .where(eq(baselinesBreakdown.snapshotId, snapshotId))
+      .orderBy(asc(baselinesBreakdown.action));
 
     return rows.map((r) => ({
       action: (isValidPromotionAction(r.action) ? r.action : 'shadow') as PromotionAction,
