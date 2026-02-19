@@ -11,7 +11,7 @@
  * "something changed, re-query the API".
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Activity, Clock, Zap, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { formatRelativeTime } from '@/lib/date-utils';
 import { MetricCard } from '@/components/MetricCard';
 import { PipelineHealthPanel } from '@/components/extraction/PipelineHealthPanel';
@@ -39,12 +40,64 @@ export default function ExtractionDashboard() {
   const queryClient = useQueryClient();
   const [timeWindow, setTimeWindow] = useState('24h');
 
+  // Track mock-data status in reactive state so React re-renders when it changes.
+  // We aggregate `isMock` across the summary query and all four sub-panel queries:
+  // the badge shows "Demo Data" if ANY of the five data sources is using mock data.
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
+
+  // Per-panel mock flags tracked in a ref so we can aggregate without triggering
+  // a re-render on every intermediate update.  We use stable panel keys so that
+  // each onMockStateChange callback only flips its own slot.
+  //
+  // Convention for adding new panels:
+  //   1. Add a key here initialised to `false` (the key name is arbitrary but
+  //      must be stable and unique across the dashboard).
+  //   2. Pass an `onMockStateChange` prop to the new panel component that calls
+  //      `updateMockFlag('<key>', v)`.
+  //   3. Keys that are NOT listed here still work correctly — an unlisted key
+  //      starts as `undefined` (falsy), so `updateMockFlag` will set it to the
+  //      real value on the first render without producing a stale `true` flip.
+  //      Listing keys explicitly is purely for documentation/discoverability.
+  const mockFlags = useRef<Record<string, boolean>>({
+    summary: false,
+    pipelineHealth: false,
+    latency: false,
+    patternVolume: false,
+    errors: false,
+  });
+
+  const updateMockFlag = useCallback((panel: string, isMock: boolean) => {
+    mockFlags.current[panel] = isMock;
+    setIsUsingMockData(Object.values(mockFlags.current).some(Boolean));
+  }, []);
+
+  const onPipelineHealthMock = useCallback(
+    (v: boolean) => updateMockFlag('pipelineHealth', v),
+    [updateMockFlag]
+  );
+  const onLatencyMock = useCallback((v: boolean) => updateMockFlag('latency', v), [updateMockFlag]);
+  const onPatternVolumeMock = useCallback(
+    (v: boolean) => updateMockFlag('patternVolume', v),
+    [updateMockFlag]
+  );
+  const onErrorsMock = useCallback((v: boolean) => updateMockFlag('errors', v), [updateMockFlag]);
+
   // Summary stats for metric cards
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const { data: summaryResult, isLoading: summaryLoading } = useQuery({
     queryKey: queryKeys.extraction.summary(),
     queryFn: () => extractionSource.summary(),
     refetchInterval: 30_000,
   });
+
+  // Mirror `isMock` from the summary query result into the aggregated flag.
+  useEffect(() => {
+    // Only fire after the query has resolved to avoid overwriting child-panel mock state with undefined.
+    if (summaryResult !== undefined) {
+      updateMockFlag('summary', summaryResult.isMock);
+    }
+  }, [summaryResult, updateMockFlag]);
+
+  const summary = summaryResult?.data;
 
   // WebSocket invalidation: re-fetch all extraction queries on EXTRACTION_INVALIDATE
   const handleWebSocketMessage = useCallback(
@@ -96,6 +149,11 @@ export default function ExtractionDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {isUsingMockData && (
+            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+              Demo Data
+            </Badge>
+          )}
           <Select value={timeWindow} onValueChange={setTimeWindow}>
             <SelectTrigger className="w-28 h-8 text-xs">
               <SelectValue />
@@ -157,10 +215,10 @@ export default function ExtractionDashboard() {
 
       {/* 2x2 Panel Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <PipelineHealthPanel />
-        <LatencyHeatmap timeWindow={timeWindow} />
-        <PatternVolumeChart timeWindow={timeWindow} />
-        <ErrorRatesPanel />
+        <PipelineHealthPanel onMockStateChange={onPipelineHealthMock} />
+        <LatencyHeatmap timeWindow={timeWindow} onMockStateChange={onLatencyMock} />
+        <PatternVolumeChart timeWindow={timeWindow} onMockStateChange={onPatternVolumeMock} />
+        <ErrorRatesPanel onMockStateChange={onErrorsMock} />
       </div>
     </div>
   );

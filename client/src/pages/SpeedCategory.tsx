@@ -9,7 +9,7 @@
  * Sources: ExtractionDashboard + EffectivenessLatency views
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
@@ -92,23 +92,69 @@ function LatencyPercentilesChart({ data }: { data: LatencyDetails | undefined })
 
 export default function SpeedCategory() {
   const queryClient = useQueryClient();
+  // Fixed to 24h on this overview page — no time-window selector in the SpeedCategory layout.
   const [timeWindow] = useState('24h');
 
   // ---------------------------------------------------------------------------
   // Data Fetching
   // ---------------------------------------------------------------------------
 
-  const { data: extractionSummary, isLoading: extractionLoading } = useQuery({
+  const { data: extractionResult, isLoading: extractionLoading } = useQuery({
     queryKey: queryKeys.extraction.summary(),
     queryFn: () => extractionSource.summary(),
     refetchInterval: 30_000,
   });
 
-  const { data: latencyDetails, isLoading: latencyLoading } = useQuery<LatencyDetails>({
+  const extractionSummary = extractionResult?.data;
+
+  const { data: latencyResult, isLoading: latencyLoading } = useQuery({
     queryKey: queryKeys.effectiveness.latency(),
-    queryFn: () => effectivenessSource.latencyDetails(),
+    queryFn: async () => {
+      const data = await effectivenessSource.latencyDetails();
+      // SAFE: JavaScript's event loop guarantees that no other code can run
+      // between this await resumption and the next synchronous line. markMock/markReal
+      // were called synchronously inside latencyDetails() before it returned.
+      const isMock = effectivenessSource.isUsingMockData;
+      return { data, isMock };
+    },
     refetchInterval: 30_000,
   });
+
+  // Ref-based mock-flag aggregation (mirrors ExtractionDashboard).
+  // Each data source writes its mock status into `mockFlags.current[key]`
+  // via `updateMockFlag`, which then derives the combined boolean and flushes
+  // it into reactive state.  This avoids:
+  //   - The `(prev) => prev || isMock` latch that can never go back to false.
+  //   - Reading a mutable getter (`effectivenessSource.isUsingMockData`)
+  //     directly in a useEffect dep array (React can't observe mutations).
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const mockFlags = useRef<Record<string, boolean>>({});
+
+  const updateMockFlag = useCallback((panel: string, isMock: boolean) => {
+    mockFlags.current[panel] = isMock;
+    setIsUsingMockData(Object.values(mockFlags.current).some(Boolean));
+  }, []);
+
+  const onPipelineHealthMock = useCallback(
+    (v: boolean) => updateMockFlag('pipelineHealth', v),
+    [updateMockFlag]
+  );
+  const onLatencyHeatmapMock = useCallback(
+    (v: boolean) => updateMockFlag('latency', v),
+    [updateMockFlag]
+  );
+
+  // Wire extraction result → mock flag.
+  useEffect(() => {
+    updateMockFlag('extraction', extractionResult?.isMock ?? false);
+  }, [extractionResult, updateMockFlag]);
+
+  // Wire effectiveness source → mock flag.  The queryFn reads isUsingMockData
+  // synchronously after the await, so latencyResult.isMock is always consistent
+  // with the data returned by that same fetch.
+  useEffect(() => {
+    updateMockFlag('effectiveness', latencyResult?.isMock ?? false);
+  }, [latencyResult, updateMockFlag]);
 
   // ---------------------------------------------------------------------------
   // WebSocket: invalidation-driven re-fetch
@@ -143,7 +189,7 @@ export default function SpeedCategory() {
   // Derived values
   // ---------------------------------------------------------------------------
 
-  const cacheHitRate = latencyDetails?.cache?.hit_rate;
+  const cacheHitRate = latencyResult?.data?.cache?.hit_rate;
   const cacheHitDisplay = cacheHitRate != null ? `${(cacheHitRate * 100).toFixed(1)}%` : '--';
   const cacheHitStatus: 'healthy' | 'warning' | 'error' | undefined =
     cacheHitRate != null
@@ -171,7 +217,7 @@ export default function SpeedCategory() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {effectivenessSource.isUsingMockData && (
+          {isUsingMockData && (
             <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
               Demo Data
             </Badge>
@@ -255,14 +301,14 @@ export default function SpeedCategory() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <LatencyPercentilesChart data={latencyDetails} />
+            <LatencyPercentilesChart data={latencyResult?.data} />
           </CardContent>
         </Card>
-        <PipelineHealthPanel />
+        <PipelineHealthPanel onMockStateChange={onPipelineHealthMock} />
       </div>
 
       {/* Latency Heatmap */}
-      <LatencyHeatmap timeWindow={timeWindow} />
+      <LatencyHeatmap timeWindow={timeWindow} onMockStateChange={onLatencyHeatmapMock} />
 
       {/* Drill-Down Navigation */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

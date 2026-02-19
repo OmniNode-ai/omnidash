@@ -6,6 +6,7 @@
  * Legend items are click-to-toggle via the shared ToggleableLegend primitive.
  */
 
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { queryKeys } from '@/lib/query-keys';
@@ -44,16 +45,33 @@ const SERIES_LABELS: Record<string, string> = {
 
 interface PatternVolumeChartProps {
   timeWindow?: string;
+  /** Called whenever the mock-data status of this panel changes. */
+  onMockStateChange?: (isMock: boolean) => void;
 }
 
-export function PatternVolumeChart({ timeWindow = '24h' }: PatternVolumeChartProps) {
+export function PatternVolumeChart({
+  timeWindow = '24h',
+  onMockStateChange,
+}: PatternVolumeChartProps) {
   const legend = useToggleableLegend();
 
-  const { data, isLoading, error } = useQuery({
+  const {
+    data: result,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.extraction.volume(timeWindow),
     queryFn: () => extractionSource.patternVolume(timeWindow),
     refetchInterval: 30_000,
   });
+
+  const data = result?.data;
+
+  // Propagate isMock to parent after render to avoid setState-during-render.
+  const isMock = result?.isMock ?? false;
+  useEffect(() => {
+    onMockStateChange?.(isMock);
+  }, [isMock, onMockStateChange]);
 
   const chartData = data?.points.map((p) => ({
     ...p,
