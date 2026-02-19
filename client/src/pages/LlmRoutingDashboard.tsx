@@ -473,11 +473,11 @@ export default function LlmRoutingDashboard() {
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   const handleRefresh = () => {
-    refetchSummary();
-    refetchLatency();
-    refetchVersion();
-    refetchDisagreements();
-    refetchTrend();
+    void refetchSummary();
+    void refetchLatency();
+    void refetchVersion();
+    void refetchDisagreements();
+    void refetchTrend();
   };
 
   // llmRoutingSource.isUsingMockData reads a mutable Set on the singleton.

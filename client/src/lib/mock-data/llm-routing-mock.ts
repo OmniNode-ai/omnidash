@@ -120,13 +120,16 @@ export function getMockLlmRoutingLatency(_window: LlmRoutingTimeWindow): LlmRout
 // ============================================================================
 
 export function getMockLlmRoutingByVersion(_window: LlmRoutingTimeWindow): LlmRoutingByVersion[] {
+  // agreement_rate = agreed / (agreed + disagreed), consistent with getMockLlmRoutingSummary.
+  // Fallback decisions are excluded from the denominator because a fallback means the LLM
+  // was not consulted — there is no LLM vs fuzzy comparison to score.
   return [
     {
       routing_prompt_version: 'v1.0.0',
       total: 4820,
       agreed: 2459,
       disagreed: 2120,
-      agreement_rate: 0.51,
+      agreement_rate: 2459 / (2459 + 2120), // ≈ 0.537
       avg_llm_latency_ms: 195,
       avg_fuzzy_latency_ms: 5,
       avg_cost_usd: 0.000094,
@@ -136,7 +139,7 @@ export function getMockLlmRoutingByVersion(_window: LlmRoutingTimeWindow): LlmRo
       total: 3640,
       agreed: 2148,
       disagreed: 1310,
-      agreement_rate: 0.59,
+      agreement_rate: 2148 / (2148 + 1310), // ≈ 0.621
       avg_llm_latency_ms: 172,
       avg_fuzzy_latency_ms: 5,
       avg_cost_usd: 0.000088,
@@ -146,7 +149,7 @@ export function getMockLlmRoutingByVersion(_window: LlmRoutingTimeWindow): LlmRo
       total: 2910,
       agreed: 1960,
       disagreed: 824,
-      agreement_rate: 0.67,
+      agreement_rate: 1960 / (1960 + 824), // ≈ 0.704
       avg_llm_latency_ms: 151,
       avg_fuzzy_latency_ms: 4,
       avg_cost_usd: 0.000082,
@@ -156,7 +159,7 @@ export function getMockLlmRoutingByVersion(_window: LlmRoutingTimeWindow): LlmRo
       total: 1840,
       agreed: 1306,
       disagreed: 442,
-      agreement_rate: 0.71,
+      agreement_rate: 1306 / (1306 + 442), // ≈ 0.747
       avg_llm_latency_ms: 143,
       avg_fuzzy_latency_ms: 4,
       avg_cost_usd: 0.000079,

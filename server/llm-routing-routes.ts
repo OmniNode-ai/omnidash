@@ -30,11 +30,8 @@ const VALID_WINDOWS = ['24h', '7d', '30d'] as const;
 function validateWindow(req: Request, res: Response): string | null {
   const timeWindow = typeof req.query.window === 'string' ? req.query.window : '7d';
   if (!VALID_WINDOWS.includes(timeWindow as (typeof VALID_WINDOWS)[number])) {
-    // return after sending the response so the caller can check for null.
-    return (
-      res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' }),
-      null
-    );
+    res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    return null;
   }
   return timeWindow;
 }
