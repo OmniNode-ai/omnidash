@@ -909,9 +909,42 @@ export class ReadModelConsumer {
 
     // Parse child arrays from the event payload.
     // These may be under camelCase or snake_case keys depending on producer.
-    const rawComparisons = Array.isArray(data.comparisons) ? data.comparisons : [];
-    const rawTrend = Array.isArray(data.trend) ? data.trend : [];
-    const rawBreakdown = Array.isArray(data.breakdown) ? data.breakdown : [];
+    //
+    // Guard against PostgreSQL's hard limit of 65535 parameters per query.
+    // Each child-table row has ~15 fields, so the safe ceiling is ~4369 rows.
+    // Cap at 4000 to leave headroom. Log a warning when the cap fires so
+    // operators can investigate abnormally large upstream events.
+    const MAX_BATCH_ROWS = 4000;
+
+    const rawComparisonsAll = Array.isArray(data.comparisons) ? data.comparisons : [];
+    if (rawComparisonsAll.length > MAX_BATCH_ROWS) {
+      console.warn(
+        `[ReadModelConsumer] baselines snapshot ${data.snapshot_id} contains ` +
+          `${rawComparisonsAll.length} comparison rows — capping at ${MAX_BATCH_ROWS} to avoid ` +
+          `PostgreSQL parameter limit (65535). Excess rows will be dropped for this snapshot.`
+      );
+    }
+    const rawComparisons = rawComparisonsAll.slice(0, MAX_BATCH_ROWS);
+
+    const rawTrendAll = Array.isArray(data.trend) ? data.trend : [];
+    if (rawTrendAll.length > MAX_BATCH_ROWS) {
+      console.warn(
+        `[ReadModelConsumer] baselines snapshot ${data.snapshot_id} contains ` +
+          `${rawTrendAll.length} trend rows — capping at ${MAX_BATCH_ROWS} to avoid ` +
+          `PostgreSQL parameter limit (65535). Excess rows will be dropped for this snapshot.`
+      );
+    }
+    const rawTrend = rawTrendAll.slice(0, MAX_BATCH_ROWS);
+
+    const rawBreakdownAll = Array.isArray(data.breakdown) ? data.breakdown : [];
+    if (rawBreakdownAll.length > MAX_BATCH_ROWS) {
+      console.warn(
+        `[ReadModelConsumer] baselines snapshot ${data.snapshot_id} contains ` +
+          `${rawBreakdownAll.length} breakdown rows — capping at ${MAX_BATCH_ROWS} to avoid ` +
+          `PostgreSQL parameter limit (65535). Excess rows will be dropped for this snapshot.`
+      );
+    }
+    const rawBreakdown = rawBreakdownAll.slice(0, MAX_BATCH_ROWS);
 
     // Build the filtered trend rows outside the transaction so the post-filter
     // count is accessible for the success log below (Issue 1 fix).

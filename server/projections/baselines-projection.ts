@@ -108,6 +108,7 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
         avg_outcome_improvement: 0,
         total_token_savings: 0,
         total_time_savings_ms: 0,
+        trend_point_count: 0,
       },
       comparisons: [],
       trend: [],
@@ -307,6 +308,7 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
       avg_outcome_improvement: avgOutcomeImprovement,
       total_token_savings: totalTokenSavings,
       total_time_savings_ms: totalTimeSavingsMs,
+      trend_point_count: trend.length,
     };
   }
 }

@@ -103,6 +103,14 @@ export interface BaselinesSummary {
   total_token_savings: number;
   /** Total time savings in ms (baseline - candidate). */
   total_time_savings_ms: number;
+  /**
+   * Number of trend data points used to compute avg_cost_savings and
+   * avg_outcome_improvement. Both averages are unweighted means across this
+   * many trend points. A value of 0 means no trend data was available and
+   * both averages are 0. A value of 1 means the averages reflect a single
+   * snapshot point and carry no temporal smoothing.
+   */
+  trend_point_count: number;
 }
 
 /** Trend data point for ROI over time. */

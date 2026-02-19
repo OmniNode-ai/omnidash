@@ -451,7 +451,7 @@ describe('ReadModelConsumer', () => {
      */
     function makeBaselinesPayload(overrides: Record<string, unknown> = {}): EachMessagePayload {
       return makeKafkaPayload('onex.evt.omnibase-infra.baselines-computed.v1', {
-        snapshot_id: 'snap-abc-001',
+        snapshot_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
         contract_version: 1,
         computed_at_utc: '2026-02-18T00:00:00Z',
         comparisons: [
@@ -566,7 +566,7 @@ describe('ReadModelConsumer', () => {
       expect(stats.errorsCount).toBe(0);
     });
 
-    it('idempotency: processing the same snapshotId twice does not double-insert', async () => {
+    it('idempotency: re-delivering the same UUID snapshot_id upserts the header and re-projects child rows without double-inserting', async () => {
       const { tryGetIntelligenceDb } = await import('../storage');
       const { db, childInsertValues } = makeMockDb();
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(db);
