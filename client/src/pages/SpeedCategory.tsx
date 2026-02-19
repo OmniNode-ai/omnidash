@@ -106,9 +106,15 @@ export default function SpeedCategory() {
 
   const extractionSummary = extractionResult?.data;
 
-  const { data: latencyDetails, isLoading: latencyLoading } = useQuery({
+  const { data: latencyResult, isLoading: latencyLoading } = useQuery({
     queryKey: queryKeys.effectiveness.latency(),
-    queryFn: () => effectivenessSource.latencyDetails(),
+    queryFn: async () => {
+      const data = await effectivenessSource.latencyDetails();
+      // Safe to read isUsingMockData here: JS is single-threaded; markMock/markReal
+      // fired synchronously inside latencyDetails() before it returned.
+      const isMock = effectivenessSource.isUsingMockData;
+      return { data, isMock };
+    },
     refetchInterval: 30_000,
   });
 
@@ -141,12 +147,12 @@ export default function SpeedCategory() {
     updateMockFlag('extraction', extractionResult?.isMock ?? false);
   }, [extractionResult, updateMockFlag]);
 
-  // Wire effectiveness source → mock flag.  The queryFn captures
-  // `isUsingMockData` atomically with the fetch result, so `latencyDetails.isMock`
-  // is always consistent with the data that was returned.
+  // Wire effectiveness source → mock flag.  The queryFn reads isUsingMockData
+  // synchronously after the await, so latencyResult.isMock is always consistent
+  // with the data returned by that same fetch.
   useEffect(() => {
-    updateMockFlag('effectiveness', latencyDetails?.isMock ?? false);
-  }, [latencyDetails, updateMockFlag]);
+    updateMockFlag('effectiveness', latencyResult?.isMock ?? false);
+  }, [latencyResult, updateMockFlag]);
 
   // ---------------------------------------------------------------------------
   // WebSocket: invalidation-driven re-fetch
@@ -181,7 +187,7 @@ export default function SpeedCategory() {
   // Derived values
   // ---------------------------------------------------------------------------
 
-  const cacheHitRate = latencyDetails?.data?.cache?.hit_rate;
+  const cacheHitRate = latencyResult?.data?.cache?.hit_rate;
   const cacheHitDisplay = cacheHitRate != null ? `${(cacheHitRate * 100).toFixed(1)}%` : '--';
   const cacheHitStatus: 'healthy' | 'warning' | 'error' | undefined =
     cacheHitRate != null
@@ -293,7 +299,7 @@ export default function SpeedCategory() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <LatencyPercentilesChart data={latencyDetails?.data} />
+            <LatencyPercentilesChart data={latencyResult?.data} />
           </CardContent>
         </Card>
         <PipelineHealthPanel onMockStateChange={onPipelineHealthMock} />

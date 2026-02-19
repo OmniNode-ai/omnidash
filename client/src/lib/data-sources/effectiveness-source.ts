@@ -92,9 +92,7 @@ class EffectivenessSource {
     }
   }
 
-  async latencyDetails(
-    options: EffectivenessFetchOptions = {}
-  ): Promise<{ data: LatencyDetails; isMock: boolean }> {
+  async latencyDetails(options: EffectivenessFetchOptions = {}): Promise<LatencyDetails> {
     const { fallbackToMock = true } = options;
     try {
       const response = await fetch(`${this.baseUrl}/latency`);
@@ -103,15 +101,15 @@ class EffectivenessSource {
       // Fall back to mock if response is valid but has no real data
       if (fallbackToMock && (!data.breakdowns || data.breakdowns.length === 0)) {
         this.markMock('latency');
-        return { data: getMockLatencyDetails(), isMock: true };
+        return getMockLatencyDetails();
       }
       this.markReal('latency');
-      return { data, isMock: false };
+      return data;
     } catch (error) {
       if (fallbackToMock) {
         console.warn('[EffectivenessSource] API unavailable for latency, using demo data');
         this.markMock('latency');
-        return { data: getMockLatencyDetails(), isMock: true };
+        return getMockLatencyDetails();
       }
       throw error;
     }

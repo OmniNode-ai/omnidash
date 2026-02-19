@@ -103,7 +103,13 @@ export default function EffectivenessLatency() {
     refetch,
   } = useQuery({
     queryKey: queryKeys.effectiveness.latency(),
-    queryFn: () => effectivenessSource.latencyDetails(),
+    queryFn: async () => {
+      const data = await effectivenessSource.latencyDetails();
+      // Safe to read isUsingMockData here: JS is single-threaded; markMock/markReal
+      // fired synchronously inside latencyDetails() before it returned.
+      const isMock = effectivenessSource.isUsingMockData;
+      return { data, isMock };
+    },
     refetchInterval: 15_000,
   });
 
