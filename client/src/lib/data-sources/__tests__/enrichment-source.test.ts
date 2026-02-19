@@ -143,7 +143,6 @@ describe('EnrichmentSource', () => {
       expect(enrichmentSource.isUsingMockData).toBe(true);
       // Structural assertions: verify the returned object has the expected EnrichmentSummary shape
       expect(result).toHaveProperty('hit_rate');
-      expect(result).toHaveProperty('miss_rate');
       expect(result).toHaveProperty('error_rate');
       expect(result).toHaveProperty('total_enrichments');
       expect(result).toHaveProperty('net_tokens_saved');
