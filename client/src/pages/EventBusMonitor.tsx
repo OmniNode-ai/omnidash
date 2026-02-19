@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { DashboardRenderer } from '@/lib/widgets';
+import { DashboardRenderer, type WidgetPropsMap } from '@/lib/widgets';
 import {
   eventBusDashboardConfig,
   getEventMonitoringConfig,
@@ -22,6 +22,8 @@ import {
   getMonitoredTopics,
   topicMatchesSuffix,
   normalizeToSuffix,
+  RECENT_EVENTS_WIDGET_ID,
+  TOPIC_COLUMN_KEY,
 } from '@/lib/configs/event-bus-dashboard';
 import { useDemoProjectionStream } from '@/hooks/useDemoProjectionStream';
 import type { ProjectionEvent } from '@/hooks/useProjectionStream.types';
@@ -115,6 +117,10 @@ interface PausedSnapshot {
 
 const eventConfig = getEventMonitoringConfig();
 const monitoredTopics = getMonitoredTopics();
+
+// Widget ID and topic column key are imported from the config module as
+// RECENT_EVENTS_WIDGET_ID and TOPIC_COLUMN_KEY. A rename in the config
+// propagates automatically — no local constants to update in sync.
 
 // ============================================================================
 // Mapping: ProjectionEvent → DisplayEvent
@@ -309,6 +315,11 @@ function toLiveEvent(event: DisplayEvent) {
 function toRecentEvent(event: DisplayEvent) {
   return {
     id: event.id,
+    // row.topic holds the friendly display label (matches DisplayEvent.topic contract).
+    // row.topicRaw holds the raw suffix — this is the value the table reads for the
+    // 'topicRaw' column (TOPIC_COLUMN_KEY), which the customCellRenderer intercepts
+    // to render the clickable label badge. The renderer never displays the raw value
+    // directly; it calls getTopicLabel(raw) to produce the friendly label.
     topic: event.topic,
     topicRaw: event.topicRaw,
     eventType: event.normalizedType,
@@ -621,10 +632,16 @@ export default function EventBusMonitor() {
             if (filters.priority && event.priority !== filters.priority) return false;
             if (filters.search) {
               const searchLower = filters.search.toLowerCase();
+              // Search both the friendly label (event.topic) and the raw suffix
+              // (event.topicRaw) so that typing either form into the search box
+              // produces a match. event.topic holds the friendly label (e.g.
+              // "Session Started") and event.topicRaw holds the raw suffix (e.g.
+              // "onex.evt.omniclaude.session-started.v1") — both are searched.
               const matchesSearch =
                 event.eventType.toLowerCase().includes(searchLower) ||
                 event.source.toLowerCase().includes(searchLower) ||
                 event.topic.toLowerCase().includes(searchLower) ||
+                event.topicRaw.toLowerCase().includes(searchLower) ||
                 event.summary.toLowerCase().includes(searchLower) ||
                 (event.parsedDetails?.toolName?.toLowerCase().includes(searchLower) ?? false) ||
                 (event.parsedDetails?.nodeId?.toLowerCase().includes(searchLower) ?? false) ||
@@ -787,11 +804,20 @@ export default function EventBusMonitor() {
   }, []);
 
   const handleEventClick = useCallback((widgetId: string, row: Record<string, unknown>) => {
-    if (widgetId === 'table-recent-events') {
+    if (widgetId === RECENT_EVENTS_WIDGET_ID) {
+      // Contract: rows in the 'table-recent-events' widget are produced exclusively
+      // by toRecentEvent(), which stores the raw topic suffix in row.topicRaw and
+      // the friendly label in row.topic. Always read rawTopic from row.topicRaw.
+      if (import.meta.env.DEV && row.topicRaw === undefined) {
+        console.warn(
+          '[EventBusMonitor] handleEventClick: row.topicRaw is missing — rawTopic will be empty string. Ensure this row was produced by toRecentEvent().'
+        );
+      }
+      const rawTopic = String(row.topicRaw ?? '');
       setSelectedEvent({
         id: String(row.id || ''),
-        topic: String(row.topic || ''),
-        topicRaw: String(row.topicRaw || row.topic || ''),
+        topic: getTopicLabel(rawTopic),
+        topicRaw: rawTopic,
         eventType: String(row.eventType || ''),
         source: String(row.source || ''),
         timestamp: String(row.timestamp || ''),
@@ -897,6 +923,76 @@ export default function EventBusMonitor() {
         .map((w) => ({ ...w, row: 0 })),
     }),
     []
+  );
+
+  /**
+   * Custom cell renderer for the Topic column (OMN-2198).
+   *
+   * Displays the friendly label (from TOPIC_METADATA / suffix extraction) and makes
+   * each topic cell clickable — clicking sets the topic filter to the raw suffix,
+   * simultaneously highlighting the matching row in the TopicSelector sidebar.
+   * stopPropagation prevents the row-click from opening the EventDetailPanel.
+   *
+   * NOTE: WidgetPropsMap types prop values as `Record<string, unknown>`, so the
+   * renderer function type is cast away at the DashboardRenderer boundary in
+   * WidgetRenderer.tsx. The actual runtime type is enforced by the
+   * `customCellRenderers` shape consumed inside WidgetRenderer. This is existing
+   * infrastructure behavior that cannot be fixed in this file alone.
+   *
+   * Explicitly typed as WidgetPropsMap so that the customCellRenderers shape is
+   * captured and the object satisfies the widgetProps prop of DashboardRenderer
+   * without relying on structural inference widening the renderer type to unknown.
+   *
+   * Re-render note: every filters.topic change recreates this renderer object,
+   * which causes DashboardRenderer to re-render the table widget (because
+   * widgetProps is a new reference). This is acceptable given the WidgetPropsMap
+   * infrastructure — the renderer must close over filters.topic to apply the
+   * active-filter highlight — but it is worth noting here as the intentional
+   * trade-off.
+   */
+  const tableWidgetProps = useMemo<WidgetPropsMap>(
+    () => ({
+      [RECENT_EVENTS_WIDGET_ID]: {
+        customCellRenderers: {
+          // Keyed by TOPIC_COLUMN_KEY ('topicRaw') to stay in sync with the
+          // column definition in eventBusDashboardConfig (imported config).
+          // The table reads row.topicRaw as the cell value; this renderer
+          // intercepts it and displays getTopicLabel(raw) as the friendly label.
+          [TOPIC_COLUMN_KEY]: (value: unknown) => {
+            const raw = String(value ?? '');
+            if (!raw) return null; // no topic value, nothing to render
+            const label = getTopicLabel(raw);
+            const isActive = filters.topic === raw;
+            return (
+              <button
+                type="button"
+                aria-label={`Filter by topic: ${label}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFilters((prev) => ({
+                    ...prev,
+                    topic: prev.topic === raw ? null : raw,
+                  }));
+                }}
+                className={[
+                  'inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium transition-colors',
+                  'hover:bg-primary/15 hover:text-primary cursor-pointer select-none',
+                  isActive
+                    ? 'bg-primary/20 text-primary ring-1 ring-primary/40'
+                    : 'bg-muted/60 text-foreground',
+                ].join(' ')}
+                title={raw === label ? undefined : raw}
+              >
+                {label}
+              </button>
+            );
+          },
+        },
+      },
+    }),
+    // setFilters is intentionally omitted: it is a stable React dispatch reference
+    // (guaranteed by useState) and never changes between renders.
+    [filters.topic]
   );
 
   // ============================================================================
@@ -1147,6 +1243,7 @@ export default function EventBusMonitor() {
         data={filteredData}
         isLoading={isLoading}
         onWidgetRowClick={handleEventClick}
+        widgetProps={tableWidgetProps}
       />
 
       {/* Event Detail Panel */}
