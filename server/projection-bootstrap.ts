@@ -15,6 +15,8 @@ import { ExtractionMetricsProjection } from './projections/extraction-metrics-pr
 import { EffectivenessMetricsProjection } from './projections/effectiveness-metrics-projection';
 import { CostMetricsProjection } from './projections/cost-metrics-projection';
 import { BaselinesProjection } from './projections/baselines-projection';
+import { ValidationProjection } from './projections/validation-projection';
+import { PatternsProjection } from './projections/patterns-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
@@ -68,6 +70,10 @@ export const effectivenessMetricsProjection = new EffectivenessMetricsProjection
 export const costMetricsProjection = new CostMetricsProjection();
 /** Baselines & ROI projection (OMN-2331). Queries baselines_* tables. */
 export const baselinesProjection = new BaselinesProjection();
+/** Validation dashboard projection. Queries validation-related tables. */
+export const validationProjection = new ValidationProjection();
+/** Patterns dashboard projection. Queries pattern discovery tables. */
+export const patternsProjection = new PatternsProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
@@ -80,6 +86,12 @@ if (!projectionService.getView(costMetricsProjection.viewId)) {
 }
 if (!projectionService.getView(baselinesProjection.viewId)) {
   projectionService.registerView(baselinesProjection);
+}
+if (!projectionService.getView(validationProjection.viewId)) {
+  projectionService.registerView(validationProjection);
+}
+if (!projectionService.getView(patternsProjection.viewId)) {
+  projectionService.registerView(patternsProjection);
 }
 
 // ============================================================================
