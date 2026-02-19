@@ -65,6 +65,8 @@ const REASON_LABELS: Record<string, string> = {
   USE_MOCK_DATA_flag: 'Mock flag enabled',
   demo_flag: 'Demo flag active',
   no_api_connection: 'No API connection',
+  no_db_connection: 'No database connection',
+  not_implemented: 'Not yet implemented',
 };
 
 function formatReason(reason: string | undefined): string {
@@ -84,6 +86,8 @@ function StatusIcon({ status }: { status: DataSourceStatus }) {
       return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
     case 'error':
       return <XCircle className="w-4 h-4 text-red-500" />;
+    default:
+      return <Activity className="w-4 h-4 text-gray-400" />;
   }
 }
 
@@ -104,6 +108,12 @@ function StatusBadge({ status }: { status: DataSourceStatus }) {
     case 'error':
       return (
         <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px]">Error</Badge>
+      );
+    default:
+      return (
+        <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30 text-[10px]">
+          {status}
+        </Badge>
       );
   }
 }

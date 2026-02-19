@@ -278,7 +278,8 @@ async function probeInsights(): Promise<DataSourceInfo> {
     const summary = await queryInsightsSummary();
     // null means queryInsightsSummary found no DB connection (mirrors
     // tryGetIntelligenceDb returning null internally) — it does NOT mean the
-    // DB is reachable but empty.
+    // DB is reachable but empty. Note: if queryInsightsSummary throws instead
+    // of returning null, the catch block below handles it with reason: 'probe_threw'.
     if (summary === null) {
       return { status: 'mock', reason: 'no_db_connection' };
     }
@@ -356,7 +357,7 @@ function probeEnforcement(): DataSourceInfo {
   // because the upstream projection is not yet implemented (see enforcement-routes.ts
   // TODO comments referencing OMN-2275-followup). Return mock directly rather
   // than making an HTTP round-trip to confirm the zero.
-  return { status: 'mock', reason: 'empty_tables' };
+  return { status: 'mock', reason: 'not_implemented' };
 }
 
 // ============================================================================
@@ -372,12 +373,28 @@ const router = Router();
 // 30 s window keeps the panel responsive during demos without hammering the DB.
 let healthCache: { result: DataSourcesHealthResponse; expiresAt: number } | null = null;
 
+// Pending-probe singleton: when a probe run is already in flight, subsequent
+// requests that arrive before the cache is populated await this promise instead
+// of starting an independent probe run (thundering-herd guard).
+let pendingProbe: Promise<DataSourcesHealthResponse> | null = null;
+
 /**
- * Clear the health cache. Exported for use in tests to prevent cache leakage
- * between test cases that run in the same process.
+ * Clear the health cache and the pending-probe singleton.
+ * Exported for use in tests to prevent state leakage between test cases that
+ * run in the same process.
  */
 export function clearHealthCache(): void {
   healthCache = null;
+  pendingProbe = null;
+}
+
+/**
+ * Clear the pending-probe singleton only.
+ * Exported for tests that need to reset mid-flight state independently of the
+ * result cache.
+ */
+export function clearPendingProbe(): void {
+  pendingProbe = null;
 }
 
 /**
@@ -394,52 +411,72 @@ router.get('/data-sources', async (_req, res) => {
       return;
     }
 
-    // Run all probes in parallel. Projection-based probes are synchronous;
-    // DB-based probes are async. All are called directly without HTTP self-calls.
-    const [validation, insights, patterns, executionGraph, enforcement] = await Promise.all([
-      probeValidation(),
-      probeInsights(),
-      probePatterns(),
-      probeExecutionGraph(),
-      probeEnforcement(),
-    ]);
+    // Thundering-herd guard: if a probe run is already in flight, wait for it
+    // and return from cache instead of starting an independent probe suite.
+    if (pendingProbe !== null) {
+      const result = await pendingProbe;
+      res.json(result);
+      return;
+    }
 
-    // Probe the event bus once and reuse the result for correlationTrace, which
-    // derives its live/mock status from the same event-bus projection.
-    const eventBus = probeEventBus();
+    // No cached result and no in-flight probe — start a new probe run and
+    // store the promise so concurrent requests can attach to it.
+    pendingProbe = (async (): Promise<DataSourcesHealthResponse> => {
+      try {
+        // Run all probes in parallel. Projection-based probes are synchronous;
+        // DB-based probes are async. All are called directly without HTTP self-calls.
+        const [validation, insights, patterns, executionGraph, enforcement] = await Promise.all([
+          probeValidation(),
+          probeInsights(),
+          probePatterns(),
+          probeExecutionGraph(),
+          probeEnforcement(),
+        ]);
 
-    const dataSources: Record<string, DataSourceInfo> = {
-      eventBus,
-      effectiveness: probeEffectiveness(),
-      extraction: probeExtraction(),
-      baselines: probeBaselines(),
-      costTrends: probeCost(),
-      intents: probeIntents(),
-      nodeRegistry: probeNodeRegistry(),
-      correlationTrace: { ...eventBus },
-      validation,
-      insights,
-      patterns,
-      executionGraph,
-      enforcement,
-    };
+        // Probe the event bus once and reuse the result for correlationTrace, which
+        // derives its live/mock status from the same event-bus projection.
+        const eventBus = probeEventBus();
 
-    const counts = Object.values(dataSources).reduce(
-      (acc, info) => {
-        acc[info.status] = (acc[info.status] ?? 0) + 1;
-        return acc;
-      },
-      { live: 0, mock: 0, error: 0 } as { live: number; mock: number; error: number }
-    );
+        const dataSources: Record<string, DataSourceInfo> = {
+          eventBus,
+          effectiveness: probeEffectiveness(),
+          extraction: probeExtraction(),
+          baselines: probeBaselines(),
+          costTrends: probeCost(),
+          intents: probeIntents(),
+          nodeRegistry: probeNodeRegistry(),
+          correlationTrace: { ...eventBus },
+          validation,
+          insights,
+          patterns,
+          executionGraph,
+          enforcement,
+        };
 
-    const body: DataSourcesHealthResponse = {
-      dataSources,
-      summary: counts,
-      checkedAt: new Date().toISOString(),
-    };
+        const counts = Object.values(dataSources).reduce(
+          (acc, info) => {
+            acc[info.status] = (acc[info.status] ?? 0) + 1;
+            return acc;
+          },
+          { live: 0, mock: 0, error: 0 } as { live: number; mock: number; error: number }
+        );
 
-    healthCache = { result: body, expiresAt: Date.now() + 30_000 };
+        const body: DataSourcesHealthResponse = {
+          dataSources,
+          summary: counts,
+          checkedAt: new Date().toISOString(),
+        };
 
+        healthCache = { result: body, expiresAt: Date.now() + 30_000 };
+        return body;
+      } finally {
+        // Always clear the pending-probe singleton so the next request after
+        // TTL expiry can start a fresh probe run (even if this run threw).
+        pendingProbe = null;
+      }
+    })();
+
+    const body = await pendingProbe;
     res.json(body);
   } catch {
     res.status(500).json({ error: 'Internal server error' });
