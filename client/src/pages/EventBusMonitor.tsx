@@ -114,6 +114,10 @@ interface PausedSnapshot {
 const eventConfig = getEventMonitoringConfig();
 const monitoredTopics = getMonitoredTopics();
 
+// Widget ID for the recent-events table. Used in both the widgetProps key and
+// the handleEventClick guard so that a rename only needs to happen in one place.
+const RECENT_EVENTS_TABLE_WIDGET_ID = 'table-recent-events';
+
 // ============================================================================
 // Mapping: ProjectionEvent → DisplayEvent
 // ============================================================================
@@ -307,8 +311,11 @@ function toLiveEvent(event: DisplayEvent) {
 function toRecentEvent(event: DisplayEvent) {
   return {
     id: event.id,
-    // Store raw suffix so the custom topic cell renderer can filter by it directly.
-    // The friendly display label is rendered by the topicCellRenderer closure in EventBusMonitor.
+    // DisplayEvent.topic normally holds a friendly label (e.g. "Agent Routing").
+    // In the table-recent-events widget specifically, we intentionally store the
+    // raw topic suffix here instead, so the topic cell renderer can pass it
+    // directly to the topic filter (which operates on raw suffixes). The friendly
+    // label is produced by the topicCellRenderer closure in EventBusMonitor.
     topic: event.topicRaw,
     topicRaw: event.topicRaw,
     eventType: event.normalizedType,
@@ -619,9 +626,9 @@ export default function EventBusMonitor() {
             if (filters.search) {
               const searchLower = filters.search.toLowerCase();
               // Search both the friendly label (event.topic) and the raw topic name
-              // (event.topicRaw) so that either form matches unambiguously. In
-              // toRecentEvent, topic holds the raw suffix — but DisplayEvent.topic
-              // always holds the label — so checking both covers all call sites.
+              // (event.topicRaw) so that either form matches unambiguously.
+              // (DisplayEvent.topic normally holds a friendly label; toRecentEvent
+              // repurposes it for raw suffix storage — checking both covers all call sites.)
               const matchesSearch =
                 event.eventType.toLowerCase().includes(searchLower) ||
                 event.source.toLowerCase().includes(searchLower) ||
@@ -789,7 +796,7 @@ export default function EventBusMonitor() {
   }, []);
 
   const handleEventClick = useCallback((widgetId: string, row: Record<string, unknown>) => {
-    if (widgetId === 'table-recent-events') {
+    if (widgetId === RECENT_EVENTS_TABLE_WIDGET_ID) {
       // Contract: rows in the 'table-recent-events' widget are produced exclusively
       // by toRecentEvent(), which stores the raw topic suffix in both row.topic AND
       // row.topicRaw. The row.topicRaw fallback to row.topic is only safe here
@@ -918,8 +925,9 @@ export default function EventBusMonitor() {
   // without relying on structural inference widening the renderer type to unknown.
   const tableWidgetProps = useMemo<WidgetPropsMap>(
     () => ({
-      'table-recent-events': {
+      [RECENT_EVENTS_TABLE_WIDGET_ID]: {
         customCellRenderers: {
+          // key must match the 'topic' column key in eventBusDashboardConfig
           topic: (value: unknown) => {
             const raw = String(value ?? '');
             const label = getTopicLabel(raw);
