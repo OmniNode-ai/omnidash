@@ -281,9 +281,17 @@ describe('GET /api/health/data-sources', () => {
     });
 
     // validation returns live (count > 0), patterns returns mock (count = 0).
-    // tryGetIntelligenceDb() is called in Promise.all order: probeValidation first,
-    // probePatterns second. Use mockReturnValueOnce to sequence them so the test
-    // actually exercises the scenario described in the comment.
+    //
+    // WHY the mockReturnValueOnce sequence is deterministic:
+    //   1. JS evaluates array literals left-to-right, so the Promise.all([probeValidation(),
+    //      probeInsights(), probePatterns(), ...]) call invokes probeValidation() before
+    //      probePatterns() — both functions are entered (and their synchronous preamble runs)
+    //      before the event-loop yields to any async continuation.
+    //   2. In probeValidation(), `tryGetIntelligenceDb()` is the very first statement —
+    //      it executes synchronously before the `await db.select(...)` on the next line.
+    //   3. In probePatterns(), `tryGetIntelligenceDb()` is likewise the very first statement,
+    //      before its own `await db.select(...)`.
+    //   Therefore call #1 → probeValidation, call #2 → probePatterns, guaranteed.
     vi.mocked(tryGetIntelligenceDb)
       .mockReturnValueOnce(makeMockDb([{ count: 5 }]) as any) // probeValidation → live
       .mockReturnValueOnce(makeMockDb([{ count: 0 }]) as any); // probePatterns → mock
