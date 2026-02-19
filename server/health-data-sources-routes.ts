@@ -371,7 +371,15 @@ const router = Router();
 // upstream data changes mid-TTL, the cached response will be stale until
 // expiry. This is acceptable: data source status changes infrequently and the
 // 30 s window keeps the panel responsive during demos without hammering the DB.
-let healthCache: { result: DataSourcesHealthResponse; expiresAt: number } | null = null;
+//
+// isError: true marks a short-TTL negative cache entry written when the outer
+// catch fires (all probes failed unexpectedly). The 5 s TTL prevents a
+// thundering herd of re-probes during a sustained infrastructure failure.
+let healthCache: {
+  result: DataSourcesHealthResponse;
+  expiresAt: number;
+  isError?: boolean;
+} | null = null;
 
 // Pending-probe singleton: when a probe run is already in flight, subsequent
 // requests that arrive before the cache is populated await this promise instead
@@ -397,8 +405,15 @@ export function clearHealthCache(): void {
 router.get('/data-sources', async (_req, res) => {
   try {
     // Serve cached result if still fresh.
+    // Cache-Control: no-store is applied to all response branches intentionally —
+    // prevents browsers and proxies from caching this health payload regardless of branch.
     if (healthCache && Date.now() < healthCache.expiresAt) {
       res.set('Cache-Control', 'no-store');
+      if (healthCache.isError) {
+        // Cached failure — return 503 without re-probing until the short TTL expires.
+        res.status(503).json({ error: 'Service temporarily unavailable' });
+        return;
+      }
       res.json(healthCache.result);
       return;
     }
@@ -473,6 +488,13 @@ router.get('/data-sources', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json(body);
   } catch {
+    // Short negative cache to prevent a thundering herd of re-probes on
+    // sustained failure. 5 s TTL vs the normal 30 s for successful results.
+    healthCache = {
+      result: {} as DataSourcesHealthResponse,
+      expiresAt: Date.now() + 5_000,
+      isError: true,
+    };
     res.set('Cache-Control', 'no-store');
     res.status(500).json({ error: 'Internal server error' });
   }
