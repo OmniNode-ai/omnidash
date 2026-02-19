@@ -117,12 +117,17 @@ export default function SpeedCategory() {
   // We read the getter only after `latencyDetails` is defined (i.e., the
   // query has resolved), because `markMock`/`markReal` are called inside the
   // queryFn and are observable only after it returns.
+  // Also incorporate `extractionResult?.isMock` so that if the extraction
+  // endpoint falls back to demo data while latency is real, the badge still
+  // appears.
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   useEffect(() => {
-    if (latencyDetails !== undefined) {
-      setIsUsingMockData(effectivenessSource.isUsingMockData);
+    if (latencyDetails !== undefined || extractionResult !== undefined) {
+      setIsUsingMockData(
+        effectivenessSource.isUsingMockData || (extractionResult?.isMock ?? false)
+      );
     }
-  }, [latencyDetails]);
+  }, [latencyDetails, extractionResult]);
 
   // ---------------------------------------------------------------------------
   // WebSocket: invalidation-driven re-fetch
@@ -272,7 +277,9 @@ export default function SpeedCategory() {
             <LatencyPercentilesChart data={latencyDetails} />
           </CardContent>
         </Card>
-        <PipelineHealthPanel />
+        <PipelineHealthPanel
+          onMockStateChange={(isMock) => setIsUsingMockData((prev) => prev || isMock)}
+        />
       </div>
 
       {/* Latency Heatmap */}

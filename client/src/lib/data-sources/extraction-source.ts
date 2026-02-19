@@ -4,8 +4,6 @@
  * Fetches extraction pipeline metrics from API endpoints with graceful
  * fallback to mock data when tables are empty or API is unavailable.
  *
- * PostgreSQL is the primary data source; falls back to demo data when tables are empty or the API is unavailable.
- *
  * Each method returns a discriminated union `{ data: T; isMock: boolean }`
  * so callers can track mock status in reactive state rather than reading a
  * mutable Set that React cannot observe.
@@ -81,6 +79,7 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
+      // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
       if (fallbackToMock && !(error instanceof SyntaxError)) {
         console.warn('[ExtractionSource] API unavailable for summary, using demo data');
         return { data: getMockExtractionSummary(), isMock: true };
@@ -102,6 +101,7 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
+      // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
       if (fallbackToMock && !(error instanceof SyntaxError)) {
         console.warn('[ExtractionSource] API unavailable for pipeline health, using demo data');
         return { data: getMockPipelineHealth(), isMock: true };
@@ -126,6 +126,7 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
+      // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
       if (fallbackToMock && !(error instanceof SyntaxError)) {
         console.warn('[ExtractionSource] API unavailable for latency heatmap, using demo data');
         return { data: getMockLatencyHeatmap(window), isMock: true };
@@ -150,6 +151,7 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
+      // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
       if (fallbackToMock && !(error instanceof SyntaxError)) {
         console.warn('[ExtractionSource] API unavailable for pattern volume, using demo data');
         return { data: getMockPatternVolume(window), isMock: true };
@@ -171,6 +173,7 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
+      // Re-throw parse errors — a 200 with invalid JSON is a backend bug, not a network failure.
       if (fallbackToMock && !(error instanceof SyntaxError)) {
         console.warn('[ExtractionSource] API unavailable for error rates, using demo data');
         return { data: getMockErrorRatesSummary(), isMock: true };

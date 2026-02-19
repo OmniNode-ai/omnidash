@@ -66,7 +66,15 @@ export function getMockPipelineHealth(): PipelineHealthResponse {
 }
 
 export function getMockLatencyHeatmap(window: string = '24h'): LatencyHeatmapResponse {
-  const bucketCount = window === '1h' ? 12 : window === '6h' ? 6 : window === '24h' ? 24 : 14;
+  // Bucket layout per window:
+  //   1h  → 12 buckets × 5 min
+  //   6h  → 6 buckets  × 1 hr
+  //   24h → 24 buckets × 1 hr
+  //   7d (or any unknown) → /* 7d */ 14 buckets × 1 day
+  // The fallback of 14 one-day buckets provides ~two weeks of daily granularity,
+  // which matches the '7d' selector shown in the UI time-window picker.
+  const bucketCount =
+    window === '1h' ? 12 : window === '6h' ? 6 : window === '24h' ? 24 : /* 7d */ 14;
   const stepMs =
     window === '1h'
       ? 300_000
@@ -74,7 +82,7 @@ export function getMockLatencyHeatmap(window: string = '24h'): LatencyHeatmapRes
         ? 3_600_000
         : window === '24h'
           ? 3_600_000
-          : 86_400_000;
+          : /* 7d: 1-day step */ 86_400_000;
 
   const buckets = Array.from({ length: bucketCount }, (_, i) => {
     const t = new Date(Date.now() - (bucketCount - 1 - i) * stepMs);
@@ -92,7 +100,15 @@ export function getMockLatencyHeatmap(window: string = '24h'): LatencyHeatmapRes
 }
 
 export function getMockPatternVolume(window: string = '24h'): PatternVolumeResponse {
-  const bucketCount = window === '1h' ? 12 : window === '6h' ? 6 : window === '24h' ? 24 : 14;
+  // Bucket layout per window:
+  //   1h  → 12 buckets × 5 min
+  //   6h  → 6 buckets  × 1 hr
+  //   24h → 24 buckets × 1 hr
+  //   7d (or any unknown) → /* 7d */ 14 buckets × 1 day
+  // The fallback of 14 one-day buckets provides ~two weeks of daily granularity,
+  // which matches the '7d' selector shown in the UI time-window picker.
+  const bucketCount =
+    window === '1h' ? 12 : window === '6h' ? 6 : window === '24h' ? 24 : /* 7d */ 14;
   const stepMs =
     window === '1h'
       ? 300_000
@@ -100,7 +116,7 @@ export function getMockPatternVolume(window: string = '24h'): PatternVolumeRespo
         ? 3_600_000
         : window === '24h'
           ? 3_600_000
-          : 86_400_000;
+          : /* 7d: 1-day step */ 86_400_000;
 
   const points = Array.from({ length: bucketCount }, (_, i) => {
     const t = new Date(Date.now() - (bucketCount - 1 - i) * stepMs);
@@ -151,6 +167,8 @@ export function getMockErrorRatesSummary(): ErrorRatesSummaryResponse {
       };
     }),
     total_errors: Object.values(COHORT_FAILURE_COUNTS).reduce((sum, n) => sum + n, 0),
-    overall_error_rate: 0.038,
+    overall_error_rate:
+      Object.values(COHORT_FAILURE_COUNTS).reduce((s, n) => s + n, 0) /
+      Object.values(COHORT_TOTAL_EVENTS).reduce((s, n) => s + n, 0),
   };
 }

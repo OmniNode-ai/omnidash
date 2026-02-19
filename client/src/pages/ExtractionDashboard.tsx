@@ -48,6 +48,16 @@ export default function ExtractionDashboard() {
   // Per-panel mock flags tracked in a ref so we can aggregate without triggering
   // a re-render on every intermediate update.  We use stable panel keys so that
   // each onMockStateChange callback only flips its own slot.
+  //
+  // Convention for adding new panels:
+  //   1. Add a key here initialised to `false` (the key name is arbitrary but
+  //      must be stable and unique across the dashboard).
+  //   2. Pass an `onMockStateChange` prop to the new panel component that calls
+  //      `updateMockFlag('<key>', v)`.
+  //   3. Keys that are NOT listed here still work correctly — an unlisted key
+  //      starts as `undefined` (falsy), so `updateMockFlag` will set it to the
+  //      real value on the first render without producing a stale `true` flip.
+  //      Listing keys explicitly is purely for documentation/discoverability.
   const mockFlags = useRef<Record<string, boolean>>({
     summary: false,
     pipelineHealth: false,
