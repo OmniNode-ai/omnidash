@@ -4029,11 +4029,12 @@ export class EventConsumer extends EventEmitter {
           });
 
           // Log catalog re-query events (OMN-2316).
-          // Note: this listener is intentionally never explicitly removed. The
-          // manager instance is created fresh inside each fetchCatalogTopics()
-          // call and is not reused, so there is no accumulation risk — the
-          // instance (and its listener registry) is garbage-collected once
-          // fetchCatalogTopics() resolves or rejects.
+          // Note: this listener is intentionally never explicitly removed. There
+          // is no accumulation risk because: (a) the manager instance is assigned
+          // to `this.catalogManager` and lives for the lifetime of EventConsumer,
+          // and (b) this registration point is inside a `.once('catalogReceived')`
+          // callback that fires exactly once per manager, so `manager.on(
+          // 'catalogRequery', ...)` is called at most once per manager instance.
           manager.on('catalogRequery', (event) => {
             console.log(
               `[EventConsumer] Topic catalog re-query triggered (reason=${event.reason}, ` +

@@ -361,6 +361,7 @@ export class TopicCatalogManager extends EventEmitter {
    *   (explicit -1 sentinel), or `'periodic'` (scheduled maintenance).
    */
   private triggerRequery(reason: 'gap' | 'version_unknown' | 'periodic'): void {
+    if (this.stopped) return;
     const newCorrId = crypto.randomUUID();
     this.outstandingCorrelationId = newCorrId;
 
