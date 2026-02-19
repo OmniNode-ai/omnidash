@@ -271,6 +271,9 @@ export const SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED =
  */
 export const SUFFIX_OMNICLAUDE_LLM_COST_REPORTED = 'onex.evt.omniclaude.llm-cost-reported.v1';
 
+/** Context enrichment events emitted per enrichment operation (OMN-2280). */
+export const SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT = 'onex.evt.omniclaude.context-enrichment.v1';
+
 // ============================================================================
 // OmniIntelligence Topics
 // ============================================================================

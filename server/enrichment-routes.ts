@@ -10,7 +10,8 @@
  * `context_enrichment_events` table via the read-model consumer projection,
  * replace with real queries following the same pattern as baselines-routes.ts.
  *
- * TODO(OMN-2280): Validate window against EnrichmentTimeWindow before passing to queries; return 400 for invalid values to avoid unvalidated input reaching DB.
+ * TODO(OMN-2280): Wire real DB queries — stub routes return empty responses.
+ * window param is already validated (returns 400 for invalid values).
  *
  * NOTE: Per OMN-2325 architectural rule, route files must not import DB
  * accessors directly. Use projectionService views for data access once

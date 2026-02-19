@@ -50,6 +50,7 @@ import type {
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
 import type { ContextEnrichmentEvent } from '@shared/enrichment-types';
+import { SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT } from '@shared/topics';
 import { baselinesProjection } from './projection-bootstrap';
 import { emitBaselinesUpdate } from './baselines-events';
 
@@ -112,7 +113,7 @@ const READ_MODEL_TOPICS = [
   'onex.evt.omniclaude.pattern-enforcement.v1',
   'onex.evt.omniclaude.llm-cost-reported.v1',
   'onex.evt.omnibase-infra.baselines-computed.v1',
-  'onex.evt.omniclaude.context-enrichment.v1',
+  SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -295,7 +296,7 @@ export class ReadModelConsumer {
         case 'onex.evt.omnibase-infra.baselines-computed.v1':
           projected = await this.projectBaselinesSnapshot(parsed, partition, message.offset);
           break;
-        case 'onex.evt.omniclaude.context-enrichment.v1':
+        case SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT:
           projected = await this.projectEnrichmentEvent(parsed, fallbackId);
           break;
         default:

@@ -442,7 +442,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchLatency,
   } = useQuery({
     queryKey: queryKeys.enrichment.latencyDistribution(timeWindow),
-    queryFn: () => enrichmentSource.latencyDistribution(timeWindow, { mockOnEmpty: true }),
+    queryFn: () => enrichmentSource.latencyDistribution(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -466,7 +466,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchSim,
   } = useQuery({
     queryKey: queryKeys.enrichment.similarityQuality(timeWindow),
-    queryFn: () => enrichmentSource.similarityQuality(timeWindow, { mockOnEmpty: true }),
+    queryFn: () => enrichmentSource.similarityQuality(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -478,7 +478,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchAlerts,
   } = useQuery({
     queryKey: queryKeys.enrichment.inflationAlerts(timeWindow),
-    queryFn: () => enrichmentSource.inflationAlerts(timeWindow, { mockOnEmpty: true }),
+    queryFn: () => enrichmentSource.inflationAlerts(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
