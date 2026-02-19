@@ -50,6 +50,11 @@ router.get('/summary', (req, res) => {
     // projection is wired in read-model-consumer.ts.
     return res.json({
       total_delegations: 0,
+      // delegation_rate is a stub returning 0. The intended derivation is:
+      //   delegated_count / total_count from the agent_routing_decisions table,
+      //   where delegated_count = rows whose chosen agent is a sub-agent delegate
+      //   and total_count = all routing decisions in the requested time window.
+      // Wire this once the delegation projection is added to read-model-consumer.ts.
       delegation_rate: 0,
       quality_gate_pass_rate: 0,
       total_cost_savings_usd: 0,

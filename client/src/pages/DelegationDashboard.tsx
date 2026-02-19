@@ -417,7 +417,7 @@ export default function DelegationDashboard() {
     isError: summaryError,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: queryKeys.delegation.summary(timeWindow),
+    queryKey: [...queryKeys.delegation.summary(timeWindow), isDemoMode],
     queryFn: () => delegationSource.summary(timeWindow, fetchOptions),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
@@ -429,7 +429,7 @@ export default function DelegationDashboard() {
     isError: taskTypeError,
     refetch: refetchTaskType,
   } = useQuery({
-    queryKey: queryKeys.delegation.byTaskType(timeWindow),
+    queryKey: [...queryKeys.delegation.byTaskType(timeWindow), isDemoMode],
     queryFn: () => delegationSource.byTaskType(timeWindow, fetchOptions),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
@@ -441,7 +441,7 @@ export default function DelegationDashboard() {
     isError: costSavingsError,
     refetch: refetchCostSavings,
   } = useQuery({
-    queryKey: queryKeys.delegation.costSavings(timeWindow),
+    queryKey: [...queryKeys.delegation.costSavings(timeWindow), isDemoMode],
     queryFn: () => delegationSource.costSavings(timeWindow, fetchOptions),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
@@ -453,7 +453,7 @@ export default function DelegationDashboard() {
     isError: qualityGatesError,
     refetch: refetchQualityGates,
   } = useQuery({
-    queryKey: queryKeys.delegation.qualityGates(timeWindow),
+    queryKey: [...queryKeys.delegation.qualityGates(timeWindow), isDemoMode],
     queryFn: () => delegationSource.qualityGates(timeWindow, fetchOptions),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
@@ -465,7 +465,7 @@ export default function DelegationDashboard() {
     isError: shadowDivergenceError,
     refetch: refetchShadowDivergence,
   } = useQuery({
-    queryKey: queryKeys.delegation.shadowDivergence(timeWindow),
+    queryKey: [...queryKeys.delegation.shadowDivergence(timeWindow), isDemoMode],
     queryFn: () => delegationSource.shadowDivergence(timeWindow, fetchOptions),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
@@ -477,7 +477,7 @@ export default function DelegationDashboard() {
     isError: trendError,
     refetch: refetchTrend,
   } = useQuery({
-    queryKey: queryKeys.delegation.trend(timeWindow),
+    queryKey: [...queryKeys.delegation.trend(timeWindow), isDemoMode],
     queryFn: () => delegationSource.trend(timeWindow, fetchOptions),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
@@ -507,10 +507,13 @@ export default function DelegationDashboard() {
 
   useEffect(() => {
     if (allSettled) {
-      setIsUsingMockData(delegationSource.isUsingMockData);
-    } else {
+      // All queries have resolved: snapshot the mock-data state now that every
+      // fetch callback has had a chance to call markMock()/markReal(). Clearing
+      // before this point would race with in-flight callbacks that share the
+      // singleton _mockEndpoints Set and cause isUsingMockData to report false
+      // even when endpoints fell back to mock data.
       delegationSource.clearMockState();
-      setIsUsingMockData(false);
+      setIsUsingMockData(delegationSource.isUsingMockData);
     }
   }, [allSettled, timeWindow]);
 
