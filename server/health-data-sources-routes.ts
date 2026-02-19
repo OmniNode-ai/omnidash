@@ -357,17 +357,6 @@ function probeEnforcement(): DataSourceInfo {
   return { status: 'mock', reason: 'empty_tables' };
 }
 
-/**
- * Probe the correlation trace source.
- * The client-side CorrelationTrace page uses a USE_MOCK_DATA constant.
- * We probe the /api/projections/event-bus/snapshot endpoint that backs it.
- */
-function probeCorrelationTrace(): DataSourceInfo {
-  // CorrelationTrace reads from the event-bus projection.
-  // If the event-bus is live, trace data is also live.
-  return probeEventBus();
-}
-
 // ============================================================================
 // Router
 // ============================================================================
@@ -377,6 +366,14 @@ const router = Router();
 // Simple TTL cache — avoids re-running DB COUNT(*) queries on every request.
 // 30-second expiry is intentionally short so the panel stays fresh during demos.
 let healthCache: { result: DataSourcesHealthResponse; expiresAt: number } | null = null;
+
+/**
+ * Clear the health cache. Exported for use in tests to prevent cache leakage
+ * between test cases that run in the same process.
+ */
+export function clearHealthCache(): void {
+  healthCache = null;
+}
 
 /**
  * GET /api/health/data-sources
@@ -413,7 +410,7 @@ router.get('/data-sources', async (_req, res) => {
     costTrends: probeCost(),
     intents: probeIntents(),
     nodeRegistry: probeNodeRegistry(),
-    correlationTrace: eventBus,
+    correlationTrace: { ...eventBus },
     validation,
     insights,
     patterns,

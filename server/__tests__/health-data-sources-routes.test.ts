@@ -11,7 +11,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import healthDataSourcesRoutes from '../health-data-sources-routes';
+import healthDataSourcesRoutes, { clearHealthCache } from '../health-data-sources-routes';
 import { projectionService } from '../projection-bootstrap';
 
 // ============================================================================
@@ -122,7 +122,7 @@ function setupEmptyDb() {
 describe('GET /api/health/data-sources', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.PORT = '3000';
+    clearHealthCache();
   });
 
   it('returns 200 with correct top-level shape', async () => {
