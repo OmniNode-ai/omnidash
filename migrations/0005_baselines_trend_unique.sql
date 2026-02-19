@@ -7,5 +7,7 @@
 -- the summary averages derived in BaselinesProjection._deriveSummary().
 -- ============================================================================
 
-ALTER TABLE baselines_trend
-  ADD CONSTRAINT baselines_trend_snapshot_date_unique UNIQUE (snapshot_id, date);
+-- ADD CONSTRAINT ... IF NOT EXISTS is supported on PostgreSQL 9.x+.
+-- Using CREATE UNIQUE INDEX IF NOT EXISTS is safer and works on all PG versions.
+CREATE UNIQUE INDEX IF NOT EXISTS baselines_trend_snapshot_date_unique
+  ON baselines_trend (snapshot_id, date);

@@ -1068,6 +1068,7 @@ export class ReadModelConsumer {
         windowEndUtc: windowEndUtc ?? undefined,
       };
 
+      let insertedComparisonCount = 0;
       await db.transaction(async (tx) => {
         // 1. Upsert the snapshot header — first operation in the transaction.
         await tx
@@ -1133,6 +1134,7 @@ export class ReadModelConsumer {
               rationale: String(c.rationale ?? ''),
             }));
           await tx.insert(baselinesComparisons).values(comparisonRows);
+          insertedComparisonCount = comparisonRows.length;
         }
 
         await tx.delete(baselinesTrend).where(eq(baselinesTrend.snapshotId, snapshotId));
@@ -1186,7 +1188,7 @@ export class ReadModelConsumer {
 
       console.log(
         `[ReadModelConsumer] Projected baselines snapshot ${snapshotId} ` +
-          `(${rawComparisons.length} comparisons, ${finalTrendRows.length} trend points, ` +
+          `(${insertedComparisonCount} comparisons, ${finalTrendRows.length} trend points, ` +
           `${rawBreakdown.length} breakdown rows)`
       );
     } catch (err) {
