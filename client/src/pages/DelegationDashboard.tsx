@@ -55,6 +55,7 @@ import {
   BarChart,
   Bar,
   Cell,
+  ComposedChart,
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import {
@@ -512,8 +513,9 @@ export default function DelegationDashboard() {
       // before this point would race with in-flight callbacks that share the
       // singleton _mockEndpoints Set and cause isUsingMockData to report false
       // even when endpoints fell back to mock data.
-      delegationSource.clearMockState();
-      setIsUsingMockData(delegationSource.isUsingMockData);
+      const isMock = delegationSource.isUsingMockData; // read FIRST
+      delegationSource.clearMockState(); // THEN clear
+      setIsUsingMockData(isMock); // then set state
     }
   }, [allSettled, timeWindow]);
 
@@ -895,7 +897,7 @@ export default function DelegationDashboard() {
             </p>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={qualityGates} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+              <ComposedChart data={qualityGates} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
                   dataKey="date"
@@ -943,7 +945,7 @@ export default function DelegationDashboard() {
                   dot={false}
                   name="pass_rate"
                 />
-              </BarChart>
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </CardContent>

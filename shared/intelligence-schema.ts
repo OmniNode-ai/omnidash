@@ -1095,7 +1095,7 @@ export const delegationEvents = pgTable(
     costSavingsUsd: numeric('cost_savings_usd', { precision: 12, scale: 8 }),
     delegationLatencyMs: integer('delegation_latency_ms'),
     repo: text('repo'),
-    isShadow: boolean('is_shadow').default(false),
+    isShadow: boolean('is_shadow').notNull().default(false),
     projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
