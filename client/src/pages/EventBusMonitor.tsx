@@ -118,6 +118,12 @@ const monitoredTopics = getMonitoredTopics();
 // the handleEventClick guard so that a rename only needs to happen in one place.
 const RECENT_EVENTS_TABLE_WIDGET_ID = 'table-recent-events';
 
+// Column key for the topic cell in the recent-events table.
+// Must match the `key` field of the corresponding column entry in
+// eventBusDashboardConfig (imported from @/lib/configs/event-bus-dashboard).
+// If that column is ever renamed, update this constant and the config in sync.
+const RECENT_EVENTS_TOPIC_COLUMN_KEY = 'topic';
+
 // ============================================================================
 // Mapping: ProjectionEvent → DisplayEvent
 // ============================================================================
@@ -914,21 +920,31 @@ export default function EventBusMonitor() {
     []
   );
 
-  // Custom cell renderer for the Topic column (OMN-2198).
-  //
-  // Displays the friendly label (from TOPIC_METADATA / suffix extraction) and makes
-  // each topic cell clickable — clicking sets the topic filter to the raw suffix,
-  // simultaneously highlighting the matching row in the TopicSelector sidebar.
-  // stopPropagation prevents the row-click from opening the EventDetailPanel.
-  // Explicitly typed as WidgetPropsMap so that the customCellRenderers shape is
-  // captured and the object satisfies the widgetProps prop of DashboardRenderer
-  // without relying on structural inference widening the renderer type to unknown.
+  /**
+   * Custom cell renderer for the Topic column (OMN-2198).
+   *
+   * Displays the friendly label (from TOPIC_METADATA / suffix extraction) and makes
+   * each topic cell clickable — clicking sets the topic filter to the raw suffix,
+   * simultaneously highlighting the matching row in the TopicSelector sidebar.
+   * stopPropagation prevents the row-click from opening the EventDetailPanel.
+   *
+   * NOTE: WidgetPropsMap types prop values as `Record<string, unknown>`, so the
+   * renderer function type is cast away at the DashboardRenderer boundary in
+   * WidgetRenderer.tsx. The actual runtime type is enforced by the
+   * `customCellRenderers` shape consumed inside WidgetRenderer. This is existing
+   * infrastructure behavior that cannot be fixed in this file alone.
+   *
+   * Explicitly typed as WidgetPropsMap so that the customCellRenderers shape is
+   * captured and the object satisfies the widgetProps prop of DashboardRenderer
+   * without relying on structural inference widening the renderer type to unknown.
+   */
   const tableWidgetProps = useMemo<WidgetPropsMap>(
     () => ({
       [RECENT_EVENTS_TABLE_WIDGET_ID]: {
         customCellRenderers: {
-          // key must match the 'topic' column key in eventBusDashboardConfig
-          topic: (value: unknown) => {
+          // Keyed by RECENT_EVENTS_TOPIC_COLUMN_KEY to stay in sync with the
+          // column definition in eventBusDashboardConfig (imported config).
+          [RECENT_EVENTS_TOPIC_COLUMN_KEY]: (value: unknown) => {
             const raw = String(value ?? '');
             const label = getTopicLabel(raw);
             const isActive = filters.topic === raw;
