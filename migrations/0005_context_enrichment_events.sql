@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS context_enrichment_events (
   -- Whether the result came from cache
   cache_hit        BOOLEAN NOT NULL DEFAULT FALSE,
   -- Enrichment outcome: hit | miss | error | inflated
+  -- NOTE: These values are duplicated in server/read-model-consumer.ts
+  -- (see the `!['hit', 'miss', 'error', 'inflated'].includes(outcome)` guard).
+  -- If you add or rename an outcome value here, update that validation in sync.
   outcome          TEXT NOT NULL CHECK (outcome IN ('hit', 'miss', 'error', 'inflated')),
   -- Latency in milliseconds
   latency_ms       INTEGER NOT NULL DEFAULT 0,

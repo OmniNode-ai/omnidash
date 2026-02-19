@@ -27,27 +27,14 @@ import type {
 
 const router = Router();
 
-// Shared window validation helper
-const VALID_WINDOWS = ['24h', '7d', '30d'] as const;
-
-function validateWindow(window: string | undefined): window is (typeof VALID_WINDOWS)[number] {
-  return VALID_WINDOWS.includes(window as (typeof VALID_WINDOWS)[number]);
-}
-
 // ============================================================================
 // GET /api/enrichment/summary?window=7d
 // ============================================================================
 
 router.get('/summary', (req, res) => {
   try {
-    const window = (req.query.window as string) || '7d';
-    if (!validateWindow(window)) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
-    }
     // TODO(OMN-2280-followup): Replace with projectionService.getView('enrichment').getSnapshot()
-    // once the enrichment projection is implemented. Use `window` to scope the query.
+    // once the enrichment projection is implemented. Use req.query.window to scope the query.
     const empty: EnrichmentSummary = {
       total_enrichments: 0,
       hit_rate: 0,
@@ -72,13 +59,7 @@ router.get('/summary', (req, res) => {
 
 router.get('/by-channel', (req, res) => {
   try {
-    const window = (req.query.window as string) || '7d';
-    if (!validateWindow(window)) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
-    }
-    // TODO(OMN-2280-followup): Replace with projection view query scoped to `window`.
+    // TODO(OMN-2280-followup): Replace with projection view query scoped to req.query.window.
     const data: EnrichmentByChannel[] = [];
     return res.json(data);
   } catch (error) {
@@ -93,13 +74,7 @@ router.get('/by-channel', (req, res) => {
 
 router.get('/latency-distribution', (req, res) => {
   try {
-    const window = (req.query.window as string) || '7d';
-    if (!validateWindow(window)) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
-    }
-    // TODO(OMN-2280-followup): Replace with projection view query scoped to `window`.
+    // TODO(OMN-2280-followup): Replace with projection view query scoped to req.query.window.
     const data: LatencyDistributionPoint[] = [];
     return res.json(data);
   } catch (error) {
@@ -114,13 +89,7 @@ router.get('/latency-distribution', (req, res) => {
 
 router.get('/token-savings', (req, res) => {
   try {
-    const window = (req.query.window as string) || '7d';
-    if (!validateWindow(window)) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
-    }
-    // TODO(OMN-2280-followup): Replace with projection view query scoped to `window`.
+    // TODO(OMN-2280-followup): Replace with projection view query scoped to req.query.window.
     const data: TokenSavingsTrendPoint[] = [];
     return res.json(data);
   } catch (error) {
@@ -135,13 +104,7 @@ router.get('/token-savings', (req, res) => {
 
 router.get('/similarity-quality', (req, res) => {
   try {
-    const window = (req.query.window as string) || '7d';
-    if (!validateWindow(window)) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
-    }
-    // TODO(OMN-2280-followup): Replace with projection view query scoped to `window`.
+    // TODO(OMN-2280-followup): Replace with projection view query scoped to req.query.window.
     const data: SimilarityQualityPoint[] = [];
     return res.json(data);
   } catch (error) {
@@ -156,13 +119,7 @@ router.get('/similarity-quality', (req, res) => {
 
 router.get('/inflation-alerts', (req, res) => {
   try {
-    const window = (req.query.window as string) || '7d';
-    if (!validateWindow(window)) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
-    }
-    // TODO(OMN-2280-followup): Replace with projection view query scoped to `window`.
+    // TODO(OMN-2280-followup): Replace with projection view query scoped to req.query.window.
     const data: InflationAlert[] = [];
     return res.json(data);
   } catch (error) {

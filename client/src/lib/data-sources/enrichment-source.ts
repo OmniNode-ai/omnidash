@@ -44,8 +44,15 @@ class EnrichmentSource {
   /**
    * True if any of the primary data endpoints fell back to mock data.
    *
-   * Checks the three primary endpoints (summary, by-channel, token-savings)
-   * so that an empty response from ANY of them triggers the demo-mode banner.
+   * Only the three endpoints below are used as signals for the demo-mode
+   * banner because they map to the two golden metrics (hit rate and token
+   * savings) plus the aggregate summary card — collectively sufficient to
+   * determine whether live data exists.  The remaining three endpoints
+   * (latency-distribution, similarity-quality, inflation-alerts) are
+   * secondary metrics: they may legitimately return empty results even when
+   * the database is live (e.g. no similarity-search operations or no
+   * inflation events in the selected window), so including them would
+   * produce false-positive demo-mode banners.
    */
   get isUsingMockData(): boolean {
     return (
@@ -83,9 +90,9 @@ class EnrichmentSource {
       }
       this.markReal('summary');
       return data;
-    } catch {
+    } catch (err) {
+      console.warn('[EnrichmentSource] fetch failed for summary:', err);
       if (fallbackToMock) {
-        console.warn('[EnrichmentSource] API unavailable for summary, using demo data');
         this.markMock('summary');
         return getMockEnrichmentSummary(window);
       }
@@ -109,9 +116,9 @@ class EnrichmentSource {
       }
       this.markReal('by-channel');
       return data;
-    } catch {
+    } catch (err) {
+      console.warn('[EnrichmentSource] fetch failed for by-channel:', err);
       if (fallbackToMock) {
-        console.warn('[EnrichmentSource] API unavailable for by-channel, using demo data');
         this.markMock('by-channel');
         return getMockEnrichmentByChannel(window);
       }
@@ -137,11 +144,9 @@ class EnrichmentSource {
       }
       this.markReal('latency-distribution');
       return data;
-    } catch {
+    } catch (err) {
+      console.warn('[EnrichmentSource] fetch failed for latency-distribution:', err);
       if (fallbackToMock) {
-        console.warn(
-          '[EnrichmentSource] API unavailable for latency-distribution, using demo data'
-        );
         this.markMock('latency-distribution');
         return getMockLatencyDistribution(window);
       }
@@ -165,9 +170,9 @@ class EnrichmentSource {
       }
       this.markReal('token-savings');
       return data;
-    } catch {
+    } catch (err) {
+      console.warn('[EnrichmentSource] fetch failed for token-savings:', err);
       if (fallbackToMock) {
-        console.warn('[EnrichmentSource] API unavailable for token-savings, using demo data');
         this.markMock('token-savings');
         return getMockTokenSavingsTrend(window);
       }
@@ -193,9 +198,9 @@ class EnrichmentSource {
       }
       this.markReal('similarity-quality');
       return data;
-    } catch {
+    } catch (err) {
+      console.warn('[EnrichmentSource] fetch failed for similarity-quality:', err);
       if (fallbackToMock) {
-        console.warn('[EnrichmentSource] API unavailable for similarity-quality, using demo data');
         this.markMock('similarity-quality');
         return getMockSimilarityQuality(window);
       }
@@ -221,9 +226,9 @@ class EnrichmentSource {
       }
       this.markReal('inflation-alerts');
       return data;
-    } catch {
+    } catch (err) {
+      console.warn('[EnrichmentSource] fetch failed for inflation-alerts:', err);
       if (fallbackToMock) {
-        console.warn('[EnrichmentSource] API unavailable for inflation-alerts, using demo data');
         this.markMock('inflation-alerts');
         return getMockInflationAlerts(window);
       }

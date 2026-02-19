@@ -167,7 +167,11 @@ export interface InflationAlert {
   model_name: string;
   tokens_before: number;
   tokens_after: number;
-  /** Negative value (tokens_after - tokens_before) */
+  /**
+   * Net tokens saved (tokens_before - tokens_after).
+   * For inflation alerts this is always negative because tokens_after >
+   * tokens_before — meaning the enrichment INCREASED token count.
+   */
   net_tokens_saved: number;
   occurred_at: string;
   repo?: string;

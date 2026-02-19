@@ -9,7 +9,7 @@
  * - Context inflation alert table (enrichment increasing token count)
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { enrichmentSource } from '@/lib/data-sources/enrichment-source';
@@ -394,8 +394,9 @@ export default function ContextEnrichmentDashboard() {
     onMessage: useCallback(
       (msg: { type: string; timestamp: string }) => {
         if (msg.type === 'ENRICHMENT_INVALIDATE') {
-          // TODO: Server does not yet emit ENRICHMENT_INVALIDATE — wired client-side
-          // for when server-side broadcast is implemented (future ticket).
+          // TODO(OMN-2280): Server does not yet emit ENRICHMENT_INVALIDATE — wired
+          // client-side so the handler is ready when server-side broadcast lands.
+          // This is intentional future work, not dead code.
           queryClient.invalidateQueries({ queryKey: queryKeys.enrichment.all });
         }
       },
@@ -489,8 +490,11 @@ export default function ContextEnrichmentDashboard() {
     refetchAlerts();
   };
 
-  // Determine whether we're in demo/mock mode
-  const [isUsingMockData, setIsUsingMockData] = useState(false);
+  // Determine whether we're in demo/mock mode.
+  // Derived directly from query loading state and the source's mock-endpoint
+  // tracking so no side-effect chaining is required.  The banner is suppressed
+  // while any query is still in-flight (allSettled guard) so it doesn't flash
+  // during the initial fetch or when the time window changes.
   const allSettled =
     !summaryLoading &&
     !channelLoading &&
@@ -498,16 +502,11 @@ export default function ContextEnrichmentDashboard() {
     !tokenLoading &&
     !simLoading &&
     !alertsLoading;
-  useEffect(() => {
-    if (allSettled) {
-      setIsUsingMockData(enrichmentSource.isUsingMockData);
-    }
-  }, [allSettled, timeWindow]);
-
-  // Reset mock-data banner immediately when time window changes
-  useEffect(() => {
-    setIsUsingMockData(false);
-  }, [timeWindow]);
+  const isUsingMockData = useMemo(
+    () => allSettled && enrichmentSource.isUsingMockData,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allSettled, timeWindow] // timeWindow forces re-evaluation after window switch
+  );
 
   // Context inflation alert badge — show if inflation_alert_count > 0
   const showInflationWarning = (summary?.inflation_alert_count ?? 0) > 0 && !summaryLoading;
