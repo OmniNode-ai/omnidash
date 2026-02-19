@@ -54,9 +54,9 @@ export interface DeleteOptions {
  * Provides direct database access with Drizzle ORM and optional event bus
  * integration. When KAFKA_BROKERS (or KAFKA_BOOTSTRAP_SERVERS) is present,
  * event bus integration is enabled. When the variable is absent, the adapter
- * logs an error and continues with event bus integration disabled (graceful
- * degradation). A missing broker configuration is an error state, but it does
- * not prevent the adapter from serving direct database queries.
+ * logs an error and event bus integration is disabled — this is a
+ * misconfiguration error state, not normal operation. The adapter continues
+ * serving direct database queries in this error state.
  */
 export class PostgresAdapter {
   private get db() {
