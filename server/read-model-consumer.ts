@@ -142,6 +142,11 @@ const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'tes
 // than once per Kafka message inside projectBaselinesSnapshot().
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// PostgreSQL hard limit is 65535 parameters per query.
+// The widest baselines child table (comparisons) has ~14 fields, giving ~4681 safe rows.
+// Use 4000 as a conservative cap with margin.
+const MAX_BATCH_ROWS = 4000;
+
 // Consumer configuration
 const CONSUMER_GROUP_ID = process.env.READ_MODEL_CONSUMER_GROUP_ID || 'omnidash-read-model-v1';
 const CLIENT_ID = process.env.READ_MODEL_CLIENT_ID || 'omnidash-read-model-consumer';
@@ -957,10 +962,9 @@ export class ReadModelConsumer {
     //
     // Guard against PostgreSQL's hard limit of 65535 parameters per query.
     // Each child-table row has ~15 fields, so the safe ceiling is ~4369 rows.
-    // Cap at 4000 to leave headroom. Log a warning when the cap fires so
-    // operators can investigate abnormally large upstream events.
-    const MAX_BATCH_ROWS = 4000;
-
+    // Cap at MAX_BATCH_ROWS (module-scope constant) to leave headroom. Log a
+    // warning when the cap fires so operators can investigate abnormally large
+    // upstream events.
     const rawComparisonsAll = Array.isArray(data.comparisons) ? data.comparisons : [];
     if (rawComparisonsAll.length > MAX_BATCH_ROWS) {
       console.warn(
@@ -1113,12 +1117,23 @@ export class ReadModelConsumer {
 
       // Invalidate the baselines projection cache so the next API request
       // returns fresh data from the newly projected snapshot.
-      baselinesProjection.reset();
+      // Wrapped defensively: a failure here must not block watermark advancement —
+      // the DB writes have already committed successfully.
+      try {
+        baselinesProjection.reset();
+      } catch (e) {
+        console.warn('[read-model-consumer] baselinesProjection.reset() failed post-commit:', e);
+      }
 
       // Notify WebSocket clients subscribed to the 'baselines' topic.
-      // Called here (inside the try block) so clients are only notified when
+      // Called here (after transaction commits) so clients are only notified when
       // all DB writes have committed successfully.
-      emitBaselinesUpdate(snapshotId);
+      // Wrapped defensively: a failure here must not block watermark advancement.
+      try {
+        emitBaselinesUpdate(snapshotId);
+      } catch (e) {
+        console.warn('[read-model-consumer] emitBaselinesUpdate() failed post-commit:', e);
+      }
 
       console.log(
         `[ReadModelConsumer] Projected baselines snapshot ${snapshotId} ` +

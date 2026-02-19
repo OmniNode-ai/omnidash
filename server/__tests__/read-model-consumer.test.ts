@@ -33,6 +33,19 @@ vi.mock('kafkajs', () => ({
   })),
 }));
 
+// Mock projection-bootstrap so baselinesProjection.reset() is a no-op spy
+// that does not interact with the DB or bleed state across tests.
+vi.mock('../projection-bootstrap', () => ({
+  baselinesProjection: {
+    reset: vi.fn(),
+  },
+}));
+
+// Mock baselines-events so emitBaselinesUpdate() is a no-op spy.
+vi.mock('../baselines-events', () => ({
+  emitBaselinesUpdate: vi.fn(),
+}));
+
 import { ReadModelConsumer } from '../read-model-consumer';
 
 // ============================================================================
@@ -67,8 +80,8 @@ describe('ReadModelConsumer', () => {
   let consumer: ReadModelConsumer;
 
   beforeEach(() => {
-    consumer = new ReadModelConsumer();
     vi.clearAllMocks();
+    consumer = new ReadModelConsumer();
   });
 
   describe('getStats', () => {
@@ -533,6 +546,8 @@ describe('ReadModelConsumer', () => {
 
     it('happy path: writes all 4 tables and advances watermark', async () => {
       const { tryGetIntelligenceDb } = await import('../storage');
+      const { baselinesProjection } = await import('../projection-bootstrap');
+      const { emitBaselinesUpdate } = await import('../baselines-events');
       const { db, deleteMock, childInsertValues, executeMock } = makeMockDb();
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(db);
 
@@ -560,6 +575,13 @@ describe('ReadModelConsumer', () => {
 
       // watermark updated
       expect(executeMock).toHaveBeenCalled();
+
+      // projection cache should have been invalidated after the DB writes committed
+      expect(baselinesProjection.reset).toHaveBeenCalledTimes(1);
+
+      // WebSocket clients should have been notified with the correct snapshot ID
+      expect(emitBaselinesUpdate).toHaveBeenCalledTimes(1);
+      expect(emitBaselinesUpdate).toHaveBeenCalledWith('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
 
       const stats = consumer.getStats();
       expect(stats.eventsProjected).toBe(1);
@@ -656,7 +678,8 @@ describe('ReadModelConsumer', () => {
         })
       );
 
-      // Warning should fire for each of the two bad rows
+      // Warning should fire exactly once for each of the two bad rows
+      expect(warnSpy).toHaveBeenCalledTimes(2);
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('Skipping trend row with blank/null date'),
         expect.any(String)

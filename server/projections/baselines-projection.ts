@@ -238,12 +238,16 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
       .where(eq(baselinesTrend.snapshotId, snapshotId))
       .orderBy(asc(baselinesTrend.date));
 
-    return rows.map((r) => ({
-      date: r.date,
-      avg_cost_savings: parseFloat(r.avgCostSavings),
-      avg_outcome_improvement: parseFloat(r.avgOutcomeImprovement),
-      comparisons_evaluated: r.comparisonsEvaluated,
-    }));
+    return rows.map((r) => {
+      const rawCostSavings = parseFloat(r.avgCostSavings);
+      const rawOutcomeImprovement = parseFloat(r.avgOutcomeImprovement);
+      return {
+        date: r.date,
+        avg_cost_savings: isFinite(rawCostSavings) ? rawCostSavings : 0,
+        avg_outcome_improvement: isFinite(rawOutcomeImprovement) ? rawOutcomeImprovement : 0,
+        comparisons_evaluated: r.comparisonsEvaluated,
+      };
+    });
   }
 
   private async _queryBreakdown(db: Db, snapshotId: string): Promise<RecommendationBreakdown[]> {
@@ -253,11 +257,23 @@ export class BaselinesProjection extends DbBackedProjectionView<BaselinesPayload
       .where(eq(baselinesBreakdown.snapshotId, snapshotId))
       .orderBy(asc(baselinesBreakdown.action));
 
-    return rows.map((r) => ({
-      action: (isValidPromotionAction(r.action) ? r.action : 'shadow') as PromotionAction,
-      count: r.count,
-      avg_confidence: parseFloat(r.avgConfidence),
-    }));
+    return rows.map((r) => {
+      const rawConfidence = parseFloat(r.avgConfidence);
+      let action: PromotionAction;
+      if (isValidPromotionAction(r.action)) {
+        action = r.action;
+      } else {
+        console.warn(
+          `[baselines-projection] Unknown recommendation '${r.action}' for snapshot ${snapshotId}, defaulting to 'shadow'`
+        );
+        action = 'shadow';
+      }
+      return {
+        action,
+        count: r.count,
+        avg_confidence: isFinite(rawConfidence) ? rawConfidence : 0,
+      };
+    });
   }
 
   // --------------------------------------------------------------------------
