@@ -124,6 +124,7 @@ Three-directory monorepo with TypeScript path aliases:
 | **Advanced** | Tools | `/insights` | LearnedInsights | Patterns and conventions from OmniClaude sessions |
 | **Advanced** | Intelligence | `/enforcement` | PatternEnforcement | Enforcement hit rate, violations, and correction rate |
 | **Advanced** | Intelligence | `/enrichment` | ContextEnrichmentDashboard | Hit rate per channel, token savings, latency distribution (OMN-2280) |
+| **Advanced** | Intelligence | `/llm-routing` | LlmRoutingDashboard | LLM vs fuzzy routing agreement rate, latency, cost per decision (OMN-2279) |
 | **Advanced** | Preview | `/showcase` | WidgetShowcase | All 5 contract-driven widget types |
 
 **Component System**: Built on shadcn/ui (New York variant) with Radix UI primitives. All UI components live in `client/src/components/ui/` and follow shadcn conventions.

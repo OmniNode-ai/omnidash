@@ -276,6 +276,11 @@ export const SUFFIX_OMNICLAUDE_LLM_COST_REPORTED = 'onex.evt.omniclaude.llm-cost
  * consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
 export const SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT = 'onex.evt.omniclaude.context-enrichment.v1';
 
+/** LLM routing decision events comparing LLM vs fuzzy routing (OMN-2279).
+ * NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
+ * consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
+export const SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION = 'onex.evt.omniclaude.llm-routing-decision.v1';
+
 // ============================================================================
 // OmniIntelligence Topics
 // ============================================================================

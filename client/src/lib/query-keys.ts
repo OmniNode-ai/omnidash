@@ -618,6 +618,36 @@ export const queryKeys = {
     inflationAlerts: (window: string) =>
       [...queryKeys.enrichment.all, 'inflation-alerts', window] as const,
   },
+  // ============================================================================
+  // LLM Routing Effectiveness (OMN-2279)
+  // ============================================================================
+
+  /**
+   * LLM routing effectiveness query keys for the LLM routing dashboard.
+   *
+   * On LLM_ROUTING_INVALIDATE WebSocket event, invalidate `queryKeys.llmRouting.all`
+   * to trigger a full refetch of all routing panels.
+   */
+  llmRouting: {
+    /** Base key for all LLM routing queries */
+    all: ['llm-routing'] as const,
+
+    /** Summary metrics (hero cards) for a time window */
+    summary: (window: string) => [...queryKeys.llmRouting.all, 'summary', window] as const,
+
+    /** Latency distribution per routing method */
+    latency: (window: string) => [...queryKeys.llmRouting.all, 'latency', window] as const,
+
+    /** Agreement rate by routing prompt version */
+    byVersion: (window: string) => [...queryKeys.llmRouting.all, 'by-version', window] as const,
+
+    /** Top LLM vs fuzzy disagreements */
+    disagreements: (window: string) =>
+      [...queryKeys.llmRouting.all, 'disagreements', window] as const,
+
+    /** Multi-metric trend over time */
+    trend: (window: string) => [...queryKeys.llmRouting.all, 'trend', window] as const,
+  },
 } as const;
 
 /**

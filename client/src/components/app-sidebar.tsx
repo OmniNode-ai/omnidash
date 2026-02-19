@@ -18,6 +18,7 @@ import {
   TrendingUp,
   ShieldAlert,
   Cpu,
+  GitFork,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -170,6 +171,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/enrichment',
         icon: Cpu,
         description: 'Hit rate per channel, token savings, latency distribution',
+      },
+      {
+        title: 'LLM Routing',
+        url: '/llm-routing',
+        icon: GitFork,
+        description: 'LLM vs fuzzy routing agreement rate, latency, cost per decision',
       },
     ],
   },
