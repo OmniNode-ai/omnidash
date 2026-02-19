@@ -115,9 +115,11 @@ function StatusBadge({ status }: { status: DataSourceStatus }) {
 function DataSourceRow({ sourceKey, info }: { sourceKey: string; info: DataSourceInfo }) {
   const label = DATA_SOURCE_LABELS[sourceKey] ?? sourceKey;
   const reason = info.status !== 'live' ? formatReason(info.reason) : null;
-  const lastEvent = info.lastEvent
-    ? new Date(info.lastEvent).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : null;
+  const lastEventDate = info.lastEvent ? new Date(info.lastEvent) : null;
+  const lastEvent =
+    lastEventDate != null && !isNaN(lastEventDate.getTime())
+      ? lastEventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : null;
 
   return (
     <div className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">

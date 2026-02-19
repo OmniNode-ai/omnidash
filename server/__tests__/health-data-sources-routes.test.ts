@@ -25,10 +25,36 @@ vi.mock('../projection-bootstrap', () => ({
 }));
 
 // ============================================================================
-// Mock global fetch for HTTP-probe routes
+// Mock storage (tryGetIntelligenceDb) for DB-based probes
 // ============================================================================
 
-global.fetch = vi.fn();
+vi.mock('../storage', () => ({
+  tryGetIntelligenceDb: vi.fn(),
+}));
+
+// ============================================================================
+// Mock insight-queries (queryInsightsSummary) for the insights probe
+// ============================================================================
+
+vi.mock('../insight-queries', () => ({
+  queryInsightsSummary: vi.fn(),
+}));
+
+// ============================================================================
+// Mock event-bus-data-source (getEventBusDataSource) for the execution probe
+// ============================================================================
+
+vi.mock('../event-bus-data-source', () => ({
+  getEventBusDataSource: vi.fn(),
+}));
+
+// ============================================================================
+// Import mocks after vi.mock declarations
+// ============================================================================
+
+import { tryGetIntelligenceDb } from '../storage';
+import { queryInsightsSummary } from '../insight-queries';
+import { getEventBusDataSource } from '../event-bus-data-source';
 
 // ============================================================================
 // Helpers
@@ -58,27 +84,35 @@ function makeView(payload: unknown) {
   };
 }
 
-/** Mock successful HTTP probe response */
-function mockFetchOk(body: unknown) {
-  return Promise.resolve({
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve(body),
-  } as Response);
+/**
+ * Build a mock Drizzle db object that returns `rows` from any `.select()` chain.
+ * The chain is: db.select(...).from(...) => Promise<rows>
+ */
+function makeMockDb(rows: unknown[]) {
+  const chain = {
+    from: vi.fn().mockResolvedValue(rows),
+  };
+  return {
+    select: vi.fn().mockReturnValue(chain),
+  };
 }
 
-/** Mock a failed HTTP probe (network error) */
-function mockFetchFail() {
-  return Promise.reject(new Error('Network error'));
-}
+// ============================================================================
+// Default mock setup helpers
+// ============================================================================
 
-/** Mock a non-OK HTTP probe response */
-function mockFetchNotOk(status: number) {
-  return Promise.resolve({
-    ok: false,
-    status,
-    json: () => Promise.resolve({ error: 'not found' }),
-  } as Response);
+/** Set up all DB-backed probes to return empty/no-data (mock status). */
+function setupEmptyDb() {
+  vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
+  vi.mocked(queryInsightsSummary).mockResolvedValue({
+    insights: [],
+    total: 0,
+    new_this_week: 0,
+    avg_confidence: 0,
+    total_sessions_analyzed: 0,
+    by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+  });
+  vi.mocked(getEventBusDataSource).mockReturnValue(null);
 }
 
 // ============================================================================
@@ -92,17 +126,8 @@ describe('GET /api/health/data-sources', () => {
   });
 
   it('returns 200 with correct top-level shape', async () => {
-    // All projections return empty (mock) state
     vi.mocked(projectionService.getView).mockReturnValue(null);
-    vi.mocked(global.fetch).mockImplementation(() =>
-      mockFetchOk({
-        total_runs: 0,
-        insights: [],
-        total_patterns: 0,
-        nodes: [],
-        total_evaluations: 0,
-      })
-    );
+    setupEmptyDb();
 
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');
@@ -116,15 +141,7 @@ describe('GET /api/health/data-sources', () => {
 
   it('reports status: mock when no projections are registered', async () => {
     vi.mocked(projectionService.getView).mockReturnValue(null);
-    vi.mocked(global.fetch).mockImplementation(() =>
-      mockFetchOk({
-        total_runs: 0,
-        insights: [],
-        total_patterns: 0,
-        nodes: [],
-        total_evaluations: 0,
-      })
-    );
+    setupEmptyDb();
 
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');
@@ -149,15 +166,7 @@ describe('GET /api/health/data-sources', () => {
       if (viewId === 'event-bus') return eventBusView as any;
       return mockView as any;
     });
-    vi.mocked(global.fetch).mockImplementation(() =>
-      mockFetchOk({
-        total_runs: 0,
-        insights: [],
-        total_patterns: 0,
-        nodes: [],
-        total_evaluations: 0,
-      })
-    );
+    setupEmptyDb();
 
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');
@@ -176,15 +185,7 @@ describe('GET /api/health/data-sources', () => {
       if (viewId === 'effectiveness-metrics') return effectivenessView as any;
       return noView as any;
     });
-    vi.mocked(global.fetch).mockImplementation(() =>
-      mockFetchOk({
-        total_runs: 0,
-        insights: [],
-        total_patterns: 0,
-        nodes: [],
-        total_evaluations: 0,
-      })
-    );
+    setupEmptyDb();
 
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');
@@ -203,15 +204,7 @@ describe('GET /api/health/data-sources', () => {
       if (viewId === 'extraction-metrics') return extractionView as any;
       return noView as any;
     });
-    vi.mocked(global.fetch).mockImplementation(() =>
-      mockFetchOk({
-        total_runs: 0,
-        insights: [],
-        total_patterns: 0,
-        nodes: [],
-        total_evaluations: 0,
-      })
-    );
+    setupEmptyDb();
 
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');
@@ -221,21 +214,19 @@ describe('GET /api/health/data-sources', () => {
     expect(res.body.dataSources.extraction.lastEvent).toBe('2026-02-16T00:01:23Z');
   });
 
-  it('reports status: live for validation when HTTP probe returns total_runs > 0', async () => {
+  it('reports status: live for validation when DB returns total_runs > 0', async () => {
     vi.mocked(projectionService.getView).mockReturnValue(null);
-    vi.mocked(global.fetch).mockImplementation((url: RequestInfo | URL) => {
-      const urlStr = String(url);
-      if (urlStr.includes('/api/validation/summary')) {
-        return mockFetchOk({ total_runs: 12 });
-      }
-      return mockFetchOk({
-        total_runs: 0,
-        insights: [],
-        total_patterns: 0,
-        nodes: [],
-        total_evaluations: 0,
-      });
+    // validation probe queries validationRuns directly
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 12 }]) as any);
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
     });
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
 
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');
@@ -244,56 +235,43 @@ describe('GET /api/health/data-sources', () => {
     expect(res.body.dataSources.validation.status).toBe('live');
   });
 
-  it('reports status: error for insights when HTTP probe fails', async () => {
+  it('reports status: error for insights when queryInsightsSummary throws', async () => {
     vi.mocked(projectionService.getView).mockReturnValue(null);
-    vi.mocked(global.fetch).mockImplementation((url: RequestInfo | URL) => {
-      const urlStr = String(url);
-      if (urlStr.includes('/api/insights/summary')) {
-        return mockFetchFail();
-      }
-      return mockFetchOk({
-        total_runs: 0,
-        insights: [],
-        total_patterns: 0,
-        nodes: [],
-        total_evaluations: 0,
-      });
-    });
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
+    vi.mocked(queryInsightsSummary).mockRejectedValue(new Error('DB connection failed'));
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
 
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');
 
     expect(res.status).toBe(200);
     expect(res.body.dataSources.insights.status).toBe('error');
-    expect(res.body.dataSources.insights.reason).toBe('api_unavailable');
+    expect(res.body.dataSources.insights.reason).toBe('probe_threw');
   });
 
-  it('reports status: error for patterns when HTTP probe returns non-OK', async () => {
+  it('reports status: mock for patterns when DB returns 0 rows', async () => {
     vi.mocked(projectionService.getView).mockReturnValue(null);
-    vi.mocked(global.fetch).mockImplementation((url: RequestInfo | URL) => {
-      const urlStr = String(url);
-      if (urlStr.includes('/api/intelligence/patterns/patlearn')) {
-        return mockFetchNotOk(500);
-      }
-      return mockFetchOk({
-        total_runs: 0,
-        insights: [],
-        total_patterns: 0,
-        nodes: [],
-        total_evaluations: 0,
-      });
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
     });
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
 
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');
 
     expect(res.status).toBe(200);
-    expect(res.body.dataSources.patterns.status).toBe('error');
-    expect(res.body.dataSources.patterns.reason).toBe('http_500');
+    expect(res.body.dataSources.patterns.status).toBe('mock');
+    expect(res.body.dataSources.patterns.reason).toBe('empty_tables');
   });
 
   it('computes summary counts correctly', async () => {
-    // Set up: 2 live (event-bus, validation), rest mock/error
+    // Set up: 2 live (event-bus, validation), rest mock
     const eventBusView = makeView({ totalEventsIngested: 5 });
     const noView = { getSnapshot: vi.fn().mockReturnValue(null) };
 
@@ -302,44 +280,31 @@ describe('GET /api/health/data-sources', () => {
       return noView as any;
     });
 
-    vi.mocked(global.fetch).mockImplementation((url: RequestInfo | URL) => {
-      const urlStr = String(url);
-      if (urlStr.includes('/api/validation/summary')) {
-        return mockFetchOk({ total_runs: 5 });
-      }
-      if (urlStr.includes('/api/insights/summary')) {
-        return mockFetchFail(); // error
-      }
-      return mockFetchOk({
-        total_runs: 0,
-        insights: [],
-        total_patterns: 0,
-        nodes: [],
-        total_evaluations: 0,
-      });
+    // validation returns live (count > 0), patterns returns mock (count = 0)
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 5 }]) as any);
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
     });
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
 
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');
 
     expect(res.status).toBe(200);
     const { summary } = res.body;
-    // summary.live >= 2 (event-bus + validation)
+    // summary.live >= 2 (event-bus + validation + correlationTrace mirrors event-bus)
     expect(summary.live).toBeGreaterThanOrEqual(2);
     expect(summary.live + summary.mock + summary.error).toBe(13); // 13 total sources
   });
 
   it('includes all 13 expected data sources', async () => {
     vi.mocked(projectionService.getView).mockReturnValue(null);
-    vi.mocked(global.fetch).mockImplementation(() =>
-      mockFetchOk({
-        total_runs: 0,
-        insights: [],
-        total_patterns: 0,
-        nodes: [],
-        total_evaluations: 0,
-      })
-    );
+    setupEmptyDb();
 
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');
@@ -377,15 +342,7 @@ describe('GET /api/health/data-sources', () => {
       if (viewId === 'baselines') return baselinesView as any;
       return noView as any;
     });
-    vi.mocked(global.fetch).mockImplementation(() =>
-      mockFetchOk({
-        total_runs: 0,
-        insights: [],
-        total_patterns: 0,
-        nodes: [],
-        total_evaluations: 0,
-      })
-    );
+    setupEmptyDb();
 
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');

@@ -37,6 +37,11 @@ import type {
 import type { BaselinesProjection, BaselinesPayload } from './projections/baselines-projection';
 import type { IntentProjectionPayload, NodeRegistryPayload } from '@shared/projection-types';
 import type { EventBusPayload } from '@shared/event-bus-payload';
+import { tryGetIntelligenceDb } from './storage';
+import { validationRuns, patternLearningArtifacts } from '@shared/intelligence-schema';
+import { sql } from 'drizzle-orm';
+import { queryInsightsSummary } from './insight-queries';
+import { getEventBusDataSource } from './event-bus-data-source';
 
 // ============================================================================
 // Types
@@ -244,125 +249,112 @@ function probeNodeRegistry(): DataSourceInfo {
 }
 
 /**
- * Probe the validation API endpoint (HTTP GET /api/validation/summary).
- * We probe the local endpoint to stay consistent with the client source pattern.
+ * Probe the validation data source by querying the database directly.
+ * Live if at least one validation run exists (total_runs > 0).
  */
-async function probeValidation(baseUrl: string): Promise<DataSourceInfo> {
+async function probeValidation(): Promise<DataSourceInfo> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(`${baseUrl}/api/validation/summary`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!response.ok) {
-      return { status: 'error', reason: `http_${response.status}` };
+    const db = tryGetIntelligenceDb();
+    if (!db) {
+      return { status: 'mock', reason: 'empty_tables' };
     }
-    const data = await response.json();
-    if (!data || data.total_runs === 0) {
+    const result = await db.select({ count: sql<number>`count(*)::int` }).from(validationRuns);
+    const totalRuns = result[0]?.count ?? 0;
+    if (totalRuns === 0) {
       return { status: 'mock', reason: 'empty_tables' };
     }
     return { status: 'live' };
   } catch {
-    return { status: 'error', reason: 'api_unavailable' };
+    return { status: 'error', reason: 'probe_threw' };
   }
 }
 
 /**
- * Probe the insights API endpoint (HTTP GET /api/insights/summary).
+ * Probe the insights data source by querying the database directly via the
+ * shared query function. Live if at least one insight exists.
  */
-async function probeInsights(baseUrl: string): Promise<DataSourceInfo> {
+async function probeInsights(): Promise<DataSourceInfo> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(`${baseUrl}/api/insights/summary`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!response.ok) {
-      return { status: 'error', reason: `http_${response.status}` };
+    const summary = await queryInsightsSummary();
+    if (summary === null) {
+      // Database not configured
+      return { status: 'mock', reason: 'empty_tables' };
     }
-    const data = await response.json();
-    if (!data || !Array.isArray(data.insights) || data.insights.length === 0) {
+    if (!Array.isArray(summary.insights) || summary.insights.length === 0) {
       return { status: 'mock', reason: 'empty_tables' };
     }
     return { status: 'live' };
   } catch {
-    return { status: 'error', reason: 'api_unavailable' };
+    return { status: 'error', reason: 'probe_threw' };
   }
 }
 
 /**
- * Probe the pattern learning (patlearn) API endpoint.
+ * Probe the pattern learning (patlearn) data source by querying the database
+ * directly. Live if at least one pattern artifact exists.
  */
-async function probePatterns(baseUrl: string): Promise<DataSourceInfo> {
+async function probePatterns(): Promise<DataSourceInfo> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(
-      `${baseUrl}/api/intelligence/patterns/patlearn/summary?window=24h`,
-      { signal: controller.signal }
-    );
-    clearTimeout(timeout);
-    if (!response.ok) {
-      return { status: 'error', reason: `http_${response.status}` };
+    const db = tryGetIntelligenceDb();
+    if (!db) {
+      return { status: 'mock', reason: 'empty_tables' };
     }
-    const data = await response.json();
-    if (!data || (data.total_patterns == null ? true : data.total_patterns === 0)) {
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(patternLearningArtifacts);
+    const totalPatterns = result[0]?.count ?? 0;
+    if (totalPatterns === 0) {
       return { status: 'mock', reason: 'empty_tables' };
     }
     return { status: 'live' };
   } catch {
-    return { status: 'error', reason: 'api_unavailable' };
+    return { status: 'error', reason: 'probe_threw' };
   }
 }
 
 /**
- * Probe the execution graph API endpoint (OMN-2302).
+ * Probe the execution graph data source via the EventBusDataSource directly.
+ * Live if at least one execution event has been stored.
  */
-async function probeExecutionGraph(baseUrl: string): Promise<DataSourceInfo> {
+async function probeExecutionGraph(): Promise<DataSourceInfo> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(`${baseUrl}/api/executions/graph`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!response.ok) {
-      return { status: 'error', reason: `http_${response.status}` };
+    const dataSource = getEventBusDataSource();
+    if (!dataSource) {
+      return { status: 'mock', reason: 'no_projection_registered' };
     }
-    const data = await response.json();
-    if (!data || (Array.isArray(data.nodes) && data.nodes.length === 0)) {
+    const rawEvents = await dataSource.queryEvents({
+      event_types: [
+        'agent-actions',
+        'agent-routing-decisions',
+        'agent-transformation-events',
+        'AGENT_ACTION',
+        'ROUTING_DECISION',
+        'AGENT_TRANSFORMATION',
+      ],
+      limit: 1,
+      order_by: 'timestamp',
+      order_direction: 'desc',
+    });
+    if (!rawEvents || rawEvents.length === 0) {
       return { status: 'mock', reason: 'no_execution_data' };
     }
     return { status: 'live' };
   } catch {
-    return { status: 'error', reason: 'api_unavailable' };
+    return { status: 'error', reason: 'probe_threw' };
   }
 }
 
 /**
- * Probe the enforcement routes (OMN-2275).
+ * Probe the enforcement data source.
+ * The enforcement projection is not yet implemented (OMN-2275 follow-up),
+ * so this always returns mock until the projection is wired up.
  */
-async function probeEnforcement(baseUrl: string): Promise<DataSourceInfo> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(`${baseUrl}/api/enforcement/summary?window=7d`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!response.ok) {
-      return { status: 'error', reason: `http_${response.status}` };
-    }
-    const data = await response.json();
-    if (!data || data.total_evaluations === 0) {
-      return { status: 'mock', reason: 'empty_tables' };
-    }
-    return { status: 'live' };
-  } catch {
-    return { status: 'error', reason: 'api_unavailable' };
-  }
+async function probeEnforcement(): Promise<DataSourceInfo> {
+  // The enforcement-routes.ts handler always returns total_evaluations: 0
+  // because the upstream projection is not yet implemented (see enforcement-routes.ts
+  // TODO comments referencing OMN-2275-followup). Return mock directly rather
+  // than making an HTTP round-trip to confirm the zero.
+  return { status: 'mock', reason: 'empty_tables' };
 }
 
 /**
@@ -388,19 +380,15 @@ const router = Router();
  * Returns a snapshot of every dashboard data source reporting whether it is
  * currently using live data or falling back to mock/demo data.
  */
-router.get('/data-sources', async (req, res) => {
-  // Derive the base URL for self-probing HTTP endpoints from the incoming request.
-  // Uses localhost to avoid DNS lookup overhead; the port is read from the env.
-  const port = process.env.PORT ?? '3000';
-  const baseUrl = `http://localhost:${port}`;
-
-  // Run projection-based probes synchronously and HTTP-based probes in parallel.
+router.get('/data-sources', async (_req, res) => {
+  // Run all probes in parallel. Projection-based probes are synchronous;
+  // DB-based probes are async. All are called directly without HTTP self-calls.
   const [validation, insights, patterns, executionGraph, enforcement] = await Promise.all([
-    probeValidation(baseUrl),
-    probeInsights(baseUrl),
-    probePatterns(baseUrl),
-    probeExecutionGraph(baseUrl),
-    probeEnforcement(baseUrl),
+    probeValidation(),
+    probeInsights(),
+    probePatterns(),
+    probeExecutionGraph(),
+    probeEnforcement(),
   ]);
 
   const dataSources: Record<string, DataSourceInfo> = {
