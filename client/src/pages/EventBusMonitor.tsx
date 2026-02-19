@@ -116,12 +116,20 @@ const monitoredTopics = getMonitoredTopics();
 
 // Widget ID for the recent-events table. Used in both the widgetProps key and
 // the handleEventClick guard so that a rename only needs to happen in one place.
+//
+// NOTE: These values must match the widget_id and column key in
+// eventBusDashboardConfig (event-bus-dashboard.ts). The DashboardConfig type
+// does not expose widget_id or column keys as named, importable constants, so
+// deriving them programmatically is not possible without structural changes to
+// the config module. A rename there requires updating these constants in sync.
+// Consider exporting RECENT_EVENTS_TABLE_WIDGET_ID and RECENT_EVENTS_TOPIC_COLUMN_KEY
+// from the config module to make the coupling a single-site update.
 const RECENT_EVENTS_TABLE_WIDGET_ID = 'table-recent-events';
 
 // Column key for the topic cell in the recent-events table.
 // Must match the `key` field of the corresponding column entry in
 // eventBusDashboardConfig (imported from @/lib/configs/event-bus-dashboard).
-// If that column is ever renamed, update this constant and the config in sync.
+// See NOTE above — a rename there requires updating this constant too.
 const RECENT_EVENTS_TOPIC_COLUMN_KEY = 'topic';
 
 // ============================================================================
@@ -819,6 +827,11 @@ export default function EventBusMonitor() {
       // because of that invariant — do NOT rely on it for rows from other widgets
       // where topic may hold a friendly display label instead.
       const rawTopic = String(row.topicRaw || row.topic || '');
+      if (process.env.NODE_ENV !== 'production' && !row.topicRaw) {
+        console.warn(
+          '[EventBusMonitor] handleEventClick: row.topicRaw is missing — falling back to row.topic. Check that row was produced by toRecentEvent().'
+        );
+      }
       setSelectedEvent({
         id: String(row.id || ''),
         topic: getTopicLabel(rawTopic),
@@ -956,6 +969,7 @@ export default function EventBusMonitor() {
           // column definition in eventBusDashboardConfig (imported config).
           [RECENT_EVENTS_TOPIC_COLUMN_KEY]: (value: unknown) => {
             const raw = String(value ?? '');
+            if (!raw) return null; // no topic value, nothing to render
             const label = getTopicLabel(raw);
             const isActive = filters.topic === raw;
             return (
