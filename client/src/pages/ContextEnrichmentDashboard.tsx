@@ -491,12 +491,12 @@ export default function ContextEnrichmentDashboard() {
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   const handleRefresh = () => {
-    refetchSummary();
-    refetchChannel();
-    refetchLatency();
-    refetchToken();
-    refetchSim();
-    refetchAlerts();
+    void refetchSummary();
+    void refetchChannel();
+    void refetchLatency();
+    void refetchToken();
+    void refetchSim();
+    void refetchAlerts();
   };
 
   // Determine whether we're in demo/mock mode.
