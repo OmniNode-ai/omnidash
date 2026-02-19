@@ -147,6 +147,10 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Use 4000 as a conservative cap with margin.
 const MAX_BATCH_ROWS = 4000;
 
+// Hoisted to module scope — shared by both comparison and breakdown writers so validation
+// is applied consistently at ingest time (write-time) rather than silently at read-time.
+const VALID_PROMOTION_ACTIONS = new Set(['promote', 'shadow', 'suppress', 'fork']);
+
 // Consumer configuration
 const CONSUMER_GROUP_ID = process.env.READ_MODEL_CONSUMER_GROUP_ID || 'omnidash-read-model-v1';
 const CLIENT_ID = process.env.READ_MODEL_CLIENT_ID || 'omnidash-read-model-consumer';
@@ -1082,7 +1086,10 @@ export class ReadModelConsumer {
             reviewIterationDelta: (c.review_iteration_delta ??
               c.reviewIterationDelta ??
               {}) as Record<string, unknown>,
-            recommendation: String(c.recommendation ?? 'shadow'),
+            recommendation: (() => {
+              const raw = String(c.recommendation ?? '');
+              return VALID_PROMOTION_ACTIONS.has(raw) ? raw : 'shadow';
+            })(),
             confidence: String(c.confidence ?? 'low'),
             rationale: String(c.rationale ?? ''),
           }));
@@ -1098,7 +1105,6 @@ export class ReadModelConsumer {
         await tx.delete(baselinesBreakdown).where(eq(baselinesBreakdown.snapshotId, snapshotId));
 
         if (rawBreakdown.length > 0) {
-          const VALID_PROMOTION_ACTIONS = new Set(['promote', 'shadow', 'suppress', 'fork']);
           const breakdownRows: InsertBaselinesBreakdown[] = (
             rawBreakdown as Record<string, unknown>[]
           ).map((b) => {
