@@ -30,8 +30,11 @@ const VALID_WINDOWS = ['24h', '7d', '30d'] as const;
 function validateWindow(req: Request, res: Response): string | null {
   const timeWindow = typeof req.query.window === 'string' ? req.query.window : '7d';
   if (!VALID_WINDOWS.includes(timeWindow as (typeof VALID_WINDOWS)[number])) {
-    res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
-    return null;
+    // return after sending the response so the caller can check for null.
+    return (
+      res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' }),
+      null
+    );
   }
   return timeWindow;
 }
@@ -44,6 +47,8 @@ router.get('/summary', (req, res) => {
   try {
     const timeWindow = validateWindow(req, res);
     if (timeWindow === null) return;
+    // timeWindow is validated above and will be passed to the DB query when the
+    // llm-routing projection is wired (see TODO below).
     // TODO(OMN-2279-followup): Replace with projectionService.getView('llm-routing').getSnapshot()
     // once the llm-routing projection is implemented. Use `timeWindow` to scope the query.
     const empty: LlmRoutingSummary = {
@@ -73,6 +78,7 @@ router.get('/latency', (req, res) => {
   try {
     const timeWindow = validateWindow(req, res);
     if (timeWindow === null) return;
+    // timeWindow is validated above and will be passed to the DB query when wired.
     // TODO(OMN-2279-followup): Replace with projection view query scoped to `timeWindow`.
     const data: LlmRoutingLatencyPoint[] = [];
     return res.json(data);
@@ -90,6 +96,7 @@ router.get('/by-version', (req, res) => {
   try {
     const timeWindow = validateWindow(req, res);
     if (timeWindow === null) return;
+    // timeWindow is validated above and will be passed to the DB query when wired.
     // TODO(OMN-2279-followup): Replace with projection view query scoped to `timeWindow`.
     const data: LlmRoutingByVersion[] = [];
     return res.json(data);
@@ -107,6 +114,7 @@ router.get('/disagreements', (req, res) => {
   try {
     const timeWindow = validateWindow(req, res);
     if (timeWindow === null) return;
+    // timeWindow is validated above and will be passed to the DB query when wired.
     // TODO(OMN-2279-followup): Replace with projection view query scoped to `timeWindow`.
     const data: LlmRoutingDisagreement[] = [];
     return res.json(data);
@@ -124,6 +132,7 @@ router.get('/trend', (req, res) => {
   try {
     const timeWindow = validateWindow(req, res);
     if (timeWindow === null) return;
+    // timeWindow is validated above and will be passed to the DB query when wired.
     // TODO(OMN-2279-followup): Replace with projection view query scoped to `timeWindow`.
     const data: LlmRoutingTrendPoint[] = [];
     return res.json(data);

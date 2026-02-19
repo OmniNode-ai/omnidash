@@ -481,22 +481,27 @@ export default function LlmRoutingDashboard() {
   };
 
   // llmRoutingSource.isUsingMockData reads a mutable Set on the singleton.
-  // Both the clear and the re-read live in a single effect so they are always
-  // evaluated in the correct order: clear when queries are loading (timeWindow
-  // just changed), then read the settled value once all queries finish. Having
-  // them in two separate effects caused a brief flash because React ran the
-  // allSettled effect before the clearMockState effect when timeWindow changed
-  // while allSettled was still true from the previous window's settled state.
   const [isUsingMockData, setIsUsingMockData] = useState(false);
+
+  // Eagerly clear mock state whenever timeWindow changes. This runs before the
+  // allSettled effect so that the banner is hidden immediately on window switch,
+  // even in the edge case where TanStack Query returns cached data synchronously
+  // and allSettled never transitions to false (making the else-branch below
+  // unreachable). A separate effect keyed on timeWindow guarantees the clear
+  // always runs first, independent of allSettled's value.
+  useEffect(() => {
+    llmRoutingSource.clearMockState();
+    setIsUsingMockData(false);
+  }, [timeWindow]);
+
   const allSettled =
     !summaryLoading && !latencyLoading && !versionLoading && !disagreementsLoading && !trendLoading;
   useEffect(() => {
     if (allSettled) {
       setIsUsingMockData(llmRoutingSource.isUsingMockData);
     } else {
-      // Queries are in-flight (timeWindow just changed or first load). Clear
-      // the singleton's mock-state tracking and hide the banner until the new
-      // window's results settle.
+      // Queries are in-flight (first load or a window switch where the cache
+      // miss caused loading states). Clear and hide the banner until settled.
       llmRoutingSource.clearMockState();
       setIsUsingMockData(false);
     }

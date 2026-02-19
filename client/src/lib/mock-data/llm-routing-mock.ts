@@ -40,6 +40,7 @@ function isoTs(daysAgo: number, hoursAgo = 0): string {
 // Summary
 // ============================================================================
 
+// 7d and 30d trends use isoDate (day-level granularity: "YYYY-MM-DD").
 const AGREEMENT_TREND_7D = Array.from({ length: 7 }, (_, i) => ({
   date: isoDate(6 - i),
   value: 0.58 + i * 0.015 + Math.sin(i * 0.9) * 0.03,
@@ -50,6 +51,8 @@ const AGREEMENT_TREND_30D = Array.from({ length: 30 }, (_, i) => ({
   value: 0.44 + i * 0.007 + Math.sin(i * 0.5) * 0.04,
 }));
 
+// 24h trend intentionally uses isoTs (full ISO-8601 timestamps) because the
+// chart renders hourly granularity and needs sub-day precision for axis labels.
 const AGREEMENT_TREND_24H = Array.from({ length: 24 }, (_, i) => ({
   date: isoTs(0, 23 - i),
   value: 0.65 + Math.sin(i * 0.6) * 0.06,
