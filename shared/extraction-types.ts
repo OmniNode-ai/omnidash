@@ -22,7 +22,14 @@ export interface ExtractionSummary {
   avg_latency_ms: number | null;
   /** Ratio 0–1 (NOT percentage). Multiply by 100 for display. */
   success_rate: number | null;
-  /** ISO timestamp of last recorded event */
+  /**
+   * ISO timestamp of the last recorded event.
+   *
+   * null when no rows have ever been written to the table (used as
+   * empty-table sentinel by `isSummaryEmpty` in extraction-source.ts).
+   * Present and non-null even during zero-traffic periods — it retains
+   * the timestamp of the most recent historical event.
+   */
   last_event_at: string | null;
 }
 

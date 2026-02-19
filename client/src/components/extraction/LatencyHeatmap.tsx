@@ -7,6 +7,7 @@
  * recharts has no native heatmap widget, so this uses a custom CSS grid approach.
  */
 
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { queryKeys } from '@/lib/query-keys';
@@ -41,14 +42,28 @@ function formatBucketLabel(bucket: string): string {
 
 interface LatencyHeatmapProps {
   timeWindow?: string;
+  /** Called whenever the mock-data status of this panel changes. */
+  onMockStateChange?: (isMock: boolean) => void;
 }
 
-export function LatencyHeatmap({ timeWindow = '24h' }: LatencyHeatmapProps) {
-  const { data, isLoading, error } = useQuery({
+export function LatencyHeatmap({ timeWindow = '24h', onMockStateChange }: LatencyHeatmapProps) {
+  const {
+    data: result,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.extraction.latency(timeWindow),
     queryFn: () => extractionSource.latencyHeatmap(timeWindow),
     refetchInterval: 30_000,
   });
+
+  const data = result?.data;
+
+  // Propagate isMock to parent after render to avoid setState-during-render.
+  const isMock = result?.isMock ?? false;
+  useEffect(() => {
+    onMockStateChange?.(isMock);
+  }, [isMock, onMockStateChange]);
 
   return (
     <Card>
