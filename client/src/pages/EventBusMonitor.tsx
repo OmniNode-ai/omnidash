@@ -319,7 +319,7 @@ function toRecentEvent(event: DisplayEvent) {
     // to render the clickable label badge. The renderer never displays the raw value
     // directly; it calls getTopicLabel(raw) to produce the friendly label.
     topic: event.topic,
-    topicRaw: event.topicRaw,
+    topicRaw: event.topicRaw, // must match TOPIC_COLUMN_KEY in event-bus-dashboard.ts
     eventType: event.normalizedType,
     summary: event.summary,
     source: event.source,
@@ -627,10 +627,11 @@ export default function EventBusMonitor() {
             if (filters.priority && event.priority !== filters.priority) return false;
             if (filters.search) {
               const searchLower = filters.search.toLowerCase();
-              // Search both the friendly label (event.topic) and the raw topic name
-              // (event.topicRaw) so that either form matches unambiguously.
-              // (DisplayEvent.topic normally holds a friendly label; toRecentEvent
-              // repurposes it for raw suffix storage — checking both covers all call sites.)
+              // Search both the friendly label (event.topic) and the raw suffix
+              // (event.topicRaw) so that typing either form into the search box
+              // produces a match. event.topic holds the friendly label (e.g.
+              // "Session Started") and event.topicRaw holds the raw suffix (e.g.
+              // "onex.evt.omniclaude.session-started.v1") — both are searched.
               const matchesSearch =
                 event.eventType.toLowerCase().includes(searchLower) ||
                 event.source.toLowerCase().includes(searchLower) ||
@@ -803,7 +804,7 @@ export default function EventBusMonitor() {
       // by toRecentEvent(), which stores the raw topic suffix in row.topicRaw and
       // the friendly label in row.topic. Always read rawTopic from row.topicRaw.
       const rawTopic = String(row.topicRaw ?? '');
-      if (process.env.NODE_ENV !== 'production' && row.topicRaw === undefined) {
+      if (import.meta.env.DEV && row.topicRaw === undefined) {
         console.warn(
           '[EventBusMonitor] handleEventClick: row.topicRaw is missing — rawTopic will be empty string. Ensure this row was produced by toRecentEvent().'
         );

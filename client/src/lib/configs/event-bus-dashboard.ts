@@ -648,7 +648,7 @@ export const eventBusDashboardConfig: DashboardConfig = {
         striped: true,
         hover_highlight: true,
         columns: [
-          { key: TOPIC_COLUMN_KEY, header: 'Topic', width: 150, sortable: true },
+          { key: TOPIC_COLUMN_KEY, header: 'Topic', width: 150, sortable: true, sort_key: 'topic' },
           { key: 'eventType', header: 'Event Type', width: 130, sortable: true },
           { key: 'summary', header: 'Summary', width: 250, sortable: false },
           { key: 'source', header: 'Source', width: 120, sortable: true },
