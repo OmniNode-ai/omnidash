@@ -256,7 +256,7 @@ async function probeValidation(): Promise<DataSourceInfo> {
   try {
     const db = tryGetIntelligenceDb();
     if (!db) {
-      return { status: 'mock', reason: 'empty_tables' };
+      return { status: 'mock', reason: 'no_db_connection' };
     }
     const result = await db.select({ count: sql<number>`count(*)::int` }).from(validationRuns);
     const totalRuns = result[0]?.count ?? 0;
@@ -297,7 +297,7 @@ async function probePatterns(): Promise<DataSourceInfo> {
   try {
     const db = tryGetIntelligenceDb();
     if (!db) {
-      return { status: 'mock', reason: 'empty_tables' };
+      return { status: 'mock', reason: 'no_db_connection' };
     }
     const result = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -382,59 +382,63 @@ export function clearHealthCache(): void {
  * currently using live data or falling back to mock/demo data.
  */
 router.get('/data-sources', async (_req, res) => {
-  // Serve cached result if still fresh.
-  if (healthCache && Date.now() < healthCache.expiresAt) {
-    res.json(healthCache.result);
-    return;
+  try {
+    // Serve cached result if still fresh.
+    if (healthCache && Date.now() < healthCache.expiresAt) {
+      res.json(healthCache.result);
+      return;
+    }
+
+    // Run all probes in parallel. Projection-based probes are synchronous;
+    // DB-based probes are async. All are called directly without HTTP self-calls.
+    const [validation, insights, patterns, executionGraph, enforcement] = await Promise.all([
+      probeValidation(),
+      probeInsights(),
+      probePatterns(),
+      probeExecutionGraph(),
+      probeEnforcement(),
+    ]);
+
+    // Probe the event bus once and reuse the result for correlationTrace, which
+    // derives its live/mock status from the same event-bus projection.
+    const eventBus = probeEventBus();
+
+    const dataSources: Record<string, DataSourceInfo> = {
+      eventBus,
+      effectiveness: probeEffectiveness(),
+      extraction: probeExtraction(),
+      baselines: probeBaselines(),
+      costTrends: probeCost(),
+      intents: probeIntents(),
+      nodeRegistry: probeNodeRegistry(),
+      correlationTrace: { ...eventBus },
+      validation,
+      insights,
+      patterns,
+      executionGraph,
+      enforcement,
+    };
+
+    const counts = Object.values(dataSources).reduce(
+      (acc, info) => {
+        acc[info.status] = (acc[info.status] ?? 0) + 1;
+        return acc;
+      },
+      { live: 0, mock: 0, error: 0 } as { live: number; mock: number; error: number }
+    );
+
+    const body: DataSourcesHealthResponse = {
+      dataSources,
+      summary: counts,
+      checkedAt: new Date().toISOString(),
+    };
+
+    healthCache = { result: body, expiresAt: Date.now() + 30_000 };
+
+    res.json(body);
+  } catch {
+    res.status(500).json({ error: 'Internal server error' });
   }
-
-  // Run all probes in parallel. Projection-based probes are synchronous;
-  // DB-based probes are async. All are called directly without HTTP self-calls.
-  const [validation, insights, patterns, executionGraph, enforcement] = await Promise.all([
-    probeValidation(),
-    probeInsights(),
-    probePatterns(),
-    probeExecutionGraph(),
-    probeEnforcement(),
-  ]);
-
-  // Probe the event bus once and reuse the result for correlationTrace, which
-  // derives its live/mock status from the same event-bus projection.
-  const eventBus = probeEventBus();
-
-  const dataSources: Record<string, DataSourceInfo> = {
-    eventBus,
-    effectiveness: probeEffectiveness(),
-    extraction: probeExtraction(),
-    baselines: probeBaselines(),
-    costTrends: probeCost(),
-    intents: probeIntents(),
-    nodeRegistry: probeNodeRegistry(),
-    correlationTrace: { ...eventBus },
-    validation,
-    insights,
-    patterns,
-    executionGraph,
-    enforcement,
-  };
-
-  const counts = Object.values(dataSources).reduce(
-    (acc, info) => {
-      acc[info.status] = (acc[info.status] ?? 0) + 1;
-      return acc;
-    },
-    { live: 0, mock: 0, error: 0 } as { live: number; mock: number; error: number }
-  );
-
-  const body: DataSourcesHealthResponse = {
-    dataSources,
-    summary: counts,
-    checkedAt: new Date().toISOString(),
-  };
-
-  healthCache = { result: body, expiresAt: Date.now() + 30_000 };
-
-  res.json(body);
 });
 
 export default router;
