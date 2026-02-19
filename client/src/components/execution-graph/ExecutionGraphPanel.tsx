@@ -111,15 +111,12 @@ export function ExecutionGraphPanel({ className }: ExecutionGraphPanelProps) {
   //   live mode + no selection → liveGraph
   const [pausedSnapshot, setPausedSnapshot] = useState<ExecutionGraph | null>(null);
 
-  // Capture a snapshot when the user pauses in live mode
+  // Clear the snapshot whenever the user resumes (unpauses)
   useEffect(() => {
-    if (sourceMode === 'live' && isPaused && !pausedSnapshot) {
-      setPausedSnapshot(liveGraph);
-    }
     if (!isPaused) {
       setPausedSnapshot(null);
     }
-  }, [isPaused, sourceMode, liveGraph, pausedSnapshot]);
+  }, [isPaused]);
 
   const currentGraph: ExecutionGraph = (() => {
     if (sourceMode === 'demo') return demoGraph;
@@ -154,9 +151,17 @@ export function ExecutionGraphPanel({ className }: ExecutionGraphPanelProps) {
   }, []);
 
   // Pause / Play
+  // Snapshot is captured synchronously here so it reflects the exact graph
+  // state at click time, before any subsequent WebSocket events can arrive.
   const handleTogglePause = useCallback(() => {
-    setIsPaused((prev) => !prev);
-  }, []);
+    setIsPaused((prev) => {
+      const nextPaused = !prev;
+      if (nextPaused && sourceMode === 'live') {
+        setPausedSnapshot(liveGraph);
+      }
+      return nextPaused;
+    });
+  }, [liveGraph, sourceMode]);
 
   // Clear
   const handleClearGraph = useCallback(() => {

@@ -9,7 +9,7 @@
  * replay past correlation IDs.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useWebSocket } from './useWebSocket';
 import {
@@ -61,6 +61,37 @@ const MAX_RING_SIZE = 10;
 // Hook
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Connects the Execution Graph page to live ONEX node events.
+ *
+ * Data paths:
+ * - **Live**: WebSocket topic `execution-graph` — incoming events are
+ *   normalised via `normalizeWsEvent` / `applyEventToGraph` and accumulated
+ *   into `liveGraph` in real time.
+ * - **Historical**: REST `GET /api/executions/recent` polled every 60 s.
+ *   Selecting a past correlation ID reconstructs the full graph from its
+ *   stored events and caches the result.
+ *
+ * @returns {UseExecutionGraphReturn} Live graph, historical executions, WS
+ *   connection state, and selection helpers.
+ *
+ * @example
+ * ```tsx
+ * function ExecutionGraphPage() {
+ *   const {
+ *     liveGraph,
+ *     historicalExecutions,
+ *     isLive,
+ *     selectedCorrelationId,
+ *     setSelectedCorrelationId,
+ *     selectedHistoricalGraph,
+ *   } = useExecutionGraph();
+ *
+ *   const graph = selectedHistoricalGraph ?? liveGraph;
+ *   return <GraphCanvas graph={graph} isLive={isLive} />;
+ * }
+ * ```
+ */
 export function useExecutionGraph(): UseExecutionGraphReturn {
   // Live graph — always reflects the latest events on the active correlation ID
   const [liveGraph, setLiveGraph] = useState<ExecutionGraph>(() =>
@@ -79,8 +110,18 @@ export function useExecutionGraph(): UseExecutionGraphReturn {
   // Historical graph cache: correlationId → reconstructed ExecutionGraph
   const historicalGraphCacheRef = useRef<Map<string, ExecutionGraph>>(new Map());
 
+  // Snapshot of the previous historicalExecutions array used for selective
+  // cache invalidation (see the eviction useEffect below).
+  const prevExecutionsRef = useRef<HistoricalExecution[]>([]);
+
   // ─── WebSocket ───────────────────────────────────────────────────────────
 
+  // `handleMessage` is intentionally kept stable via useCallback with an empty
+  // dependency array. `useWebSocket` stores the latest `onMessage` callback in
+  // an internal ref, so identity changes on this function never cause the WS
+  // connection to be torn down and re-established. Registering a new callback
+  // instance on every render is therefore safe — duplicate registration is not
+  // a risk.
   const handleMessage = useCallback((msg: { type: string; data?: unknown; timestamp: string }) => {
     // We only care about the EXECUTION_GRAPH_EVENT wrapper that websocket.ts
     // sends when actionUpdate / routingUpdate / transformationUpdate fires.
@@ -126,7 +167,11 @@ export function useExecutionGraph(): UseExecutionGraphReturn {
     onMessage: handleMessage,
   });
 
-  // Subscribe to the 'execution-graph' topic once connected
+  // Re-subscribe to the 'execution-graph' topic every time `isConnected`
+  // becomes true. This handles the initial connection as well as automatic
+  // re-subscription after a WS reconnection. The server treats duplicate
+  // subscribe messages for the same topic as idempotent, so there is no risk
+  // of receiving duplicated events if this effect fires more than once.
   useEffect(() => {
     if (isConnected) {
       subscribe(['execution-graph']);
@@ -151,10 +196,14 @@ export function useExecutionGraph(): UseExecutionGraphReturn {
 
   // ─── Build historical graph on selection ─────────────────────────────────
 
-  const selectedHistoricalGraph: ExecutionGraph | null = (() => {
+  // Compute (or retrieve from cache) the reconstructed graph for the selected
+  // correlation ID. Cache writes are intentionally omitted here — writing to a
+  // ref during render is a side effect that violates React's render-purity
+  // contract. The actual cache population happens in the useEffect below.
+  const selectedHistoricalGraph = useMemo<ExecutionGraph | null>(() => {
     if (!selectedCorrelationId) return null;
 
-    // Check cache first
+    // Check cache first (read-only during render)
     const cached = historicalGraphCacheRef.current.get(selectedCorrelationId);
     if (cached) return cached;
 
@@ -170,15 +219,39 @@ export function useExecutionGraph(): UseExecutionGraphReturn {
       return graphEvents.reduce((g, e) => applyEventToGraph(g, e), graph);
     }, initial);
 
-    // Cache for next render
-    historicalGraphCacheRef.current.set(selectedCorrelationId, reconstructed);
-
     return reconstructed;
-  })();
+  }, [selectedCorrelationId, historicalExecutions]);
 
-  // Invalidate the historical graph cache when new data arrives
+  // Populate the cache after commit so that the next render can short-circuit
+  // reconstruction via the cache hit above.
   useEffect(() => {
-    historicalGraphCacheRef.current.clear();
+    if (selectedCorrelationId && selectedHistoricalGraph) {
+      historicalGraphCacheRef.current.set(selectedCorrelationId, selectedHistoricalGraph);
+    }
+  }, [selectedCorrelationId, selectedHistoricalGraph]);
+
+  // Selectively evict stale cache entries when historicalExecutions changes.
+  // A blanket .clear() would evict still-valid entries on every TanStack Query
+  // refetch (even when data is identical), forcing unnecessary reconstruction.
+  // Instead, only evict entries whose execution has been removed or whose
+  // eventCount has changed (indicating new events were appended).
+  useEffect(() => {
+    const prev = prevExecutionsRef.current;
+    const prevMap = new Map(prev.map((e) => [e.correlationId, e.eventCount]));
+
+    for (const [id] of historicalGraphCacheRef.current) {
+      const newEntry = historicalExecutions.find((e) => e.correlationId === id);
+      if (!newEntry) {
+        // Execution no longer present in the server response — evict.
+        historicalGraphCacheRef.current.delete(id);
+      } else if (newEntry.eventCount !== prevMap.get(id)) {
+        // Event count changed — the stored events were updated, so evict the
+        // cached reconstruction to force a rebuild on next selection.
+        historicalGraphCacheRef.current.delete(id);
+      }
+    }
+
+    prevExecutionsRef.current = historicalExecutions;
   }, [historicalExecutions]);
 
   return {
