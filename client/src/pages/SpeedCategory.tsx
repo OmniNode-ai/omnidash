@@ -106,9 +106,12 @@ export default function SpeedCategory() {
 
   const extractionSummary = extractionResult?.data;
 
-  const { data: latencyDetails, isLoading: latencyLoading } = useQuery<LatencyDetails>({
+  const { data: latencyDetails, isLoading: latencyLoading } = useQuery({
     queryKey: queryKeys.effectiveness.latency(),
-    queryFn: () => effectivenessSource.latencyDetails(),
+    queryFn: async () => {
+      const data = await effectivenessSource.latencyDetails();
+      return { data, isMock: effectivenessSource.isUsingMockData };
+    },
     refetchInterval: 30_000,
   });
 
@@ -132,11 +135,11 @@ export default function SpeedCategory() {
     updateMockFlag('extraction', extractionResult?.isMock ?? false);
   }, [extractionResult, updateMockFlag]);
 
-  // Wire effectiveness source → mock flag.  We use `latencyDetails` as the
-  // trigger because `effectivenessSource.isUsingMockData` is set during the
-  // queryFn and is only observable after the query resolves.
+  // Wire effectiveness source → mock flag.  The queryFn captures
+  // `isUsingMockData` atomically with the fetch result, so `latencyDetails.isMock`
+  // is always consistent with the data that was returned.
   useEffect(() => {
-    updateMockFlag('effectiveness', effectivenessSource.isUsingMockData);
+    updateMockFlag('effectiveness', latencyDetails?.isMock ?? false);
   }, [latencyDetails, updateMockFlag]);
 
   // ---------------------------------------------------------------------------
@@ -172,7 +175,7 @@ export default function SpeedCategory() {
   // Derived values
   // ---------------------------------------------------------------------------
 
-  const cacheHitRate = latencyDetails?.cache?.hit_rate;
+  const cacheHitRate = latencyDetails?.data?.cache?.hit_rate;
   const cacheHitDisplay = cacheHitRate != null ? `${(cacheHitRate * 100).toFixed(1)}%` : '--';
   const cacheHitStatus: 'healthy' | 'warning' | 'error' | undefined =
     cacheHitRate != null
@@ -284,7 +287,7 @@ export default function SpeedCategory() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <LatencyPercentilesChart data={latencyDetails} />
+            <LatencyPercentilesChart data={latencyDetails?.data} />
           </CardContent>
         </Card>
         <PipelineHealthPanel
@@ -293,7 +296,10 @@ export default function SpeedCategory() {
       </div>
 
       {/* Latency Heatmap */}
-      <LatencyHeatmap timeWindow={timeWindow} />
+      <LatencyHeatmap
+        timeWindow={timeWindow}
+        onMockStateChange={(isMock) => updateMockFlag('latency', isMock)}
+      />
 
       {/* Drill-Down Navigation */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
