@@ -286,6 +286,10 @@ export class TopicCatalogManager extends EventEmitter {
         this.triggerRequery('periodic');
       }
     }, CATALOG_REQUERY_INTERVAL_MS);
+    // Prevent this interval from keeping the Node.js event loop alive if
+    // stop() is never called (e.g. unclean shutdown).  stop() still calls
+    // clearInterval() explicitly on the happy path.
+    this.requeryIntervalHandle.unref();
   }
 
   /**
@@ -454,6 +458,8 @@ export class TopicCatalogManager extends EventEmitter {
 
     this.catalogReceived = true;
     this.lastSeenVersion = null;
+
+
     const topics = response.topics.map((t) => t.topic_name);
 
     console.log(
