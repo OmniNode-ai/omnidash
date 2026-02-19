@@ -26,6 +26,7 @@ import {
 import { insightsEventEmitter } from './insights-events';
 import { baselinesEventEmitter } from './baselines-events';
 import { llmRoutingEventEmitter } from './llm-routing-events';
+import { delegationEventEmitter } from './delegation-events';
 import { effectivenessEventEmitter } from './effectiveness-events';
 import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
@@ -527,6 +528,18 @@ export function setupWebSocket(httpServer: HTTPServer) {
     );
   };
   llmRoutingEventEmitter.on('llm-routing-invalidate', llmRoutingInvalidateHandler);
+
+  // Delegation invalidation listener (OMN-2284)
+  // Tells clients to re-fetch delegation data when a new delegation event is projected.
+  // Uses delegationEventEmitter so ReadModelConsumer can trigger it after projecting.
+  const delegationInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast(
+      'DELEGATION_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'delegation'
+    );
+  };
+  delegationEventEmitter.on('delegation-invalidate', delegationInvalidateHandler);
 
   // Effectiveness invalidation listener (OMN-2328)
   // Tells clients to re-fetch effectiveness data when new measurements are projected.
@@ -1120,6 +1133,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Remove LLM routing event listener (OMN-2279)
     llmRoutingEventEmitter.removeListener('llm-routing-invalidate', llmRoutingInvalidateHandler);
+
+    // Remove delegation event listener (OMN-2284)
+    delegationEventEmitter.removeListener('delegation-invalidate', delegationInvalidateHandler);
 
     // Remove effectiveness event listener (OMN-2328)
     effectivenessEventEmitter.removeListener('effectiveness-update', effectivenessUpdateHandler);
