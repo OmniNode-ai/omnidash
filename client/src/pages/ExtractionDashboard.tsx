@@ -11,7 +11,7 @@
  * "something changed, re-query the API".
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
@@ -41,8 +41,25 @@ export default function ExtractionDashboard() {
   const [timeWindow, setTimeWindow] = useState('24h');
 
   // Track mock-data status in reactive state so React re-renders when it changes.
-  // We mirror `isMock` out of the query result via useEffect below.
+  // We aggregate `isMock` across the summary query and all four sub-panel queries:
+  // the badge shows "Demo Data" if ANY of the five data sources is using mock data.
   const [isUsingMockData, setIsUsingMockData] = useState(false);
+
+  // Per-panel mock flags tracked in a ref so we can aggregate without triggering
+  // a re-render on every intermediate update.  We use stable panel keys so that
+  // each onMockStateChange callback only flips its own slot.
+  const mockFlags = useRef<Record<string, boolean>>({
+    summary: false,
+    pipelineHealth: false,
+    latency: false,
+    patternVolume: false,
+    errors: false,
+  });
+
+  const updateMockFlag = useCallback((panel: string, isMock: boolean) => {
+    mockFlags.current[panel] = isMock;
+    setIsUsingMockData(Object.values(mockFlags.current).some(Boolean));
+  }, []);
 
   // Summary stats for metric cards
   const { data: summaryResult, isLoading: summaryLoading } = useQuery({
@@ -51,13 +68,12 @@ export default function ExtractionDashboard() {
     refetchInterval: 30_000,
   });
 
-  // Mirror `isMock` from the settled query result into local state so the
-  // "Demo Data" badge is driven by real reactive state, not a mutable Set.
+  // Mirror `isMock` from the summary query result into the aggregated flag.
   useEffect(() => {
     if (summaryResult !== undefined) {
-      setIsUsingMockData(summaryResult.isMock);
+      updateMockFlag('summary', summaryResult.isMock);
     }
-  }, [summaryResult]);
+  }, [summaryResult, updateMockFlag]);
 
   const summary = summaryResult?.data;
 
@@ -177,10 +193,16 @@ export default function ExtractionDashboard() {
 
       {/* 2x2 Panel Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <PipelineHealthPanel />
-        <LatencyHeatmap timeWindow={timeWindow} />
-        <PatternVolumeChart timeWindow={timeWindow} />
-        <ErrorRatesPanel />
+        <PipelineHealthPanel onMockStateChange={(v) => updateMockFlag('pipelineHealth', v)} />
+        <LatencyHeatmap
+          timeWindow={timeWindow}
+          onMockStateChange={(v) => updateMockFlag('latency', v)}
+        />
+        <PatternVolumeChart
+          timeWindow={timeWindow}
+          onMockStateChange={(v) => updateMockFlag('patternVolume', v)}
+        />
+        <ErrorRatesPanel onMockStateChange={(v) => updateMockFlag('errors', v)} />
       </div>
     </div>
   );

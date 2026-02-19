@@ -26,6 +26,14 @@ import {
   getMockErrorRatesSummary,
 } from '@/lib/mock-data/extraction-mock';
 
+/**
+ * Options controlling fetch behaviour for ExtractionSource methods.
+ *
+ * @property fallbackToMock - When `true` (default), any network error or
+ *   empty-table condition transparently returns demo data instead of throwing.
+ *   Set to `false` in contexts where callers need to distinguish "no data yet"
+ *   from a real API failure.
+ */
 export interface ExtractionFetchOptions {
   fallbackToMock?: boolean;
 }
@@ -39,12 +47,22 @@ class ExtractionSource {
   private baseUrl = '/api/extraction';
 
   /**
-   * Returns true when the summary represents a genuinely empty table —
-   * no rows have ever been written. A zero-injection count alone is not
-   * sufficient because a real (but quiet) period also produces
-   * `total_injections === 0`. We additionally require `last_event_at` to
-   * be null/undefined, which the API only returns when the table contains
-   * no rows at all.
+   * Returns `true` when the summary represents a genuinely empty table —
+   * i.e. no rows have ever been written to the backing store.
+   *
+   * A zero `total_injections` count alone is **not** sufficient to signal
+   * "empty table", because a real (but currently quiet) deployment also
+   * produces `total_injections === 0` for the current time window.
+   *
+   * The additional guard is `last_event_at == null` (null **or** undefined).
+   * The API sets this field to `null` only when the aggregate query finds
+   * zero rows in the table — it is the null sentinel for "table has never
+   * had rows". A non-null `last_event_at` always means at least one row
+   * exists, even if none fall inside the requested window.
+   *
+   * Do **not** change this to a strict `=== null` check: the API may return
+   * either `null` or omit the field entirely (undefined), and both must be
+   * treated identically as "no data".
    */
   private isSummaryEmpty(data: ExtractionSummary): boolean {
     return data.total_injections === 0 && data.last_event_at == null;
@@ -63,7 +81,7 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
-      if (fallbackToMock) {
+      if (fallbackToMock && !(error instanceof SyntaxError)) {
         console.warn('[ExtractionSource] API unavailable for summary, using demo data');
         return { data: getMockExtractionSummary(), isMock: true };
       }
@@ -84,7 +102,7 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
-      if (fallbackToMock) {
+      if (fallbackToMock && !(error instanceof SyntaxError)) {
         console.warn('[ExtractionSource] API unavailable for pipeline health, using demo data');
         return { data: getMockPipelineHealth(), isMock: true };
       }
@@ -108,7 +126,7 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
-      if (fallbackToMock) {
+      if (fallbackToMock && !(error instanceof SyntaxError)) {
         console.warn('[ExtractionSource] API unavailable for latency heatmap, using demo data');
         return { data: getMockLatencyHeatmap(window), isMock: true };
       }
@@ -132,7 +150,7 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
-      if (fallbackToMock) {
+      if (fallbackToMock && !(error instanceof SyntaxError)) {
         console.warn('[ExtractionSource] API unavailable for pattern volume, using demo data');
         return { data: getMockPatternVolume(window), isMock: true };
       }
@@ -153,7 +171,7 @@ class ExtractionSource {
       }
       return { data, isMock: false };
     } catch (error) {
-      if (fallbackToMock) {
+      if (fallbackToMock && !(error instanceof SyntaxError)) {
         console.warn('[ExtractionSource] API unavailable for error rates, using demo data');
         return { data: getMockErrorRatesSummary(), isMock: true };
       }

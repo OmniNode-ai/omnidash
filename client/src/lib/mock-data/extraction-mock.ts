@@ -150,7 +150,7 @@ export function getMockErrorRatesSummary(): ErrorRatesSummaryResponse {
         })),
       };
     }),
-    total_errors: 53,
+    total_errors: Object.values(COHORT_FAILURE_COUNTS).reduce((sum, n) => sum + n, 0),
     overall_error_rate: 0.038,
   };
 }

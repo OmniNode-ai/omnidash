@@ -6,7 +6,7 @@
  * focused, showing the individual failed sessions.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { queryKeys } from '@/lib/query-keys';
@@ -33,7 +33,12 @@ function errorRateToHealth(rate: number): HealthStatus {
   return 'unhealthy';
 }
 
-export function ErrorRatesPanel() {
+interface ErrorRatesPanelProps {
+  /** Called whenever the mock-data status of this panel changes. */
+  onMockStateChange?: (isMock: boolean) => void;
+}
+
+export function ErrorRatesPanel({ onMockStateChange }: ErrorRatesPanelProps) {
   const [selectedDetail, setSelectedDetail] = useState<CohortDetail | null>(null);
 
   const {
@@ -47,6 +52,12 @@ export function ErrorRatesPanel() {
   });
 
   const data = result?.data;
+
+  // Propagate isMock to parent after render to avoid setState-during-render.
+  const isMock = result?.isMock ?? false;
+  useEffect(() => {
+    onMockStateChange?.(isMock);
+  }, [isMock, onMockStateChange]);
 
   const handleRowClick = (entry: ErrorRateEntry) => {
     setSelectedDetail(fromErrorRate(entry));

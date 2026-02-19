@@ -6,7 +6,7 @@
  * flyout with full cohort breakdown.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { queryKeys } from '@/lib/query-keys';
@@ -32,7 +32,12 @@ function successRateToHealth(rate: number): HealthStatus {
   return 'unhealthy';
 }
 
-export function PipelineHealthPanel() {
+interface PipelineHealthPanelProps {
+  /** Called whenever the mock-data status of this panel changes. */
+  onMockStateChange?: (isMock: boolean) => void;
+}
+
+export function PipelineHealthPanel({ onMockStateChange }: PipelineHealthPanelProps) {
   const [selectedDetail, setSelectedDetail] = useState<CohortDetail | null>(null);
 
   const {
@@ -44,6 +49,12 @@ export function PipelineHealthPanel() {
     queryFn: () => extractionSource.pipelineHealth(),
     refetchInterval: 30_000,
   });
+
+  // Propagate isMock to parent after render to avoid setState-during-render.
+  const isMock = result?.isMock ?? false;
+  useEffect(() => {
+    onMockStateChange?.(isMock);
+  }, [isMock, onMockStateChange]);
 
   const data = result?.data;
 

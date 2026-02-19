@@ -112,6 +112,18 @@ export default function SpeedCategory() {
     refetchInterval: 30_000,
   });
 
+  // Mirror the mutable `isUsingMockData` getter into reactive state so the
+  // "Demo Data" badge re-renders correctly after the async fetch settles.
+  // We read the getter only after `latencyDetails` is defined (i.e., the
+  // query has resolved), because `markMock`/`markReal` are called inside the
+  // queryFn and are observable only after it returns.
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
+  useEffect(() => {
+    if (latencyDetails !== undefined) {
+      setIsUsingMockData(effectivenessSource.isUsingMockData);
+    }
+  }, [latencyDetails]);
+
   // ---------------------------------------------------------------------------
   // WebSocket: invalidation-driven re-fetch
   // ---------------------------------------------------------------------------
@@ -173,7 +185,7 @@ export default function SpeedCategory() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {effectivenessSource.isUsingMockData && (
+          {isUsingMockData && (
             <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
               Demo Data
             </Badge>
