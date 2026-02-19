@@ -57,7 +57,8 @@ router.get('/comparisons', async (_req, res) => {
 
 router.get('/trend', async (req, res) => {
   try {
-    const days = Math.min(Math.max(parseInt(req.query.days as string) || 14, 1), 90);
+    const daysParam = Array.isArray(req.query.days) ? req.query.days[0] : req.query.days;
+    const days = Math.min(Math.max(parseInt(String(daysParam ?? ''), 10) || 14, 1), 90);
     const payload = await baselinesProjection.ensureFreshForDays(days);
     return res.json(payload.trend);
   } catch (error) {

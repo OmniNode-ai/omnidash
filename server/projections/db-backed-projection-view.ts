@@ -43,6 +43,12 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
   private snapshotSeq = 0;
   /** Guard: coalesces concurrent refreshAsync() calls into a single DB query. */
   private refreshInFlight: Promise<void> | null = null;
+  /**
+   * Incremented on every reset(). Captured at the start of each refreshAsync()
+   * and checked in the .then() callback so that a stale in-flight query
+   * self-discards if reset() was called while it was executing.
+   */
+  private resetGeneration = 0;
 
   constructor(cacheTtlMs?: number) {
     this.cacheTtlMs = cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
@@ -122,6 +128,9 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
     this.cacheExpiresAt = 0;
     this.snapshotSeq = 0;
     this.refreshInFlight = null;
+    // Bump the generation so any in-flight query self-discards its result rather
+    // than overwriting the fresh cache that the next getSnapshot() will populate.
+    this.resetGeneration++;
   }
 
   // --------------------------------------------------------------------------
@@ -165,9 +174,15 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
     const db = tryGetIntelligenceDb();
     if (!db) return;
 
+    // Capture the current generation so the .then() can detect if reset() was
+    // called while this query was in flight and discard a now-stale result.
+    const generation = this.resetGeneration;
+
     // Fire-and-forget: update cache when query completes
     this.refreshInFlight = this.querySnapshot(db, limit)
       .then((payload) => {
+        // Discard if reset() was called while this query was executing.
+        if (this.resetGeneration !== generation) return;
         this.snapshotSeq++;
         const now = Date.now();
         this.cachedSnapshot = {
