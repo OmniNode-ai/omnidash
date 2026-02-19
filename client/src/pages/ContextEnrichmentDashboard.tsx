@@ -73,9 +73,6 @@ const TIME_WINDOWS: { value: EnrichmentTimeWindow; label: string }[] = [
 /** Bar colours for channel chart (cycled by index). */
 const CHANNEL_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#06b6d4'];
 
-/** Latency bar colours by model index. */
-const MODEL_COLORS = ['#6366f1', '#10b981', '#f97316', '#ec4899', '#14b8a6'];
-
 // ============================================================================
 // Helpers
 // ============================================================================
