@@ -44,11 +44,17 @@ interface LatencyHeatmapProps {
 }
 
 export function LatencyHeatmap({ timeWindow = '24h' }: LatencyHeatmapProps) {
-  const { data, isLoading, error } = useQuery({
+  const {
+    data: result,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.extraction.latency(timeWindow),
     queryFn: () => extractionSource.latencyHeatmap(timeWindow),
     refetchInterval: 30_000,
   });
+
+  const data = result?.data;
 
   return (
     <Card>

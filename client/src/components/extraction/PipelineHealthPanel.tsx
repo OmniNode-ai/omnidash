@@ -35,11 +35,17 @@ function successRateToHealth(rate: number): HealthStatus {
 export function PipelineHealthPanel() {
   const [selectedDetail, setSelectedDetail] = useState<CohortDetail | null>(null);
 
-  const { data, isLoading, error } = useQuery({
+  const {
+    data: result,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.extraction.health(),
     queryFn: () => extractionSource.pipelineHealth(),
     refetchInterval: 30_000,
   });
+
+  const data = result?.data;
 
   const handleRowClick = (cohort: PipelineCohortHealth) => {
     setSelectedDetail(fromPipelineHealth(cohort));

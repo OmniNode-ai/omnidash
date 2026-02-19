@@ -98,11 +98,13 @@ export default function SpeedCategory() {
   // Data Fetching
   // ---------------------------------------------------------------------------
 
-  const { data: extractionSummary, isLoading: extractionLoading } = useQuery({
+  const { data: extractionResult, isLoading: extractionLoading } = useQuery({
     queryKey: queryKeys.extraction.summary(),
     queryFn: () => extractionSource.summary(),
     refetchInterval: 30_000,
   });
+
+  const extractionSummary = extractionResult?.data;
 
   const { data: latencyDetails, isLoading: latencyLoading } = useQuery<LatencyDetails>({
     queryKey: queryKeys.effectiveness.latency(),

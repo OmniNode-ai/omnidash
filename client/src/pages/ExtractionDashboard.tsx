@@ -40,12 +40,26 @@ export default function ExtractionDashboard() {
   const queryClient = useQueryClient();
   const [timeWindow, setTimeWindow] = useState('24h');
 
+  // Track mock-data status in reactive state so React re-renders when it changes.
+  // We mirror `isMock` out of the query result via useEffect below.
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
+
   // Summary stats for metric cards
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const { data: summaryResult, isLoading: summaryLoading } = useQuery({
     queryKey: queryKeys.extraction.summary(),
     queryFn: () => extractionSource.summary(),
     refetchInterval: 30_000,
   });
+
+  // Mirror `isMock` from the settled query result into local state so the
+  // "Demo Data" badge is driven by real reactive state, not a mutable Set.
+  useEffect(() => {
+    if (summaryResult !== undefined) {
+      setIsUsingMockData(summaryResult.isMock);
+    }
+  }, [summaryResult]);
+
+  const summary = summaryResult?.data;
 
   // WebSocket invalidation: re-fetch all extraction queries on EXTRACTION_INVALIDATE
   const handleWebSocketMessage = useCallback(
@@ -97,7 +111,7 @@ export default function ExtractionDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {extractionSource.isUsingMockData && (
+          {isUsingMockData && (
             <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
               Demo Data
             </Badge>

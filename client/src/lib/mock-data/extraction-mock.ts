@@ -66,9 +66,15 @@ export function getMockPipelineHealth(): PipelineHealthResponse {
 }
 
 export function getMockLatencyHeatmap(window: string = '24h'): LatencyHeatmapResponse {
-  const hourly = window === '1h' || window === '6h' || window === '24h';
   const bucketCount = window === '1h' ? 12 : window === '6h' ? 6 : window === '24h' ? 24 : 14;
-  const stepMs = hourly ? 3_600_000 : 86_400_000;
+  const stepMs =
+    window === '1h'
+      ? 300_000
+      : window === '6h'
+        ? 3_600_000
+        : window === '24h'
+          ? 3_600_000
+          : 86_400_000;
 
   const buckets = Array.from({ length: bucketCount }, (_, i) => {
     const t = new Date(Date.now() - (bucketCount - 1 - i) * stepMs);
@@ -86,9 +92,15 @@ export function getMockLatencyHeatmap(window: string = '24h'): LatencyHeatmapRes
 }
 
 export function getMockPatternVolume(window: string = '24h'): PatternVolumeResponse {
-  const hourly = window === '1h' || window === '6h' || window === '24h';
   const bucketCount = window === '1h' ? 12 : window === '6h' ? 6 : window === '24h' ? 24 : 14;
-  const stepMs = hourly ? 3_600_000 : 86_400_000;
+  const stepMs =
+    window === '1h'
+      ? 300_000
+      : window === '6h'
+        ? 3_600_000
+        : window === '24h'
+          ? 3_600_000
+          : 86_400_000;
 
   const points = Array.from({ length: bucketCount }, (_, i) => {
     const t = new Date(Date.now() - (bucketCount - 1 - i) * stepMs);
@@ -103,13 +115,29 @@ export function getMockPatternVolume(window: string = '24h'): PatternVolumeRespo
   return { points, window };
 }
 
+/** Per-cohort event counts keyed by cohort name — order-independent. */
+const COHORT_TOTAL_EVENTS: Record<(typeof COHORTS)[number], number> = {
+  default: 842,
+  experimental: 312,
+  'fast-path': 198,
+  legacy: 71,
+};
+
+/** Per-cohort failure counts keyed by cohort name — order-independent. */
+const COHORT_FAILURE_COUNTS: Record<(typeof COHORTS)[number], number> = {
+  default: 29,
+  experimental: 16,
+  'fast-path': 3,
+  legacy: 5,
+};
+
 export function getMockErrorRatesSummary(): ErrorRatesSummaryResponse {
   const now = Date.now();
 
   return {
-    entries: COHORTS.map((cohort, idx) => {
-      const total = [842, 312, 198, 71][idx];
-      const failures = [29, 16, 3, 5][idx];
+    entries: COHORTS.map((cohort) => {
+      const total = COHORT_TOTAL_EVENTS[cohort];
+      const failures = COHORT_FAILURE_COUNTS[cohort];
       return {
         cohort,
         total_events: total,

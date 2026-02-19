@@ -4,7 +4,11 @@
  * Fetches extraction pipeline metrics from API endpoints with graceful
  * fallback to mock data when tables are empty or API is unavailable.
  *
- * PostgreSQL is the single source of truth for all data.
+ * PostgreSQL is the primary data source; falls back to demo data when tables are empty or the API is unavailable.
+ *
+ * Each method returns a discriminated union `{ data: T; isMock: boolean }`
+ * so callers can track mock status in reactive state rather than reading a
+ * mutable Set that React cannot observe.
  */
 
 import type {
@@ -26,66 +30,63 @@ export interface ExtractionFetchOptions {
   fallbackToMock?: boolean;
 }
 
+export interface ExtractionResult<T> {
+  data: T;
+  isMock: boolean;
+}
+
 class ExtractionSource {
   private baseUrl = '/api/extraction';
-  private _mockEndpoints = new Set<string>();
 
-  /** True if any endpoint fell back to mock data. */
-  get isUsingMockData(): boolean {
-    return this._mockEndpoints.size > 0;
-  }
-
-  private markReal(endpoint: string): void {
-    this._mockEndpoints.delete(endpoint);
-  }
-
-  private markMock(endpoint: string): void {
-    this._mockEndpoints.add(endpoint);
-  }
-
+  /**
+   * Returns true when the summary represents a genuinely empty table —
+   * no rows have ever been written. A zero-injection count alone is not
+   * sufficient because a real (but quiet) period also produces
+   * `total_injections === 0`. We additionally require `last_event_at` to
+   * be null/undefined, which the API only returns when the table contains
+   * no rows at all.
+   */
   private isSummaryEmpty(data: ExtractionSummary): boolean {
-    return data.total_injections === 0;
+    return data.total_injections === 0 && data.last_event_at == null;
   }
 
-  async summary(options: ExtractionFetchOptions = {}): Promise<ExtractionSummary> {
+  async summary(
+    options: ExtractionFetchOptions = {}
+  ): Promise<ExtractionResult<ExtractionSummary>> {
     const { fallbackToMock = true } = options;
     try {
       const response = await fetch(`${this.baseUrl}/summary`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: ExtractionSummary = await response.json();
       if (fallbackToMock && this.isSummaryEmpty(data)) {
-        this.markMock('summary');
-        return getMockExtractionSummary();
+        return { data: getMockExtractionSummary(), isMock: true };
       }
-      this.markReal('summary');
-      return data;
+      return { data, isMock: false };
     } catch (error) {
       if (fallbackToMock) {
         console.warn('[ExtractionSource] API unavailable for summary, using demo data');
-        this.markMock('summary');
-        return getMockExtractionSummary();
+        return { data: getMockExtractionSummary(), isMock: true };
       }
       throw error;
     }
   }
 
-  async pipelineHealth(options: ExtractionFetchOptions = {}): Promise<PipelineHealthResponse> {
+  async pipelineHealth(
+    options: ExtractionFetchOptions = {}
+  ): Promise<ExtractionResult<PipelineHealthResponse>> {
     const { fallbackToMock = true } = options;
     try {
       const response = await fetch(`${this.baseUrl}/health/pipeline`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: PipelineHealthResponse = await response.json();
       if (fallbackToMock && data.cohorts.length === 0) {
-        this.markMock('health');
-        return getMockPipelineHealth();
+        return { data: getMockPipelineHealth(), isMock: true };
       }
-      this.markReal('health');
-      return data;
+      return { data, isMock: false };
     } catch (error) {
       if (fallbackToMock) {
         console.warn('[ExtractionSource] API unavailable for pipeline health, using demo data');
-        this.markMock('health');
-        return getMockPipelineHealth();
+        return { data: getMockPipelineHealth(), isMock: true };
       }
       throw error;
     }
@@ -94,7 +95,7 @@ class ExtractionSource {
   async latencyHeatmap(
     window: string = '24h',
     options: ExtractionFetchOptions = {}
-  ): Promise<LatencyHeatmapResponse> {
+  ): Promise<ExtractionResult<LatencyHeatmapResponse>> {
     const { fallbackToMock = true } = options;
     try {
       const response = await fetch(
@@ -103,16 +104,13 @@ class ExtractionSource {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: LatencyHeatmapResponse = await response.json();
       if (fallbackToMock && data.buckets.length === 0) {
-        this.markMock('latency');
-        return getMockLatencyHeatmap(window);
+        return { data: getMockLatencyHeatmap(window), isMock: true };
       }
-      this.markReal('latency');
-      return data;
+      return { data, isMock: false };
     } catch (error) {
       if (fallbackToMock) {
         console.warn('[ExtractionSource] API unavailable for latency heatmap, using demo data');
-        this.markMock('latency');
-        return getMockLatencyHeatmap(window);
+        return { data: getMockLatencyHeatmap(window), isMock: true };
       }
       throw error;
     }
@@ -121,7 +119,7 @@ class ExtractionSource {
   async patternVolume(
     window: string = '24h',
     options: ExtractionFetchOptions = {}
-  ): Promise<PatternVolumeResponse> {
+  ): Promise<ExtractionResult<PatternVolumeResponse>> {
     const { fallbackToMock = true } = options;
     try {
       const response = await fetch(
@@ -130,38 +128,34 @@ class ExtractionSource {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: PatternVolumeResponse = await response.json();
       if (fallbackToMock && data.points.length === 0) {
-        this.markMock('volume');
-        return getMockPatternVolume(window);
+        return { data: getMockPatternVolume(window), isMock: true };
       }
-      this.markReal('volume');
-      return data;
+      return { data, isMock: false };
     } catch (error) {
       if (fallbackToMock) {
         console.warn('[ExtractionSource] API unavailable for pattern volume, using demo data');
-        this.markMock('volume');
-        return getMockPatternVolume(window);
+        return { data: getMockPatternVolume(window), isMock: true };
       }
       throw error;
     }
   }
 
-  async errorsSummary(options: ExtractionFetchOptions = {}): Promise<ErrorRatesSummaryResponse> {
+  async errorsSummary(
+    options: ExtractionFetchOptions = {}
+  ): Promise<ExtractionResult<ErrorRatesSummaryResponse>> {
     const { fallbackToMock = true } = options;
     try {
       const response = await fetch(`${this.baseUrl}/errors/summary`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: ErrorRatesSummaryResponse = await response.json();
       if (fallbackToMock && data.entries.length === 0) {
-        this.markMock('errors');
-        return getMockErrorRatesSummary();
+        return { data: getMockErrorRatesSummary(), isMock: true };
       }
-      this.markReal('errors');
-      return data;
+      return { data, isMock: false };
     } catch (error) {
       if (fallbackToMock) {
         console.warn('[ExtractionSource] API unavailable for error rates, using demo data');
-        this.markMock('errors');
-        return getMockErrorRatesSummary();
+        return { data: getMockErrorRatesSummary(), isMock: true };
       }
       throw error;
     }

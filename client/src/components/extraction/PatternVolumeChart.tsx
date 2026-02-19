@@ -49,11 +49,17 @@ interface PatternVolumeChartProps {
 export function PatternVolumeChart({ timeWindow = '24h' }: PatternVolumeChartProps) {
   const legend = useToggleableLegend();
 
-  const { data, isLoading, error } = useQuery({
+  const {
+    data: result,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.extraction.volume(timeWindow),
     queryFn: () => extractionSource.patternVolume(timeWindow),
     refetchInterval: 30_000,
   });
+
+  const data = result?.data;
 
   const chartData = data?.points.map((p) => ({
     ...p,

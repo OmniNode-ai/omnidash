@@ -36,11 +36,17 @@ function errorRateToHealth(rate: number): HealthStatus {
 export function ErrorRatesPanel() {
   const [selectedDetail, setSelectedDetail] = useState<CohortDetail | null>(null);
 
-  const { data, isLoading, error } = useQuery({
+  const {
+    data: result,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.extraction.errors(),
     queryFn: () => extractionSource.errorsSummary(),
     refetchInterval: 30_000,
   });
+
+  const data = result?.data;
 
   const handleRowClick = (entry: ErrorRateEntry) => {
     setSelectedDetail(fromErrorRate(entry));
