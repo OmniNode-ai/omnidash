@@ -1069,4 +1069,85 @@ export const insertBaselinesBreakdownSchema = createInsertSchema(baselinesBreakd
 export type BaselinesBreakdownRow = typeof baselinesBreakdown.$inferSelect;
 export type InsertBaselinesBreakdown = typeof baselinesBreakdown.$inferInsert;
 
+// ============================================================================
+// Delegation Events Tables (OMN-2284)
+// ============================================================================
+
+/**
+ * Delegation Events Table
+ * Projected from onex.evt.omniclaude.task-delegated.v1
+ * Tracks each task delegation event with quality gate outcomes and cost savings.
+ */
+export const delegationEvents = pgTable(
+  'delegation_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: text('correlation_id').notNull(),
+    sessionId: text('session_id'),
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull(),
+    taskType: text('task_type').notNull(),
+    delegatedTo: text('delegated_to').notNull(),
+    delegatedBy: text('delegated_by'),
+    qualityGatePassed: boolean('quality_gate_passed').notNull().default(false),
+    qualityGatesChecked: jsonb('quality_gates_checked'),
+    qualityGatesFailed: jsonb('quality_gates_failed'),
+    costUsd: numeric('cost_usd', { precision: 12, scale: 8 }),
+    costSavingsUsd: numeric('cost_savings_usd', { precision: 12, scale: 8 }),
+    delegationLatencyMs: integer('delegation_latency_ms'),
+    repo: text('repo'),
+    isShadow: boolean('is_shadow').notNull().default(false),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('idx_delegation_events_correlation').on(table.correlationId),
+    index('idx_delegation_events_timestamp').on(table.timestamp),
+    index('idx_delegation_events_task_type').on(table.taskType),
+    index('idx_delegation_events_delegated_to').on(table.delegatedTo),
+    index('idx_delegation_events_quality_gate').on(table.qualityGatePassed),
+  ]
+);
+
+export const insertDelegationEventSchema = createInsertSchema(delegationEvents);
+export type DelegationEventRow = typeof delegationEvents.$inferSelect;
+export type InsertDelegationEvent = typeof delegationEvents.$inferInsert;
+
+/**
+ * Delegation Shadow Comparisons Table
+ * Projected from onex.evt.omniclaude.delegation-shadow-comparison.v1
+ * Tracks shadow validation divergence between primary and shadow agents.
+ */
+export const delegationShadowComparisons = pgTable(
+  'delegation_shadow_comparisons',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: text('correlation_id').notNull(),
+    sessionId: text('session_id'),
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull(),
+    taskType: text('task_type').notNull(),
+    primaryAgent: text('primary_agent').notNull(),
+    shadowAgent: text('shadow_agent').notNull(),
+    divergenceDetected: boolean('divergence_detected').notNull().default(false),
+    divergenceScore: numeric('divergence_score', { precision: 5, scale: 4 }),
+    primaryLatencyMs: integer('primary_latency_ms'),
+    shadowLatencyMs: integer('shadow_latency_ms'),
+    primaryCostUsd: numeric('primary_cost_usd', { precision: 12, scale: 8 }),
+    shadowCostUsd: numeric('shadow_cost_usd', { precision: 12, scale: 8 }),
+    divergenceReason: text('divergence_reason'),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('idx_delegation_shadow_correlation').on(table.correlationId),
+    index('idx_delegation_shadow_timestamp').on(table.timestamp),
+    index('idx_delegation_shadow_task_type').on(table.taskType),
+    index('idx_delegation_shadow_primary_agent').on(table.primaryAgent),
+    index('idx_delegation_shadow_divergence').on(table.divergenceDetected),
+  ]
+);
+
+export const insertDelegationShadowComparisonSchema = createInsertSchema(
+  delegationShadowComparisons
+);
+export type DelegationShadowComparisonRow = typeof delegationShadowComparisons.$inferSelect;
+export type InsertDelegationShadowComparison = typeof delegationShadowComparisons.$inferInsert;
+
 export type InsertLlmCostAggregate = typeof llmCostAggregates.$inferInsert;
