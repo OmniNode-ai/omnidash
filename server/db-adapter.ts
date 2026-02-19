@@ -61,6 +61,9 @@ export class PostgresAdapter {
   constructor() {
     // Check that KAFKA_BROKERS is set (required infrastructure)
     this.eventBusEnabled = !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS);
+    if (!this.eventBusEnabled) {
+      console.error('❌ KAFKA_BROKERS not configured. Event bus integration is disabled — this is an error state, not normal operation.');
+    }
   }
 
   /**

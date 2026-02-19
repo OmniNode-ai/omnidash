@@ -157,7 +157,7 @@ export class EventBusDataSource extends EventEmitter {
     const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
 
     if (!brokers) {
-      console.warn('[EventBusDataSource] KAFKA_BROKERS not configured');
+      console.error('[EventBusDataSource] KAFKA_BROKERS not configured');
       return false;
     }
 
@@ -719,8 +719,13 @@ export function getEventBusDataSource(): EventBusDataSource | null {
 
 /**
  * Check if EventBusDataSource is available
+ *
+ * Triggers lazy initialization if not yet attempted, so callers get an
+ * accurate answer regardless of whether getEventBusDataSource() has been
+ * called before.
  */
 export function isEventBusDataSourceAvailable(): boolean {
+  getEventBusDataSource(); // trigger lazy init if not yet attempted
   return eventBusDataSourceInstance !== null;
 }
 
@@ -766,7 +771,7 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
       }
       if (prop === 'injectEvent') {
         return async () => {
-          console.warn('⚠️  EventBusDataSource not available - cannot inject event');
+          console.error('❌ EventBusDataSource not available - cannot inject event. Events are being silently dropped. Set KAFKA_BROKERS in .env to restore event storage.');
         };
       }
       // For EventEmitter methods
