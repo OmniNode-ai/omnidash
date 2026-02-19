@@ -502,7 +502,7 @@ router.get('/data-sources', async (_req, res) => {
       isError: true,
     };
     res.set('Cache-Control', 'no-store');
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(503).json({ error: 'Service temporarily unavailable' });
   }
 });
 

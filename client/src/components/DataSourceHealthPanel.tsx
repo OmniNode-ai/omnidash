@@ -209,29 +209,27 @@ export function DataSourceHealthPanel() {
     retry: 1,
   });
 
+  const checkedAtDate = data ? new Date(data.checkedAt) : null;
+  const checkedAtStr =
+    checkedAtDate == null || isNaN(checkedAtDate.getTime())
+      ? 'Unknown'
+      : checkedAtDate.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        });
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Activity className="w-4 h-4 text-muted-foreground" />
           Data Source Health
-          {data &&
-            !isLoading &&
-            (() => {
-              const checkedAtDate = new Date(data.checkedAt);
-              const checkedAtStr = isNaN(checkedAtDate.getTime())
-                ? 'Unknown'
-                : checkedAtDate.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  });
-              return (
-                <span className="text-xs text-muted-foreground font-normal ml-auto">
-                  checked {checkedAtStr}
-                </span>
-              );
-            })()}
+          {data && !isLoading && (
+            <span className="text-xs text-muted-foreground font-normal ml-auto">
+              checked {checkedAtStr}
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
