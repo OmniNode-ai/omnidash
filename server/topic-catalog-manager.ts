@@ -219,6 +219,8 @@ export class TopicCatalogManager extends EventEmitter {
     const corrId = correlationId ?? crypto.randomUUID();
     this.outstandingCorrelationId = corrId;
     this.catalogReceived = false;
+    this.lastQueryTimestamp = 0;
+    this.lastSeenVersion = null;
 
     // Build producer
     this.producer = this.kafka.producer();
