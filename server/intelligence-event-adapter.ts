@@ -268,10 +268,11 @@ export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
 }
 
 /**
- * Check if IntelligenceEventAdapter is available
+ * Check if IntelligenceEventAdapter is available, triggering lazy initialization if not yet attempted.
  */
 export function isIntelligenceEventsAvailable(): boolean {
-  return intelligenceEventsInstance !== null || intelligenceInitError === null;
+  getIntelligenceEvents(); // trigger lazy init if not yet attempted
+  return intelligenceEventsInstance !== null;
 }
 
 /**

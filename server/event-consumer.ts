@@ -4301,11 +4301,12 @@ export function getEventConsumer(): EventConsumer | null {
 }
 
 /**
- * Check if EventConsumer is available without attempting initialization
+ * Check if EventConsumer is available, triggering lazy initialization if not yet attempted.
  * @returns true if EventConsumer is available, false otherwise
  */
 export function isEventConsumerAvailable(): boolean {
-  return eventConsumerInstance !== null || initializationError === null;
+  getEventConsumer(); // trigger lazy init if not yet attempted
+  return eventConsumerInstance !== null;
 }
 
 /**

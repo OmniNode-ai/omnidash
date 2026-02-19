@@ -746,12 +746,13 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
     const instance = getEventBusDataSource();
     if (!instance) {
       // Return dummy implementations
-      if (
-        prop === 'start' ||
-        prop === 'stop' ||
-        prop === 'validateConnection' ||
-        prop === 'initializeSchema'
-      ) {
+      if (prop === 'validateConnection') {
+        return async () => {
+          console.error('❌ EventBusDataSource not available - cannot validate connection. Set KAFKA_BROKERS in .env.');
+          return false;
+        };
+      }
+      if (prop === 'start' || prop === 'stop' || prop === 'initializeSchema') {
         return async () => {
           console.error('❌ EventBusDataSource not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
         };
