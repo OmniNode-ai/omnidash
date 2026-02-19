@@ -944,7 +944,8 @@ export class ReadModelConsumer {
         ? rawSnapshotId
         : deterministicCorrelationId('baselines-computed', partition, offset);
 
-    const contractVersion = Number(data.contract_version ?? 1);
+    const rawContractVersion = parseInt(String(data.contract_version ?? ''), 10);
+    const contractVersion = isNaN(rawContractVersion) ? 1 : rawContractVersion;
     // Use safeParseDateOrMin so that a missing/malformed computedAtUtc sorts
     // as oldest (epoch-zero) rather than newest (wall-clock), preventing a
     // bad event from masquerading as the latest snapshot.
