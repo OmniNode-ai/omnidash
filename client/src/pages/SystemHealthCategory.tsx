@@ -30,6 +30,7 @@ import {
   Server,
   Layers,
 } from 'lucide-react';
+import { DataSourceHealthPanel } from '@/components/DataSourceHealthPanel';
 import {
   PieChart,
   Pie,
@@ -375,6 +376,9 @@ export default function SystemHealthCategory() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Data Source Health Audit (OMN-2307) */}
+      <DataSourceHealthPanel />
 
       {/* Drill-Down Navigation */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
