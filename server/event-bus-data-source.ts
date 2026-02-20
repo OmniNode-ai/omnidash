@@ -725,6 +725,12 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * (e.g. KAFKA_BROKERS not configured). Safe to call at any time — no prior
  * call to `getEventBusDataSource()` is required.
  *
+ * @remarks
+ * **Side effect**: Triggers lazy initialization of the singleton if not yet
+ * initialized. Calling this function is equivalent to calling
+ * `getEventBusDataSource()` plus a null check — both are safe to call at any
+ * point.
+ *
  * @example
  * ```typescript
  * if (isEventBusDataSourceAvailable()) {
@@ -781,13 +787,21 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
       }
       if (prop === 'injectEvent') {
         /**
-         * Throws: If called before Kafka is initialized (Kafka not configured or
-         * connection failed). Callers must await the result or catch the rejection
-         * to avoid silent unhandled promise rejections.
+         * Proxy stub returned when Kafka is not initialized.
+         *
+         * @throws {Error} Always throws — Kafka was not configured or failed to
+         *   initialize. Callers MUST await this function or attach a .catch()
+         *   handler; failing to do so will produce an unhandled promise rejection.
+         *
+         *   To restore event storage, set KAFKA_BROKERS in .env and restart.
          */
-        return async () => {
-          throw new Error('[EventBusDataSource] injectEvent called before Kafka initialization — event cannot be delivered. Set KAFKA_BROKERS in .env to restore event storage.');
+        const uninitializedInjectEvent = async (..._args: unknown[]): Promise<never> => {
+          throw new Error(
+            '[EventBusDataSource] injectEvent called before Kafka initialization — ' +
+              'event cannot be delivered. Set KAFKA_BROKERS in .env to restore event storage.'
+          );
         };
+        return uninitializedInjectEvent;
       }
       // For EventEmitter methods
       if (prop === 'on' || prop === 'once' || prop === 'emit' || prop === 'removeListener') {

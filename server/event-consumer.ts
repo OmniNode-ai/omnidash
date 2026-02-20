@@ -4307,6 +4307,12 @@ export function getEventConsumer(): EventConsumer | null {
  * (e.g. KAFKA_BROKERS not configured). Safe to call at any time — no prior
  * call to `getEventConsumer()` is required.
  *
+ * @remarks
+ * **Side effect**: Triggers lazy initialization of the singleton if not yet
+ * initialized. Calling this function is equivalent to calling
+ * `getEventConsumer()` plus a null check — both are safe to call at any
+ * point.
+ *
  * @returns true if EventConsumer singleton is initialized, false otherwise
  */
 export function isEventConsumerAvailable(): boolean {

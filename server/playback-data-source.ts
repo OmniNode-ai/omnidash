@@ -96,7 +96,8 @@ export class PlaybackDataSource extends EventEmitter {
    */
   stop(): void {
     if (!this.isActive) {
-      return; // Never started — no-op (expected on clean shutdown when demo mode was never activated)
+      console.warn('[PlaybackDataSource] stop() called while already inactive — no-op');
+      return;
     }
     this.isActive = false;
     this.emit('disconnected');

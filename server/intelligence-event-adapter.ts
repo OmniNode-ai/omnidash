@@ -356,6 +356,12 @@ export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
  * singleton was successfully initialized and false if initialization failed
  * (e.g. KAFKA_BROKERS not configured). Safe to call at any time — no prior
  * call to `getIntelligenceEvents()` is required.
+ *
+ * @remarks
+ * **Side effect**: Triggers lazy initialization of the singleton if not yet
+ * initialized. Calling this function is equivalent to calling
+ * `getIntelligenceEvents()` plus a null check — both are safe to call at any
+ * point.
  */
 export function isIntelligenceEventsAvailable(): boolean {
   // Trigger lazy initialization if not yet done

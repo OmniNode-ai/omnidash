@@ -163,7 +163,7 @@ describe('DatabaseAdapter - Security (SQL Injection Prevention)', () => {
     // executeRaw is a low-level API - caller is responsible for parameterization
     vi.mocked(mockDb).execute.mockResolvedValue([{ count: 42 }]);
 
-    const result = await adapter.executeRaw('SELECT COUNT(*) FROM agent_actions');
+    const result = await (adapter as any).executeRaw('SELECT COUNT(*) FROM agent_actions');
 
     expect(vi.mocked(mockDb).execute).toHaveBeenCalled();
     expect(result).toEqual([{ count: 42 }]);
@@ -513,7 +513,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
 
       vi.mocked(mockDb).execute.mockResolvedValue(mockResult);
 
-      const result = await adapter.executeRaw('SELECT id, COUNT(*) FROM agent_actions GROUP BY id');
+      const result = await (adapter as any).executeRaw('SELECT id, COUNT(*) FROM agent_actions GROUP BY id');
 
       expect(vi.mocked(mockDb).execute).toHaveBeenCalled();
       expect(result).toEqual(mockResult);
@@ -522,7 +522,7 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
     it('handles empty result', async () => {
       vi.mocked(mockDb).execute.mockResolvedValue([]);
 
-      const result = await adapter.executeRaw('SELECT * FROM agent_actions WHERE 1=0');
+      const result = await (adapter as any).executeRaw('SELECT * FROM agent_actions WHERE 1=0');
 
       expect(result).toEqual([]);
     });
@@ -912,7 +912,7 @@ describe('DatabaseAdapter - Additional Methods', () => {
       const mockResult = [{ id: '1', name: 'test' }];
       vi.mocked(mockDb.execute).mockResolvedValue(mockResult as any);
 
-      const result = await adapter.executeRaw('SELECT * FROM agent_actions LIMIT 1');
+      const result = await (adapter as any).executeRaw('SELECT * FROM agent_actions LIMIT 1');
 
       expect(result).toEqual(mockResult);
       expect(mockDb.execute).toHaveBeenCalled();
@@ -921,7 +921,7 @@ describe('DatabaseAdapter - Additional Methods', () => {
     it('should return empty array when result is not an array', async () => {
       vi.mocked(mockDb.execute).mockResolvedValue(null as any);
 
-      const result = await adapter.executeRaw('SELECT * FROM agent_actions');
+      const result = await (adapter as any).executeRaw('SELECT * FROM agent_actions');
 
       expect(result).toEqual([]);
     });
