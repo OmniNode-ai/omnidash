@@ -12,6 +12,11 @@ import {
  * Envelope-level keys are excluded so callers get a compile-time error if they
  * accidentally pass fields that belong to the outer envelope layer rather than
  * the inner payload.
+ *
+ * Note: `correlation_id` is intentionally NOT excluded from this type. It is a
+ * supported convenience input — the `request()` method extracts it and promotes
+ * it to the outer envelope, so it is safe to pass and will not leak into the
+ * inner payload.
  */
 type PayloadOverride = Omit<
   Record<string, unknown>,
@@ -185,8 +190,9 @@ export class IntelligenceEventAdapter {
    *   - `source`
    *   - `timestamp`
    *   `correlation_id` IS supported: it is explicitly extracted from `payload`
-   *   before the spread and placed on the outer envelope, so it is safely
-   *   handled and does not end up in the inner payload.
+   *   before the spread and placed on the outer envelope. Both `correlation_id`
+   *   and `correlationId` are destructured out before the spread so they are
+   *   excluded from the inner payload.
    *   Any key matching a pre-constructed field (`source_path`, `content`,
    *   `language`, `operation_type`, `project_id`, `user_id`) will silently
    *   overwrite it.
@@ -203,6 +209,10 @@ export class IntelligenceEventAdapter {
     const correlationId = String(rawCorrelationId);
     const correlationKey = correlationId.toLowerCase();
 
+    // Exclude correlation_id / correlationId from the inner payload spread so they
+    // are not duplicated inside envelope.payload (they belong on the outer envelope only).
+    const { correlation_id: _cid, correlationId: _cidCamel, ...payloadRest } = payload;
+
     // Format matches OmniClaude's _create_request_payload format
     // Handler expects: event_type, correlation_id, payload (with source_path, language, etc.)
     const envelope = {
@@ -212,14 +222,14 @@ export class IntelligenceEventAdapter {
       timestamp: new Date().toISOString(),
       service: 'omnidash',
       payload: {
-        source_path: payload.sourcePath || payload.source_path || '',
-        content: payload.content || null,
-        language: payload.language || 'python',
-        operation_type: payload.operation_type || payload.operationType || 'PATTERN_EXTRACTION',
-        options: payload.options || {},
-        project_id: payload.projectId || payload.project_id || 'omnidash',
-        user_id: payload.userId || payload.user_id || 'system',
-        ...payload, // Allow override of any fields
+        source_path: payloadRest.sourcePath || payloadRest.source_path || '',
+        content: payloadRest.content || null,
+        language: payloadRest.language || 'python',
+        operation_type: payloadRest.operation_type || payloadRest.operationType || 'PATTERN_EXTRACTION',
+        options: payloadRest.options || {},
+        project_id: payloadRest.projectId || payloadRest.project_id || 'omnidash',
+        user_id: payloadRest.userId || payloadRest.user_id || 'system',
+        ...payloadRest, // Allow override of any fields
       },
     };
 

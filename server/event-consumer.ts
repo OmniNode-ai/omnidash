@@ -1062,8 +1062,7 @@ export class EventConsumer extends EventEmitter {
     } catch (error) {
       console.error(`❌ Kafka broker unreachable: ${brokers}`);
       console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`);
-      console.error('   Real-time event streaming will be disabled');
-      console.error('   Verify KAFKA_BROKERS configuration and network connectivity');
+      console.error('   Real-time event streaming is unavailable — check KAFKA_BROKERS and network connectivity.');
       return false;
     }
   }
