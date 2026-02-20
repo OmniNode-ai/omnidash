@@ -232,14 +232,14 @@ export class ReadModelConsumer {
    * Connects to Kafka and begins consuming events for projection.
    */
   async start(): Promise<void> {
+    // Reset the stopped flag on each start() call so that a consumer can be
+    // restarted after a previous stop() (e.g., in tests).
+    this.stopped = false;
+
     if (this.running) {
       console.log('[ReadModelConsumer] Already running');
       return;
     }
-
-    // Reset the stopped flag on each start() call so that a consumer can be
-    // restarted after a previous stop() (e.g., in tests).
-    this.stopped = false;
 
     const brokers = (process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || '')
       .split(',')

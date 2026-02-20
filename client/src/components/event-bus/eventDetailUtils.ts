@@ -336,7 +336,6 @@ export function extractParsedDetails(
         'intentType',
         'intent_category',
         'intentCategory',
-        'intent',
       ]);
       if (intentType && typeof intentType === 'string') {
         details.actionName = intentType;
