@@ -243,9 +243,13 @@ export class IntelligenceEventAdapter {
     // Dev-only: warn when caller-supplied keys overwrite pre-constructed payload fields (overrides are supported by design).
     if (process.env.NODE_ENV !== 'production') {
       const preConstructedKeys = [
+        // snake_case canonical names
         'source_path', 'content', 'language', 'operation_type',
         'options', // explicitly constructed in the payload build from adapter config — should not be silently overwritten by caller payload
         'project_id', 'user_id',
+        // camelCase aliases accepted by the envelope build — warn on these too so
+        // callers are not silently overwriting defaults regardless of which casing they use
+        'sourcePath', 'operationType', 'projectId', 'userId',
       ] as const;
       for (const key of preConstructedKeys) {
         if (key in safePayloadRest) {
@@ -296,6 +300,15 @@ export class IntelligenceEventAdapter {
         clearTimeout(entry.timeout);
         this.pending.delete(correlationKey);
         entry.reject(sendError instanceof Error ? sendError : new Error(String(sendError)));
+      } else {
+        // The timeout already fired and removed the entry before producer.send() failed.
+        // Log so the race is diagnosable — the caller already received a timeout rejection,
+        // but this send error is otherwise silently lost without this warning.
+        console.warn(
+          `[IntelligenceEventAdapter] send error after timeout for correlationId "${correlationKey}" — ` +
+          'the caller already received a timeout rejection; this send error is logged for diagnostics only.',
+          sendError
+        );
       }
       // Return the already-rejected promise rather than re-throwing here.
       // Async functions implicitly await any Promise they return, so the

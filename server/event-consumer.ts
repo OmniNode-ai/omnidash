@@ -4462,6 +4462,20 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
               'Kafka is not initialized; listener was NOT registered. ' +
               'Set KAFKA_BROKERS in .env to enable real event delivery.'
             );
+          } else if (prop === 'removeListener') {
+            // No-op: there is nothing to remove because on/once stubs never registered a
+            // real listener. Log at error level — matches severity of on/once stubs.
+            console.error(
+              `[EventConsumer] .removeListener() called on stub proxy (event: "${String(args[0])}") — ` +
+              'no-op because Kafka is not initialized and no listener was ever registered.'
+            );
+          } else if (prop === 'emit') {
+            // No-op: no real EventEmitter exists to dispatch to. Log at error level —
+            // matches severity of on/once stubs; the event was silently dropped.
+            console.error(
+              `[EventConsumer] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
+              'no-op because Kafka is not initialized; event was not dispatched.'
+            );
           }
           return eventConsumer; // Return proxy for chaining
         };

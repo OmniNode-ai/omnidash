@@ -872,16 +872,17 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
             );
           } else if (prop === 'removeListener') {
             // No-op: there is nothing to remove because on/once stubs never registered a
-            // real listener. Log at warn level so cleanup code is aware the call had no
-            // effect rather than silently succeeding.
-            console.warn(
+            // real listener. Log at error level — a removeListener call on an uninitialized
+            // proxy is equally indicative of misconfiguration as on/once calls.
+            console.error(
               `[EventBusDataSource] .removeListener() called on stub proxy (event: "${String(args[0])}") — ` +
               'no-op because Kafka is not initialized and no listener was ever registered.'
             );
           } else if (prop === 'emit') {
-            // No-op: no real EventEmitter exists to dispatch to. Log at warn level so
-            // callers attempting to emit events can detect that nothing was delivered.
-            console.warn(
+            // No-op: no real EventEmitter exists to dispatch to. Log at error level —
+            // an emit on an uninitialized proxy is equally indicative of misconfiguration
+            // as on/once calls; the event was silently dropped.
+            console.error(
               `[EventBusDataSource] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
               'no-op because Kafka is not initialized; event was not dispatched.'
             );
