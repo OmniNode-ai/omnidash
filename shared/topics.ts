@@ -490,6 +490,9 @@ export const OMNICLAUDE_EXTENDED_SUFFIXES = [
   SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED,
   // OMN-2371 (GAP-5): replaced deprecated SUFFIX_OMNICLAUDE_LLM_COST_REPORTED (zero producers)
   // with the canonical topic emitted by NodeLlmInferenceEffect in omnibase_infra.
+  // NOTE: This is a full absolute topic name from the omniintelligence namespace, not a suffix.
+  // It is intentionally placed here for cross-namespace subscription by the OmniClaude consumer;
+  // see OMN-2371 for context on why a non-omniclaude topic belongs in this suffix array.
   TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
 ] as const;
 

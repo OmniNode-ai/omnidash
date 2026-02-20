@@ -134,7 +134,7 @@ describe('ReadModelConsumer', () => {
   });
 
   // ============================================================================
-  // LLM Cost Event Projection (OMN-2300 / OMN-2329)
+  // LLM Cost Event Projection (OMN-2300 / OMN-2329 / OMN-2371)
   // ============================================================================
 
   describe('projectLlmCostEvent via handleMessage', () => {
@@ -614,6 +614,69 @@ describe('ReadModelConsumer', () => {
       expect(stats.errorsCount).toBe(0);
 
       warnSpy.mockRestore();
+    });
+
+    it('omits repoName when reporting_source is too long or contains whitespace', async () => {
+      // Covers the rejection branch of the reporting_source heuristic in
+      // read-model-consumer.ts ~line 1213:
+      //   reportingSource.length < 64 && !/\s/.test(reportingSource)
+      // A value that fails either guard must NOT become repoName in the projected row.
+      const { tryGetIntelligenceDb } = await import('../storage');
+
+      const insertValues = vi.fn().mockResolvedValue(undefined);
+      const insertMock = vi.fn().mockReturnValue({ values: insertValues });
+      const executeMock = vi.fn().mockResolvedValue(undefined);
+
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
+        insert: insertMock,
+        execute: executeMock,
+      });
+
+      const handleMessage = getHandleMessage(consumer);
+
+      // Case A: reporting_source is ≥ 64 characters → should be rejected
+      const longSource = 'a'.repeat(64); // exactly 64 chars, fails length < 64
+      const payloadA = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'claude-sonnet-4-6',
+        prompt_tokens: 100,
+        completion_tokens: 50,
+        total_tokens: 150,
+        estimated_cost_usd: 0.001,
+        reporting_source: longSource,
+      });
+
+      await handleMessage(payloadA);
+
+      const insertArgA = insertValues.mock.calls[0]?.[0];
+      expect(insertArgA).toBeDefined();
+      // Long reporting_source must not be promoted to repoName
+      expect(insertArgA.repoName).toBeUndefined();
+
+      // Reset mocks for Case B
+      insertValues.mockClear();
+      insertMock.mockClear();
+
+      // Case B: reporting_source contains whitespace → should be rejected
+      const payloadB = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'claude-sonnet-4-6',
+        prompt_tokens: 100,
+        completion_tokens: 50,
+        total_tokens: 150,
+        estimated_cost_usd: 0.001,
+        reporting_source: 'free form description with spaces',
+      });
+
+      await handleMessage(payloadB);
+
+      const insertArgB = insertValues.mock.calls[0]?.[0];
+      expect(insertArgB).toBeDefined();
+      // reporting_source with whitespace must not be promoted to repoName
+      expect(insertArgB.repoName).toBeUndefined();
+
+      // Stats reflect 2 successfully projected events across the 2 sub-cases
+      const stats = consumer.getStats();
+      expect(stats.eventsProjected).toBe(2);
+      expect(stats.errorsCount).toBe(0);
     });
   });
 
