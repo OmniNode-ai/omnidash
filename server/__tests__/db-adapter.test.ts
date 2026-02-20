@@ -65,6 +65,11 @@ function createMockQueryChain(finalResult: any) {
   return chain;
 }
 
+// Note: executeRaw was intentionally removed from DatabaseAdapter.
+// It used sql.raw() with no parameter binding, which created a SQL injection
+// risk — any caller could pass arbitrary SQL strings. Rather than attempt to
+// sanitize raw SQL at the adapter layer, the method was removed entirely.
+// All queries now go through Drizzle ORM's parameterized query builders.
 describe('DatabaseAdapter - Security (SQL Injection Prevention)', () => {
   let adapter: PostgresAdapter;
 

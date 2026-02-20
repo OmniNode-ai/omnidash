@@ -4450,7 +4450,17 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
       }
       // For event emitter methods, return no-op functions
       if (prop === 'on' || prop === 'once' || prop === 'emit' || prop === 'removeListener') {
-        return () => eventConsumer; // Return proxy for chaining
+        return (...args: unknown[]) => {
+          if (prop === 'on' || prop === 'once') {
+            // Listener was NOT registered — Kafka is unavailable so no events will fire.
+            console.error(
+              `[EventConsumer] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
+              'Kafka is not initialized; listener was NOT registered. ' +
+              'Set KAFKA_BROKERS in .env to enable real event delivery.'
+            );
+          }
+          return eventConsumer; // Return proxy for chaining
+        };
       }
       return undefined;
     }

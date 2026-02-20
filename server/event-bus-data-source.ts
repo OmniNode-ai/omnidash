@@ -817,14 +817,17 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
         };
       }
       if (prop === 'getEventChainStats') {
-        return async () => ({
-          totalChains: 0,
-          completedChains: 0,
-          activeChains: 0,
-          failedChains: 0,
-          avgChainDuration: 0,
-          avgEventsPerChain: 0,
-        });
+        return async () => {
+          console.error('[EventBusDataSource] getEventChainStats called before Kafka initialization — returning zero-value shape. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          return {
+            totalChains: 0,
+            completedChains: 0,
+            activeChains: 0,
+            failedChains: 0,
+            avgChainDuration: 0,
+            avgEventsPerChain: 0,
+          };
+        };
       }
       if (prop === 'injectEvent') {
         /**

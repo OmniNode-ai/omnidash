@@ -242,7 +242,11 @@ export class IntelligenceEventAdapter {
 
     // Dev-only: warn when caller-supplied keys overwrite pre-constructed payload fields (overrides are supported by design).
     if (process.env.NODE_ENV !== 'production') {
-      const preConstructedKeys = ['source_path', 'content', 'language', 'operation_type', 'options', 'project_id', 'user_id'] as const;
+      const preConstructedKeys = [
+        'source_path', 'content', 'language', 'operation_type',
+        'options', // explicitly constructed in the payload build from adapter config — should not be silently overwritten by caller payload
+        'project_id', 'user_id',
+      ] as const;
       for (const key of preConstructedKeys) {
         if (key in safePayloadRest) {
           console.warn(
@@ -281,10 +285,20 @@ export class IntelligenceEventAdapter {
       this.pending.set(correlationKey, { resolve, reject, timeout });
     });
 
-    await this.producer.send({
-      topic: this.TOPIC_REQUEST,
-      messages: [{ key: correlationKey, value: JSON.stringify(envelope) }],
-    });
+    try {
+      await this.producer.send({
+        topic: this.TOPIC_REQUEST,
+        messages: [{ key: correlationKey, value: JSON.stringify(envelope) }],
+      });
+    } catch (sendError) {
+      const entry = this.pending.get(correlationKey);
+      if (entry) {
+        clearTimeout(entry.timeout);
+        this.pending.delete(correlationKey);
+        entry.reject(sendError instanceof Error ? sendError : new Error(String(sendError)));
+      }
+      throw sendError;
+    }
 
     return promise;
   }
