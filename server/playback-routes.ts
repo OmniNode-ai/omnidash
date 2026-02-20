@@ -249,6 +249,12 @@ router.post('/start', async (req: Request, res: Response) => {
   // still in-flight. That would allow a third request to slip through the guard
   // before the first has finished, defeating the mutex entirely.
   // Keeping the guard before try ensures 409 responses bypass finally completely.
+  //
+  // Conversely, the ASSIGNMENT (isStartingPlayback = true) is intentionally
+  // INSIDE try so that all validation failures (missing file, invalid speed,
+  // invalid loop, path traversal, non-.jsonl extension) release the mutex via
+  // the finally block. Those failures should not hold the lock, and finally
+  // guarantees the reset regardless of which early return is hit.
   if (isStartingPlayback) {
     return res.status(409).json({
       success: false,
