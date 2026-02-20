@@ -787,8 +787,9 @@ export class ReadModelConsumer {
       return true;
     }
 
+    let insertedRowCount = 0;
     try {
-      await db.execute(sql`
+      const result = await db.execute(sql`
         INSERT INTO context_enrichment_events (
           correlation_id,
           session_id,
@@ -824,6 +825,11 @@ export class ReadModelConsumer {
         )
         ON CONFLICT (correlation_id) DO NOTHING
       `);
+      // db.execute() with raw SQL returns the underlying pg QueryResult which
+      // carries rowCount: the number of rows actually written.  When the
+      // ON CONFLICT … DO NOTHING clause suppresses a duplicate the command
+      // completes without error but rowCount is 0.
+      insertedRowCount = (result as { rowCount?: number | null }).rowCount ?? 0;
     } catch (err) {
       // If the table doesn't exist yet (migration not run), degrade gracefully
       // and advance the watermark so the consumer is not stuck retrying.
@@ -842,10 +848,14 @@ export class ReadModelConsumer {
       throw err;
     }
 
-    // Notify WebSocket clients subscribed to the 'enrichment' topic.
-    // Called here (after the try/catch) so clients are only notified when
-    // the DB write has committed successfully. (OMN-2373)
-    emitEnrichmentInvalidate(correlationId);
+    // Notify WebSocket clients subscribed to the 'enrichment' topic only when
+    // a new row was genuinely inserted (rowCount > 0).  When the ON CONFLICT
+    // clause suppresses a duplicate the insert is a no-op and rowCount is 0;
+    // emitting in that case would cause spurious WebSocket invalidation
+    // broadcasts on every duplicate event. (OMN-2373)
+    if (insertedRowCount > 0) {
+      emitEnrichmentInvalidate(correlationId);
+    }
 
     return true;
   }

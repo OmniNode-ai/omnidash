@@ -67,8 +67,22 @@ function windowToInterval(window: string): string {
 // Projection
 // ============================================================================
 
+/** The set of time-window values accepted by ensureFreshForWindow. */
+const ACCEPTED_WINDOWS = new Set(['24h', '7d', '30d']);
+
 export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPayload> {
   readonly viewId = 'enrichment';
+
+  /**
+   * Per-window in-flight guard for ensureFreshForWindow().
+   *
+   * Concurrent calls for the same window string are coalesced onto a single
+   * set of DB queries rather than each issuing their own six parallel queries.
+   * The Map is keyed by the window string ('24h', '7d', '30d') and the stored
+   * Promise is removed in a .finally() handler so the next call after the
+   * current one resolves starts a fresh query.
+   */
+  private ensureFreshForWindowInFlight = new Map<string, Promise<EnrichmentPayload>>();
 
   /**
    * Return a zero-value `EnrichmentPayload` used as a safe fallback when the
@@ -132,10 +146,12 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * If the database is unavailable (`tryGetIntelligenceDb` returns `null`),
    * an `emptyPayload()` is returned immediately without throwing.
    *
-   * @param window - Time window identifier ('24h' | '7d' | '30d'). Unrecognised
-   *   values fall back to '7 days' via `windowToInterval`.
+   * @param window - Time window identifier. Must be one of '24h', '7d', '30d'.
+   *   An unrecognised value throws immediately so callers receive an explicit
+   *   error rather than silently incorrect 7-day data.
    * @returns A fully-populated `EnrichmentPayload` scoped to the requested
    *   window, or an empty payload when the DB is unreachable.
+   * @throws {Error} If `window` is not one of the accepted values.
    *
    * @remarks
    * **Cache bypass**: This method intentionally skips the base-class projection
@@ -147,17 +163,39 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * `_queryForWindow`. If query volume becomes a concern, consider adding a
    * per-window TTL cache keyed on the window string.
    *
+   * **In-flight coalescing**: Concurrent calls for the same window string share
+   * one set of DB queries via `ensureFreshForWindowInFlight`. The in-flight
+   * promise is removed after it settles, so the next call after the current one
+   * completes starts a fresh query rather than waiting on a stale promise.
+   *
    * **Known limitation**: There is currently no per-window TTL cache. Every
-   * call to this method issues a full set of live DB queries regardless of how
-   * recently the same window was fetched. Under high request rates or slow DB
-   * responses this can create noticeable load. A future improvement should
-   * introduce a short-lived (e.g. 60 s) in-memory cache keyed on the window
-   * string, consistent with how the base-class 24 h snapshot is cached.
+   * call to this method that is not coalesced with an in-flight request issues
+   * a full set of live DB queries. Under high request rates or slow DB responses
+   * this can create noticeable load. A future improvement should introduce a
+   * short-lived (e.g. 60 s) in-memory cache keyed on the window string,
+   * consistent with how the base-class 24 h snapshot is cached.
    */
   async ensureFreshForWindow(window: string): Promise<EnrichmentPayload> {
+    if (!ACCEPTED_WINDOWS.has(window)) {
+      throw new Error(
+        `ensureFreshForWindow: invalid window "${window}". ` +
+          `Accepted values are: ${[...ACCEPTED_WINDOWS].join(', ')}.`
+      );
+    }
+
+    // Coalesce concurrent calls for the same window onto a single DB query set.
+    const inflight = this.ensureFreshForWindowInFlight.get(window);
+    if (inflight !== undefined) return inflight;
+
     const db = tryGetIntelligenceDb();
     if (!db) return this.emptyPayload();
-    return this._queryForWindow(db, window);
+
+    const promise = this._queryForWindow(db, window).finally(() => {
+      this.ensureFreshForWindowInFlight.delete(window);
+    });
+
+    this.ensureFreshForWindowInFlight.set(window, promise);
+    return promise;
   }
 
   // --------------------------------------------------------------------------
