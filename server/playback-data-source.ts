@@ -79,10 +79,15 @@ export class PlaybackDataSource extends EventEmitter {
   }
 
   /**
-   * Stop the playback data source
-   * Marks as inactive and emits disconnected event
+   * Stop the playback data source.
+   * Marks as inactive and emits disconnected event.
+   * No-ops if the source is not currently active.
    */
   stop(): void {
+    if (!this.isActive) {
+      console.warn('[PlaybackDataSource] stop() called while not active — no-op');
+      return;
+    }
     this.isActive = false;
     this.emit('disconnected');
     console.log('[PlaybackDataSource] Stopped');

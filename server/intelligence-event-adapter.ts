@@ -16,6 +16,11 @@ import {
  * belong to the outer envelope layer rather than the inner payload. There is
  * no compile-time error if they are included.
  *
+ * TypeScript limitation: Omit<Record<string, unknown>, ...> does not exclude
+ * specific string-literal keys from an index signature at compile time.
+ * This type serves as documentation convention only — there is no available
+ * compile-time enforcement mechanism for this constraint.
+ *
  * Note: `correlation_id` is intentionally NOT excluded from this type. It is a
  * supported convenience input — the `request()` method extracts it and promotes
  * it to the outer envelope, so it is safe to pass and will not leak into the
@@ -217,14 +222,12 @@ export class IntelligenceEventAdapter {
     // are not duplicated inside envelope.payload (they belong on the outer envelope only).
     const { correlation_id: _cid, correlationId: _cidCamel, ...payloadRest } = payload;
 
-    if (process.env.NODE_ENV !== 'production') {
-      const reservedKeys = ['event_id', 'event_type', 'source', 'timestamp'];
-      for (const key of reservedKeys) {
-        if (key in payloadRest) {
-          console.warn(
-            `[IntelligenceEventAdapter] payload contains reserved envelope key '${key}' — it will silently overwrite the envelope field. Pass it as a top-level argument instead.`
-          );
-        }
+    const reservedKeys = ['event_id', 'event_type', 'source', 'timestamp'] as const;
+    for (const key of reservedKeys) {
+      if (key in payloadRest) {
+        console.warn(
+          `[IntelligenceEventAdapter] payload contains reserved envelope key '${key}' — it will silently overwrite the envelope field. Pass it as a top-level argument instead.`
+        );
       }
     }
 
