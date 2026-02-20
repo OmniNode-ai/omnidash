@@ -68,6 +68,7 @@ import { baselinesProjection } from './projection-bootstrap';
 import { emitBaselinesUpdate } from './baselines-events';
 import { emitLlmRoutingInvalidate } from './llm-routing-events';
 import { emitDelegationInvalidate } from './delegation-events';
+import { emitEnrichmentInvalidate } from './enrichment-events';
 
 /**
  * Derive a deterministic UUID-shaped string from Kafka message coordinates.
@@ -840,6 +841,11 @@ export class ReadModelConsumer {
       }
       throw err;
     }
+
+    // Notify WebSocket clients subscribed to the 'enrichment' topic.
+    // Called here (after the try/catch) so clients are only notified when
+    // the DB write has committed successfully. (OMN-2373)
+    emitEnrichmentInvalidate(correlationId);
 
     return true;
   }
