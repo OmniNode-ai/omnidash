@@ -330,8 +330,11 @@ export class PostgresAdapter {
       throw new Error(`Table ${tableName} not found in schema`);
     }
 
-    // PostgreSQL returns count(*) as a bigint string; sql<string> annotates the scalar column
-    // value type; ensureNumeric() converts it to a number at runtime.
+    // PostgreSQL returns count(*) as a bigint. The Neon serverless HTTP driver surfaces
+    // bigint columns as text strings rather than JS numbers (to avoid precision loss from
+    // Number's 53-bit integer limit). sql<string> tells Drizzle to type the result column
+    // as `string` rather than incorrectly inferring `number`; ensureNumeric() then converts
+    // the string to a JS number at runtime.
     let query = this.db.select({ count: sql<string>`count(*)` }).from(table);
 
     if (where) {

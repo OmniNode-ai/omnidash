@@ -767,15 +767,16 @@ describe('DatabaseAdapter - Connection Management', () => {
   // The constructor is a documented no-op: it does not read KAFKA_BROKERS, does
   // not set any connection-state flag, and does not emit any diagnostics.
   // Kafka availability tests belong with the event-bus module tests, not here.
-  it('constructor succeeds regardless of Kafka environment variable state', () => {
-    // With KAFKA_BROKERS set
-    process.env.KAFKA_BROKERS = '192.168.86.200:29092';
-    expect(() => new PostgresAdapter()).not.toThrow();
-
-    // Without KAFKA_BROKERS
+  it('constructor succeeds without Kafka environment variables', () => {
     delete process.env.KAFKA_BROKERS;
     delete process.env.KAFKA_BOOTSTRAP_SERVERS;
     expect(() => new PostgresAdapter()).not.toThrow();
+  });
+
+  it('constructor succeeds with Kafka environment variables set', () => {
+    process.env.KAFKA_BROKERS = '192.168.86.200:29092';
+    expect(() => new PostgresAdapter()).not.toThrow();
+    delete process.env.KAFKA_BROKERS;
   });
 });
 

@@ -220,10 +220,13 @@ export class IntelligenceEventAdapter {
     // value such as 0 across concurrent requests will result in those requests sharing the same
     // correlation ID string ("0"), which may cause response cross-talk in systems that route
     // responses or aggregate telemetry by correlationId.
+    // Number.isFinite() is required for the numeric branch: typeof NaN === 'number' and
+    // typeof Infinity === 'number', so without the isFinite guard, NaN/Infinity/-Infinity would
+    // be accepted and stringify to 'NaN'/'Infinity'/'-Infinity', causing potential ID collisions.
     const rawCorrelationId =
-      (typeof rawCid === 'string' || typeof rawCid === 'number')
+      (typeof rawCid === 'string' || (typeof rawCid === 'number' && Number.isFinite(rawCid)))
         ? rawCid
-        : (typeof rawCidCamel === 'string' || typeof rawCidCamel === 'number')
+        : (typeof rawCidCamel === 'string' || (typeof rawCidCamel === 'number' && Number.isFinite(rawCidCamel)))
           ? rawCidCamel
           : randomUUID();
     // rawCorrelationId is always string | number at this point: the typeof guards above ensure

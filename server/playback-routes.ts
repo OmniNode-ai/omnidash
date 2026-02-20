@@ -226,10 +226,13 @@ router.get('/status', (_req: Request, res: Response) => {
  *   - loop?: boolean (loop continuously, default false)
  */
 router.post('/start', async (req: Request, res: Response) => {
-  // NOTE: Guard is intentionally OUTSIDE the try/finally block.
-  // Moving it inside try would cause every 409 response to trigger the
-  // finally block, resetting isStartingPlayback=false and prematurely
-  // releasing the mutex while the first request is still in-flight.
+  // NOTE: This guard MUST remain OUTSIDE the try/finally block.
+  // If it were inside try, a second concurrent request hitting this check would
+  // return a 409, but the finally block would still execute — resetting
+  // isStartingPlayback=false while the first request's startPlayback() await is
+  // still in-flight. That would allow a third request to slip through the guard
+  // before the first has finished, defeating the mutex entirely.
+  // Keeping the guard before try ensures 409 responses bypass finally completely.
   if (isStartingPlayback) {
     return res.status(409).json({
       success: false,
