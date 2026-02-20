@@ -705,6 +705,7 @@ export function getEventBusDataSource(): EventBusDataSource | null {
   }
 
   // Attempt lazy initialization
+  // Safe: JS is single-threaded, and new Kafka() is synchronous — no concurrent construction possible
   try {
     eventBusDataSourceInstance = new EventBusDataSource();
     return eventBusDataSourceInstance;

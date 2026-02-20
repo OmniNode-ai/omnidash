@@ -305,7 +305,7 @@ export class IntelligenceEventAdapter {
     const promise = new Promise<any>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(correlationKey);
-        reject(new Error('Intelligence request timed out'));
+        reject(new Error(`Intelligence request timed out after ${timeoutMs}ms (correlationKey=${correlationKey}, requestType=${requestType})`));
       }, timeoutMs);
       this.pending.set(correlationKey, { resolve, reject, timeout });
     });
