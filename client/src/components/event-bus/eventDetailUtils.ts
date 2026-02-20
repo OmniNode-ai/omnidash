@@ -328,20 +328,6 @@ export function extractParsedDetails(
       details.actionName = actionName;
     }
 
-    // Intent classification fields — checked after actionName so they only
-    // fill in when no more-specific name was found
-    if (!details.actionName) {
-      const intentType = findValue(parsed, [
-        'intent_type',
-        'intentType',
-        'intent_category',
-        'intentCategory',
-      ]);
-      if (intentType && typeof intentType === 'string') {
-        details.actionName = intentType;
-      }
-    }
-
     // Session/Node info
     const sessionId = findValue(parsed, ['session_id', 'sessionId']);
     if (sessionId && typeof sessionId === 'string') {

@@ -192,10 +192,6 @@ function generateSummary(
   }
 
   if (details.toolName) {
-    if (details.toolName.toLowerCase() === 'bash') {
-      const cmd = extractBashCommand(details.toolInput, event.payload);
-      if (cmd) return cmd.length > 60 ? cmd.slice(0, 57) + '...' : cmd;
-    }
     const filePath = findFilePath(event.payload);
     if (filePath) {
       return `${details.toolName} ${filePath.split('/').pop() || filePath}`;
@@ -226,19 +222,6 @@ function generateSummary(
   }
 
   return eventType.length > 60 ? eventType.slice(0, 57) + '...' : eventType;
-}
-
-function extractBashCommand(
-  toolInput: unknown,
-  payload: Record<string, unknown>
-): string | undefined {
-  if (typeof toolInput === 'string' && toolInput.length > 0) return toolInput;
-  if (toolInput && typeof toolInput === 'object') {
-    const inp = toolInput as Record<string, unknown>;
-    if (typeof inp.command === 'string') return inp.command;
-  }
-  if (typeof payload.command === 'string') return payload.command;
-  return undefined;
 }
 
 function findFilePath(payload: Record<string, unknown>): string | undefined {

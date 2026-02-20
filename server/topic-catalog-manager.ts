@@ -1,5 +1,5 @@
 /**
- * TopicCatalogManager (OMN-2315, OMN-2316)
+ * TopicCatalogManager (OMN-2315)
  *
  * Encapsulates the topic-catalog bootstrap protocol for the dashboard:
  *
@@ -23,16 +23,6 @@
  *   - The consumer group `omnidash.catalog.{instanceUuid}` is unique per process,
  *     preventing Kafka consumer group accumulation across page reloads (which do
  *     not restart the server process).
- *
- * Gap detection (OMN-2316):
- *   - `catalog-changed` events carry an optional `catalog_version` integer.
- *   - `lastSeenVersion` tracks the most recently processed version.
- *   - When a new version arrives that is more than one ahead of `lastSeenVersion`,
- *     one or more delta events were missed; a full re-query is triggered.
- *   - INVARIANT: `lastSeenVersion` is always advanced to the received version
- *     BEFORE `triggerRequery` is called.  This prevents a requery storm: without
- *     the advance, every subsequent message whose version exceeds the stale
- *     `lastSeenVersion + 1` would re-trigger an additional requery.
  */
 
 import { EventEmitter } from 'events';
@@ -74,18 +64,20 @@ export const CATALOG_TIMEOUT_MS =
     : _catalogTimeoutEnv;
 
 /**
- * How often (ms) the manager will re-query the catalog service to recover from
- * any missed events. Defaults to 5 minutes in production, 500 ms in tests.
+ * How often (ms) the manager re-fetches the full catalog from the database
+ * to recover any missed catalog-changed deltas (e.g. due to consumer lag or
+ * network hiccups). Defaults to 5 minutes in production, 0 (disabled) in tests.
  *
- * Can be overridden via the `CATALOG_REQUERY_INTERVAL_MS` environment variable.
+ * Can be overridden via the `CATALOG_RESYNC_INTERVAL_MS` environment variable.
+ * Set to 0 to disable periodic re-sync.
  */
-const _catalogRequeryIntervalEnv = parseInt(process.env.CATALOG_REQUERY_INTERVAL_MS ?? '', 10);
-const _catalogRequeryIntervalDefault =
-  process.env.VITEST === 'true' || process.env.NODE_ENV === 'test' ? 500 : 300_000;
-export const CATALOG_REQUERY_INTERVAL_MS =
-  Number.isNaN(_catalogRequeryIntervalEnv) || _catalogRequeryIntervalEnv <= 0
-    ? _catalogRequeryIntervalDefault
-    : _catalogRequeryIntervalEnv;
+const _catalogResyncEnv = parseInt(process.env.CATALOG_RESYNC_INTERVAL_MS ?? '', 10);
+const _catalogResyncDefault =
+  process.env.VITEST === 'true' || process.env.NODE_ENV === 'test' ? 0 : 5 * 60 * 1000;
+export const CATALOG_RESYNC_INTERVAL_MS =
+  Number.isNaN(_catalogResyncEnv) || _catalogResyncEnv < 0
+    ? _catalogResyncDefault
+    : _catalogResyncEnv;
 
 // ---------------------------------------------------------------------------
 // Event Types
@@ -102,16 +94,10 @@ export interface CatalogChangedEvent {
   topicsRemoved: string[];
 }
 
-export interface CatalogRequeryEvent {
-  reason: 'gap' | 'version_unknown' | 'periodic';
-  lastSeenVersion: number | null;
-}
-
 export interface TopicCatalogManagerEvents {
   catalogReceived: (event: CatalogReceivedEvent) => void;
   catalogChanged: (event: CatalogChangedEvent) => void;
   catalogTimeout: () => void;
-  catalogRequery: (event: CatalogRequeryEvent) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -145,17 +131,16 @@ export class TopicCatalogManager extends EventEmitter {
   /** Timeout handle for the bootstrap response window. */
   private timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
+  /**
+   * Interval handle for the periodic full-catalog re-sync.
+   * Started after the first successful catalog response and cleared in stop().
+   * Fires every CATALOG_RESYNC_INTERVAL_MS to recover missed catalog-changed
+   * deltas that arrived while the consumer was lagging or offline.
+   */
+  private resyncHandle: ReturnType<typeof setInterval> | null = null;
+
   /** Whether stop() has been called. */
   private stopped = false;
-
-  /** The last catalog_version seen in a catalog-changed event, or null if none yet. */
-  private lastSeenVersion: number | null = null;
-
-  /** Timestamp (ms) of the last query published. */
-  private lastQueryTimestamp: number = 0;
-
-  /** Handle for the periodic requery interval. */
-  private requeryIntervalHandle: ReturnType<typeof setInterval> | null = null;
 
   constructor(kafka?: Kafka) {
     super();
@@ -269,13 +254,6 @@ export class TopicCatalogManager extends EventEmitter {
         this.emit('catalogTimeout');
       }
     }, CATALOG_TIMEOUT_MS);
-
-    // Start the periodic requery interval so missed events are recovered.
-    this.requeryIntervalHandle = setInterval(() => {
-      if (!this.stopped) {
-        this.triggerRequery('periodic');
-      }
-    }, CATALOG_REQUERY_INTERVAL_MS);
   }
 
   /**
@@ -289,9 +267,9 @@ export class TopicCatalogManager extends EventEmitter {
       this.timeoutHandle = null;
     }
 
-    if (this.requeryIntervalHandle !== null) {
-      clearInterval(this.requeryIntervalHandle);
-      this.requeryIntervalHandle = null;
+    if (this.resyncHandle !== null) {
+      clearInterval(this.resyncHandle);
+      this.resyncHandle = null;
     }
 
     try {
@@ -328,7 +306,6 @@ export class TopicCatalogManager extends EventEmitter {
         topic: SUFFIX_PLATFORM_TOPIC_CATALOG_QUERY,
         messages: [{ value: JSON.stringify(payload) }],
       });
-      this.lastQueryTimestamp = Date.now();
       console.log(
         `[TopicCatalogManager] Published topic-catalog-query (correlation_id=${correlationId})`
       );
@@ -338,47 +315,6 @@ export class TopicCatalogManager extends EventEmitter {
     }
   }
 
-  /**
-   * Re-issue a catalog query to recover from a version gap or periodic refresh.
-   *
-   * Generates a fresh correlation_id, updates the outstanding query, publishes a
-   * new ModelTopicCatalogQuery, and emits the 'catalogRequery' event.
-   *
-   * PRE-CONDITION: the caller must have already advanced `lastSeenVersion`
-   * to the received version before calling this method (storm prevention).
-   *
-   * @param reason Expected values: `'gap'` (missed delta), `'version_unknown'`
-   *   (explicit -1 sentinel), or `'periodic'` (scheduled maintenance).
-   */
-  private triggerRequery(reason: 'gap' | 'version_unknown' | 'periodic'): void {
-    const newCorrId = crypto.randomUUID();
-    this.outstandingCorrelationId = newCorrId;
-
-    console.log(
-      `[TopicCatalogManager] Triggering re-query (reason=${reason}, ` +
-        `lastSeenVersion=${this.lastSeenVersion}, newCorrelationId=${newCorrId})`
-    );
-
-    // Fire-and-forget; errors are logged inside publishQuery.
-    this.publishQuery(newCorrId).catch((err) => {
-      console.error('[TopicCatalogManager] triggerRequery: publishQuery failed:', err);
-    });
-
-    const event: CatalogRequeryEvent = {
-      reason,
-      lastSeenVersion: this.lastSeenVersion,
-    };
-    this.emit('catalogRequery', event);
-  }
-
-  /**
-   * Dispatch a raw Kafka message to the appropriate handler.
-   *
-   * Strips any environment prefix from `rawTopic` via `extractSuffix` before
-   * comparing, so the same code handles both bare topic names
-   * (`onex.evt.platform.topic-catalog-response.v1`) and prefixed names
-   * (`dev.onex.evt.platform.topic-catalog-response.v1`).
-   */
   private handleMessage(rawTopic: string, rawValue: string | undefined): void {
     if (this.stopped) return;
 
@@ -398,14 +334,6 @@ export class TopicCatalogManager extends EventEmitter {
     }
   }
 
-  /**
-   * Handle an incoming `catalog-response` message.
-   *
-   * Validates the payload against `TopicCatalogResponseSchema`, then checks
-   * that `correlation_id` matches the outstanding query (cross-talk prevention).
-   * On success: cancels the bootstrap timeout, sets `catalogReceived = true`,
-   * and emits `'catalogReceived'` with the full topic list.
-   */
   private handleCatalogResponse(rawValue: string | undefined): void {
     if (!rawValue) return;
 
@@ -442,7 +370,6 @@ export class TopicCatalogManager extends EventEmitter {
     }
 
     this.catalogReceived = true;
-    this.lastSeenVersion = null;
     const topics = response.topics.map((t) => t.topic_name);
 
     console.log(
@@ -456,30 +383,24 @@ export class TopicCatalogManager extends EventEmitter {
       correlationId: response.correlation_id,
     };
     this.emit('catalogReceived', event);
+
+    // Arm the periodic re-sync only on the first successful response and only
+    // if re-sync is enabled (CATALOG_RESYNC_INTERVAL_MS > 0).
+    if (this.resyncHandle === null && CATALOG_RESYNC_INTERVAL_MS > 0) {
+      this.resyncHandle = setInterval(() => {
+        if (this.stopped) return;
+        const resyncCorrId = crypto.randomUUID();
+        this.outstandingCorrelationId = resyncCorrId;
+        console.log(
+          `[TopicCatalogManager] Periodic re-sync: publishing fresh catalog query (correlation_id=${resyncCorrId})`
+        );
+        this.publishQuery(resyncCorrId).catch((err) => {
+          console.error('[TopicCatalogManager] Periodic re-sync query failed:', err);
+        });
+      }, CATALOG_RESYNC_INTERVAL_MS);
+    }
   }
 
-  /**
-   * Handle an incoming `catalog-changed` delta message.
-   *
-   * Ignores the message if the initial catalog has not yet been received
-   * (the full snapshot is the source of truth; deltas are only meaningful
-   * once a baseline exists).
-   *
-   * After schema validation, the `catalog_version` field drives the
-   * `lastSeenVersion` state machine:
-   *
-   *   - **version absent or -1 (unknown sentinel)**: triggers
-   *     `triggerRequery('version_unknown')` to resync; the delta is still
-   *     applied optimistically.
-   *
-   *   - **gap detected** (`receivedVersion > lastSeenVersion + 1`): one or more
-   *     delta events were missed.  `lastSeenVersion` is advanced to
-   *     `receivedVersion` FIRST (storm prevention — see class JSDoc invariant),
-   *     then `triggerRequery('gap')` is called; the delta is still applied.
-   *
-   *   - **contiguous or first version**: advances `lastSeenVersion` normally
-   *     and emits `'catalogChanged'`.
-   */
   private handleCatalogChanged(rawValue: string | undefined): void {
     if (!rawValue) return;
 
@@ -507,28 +428,6 @@ export class TopicCatalogManager extends EventEmitter {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn('[TopicCatalogManager] catalog-changed failed schema validation:', msg);
       return;
-    }
-
-    // Gap detection: check whether the incoming version is contiguous with the
-    // last seen version, triggering a re-query when a gap is detected.
-    const receivedVersion = changed.catalog_version;
-
-    if (receivedVersion === undefined || receivedVersion === -1) {
-      // Version is absent or explicitly unknown — re-query for the full catalog.
-      console.log('[TopicCatalogManager] catalog-changed: version unknown — triggering re-query');
-      this.triggerRequery('version_unknown');
-    } else if (this.lastSeenVersion !== null && receivedVersion > this.lastSeenVersion + 1) {
-      // A version was skipped — advance lastSeenVersion FIRST (storm prevention),
-      // then re-query to recover the missed delta(s).
-      console.log(
-        `[TopicCatalogManager] catalog-changed: version gap detected ` +
-          `(lastSeen=${this.lastSeenVersion}, received=${receivedVersion}) — triggering re-query`
-      );
-      this.lastSeenVersion = receivedVersion;
-      this.triggerRequery('gap');
-    } else {
-      // Contiguous or first version — update lastSeenVersion normally.
-      this.lastSeenVersion = receivedVersion;
     }
 
     const event: CatalogChangedEvent = {

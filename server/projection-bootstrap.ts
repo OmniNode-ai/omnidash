@@ -19,6 +19,7 @@ import { ValidationProjection } from './projections/validation-projection';
 import { PatternsProjection } from './projections/patterns-projection';
 import { EnrichmentProjection } from './projections/enrichment-projection';
 import { EnforcementProjection } from './projections/enforcement-projection';
+import { LlmRoutingProjection } from './projections/llm-routing-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
@@ -80,6 +81,8 @@ export const patternsProjection = new PatternsProjection();
 export const enrichmentProjection = new EnrichmentProjection();
 /** Pattern enforcement projection (OMN-2374). Queries pattern_enforcement_events table. */
 export const enforcementProjection = new EnforcementProjection();
+/** LLM routing effectiveness projection (OMN-2372). Queries llm_routing_decisions table. */
+export const llmRoutingProjection = new LlmRoutingProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
@@ -104,6 +107,9 @@ if (!projectionService.getView(enrichmentProjection.viewId)) {
 }
 if (!projectionService.getView(enforcementProjection.viewId)) {
   projectionService.registerView(enforcementProjection);
+}
+if (!projectionService.getView(llmRoutingProjection.viewId)) {
+  projectionService.registerView(llmRoutingProjection);
 }
 
 // ============================================================================
