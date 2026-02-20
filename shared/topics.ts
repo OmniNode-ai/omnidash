@@ -479,7 +479,14 @@ export const OMNICLAUDE_INJECTION_SUFFIXES = [
   SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
 ] as const;
 
-/** Extended OmniClaude topic suffixes (routing, sessions, manifests, notifications, cost) */
+/**
+ * Extended OmniClaude topic suffixes used by `buildSubscriptionTopics()` for
+ * WebSocket subscription building. Contains omniclaude-namespace suffixes
+ * (routing, sessions, manifests, notifications) as well as cross-namespace
+ * canonical topic names — notably `TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED`,
+ * which is a full absolute topic name from the omniintelligence namespace rather
+ * than an omniclaude suffix. See OMN-2371 for context.
+ */
 export const OMNICLAUDE_EXTENDED_SUFFIXES = [
   SUFFIX_OMNICLAUDE_ROUTING_DECISION,
   SUFFIX_OMNICLAUDE_SESSION_OUTCOME,

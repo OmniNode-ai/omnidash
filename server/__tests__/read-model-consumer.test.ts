@@ -258,8 +258,10 @@ describe('ReadModelConsumer', () => {
       //   - reporting_source (not repo_name)
       const { tryGetIntelligenceDb } = await import('../storage');
 
-      const insertValues = vi.fn().mockResolvedValue(undefined);
-      const insertMock = vi.fn().mockReturnValue({ values: insertValues });
+      // Mock a minimal Drizzle-like insert chain (same pattern as legacy-schema test above)
+      const insertMock = vi.fn().mockReturnValue({
+        values: vi.fn().mockResolvedValue(undefined),
+      });
       const executeMock = vi.fn().mockResolvedValue(undefined);
 
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -296,8 +298,13 @@ describe('ReadModelConsumer', () => {
       expect(insertMock).toHaveBeenCalled();
       expect(executeMock).toHaveBeenCalled();
 
-      // Verify the row was built with the canonical field mappings
-      const insertArg = insertValues.mock.calls[0]?.[0];
+      // Verify the row was built with the canonical field mappings.
+      // Extract insertValues from the mock chain at assertion time, matching
+      // the same structural pattern used by the legacy-schema test above.
+      const insertValues = (
+        insertMock.mock.results[0]?.value as { values: ReturnType<typeof vi.fn> }
+      )?.values;
+      const insertArg = insertValues?.mock.calls[0]?.[0];
       expect(insertArg).toBeDefined();
       // model_id → modelName
       expect(insertArg.modelName).toBe('claude-sonnet-4-6');
