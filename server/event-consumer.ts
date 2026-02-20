@@ -4325,6 +4325,15 @@ export function getEventConsumer(): EventConsumer | null {
  * the result rather than checking it on every request.
  *
  * @returns true if EventConsumer singleton is initialized, false otherwise
+ *
+ * @remarks
+ * **Behavioral change from pre-lazy-init code**: Previously, `isEventConsumerAvailable()`
+ * returned `true` optimistically before any initialization attempt (the old code checked a
+ * simple boolean flag that started as `true`). The current implementation triggers lazy
+ * initialization as a side effect on the first call. It returns `true` only after successful
+ * initialization completes, and `false` if initialization failed (e.g. KAFKA_BROKERS missing
+ * or the EventConsumer constructor threw). Callers that previously relied on the optimistic
+ * `true` return before initialization must be updated to treat `false` as "Kafka unavailable".
  */
 export function isEventConsumerAvailable(): boolean {
   // Trigger lazy initialization if not yet done

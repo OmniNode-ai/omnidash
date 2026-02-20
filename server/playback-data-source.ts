@@ -93,10 +93,15 @@ export class PlaybackDataSource extends EventEmitter {
    * Stop the playback data source.
    * Marks as inactive and emits disconnected event.
    * No-ops if the source is not currently active.
+   *
+   * Log level note: uses `console.warn` (same as start()) for consistency. Although
+   * calling stop() when already inactive is genuinely harmless (teardown paths are
+   * naturally idempotent), it indicates unexpected control flow — the caller expected
+   * playback to be running. Warn-level makes this diagnosable without being alarming.
    */
   stop(): void {
     if (!this.isActive) {
-      console.debug('[PlaybackDataSource] stop() called while already inactive — no-op');
+      console.warn('[PlaybackDataSource] stop() called while already inactive — no-op');
       return;
     }
     this.isActive = false;

@@ -308,6 +308,10 @@ export class IntelligenceEventAdapter {
     } catch (sendError) {
       const entry = this.pending.get(correlationKey);
       if (entry) {
+        // No race is possible here: JavaScript's event loop is single-threaded, so the
+        // setTimeout callback cannot interleave with this synchronous catch block.
+        // The `pending.delete` and `entry.reject` execute atomically within this sync
+        // block — the timeout handler cannot fire between these two lines.
         clearTimeout(entry.timeout);
         this.pending.delete(correlationKey);
         entry.reject(sendError instanceof Error ? sendError : new Error(String(sendError)));
@@ -438,6 +442,14 @@ export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
  * Still, the semantic intent of this function is an initialization probe, not
  * a cheap boolean predicate; prefer calling it once at startup and caching
  * the result rather than checking it on every request.
+ *
+ * @remarks
+ * **Behavioral change from pre-lazy-init code**: Previously, `isIntelligenceEventsAvailable()`
+ * returned `true` optimistically before any initialization attempt. The current implementation
+ * triggers lazy initialization as a side effect on the first call. It returns `true` only after
+ * successful initialization completes, and `false` if initialization failed (e.g. KAFKA_BROKERS
+ * missing or the IntelligenceEventAdapter constructor threw). Callers that previously relied on
+ * the optimistic `true` return before initialization must treat `false` as "Kafka unavailable".
  */
 export function isIntelligenceEventsAvailable(): boolean {
   // Trigger lazy initialization if not yet done
@@ -497,13 +509,27 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
       if (prop === 'TOPIC_REQUEST' || prop === 'TOPIC_COMPLETED' || prop === 'TOPIC_FAILED') {
         return '';
       }
-      // For event emitter methods, return no-op stubs consistent with other proxies
-      if (prop === 'on' || prop === 'once' || prop === 'removeListener') {
+      // For event emitter registration methods, return no-op stubs consistent with other proxies
+      if (prop === 'on' || prop === 'once') {
         return (...args: unknown[]) => {
+          // Registering a listener before start() is a normal and expected pattern during init.
+          // The listener was NOT registered — Kafka is unavailable so no events will fire.
           console.warn(
             `[IntelligenceEventAdapter] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
             'Kafka is not initialized; listener was NOT registered. ' +
             'Set KAFKA_BROKERS in .env to enable real event delivery.'
+          );
+          return intelligenceEvents; // Return proxy for chaining
+        };
+      }
+      if (prop === 'removeListener') {
+        return (...args: unknown[]) => {
+          // No-op: there is nothing to remove because on/once stubs never registered a real
+          // listener. Teardown cleanup (e.g. component unmount) calling removeListener is a
+          // normal pattern — log at warn to avoid polluting teardown logs with spurious errors.
+          console.warn(
+            `[IntelligenceEventAdapter] .removeListener() called on stub proxy (event: "${String(args[0])}") — ` +
+            'no-op because Kafka is not initialized and no listener was ever registered.'
           );
           return intelligenceEvents; // Return proxy for chaining
         };

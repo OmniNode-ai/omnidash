@@ -339,6 +339,14 @@ export class PostgresAdapter {
 
   // Helper methods
 
+  // NOTE: executeRaw() was intentionally removed from this adapter.
+  // It used sql.raw() with no parameter binding, which created a SQL injection risk —
+  // any caller could pass arbitrary SQL strings and they would be executed verbatim.
+  // Rather than attempt to sanitize raw SQL at the adapter layer (which is fragile),
+  // the method was removed entirely. All queries now go through Drizzle ORM's
+  // parameterized query builders (eq, inArray, gte, lte, sql`...`, etc.).
+  // See server/__tests__/db-adapter.test.ts for the full rationale and test coverage.
+
   private getTable(tableName: string): any {
     // Map table names to schema exports
     const tableMap: Record<string, any> = {
