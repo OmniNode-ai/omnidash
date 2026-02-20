@@ -725,6 +725,10 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * first to trigger initialization. Returns false if initialization has not been
  * attempted or failed.
  *
+ * Note: returns false until `getEventBusDataSource()` has been called at least
+ * once (proxy property access also triggers initialization). Checking
+ * availability before first proxy or direct access will always return false.
+ *
  * @example
  * ```typescript
  * const instance = getEventBusDataSource(); // triggers initialization

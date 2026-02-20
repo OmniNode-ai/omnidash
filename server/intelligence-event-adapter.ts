@@ -9,22 +9,24 @@ import {
 /**
  * Payload type for `IntelligenceEventAdapter.request()`.
  *
- * Note: `Omit` on an index signature (`Record<string, unknown>`) does NOT
- * enforce exclusion at compile time — TypeScript will still allow passing the
- * omitted keys (`event_id`, `event_type`, `source`, `timestamp`). This type
- * serves as documentation only: callers should NOT pass these fields, as they
- * belong to the outer envelope layer rather than the inner payload. There is
- * no compile-time error if they are included.
- *
- * TypeScript limitation: Omit<Record<string, unknown>, ...> does not exclude
+ * TypeScript limitation: `Omit<Record<string, unknown>, ...>` does NOT exclude
  * specific string-literal keys from an index signature at compile time.
- * This type serves as documentation convention only — there is no available
- * compile-time enforcement mechanism for this constraint.
+ * This type is documentation convention only — there is no compile-time
+ * enforcement mechanism for these constraints.
  *
- * Note: `correlation_id` is intentionally NOT excluded from this type. It is a
- * supported convenience input — the `request()` method extracts it and promotes
- * it to the outer envelope, so it is safe to pass and will not leak into the
- * inner payload.
+ * Reserved envelope keys (`event_id`, `event_type`, `source`, `timestamp`,
+ * `correlation_id`) receive special handling at runtime:
+ * - `event_id`, `event_type`, `source`, `timestamp`: STRIPPED from the inner
+ *   payload before spreading; a `console.warn` is emitted if any are present.
+ *   They will NOT appear in the emitted envelope payload.
+ * - `correlation_id` (and `correlationId`): extracted and promoted to the outer
+ *   envelope; neither leaks into the inner payload.
+ *
+ * All other keys are spread directly into the inner payload object. Any key
+ * matching a pre-constructed field (`source_path`, `content`, `language`,
+ * `operation_type`, `project_id`, `user_id`) will silently overwrite the
+ * default value. There is no warning when an override occurs — callers should
+ * avoid passing these keys unintentionally.
  */
 type PayloadOverride = Omit<
   Record<string, unknown>,
@@ -179,35 +181,20 @@ export class IntelligenceEventAdapter {
   /**
    * Generic request method - matches OmniClaude/OmniArchon ONEX event format.
    *
-   * The `payload` parameter is spread at the end of the inner envelope payload
-   * object (see `...payload` inside the `envelope.payload` construction). This
-   * means any key in `payload` that matches a pre-set envelope field —
-   * including `source_path`, `content`, `language`, `operation_type`,
-   * `project_id`, `user_id`, etc. — will silently overwrite the default value.
-   * This is intentional: callers can use the spread to override any field.
-   * However, callers should be careful not to pass conflicting keys
-   * unintentionally, as there is no warning when an override occurs.
+   * See the `PayloadOverride` type for full documentation of how reserved
+   * envelope keys and pre-constructed inner payload fields are handled at
+   * runtime. In summary:
+   * - `event_id`, `event_type`, `source`, `timestamp`: stripped from the
+   *   inner payload (with a `console.warn`); do not appear in the output.
+   * - `correlation_id` / `correlationId`: extracted and promoted to the outer
+   *   envelope; neither leaks into the inner payload.
+   * - All other keys are spread into the inner payload. Fields matching
+   *   `source_path`, `content`, `language`, `operation_type`, `project_id`,
+   *   or `user_id` will silently overwrite the default value with no warning.
    *
    * @param requestType - The type identifier for the intelligence request (e.g. `'code_analysis'`).
    * @param payload - Additional fields merged into the envelope payload.
-   *   By convention, the following envelope-level keys should NOT be included,
-   *   as they belong to the outer envelope and passing them here places them
-   *   in the wrong layer. Note: this is not enforced at compile time — see
-   *   the `PayloadOverride` type comment for details.
-   *   - `event_id`
-   *   - `event_type`
-   *   - `source`
-   *   - `timestamp`
-   *   If any of these reserved keys are present they are STRIPPED from the
-   *   inner payload before spreading, and a `console.warn` is emitted. They
-   *   will NOT appear in the emitted envelope payload.
-   *   `correlation_id` IS supported: it is explicitly extracted from `payload`
-   *   before the spread and placed on the outer envelope. Both `correlation_id`
-   *   and `correlationId` are destructured out before the spread so they are
-   *   excluded from the inner payload.
-   *   Any key matching a pre-constructed field (`source_path`, `content`,
-   *   `language`, `operation_type`, `project_id`, `user_id`) will silently
-   *   overwrite it.
+   *   See `PayloadOverride` type for key handling details.
    * @param timeoutMs - Milliseconds before the request is rejected with a timeout error (default: 5000).
    */
   async request(

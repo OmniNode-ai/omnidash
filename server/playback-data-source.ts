@@ -64,10 +64,10 @@ export class PlaybackDataSource extends EventEmitter {
    *
    * Idempotency: if the source is already active, this method returns early
    * without error and without re-emitting 'connected'. A `console.warn` is
-   * issued to surface the unexpected double-call, but it is informational only
-   * — callers must not rely on it programmatically (no thrown error, no return
-   * value). The method is effectively idempotent and is safe to call from
-   * cleanup or setup paths where the active state is uncertain.
+   * issued as an informational no-op notice — callers must not rely on it
+   * programmatically (no thrown error, no return value). The method is
+   * effectively idempotent and is safe to call from cleanup or setup paths
+   * where the active state is uncertain (e.g., graceful restart scenarios).
    *
    * NOTE: Must only be called when demo mode is explicitly enabled by the user
    * (e.g., via `?demo=true` URL parameter or the global demo toggle). Callers
@@ -77,7 +77,7 @@ export class PlaybackDataSource extends EventEmitter {
    */
   start(): void {
     if (this.isActive) {
-      console.warn('[PlaybackDataSource] start() called while already active — possible contract violation (demo mode guard missing at call site)');
+      console.warn('[PlaybackDataSource] start() called while already active — no-op');
       return;
     }
     this.isActive = true;
