@@ -21,7 +21,7 @@
  */
 
 import { Router } from 'express';
-import { projectionService } from './projection-bootstrap';
+import { projectionService, enforcementProjection } from './projection-bootstrap';
 import type {
   ExtractionMetricsProjection,
   ExtractionMetricsPayload,
@@ -359,17 +359,23 @@ async function probeExecutionGraph(): Promise<DataSourceInfo> {
 }
 
 /**
- * Probe the enforcement data source.
- * The enforcement projection is not yet implemented (OMN-2275 follow-up),
- * so this always returns mock until the projection is wired up.
+ * Probe the enforcement data source (OMN-2374).
+ * Delegates to EnforcementProjection.probeRecentCount() which encapsulates
+ * the DB query following the OMN-2325 architectural rule (no direct DB access
+ * from route files). Returns live status with the count of enforcement events
+ * in the last hour, or error/mock when the DB is unavailable.
  */
-function probeEnforcement(): DataSourceInfo {
-  // The enforcement-routes.ts handler always returns total_evaluations: 0
-  // because the upstream projection is not yet implemented (see enforcement-routes.ts
-  // TODO comments referencing OMN-2275-followup). Return mock directly rather
-  // than making an HTTP round-trip to confirm the zero.
-  // TODO: wire up real enforcement projection when available (update this probe at that time)
-  return { status: 'mock', reason: 'not_implemented' };
+async function probeEnforcement(): Promise<DataSourceInfo> {
+  try {
+    const count = await enforcementProjection.probeRecentCount();
+    if (count === null) {
+      return { status: 'mock', reason: 'no_db_connection' };
+    }
+    return { status: 'live' };
+  } catch (err) {
+    console.error('[health] enforcement probe failed:', err);
+    return { status: 'error', reason: 'db_query_failed' };
+  }
 }
 
 // ============================================================================
@@ -444,15 +450,15 @@ router.get('/data-sources', async (_req, res) => {
     pendingProbe = (async (): Promise<DataSourcesHealthResponse> => {
       try {
         // Run all probes. Projection-based probes are synchronous; async probes
-        // (insights, executionGraph) are awaited via Promise.all. All are called
-        // directly without HTTP self-calls.
-        const [insights, executionGraph] = await Promise.all([
+        // (insights, executionGraph, enforcement) are awaited via Promise.all.
+        // All are called directly without HTTP self-calls.
+        const [insights, executionGraph, enforcement] = await Promise.all([
           probeInsights(),
           probeExecutionGraph(),
+          probeEnforcement(),
         ]);
         const validation = probeValidation();
         const patterns = probePatterns();
-        const enforcement = probeEnforcement();
 
         // Probe the event bus once and reuse the result for correlationTrace, which
         // derives its live/mock status from the same event-bus projection.

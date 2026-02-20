@@ -69,6 +69,7 @@ import { emitBaselinesUpdate } from './baselines-events';
 import { emitLlmRoutingInvalidate } from './llm-routing-events';
 import { emitDelegationInvalidate } from './delegation-events';
 import { emitEnrichmentInvalidate } from './enrichment-events';
+import { emitEnforcementInvalidate } from './enforcement-events';
 
 /**
  * Derive a deterministic UUID-shaped string from Kafka message coordinates.
@@ -679,8 +680,9 @@ export class ReadModelConsumer {
       return true; // Treat as "handled" so we advance the watermark
     }
 
+    let insertedRowCount = 0;
     try {
-      await db.execute(sql`
+      const result = await db.execute(sql`
         INSERT INTO pattern_enforcement_events (
           correlation_id,
           session_id,
@@ -708,6 +710,17 @@ export class ReadModelConsumer {
         )
         ON CONFLICT (correlation_id) DO NOTHING
       `);
+      // Track inserted row count to suppress WebSocket invalidation on duplicate events.
+      // ON CONFLICT DO NOTHING produces rowCount=0 for duplicates; no invalidation needed.
+      const rawRowCount = (result as unknown as Record<string, unknown>).rowCount;
+      if (typeof rawRowCount === 'number') {
+        insertedRowCount = rawRowCount;
+      } else {
+        console.warn(
+          `[ReadModelConsumer] enforcement INSERT: rowCount not found in result shape — WebSocket invalidation suppressed. Actual type: ${typeof rawRowCount}`
+        );
+        insertedRowCount = 0;
+      }
     } catch (err) {
       // If the table doesn't exist yet, warn and return true to advance the
       // watermark so the consumer is not stuck retrying indefinitely.
@@ -732,6 +745,17 @@ export class ReadModelConsumer {
         return true;
       }
       throw err;
+    }
+
+    // Notify WebSocket clients subscribed to the 'enforcement' topic only when
+    // a new row was genuinely inserted (rowCount > 0). Duplicate events produce
+    // rowCount=0 via ON CONFLICT DO NOTHING and should not trigger invalidation.
+    if (insertedRowCount > 0) {
+      try {
+        emitEnforcementInvalidate(correlationId);
+      } catch (e) {
+        console.warn('[ReadModelConsumer] emitEnforcementInvalidate() failed post-commit:', e);
+      }
     }
 
     return true;
