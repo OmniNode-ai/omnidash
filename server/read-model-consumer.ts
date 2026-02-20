@@ -68,6 +68,7 @@ import { baselinesProjection } from './projection-bootstrap';
 import { emitBaselinesUpdate } from './baselines-events';
 import { emitLlmRoutingInvalidate } from './llm-routing-events';
 import { emitDelegationInvalidate } from './delegation-events';
+import { emitEnrichmentInvalidate } from './enrichment-events';
 
 /**
  * Derive a deterministic UUID-shaped string from Kafka message coordinates.
@@ -786,8 +787,9 @@ export class ReadModelConsumer {
       return true;
     }
 
+    let insertedRowCount = 0;
     try {
-      await db.execute(sql`
+      const result = await db.execute(sql`
         INSERT INTO context_enrichment_events (
           correlation_id,
           session_id,
@@ -823,6 +825,32 @@ export class ReadModelConsumer {
         )
         ON CONFLICT (correlation_id) DO NOTHING
       `);
+      // db.execute() with raw SQL returns the underlying pg/Neon QueryResult,
+      // which carries `rowCount`: the number of rows actually written by the
+      // INSERT.  When the ON CONFLICT … DO NOTHING clause suppresses a
+      // duplicate the command completes without error but rowCount is 0.
+      //
+      // The pg socket driver initialises rowCount to null and populates it
+      // from the CommandComplete message; the Neon HTTP driver always returns
+      // a numeric rowCount.  Both paths therefore produce number | null.
+      //
+      // We avoid a blind `as { rowCount?: number | null }` cast, which would
+      // silently evaluate to 0 if the result object has an unexpected shape
+      // (e.g. a future Drizzle version wraps the raw result differently).
+      // Instead we use a typeof guard so that any shape mismatch is visible
+      // as a NaN/undefined at runtime rather than a silent zero.
+      const rawRowCount = (result as unknown as Record<string, unknown>).rowCount;
+      if (typeof rawRowCount === 'number') {
+        insertedRowCount = rawRowCount;
+      } else {
+        console.warn(
+          `[ReadModelConsumer] enrichment INSERT: rowCount not found in result shape — WebSocket invalidation suppressed. Shape may have changed. Actual type of rawRowCount: ${typeof rawRowCount}`
+        );
+        // TODO: Add a structured metric/counter here so shape changes are
+        // detectable in production monitoring without requiring log scraping.
+        // Track as a follow-up ticket after OMN-2373 merges.
+        insertedRowCount = 0;
+      }
     } catch (err) {
       // If the table doesn't exist yet (migration not run), degrade gracefully
       // and advance the watermark so the consumer is not stuck retrying.
@@ -839,6 +867,31 @@ export class ReadModelConsumer {
         return true;
       }
       throw err;
+    }
+
+    // Notify WebSocket clients subscribed to the 'enrichment' topic only when
+    // a new row was genuinely inserted (rowCount > 0).  When the ON CONFLICT
+    // clause suppresses a duplicate the insert is a no-op and rowCount is 0;
+    // emitting in that case would cause spurious WebSocket invalidation
+    // broadcasts on every duplicate event. (OMN-2373)
+    //
+    // NOTE (at-least-once edge case): the emit fires after the DB commit but
+    // before the watermark is advanced by the caller.  If the process crashes
+    // in this narrow window, Kafka redelivers the message, ON CONFLICT DO
+    // NOTHING fires (rowCount=0), and no second invalidation is emitted.
+    // Clients that connected during the window may miss one real-time update;
+    // they will receive the correct data on their next poll. This is an
+    // inherent at-least-once delivery trade-off: moving the emit to after
+    // watermark advancement would close the window but add complexity.  The
+    // chosen ordering (emit before watermark) prioritises real-time freshness
+    // for the common case over theoretical crash-recovery purity.
+    if (insertedRowCount > 0) {
+      // Wrapped defensively: a failure here must not block watermark advancement.
+      try {
+        emitEnrichmentInvalidate(correlationId);
+      } catch (e) {
+        console.warn('[ReadModelConsumer] emitEnrichmentInvalidate() failed post-commit:', e);
+      }
     }
 
     return true;
