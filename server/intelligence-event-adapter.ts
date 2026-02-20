@@ -338,7 +338,7 @@ export class IntelligenceEventAdapter {
       service: 'omnidash',
       payload: {
         source_path: safePayloadRest.sourcePath || safePayloadRest.source_path || '',
-        content: safePayloadRest.content || null,
+        content: safePayloadRest.content != null ? safePayloadRest.content : null,
         language: safePayloadRest.language || 'python',
         operation_type: safePayloadRest.operation_type || safePayloadRest.operationType || 'PATTERN_EXTRACTION',
         options: safePayloadRest.options || {},
