@@ -506,6 +506,8 @@ export const INTELLIGENCE_PIPELINE_SUFFIXES = [
   // (real-time cost-trend feed), and also in READ_MODEL_TOPICS for durable projection via
   // projectLlmCostEvent(). Both consumers are intentional — same pattern used by the old
   // SUFFIX_OMNICLAUDE_LLM_COST_REPORTED (which was in OMNICLAUDE_EXTENDED_SUFFIXES + READ_MODEL_TOPICS).
+  // Placed in INTELLIGENCE_PIPELINE_SUFFIXES because the topic prefix is 'onex.evt.omniintelligence.*';
+  // the producing service (NodeLlmInferenceEffect) lives in omnibase_infra.
   TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
 ] as const;
 

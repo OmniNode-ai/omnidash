@@ -154,6 +154,9 @@ describe('ReadModelConsumer', () => {
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(null);
 
       const handleMessage = getHandleMessage(consumer);
+      // Canonical ContractLlmCallMetrics schema (model_id, not legacy model_name) — the
+      // no-DB fast-exit fires before any field parsing, so either schema would produce the
+      // same outcome; using canonical fields keeps this fixture in sync with the producer.
       const payload = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
         model_id: 'claude-sonnet-4-6',
         prompt_tokens: 1000,
@@ -325,6 +328,8 @@ describe('ReadModelConsumer', () => {
       expect(insertArg.promptTokens).toBe(3000);
       expect(insertArg.completionTokens).toBe(1200);
       expect(insertArg.totalTokens).toBe(4200);
+      // reporting_source 'omniclaude' passes heuristic (length < 64, no whitespace) → repoName
+      expect(insertArg.repoName).toBe('omniclaude');
 
       const stats = consumer.getStats();
       expect(stats.eventsProjected).toBe(1);
