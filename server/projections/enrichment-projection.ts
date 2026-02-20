@@ -82,11 +82,10 @@ function windowToInterval(window: string): string {
 /**
  * The set of time-window values accepted by ensureFreshForWindow.
  *
- * This is a secondary safety net. The primary validation is performed by the
- * route layer (enrichment-routes.ts VALID_WINDOWS guard) before this method is
- * called. Both sets must be kept in sync: if a new window value is added to one,
- * it must be added to the other, or the route will accept windows that the
- * projection rejects (or vice-versa).
+ * Single source of truth for accepted window values — imported by both
+ * enrichment-routes.ts (route-layer guard) and ensureFreshForWindow (secondary
+ * safety net). Adding a new window here automatically makes it valid in both
+ * layers; no separate constant needs updating.
  */
 export const ACCEPTED_WINDOWS = new Set(['24h', '7d', '30d']);
 
@@ -242,8 +241,8 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * @param window - Time window identifier. Must be one of '24h', '7d', '30d'.
    *   An unrecognised value throws immediately so callers receive an explicit
    *   error rather than silently incorrect 7-day data. Note: the route layer
-   *   (enrichment-routes.ts VALID_WINDOWS) is the primary guard; this check is
-   *   a secondary safety net. Both must be kept in sync.
+   *   imports ACCEPTED_WINDOWS directly and is the primary guard; this check is
+   *   a secondary safety net sharing the same constant.
    * @returns A fully-populated `EnrichmentPayload` scoped to the requested
    *   window, or an empty payload when the DB is unreachable.
    * @throws {Error} If `window` is not one of the accepted values.
