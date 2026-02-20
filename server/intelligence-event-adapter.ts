@@ -312,9 +312,26 @@ export class IntelligenceEventAdapter {
         this.pending.delete(correlationKey);
         entry.reject(sendError instanceof Error ? sendError : new Error(String(sendError)));
       } else {
-        // The timeout already fired and removed the entry before producer.send() failed.
-        // Log so the race is diagnosable — the caller already received a timeout rejection,
-        // but this send error is otherwise silently lost without this warning.
+        // entry === null: the timeout handler already fired before producer.send() threw.
+        //
+        // What happened:
+        //   1. The setTimeout callback ran first, deleted the entry from this.pending,
+        //      and called reject() on the promise — so `promise` is already settled as
+        //      rejected with the "Intelligence request timed out" error.
+        //   2. producer.send() then threw (network error, broker unavailable, etc.).
+        //   3. We land here with entry === null because step 1 already removed it.
+        //
+        // The caller's `await request(...)` already received (or will receive) the
+        // timeout rejection from step 1 — that is the error the caller should see,
+        // because it is the first thing that went wrong from their perspective.
+        //
+        // The send error is logged separately here so the race is diagnosable in
+        // production logs, but it is NOT surfaced to the caller as a second rejection.
+        // Allowing a second rejection would create an unhandled Promise rejection
+        // and would replace the structured timeout error with a raw Kafka send error.
+        //
+        // We return `promise` (already settled as rejected) so the caller sees exactly
+        // one rejection — the timeout — and there is no unhandled rejection surface.
         console.warn(
           `[IntelligenceEventAdapter] send error after timeout for correlationId "${correlationKey}" — ` +
           'the caller already received a timeout rejection; this send error is logged for diagnostics only.',
@@ -497,7 +514,9 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
             `[IntelligenceEventAdapter] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
             'no-op because Kafka is not initialized; event was not dispatched.'
           );
-          return intelligenceEvents; // Return proxy for chaining
+          // EventEmitter.emit() returns boolean (true if listeners were called).
+          // Return false — no listeners exist because Kafka is not initialized.
+          return false;
         };
       }
       return undefined;

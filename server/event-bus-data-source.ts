@@ -884,8 +884,11 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
               `[EventBusDataSource] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
               'no-op because Kafka is not initialized; event was not dispatched.'
             );
+            // EventEmitter.emit() returns boolean (true if listeners were called).
+            // Return false — no listeners exist because Kafka is not initialized.
+            return false;
           }
-          return eventBusDataSource; // Return proxy for chaining
+          return eventBusDataSource; // Return proxy for chaining (on/once/removeListener return `this`)
         };
       }
       return undefined;
