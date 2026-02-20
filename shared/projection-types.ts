@@ -146,7 +146,11 @@ export interface EventEnrichment {
   /** Handler identifier that produced this enrichment */
   handler: string;
   category: EventCategory;
-  /** Short human-readable summary (≤60 chars) */
+  /**
+   * Short human-readable summary (≤60 chars).
+   * Producers MUST enforce this limit; consumers MAY truncate defensively
+   * (e.g. `summary.slice(0, 57) + '...'`) but are not required to.
+   */
   summary: string;
   /** Normalized event type string for display */
   normalizedType: string;
