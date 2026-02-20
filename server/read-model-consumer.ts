@@ -844,7 +844,7 @@ export class ReadModelConsumer {
         insertedRowCount = rawRowCount;
       } else {
         console.warn(
-          `[ReadModelConsumer] enrichment INSERT: rowCount not found in result shape — WebSocket invalidation suppressed. Shape may have changed. Actual type: ${typeof rawRowCount}, keys: ${Object.keys((result as unknown as Record<string, unknown>) ?? {}).join(', ')}`
+          `[ReadModelConsumer] enrichment INSERT: rowCount not found in result shape — WebSocket invalidation suppressed. Shape may have changed. Actual type of rawRowCount: ${typeof rawRowCount}`
         );
         // TODO: Add a structured metric/counter here so shape changes are
         // detectable in production monitoring without requiring log scraping.

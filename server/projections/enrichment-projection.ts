@@ -339,6 +339,14 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     }
 
     const db = tryGetIntelligenceDb();
+    // If the DB is unavailable, return empty payload immediately without
+    // populating lastSnapshot. Any in-progress cooldown window from a prior
+    // successful query continues serving its cached snapshot unaffected.
+    // NOTE: if a previous query resolved with emptyPayload() and was cached,
+    // the cooldown guard will serve that empty snapshot for up to
+    // ENSURE_FRESH_COOLDOWN_MS. This is intentional: empty = DB unavailable,
+    // not a stale-data bug. The snapshot will be overwritten when the DB
+    // recovers and the next non-coalesced query succeeds.
     if (!db) return this.emptyPayload();
 
     const promise = this._queryForWindow(db, window)
