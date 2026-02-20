@@ -184,6 +184,8 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * this can create noticeable load. A future improvement should introduce a
    * short-lived (e.g. 60 s) in-memory cache keyed on the window string,
    * consistent with how the base-class 24 h snapshot is cached.
+   *
+   * TODO(OMN-2373): add per-window TTL cache to reduce DB load under sustained polling
    */
   async ensureFreshForWindow(window: string): Promise<EnrichmentPayload> {
     if (!ACCEPTED_WINDOWS.has(window)) {
