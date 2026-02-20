@@ -28,7 +28,7 @@ import {
  * default value. There is no warning when an override occurs — callers should
  * avoid passing these keys unintentionally.
  */
-type PayloadOverride = Omit<
+type PayloadOverride = Omit< // Note: correlation_id/correlationId are also special-cased — extracted and promoted to the envelope, not spread into payload; see JSDoc above
   Record<string, unknown>,
   'event_id' | 'event_type' | 'source' | 'timestamp'
 >;
@@ -205,7 +205,17 @@ export class IntelligenceEventAdapter {
     if (!this._started || !this.producer) throw new Error('IntelligenceEventAdapter not started');
 
     const rawCorrelationId = payload?.correlation_id || payload?.correlationId || randomUUID();
-    const correlationId = String(rawCorrelationId);
+    // Type guard: only coerce to string if the value is a primitive (string or number).
+    // An object (e.g. { foo: 'bar' }) would silently produce '[object Object]' via String(),
+    // corrupting correlation tracking. Fall back to a fresh UUID instead.
+    const isStringCompatible =
+      typeof rawCorrelationId === 'string' || typeof rawCorrelationId === 'number';
+    if (!isStringCompatible && process.env.NODE_ENV !== 'production') {
+      console.warn(
+        `[IntelligenceEventAdapter] correlation_id/correlationId is not a string or number (got ${typeof rawCorrelationId}) — ignoring and generating a new UUID.`
+      );
+    }
+    const correlationId = isStringCompatible ? String(rawCorrelationId) : randomUUID();
     const correlationKey = correlationId.toLowerCase();
 
     // Exclude correlation_id / correlationId from the inner payload spread so they
@@ -328,12 +338,14 @@ export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
 /**
  * Check if IntelligenceEventAdapter is available.
  *
- * Pure predicate — does NOT trigger initialization. Returns true only if the
- * singleton was already successfully initialized. Call `getIntelligenceEvents()`
- * first to trigger initialization. Returns false if initialization has not been
- * attempted or failed.
+ * Triggers lazy initialization if not yet done, then returns true if the
+ * singleton was successfully initialized and false if initialization failed
+ * (e.g. KAFKA_BROKERS not configured). Safe to call at any time — no prior
+ * call to `getIntelligenceEvents()` is required.
  */
 export function isIntelligenceEventsAvailable(): boolean {
+  // Trigger lazy initialization if not yet done
+  getIntelligenceEvents();
   return intelligenceEventsInstance !== null;
 }
 

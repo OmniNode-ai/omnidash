@@ -714,8 +714,8 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     console.log('[WebSocket] EventBusDataSource listeners registered for real-time events');
   } else {
-    console.error(
-      '[WebSocket] EventBusDataSource not available - event-bus topic will not receive real-time events'
+    console.warn(
+      '[WebSocket] EventBusDataSource not available - event-bus topic will not receive real-time events (degraded mode, not a fatal error)'
     );
   }
 

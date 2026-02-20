@@ -53,32 +53,20 @@ export interface DeleteOptions {
 /**
  * PostgreSQL CRUD Adapter
  *
- * Provides direct database access with Drizzle ORM and optional event bus
- * integration. When KAFKA_BROKERS (or KAFKA_BOOTSTRAP_SERVERS) is present,
- * event bus integration is enabled. When the variable is absent, event bus
- * integration is disabled — the constructor does not log anything (it runs at
- * module load time, before the server finishes initializing). The event-bus
- * modules (event-bus-data-source.ts, event-consumer.ts,
- * intelligence-event-adapter.ts) emit the appropriate diagnostics when their
- * singletons are first accessed. This is a misconfiguration error state, not
- * normal operation. The adapter continues serving direct database queries.
+ * Provides direct database access with Drizzle ORM. The constructor does not
+ * log anything (it runs at module load time, before the server finishes
+ * initializing). The event-bus modules (event-bus-data-source.ts,
+ * event-consumer.ts, intelligence-event-adapter.ts) emit the appropriate
+ * diagnostics when their singletons are first accessed. Missing KAFKA_BROKERS
+ * is a misconfiguration error state, not normal operation. This adapter
+ * continues serving direct database queries regardless.
  */
 export class PostgresAdapter {
   private get db() {
     return getIntelligenceDb();
   }
-  // Controls whether event-bus writes are attempted for mutation operations.
-  // When true (KAFKA_BROKERS is set), event-bus integration is active.
-  // When false, event-bus writes are skipped entirely — this does NOT affect
-  // direct PostgreSQL queries (query/insert/update/delete/upsert/count all
-  // operate against the DB regardless of this flag). Currently this field is
-  // set in the constructor but is not read by any CRUD method; it is retained
-  // as a hook for future event-bus write paths.
-  private eventBusEnabled: boolean;
 
   constructor() {
-    // Check that KAFKA_BROKERS is set (required infrastructure)
-    this.eventBusEnabled = !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS);
     // No logging here — dbAdapter is instantiated at module load time, so any
     // console output would fire before the server has finished initializing.
     // The event-bus modules (event-bus-data-source.ts, event-consumer.ts,

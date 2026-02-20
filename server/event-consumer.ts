@@ -4302,14 +4302,16 @@ export function getEventConsumer(): EventConsumer | null {
 /**
  * Check if EventConsumer is available.
  *
- * Pure predicate — does NOT trigger initialization. Returns true only if the
- * singleton was already successfully initialized. Call `getEventConsumer()`
- * first to trigger initialization. Returns false if initialization has not been
- * attempted or failed.
+ * Triggers lazy initialization if not yet done, then returns true if the
+ * singleton was successfully initialized and false if initialization failed
+ * (e.g. KAFKA_BROKERS not configured). Safe to call at any time — no prior
+ * call to `getEventConsumer()` is required.
  *
  * @returns true if EventConsumer singleton is initialized, false otherwise
  */
 export function isEventConsumerAvailable(): boolean {
+  // Trigger lazy initialization if not yet done
+  getEventConsumer();
   return eventConsumerInstance !== null;
 }
 

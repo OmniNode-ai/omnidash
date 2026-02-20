@@ -720,24 +720,21 @@ export function getEventBusDataSource(): EventBusDataSource | null {
 /**
  * Check if EventBusDataSource is available.
  *
- * Pure predicate — does NOT trigger initialization. Returns true only if the
- * singleton was already successfully initialized. Call `getEventBusDataSource()`
- * first to trigger initialization. Returns false if initialization has not been
- * attempted or failed.
- *
- * Note: returns false until `getEventBusDataSource()` has been called at least
- * once (proxy property access also triggers initialization). Checking
- * availability before first proxy or direct access will always return false.
+ * Triggers lazy initialization if not yet done, then returns true if the
+ * singleton was successfully initialized and false if initialization failed
+ * (e.g. KAFKA_BROKERS not configured). Safe to call at any time — no prior
+ * call to `getEventBusDataSource()` is required.
  *
  * @example
  * ```typescript
- * const instance = getEventBusDataSource(); // triggers initialization
  * if (isEventBusDataSourceAvailable()) {
- *   // instance is ready
+ *   // instance is ready; retrieve it with getEventBusDataSource()
  * }
  * ```
  */
 export function isEventBusDataSourceAvailable(): boolean {
+  // Trigger lazy initialization if not yet done
+  getEventBusDataSource();
   return eventBusDataSourceInstance !== null;
 }
 
@@ -784,7 +781,7 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
       }
       if (prop === 'injectEvent') {
         return async () => {
-          console.error('❌ EventBusDataSource not available - cannot inject event. Events are being silently dropped. Set KAFKA_BROKERS in .env to restore event storage.');
+          throw new Error('[EventBusDataSource] injectEvent called before Kafka initialization — event cannot be delivered. Set KAFKA_BROKERS in .env to restore event storage.');
         };
       }
       // For EventEmitter methods

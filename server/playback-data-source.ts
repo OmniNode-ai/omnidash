@@ -72,8 +72,12 @@ export class PlaybackDataSource extends EventEmitter {
    * NOTE: Must only be called when demo mode is explicitly enabled by the user
    * (e.g., via `?demo=true` URL parameter or the global demo toggle). Callers
    * are responsible for enforcing this guard — this class does not verify
-   * demo mode internally. Starting playback outside of explicit demo mode
-   * violates the contract described in the module JSDoc.
+   * demo mode internally. The guard is enforced at the HTTP layer: the
+   * `POST /api/demo/start` handler in `server/playback-routes.ts` is the
+   * sole call site that starts demo playback, and it is only reachable when
+   * the user explicitly triggers a recording playback from the dashboard.
+   * Starting playback outside of explicit demo mode violates the contract
+   * described in the module JSDoc.
    */
   start(): void {
     if (this.isActive) {
