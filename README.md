@@ -1,176 +1,138 @@
 # OmniDash
 
-OmniDash is a comprehensive observability and intelligence platform for the OmniNode AI agent ecosystem. It provides real-time monitoring, pattern analysis, and actionable insights across 52+ AI agents and 168+ operations.
+OmniDash is a real-time monitoring and observability dashboard for the OmniNode AI agent system. It visualizes Kafka event streams, agent routing decisions, pattern intelligence, cost trends, and execution graphs across the full OmniNode pipeline.
 
-## Features
-
-- **Agent Operations Dashboard**: Monitor 52 AI agents with real-time metrics and performance tracking
-- **Pattern Learning**: Analyze 25,000+ code patterns with semantic search and recommendations
-- **Intelligence Operations**: Track 168+ AI operations with detailed execution metrics
-- **Event Flow Monitoring**: Visualize Kafka/Redpanda event streams with real-time processing
-- **Code Intelligence**: Semantic code search with quality gates and compliance tracking
-- **Knowledge Graph**: Interactive visualization of code relationships and dependencies
-- **Platform Health**: System-wide health monitoring with alerts and diagnostics
-- **Developer Experience**: Workflow metrics and productivity insights
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- PostgreSQL database
-- Kafka/Redpanda (for real-time events)
-
-### Installation
+## Quick Start
 
 ```bash
 npm install
+cp .env.example .env   # fill in database and Kafka credentials
+PORT=3000 npm run dev
 ```
 
-### Configuration
+The application runs at `http://localhost:3000`.
 
-Copy `.env.example` to `.env` and configure the following:
+## Configuration
+
+Key environment variables (see `.env.example` for the full template):
 
 ```bash
-# Server
 PORT=3000
 
-# PostgreSQL Read-Model Database
-DATABASE_URL="postgresql://user:password@192.168.86.200:5436/omnidash_analytics"
-POSTGRES_HOST=192.168.86.200
-POSTGRES_PORT=5436
-POSTGRES_DATABASE=omnidash_analytics
+# Omnidash read-model database (omnidash_analytics)
+OMNIDASH_ANALYTICS_DB_URL="postgresql://postgres:<password>@192.168.86.200:5436/omnidash_analytics"
 
-# Kafka Event Streaming
+# Kafka event streaming
 KAFKA_BROKERS=192.168.86.200:29092
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers-v2
 
-# Feature Flags
 ENABLE_REAL_TIME_EVENTS=true
 ```
 
-### Development
+Never hardcode passwords. Always source credentials from `.env`.
 
-Start the development server:
+## Common Commands
+
+**Development:**
 
 ```bash
-npm run dev
+PORT=3000 npm run dev     # Start development server
+npm run check             # TypeScript type checking
+npm run build             # Production build (Vite + esbuild)
+PORT=3000 npm start       # Run production build
 ```
 
-The application will be available at `http://localhost:3000`
-
-### Testing
-
-Run tests:
+**Testing:**
 
 ```bash
 npm run test              # Run vitest tests
 npm run test:ui           # Interactive test UI
 npm run test:coverage     # Generate coverage report
-npm run test:snapshots    # Run Playwright tests
 ```
 
-### Production Build
-
-Build for production:
+**Database:**
 
 ```bash
-npm run build
-npm start
+npm run db:push           # Push Drizzle schema changes
+npm run db:migrate        # Run SQL migrations from migrations/
 ```
 
-## Code Quality & Git Hooks
-
-This project uses automated quality gates to ensure code quality and consistency.
-
-### Pre-commit Hooks
-
-Pre-commit hooks automatically run before each commit to:
-
-- **Lint TypeScript/TSX files**: ESLint automatically fixes code style issues
-- **Format code**: Prettier ensures consistent formatting
-
-Hooks are managed by [Husky](https://typicode.github.io/husky/) and [lint-staged](https://github.com/okonet/lint-staged).
-
-### Commit Message Format
-
-Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) format:
-
-```
-<type>: <description>
-
-[optional body]
-
-[optional footer(s)]
-```
-
-**Valid commit types:**
-
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, semicolons, etc.)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks
-- `perf`: Performance improvements
-- `ci`: CI/CD changes
-- `build`: Build system changes
-- `revert`: Revert a previous commit
-
-**Examples:**
+**Observability:**
 
 ```bash
-git commit -m "feat: add event correlation tracing"
-git commit -m "fix: resolve WebSocket reconnection issue"
-git commit -m "docs: update API documentation"
-git commit -m "test: add unit tests for EventFlow component"
+npm run seed-events              # Seed test events once
+npm run seed-events:continuous   # Continuous event seeding
+npm run check-topics             # Check Kafka topic health
 ```
 
-### Bypassing Hooks
+## Routes
 
-In rare cases, you can skip hooks with `--no-verify`:
+### Category Dashboards
 
-```bash
-git commit --no-verify -m "emergency fix"
-```
+Top-level dashboards, always visible in the sidebar:
 
-**⚠️ Use sparingly!** Bypassing hooks should only be done in emergencies.
+| Route | Page | Purpose |
+|---|---|---|
+| `/category/speed` | SpeedCategory | Cache hit rate, latency percentiles, pipeline health |
+| `/category/success` | SuccessCategory | A/B comparison, injection hit rates, effectiveness trends |
+| `/category/intelligence` | IntelligenceCategory | Pattern utilization, intent classification, behavior tracking |
+| `/category/health` | SystemHealthCategory | Validation counts, node registry, health checks |
 
-### Manual Linting
+### Advanced Pages
 
-Run linting manually:
+Accessible via the collapsible Advanced section in the sidebar:
 
-```bash
-npm run lint           # Check for issues
-npm run lint:fix       # Fix issues automatically
-npm run check          # TypeScript type checking
-```
+| Route | Page | Purpose |
+|---|---|---|
+| `/events` (default `/`) | EventBusMonitor | Real-time Kafka event stream visualization |
+| `/live-events` | LiveEventStream | Raw live event stream view |
+| `/extraction` | ExtractionDashboard | Pattern extraction pipeline metrics |
+| `/effectiveness` | EffectivenessSummary | Injection effectiveness and A/B analysis |
+| `/effectiveness/latency` | EffectivenessLatency | Latency breakdown by injection channel |
+| `/effectiveness/utilization` | EffectivenessUtilization | Pattern utilization rates |
+| `/effectiveness/ab` | EffectivenessAB | A/B experiment results |
+| `/cost-trends` | CostTrendDashboard | LLM cost trends, budget alerts, token usage |
+| `/intents` | IntentDashboard | Real-time intent classification and analysis |
+| `/patterns` | PatternLearning | Code pattern discovery and learning analytics |
+| `/enforcement` | PatternEnforcement | Enforcement hit rate, violations, correction rate |
+| `/enrichment` | ContextEnrichmentDashboard | Hit rate per channel, token savings, latency |
+| `/llm-routing` | LlmRoutingDashboard | LLM routing effectiveness metrics |
+| `/registry` | NodeRegistry | Contract-driven node and service discovery |
+| `/discovery` | RegistryDiscovery | ONEX node registry discovery |
+| `/validation` | ValidationDashboard | Cross-repo validation runs and violation trends |
+| `/graph` | ExecutionGraph | Live ONEX node execution graph |
+| `/trace` | CorrelationTrace | Trace events by correlation ID |
+| `/insights` | LearnedInsights | Patterns and conventions from OmniClaude sessions |
+| `/baselines` | BaselinesROI | Cost and outcome baseline comparisons |
+| `/showcase` | WidgetShowcase | Contract-driven widget type preview |
+| `/chat` | Chat | AI assistant interactions |
 
 ## Project Structure
 
 ```
 omnidash/
-├── client/           # React frontend
-│   ├── src/
-│   │   ├── components/   # Reusable UI components
-│   │   ├── pages/        # Dashboard pages
-│   │   ├── lib/          # Utilities and data sources
-│   │   └── tests/        # Test utilities
-├── server/           # Express backend
-│   ├── index.ts          # Main server
+├── client/               # React frontend
+│   └── src/
+│       ├── components/   # Reusable UI components (shadcn/ui)
+│       ├── pages/        # Active dashboard pages
+│       ├── _archive/     # Legacy pages (OMN-1377)
+│       ├── hooks/        # Custom React hooks (WebSocket, queries)
+│       ├── contexts/     # React contexts (DemoMode, Theme)
+│       └── lib/          # Utilities and data sources
+├── server/               # Express backend
+│   ├── index.ts          # Main server entry point
 │   ├── routes.ts         # Route registration
 │   ├── websocket.ts      # WebSocket server
-│   ├── event-consumer.ts # Kafka consumer
-│   └── db-adapter.ts     # Database queries
-├── shared/           # Shared types and schemas
-│   ├── schema.ts             # Database schema
-│   └── intelligence-schema.ts # Intelligence tables
-├── .husky/           # Git hooks
-├── .eslintrc.cjs     # ESLint configuration
-├── .prettierrc.json  # Prettier configuration
-└── .commitlintrc.json # Commitlint configuration
+│   ├── event-consumer.ts # Kafka consumer with event aggregation
+│   ├── read-model-consumer.ts  # Projects Kafka events into local tables
+│   ├── db-adapter.ts     # PostgreSQL connection and queries
+│   ├── intelligence-routes.ts  # Agent observability API
+│   ├── *-routes.ts       # Feature-specific API route modules
+│   └── service-health.ts # Service health monitoring
+└── shared/               # Shared types and schemas
+    ├── schema.ts          # User authentication tables
+    └── intelligence-schema.ts  # 30+ intelligence tracking tables
 ```
 
 ## Architecture
@@ -179,40 +141,47 @@ omnidash/
 
 - **Framework**: React 18 with TypeScript
 - **Router**: Wouter (lightweight SPA routing)
-- **UI Components**: shadcn/ui (Radix UI primitives)
-- **State Management**: TanStack Query v5
+- **UI Components**: shadcn/ui (New York variant, Radix UI primitives)
+- **State Management**: TanStack Query v5 for server state
 - **Styling**: Tailwind CSS with Carbon Design System principles
 - **Charts**: Recharts
+- **Build**: Vite with HMR in development
 
 ### Backend
 
 - **Framework**: Express.js
-- **Database**: PostgreSQL with Drizzle ORM
-- **Real-time**: WebSocket + Kafka/Redpanda
-- **Event Processing**: KafkaJS consumer with aggregation
+- **Database**: PostgreSQL with Drizzle ORM (`omnidash_analytics` read-model)
+- **Real-time**: WebSocket server at `/ws` + KafkaJS consumer
+- **Event pipeline**: Kafka topics projected into local tables by `read-model-consumer.ts`
+- **Build**: esbuild (ESM, platform: node)
 
-### Development Tools
+### Data Flow
 
-- **Build**: Vite (frontend) + esbuild (backend)
-- **Testing**: Vitest + Playwright
-- **Linting**: ESLint + Prettier
-- **Git Hooks**: Husky + lint-staged
-- **Type Checking**: TypeScript 5.6
+Upstream OmniNode services publish events to Kafka. The `read-model-consumer` projects those events into the `omnidash_analytics` PostgreSQL database. API routes serve aggregated data from that read-model. The WebSocket server streams live events to connected clients with <100ms latency.
 
-## Contributing
+Omnidash never queries the upstream `omninode_bridge` database directly.
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/amazing-feature`
-3. Make your changes
-4. Run tests: `npm run test`
-5. Commit with conventional commit format: `git commit -m "feat: add amazing feature"`
-6. Push to your branch: `git push origin feat/amazing-feature`
-7. Open a Pull Request
+### Key Kafka Topics
+
+- `agent-routing-decisions` - Agent selection with confidence scores
+- `agent-transformation-events` - Polymorphic agent transformations
+- `router-performance-metrics` - Routing performance data
+- `agent-actions` - Tool calls, decisions, errors
+
+## Code Quality
+
+Pre-commit hooks run ESLint and Prettier automatically via Husky + lint-staged.
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat: add LLM routing dashboard
+fix: resolve WebSocket reconnection issue
+docs: update route listing in README
+```
+
+Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `revert`.
 
 ## License
 
 MIT
-
-## Support
-
-For issues and questions, please open a GitHub issue.

@@ -3,9 +3,19 @@
  *
  * REST API for controlling event playback from the dashboard.
  * Broadcasts playback lifecycle events to WebSocket clients via playbackEventEmitter.
+ *
+ * DEMO_MODE REQUIREMENT: All state-mutating routes (start, stop, pause, resume,
+ * speed, loop) require the `DEMO_MODE=true` environment variable to be set.
+ * Without it every POST endpoint returns HTTP 403. Read-only routes (status,
+ * recordings) remain accessible regardless of DEMO_MODE.
+ *
+ * Set DEMO_MODE=true in the server environment (e.g. .env) to enable demo
+ * playback. Never set this in production environments where live EventConsumer
+ * state must not be disrupted.
  */
 
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { Router, Request, Response } from 'express';
 import { getPlaybackService, playbackLogger } from './event-playback';
 import { getEventConsumer } from './event-consumer';
@@ -16,6 +26,49 @@ import {
   type PlaybackStatus,
 } from '@shared/schemas/playback-config';
 import { emitPlaybackEvent } from './playback-events';
+
+// ---------------------------------------------------------------------------
+// Module-scope path constants — evaluated once at module load time.
+//
+// ESM REQUIREMENT: This file is ESM-only. The build pipeline (esbuild with
+// --format=esm, see package.json "build:server" script) always produces native
+// ESM output, so `import.meta.url` is guaranteed to be defined at runtime under
+// normal operation. Do NOT convert the build output to CJS; doing so would make
+// `import.meta.url` undefined and break path resolution here.
+//
+// Defensive fallback: if `import.meta.url` is somehow undefined (e.g. an
+// unexpected CJS wrapper, a test runner that evaluates the file outside ESM
+// context, or a future build change), fall back to `process.cwd()` so the
+// server does not crash at module load time.
+// If `import.meta.url` is unavailable (non-ESM context), the fallback uses
+// `process.cwd()`, which may resolve to an unintended directory. This is
+// logged as an error at startup. The fallback path may or may not point to a
+// valid recordings directory depending on where the server is started from —
+// playback is NOT guaranteed to be disabled; valid .jsonl file requests WILL
+// pass the containment check if the resolved directory happens to exist.
+//
+// Path is correct in both dev (server/playback-routes.ts → ../demo/recordings)
+// and prod (dist/index.js → ../demo/recordings) since both resolve to
+// <repo-root>/demo/recordings. The `..` is intentional, not coincidental.
+// ---------------------------------------------------------------------------
+const _moduleDir =
+  typeof import.meta.url === 'string'
+    ? path.dirname(fileURLToPath(import.meta.url))
+    : (() => {
+        console.error(
+          '[playback-routes] import.meta.url is undefined — ESM requirement violated. ' +
+            'Falling back to process.cwd() for path resolution; recordings directory may be incorrect. ' +
+            'Ensure the server is built and run as ESM (esbuild --format=esm).'
+        );
+        return process.cwd();
+      })();
+const recordingsDir = path.resolve(_moduleDir, '../demo/recordings');
+
+// Evaluated once at module load time so that toggling the environment variable
+// at runtime cannot leave playback running in an uncontrollable state (e.g. an
+// operator sets DEMO_MODE=true, issues /start, then unsets it — without this
+// cache the stop/pause/resume routes would 403 while playback continued).
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
 
 const router = Router();
 const playback = getPlaybackService();
@@ -188,8 +241,26 @@ router.get('/status', (_req: Request, res: Response) => {
  *   - loop?: boolean (loop continuously, default false)
  */
 router.post('/start', async (req: Request, res: Response) => {
-  // Prevent race condition: block concurrent /start requests
-  // Without this mutex, two simultaneous requests could both create event handlers
+  if (!DEMO_MODE) {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
+  // NOTE: This guard MUST remain OUTSIDE the try/finally block.
+  // If it were inside try, a second concurrent request hitting this check would
+  // return a 409, but the finally block would still execute — resetting
+  // isStartingPlayback=false while the first request's startPlayback() await is
+  // still in-flight. That would allow a third request to slip through the guard
+  // before the first has finished, defeating the mutex entirely.
+  // Keeping the guard before try ensures 409 responses bypass finally completely.
+  //
+  // Conversely, the ASSIGNMENT (isStartingPlayback = true) is intentionally
+  // INSIDE try so that all validation failures (missing file, invalid speed,
+  // invalid loop, path traversal, non-.jsonl extension) release the mutex via
+  // the finally block. Those failures should not hold the lock, and finally
+  // guarantees the reset regardless of which early return is hit.
   if (isStartingPlayback) {
     return res.status(409).json({
       success: false,
@@ -197,8 +268,8 @@ router.post('/start', async (req: Request, res: Response) => {
     });
   }
 
-  isStartingPlayback = true;
   try {
+    isStartingPlayback = true;
     const { file, speed = 1, loop = false } = req.body;
 
     if (!file) {
@@ -231,24 +302,47 @@ router.post('/start', async (req: Request, res: Response) => {
       });
     }
 
-    // Path traversal protection: always resolve relative to recordings directory
-    // SECURITY: Never trust user input for path construction
-    const recordingsDir = path.resolve('demo/recordings');
+    // Path traversal protection: always resolve relative to the module-scope
+    // `recordingsDir` constant (computed once at module load time).
+    // SECURITY: Never trust user input for path construction.
 
     // Reject absolute paths and explicit path traversal attempts
-    if (typeof file !== 'string' || file.includes('..') || path.isAbsolute(file)) {
+    if (typeof file !== 'string' || file.includes('..') || file.includes('\x00') || path.isAbsolute(file)) {
       return res.status(403).json({
         success: false,
         error: 'Access denied: invalid file path',
       });
     }
 
+    // Only allow .jsonl files. Without this check any file that happens to
+    // exist in demo/recordings/ (configs, credentials, binaries) would be
+    // readable via this endpoint.
+    if (!file.endsWith('.jsonl')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid file: only .jsonl files are supported',
+      });
+    }
+
     // Construct path within recordings directory only
+    // NOTE: If demo/recordings does not exist on disk, startPlayback() will
+    // throw and the caller will receive a 500 Internal Server Error rather
+    // than a clean 404. This is intentional and acceptable: the recordings
+    // directory is part of the server's required deployment artifact; its
+    // absence is a misconfiguration, not a normal "not found" scenario.
     const resolvedPath = path.resolve(recordingsDir, file);
 
     // Double-check the resolved path stays within the recordings directory
-    // This catches edge cases like symlinks or encoded characters
-    if (!resolvedPath.startsWith(recordingsDir + path.sep) && resolvedPath !== recordingsDir) {
+    // This catches edge cases like symlinks or encoded characters.
+    // Assumes case-sensitive filesystem (Linux production). On macOS with
+    // case-insensitive APFS, case-variant paths could bypass this check.
+    // NOTE: The case-sensitivity risk is acceptable in practice because
+    // `recordingsDir` is resolved from the server module's own filesystem
+    // location (not from user-controlled input), so an attacker cannot choose
+    // an arbitrary target directory — only filenames within the pre-fixed
+    // recordings directory are user-supplied. Case-variant filename collisions
+    // within that narrow directory are not a realistic attack vector.
+    if (!resolvedPath.startsWith(recordingsDir + path.sep)) {
       return res.status(403).json({
         success: false,
         error: 'Access denied: path traversal detected',
@@ -276,11 +370,11 @@ router.post('/start', async (req: Request, res: Response) => {
       currentEventHandler = null;
     }
 
-    // Get playback data source (works without Kafka)
+    // Get playback data source (demo playback only — not a Kafka replacement)
     const playbackDataSource = getPlaybackDataSource();
 
-    // Forward ALL playback events through PlaybackDataSource
-    // This ensures events stream to WebSocket without requiring Kafka
+    // Forward ALL playback events through PlaybackDataSource for WebSocket broadcast
+    // Note: this is for demo/recording replay only. Live operation requires Kafka.
     currentEventHandler = (recordedEvent) => {
       const event = recordedEvent as { topic: string; value: unknown };
       // Use PlaybackDataSource for direct WebSocket broadcast
@@ -337,6 +431,13 @@ router.post('/start', async (req: Request, res: Response) => {
  * Pause current playback
  */
 router.post('/pause', (_req: Request, res: Response) => {
+  if (!DEMO_MODE) {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
   playback.pausePlayback();
   res.json({
     success: true,
@@ -350,6 +451,13 @@ router.post('/pause', (_req: Request, res: Response) => {
  * Resume paused playback
  */
 router.post('/resume', (_req: Request, res: Response) => {
+  if (!DEMO_MODE) {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
   playback.resumePlayback();
   res.json({
     success: true,
@@ -363,6 +471,13 @@ router.post('/resume', (_req: Request, res: Response) => {
  * Stop playback and restore live data from snapshot
  */
 router.post('/stop', (_req: Request, res: Response) => {
+  if (!DEMO_MODE) {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
   // Clean up event handler to prevent stale handler on next start
   if (currentEventHandler) {
     playback.off('event', currentEventHandler);
@@ -394,6 +509,13 @@ router.post('/stop', (_req: Request, res: Response) => {
  *   - speed: number (multiplier, e.g., 0.5, 1, 2, 5)
  */
 router.post('/speed', (req: Request, res: Response) => {
+  if (!DEMO_MODE) {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
   const { speed } = req.body;
 
   // Reject non-finite values (NaN, Infinity, -Infinity)
@@ -427,6 +549,13 @@ router.post('/speed', (req: Request, res: Response) => {
  *   - loop: boolean (enable/disable loop)
  */
 router.post('/loop', (req: Request, res: Response) => {
+  if (!DEMO_MODE) {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
   const { loop } = req.body;
 
   if (typeof loop !== 'boolean') {
@@ -453,7 +582,21 @@ export function cleanupPlaybackRoutes(): void {
     playback.off('event', currentEventHandler);
     currentEventHandler = null;
   }
+  // Defensively reset the mutex flag in case shutdown occurs mid-start
+  // (i.e. while the startPlayback() await is in flight). The process is
+  // shutting down anyway, but a clean reset avoids leaving the flag stuck
+  // at true if the module is somehow re-evaluated in tests.
+  isStartingPlayback = false;
   playback.stopPlayback();
+
+  // Restore the EventConsumer state snapshot if playback is active at shutdown
+  // time (e.g. SIGTERM mid-playback). The /stop route calls restoreState() on a
+  // normal user-initiated stop; mirror that here so the snapshot is not silently
+  // discarded when the process is killed while demo playback is in flight.
+  const eventConsumer = getEventConsumer();
+  if (eventConsumer) {
+    eventConsumer.restoreState();
+  }
 }
 
 export default router;
