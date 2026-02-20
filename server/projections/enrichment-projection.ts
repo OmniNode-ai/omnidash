@@ -331,12 +331,16 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     if (Date.now() - lastDispatched < EnrichmentProjection.ENSURE_FRESH_COOLDOWN_MS) {
       const cached = this.ensureFreshForWindowLastSnapshot.get(window);
       if (cached !== undefined) return cached;
-      // No snapshot yet (first call before any query resolves) — fall through
-      // to dispatch a new query set. This may issue a duplicate set if called
-      // concurrently while the first query is in-flight but not yet resolved;
-      // the first .then() will overwrite lastSnapshot when it resolves.
-      // Covered by the in-flight coalescer on the NEXT call once lastSnapshot
-      // is populated. This is the known first-call limitation; see TODO above.
+      // No snapshot yet — two cases:
+      //  a) First call before any query resolves: fall through to dispatch.
+      //     The in-flight coalescer will catch subsequent callers once the Map
+      //     entry is written a few lines below.
+      //  b) After a failed query (_queryForWindow rejection): lastDispatched was
+      //     stamped but lastSnapshot was never set (.then() didn't run). Each
+      //     caller within the 500ms cooldown will fall through here and retry,
+      //     which is the correct error-recovery behavior. Repeated HTTP 500s
+      //     for 500ms on DB failure are expected and intentional.
+      // In both cases: fall through to dispatch a fresh query set.
     }
 
     const db = tryGetIntelligenceDb();

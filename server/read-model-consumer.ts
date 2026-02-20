@@ -874,6 +874,17 @@ export class ReadModelConsumer {
     // clause suppresses a duplicate the insert is a no-op and rowCount is 0;
     // emitting in that case would cause spurious WebSocket invalidation
     // broadcasts on every duplicate event. (OMN-2373)
+    //
+    // NOTE (at-least-once edge case): the emit fires after the DB commit but
+    // before the watermark is advanced by the caller.  If the process crashes
+    // in this narrow window, Kafka redelivers the message, ON CONFLICT DO
+    // NOTHING fires (rowCount=0), and no second invalidation is emitted.
+    // Clients that connected during the window may miss one real-time update;
+    // they will receive the correct data on their next poll. This is an
+    // inherent at-least-once delivery trade-off: moving the emit to after
+    // watermark advancement would close the window but add complexity.  The
+    // chosen ordering (emit before watermark) prioritises real-time freshness
+    // for the common case over theoretical crash-recovery purity.
     if (insertedRowCount > 0) {
       // Wrapped defensively: a failure here must not block watermark advancement.
       try {
