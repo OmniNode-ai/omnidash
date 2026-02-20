@@ -330,7 +330,10 @@ export class PostgresAdapter {
       throw new Error(`Table ${tableName} not found in schema`);
     }
 
-    let query = this.db.select({ count: sql<number>`count(*)` }).from(table);
+    // Note: PostgreSQL returns count(*) as a string (bigint), not a number.
+    // The sql<{ count: string }> annotation reflects the actual DB return type.
+    // ensureNumeric() handles the string→number conversion at runtime.
+    let query = this.db.select({ count: sql<{ count: string }>`count(*)` }).from(table);
 
     if (where) {
       const conditions = this.buildWhereConditions(table, where);

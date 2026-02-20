@@ -837,6 +837,19 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
           return [];
         };
       }
+      if (prop === 'getStatistics') {
+        return async (..._args: unknown[]) => {
+          console.warn('[EventBusDataSource] getStatistics called but Kafka is not available — returning zero-value shape. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          return {
+            total_events: 0,
+            events_by_type: {},
+            events_by_tenant: {},
+            events_per_minute: 0,
+            oldest_event: null,
+            newest_event: null,
+          };
+        };
+      }
       if (prop === 'getEventChainStats') {
         return async () => {
           console.warn('[EventBusDataSource] getEventChainStats called but Kafka is not available — returning zero-value shape. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');

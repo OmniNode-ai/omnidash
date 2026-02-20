@@ -283,7 +283,10 @@ router.post('/start', async (req: Request, res: Response) => {
     const resolvedPath = path.resolve(recordingsDir, file);
 
     // Double-check the resolved path stays within the recordings directory
-    // This catches edge cases like symlinks or encoded characters
+    // This catches edge cases like symlinks or encoded characters.
+    // Assumes case-sensitive filesystem (Linux production). On macOS with
+    // case-insensitive APFS, case-variant paths could bypass this check —
+    // acceptable since demo playback is development-only.
     if (!resolvedPath.startsWith(recordingsDir + path.sep) && resolvedPath !== recordingsDir) {
       return res.status(403).json({
         success: false,
