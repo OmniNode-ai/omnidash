@@ -50,10 +50,11 @@ type Db = NonNullable<ReturnType<typeof tryGetIntelligenceDb>>;
  *   - ensureFreshForWindow() — validates against ACCEPTED_WINDOWS before calling
  *   - querySnapshot()        — hardcodes '24h', always a valid value
  *
- * Because every call path guarantees a valid window, the default branch is
- * intentionally absent. An explicit throw is used so that any future caller
- * that bypasses the validation layer receives an immediate error rather than
- * silently getting 7-day data for an unrecognised window.
+ * Because every call path guarantees a valid window, a silent fallback
+ * default is intentionally absent. An explicit `default: throw` is used so
+ * that any future caller that bypasses the validation layer receives an
+ * immediate error rather than silently getting 7-day data for an unrecognised
+ * window.
  *
  * @param window - Time window identifier. Accepted values: '24h', '7d', '30d'.
  * @returns A PostgreSQL INTERVAL string suitable for interpolation into a raw
@@ -297,6 +298,15 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     // rapid polling (e.g. a dashboard hitting this endpoint every 200 ms)
     // from hammering the database when no in-flight request is available to
     // coalesce onto.
+    //
+    // NOTE on concurrent-caller "race": the only path that bypasses both the
+    // in-flight coalescer (line 292) AND this cooldown is a caller that arrives
+    // AFTER inFlight.delete() (in .finally()) but BEFORE lastSnapshot.set()
+    // (in .then()). That window is a single microtask queue tick — between
+    // the .then() and .finally() handlers of the resolved promise — and no
+    // external I/O or macro-task can interleave there. In practice this window
+    // is unreachable from concurrent HTTP requests, which arrive as separate
+    // macro-tasks. No extra guard is needed.
     const lastDispatched = this.ensureFreshForWindowLastDispatched.get(window) ?? 0;
     if (Date.now() - lastDispatched < EnrichmentProjection.ENSURE_FRESH_COOLDOWN_MS) {
       const cached = this.ensureFreshForWindowLastSnapshot.get(window);
@@ -349,6 +359,11 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    *   DATE_TRUNC granularity) and the derived INTERVAL string.
    * @returns A fully-populated `EnrichmentPayload` assembled from the
    *   parallel sub-query results.
+   * @throws If any sub-query rejects (e.g. DB unavailable, missing column
+   *   during a partial schema migration). The rejection propagates through
+   *   `ensureFreshForWindow` to the route handler, which returns HTTP 500.
+   *   This is the intended degradation: a broken schema should fail loudly
+   *   rather than return partial or stale data silently.
    */
   private async _queryForWindow(db: Db, window: string): Promise<EnrichmentPayload> {
     const interval = windowToInterval(window);
