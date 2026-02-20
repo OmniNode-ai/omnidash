@@ -61,6 +61,8 @@ export interface ProjectionEvent {
   eventTimeMissing?: boolean;
   /** Error details, if this is an error event */
   error?: { message: string; stack?: string };
+  /** Display-only enrichment metadata derived by enrichment handlers */
+  enrichment?: EventEnrichment;
 }
 
 /**
@@ -94,6 +96,73 @@ export interface ProjectionEventItem {
   source: string;
   severity: ProjectionEvent['severity'];
   payload: Record<string, unknown>;
+  /** Display-only enrichment metadata derived by enrichment handlers */
+  enrichment?: EventEnrichment;
+}
+
+// ============================================================================
+// Event enrichment types (OMN-2416)
+// ============================================================================
+
+/**
+ * High-level category assigned to an event by enrichment handlers.
+ * Handlers derive ONLY display metadata — no domain logic.
+ */
+export type EventCategory =
+  | 'tool_event'
+  | 'routing_event'
+  | 'intent_event'
+  | 'node_heartbeat'
+  | 'node_lifecycle'
+  | 'error_event'
+  | 'unknown';
+
+/**
+ * Kind of artifact referenced or produced by a tool event.
+ */
+export type ArtifactKind =
+  | 'file_read'
+  | 'file_write'
+  | 'file_edit'
+  | 'glob_pattern'
+  | 'bash_command';
+
+/**
+ * A single artifact extracted from an event for display purposes.
+ */
+export interface EventArtifact {
+  kind: ArtifactKind;
+  value: string;
+  /** Optional human-readable label (e.g. shortened path) */
+  display?: string;
+}
+
+/**
+ * Enrichment metadata attached to an event by enrichment handlers.
+ * All fields are derived solely for display — invariant: no domain logic.
+ */
+export interface EventEnrichment {
+  enrichmentVersion: 'v1';
+  /** Handler identifier that produced this enrichment */
+  handler: string;
+  category: EventCategory;
+  /** Short human-readable summary (≤60 chars) */
+  summary: string;
+  /** Normalized event type string for display */
+  normalizedType: string;
+  /** Artifacts referenced or produced by this event */
+  artifacts: EventArtifact[];
+  // Optional display-only fields
+  toolName?: string;
+  filePath?: string;
+  bashCommand?: string;
+  nodeId?: string;
+  healthStatus?: string;
+  selectedAgent?: string;
+  confidence?: number;
+  intentType?: string;
+  actionName?: string;
+  error?: string;
 }
 
 // ============================================================================
