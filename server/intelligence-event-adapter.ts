@@ -9,16 +9,12 @@ import {
 /**
  * Payload type for `IntelligenceEventAdapter.request()`.
  *
- * IMPORTANT — compile-time safety does NOT exist here:
- * `Omit<Record<string, unknown>, 'event_id' | ...>` looks like it forbids the
- * listed keys, but TypeScript does not remove specific string-literal keys from
- * a broad index signature (`Record<string, unknown>`).  The Omit resolves to
- * `Record<string, unknown>` again — identical to the base type — so any key,
- * including the "excluded" ones, is still accepted without a type error.
- * This type declaration is purely a documentation convention and code-reader
- * signal; it provides zero compile-time enforcement of the listed restrictions.
- * Enforcement of reserved-key semantics happens entirely at runtime (see the
- * `reservedKeys` loop inside `request()`).
+ * This is `Record<string, unknown>` — any string key is accepted at compile
+ * time. There is no `Omit<...>` restriction on the type: TypeScript cannot
+ * remove specific string-literal keys from a broad index signature, so such
+ * an `Omit` would resolve to `Record<string, unknown>` anyway and provide no
+ * compile-time enforcement. Reserved-key semantics are enforced entirely at
+ * runtime (see the `reservedKeys` loop inside `request()`).
  *
  * Reserved envelope keys (`event_id`, `event_type`, `source`, `timestamp`,
  * `correlation_id`) receive special handling at runtime:
@@ -30,9 +26,9 @@ import {
  *
  * All other keys are spread directly into the inner payload object. Any key
  * matching a pre-constructed field (`source_path`, `content`, `language`,
- * `operation_type`, `project_id`, `user_id`) will overwrite the default value.
- * In non-production environments a `console.warn` is emitted when this occurs
- * so unintentional overrides are surfaced during development.
+ * `operation_type`, `options`, `project_id`, `user_id`) will overwrite the
+ * default value. In non-production environments a `console.warn` is emitted
+ * when this occurs so unintentional overrides are surfaced during development.
  */
 type PayloadOverride = Record<string, unknown>;
 
@@ -290,6 +286,12 @@ export class IntelligenceEventAdapter {
       operationType: _operationType,
       projectId: _projectId,
       userId: _userId,
+      // Strip `options` so the explicit `options: safePayloadRest.options || {}`
+      // default below is the single source of this key in the envelope payload.
+      // Without this, spreading safePayloadSpread would overwrite the default
+      // with the caller value, making the `|| {}` fallback dead code when
+      // options is present.
+      options: _options,
       ...safePayloadSpread
     } = safePayloadRest;
 

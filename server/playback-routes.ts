@@ -308,8 +308,10 @@ router.post('/start', async (req: Request, res: Response) => {
     // so an attacker cannot choose an arbitrary target directory — only filenames
     // within the pre-fixed recordings directory are user-supplied. Case-variant
     // filename collisions within that narrow directory are not a realistic attack
-    // vector. If a production guard is added in future, move the demo-mode check
-    // to this route handler (e.g. reject unless NODE_ENV !== 'production').
+    // vector.
+    // TODO: Add DEMO_MODE env-var guard if demo playback needs to be restricted in production
+    // (e.g. `if (process.env.DEMO_MODE !== 'true') return res.status(403).json(...)`).
+    // The current guard exists only at the UI layer, which is a known limitation.
     if (!resolvedPath.startsWith(recordingsDir + path.sep) && resolvedPath !== recordingsDir) {
       return res.status(403).json({
         success: false,
