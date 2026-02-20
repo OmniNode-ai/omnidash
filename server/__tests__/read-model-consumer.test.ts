@@ -306,6 +306,10 @@ describe('ReadModelConsumer', () => {
       // estimated_cost_usd → totalCostUsd (fallback) and estimatedCostUsd
       expect(insertArg.estimatedCostUsd).toBe('0.018');
       expect(insertArg.totalCostUsd).toBe('0.018');
+      // ContractLlmCallMetrics has no reported_cost_usd field, so it must fall
+      // back to '0'. Asserting this prevents a regression where reportedCostUsd
+      // accidentally picks up estimatedCostUsd instead of defaulting to zero.
+      expect(insertArg.reportedCostUsd).toBe('0');
       // timestamp_iso → bucketTime
       expect(insertArg.bucketTime).toBeInstanceOf(Date);
       // granularity defaults to 'hour' for per-call events
@@ -439,6 +443,86 @@ describe('ReadModelConsumer', () => {
       // Stats should reflect a successfully projected event
       const stats = consumer.getStats();
       expect(stats.eventsProjected).toBe(1);
+    });
+
+    it('defaults usage_source via usage_is_estimated fallback when usage_normalized.source is empty', async () => {
+      // Covers the path in read-model-consumer.ts ~line 1128 where:
+      //   (usageNormalized?.source as string) is an empty string (falsy → skipped)
+      //   top-level usage_source / usageSource are absent
+      //   → final fallback: usage_is_estimated ? 'ESTIMATED' : 'API'
+      // This is a ContractLlmCallMetrics-style payload where the nested source
+      // field is present but empty, so none of the string OR-chain guards match.
+      const { tryGetIntelligenceDb } = await import('../storage');
+
+      const insertValues = vi.fn().mockResolvedValue(undefined);
+      const insertMock = vi.fn().mockReturnValue({ values: insertValues });
+      const executeMock = vi.fn().mockResolvedValue(undefined);
+
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
+        insert: insertMock,
+        execute: executeMock,
+      });
+
+      const handleMessage = getHandleMessage(consumer);
+
+      // Case A: usage_normalized.source is empty string + usage_is_estimated=false → 'API'
+      const payloadA = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'claude-sonnet-4-6',
+        prompt_tokens: 500,
+        completion_tokens: 200,
+        total_tokens: 700,
+        estimated_cost_usd: 0.003,
+        usage_normalized: {
+          schema_version: '1.0',
+          prompt_tokens: 500,
+          completion_tokens: 200,
+          total_tokens: 700,
+          source: '', // empty string → falsy, triggers fallback
+          usage_is_estimated: false,
+        },
+        usage_is_estimated: false,
+        // No top-level usage_source field
+      });
+
+      await handleMessage(payloadA);
+
+      const insertArgA = insertValues.mock.calls[0]?.[0];
+      expect(insertArgA).toBeDefined();
+      expect(insertArgA.usageSource).toBe('API');
+
+      // Reset for Case B
+      insertValues.mockClear();
+      insertMock.mockClear();
+
+      // Case B: usage_normalized.source is empty string + usage_is_estimated=true → 'ESTIMATED'
+      const payloadB = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'claude-sonnet-4-6',
+        prompt_tokens: 500,
+        completion_tokens: 200,
+        total_tokens: 700,
+        estimated_cost_usd: 0.003,
+        usage_normalized: {
+          schema_version: '1.0',
+          prompt_tokens: 500,
+          completion_tokens: 200,
+          total_tokens: 700,
+          source: '', // empty string → falsy, triggers fallback
+          usage_is_estimated: true,
+        },
+        usage_is_estimated: true,
+        // No top-level usage_source field
+      });
+
+      await handleMessage(payloadB);
+
+      const insertArgB = insertValues.mock.calls[0]?.[0];
+      expect(insertArgB).toBeDefined();
+      expect(insertArgB.usageSource).toBe('ESTIMATED');
+
+      // Stats reflect 2 successfully projected events across the 2 sub-cases
+      const stats = consumer.getStats();
+      expect(stats.eventsProjected).toBe(2);
+      expect(stats.errorsCount).toBe(0);
     });
 
     it('coerces non-finite cost values to 0', async () => {
