@@ -442,11 +442,14 @@ export class IntelligenceEventAdapter {
           sendError
         );
       }
-      // Fall through to the single `return promise` below.
-      // The caller's `await request(...)` receives the rejection that
-      // entry.reject() delivered above as a normally propagated rejected Promise.
-      // Re-throwing would create a second, unrelated rejection; returning `promise`
-      // keeps exactly one rejection surface and preserves the structured IntelligenceError type.
+      // Rejection propagates to the caller's await — returning a rejected promise is
+      // equivalent to throwing; not a silent swallow.
+      //
+      // Fall through to the single `return promise` below. entry.reject() above settled
+      // `promise` as rejected, so the caller's `await request(...)` receives that rejection
+      // as a normally propagated rejected Promise — identical in effect to re-throwing, but
+      // without creating a second, unrelated rejection surface or unwrapping the structured
+      // IntelligenceError type.
     }
 
     return promise;

@@ -588,6 +588,15 @@ export function cleanupPlaybackRoutes(): void {
   // at true if the module is somehow re-evaluated in tests.
   isStartingPlayback = false;
   playback.stopPlayback();
+
+  // Restore the EventConsumer state snapshot if playback is active at shutdown
+  // time (e.g. SIGTERM mid-playback). The /stop route calls restoreState() on a
+  // normal user-initiated stop; mirror that here so the snapshot is not silently
+  // discarded when the process is killed while demo playback is in flight.
+  const eventConsumer = getEventConsumer();
+  if (eventConsumer) {
+    eventConsumer.restoreState();
+  }
 }
 
 export default router;

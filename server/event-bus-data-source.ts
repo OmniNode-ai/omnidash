@@ -783,6 +783,7 @@ export function isEventBusDataSourceAvailable(): boolean {
   // to surface a KAFKA_BROKERS misconfiguration at a known point rather than on the first
   // incoming request — call this function (or getEventBusDataSource()) once explicitly
   // during server startup (e.g. in server/index.ts or routes.ts after route registration).
+
   // Trigger lazy initialization if not yet done
   getEventBusDataSource();
   return eventBusDataSourceInstance !== null;
