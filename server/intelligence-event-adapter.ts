@@ -241,6 +241,11 @@ export class IntelligenceEventAdapter {
     }
 
     // Dev-only: warn when caller-supplied keys overwrite pre-constructed payload fields (overrides are supported by design).
+    // NOTE: This check only fires for non-reserved keys. Reserved keys ('event_id', 'event_type',
+    // 'source', 'timestamp') are stripped earlier in the loop above — before this point — so a
+    // caller that passes a reserved key (e.g. 'source') which also appears in preConstructedKeys
+    // will be silently stripped without triggering this warning. Do NOT add reserved keys to
+    // preConstructedKeys expecting them to be caught here; they will never reach this check.
     if (process.env.NODE_ENV !== 'production') {
       const preConstructedKeys = [
         // snake_case canonical names
