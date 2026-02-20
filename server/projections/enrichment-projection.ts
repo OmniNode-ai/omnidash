@@ -283,9 +283,10 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * actually dispatched, not when a coalesced or cooldown-cached result is
    * returned.
    *
-   * **Recommended polling interval**: >= 2 000 ms in production.  The current
-   * 500 ms cooldown is a safety floor, not a substitute for a proper per-window
-   * TTL cache.
+   * **Recommended polling interval**: >= 1 000 ms in production (>= 2× the
+   * 500 ms cooldown floor).  The cooldown is a safety net against misbehaving
+   * clients, not expected to activate under recommended polling rates.  It is
+   * a floor, not a substitute for a proper per-window TTL cache.
    *
    * TODO(OMN-2373): replace cooldown guard with a full per-window TTL cache to
    * allow longer freshness windows without hammering the DB on every poll.
@@ -319,7 +320,7 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     // coalesce onto.
     //
     // NOTE on concurrent-caller "race": the only path that bypasses both the
-    // in-flight coalescer (line 292) AND this cooldown is a caller that arrives
+    // in-flight coalescer (see inflight check above) AND this cooldown is a caller that arrives
     // AFTER inFlight.delete() (in .finally()) but BEFORE lastSnapshot.set()
     // (in .then()). That window is a single microtask queue tick — between
     // the .then() and .finally() handlers of the resolved promise — and no
