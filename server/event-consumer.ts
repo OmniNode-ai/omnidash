@@ -4321,7 +4321,8 @@ export function getEventConsumer(): EventConsumer | null {
  * or the EventConsumer constructor threw). Callers that previously relied on the optimistic
  * `true` return before initialization must be updated to treat `false` as "Kafka unavailable".
  *
- * @performance Avoid calling in per-request hot paths. On the **first call**,
+ * @performance Avoid calling in per-request hot paths (e.g. health-check
+ * endpoints polled frequently, per-request middleware). On the **first call**,
  * lazy initialization runs the `EventConsumer` constructor, which reads
  * environment variables and allocates KafkaJS client and consumer objects —
  * synchronous work, but non-trivial on the first invocation. No network I/O
@@ -4329,8 +4330,9 @@ export function getEventConsumer(): EventConsumer | null {
  * `start()` is called. On **subsequent calls** (after initialization is
  * cached), the cost is negligible — a null check on a module-level variable.
  * Still, the semantic intent of this function is an initialization probe, not
- * a cheap boolean predicate; prefer calling it once at startup and caching
- * the result rather than checking it on every request.
+ * a cheap boolean predicate; callers on hot paths should cache the result
+ * after the first successful initialization and avoid calling this function
+ * on every request.
  *
  * @returns `true` if initialization succeeded; `false` if Kafka is not configured or
  *   initialization failed. **Note**: triggers lazy initialization on first call.

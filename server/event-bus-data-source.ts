@@ -738,7 +738,8 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * missing or the EventBusDataSource constructor threw). Callers that previously relied on the
  * optimistic `true` return before initialization must treat `false` as "Kafka unavailable".
  *
- * @performance Avoid calling in per-request hot paths. On the **first call**,
+ * @performance Avoid calling in per-request hot paths (e.g. health-check
+ * endpoints polled frequently, per-request middleware). On the **first call**,
  * lazy initialization runs the `EventBusDataSource` constructor, which reads
  * environment variables and allocates KafkaJS client objects — synchronous
  * work, but non-trivial on the first invocation. No network I/O occurs during
@@ -746,8 +747,9 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * called. On **subsequent calls** (after initialization is cached), the cost
  * is negligible — a null check on a module-level variable. Still, the
  * semantic intent of this function is an initialization probe, not a cheap
- * boolean predicate; prefer calling it once at startup and caching the result
- * rather than checking it on every request.
+ * boolean predicate; callers on hot paths should cache the result after the
+ * first successful initialization and avoid calling this function on every
+ * request.
  *
  * @example
  * ```typescript

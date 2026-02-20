@@ -58,6 +58,13 @@ export interface DeleteOptions {
  * diagnostics when their singletons are first accessed. Missing KAFKA_BROKERS
  * is a misconfiguration error state, not normal operation. This adapter
  * continues serving direct database queries regardless.
+ *
+ * Note: `executeRaw()` was intentionally removed from this adapter because it
+ * used `sql.raw()` with no parameter binding, creating a SQL injection risk.
+ * All queries now go through Drizzle ORM's parameterized query builders
+ * (`eq`, `inArray`, `gte`, `lte`, `sql\`...\``, etc.). See the inline comment
+ * near the private helper methods section and the test file
+ * `server/__tests__/db-adapter.test.ts` for full rationale and coverage.
  */
 export class PostgresAdapter {
   private get db() {

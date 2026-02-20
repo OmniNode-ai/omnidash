@@ -34,10 +34,7 @@ import {
  * In non-production environments a `console.warn` is emitted when this occurs
  * so unintentional overrides are surfaced during development.
  */
-type PayloadOverride = Omit<
-  Record<string, unknown>,
-  'event_id' | 'event_type' | 'source' | 'timestamp' | 'correlation_id'
->;
+type PayloadOverride = Record<string, unknown>;
 
 /**
  * Error class for intelligence request failures with optional error code.
@@ -290,6 +287,19 @@ export class IntelligenceEventAdapter {
         ...safePayloadRest, // Allow override of any fields
       },
     };
+
+    // Guard against duplicate correlation IDs: if a request with the same key is already
+    // in-flight, reject the new request immediately rather than silently overwriting the
+    // existing entry. Overwriting would orphan the first caller's resolve/reject callbacks
+    // and leave its timeout handle running — a memory and timer leak.
+    if (this.pending.has(correlationKey)) {
+      return Promise.reject(
+        new Error(
+          `Duplicate correlation_id: a request with this ID is already in-flight ("${correlationKey}"). ` +
+            'Ensure each concurrent request uses a unique correlation ID.'
+        )
+      );
+    }
 
     // Promise with timeout tracking
     const promise = new Promise<any>((resolve, reject) => {

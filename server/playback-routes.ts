@@ -18,6 +18,41 @@ import {
 } from '@shared/schemas/playback-config';
 import { emitPlaybackEvent } from './playback-events';
 
+// ---------------------------------------------------------------------------
+// Module-scope path constants — evaluated once at module load time.
+//
+// ESM REQUIREMENT: This file is ESM-only. The build pipeline (esbuild with
+// --format=esm, see package.json "build:server" script) always produces native
+// ESM output, so `import.meta.url` is guaranteed to be defined at runtime under
+// normal operation. Do NOT convert the build output to CJS; doing so would make
+// `import.meta.url` undefined and break path resolution here.
+//
+// Defensive fallback: if `import.meta.url` is somehow undefined (e.g. an
+// unexpected CJS wrapper, a test runner that evaluates the file outside ESM
+// context, or a future build change), fall back to `process.cwd()` so the
+// server does not crash at module load time.
+// The fallback path intentionally disables demo playback — all requests will
+// fail the containment check and return 403. This is by design: if
+// import.meta.url is not available, the module path cannot be trusted, so
+// serving any files would be unsafe.
+//
+// Path is correct in both dev (server/playback-routes.ts → ../demo/recordings)
+// and prod (dist/index.js → ../demo/recordings) since both resolve to
+// <repo-root>/demo/recordings. The `..` is intentional, not coincidental.
+// ---------------------------------------------------------------------------
+const _moduleDir =
+  typeof import.meta.url === 'string'
+    ? path.dirname(fileURLToPath(import.meta.url))
+    : (() => {
+        console.error(
+          '[playback-routes] import.meta.url is undefined — ESM requirement violated. ' +
+            'Falling back to process.cwd() for path resolution; recordings directory may be incorrect. ' +
+            'Ensure the server is built and run as ESM (esbuild --format=esm).'
+        );
+        return process.cwd();
+      })();
+const recordingsDir = path.resolve(_moduleDir, '../demo/recordings');
+
 const router = Router();
 const playback = getPlaybackService();
 
@@ -232,41 +267,9 @@ router.post('/start', async (req: Request, res: Response) => {
       });
     }
 
-    // Path traversal protection: always resolve relative to recordings directory.
-    // Anchored to this module's location (not process.cwd()) so the path is
-    // correct regardless of which directory the server process is started from.
-    // SECURITY: Never trust user input for path construction
-    //
-    // Path is correct in both dev (server/playback-routes.ts → ../demo/recordings)
-    // and prod (dist/index.js → ../demo/recordings) since both resolve to
-    // <repo-root>/demo/recordings. The `..` is intentional, not coincidental.
-    //
-    // ESM REQUIREMENT: This file is ESM-only. The build pipeline (esbuild with
-    // --format=esm, see package.json "build:server" script) always produces native
-    // ESM output, so `import.meta.url` is guaranteed to be defined at runtime under
-    // normal operation. Do NOT convert the build output to CJS; doing so would make
-    // `import.meta.url` undefined and break path resolution here.
-    //
-    // Defensive fallback: if `import.meta.url` is somehow undefined (e.g. an
-    // unexpected CJS wrapper, a test runner that evaluates the file outside ESM
-    // context, or a future build change), fall back to `process.cwd()` so the
-    // server does not crash at this point.
-    // The fallback path intentionally disables demo playback — all requests will
-    // fail the containment check and return 403. This is by design: if
-    // import.meta.url is not available, the module path cannot be trusted, so
-    // serving any files would be unsafe.
-    const moduleDir =
-      typeof import.meta.url === 'string'
-        ? path.dirname(fileURLToPath(import.meta.url))
-        : (() => {
-            console.error(
-              '[playback-routes] import.meta.url is undefined — ESM requirement violated. ' +
-                'Falling back to process.cwd() for path resolution; recordings directory may be incorrect. ' +
-                'Ensure the server is built and run as ESM (esbuild --format=esm).'
-            );
-            return process.cwd();
-          })();
-    const recordingsDir = path.resolve(moduleDir, '../demo/recordings');
+    // Path traversal protection: always resolve relative to the module-scope
+    // `recordingsDir` constant (computed once at module load time).
+    // SECURITY: Never trust user input for path construction.
 
     // Reject absolute paths and explicit path traversal attempts
     if (typeof file !== 'string' || file.includes('..') || file.includes('\x00') || path.isAbsolute(file)) {
