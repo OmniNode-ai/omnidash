@@ -4313,10 +4313,11 @@ export function getEventConsumer(): EventConsumer | null {
  * `getEventConsumer()` plus a null check — both are safe to call at any
  * point.
  *
- * @performance Not safe for per-request hot paths. Lazy initialization runs
- * synchronously on the first call and may trigger constructor work (environment
- * variable reads, object allocation). Intended for startup checks and
- * one-time guards only — do not call inside request-time middleware or
+ * @performance Not safe for per-request hot paths. Triggers lazy Kafka
+ * initialization on first call, which may involve network I/O (broker
+ * reachability probes, topic metadata fetches). Lazy initialization also runs
+ * constructor work (environment variable reads, object allocation). Call once
+ * at startup instead — do not use inside request-time middleware or
  * frequently-invoked handlers.
  *
  * @returns true if EventConsumer singleton is initialized, false otherwise
@@ -4359,7 +4360,7 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
         // Throw asynchronously to match the real async start() signature and ensure
         // callers that await start() surface the error rather than silently getting undefined.
         return async (..._args: unknown[]) => {
-          throw new Error('[EventConsumer] start called before initialization — Kafka not configured');
+          throw new Error('[EventConsumer] start called before initialization — Kafka is not configured or could not be reached');
         };
       }
       if (prop === 'stop') {

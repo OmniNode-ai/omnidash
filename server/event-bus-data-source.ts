@@ -731,10 +731,11 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * `getEventBusDataSource()` plus a null check — both are safe to call at any
  * point.
  *
- * @performance Not safe for per-request hot paths. Lazy initialization runs
- * synchronously on the first call and may trigger constructor work (environment
- * variable reads, object allocation). Intended for startup checks and
- * one-time guards only — do not call inside request-time middleware or
+ * @performance Not safe for per-request hot paths. Triggers lazy Kafka
+ * initialization on first call, which may involve network I/O (broker
+ * reachability probes, topic metadata fetches). Lazy initialization also runs
+ * constructor work (environment variable reads, object allocation). Call once
+ * at startup instead — do not use inside request-time middleware or
  * frequently-invoked handlers.
  *
  * @example
@@ -798,19 +799,19 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
         };
       }
       if (prop === 'queryEvents') {
-        return (..._args: unknown[]) => {
+        return async (..._args: unknown[]) => {
           console.error('[EventBusDataSource] queryEvents called before Kafka initialization — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
           return [];
         };
       }
       if (prop === 'queryEventChainsOLD') {
-        return (..._args: unknown[]) => {
+        return async (..._args: unknown[]) => {
           console.error('[EventBusDataSource] queryEventChainsOLD called before Kafka initialization — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
           return [];
         };
       }
       if (prop === 'queryEventChains') {
-        return (..._args: unknown[]) => {
+        return async (..._args: unknown[]) => {
           console.error('[EventBusDataSource] queryEventChains called before Kafka initialization — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
           return [];
         };

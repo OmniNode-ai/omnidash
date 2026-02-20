@@ -209,6 +209,10 @@ export class IntelligenceEventAdapter {
     const rawCidCamel = payload?.correlationId;
     // Prefer correlation_id; fall back to correlationId; only generate a UUID when neither is present.
     // Intentionally avoids || short-circuit so that a falsy-but-valid value like 0 is preserved.
+    // NOTE: Callers are responsible for ensuring correlation ID uniqueness. Passing a constant
+    // value such as 0 across concurrent requests will result in those requests sharing the same
+    // correlation ID string ("0"), which may cause response cross-talk in systems that route
+    // responses or aggregate telemetry by correlationId.
     const rawCorrelationId =
       (typeof rawCid === 'string' || typeof rawCid === 'number')
         ? rawCid
@@ -238,7 +242,7 @@ export class IntelligenceEventAdapter {
 
     // Dev-only: warn when caller-supplied keys overwrite pre-constructed payload fields (overrides are supported by design).
     if (process.env.NODE_ENV !== 'production') {
-      const preConstructedKeys = ['source_path', 'content', 'language', 'operation_type', 'project_id', 'user_id'] as const;
+      const preConstructedKeys = ['source_path', 'content', 'language', 'operation_type', 'options', 'project_id', 'user_id'] as const;
       for (const key of preConstructedKeys) {
         if (key in safePayloadRest) {
           console.warn(
