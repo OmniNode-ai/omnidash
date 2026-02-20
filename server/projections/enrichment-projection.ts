@@ -321,10 +321,11 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     // so that if _queryForWindow() throws synchronously (edge case), we don't
     // stamp lastDispatched without a corresponding in-flight entry — which
     // would cause 500ms of repeated throws before the cooldown expires.
-    // NOTE: No async yield between this and the in-flight set() above — both
-    // are synchronous, so no concurrent call can interleave. Timestamp is
-    // stamped after promise construction to avoid 500ms lockout if
-    // _queryForWindow throws synchronously.
+    // NOTE: Both .set() calls below are synchronous with no await between them,
+    // so JS single-threaded execution guarantees they appear atomic to any
+    // concurrent callers — no other task can observe a state where one Map is
+    // updated but the other is not. Timestamp is stamped after promise
+    // construction to avoid 500ms lockout if _queryForWindow throws synchronously.
     this.ensureFreshForWindowLastDispatched.set(window, Date.now());
     this.ensureFreshForWindowInFlight.set(window, promise);
     return promise;
@@ -410,6 +411,12 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
         COUNT(*) FILTER (WHERE outcome = 'error')::int                              AS errors,
         COUNT(*) FILTER (WHERE outcome = 'inflated')::int                           AS inflated
       FROM context_enrichment_events
+      -- NOTE: The interval string is produced only by windowToInterval(), which maps
+      -- pre-validated window values to hardcoded literals. No user input reaches
+      -- sql.raw() — the two-layer ACCEPTED_WINDOWS guard and route 400 ensure this.
+      -- Parameterized INTERVAL bindings are not used here because the Drizzle neon
+      -- driver does not support interval parameters in all contexts; this allowlist
+      -- approach is the intentional design (see PR #104).
       WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
     `);
 
@@ -466,6 +473,7 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
         ROUND(AVG(latency_ms)::numeric, 2)                                          AS avg_latency_ms,
         ROUND(AVG(net_tokens_saved)::numeric, 2)                                    AS avg_net_tokens_saved
       FROM context_enrichment_events
+      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
       WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
       GROUP BY channel
       ORDER BY total DESC
@@ -513,6 +521,7 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
         COALESCE(PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY latency_ms), 0)::int AS p99_ms,
         COUNT(*)::int                                                                AS sample_count
       FROM context_enrichment_events
+      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
       WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
       GROUP BY model_name
       ORDER BY sample_count DESC
@@ -579,6 +588,7 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
         ROUND(AVG(tokens_before)::numeric, 2)                   AS avg_tokens_before,
         ROUND(AVG(tokens_after)::numeric, 2)                    AS avg_tokens_after
       FROM context_enrichment_events
+      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
       WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
       GROUP BY bucket
       ORDER BY bucket ASC
@@ -650,7 +660,12 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
         ROUND(AVG(quality_score)::numeric, 4)                   AS avg_quality_score,
         COUNT(*)::int                                            AS search_count
       FROM context_enrichment_events
+      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
       WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+        -- Only events with a similarity score are counted here — events processed via
+        -- exact-match or fallback path have NULL similarity_score and are intentionally
+        -- excluded from quality trend metrics. This means search_count here will be lower
+        -- than the summary's total event counts, which include all outcomes.
         AND similarity_score IS NOT NULL
       GROUP BY bucket
       ORDER BY bucket ASC
@@ -700,6 +715,7 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
         agent_name
       FROM context_enrichment_events
       WHERE outcome = 'inflated'
+        -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
         AND created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
       ORDER BY created_at DESC
       LIMIT 100

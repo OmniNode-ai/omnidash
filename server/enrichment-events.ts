@@ -19,10 +19,10 @@ export const enrichmentEventEmitter = new EventEmitter();
 // call adds an 'enrichment-invalidate' listener, so without a raised cap
 // Node.js will emit a warning after the default limit of 10 is reached.
 // Listener budget breakdown:
-//   ~1 per active WebSocket client (broadcasts enrichment-invalidate on each
-//      projection), bounded in practice by dashboard concurrency (typically 1-5)
-//   + 1 per hot-reload cycle (dev server re-registers without removing the old
-//      listener until the previous module instance is GC'd)
+//   1 per setupWebSocket() call (a single handler broadcasts to all subscribed
+//      clients internally) + 1 per hot-reload cycle during development (dev
+//      server re-registers without removing the old listener until the previous
+//      module instance is GC'd)
 //   = comfortably below 10 in normal use, but Node.js warns at the default cap
 //     of 10.  20 gives 2× headroom without masking genuine listener leaks.
 enrichmentEventEmitter.setMaxListeners(20);
