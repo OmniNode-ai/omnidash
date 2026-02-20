@@ -272,28 +272,42 @@ export class IntelligenceEventAdapter {
       }
     }
 
-    // Remove camelCase alias keys that were already mapped to their snake_case equivalents
-    // above (source_path, operation_type, project_id, user_id). Without this destructure,
-    // spreading safePayloadRest at the end of the payload object would emit BOTH the
-    // snake_case field (e.g. `source_path`) AND the camelCase alias (e.g. `sourcePath`),
-    // resulting in redundant duplicate keys in the Kafka envelope.
+    // Strip ALL known fields — both camelCase aliases AND snake_case canonicals — from the
+    // spread object so that `...safePayloadSpread` (used last in the envelope payload below)
+    // only contains truly "extra" fields that this adapter has no knowledge of.
+    //
+    // WHY this matters: the explicit construction lines below use `||` fallbacks, e.g.
+    //   `language: safePayloadRest.language || 'python'`
+    // If `language` (or any other known snake_case field) is left in `safePayloadSpread`,
+    // the trailing `...safePayloadSpread` spread OVERWRITES the already-constructed default,
+    // bypassing the fallback entirely. For example, a caller passing `language: ''` would
+    // cause `safePayloadRest.language || 'python'` to correctly evaluate to `'python'`,
+    // but then `...safePayloadSpread` would overwrite it back to `''`.
     //
     // Naming distinction:
-    //   safePayloadRest  — still retains the camelCase alias keys (sourcePath,
-    //                      operationType, projectId, userId). Used ONLY at lines
-    //                      ~293-299 for default-value lookups (e.g.
-    //                      `safePayloadRest.sourcePath || safePayloadRest.source_path`).
-    //   safePayloadSpread — the camelCase aliases have been removed. Used ONLY
-    //                      for the final `...safePayloadSpread` spread into the
-    //                      envelope payload to avoid emitting duplicate keys.
+    //   safePayloadRest   — retains BOTH snake_case canonicals AND camelCase aliases. Used
+    //                       ONLY at the explicit construction lines below for default-value
+    //                       lookups (e.g. `safePayloadRest.sourcePath || safePayloadRest.source_path`).
+    //                       Do NOT spread this variable.
+    //   safePayloadSpread — all known fields (both casings) have been removed. Used ONLY
+    //                       for the final `...safePayloadSpread` spread into the envelope
+    //                       payload. Contains only fields the adapter has no knowledge of.
     //
-    // Despite its name, safePayloadRest is NOT a fully "cleaned" version of the
-    // payload — it still contains the camelCase aliases. Do not use it for spreading.
+    // Note: `correlation_id` is already absent here — it was stripped at the earlier
+    // `{ correlation_id: _cid, correlationId: _cidCamel, ...payloadRest }` destructure.
     const {
+      // camelCase aliases
       sourcePath: _sourcePath,
       operationType: _operationType,
       projectId: _projectId,
       userId: _userId,
+      // snake_case canonicals — strip these too so they cannot overwrite the || fallbacks below
+      source_path: _source_path,
+      content: _content,
+      language: _language,
+      operation_type: _operation_type,
+      project_id: _project_id,
+      user_id: _user_id,
       // Strip `options` so the explicit `options: safePayloadRest.options || {}`
       // default below is the single source of this key in the envelope payload.
       // Without this, spreading safePayloadSpread would overwrite the default
@@ -327,7 +341,7 @@ export class IntelligenceEventAdapter {
         options: safePayloadRest.options || {},
         project_id: safePayloadRest.projectId || safePayloadRest.project_id || 'omnidash',
         user_id: safePayloadRest.userId || safePayloadRest.user_id || 'system',
-        ...safePayloadSpread, // Allow override of any fields; camelCase aliases already stripped above
+        ...safePayloadSpread, // Allow override of any fields; all known keys (camelCase aliases + snake_case canonicals) already stripped above
       },
     };
 

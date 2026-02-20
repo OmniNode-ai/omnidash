@@ -31,10 +31,12 @@ import { emitPlaybackEvent } from './playback-events';
 // unexpected CJS wrapper, a test runner that evaluates the file outside ESM
 // context, or a future build change), fall back to `process.cwd()` so the
 // server does not crash at module load time.
-// The fallback path intentionally disables demo playback — all requests will
-// fail the containment check and return 403. This is by design: if
-// import.meta.url is not available, the module path cannot be trusted, so
-// serving any files would be unsafe.
+// If `import.meta.url` is unavailable (non-ESM context), the fallback uses
+// `process.cwd()`, which may resolve to an unintended directory. This is
+// logged as an error at startup. The fallback path may or may not point to a
+// valid recordings directory depending on where the server is started from —
+// playback is NOT guaranteed to be disabled; valid .jsonl file requests WILL
+// pass the containment check if the resolved directory happens to exist.
 //
 // Path is correct in both dev (server/playback-routes.ts → ../demo/recordings)
 // and prod (dist/index.js → ../demo/recordings) since both resolve to
