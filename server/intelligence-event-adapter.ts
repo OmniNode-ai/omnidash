@@ -15,7 +15,7 @@ import {
  */
 type PayloadOverride = Omit<
   Record<string, unknown>,
-  'event_id' | 'correlation_id' | 'event_type' | 'source' | 'timestamp'
+  'event_id' | 'event_type' | 'source' | 'timestamp'
 >;
 
 /**
@@ -181,10 +181,12 @@ export class IntelligenceEventAdapter {
    *   they belong to the outer envelope and passing them here places them
    *   in the wrong layer:
    *   - `event_id`
-   *   - `correlation_id`
    *   - `event_type`
    *   - `source`
    *   - `timestamp`
+   *   `correlation_id` IS supported: it is explicitly extracted from `payload`
+   *   before the spread and placed on the outer envelope, so it is safely
+   *   handled and does not end up in the inner payload.
    *   Any key matching a pre-constructed field (`source_path`, `content`,
    *   `language`, `operation_type`, `project_id`, `user_id`) will silently
    *   overwrite it.
