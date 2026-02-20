@@ -4452,21 +4452,24 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
         return (...args: unknown[]) => {
           if (prop === 'on' || prop === 'once') {
             // Listener was NOT registered — Kafka is unavailable so no events will fire.
-            console.error(
+            // Warn rather than error: listener registration before start is a normal init
+            // ordering pattern and does not indicate a bug in the caller.
+            console.warn(
               `[EventConsumer] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
               'Kafka is not initialized; listener was NOT registered. ' +
               'Set KAFKA_BROKERS in .env to enable real event delivery.'
             );
           } else if (prop === 'removeListener') {
             // No-op: there is nothing to remove because on/once stubs never registered a
-            // real listener. Log at error level — matches severity of on/once stubs.
-            console.error(
+            // real listener. Warn rather than error: teardown cleanup (e.g. React useEffect
+            // return) is a normal pattern, not a bug.
+            console.warn(
               `[EventConsumer] .removeListener() called on stub proxy (event: "${String(args[0])}") — ` +
               'no-op because Kafka is not initialized and no listener was ever registered.'
             );
           } else if (prop === 'emit') {
             // No-op: no real EventEmitter exists to dispatch to. Log at error level —
-            // matches severity of on/once stubs; the event was silently dropped.
+            // emitting to an unavailable bus is more serious; the event was silently dropped.
             console.error(
               `[EventConsumer] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
               'no-op because Kafka is not initialized; event was not dispatched.'

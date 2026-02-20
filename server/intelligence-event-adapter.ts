@@ -322,11 +322,10 @@ export class IntelligenceEventAdapter {
         );
       }
       // Return the already-rejected promise rather than re-throwing here.
-      // Async functions implicitly await any Promise they return, so the
-      // caller's `await request(...)` will correctly receive the rejection
-      // that entry.reject() delivered above. Re-throwing would create a
-      // second, unrelated rejection; returning `promise` keeps exactly one
-      // rejection surface and preserves the structured IntelligenceError type.
+      // The caller's `await request(...)` receives the rejection that
+      // entry.reject() delivered above as a normally propagated rejected Promise.
+      // Re-throwing would create a second, unrelated rejection; returning `promise`
+      // keeps exactly one rejection surface and preserves the structured IntelligenceError type.
       return promise;
     }
 
@@ -480,6 +479,26 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
       // Return readonly topic properties
       if (prop === 'TOPIC_REQUEST' || prop === 'TOPIC_COMPLETED' || prop === 'TOPIC_FAILED') {
         return '';
+      }
+      // For event emitter methods, return no-op stubs consistent with other proxies
+      if (prop === 'on' || prop === 'once' || prop === 'removeListener') {
+        return (...args: unknown[]) => {
+          console.warn(
+            `[IntelligenceEventAdapter] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
+            'Kafka is not initialized; listener was NOT registered. ' +
+            'Set KAFKA_BROKERS in .env to enable real event delivery.'
+          );
+          return intelligenceEvents; // Return proxy for chaining
+        };
+      }
+      if (prop === 'emit') {
+        return (...args: unknown[]) => {
+          console.error(
+            `[IntelligenceEventAdapter] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
+            'no-op because Kafka is not initialized; event was not dispatched.'
+          );
+          return intelligenceEvents; // Return proxy for chaining
+        };
       }
       return undefined;
     }
