@@ -153,8 +153,10 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * polling interval will cause every poll to return the cached snapshot
    * (effectively a short TTL cache).
    *
-   * TODO(OMN-2373): replace with a proper per-window TTL cache keyed on window
-   * string to reduce DB load further under sustained polling.
+   * TODO: replace with a proper per-window TTL cache keyed on window string to
+   * reduce DB load further under sustained polling. Track as a follow-up ticket
+   * after OMN-2373 merges (OMN-2373 is the implementation ticket, not the
+   * follow-up).
    */
   private static readonly ENSURE_FRESH_COOLDOWN_MS = 500;
 
@@ -297,6 +299,15 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     }
 
     // Coalesce concurrent calls for the same window onto a single DB query set.
+    //
+    // NOTE on cold-start burst safety: Node.js is single-threaded. Between the
+    // Map.get() check and the Map.set() at the end of this method, there is
+    // NO await — the entire block executes atomically within one event-loop
+    // turn. Every concurrent HTTP request arrives as a separate macro-task and
+    // is queued behind the currently executing turn. Therefore, the FIRST call
+    // sets the in-flight Map entry before ANY subsequent call can reach this
+    // check, making a "multiple first-callers simultaneously" scenario provably
+    // impossible in this runtime. No extra locking is needed.
     const inflight = this.ensureFreshForWindowInFlight.get(window);
     if (inflight !== undefined) return inflight;
 
