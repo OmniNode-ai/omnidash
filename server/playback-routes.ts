@@ -224,8 +224,10 @@ router.get('/status', (_req: Request, res: Response) => {
  *   - loop?: boolean (loop continuously, default false)
  */
 router.post('/start', async (req: Request, res: Response) => {
-  // Prevent race condition: block concurrent /start requests
-  // Without this mutex, two simultaneous requests could both create event handlers
+  // NOTE: Guard is intentionally OUTSIDE the try/finally block.
+  // Moving it inside try would cause every 409 response to trigger the
+  // finally block, resetting isStartingPlayback=false and prematurely
+  // releasing the mutex while the first request is still in-flight.
   if (isStartingPlayback) {
     return res.status(409).json({
       success: false,

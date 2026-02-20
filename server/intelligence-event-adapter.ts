@@ -192,7 +192,15 @@ export class IntelligenceEventAdapter {
    *   or `user_id` will overwrite the default value; a `console.warn` is
    *   emitted in non-production environments when this happens.
    *
-   * @param requestType - The type identifier for the intelligence request (e.g. `'code_analysis'`).
+   * @param requestType - Diagnostic/logging identifier for the request (e.g. `'code_analysis'`).
+   *   **This value does NOT map to `event_type` in the Kafka envelope.** The envelope
+   *   `event_type` is always hardcoded to `'CODE_ANALYSIS_REQUESTED'` because the adapter
+   *   implements a single fixed Kafka round-trip protocol
+   *   (`CODE_ANALYSIS_REQUESTED` → `CODE_ANALYSIS_COMPLETED` / `CODE_ANALYSIS_FAILED`).
+   *   `requestType` appears only in timeout error messages and is reserved for future
+   *   extensibility. If multiple distinct event types are ever needed, a new `topic`
+   *   parameter or an overloaded method would be the appropriate extension point — not
+   *   repurposing `requestType` to alter `event_type`.
    * @param payload - Additional fields merged into the envelope payload.
    *   See `PayloadOverride` type for key handling details.
    * @param timeoutMs - Milliseconds before the request is rejected with a timeout error (default: 5000).
@@ -299,6 +307,14 @@ export class IntelligenceEventAdapter {
     // Handler expects: event_type, correlation_id, payload (with source_path, language, etc.)
     const envelope = {
       event_id: randomUUID(),
+      // event_type is intentionally hardcoded — NOT derived from `requestType`.
+      // This adapter implements a single fixed Kafka round-trip protocol:
+      //   CODE_ANALYSIS_REQUESTED  →  CODE_ANALYSIS_COMPLETED | CODE_ANALYSIS_FAILED
+      // The consumer side expects exactly these event types; varying event_type per
+      // requestType would break response correlation. `requestType` is used only for
+      // diagnostics (timeout error messages) and future extensibility. If multiple
+      // event types are ever required, introduce a dedicated `topic` parameter or a
+      // new overloaded method rather than repurposing `requestType` for this purpose.
       event_type: 'CODE_ANALYSIS_REQUESTED',
       correlation_id: correlationId,
       timestamp: new Date().toISOString(),
