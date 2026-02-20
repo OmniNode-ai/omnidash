@@ -813,7 +813,7 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
           return [];
         };
       }
-      if (prop === 'queryEventChainsOLD') { // @deprecated legacy method name — do not use
+      if (prop === 'queryEventChainsOLD') { // @deprecated legacy method name — do not use; safe to remove once no callers remain
         return async (..._args: unknown[]) => {
           console.error('[EventBusDataSource] queryEventChainsOLD called before Kafka initialization — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
           return [];

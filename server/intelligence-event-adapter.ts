@@ -250,7 +250,7 @@ export class IntelligenceEventAdapter {
       const preConstructedKeys = [
         // snake_case canonical names
         'source_path', 'content', 'language', 'operation_type',
-        'options', // explicitly constructed in the payload build from adapter config — should not be silently overwritten by caller payload
+        'options', // dev notice: the adapter builds this key automatically from its config; callers may override it intentionally and the override will take effect — this warning is informational only, not a safety guard
         'project_id', 'user_id',
         // camelCase aliases accepted by the envelope build — warn on these too so
         // callers are not silently overwriting defaults regardless of which casing they use
