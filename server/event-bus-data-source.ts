@@ -768,9 +768,8 @@ export function getEventBusDataSourceError(): Error | null {
 }
 
 /**
- * Backward compatibility: Proxy that delegates to lazy getter
- *
- * @deprecated Use getEventBusDataSource() for better error handling
+ * Proxy that delegates all property access to the lazily-initialized EventBusDataSource.
+ * Returns stub implementations that log errors when Kafka is not configured.
  */
 export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
   get(target, prop) {
@@ -810,12 +809,6 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
       if (prop === 'queryEvents') {
         return async (..._args: unknown[]) => {
           console.error('[EventBusDataSource] queryEvents called before Kafka initialization — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
-          return [];
-        };
-      }
-      if (prop === 'queryEventChainsOLD') { // @deprecated legacy method name — do not use; safe to remove once no callers remain
-        return async (..._args: unknown[]) => {
-          console.error('[EventBusDataSource] queryEventChainsOLD called before Kafka initialization — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
           return [];
         };
       }

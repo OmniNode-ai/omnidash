@@ -4341,13 +4341,8 @@ export function getEventConsumerError(): Error | null {
 }
 
 /**
- * Backward compatibility: Proxy that delegates to lazy getter
- *
- * This allows existing code to continue using `eventConsumer` directly
- * without breaking. The Proxy intercepts all property access and delegates
- * to the lazily-initialized instance.
- *
- * @deprecated Use getEventConsumer() for better error handling
+ * Proxy that delegates all property access to the lazily-initialized EventConsumer.
+ * Returns stub implementations that log errors when Kafka is not configured.
  */
 export const eventConsumer = new Proxy({} as EventConsumer, {
   get(target, prop) {

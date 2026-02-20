@@ -431,9 +431,8 @@ export function getIntelligenceEventsError(): Error | null {
 }
 
 /**
- * Backward compatibility: Proxy that delegates to lazy getter
- *
- * @deprecated Use getIntelligenceEvents() for better error handling
+ * Proxy that delegates all property access to the lazily-initialized IntelligenceEventAdapter.
+ * Returns stub implementations that log errors when Kafka is not configured.
  */
 export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
   get(target, prop) {
