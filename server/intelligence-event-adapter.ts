@@ -268,6 +268,19 @@ export class IntelligenceEventAdapter {
       }
     }
 
+    // Remove camelCase alias keys that were already mapped to their snake_case equivalents
+    // above (source_path, operation_type, project_id, user_id). Without this destructure,
+    // spreading safePayloadRest at the end of the payload object would emit BOTH the
+    // snake_case field (e.g. `source_path`) AND the camelCase alias (e.g. `sourcePath`),
+    // resulting in redundant duplicate keys in the Kafka envelope.
+    const {
+      sourcePath: _sourcePath,
+      operationType: _operationType,
+      projectId: _projectId,
+      userId: _userId,
+      ...safePayloadSpread
+    } = safePayloadRest;
+
     // Format matches OmniClaude's _create_request_payload format
     // Handler expects: event_type, correlation_id, payload (with source_path, language, etc.)
     const envelope = {
@@ -284,7 +297,7 @@ export class IntelligenceEventAdapter {
         options: safePayloadRest.options || {},
         project_id: safePayloadRest.projectId || safePayloadRest.project_id || 'omnidash',
         user_id: safePayloadRest.userId || safePayloadRest.user_id || 'system',
-        ...safePayloadRest, // Allow override of any fields
+        ...safePayloadSpread, // Allow override of any fields; camelCase aliases already stripped above
       },
     };
 

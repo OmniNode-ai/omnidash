@@ -285,8 +285,16 @@ router.post('/start', async (req: Request, res: Response) => {
     // Double-check the resolved path stays within the recordings directory
     // This catches edge cases like symlinks or encoded characters.
     // Assumes case-sensitive filesystem (Linux production). On macOS with
-    // case-insensitive APFS, case-variant paths could bypass this check —
-    // acceptable since demo playback is development-only.
+    // case-insensitive APFS, case-variant paths could bypass this check.
+    // NOTE: This endpoint IS registered unconditionally and reachable in production
+    // builds; the demo-mode guard exists only at the UI layer. The case-sensitivity
+    // risk is still acceptable in practice because `recordingsDir` is resolved from
+    // the server module's own filesystem location (not from user-controlled input),
+    // so an attacker cannot choose an arbitrary target directory — only filenames
+    // within the pre-fixed recordings directory are user-supplied. Case-variant
+    // filename collisions within that narrow directory are not a realistic attack
+    // vector. If a production guard is added in future, move the demo-mode check
+    // to this route handler (e.g. reject unless NODE_ENV !== 'production').
     if (!resolvedPath.startsWith(recordingsDir + path.sep) && resolvedPath !== recordingsDir) {
       return res.status(403).json({
         success: false,
