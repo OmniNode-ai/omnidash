@@ -279,7 +279,22 @@ router.post('/start', async (req: Request, res: Response) => {
       });
     }
 
+    // Only allow .jsonl files. Without this check any file that happens to
+    // exist in demo/recordings/ (configs, credentials, binaries) would be
+    // readable via this endpoint.
+    if (!file.endsWith('.jsonl')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid file: only .jsonl files are supported',
+      });
+    }
+
     // Construct path within recordings directory only
+    // NOTE: If demo/recordings does not exist on disk, startPlayback() will
+    // throw and the caller will receive a 500 Internal Server Error rather
+    // than a clean 404. This is intentional and acceptable: the recordings
+    // directory is part of the server's required deployment artifact; its
+    // absence is a misconfiguration, not a normal "not found" scenario.
     const resolvedPath = path.resolve(recordingsDir, file);
 
     // Double-check the resolved path stays within the recordings directory
@@ -500,6 +515,11 @@ export function cleanupPlaybackRoutes(): void {
     playback.off('event', currentEventHandler);
     currentEventHandler = null;
   }
+  // Defensively reset the mutex flag in case shutdown occurs mid-start
+  // (i.e. while the startPlayback() await is in flight). The process is
+  // shutting down anyway, but a clean reset avoids leaving the flag stuck
+  // at true if the module is somehow re-evaluated in tests.
+  isStartingPlayback = false;
   playback.stopPlayback();
 }
 

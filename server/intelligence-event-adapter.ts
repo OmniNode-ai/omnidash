@@ -273,6 +273,18 @@ export class IntelligenceEventAdapter {
     // spreading safePayloadRest at the end of the payload object would emit BOTH the
     // snake_case field (e.g. `source_path`) AND the camelCase alias (e.g. `sourcePath`),
     // resulting in redundant duplicate keys in the Kafka envelope.
+    //
+    // Naming distinction:
+    //   safePayloadRest  — still retains the camelCase alias keys (sourcePath,
+    //                      operationType, projectId, userId). Used ONLY at lines
+    //                      ~293-299 for default-value lookups (e.g.
+    //                      `safePayloadRest.sourcePath || safePayloadRest.source_path`).
+    //   safePayloadSpread — the camelCase aliases have been removed. Used ONLY
+    //                      for the final `...safePayloadSpread` spread into the
+    //                      envelope payload to avoid emitting duplicate keys.
+    //
+    // Despite its name, safePayloadRest is NOT a fully "cleaned" version of the
+    // payload — it still contains the camelCase aliases. Do not use it for spreading.
     const {
       sourcePath: _sourcePath,
       operationType: _operationType,
