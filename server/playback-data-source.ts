@@ -62,6 +62,13 @@ export class PlaybackDataSource extends EventEmitter {
    * Start the playback data source.
    * Marks as active and emits connected event.
    *
+   * Idempotency: if the source is already active, this method returns early
+   * without error and without re-emitting 'connected'. A `console.warn` is
+   * issued to surface the unexpected double-call, but it is informational only
+   * — callers must not rely on it programmatically (no thrown error, no return
+   * value). The method is effectively idempotent and is safe to call from
+   * cleanup or setup paths where the active state is uncertain.
+   *
    * NOTE: Must only be called when demo mode is explicitly enabled by the user
    * (e.g., via `?demo=true` URL parameter or the global demo toggle). Callers
    * are responsible for enforcing this guard — this class does not verify

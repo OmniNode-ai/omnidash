@@ -198,6 +198,9 @@ export class IntelligenceEventAdapter {
    *   - `event_type`
    *   - `source`
    *   - `timestamp`
+   *   If any of these reserved keys are present they are STRIPPED from the
+   *   inner payload before spreading, and a `console.warn` is emitted. They
+   *   will NOT appear in the emitted envelope payload.
    *   `correlation_id` IS supported: it is explicitly extracted from `payload`
    *   before the spread and placed on the outer envelope. Both `correlation_id`
    *   and `correlationId` are destructured out before the spread so they are
@@ -223,11 +226,13 @@ export class IntelligenceEventAdapter {
     const { correlation_id: _cid, correlationId: _cidCamel, ...payloadRest } = payload;
 
     const reservedKeys = ['event_id', 'event_type', 'source', 'timestamp'] as const;
+    const safePayloadRest: Record<string, unknown> = { ...payloadRest };
     for (const key of reservedKeys) {
-      if (key in payloadRest) {
+      if (key in safePayloadRest) {
         console.warn(
-          `[IntelligenceEventAdapter] payload contains reserved envelope key '${key}' — it will silently overwrite the envelope field. Pass it as a top-level argument instead.`
+          `[IntelligenceEventAdapter] payload contains reserved envelope key '${key}' — it has been removed to prevent overwriting the outer envelope field. Do not pass envelope-level keys in the payload argument.`
         );
+        delete safePayloadRest[key];
       }
     }
 
@@ -240,14 +245,14 @@ export class IntelligenceEventAdapter {
       timestamp: new Date().toISOString(),
       service: 'omnidash',
       payload: {
-        source_path: payloadRest.sourcePath || payloadRest.source_path || '',
-        content: payloadRest.content || null,
-        language: payloadRest.language || 'python',
-        operation_type: payloadRest.operation_type || payloadRest.operationType || 'PATTERN_EXTRACTION',
-        options: payloadRest.options || {},
-        project_id: payloadRest.projectId || payloadRest.project_id || 'omnidash',
-        user_id: payloadRest.userId || payloadRest.user_id || 'system',
-        ...payloadRest, // Allow override of any fields
+        source_path: safePayloadRest.sourcePath || safePayloadRest.source_path || '',
+        content: safePayloadRest.content || null,
+        language: safePayloadRest.language || 'python',
+        operation_type: safePayloadRest.operation_type || safePayloadRest.operationType || 'PATTERN_EXTRACTION',
+        options: safePayloadRest.options || {},
+        project_id: safePayloadRest.projectId || safePayloadRest.project_id || 'omnidash',
+        user_id: safePayloadRest.userId || safePayloadRest.user_id || 'system',
+        ...safePayloadRest, // Allow override of any fields
       },
     };
 
