@@ -237,11 +237,9 @@ router.post('/start', async (req: Request, res: Response) => {
     // correct regardless of which directory the server process is started from.
     // SECURITY: Never trust user input for path construction
     //
-    // NOTE: esbuild bundles the server to `dist/` (flat output: dist/index.js).
-    // At runtime, `path.dirname(fileURLToPath(import.meta.url))` evaluates to
-    // `<repo-root>/dist/`. The `../demo/recordings` path therefore resolves to
-    // `<repo-root>/demo/recordings`, which is the correct recordings directory.
-    // The `..` is intentional — it navigates up from `dist/` to the repo root.
+    // Path is correct in both dev (server/playback-routes.ts → ../demo/recordings)
+    // and prod (dist/index.js → ../demo/recordings) since both resolve to
+    // <repo-root>/demo/recordings. The `..` is intentional, not coincidental.
     const recordingsDir = path.resolve(
       path.dirname(fileURLToPath(import.meta.url)),
       '../demo/recordings'

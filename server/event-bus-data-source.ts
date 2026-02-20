@@ -797,8 +797,23 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
           console.error('❌ EventBusDataSource not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
         };
       }
-      if (prop === 'queryEvents' || prop === 'queryEventChainsOLD' || prop === 'queryEventChains') {
-        return async () => [];
+      if (prop === 'queryEvents') {
+        return (..._args: unknown[]) => {
+          console.error('[EventBusDataSource] queryEvents called before Kafka initialization — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          return [];
+        };
+      }
+      if (prop === 'queryEventChainsOLD') {
+        return (..._args: unknown[]) => {
+          console.error('[EventBusDataSource] queryEventChainsOLD called before Kafka initialization — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          return [];
+        };
+      }
+      if (prop === 'queryEventChains') {
+        return (..._args: unknown[]) => {
+          console.error('[EventBusDataSource] queryEventChains called before Kafka initialization — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          return [];
+        };
       }
       if (prop === 'getEventChainStats') {
         return async () => ({
@@ -834,7 +849,17 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
       }
       // For EventEmitter methods
       if (prop === 'on' || prop === 'once' || prop === 'emit' || prop === 'removeListener') {
-        return () => eventBusDataSource; // Return proxy for chaining
+        return (...args: unknown[]) => {
+          if (prop === 'on' || prop === 'once') {
+            // Listener was NOT registered — Kafka is unavailable so no events will fire.
+            console.error(
+              `[EventBusDataSource] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
+              'Kafka is not initialized; listener was NOT registered. ' +
+              'Set KAFKA_BROKERS in .env to enable real event delivery.'
+            );
+          }
+          return eventBusDataSource; // Return proxy for chaining
+        };
       }
       return undefined;
     }

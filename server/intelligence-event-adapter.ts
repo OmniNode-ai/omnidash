@@ -215,17 +215,10 @@ export class IntelligenceEventAdapter {
         : (typeof rawCidCamel === 'string' || typeof rawCidCamel === 'number')
           ? rawCidCamel
           : randomUUID();
-    // rawCorrelationId is always string | number at this point (typeof guards above + UUID fallback),
-    // so String() coercion is always safe. The warn branch below can only be reached if the
-    // PayloadOverride type is bypassed via an unsafe cast at the call site.
-    const isStringCompatible =
-      typeof rawCorrelationId === 'string' || typeof rawCorrelationId === 'number';
-    if (!isStringCompatible) {
-      console.warn(
-        `[IntelligenceEventAdapter] correlation_id/correlationId is not a string or number (got ${typeof rawCorrelationId}) — ignoring and generating a new UUID.`
-      );
-    }
-    const correlationId = isStringCompatible ? String(rawCorrelationId) : randomUUID();
+    // rawCorrelationId is always string | number at this point: the typeof guards above ensure
+    // only string/number values from the payload are selected, and the UUID fallback is always
+    // a string. String() coercion is unconditionally safe.
+    const correlationId = String(rawCorrelationId);
     const correlationKey = correlationId.toLowerCase();
 
     // Exclude correlation_id / correlationId from the inner payload spread so they
