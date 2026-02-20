@@ -66,9 +66,10 @@ type Db = NonNullable<ReturnType<typeof tryGetIntelligenceDb>>;
 function windowCutoff(window: LlmRoutingTimeWindow): Date {
   const now = Date.now();
   if (window === '24h') return new Date(now - 24 * 60 * 60 * 1000);
+  if (window === '7d') return new Date(now - 7 * 24 * 60 * 60 * 1000);
   if (window === '30d') return new Date(now - 30 * 24 * 60 * 60 * 1000);
-  // default: 7d
-  return new Date(now - 7 * 24 * 60 * 60 * 1000);
+  // Guard against future enum expansion or runtime boundary bypasses.
+  throw new Error(`windowCutoff: unrecognised window '${window as string}'`);
 }
 
 /** Return 'hour' or 'day' truncation unit based on window. */
@@ -189,8 +190,8 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
     const aggResult = await db.execute(sql`
       SELECT
         COUNT(*)::int                                                            AS total_decisions,
-        COUNT(*) FILTER (WHERE agreement = TRUE)::int                           AS agreed_count,
-        COUNT(*) FILTER (WHERE agreement = FALSE)::int                          AS disagreed_count,
+        COUNT(*) FILTER (WHERE agreement = TRUE AND used_fallback = FALSE)::int  AS agreed_count,
+        COUNT(*) FILTER (WHERE agreement = FALSE AND used_fallback = FALSE)::int AS disagreed_count,
         COUNT(*) FILTER (WHERE used_fallback = TRUE)::int                       AS fallback_count,
         COALESCE(AVG(cost_usd) FILTER (WHERE cost_usd IS NOT NULL), 0)::float   AS avg_cost_usd,
         COALESCE(
@@ -223,9 +224,9 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
     const trendResult = await db.execute(sql`
       SELECT
         date_trunc(${sql.raw(`'${unit}'`)}, created_at)::text                                  AS bucket,
-        COUNT(*) FILTER (WHERE agreement = TRUE)::int                                          AS agreed,
-        (COUNT(*) FILTER (WHERE agreement = FALSE) +
-         COUNT(*) FILTER (WHERE agreement = TRUE))::int                                        AS non_fallback
+        COUNT(*) FILTER (WHERE agreement = TRUE AND used_fallback = FALSE)::int                 AS agreed,
+        (COUNT(*) FILTER (WHERE agreement = FALSE AND used_fallback = FALSE) +
+         COUNT(*) FILTER (WHERE agreement = TRUE AND used_fallback = FALSE))::int              AS non_fallback
       FROM llm_routing_decisions
       WHERE created_at >= ${cutoff}
       GROUP BY date_trunc(${sql.raw(`'${unit}'`)}, created_at)
@@ -518,18 +519,33 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
    * Called by WebSocket invalidation handler after a new routing decision is projected
    * so the next request triggers a fresh DB query instead of returning stale data.
    *
-   * The base-class snapshot (7d) is invalidated by reset(). This method covers
-   * the additional per-window caches maintained by this subclass.
+   * The base-class snapshot (7d) is invalidated by super.reset() only when the '7d'
+   * window is targeted or when no window is specified (full invalidation). This method
+   * covers the additional per-window caches maintained by this subclass.
    */
   invalidateCache(window?: LlmRoutingTimeWindow): void {
     if (window) {
       this._windowCache.delete(window);
       this._windowCacheExpiresAt.delete(window);
+      // Clear in-flight guard for this window so a fresh query can start.
+      this._windowRefreshInFlight.delete(window);
+      // Best-effort invalidation: any in-flight cache-fill Promise that was already
+      // scheduled before this call may still write a (nearly-fresh) payload to the
+      // cache. The staleness window is bounded by WINDOW_CACHE_TTL_MS. See reset() JSDoc.
+      // Invalidate the base-class 7d TTL cache only when targeting the '7d' window,
+      // since other windows do not share state with the base-class snapshot.
+      if (window === '7d') {
+        super.reset();
+      }
     } else {
+      // Full invalidation: clear everything.
+      // Best-effort invalidation: any in-flight cache-fill Promise that was already
+      // scheduled before this call may still write a (nearly-fresh) payload to the
+      // cache. The staleness window is bounded by WINDOW_CACHE_TTL_MS. See reset() JSDoc.
       this._windowCache.clear();
       this._windowCacheExpiresAt.clear();
+      this._windowRefreshInFlight.clear();
+      super.reset();
     }
-    // Also reset the base-class TTL cache so getSnapshot() re-queries too.
-    this.reset();
   }
 }
