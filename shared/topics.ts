@@ -300,6 +300,17 @@ export const SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT = 'onex.evt.omniclaude.context
  * consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
 export const SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION = 'onex.evt.omniclaude.llm-routing-decision.v1';
 
+/** Delegation task events emitted by the omniclaude delegation hook (OMN-2284).
+ * NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
+ * consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
+export const SUFFIX_OMNICLAUDE_TASK_DELEGATED = 'onex.evt.omniclaude.task-delegated.v1';
+
+/** Shadow comparison events for delegated tasks (OMN-2284).
+ * NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
+ * consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
+export const SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON =
+  'onex.evt.omniclaude.delegation-shadow-comparison.v1';
+
 // ============================================================================
 // OmniIntelligence Topics
 // ============================================================================

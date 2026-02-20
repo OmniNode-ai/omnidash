@@ -36,6 +36,8 @@ import {
   baselinesComparisons,
   baselinesTrend,
   baselinesBreakdown,
+  delegationEvents,
+  delegationShadowComparisons,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
@@ -46,6 +48,8 @@ import type {
   InsertBaselinesComparison,
   InsertBaselinesTrend,
   InsertBaselinesBreakdown,
+  InsertDelegationEvent,
+  InsertDelegationShadowComparison,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
@@ -58,6 +62,7 @@ import {
   TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
+import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
 import { baselinesProjection, llmRoutingProjection } from './projection-bootstrap';
 import { emitBaselinesUpdate } from './baselines-events';
 import { emitLlmRoutingInvalidate } from './llm-routing-events';
@@ -187,6 +192,9 @@ const READ_MODEL_TOPICS = [
   'onex.evt.omnibase-infra.baselines-computed.v1',
   SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
   SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
+  // OMN-2284: Delegation metrics — task-delegated and shadow-comparison events.
+  SUFFIX_OMNICLAUDE_TASK_DELEGATED,
+  SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -404,6 +412,12 @@ export class ReadModelConsumer {
           break;
         case SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION:
           projected = await this.projectLlmRoutingDecisionEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_TASK_DELEGATED:
+          projected = await this.projectTaskDelegatedEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON:
+          projected = await this.projectDelegationShadowComparisonEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -1062,8 +1076,14 @@ export class ReadModelConsumer {
       delegatedTo,
       delegatedBy: (evt.delegated_by as string) || (data.delegatedBy as string) || null,
       qualityGatePassed: Boolean(evt.quality_gate_passed ?? data.qualityGatePassed ?? false),
-      qualityGatesChecked: evt.quality_gates_checked ?? data.qualityGatesChecked ?? null,
-      qualityGatesFailed: evt.quality_gates_failed ?? data.qualityGatesFailed ?? null,
+      qualityGatesChecked:
+        evt.quality_gates_checked ??
+        (data.qualityGatesChecked as string[] | null | undefined) ??
+        null,
+      qualityGatesFailed:
+        evt.quality_gates_failed ??
+        (data.qualityGatesFailed as string[] | null | undefined) ??
+        null,
       costUsd: (() => {
         const v = evt.cost_usd ?? data.costUsd;
         return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
