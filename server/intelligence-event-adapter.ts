@@ -139,7 +139,21 @@ export class IntelligenceEventAdapter {
           if (!correlationId) return;
 
           const pending = this.pending.get(correlationId);
-          if (!pending) return;
+          if (!pending) {
+            // A response arrived for a correlationId that is no longer in the
+            // pending map. Two causes are possible:
+            //   1. The request already timed out — the setTimeout callback fired,
+            //      removed the entry, and rejected the caller's promise.
+            //   2. producer.send() threw and the catch block cleaned up the entry
+            //      before this consumer message was processed (send-failure race).
+            // Logging here makes it possible in production to distinguish these
+            // two cases from each other and from genuine duplicate deliveries.
+            console.warn(
+              `[IntelligenceAdapter] Response arrived for unknown or already-cleaned-up correlationId "${correlationId}" ` +
+                `(topic=${topic}) — entry may have been removed by a timeout or a send-failure cleanup. Response is dropped.`
+            );
+            return;
+          }
           clearTimeout(pending.timeout);
           this.pending.delete(correlationId);
 
@@ -166,6 +180,20 @@ export class IntelligenceEventAdapter {
   }
 
   async stop(): Promise<void> {
+    // Drain all in-flight requests before disconnecting. Without this, the
+    // setTimeout callbacks would fire after the producer/consumer are already
+    // disconnected, calling reject() on dangling promises and keeping NodeJS
+    // timers alive — which can prevent a clean process exit.
+    for (const [correlationKey, entry] of this.pending) {
+      clearTimeout(entry.timeout);
+      entry.reject(
+        new Error(
+          `IntelligenceEventAdapter stopped before response arrived (correlationId="${correlationKey}")`
+        )
+      );
+    }
+    this.pending.clear();
+
     if (this.consumer) {
       await this.consumer.disconnect();
       this.consumer = null;
@@ -239,9 +267,10 @@ export class IntelligenceEventAdapter {
     // envelope construction — so we avoid wasteful UUID allocations and object builds for
     // requests that will be rejected anyway.
     if (this.pending.has(correlationKey)) {
-      throw new Error(
+      throw new IntelligenceError(
         `Duplicate correlation_id: a request with this ID is already in-flight ("${correlationKey}"). ` +
-          'Ensure each concurrent request uses a unique correlation ID.'
+          'Ensure each concurrent request uses a unique correlation ID.',
+        'DUPLICATE_CORRELATION_ID'
       );
     }
 

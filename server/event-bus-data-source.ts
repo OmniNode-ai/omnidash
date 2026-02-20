@@ -777,6 +777,12 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  *   initialization failed. **Note**: triggers lazy initialization on first call.
  */
 export function isEventBusDataSourceAvailable(): boolean {
+  // SIDE EFFECT WARNING: Despite the predicate-style name, this function triggers Kafka
+  // client allocation on the first call (via getEventBusDataSource()). Subsequent calls
+  // are cheap (null-check only). If early, predictable initialization is required — e.g.
+  // to surface a KAFKA_BROKERS misconfiguration at a known point rather than on the first
+  // incoming request — call this function (or getEventBusDataSource()) once explicitly
+  // during server startup (e.g. in server/index.ts or routes.ts after route registration).
   // Trigger lazy initialization if not yet done
   getEventBusDataSource();
   return eventBusDataSourceInstance !== null;

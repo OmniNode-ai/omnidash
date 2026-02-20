@@ -4338,7 +4338,27 @@ export function getEventConsumer(): EventConsumer | null {
  *   initialization failed. **Note**: triggers lazy initialization on first call.
  */
 export function isEventConsumerAvailable(): boolean {
-  // Trigger lazy initialization if not yet done
+  // SIDE EFFECT: The first call to this function triggers lazy initialization of the
+  // EventConsumer singleton (via getEventConsumer()). Subsequent calls are cheap.
+  //
+  // RETURN VALUE AMBIGUITY: A return value of `false` has two distinct meanings:
+  //   (a) Initialization was just triggered for the first time and the constructor threw
+  //       (e.g. KAFKA_BROKERS is missing). This is a permanent failure — retrying will
+  //       always return false because initializationError is cached.
+  //   (b) This function has never been called before AND initialization is about to run —
+  //       but construction is synchronous, so this case collapses into (a): by the time
+  //       this function returns, initialization has either succeeded (returns true) or
+  //       failed (returns false, error cached). There is no "not yet initialized" window
+  //       where false means "try again later".
+  //
+  // In summary: false always means "Kafka is unavailable" — either because KAFKA_BROKERS
+  // is not configured or because the constructor threw. Callers do NOT need to poll; a
+  // single false return is definitive. To diagnose the root cause, call getEventConsumerError().
+  //
+  // SIDE EFFECT WARNING (startup): If early initialization at a predictable point is
+  // desired (e.g. to surface misconfiguration at server startup rather than on the first
+  // request), call this function (or getEventConsumer()) once explicitly in server/index.ts
+  // or routes.ts after route registration.
   getEventConsumer();
   return eventConsumerInstance !== null;
 }

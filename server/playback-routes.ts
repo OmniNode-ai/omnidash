@@ -64,6 +64,12 @@ const _moduleDir =
       })();
 const recordingsDir = path.resolve(_moduleDir, '../demo/recordings');
 
+// Evaluated once at module load time so that toggling the environment variable
+// at runtime cannot leave playback running in an uncontrollable state (e.g. an
+// operator sets DEMO_MODE=true, issues /start, then unsets it — without this
+// cache the stop/pause/resume routes would 403 while playback continued).
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
+
 const router = Router();
 const playback = getPlaybackService();
 
@@ -235,7 +241,7 @@ router.get('/status', (_req: Request, res: Response) => {
  *   - loop?: boolean (loop continuously, default false)
  */
 router.post('/start', async (req: Request, res: Response) => {
-  if (process.env.DEMO_MODE !== 'true') {
+  if (!DEMO_MODE) {
     return res.status(403).json({
       success: false,
       error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
@@ -336,7 +342,7 @@ router.post('/start', async (req: Request, res: Response) => {
     // an arbitrary target directory — only filenames within the pre-fixed
     // recordings directory are user-supplied. Case-variant filename collisions
     // within that narrow directory are not a realistic attack vector.
-    if (!resolvedPath.startsWith(recordingsDir + path.sep) && resolvedPath !== recordingsDir) {
+    if (!resolvedPath.startsWith(recordingsDir + path.sep)) {
       return res.status(403).json({
         success: false,
         error: 'Access denied: path traversal detected',
@@ -425,7 +431,7 @@ router.post('/start', async (req: Request, res: Response) => {
  * Pause current playback
  */
 router.post('/pause', (_req: Request, res: Response) => {
-  if (process.env.DEMO_MODE !== 'true') {
+  if (!DEMO_MODE) {
     return res.status(403).json({
       success: false,
       error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
@@ -445,7 +451,7 @@ router.post('/pause', (_req: Request, res: Response) => {
  * Resume paused playback
  */
 router.post('/resume', (_req: Request, res: Response) => {
-  if (process.env.DEMO_MODE !== 'true') {
+  if (!DEMO_MODE) {
     return res.status(403).json({
       success: false,
       error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
@@ -465,7 +471,7 @@ router.post('/resume', (_req: Request, res: Response) => {
  * Stop playback and restore live data from snapshot
  */
 router.post('/stop', (_req: Request, res: Response) => {
-  if (process.env.DEMO_MODE !== 'true') {
+  if (!DEMO_MODE) {
     return res.status(403).json({
       success: false,
       error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
@@ -503,7 +509,7 @@ router.post('/stop', (_req: Request, res: Response) => {
  *   - speed: number (multiplier, e.g., 0.5, 1, 2, 5)
  */
 router.post('/speed', (req: Request, res: Response) => {
-  if (process.env.DEMO_MODE !== 'true') {
+  if (!DEMO_MODE) {
     return res.status(403).json({
       success: false,
       error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
@@ -543,7 +549,7 @@ router.post('/speed', (req: Request, res: Response) => {
  *   - loop: boolean (enable/disable loop)
  */
 router.post('/loop', (req: Request, res: Response) => {
-  if (process.env.DEMO_MODE !== 'true') {
+  if (!DEMO_MODE) {
     return res.status(403).json({
       success: false,
       error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
