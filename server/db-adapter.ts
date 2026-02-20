@@ -6,13 +6,11 @@
  *
  * Design:
  * - Direct access: Fast, synchronous queries for dashboard APIs
- * - Event bus: Async, decoupled operations for write-heavy workloads
- * - Event bus presence: When KAFKA_BROKERS is set, event bus integration is
- *   enabled. When absent, the event bus is simply not active — the constructor
- *   does not log (it runs at module load time). The event-bus modules
- *   (event-bus-data-source.ts, event-consumer.ts, intelligence-event-adapter.ts)
- *   emit diagnostics when their singletons are first accessed. This is a
- *   misconfiguration error state, not a "fallback" mechanism.
+ * - All write-heavy or event-driven workloads are handled by the dedicated
+ *   event-bus modules (event-bus-data-source.ts, event-consumer.ts,
+ *   intelligence-event-adapter.ts), which emit diagnostics when their
+ *   singletons are first accessed. This adapter performs direct database
+ *   queries only and has no event-bus routing logic.
  *
  * Usage:
  *   const adapter = new PostgresAdapter();

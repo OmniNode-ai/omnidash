@@ -297,6 +297,12 @@ export class IntelligenceEventAdapter {
         this.pending.delete(correlationKey);
         entry.reject(sendError instanceof Error ? sendError : new Error(String(sendError)));
       }
+      // Return the already-rejected promise rather than re-throwing here.
+      // Async functions implicitly await any Promise they return, so the
+      // caller's `await request(...)` will correctly receive the rejection
+      // that entry.reject() delivered above. Re-throwing would create a
+      // second, unrelated rejection; returning `promise` keeps exactly one
+      // rejection surface and preserves the structured IntelligenceError type.
       return promise;
     }
 
@@ -381,6 +387,17 @@ export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
  * initialized. Calling this function is equivalent to calling
  * `getIntelligenceEvents()` plus a null check — both are safe to call at any
  * point.
+ *
+ * @performance Avoid calling in per-request hot paths. On the **first call**,
+ * lazy initialization runs the `IntelligenceEventAdapter` constructor, which
+ * reads environment variables and allocates a KafkaJS client object —
+ * synchronous work, but non-trivial on the first invocation. No network I/O
+ * occurs during construction; broker connections are established only when
+ * `start()` is called. On **subsequent calls** (after initialization is
+ * cached), the cost is negligible — a null check on a module-level variable.
+ * Still, the semantic intent of this function is an initialization probe, not
+ * a cheap boolean predicate; prefer calling it once at startup and caching
+ * the result rather than checking it on every request.
  */
 export function isIntelligenceEventsAvailable(): boolean {
   // Trigger lazy initialization if not yet done

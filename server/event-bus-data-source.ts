@@ -731,18 +731,27 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * `getEventBusDataSource()` plus a null check — both are safe to call at any
  * point.
  *
- * @performance Not safe for per-request hot paths. Triggers lazy Kafka
- * initialization on first call, which may involve network I/O (broker
- * reachability probes, topic metadata fetches). Lazy initialization also runs
- * constructor work (environment variable reads, object allocation). Call once
- * at startup instead — do not use inside request-time middleware or
- * frequently-invoked handlers.
+ * @performance Avoid calling in per-request hot paths. On the **first call**,
+ * lazy initialization runs the `EventBusDataSource` constructor, which reads
+ * environment variables and allocates KafkaJS client objects — synchronous
+ * work, but non-trivial on the first invocation. No network I/O occurs during
+ * construction; broker connections are established only when `start()` is
+ * called. On **subsequent calls** (after initialization is cached), the cost
+ * is negligible — a null check on a module-level variable. Still, the
+ * semantic intent of this function is an initialization probe, not a cheap
+ * boolean predicate; prefer calling it once at startup and caching the result
+ * rather than checking it on every request.
  *
  * @example
  * ```typescript
- * if (isEventBusDataSourceAvailable()) {
- *   // instance is ready; retrieve it with getEventBusDataSource()
+ * // Recommended: check once at startup
+ * if (!isEventBusDataSourceAvailable()) {
+ *   console.error('EventBusDataSource unavailable — check KAFKA_BROKERS');
  * }
+ *
+ * // In request handlers, use the getter directly:
+ * const ds = getEventBusDataSource();
+ * if (!ds) return res.status(503).json({ error: 'Event bus unavailable' });
  * ```
  */
 export function isEventBusDataSourceAvailable(): boolean {
@@ -860,6 +869,21 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
               `[EventBusDataSource] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
               'Kafka is not initialized; listener was NOT registered. ' +
               'Set KAFKA_BROKERS in .env to enable real event delivery.'
+            );
+          } else if (prop === 'removeListener') {
+            // No-op: there is nothing to remove because on/once stubs never registered a
+            // real listener. Log at warn level so cleanup code is aware the call had no
+            // effect rather than silently succeeding.
+            console.warn(
+              `[EventBusDataSource] .removeListener() called on stub proxy (event: "${String(args[0])}") — ` +
+              'no-op because Kafka is not initialized and no listener was ever registered.'
+            );
+          } else if (prop === 'emit') {
+            // No-op: no real EventEmitter exists to dispatch to. Log at warn level so
+            // callers attempting to emit events can detect that nothing was delivered.
+            console.warn(
+              `[EventBusDataSource] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
+              'no-op because Kafka is not initialized; event was not dispatched.'
             );
           }
           return eventBusDataSource; // Return proxy for chaining

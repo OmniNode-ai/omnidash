@@ -4313,12 +4313,16 @@ export function getEventConsumer(): EventConsumer | null {
  * `getEventConsumer()` plus a null check — both are safe to call at any
  * point.
  *
- * @performance Not safe for per-request hot paths. Triggers lazy Kafka
- * initialization on first call, which may involve network I/O (broker
- * reachability probes, topic metadata fetches). Lazy initialization also runs
- * constructor work (environment variable reads, object allocation). Call once
- * at startup instead — do not use inside request-time middleware or
- * frequently-invoked handlers.
+ * @performance Avoid calling in per-request hot paths. On the **first call**,
+ * lazy initialization runs the `EventConsumer` constructor, which reads
+ * environment variables and allocates KafkaJS client and consumer objects —
+ * synchronous work, but non-trivial on the first invocation. No network I/O
+ * occurs during construction; broker connections are established only when
+ * `start()` is called. On **subsequent calls** (after initialization is
+ * cached), the cost is negligible — a null check on a module-level variable.
+ * Still, the semantic intent of this function is an initialization probe, not
+ * a cheap boolean predicate; prefer calling it once at startup and caching
+ * the result rather than checking it on every request.
  *
  * @returns true if EventConsumer singleton is initialized, false otherwise
  */

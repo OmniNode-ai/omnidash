@@ -240,6 +240,10 @@ router.post('/start', async (req: Request, res: Response) => {
     // Path is correct in both dev (server/playback-routes.ts → ../demo/recordings)
     // and prod (dist/index.js → ../demo/recordings) since both resolve to
     // <repo-root>/demo/recordings. The `..` is intentional, not coincidental.
+    //
+    // ESM build safety: esbuild is invoked with --format=esm (see package.json
+    // build script), so the compiled output is native ESM and import.meta.url
+    // is always defined at runtime. No CJS fallback is needed.
     const recordingsDir = path.resolve(
       path.dirname(fileURLToPath(import.meta.url)),
       '../demo/recordings'
