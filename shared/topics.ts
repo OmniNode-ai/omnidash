@@ -488,7 +488,9 @@ export const OMNICLAUDE_EXTENDED_SUFFIXES = [
   SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED,
   SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED,
   SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED,
-  SUFFIX_OMNICLAUDE_LLM_COST_REPORTED,
+  // OMN-2371 (GAP-5): replaced deprecated SUFFIX_OMNICLAUDE_LLM_COST_REPORTED (zero producers)
+  // with the canonical topic emitted by NodeLlmInferenceEffect in omnibase_infra.
+  TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
 ] as const;
 
 /** OmniIntelligence pipeline topic suffixes */

@@ -5,7 +5,7 @@
  * - Consumer handles routing decision events
  * - Consumer handles agent action events
  * - Consumer handles transformation events
- * - Consumer handles LLM cost events (OMN-2300 / OMN-2329)
+ * - Consumer handles LLM cost events (OMN-2300 / OMN-2329 / OMN-2371)
  * - Consumer gracefully degrades when DB is unavailable
  * - Consumer getStats returns correct statistics
  * - Consumer handles malformed messages
@@ -224,6 +224,18 @@ describe('ReadModelConsumer', () => {
       );
 
       warnSpy.mockRestore();
+
+      // Verify legacy-field fallback: totalCostUsd and reportedCostUsd must be
+      // derived from the payload's total_cost_usd and reported_cost_usd fields.
+      // A regression in this fallback path (e.g. both fields silently returning 0)
+      // would be caught here.
+      const insertValues = (
+        insertMock.mock.results[0]?.value as { values: ReturnType<typeof vi.fn> }
+      )?.values;
+      const insertArg = insertValues?.mock.calls[0]?.[0];
+      expect(insertArg).toBeDefined();
+      expect(insertArg.totalCostUsd).toBe('0.012');
+      expect(insertArg.reportedCostUsd).toBe('0.012');
 
       // Stats should reflect a successfully projected event
       const stats = consumer.getStats();

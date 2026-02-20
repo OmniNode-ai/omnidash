@@ -1196,8 +1196,16 @@ export class ReadModelConsumer {
       'unknown';
 
     // repo_name: ContractLlmCallMetrics uses 'reporting_source' as the provenance label.
-    // If it looks like a repo name (no spaces, reasonable length), use it as repo_name.
-    // Also accept explicit repo_name / repoName fields from legacy payloads.
+    // Expected value space: short, slug-style identifiers such as 'omniarchon',
+    // 'omniclaude-node', or 'omninode_bridge' — the canonical name of the service or
+    // repository that emitted the event.  These identifiers contain no whitespace and
+    // are well under 64 characters, so we use those two properties as a heuristic to
+    // distinguish a valid repo name from a free-form description that a producer may
+    // occasionally put in reporting_source.  Limitation: a descriptive string that
+    // happens to be short and space-free (e.g. "adhoc") would also pass — but that is
+    // an acceptable false-positive because the field still provides a useful grouping
+    // key in the cost-aggregate table.  Explicit repo_name / repoName fields from
+    // legacy payloads always take precedence and bypass this heuristic entirely.
     const reportingSource = (data.reporting_source as string) || (data.reportingSource as string);
     const explicitRepo = (data.repo_name as string) || (data.repoName as string);
     const repoName =
