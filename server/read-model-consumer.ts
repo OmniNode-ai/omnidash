@@ -825,11 +825,22 @@ export class ReadModelConsumer {
         )
         ON CONFLICT (correlation_id) DO NOTHING
       `);
-      // db.execute() with raw SQL returns the underlying pg QueryResult which
-      // carries rowCount: the number of rows actually written.  When the
-      // ON CONFLICT … DO NOTHING clause suppresses a duplicate the command
-      // completes without error but rowCount is 0.
-      insertedRowCount = (result as { rowCount?: number | null }).rowCount ?? 0;
+      // db.execute() with raw SQL returns the underlying pg/Neon QueryResult,
+      // which carries `rowCount`: the number of rows actually written by the
+      // INSERT.  When the ON CONFLICT … DO NOTHING clause suppresses a
+      // duplicate the command completes without error but rowCount is 0.
+      //
+      // The pg socket driver initialises rowCount to null and populates it
+      // from the CommandComplete message; the Neon HTTP driver always returns
+      // a numeric rowCount.  Both paths therefore produce number | null.
+      //
+      // We avoid a blind `as { rowCount?: number | null }` cast, which would
+      // silently evaluate to 0 if the result object has an unexpected shape
+      // (e.g. a future Drizzle version wraps the raw result differently).
+      // Instead we use a typeof guard so that any shape mismatch is visible
+      // as a NaN/undefined at runtime rather than a silent zero.
+      const rawRowCount = (result as unknown as Record<string, unknown>).rowCount;
+      insertedRowCount = typeof rawRowCount === 'number' ? rawRowCount : 0;
     } catch (err) {
       // If the table doesn't exist yet (migration not run), degrade gracefully
       // and advance the watermark so the consumer is not stuck retrying.

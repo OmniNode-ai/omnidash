@@ -46,20 +46,32 @@ type Db = NonNullable<ReturnType<typeof tryGetIntelligenceDb>>;
  * Convert a window string ('24h' | '7d' | '30d') to a PostgreSQL INTERVAL
  * literal for use in WHERE created_at >= NOW() - INTERVAL '...' queries.
  *
+ * Only called from _queryForWindow(), which is itself only reachable via:
+ *   - ensureFreshForWindow() — validates against ACCEPTED_WINDOWS before calling
+ *   - querySnapshot()        — hardcodes '24h', always a valid value
+ *
+ * Because every call path guarantees a valid window, the default branch is
+ * intentionally absent. An explicit throw is used so that any future caller
+ * that bypasses the validation layer receives an immediate error rather than
+ * silently getting 7-day data for an unrecognised window.
+ *
  * @param window - Time window identifier. Accepted values: '24h', '7d', '30d'.
- *   Any unrecognised value falls back to '7 days'.
  * @returns A PostgreSQL INTERVAL string suitable for interpolation into a raw
  *   SQL fragment (e.g. `INTERVAL '24 hours'`).
+ * @throws {Error} If `window` is not one of the three accepted values.
  */
 function windowToInterval(window: string): string {
   switch (window) {
     case '24h':
       return '24 hours';
+    case '7d':
+      return '7 days';
     case '30d':
       return '30 days';
-    case '7d':
     default:
-      return '7 days';
+      throw new Error(
+        `windowToInterval: unrecognised window "${window}". Accepted values: '24h', '7d', '30d'.`
+      );
   }
 }
 
@@ -91,6 +103,60 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * current one resolves starts a fresh query.
    */
   private ensureFreshForWindowInFlight = new Map<string, Promise<EnrichmentPayload>>();
+
+  /**
+   * Per-window cooldown guard for ensureFreshForWindow().
+   *
+   * Records the monotonic timestamp (Date.now()) at which the most recent
+   * non-coalesced DB query set was *dispatched* for each window key.  Any
+   * call that arrives within ENSURE_FRESH_COOLDOWN_MS of the last dispatch —
+   * and that is not already coalesced by ensureFreshForWindowInFlight — will
+   * return the last resolved snapshot directly from the per-window cache
+   * rather than starting a new round of six parallel DB queries.
+   *
+   * This is a minimal debounce, not a full TTL cache.  It prevents DB
+   * hammering under rapid polling (e.g. a dashboard polling every 100 ms)
+   * without requiring a separate per-window cache eviction strategy.
+   *
+   * The Map is intentionally unbounded because it holds at most three entries
+   * (one per accepted window value: '24h', '7d', '30d').
+   */
+  private ensureFreshForWindowLastDispatched = new Map<string, number>();
+
+  /**
+   * Per-window snapshot cache populated by the cooldown guard.
+   *
+   * Stores the last successfully resolved EnrichmentPayload for each window
+   * key so that calls arriving within ENSURE_FRESH_COOLDOWN_MS can be served
+   * from memory rather than issuing new DB queries.
+   */
+  private ensureFreshForWindowLastSnapshot = new Map<string, EnrichmentPayload>();
+
+  /**
+   * Minimum interval (ms) between successive non-coalesced DB query sets for
+   * the same window key.
+   *
+   * Production risk: without this guard, N clients each polling at 200 ms
+   * would issue 5 * N query sets per second (6 parallel queries each), totalling
+   * up to 30 * N DB round-trips per second.  At N=10 that is 300 round-trips/s
+   * against a single PostgreSQL instance — enough to saturate connection pools
+   * under sustained load.  The cooldown bounds the rate to at most
+   * ceil(1000 / ENSURE_FRESH_COOLDOWN_MS) * 6 DB queries per second per window,
+   * regardless of the number of polling clients, because concurrent calls are
+   * additionally collapsed by ensureFreshForWindowInFlight.
+   *
+   * Recommended client polling interval: >= 2 000 ms (2 s) for production.
+   * At 500 ms cooldown and 2 s polling: 0.5 query sets/s per window (~3 DB queries/s).
+   * At 500 ms cooldown and 200 ms polling: 2 query sets/s per window (~12 DB queries/s).
+   *
+   * Raise this value if DB load is a concern.  Setting it above the client
+   * polling interval will cause every poll to return the cached snapshot
+   * (effectively a short TTL cache).
+   *
+   * TODO(OMN-2373): replace with a proper per-window TTL cache keyed on window
+   * string to reduce DB load further under sustained polling.
+   */
+  private static readonly ENSURE_FRESH_COOLDOWN_MS = 500;
 
   /**
    * Return a zero-value `EnrichmentPayload` used as a safe fallback when the
@@ -148,8 +214,9 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    *
    * The base `getSnapshot()` / `ensureFresh()` caches only the '24h' window.
    * Callers that need '7d' or '30d' snapshots call this method directly, which
-   * always bypasses the cache and issues live queries. Routes should prefer
-   * this over `ensureFresh()` whenever the window parameter is user-supplied.
+   * bypasses the base-class cache and issues live queries (subject to the
+   * cooldown guard described below). Routes should prefer this over
+   * `ensureFresh()` whenever the window parameter is user-supplied.
    *
    * If the database is unavailable (`tryGetIntelligenceDb` returns `null`),
    * an `emptyPayload()` is returned immediately without throwing.
@@ -169,23 +236,31 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * snapshot because each window requires a different aggregation range — the
    * cached snapshot produced by `querySnapshot()` always covers exactly 24 hours
    * and would return stale or incorrect data if reused for a 7-day or 30-day
-   * request. Each call therefore executes a fresh set of DB queries via
-   * `_queryForWindow`. If query volume becomes a concern, consider adding a
-   * per-window TTL cache keyed on the window string.
+   * request.
    *
    * **In-flight coalescing**: Concurrent calls for the same window string share
    * one set of DB queries via `ensureFreshForWindowInFlight`. The in-flight
    * promise is removed after it settles, so the next call after the current one
    * completes starts a fresh query rather than waiting on a stale promise.
    *
-   * **Known limitation**: There is currently no per-window TTL cache. Every
-   * call to this method that is not coalesced with an in-flight request issues
-   * a full set of live DB queries. Under high request rates or slow DB responses
-   * this can create noticeable load. A future improvement should introduce a
-   * short-lived (e.g. 60 s) in-memory cache keyed on the window string,
-   * consistent with how the base-class 24 h snapshot is cached.
+   * **Cooldown guard** (production performance): Because the base-class 24 h
+   * cache is bypassed, every non-coalesced call would otherwise issue 6 parallel
+   * DB queries.  At N polling clients each querying every 200 ms, that produces
+   * up to 5 * N * 6 = 30 * N DB round-trips per second per window — enough to
+   * saturate connection pools under sustained load.  A 500 ms per-window
+   * cooldown (ENSURE_FRESH_COOLDOWN_MS) limits the real query rate to at most
+   * 2 query sets per second per window, regardless of client count, by returning
+   * the last resolved snapshot when a query was dispatched within the cooldown
+   * window.  The cooldown timestamp is recorded only when a new query set is
+   * actually dispatched, not when a coalesced or cooldown-cached result is
+   * returned.
    *
-   * TODO(OMN-2373): add per-window TTL cache to reduce DB load under sustained polling
+   * **Recommended polling interval**: >= 2 000 ms in production.  The current
+   * 500 ms cooldown is a safety floor, not a substitute for a proper per-window
+   * TTL cache.
+   *
+   * TODO(OMN-2373): replace cooldown guard with a full per-window TTL cache to
+   * allow longer freshness windows without hammering the DB on every poll.
    */
   async ensureFreshForWindow(window: string): Promise<EnrichmentPayload> {
     if (!ACCEPTED_WINDOWS.has(window)) {
@@ -199,12 +274,36 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     const inflight = this.ensureFreshForWindowInFlight.get(window);
     if (inflight !== undefined) return inflight;
 
+    // Cooldown guard: if a query set was dispatched within the last
+    // ENSURE_FRESH_COOLDOWN_MS, return the cached snapshot from that query
+    // rather than issuing another six parallel DB queries.  This prevents
+    // rapid polling (e.g. a dashboard hitting this endpoint every 200 ms)
+    // from hammering the database when no in-flight request is available to
+    // coalesce onto.
+    const lastDispatched = this.ensureFreshForWindowLastDispatched.get(window) ?? 0;
+    if (Date.now() - lastDispatched < EnrichmentProjection.ENSURE_FRESH_COOLDOWN_MS) {
+      const cached = this.ensureFreshForWindowLastSnapshot.get(window);
+      if (cached !== undefined) return cached;
+      // No snapshot yet (first call before any query resolves) — fall through.
+    }
+
     const db = tryGetIntelligenceDb();
     if (!db) return this.emptyPayload();
 
-    const promise = this._queryForWindow(db, window).finally(() => {
-      this.ensureFreshForWindowInFlight.delete(window);
-    });
+    // Record the dispatch timestamp before awaiting so that concurrent calls
+    // arriving while the query is in flight hit the in-flight coalescer above
+    // rather than dispatching another query set.
+    this.ensureFreshForWindowLastDispatched.set(window, Date.now());
+
+    const promise = this._queryForWindow(db, window)
+      .then((payload) => {
+        // Cache the resolved snapshot so the cooldown guard can serve it.
+        this.ensureFreshForWindowLastSnapshot.set(window, payload);
+        return payload;
+      })
+      .finally(() => {
+        this.ensureFreshForWindowInFlight.delete(window);
+      });
 
     this.ensureFreshForWindowInFlight.set(window, promise);
     return promise;
@@ -294,6 +393,10 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     `);
 
     const r = (rows.rows ?? rows)[0] as Record<string, unknown> | undefined;
+    // COUNT(*) with no GROUP BY always returns exactly one row, even over an
+    // empty table (where all aggregates evaluate to 0/NULL). This guard is
+    // therefore unreachable in normal PostgreSQL operation; it is retained only
+    // as a defensive fallback against unexpected driver behaviour.
     if (!r) return this.emptyPayload().summary;
 
     return {
