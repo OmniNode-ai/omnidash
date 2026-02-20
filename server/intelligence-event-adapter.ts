@@ -293,11 +293,9 @@ export class IntelligenceEventAdapter {
     // existing entry. Overwriting would orphan the first caller's resolve/reject callbacks
     // and leave its timeout handle running — a memory and timer leak.
     if (this.pending.has(correlationKey)) {
-      return Promise.reject(
-        new Error(
-          `Duplicate correlation_id: a request with this ID is already in-flight ("${correlationKey}"). ` +
-            'Ensure each concurrent request uses a unique correlation ID.'
-        )
+      throw new Error(
+        `Duplicate correlation_id: a request with this ID is already in-flight ("${correlationKey}"). ` +
+          'Ensure each concurrent request uses a unique correlation ID.'
       );
     }
 
@@ -398,6 +396,16 @@ let intelligenceInitError: Error | null = null;
  * misconfiguration error — Kafka is required infrastructure. A null return
  * from this function means the application is not connected to Kafka and
  * is in a degraded/error state.
+ *
+ * @performance Avoid calling in per-request hot paths. On the **first call**,
+ * lazy initialization runs the `IntelligenceEventAdapter` constructor, which
+ * reads environment variables and allocates a KafkaJS client object —
+ * synchronous work, but non-trivial on the first invocation. No network I/O
+ * occurs during construction; broker connections are established only when
+ * `start()` is called. On **subsequent calls** (after initialization is
+ * cached), the cost is negligible — a null check on a module-level variable.
+ * Prefer calling once at startup and caching the result rather than calling
+ * on every request.
  *
  * @returns IntelligenceEventAdapter instance or null if initialization failed (error state)
  */

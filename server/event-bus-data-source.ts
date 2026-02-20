@@ -691,6 +691,15 @@ let eventBusInitError: Error | null = null;
  * from this function means the application is not connected to Kafka and
  * is in a degraded/error state.
  *
+ * @performance Avoid calling in per-request hot paths. On the **first call**,
+ * lazy initialization runs the `EventBusDataSource` constructor, which reads
+ * environment variables and allocates KafkaJS client objects — synchronous
+ * work, but non-trivial on the first invocation. No network I/O occurs during
+ * construction; broker connections are established only when `start()` is
+ * called. On **subsequent calls** (after initialization is cached), the cost
+ * is negligible — a null check on a module-level variable. Prefer calling
+ * once at startup and caching the result rather than calling on every request.
+ *
  * @returns EventBusDataSource instance or null if initialization failed (error state)
  */
 export function getEventBusDataSource(): EventBusDataSource | null {

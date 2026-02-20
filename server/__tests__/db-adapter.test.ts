@@ -760,24 +760,22 @@ describe('DatabaseAdapter - Connection Management', () => {
     await expect(adapter.connect()).resolves.toBeUndefined();
   });
 
-  it('event bus is enabled when KAFKA_BROKERS is set', () => {
+  // The eventBusEnabled private field was removed from PostgresAdapter in the
+  // refactor that separated Kafka concerns into dedicated event-bus modules
+  // (event-bus-data-source.ts, event-consumer.ts, intelligence-event-adapter.ts).
+  // PostgresAdapter is now a pure database CRUD adapter with no Kafka awareness.
+  // The constructor is a documented no-op: it does not read KAFKA_BROKERS, does
+  // not set any connection-state flag, and does not emit any diagnostics.
+  // Kafka availability tests belong with the event-bus module tests, not here.
+  it('constructor succeeds regardless of Kafka environment variable state', () => {
+    // With KAFKA_BROKERS set
     process.env.KAFKA_BROKERS = '192.168.86.200:29092';
-    const adapterWithKafka = new PostgresAdapter();
-    expect((adapterWithKafka as any).eventBusEnabled).toBe(true);
-  });
+    expect(() => new PostgresAdapter()).not.toThrow();
 
-  it('event bus is enabled when KAFKA_BOOTSTRAP_SERVERS is set', () => {
-    delete process.env.KAFKA_BROKERS;
-    process.env.KAFKA_BOOTSTRAP_SERVERS = '192.168.86.200:29092';
-    const adapterWithKafka = new PostgresAdapter();
-    expect((adapterWithKafka as any).eventBusEnabled).toBe(true);
-  });
-
-  it('event bus is disabled when no Kafka config', () => {
+    // Without KAFKA_BROKERS
     delete process.env.KAFKA_BROKERS;
     delete process.env.KAFKA_BOOTSTRAP_SERVERS;
-    const adapterWithoutKafka = new PostgresAdapter();
-    expect((adapterWithoutKafka as any).eventBusEnabled).toBe(false);
+    expect(() => new PostgresAdapter()).not.toThrow();
   });
 });
 
