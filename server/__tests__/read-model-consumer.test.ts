@@ -155,7 +155,7 @@ describe('ReadModelConsumer', () => {
 
       const handleMessage = getHandleMessage(consumer);
       const payload = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
-        model_name: 'claude-sonnet-4-6',
+        model_id: 'claude-sonnet-4-6',
         prompt_tokens: 1000,
         completion_tokens: 500,
         total_tokens: 1500,

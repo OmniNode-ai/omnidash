@@ -501,7 +501,11 @@ export const INTELLIGENCE_PIPELINE_SUFFIXES = [
   SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
   SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
-  // OMN-2371 (GAP-5): canonical LLM call topic emitted by NodeLlmInferenceEffect in omnibase_infra
+  // OMN-2371 (GAP-5): canonical LLM call topic emitted by NodeLlmInferenceEffect in omnibase_infra.
+  // Dual-consumed: included here so buildSubscriptionTopics() forwards events to WebSocket clients
+  // (real-time cost-trend feed), and also in READ_MODEL_TOPICS for durable projection via
+  // projectLlmCostEvent(). Both consumers are intentional — same pattern used by the old
+  // SUFFIX_OMNICLAUDE_LLM_COST_REPORTED (which was in OMNICLAUDE_EXTENDED_SUFFIXES + READ_MODEL_TOPICS).
   TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
 ] as const;
 

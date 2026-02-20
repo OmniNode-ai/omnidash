@@ -1179,8 +1179,8 @@ export class ReadModelConsumer {
 
     // Cost field mapping for ContractLlmCallMetrics:
     // The contract only has estimated_cost_usd (no separate reported_cost_usd).
-    // We map estimated_cost_usd to both total_cost_usd and estimated_cost_usd so
-    // the cost trend dashboard can display meaningful data.
+    // When a payload has no explicit total_cost_usd / totalCostUsd, fall back to
+    // rawEstimatedCost so the cost-trend dashboard has a meaningful total value.
     // Legacy pre-aggregated events may carry explicit total_cost_usd / reported_cost_usd.
     //
     // Coerce to finite number, defaulting to 0 for any non-numeric value (including
