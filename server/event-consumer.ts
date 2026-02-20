@@ -4349,8 +4349,15 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
           return false;
         };
       }
-      if (prop === 'start' || prop === 'stop') {
-        return async () => {
+      if (prop === 'start') {
+        // Throw asynchronously to match the real async start() signature and ensure
+        // callers that await start() surface the error rather than silently getting undefined.
+        return async (..._args: unknown[]) => {
+          throw new Error('[EventConsumer] start called before initialization — Kafka not configured');
+        };
+      }
+      if (prop === 'stop') {
+        return async (..._args: unknown[]) => {
           console.error('❌ EventConsumer not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
         };
       }

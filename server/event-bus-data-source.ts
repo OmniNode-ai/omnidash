@@ -789,11 +789,15 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
         /**
          * Proxy stub returned when Kafka is not initialized.
          *
-         * @throws {Error} Always throws — Kafka was not configured or failed to
-         *   initialize. Callers MUST await this function or attach a .catch()
-         *   handler; failing to do so will produce an unhandled promise rejection.
+         * The real `injectEvent` is async (returns Promise<void>), so this stub
+         * mirrors that contract by returning an async function that always rejects.
+         * Callers that correctly await the real method will naturally catch this
+         * rejection through normal async error handling; no special treatment is
+         * required at the call site beyond the standard `await` or `.catch()`.
          *
-         *   To restore event storage, set KAFKA_BROKERS in .env and restart.
+         * @throws {Error} Always rejects — Kafka was not configured or failed to
+         *   initialize. To restore event storage, set KAFKA_BROKERS in .env and
+         *   restart the server.
          */
         const uninitializedInjectEvent = async (..._args: unknown[]): Promise<never> => {
           throw new Error(

@@ -161,6 +161,8 @@ describe('DatabaseAdapter - Security (SQL Injection Prevention)', () => {
 
   it('executeRaw uses sql.raw but caller must ensure safety', async () => {
     // executeRaw is a low-level API - caller is responsible for parameterization
+    // executeRaw is intentionally private; accessed via cast for internal behavior
+    // verification. Do not remove the cast without understanding this intent.
     vi.mocked(mockDb).execute.mockResolvedValue([{ count: 42 }]);
 
     const result = await (adapter as any).executeRaw('SELECT COUNT(*) FROM agent_actions');

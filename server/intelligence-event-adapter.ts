@@ -205,10 +205,19 @@ export class IntelligenceEventAdapter {
   ): Promise<any> {
     if (!this._started || !this.producer) throw new Error('IntelligenceEventAdapter not started');
 
-    const rawCorrelationId = payload?.correlation_id || payload?.correlationId || randomUUID();
-    // Type guard: only coerce to string if the value is a primitive (string or number).
-    // An object (e.g. { foo: 'bar' }) would silently produce '[object Object]' via String(),
-    // corrupting correlation tracking. Fall back to a fresh UUID instead.
+    const rawCid = payload?.correlation_id;
+    const rawCidCamel = payload?.correlationId;
+    // Prefer correlation_id; fall back to correlationId; only generate a UUID when neither is present.
+    // Intentionally avoids || short-circuit so that a falsy-but-valid value like 0 is preserved.
+    const rawCorrelationId =
+      (typeof rawCid === 'string' || typeof rawCid === 'number')
+        ? rawCid
+        : (typeof rawCidCamel === 'string' || typeof rawCidCamel === 'number')
+          ? rawCidCamel
+          : randomUUID();
+    // rawCorrelationId is always string | number at this point (typeof guards above + UUID fallback),
+    // so String() coercion is always safe. The warn branch below can only be reached if the
+    // PayloadOverride type is bypassed via an unsafe cast at the call site.
     const isStringCompatible =
       typeof rawCorrelationId === 'string' || typeof rawCorrelationId === 'number';
     if (!isStringCompatible) {
@@ -236,6 +245,8 @@ export class IntelligenceEventAdapter {
 
     // Warn in development when caller-supplied keys would overwrite pre-constructed payload fields.
     // This is developer guidance only and does not block execution.
+    // Dev-only: overrides are intentional by design; warning is a development convenience only.
+    // In production the overwrite still happens silently — callers owning override intent is supported.
     if (process.env.NODE_ENV !== 'production') {
       const preConstructedKeys = ['source_path', 'content', 'language', 'operation_type', 'project_id', 'user_id'] as const;
       for (const key of preConstructedKeys) {
