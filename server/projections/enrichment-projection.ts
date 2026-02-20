@@ -319,7 +319,12 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     if (Date.now() - lastDispatched < EnrichmentProjection.ENSURE_FRESH_COOLDOWN_MS) {
       const cached = this.ensureFreshForWindowLastSnapshot.get(window);
       if (cached !== undefined) return cached;
-      // No snapshot yet (first call before any query resolves) — fall through.
+      // No snapshot yet (first call before any query resolves) — fall through
+      // to dispatch a new query set. This may issue a duplicate set if called
+      // concurrently while the first query is in-flight but not yet resolved;
+      // the first .then() will overwrite lastSnapshot when it resolves.
+      // Covered by the in-flight coalescer on the NEXT call once lastSnapshot
+      // is populated. This is the known first-call limitation; see TODO above.
     }
 
     const db = tryGetIntelligenceDb();
@@ -342,8 +347,14 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     // NOTE: Both .set() calls below are synchronous with no await between them,
     // so JS single-threaded execution guarantees they appear atomic to any
     // concurrent callers — no other task can observe a state where one Map is
-    // updated but the other is not. Timestamp is stamped after promise
-    // construction to avoid 500ms lockout if _queryForWindow throws synchronously.
+    // updated but the other is not.
+    //
+    // NOTE on async rejection: if _queryForWindow() rejects asynchronously
+    // (e.g. DB error in one of the Promise.all sub-queries), lastDispatched is
+    // already stamped and lastSnapshot is never set for this window (the .then()
+    // handler doesn't run on rejection). For the next 500ms, cooldown callers
+    // will find cached === undefined and fall through to retry — which is the
+    // correct recovery behaviour. The stamp advancing on failure is intentional.
     this.ensureFreshForWindowLastDispatched.set(window, Date.now());
     this.ensureFreshForWindowInFlight.set(window, promise);
     return promise;

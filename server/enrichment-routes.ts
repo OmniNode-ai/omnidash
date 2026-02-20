@@ -29,12 +29,18 @@ const router = Router();
  */
 function getWindow(query: Record<string, unknown>): string | null {
   // Asymmetry by design: a missing `window` param coerces to the default '24h',
-  // whereas an empty string (?window=) or any other invalid value returns null
-  // (which causes the caller to respond with HTTP 400). This means:
-  //   - absent   → '24h'  (backward-compatible default)
-  //   - ''       → null   (400 Bad Request — treated as invalid, not absent)
-  //   - 'bad'    → null   (400 Bad Request)
-  //   - '24h'    → '24h'  (valid)
+  // whereas an empty string (?window=), duplicate params (?window=24h&window=7d
+  // — Express parses as string[]), or any other non-string / invalid value
+  // returns null (which causes the caller to respond with HTTP 400). This means:
+  //   - absent        → '24h'  (backward-compatible default)
+  //   - ''            → null   (400 Bad Request — treated as invalid, not absent)
+  //   - string[]      → null   (400 Bad Request — duplicate param is malformed)
+  //   - 'bad'         → null   (400 Bad Request)
+  //   - '24h'         → '24h'  (valid)
+  if (query.window !== undefined && typeof query.window !== 'string') {
+    // Duplicate ?window= params (or ParsedQs array) — treat as invalid
+    return null;
+  }
   const windowParam = typeof query.window === 'string' ? query.window : '24h';
   if (!ACCEPTED_WINDOWS.has(windowParam)) {
     return null;
