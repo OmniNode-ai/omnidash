@@ -1095,9 +1095,9 @@ export const delegationEvents = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     /** Unique correlation ID for this delegation — deduplication key. */
-    correlationId: uuid('correlation_id').unique().notNull(),
+    correlationId: text('correlation_id').unique().notNull(),
     /** Parent session ID. */
-    sessionId: uuid('session_id'),
+    sessionId: text('session_id'),
     /** When this delegation occurred. */
     timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
     /** Task type (e.g. "code-review", "refactor", "test-generation"). */
@@ -1150,9 +1150,9 @@ export const delegationShadowComparisons = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     /** Unique correlation ID — deduplication key. */
-    correlationId: uuid('correlation_id').unique().notNull(),
+    correlationId: text('correlation_id').unique().notNull(),
     /** Session ID. */
-    sessionId: uuid('session_id'),
+    sessionId: text('session_id'),
     /** When this comparison occurred. */
     timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
     /** Task type. */

@@ -70,6 +70,12 @@ export const CATALOG_TIMEOUT_MS =
  *
  * Can be overridden via the `CATALOG_RESYNC_INTERVAL_MS` environment variable.
  * Set to 0 to disable periodic re-sync.
+ *
+ * NOTE: The test default of 0 intentionally disables the periodic resync
+ * interval so tests do not spin up a live setInterval that outlasts the test
+ * and interferes with subsequent tests. To exercise the resync code path in a
+ * test, set `CATALOG_RESYNC_INTERVAL_MS` explicitly in the test environment
+ * before constructing a TopicCatalogManager.
  */
 const _catalogResyncEnv = parseInt(process.env.CATALOG_RESYNC_INTERVAL_MS ?? '', 10);
 const _catalogResyncDefault =

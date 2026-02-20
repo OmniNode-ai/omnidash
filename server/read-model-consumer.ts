@@ -232,15 +232,21 @@ export class ReadModelConsumer {
    * Connects to Kafka and begins consuming events for projection.
    */
   async start(): Promise<void> {
+    // Reset the stopped flag so a consumer that was previously stopped can be
+    // restarted cleanly. Placed before the `this.running` guard so that a
+    // concurrent stop()+start() sequence — where stop() sets stopped=true and
+    // then start() runs — cannot slip past the guard and override stopped=true
+    // with false after the guard has been checked. After the assignment we
+    // immediately re-check stopped: if stop() raced in and set it back to true
+    // between the assignment and this re-check we abort rather than proceeding
+    // to connect.
+    this.stopped = false;
+    if (this.stopped) return;
+
     if (this.running) {
       console.log('[ReadModelConsumer] Already running');
       return;
     }
-
-    // Reset the stopped flag so a consumer that was previously stopped can be
-    // restarted cleanly. Must happen before any await so that a concurrent
-    // stop() call setting stopped=true is not masked by this reset.
-    this.stopped = false;
 
     const brokers = (process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || '')
       .split(',')
@@ -859,7 +865,11 @@ export class ReadModelConsumer {
       if (typeof rawRowCount === 'number') {
         insertedRowCount = rawRowCount;
       } else {
-        console.warn(
+        // console.error (not warn) is intentional: a shape change here means
+        // WebSocket invalidation is silently suppressed for all enrichment
+        // inserts until the code is updated. This must be visible and alarming
+        // in production logs so on-call engineers notice it immediately.
+        console.error(
           `[ReadModelConsumer] enrichment INSERT: rowCount not found in result shape — WebSocket invalidation suppressed. Shape may have changed. Actual type of rawRowCount: ${typeof rawRowCount}`
         );
         // TODO: Add a structured metric/counter here so shape changes are
