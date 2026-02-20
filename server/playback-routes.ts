@@ -198,8 +198,8 @@ router.post('/start', async (req: Request, res: Response) => {
     });
   }
 
-  isStartingPlayback = true;
   try {
+    isStartingPlayback = true;
     const { file, speed = 1, loop = false } = req.body;
 
     if (!file) {

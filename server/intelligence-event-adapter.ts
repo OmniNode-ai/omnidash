@@ -449,6 +449,9 @@ export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
  * Still, the semantic intent of this function is an initialization probe, not
  * a cheap boolean predicate; prefer calling it once at startup and caching
  * the result rather than checking it on every request.
+ *
+ * @returns `true` if initialization succeeded; `false` if Kafka is not configured or
+ *   initialization failed. **Note**: triggers lazy initialization on first call.
  */
 export function isIntelligenceEventsAvailable(): boolean {
   // Trigger lazy initialization if not yet done

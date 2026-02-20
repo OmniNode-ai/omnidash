@@ -4332,7 +4332,8 @@ export function getEventConsumer(): EventConsumer | null {
  * a cheap boolean predicate; prefer calling it once at startup and caching
  * the result rather than checking it on every request.
  *
- * @returns true if EventConsumer singleton is initialized, false otherwise
+ * @returns `true` if initialization succeeded; `false` if Kafka is not configured or
+ *   initialization failed. **Note**: triggers lazy initialization on first call.
  */
 export function isEventConsumerAvailable(): boolean {
   // Trigger lazy initialization if not yet done

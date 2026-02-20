@@ -760,6 +760,9 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * const ds = getEventBusDataSource();
  * if (!ds) return res.status(503).json({ error: 'Event bus unavailable' });
  * ```
+ *
+ * @returns `true` if initialization succeeded; `false` if Kafka is not configured or
+ *   initialization failed. **Note**: triggers lazy initialization on first call.
  */
 export function isEventBusDataSourceAvailable(): boolean {
   // Trigger lazy initialization if not yet done
@@ -834,7 +837,7 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
       }
       if (prop === 'getEventChainStats') {
         return async () => {
-          console.error('[EventBusDataSource] getEventChainStats called but Kafka is not available — returning zero-value shape. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          console.warn('[EventBusDataSource] getEventChainStats called but Kafka is not available — returning zero-value shape. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
           return {
             totalChains: 0,
             completedChains: 0,
