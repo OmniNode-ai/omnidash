@@ -18,7 +18,7 @@ export const enrichmentEventEmitter = new EventEmitter();
 // multiple times in-process (e.g. during hot-reload or test runs). Each setup
 // call adds an 'enrichment-invalidate' listener, so without a raised cap
 // Node.js will emit a warning after the default limit of 10 is reached.
-enrichmentEventEmitter.setMaxListeners(20);
+enrichmentEventEmitter.setMaxListeners(20); // 20 > max expected hot-reload listener count per process
 
 /**
  * Notify subscribed clients that a new context enrichment event has been projected.

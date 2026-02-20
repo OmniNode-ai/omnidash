@@ -67,7 +67,15 @@ function windowToInterval(window: string): string {
 // Projection
 // ============================================================================
 
-/** The set of time-window values accepted by ensureFreshForWindow. */
+/**
+ * The set of time-window values accepted by ensureFreshForWindow.
+ *
+ * This is a secondary safety net. The primary validation is performed by the
+ * route layer (enrichment-routes.ts VALID_WINDOWS guard) before this method is
+ * called. Both sets must be kept in sync: if a new window value is added to one,
+ * it must be added to the other, or the route will accept windows that the
+ * projection rejects (or vice-versa).
+ */
 const ACCEPTED_WINDOWS = new Set(['24h', '7d', '30d']);
 
 export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPayload> {
@@ -148,7 +156,9 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    *
    * @param window - Time window identifier. Must be one of '24h', '7d', '30d'.
    *   An unrecognised value throws immediately so callers receive an explicit
-   *   error rather than silently incorrect 7-day data.
+   *   error rather than silently incorrect 7-day data. Note: the route layer
+   *   (enrichment-routes.ts VALID_WINDOWS) is the primary guard; this check is
+   *   a secondary safety net. Both must be kept in sync.
    * @returns A fully-populated `EnrichmentPayload` scoped to the requested
    *   window, or an empty payload when the DB is unreachable.
    * @throws {Error} If `window` is not one of the accepted values.
@@ -425,7 +435,16 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     //   30d  → day buckets
     const truncUnit = window === '24h' ? 'hour' : 'day';
 
-    // sql.raw() is safe: truncUnit is produced by windowToInterval(), never from user input
+    // Explicit allowlist guard before sql.raw() interpolation.
+    // The ternary above already constrains truncUnit to 'hour' | 'day', but this
+    // runtime check ensures no future refactor can introduce an unsafe value.
+    if (truncUnit !== 'hour' && truncUnit !== 'day') {
+      throw new Error(
+        `_queryTokenSavingsTrend: invalid truncation unit '${truncUnit as string}' — must be 'hour' or 'day'`
+      );
+    }
+
+    // sql.raw() is safe: truncUnit is produced by the ternary above, never from user input
     const rows = await db.execute(sql`
       SELECT
         DATE_TRUNC(${sql.raw(`'${truncUnit}'`)}, created_at) AT TIME ZONE 'UTC' AS bucket,
@@ -488,7 +507,16 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
   ): Promise<SimilarityQualityPoint[]> {
     const truncUnit = window === '24h' ? 'hour' : 'day';
 
-    // sql.raw() is safe: truncUnit is produced by windowToInterval(), never from user input
+    // Explicit allowlist guard before sql.raw() interpolation (same pattern as _queryTokenSavingsTrend).
+    // The ternary above already constrains truncUnit to 'hour' | 'day', but this
+    // runtime check ensures no future refactor can introduce an unsafe value.
+    if (truncUnit !== 'hour' && truncUnit !== 'day') {
+      throw new Error(
+        `_querySimilarityQuality: invalid truncation unit '${truncUnit as string}' — must be 'hour' or 'day'`
+      );
+    }
+
+    // sql.raw() is safe: truncUnit is produced by the ternary above, never from user input
     const rows = await db.execute(sql`
       SELECT
         DATE_TRUNC(${sql.raw(`'${truncUnit}'`)}, created_at) AT TIME ZONE 'UTC' AS bucket,
