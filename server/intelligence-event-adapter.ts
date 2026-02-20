@@ -9,10 +9,16 @@ import {
 /**
  * Payload type for `IntelligenceEventAdapter.request()`.
  *
- * TypeScript limitation: `Omit<Record<string, unknown>, ...>` does NOT exclude
- * specific string-literal keys from an index signature at compile time.
- * This type is documentation convention only — there is no compile-time
- * enforcement mechanism for these constraints.
+ * IMPORTANT — compile-time safety does NOT exist here:
+ * `Omit<Record<string, unknown>, 'event_id' | ...>` looks like it forbids the
+ * listed keys, but TypeScript does not remove specific string-literal keys from
+ * a broad index signature (`Record<string, unknown>`).  The Omit resolves to
+ * `Record<string, unknown>` again — identical to the base type — so any key,
+ * including the "excluded" ones, is still accepted without a type error.
+ * This type declaration is purely a documentation convention and code-reader
+ * signal; it provides zero compile-time enforcement of the listed restrictions.
+ * Enforcement of reserved-key semantics happens entirely at runtime (see the
+ * `reservedKeys` loop inside `request()`).
  *
  * Reserved envelope keys (`event_id`, `event_type`, `source`, `timestamp`,
  * `correlation_id`) receive special handling at runtime:

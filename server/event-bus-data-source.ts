@@ -857,24 +857,29 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
       if (prop === 'on' || prop === 'once' || prop === 'emit' || prop === 'removeListener') {
         return (...args: unknown[]) => {
           if (prop === 'on' || prop === 'once') {
-            // Listener was NOT registered — Kafka is unavailable so no events will fire.
-            console.error(
+            // Registering a listener before start() is called is a normal and expected
+            // pattern — components wire up listeners during construction/mount, then the
+            // bus is started separately. Log at warn (not error) to avoid flooding startup
+            // logs with false-alarm error messages during ordinary initialisation order.
+            // The listener was NOT registered — Kafka is unavailable so no events will fire.
+            console.warn(
               `[EventBusDataSource] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
               'Kafka is not initialized; listener was NOT registered. ' +
               'Set KAFKA_BROKERS in .env to enable real event delivery.'
             );
           } else if (prop === 'removeListener') {
             // No-op: there is nothing to remove because on/once stubs never registered a
-            // real listener. Log at error level — a removeListener call on an uninitialized
-            // proxy is equally indicative of misconfiguration as on/once calls.
-            console.error(
+            // real listener. Removing a listener that was never registered is a normal
+            // cleanup pattern (e.g. React useEffect teardown), so log at warn level to
+            // avoid polluting startup/teardown logs with spurious errors.
+            console.warn(
               `[EventBusDataSource] .removeListener() called on stub proxy (event: "${String(args[0])}") — ` +
               'no-op because Kafka is not initialized and no listener was ever registered.'
             );
           } else if (prop === 'emit') {
             // No-op: no real EventEmitter exists to dispatch to. Log at error level —
-            // an emit on an uninitialized proxy is equally indicative of misconfiguration
-            // as on/once calls; the event was silently dropped.
+            // actively emitting to an unavailable bus indicates a logic error: the caller
+            // should have checked bus availability before attempting to publish an event.
             console.error(
               `[EventBusDataSource] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
               'no-op because Kafka is not initialized; event was not dispatched.'

@@ -241,13 +241,30 @@ router.post('/start', async (req: Request, res: Response) => {
     // and prod (dist/index.js → ../demo/recordings) since both resolve to
     // <repo-root>/demo/recordings. The `..` is intentional, not coincidental.
     //
-    // ESM build safety: esbuild is invoked with --format=esm (see package.json
-    // build script), so the compiled output is native ESM and import.meta.url
-    // is always defined at runtime. No CJS fallback is needed.
-    const recordingsDir = path.resolve(
-      path.dirname(fileURLToPath(import.meta.url)),
-      '../demo/recordings'
-    );
+    // ESM REQUIREMENT: This file is ESM-only. The build pipeline (esbuild with
+    // --format=esm, see package.json "build:server" script) always produces native
+    // ESM output, so `import.meta.url` is guaranteed to be defined at runtime under
+    // normal operation. Do NOT convert the build output to CJS; doing so would make
+    // `import.meta.url` undefined and break path resolution here.
+    //
+    // Defensive fallback: if `import.meta.url` is somehow undefined (e.g. an
+    // unexpected CJS wrapper, a test runner that evaluates the file outside ESM
+    // context, or a future build change), fall back to `process.cwd()` so the
+    // server fails loudly on path-containment checks rather than crashing here.
+    // Note: the fallback path may be incorrect if process.cwd() is not the repo
+    // root — callers will receive a 403 rather than a 500, which is safer.
+    const moduleDir =
+      typeof import.meta.url === 'string'
+        ? path.dirname(fileURLToPath(import.meta.url))
+        : (() => {
+            console.error(
+              '[playback-routes] import.meta.url is undefined — ESM requirement violated. ' +
+                'Falling back to process.cwd() for path resolution; recordings directory may be incorrect. ' +
+                'Ensure the server is built and run as ESM (esbuild --format=esm).'
+            );
+            return process.cwd();
+          })();
+    const recordingsDir = path.resolve(moduleDir, '../demo/recordings');
 
     // Reject absolute paths and explicit path traversal attempts
     if (typeof file !== 'string' || file.includes('..') || file.includes('\x00') || path.isAbsolute(file)) {

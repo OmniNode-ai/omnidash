@@ -4348,7 +4348,7 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
   get(target, prop) {
     const instance = getEventConsumer();
     if (!instance) {
-      // Return dummy implementations that log warnings
+      // Return dummy implementations that log errors
       if (prop === 'validateConnection') {
         return async () => {
           console.error('❌ EventConsumer not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
