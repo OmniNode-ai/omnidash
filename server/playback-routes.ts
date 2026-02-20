@@ -236,9 +236,12 @@ router.post('/start', async (req: Request, res: Response) => {
     // Anchored to this module's location (not process.cwd()) so the path is
     // correct regardless of which directory the server process is started from.
     // SECURITY: Never trust user input for path construction
-    // NOTE: esbuild for Node.js targets resolves `import.meta.url` correctly at
-    // compile time, anchoring the path to the module source file's location rather
-    // than `process.cwd()`. This is intentional and safe for our build pipeline.
+    //
+    // NOTE: esbuild bundles the server to `dist/` (flat output: dist/index.js).
+    // At runtime, `path.dirname(fileURLToPath(import.meta.url))` evaluates to
+    // `<repo-root>/dist/`. The `../demo/recordings` path therefore resolves to
+    // `<repo-root>/demo/recordings`, which is the correct recordings directory.
+    // The `..` is intentional — it navigates up from `dist/` to the repo root.
     const recordingsDir = path.resolve(
       path.dirname(fileURLToPath(import.meta.url)),
       '../demo/recordings'

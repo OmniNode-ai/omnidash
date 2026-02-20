@@ -731,6 +731,12 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * `getEventBusDataSource()` plus a null check — both are safe to call at any
  * point.
  *
+ * @performance Not safe for per-request hot paths. Lazy initialization runs
+ * synchronously on the first call and may trigger constructor work (environment
+ * variable reads, object allocation). Intended for startup checks and
+ * one-time guards only — do not call inside request-time middleware or
+ * frequently-invoked handlers.
+ *
  * @example
  * ```typescript
  * if (isEventBusDataSourceAvailable()) {
@@ -767,7 +773,26 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
           return false;
         };
       }
-      if (prop === 'start' || prop === 'stop' || prop === 'initializeSchema') {
+      if (prop === 'start') {
+        /**
+         * Proxy stub for start() when Kafka is not initialized.
+         *
+         * Throws asynchronously (consistent with the eventConsumer proxy's start stub)
+         * so callers awaiting start() receive a rejected promise rather than a silent
+         * undefined return. Kafka is required infrastructure — a missing KAFKA_BROKERS
+         * env var is a misconfiguration error, not a graceful-degradation scenario.
+         *
+         * @throws {Error} Always rejects — Kafka was not configured or failed to
+         *   initialize. Set KAFKA_BROKERS in .env and restart the server.
+         */
+        return async (..._args: unknown[]): Promise<never> => {
+          throw new Error(
+            '[EventBusDataSource] start() called but Kafka is not available — ' +
+              'KAFKA_BROKERS is not configured. Set KAFKA_BROKERS in .env to restore event streaming.'
+          );
+        };
+      }
+      if (prop === 'stop' || prop === 'initializeSchema') {
         return async () => {
           console.error('❌ EventBusDataSource not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
         };

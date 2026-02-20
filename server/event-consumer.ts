@@ -4313,6 +4313,12 @@ export function getEventConsumer(): EventConsumer | null {
  * `getEventConsumer()` plus a null check — both are safe to call at any
  * point.
  *
+ * @performance Not safe for per-request hot paths. Lazy initialization runs
+ * synchronously on the first call and may trigger constructor work (environment
+ * variable reads, object allocation). Intended for startup checks and
+ * one-time guards only — do not call inside request-time middleware or
+ * frequently-invoked handlers.
+ *
  * @returns true if EventConsumer singleton is initialized, false otherwise
  */
 export function isEventConsumerAvailable(): boolean {

@@ -715,7 +715,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
     console.log('[WebSocket] EventBusDataSource listeners registered for real-time events');
   } else {
     console.warn(
-      '[WebSocket] EventBusDataSource not available — Kafka may not be configured. Real-time event-bus subscription will not function.'
+      '[WebSocket] EventBusDataSource not available — Kafka is not configured. Real-time event-bus subscription will not function.'
     );
   }
 

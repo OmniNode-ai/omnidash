@@ -96,7 +96,7 @@ export class PlaybackDataSource extends EventEmitter {
    */
   stop(): void {
     if (!this.isActive) {
-      console.warn('[PlaybackDataSource] stop() called while already inactive — no-op');
+      console.debug('[PlaybackDataSource] stop() called while already inactive — no-op');
       return;
     }
     this.isActive = false;

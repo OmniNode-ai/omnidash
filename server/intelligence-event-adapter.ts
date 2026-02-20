@@ -28,7 +28,7 @@ import {
  * In non-production environments a `console.warn` is emitted when this occurs
  * so unintentional overrides are surfaced during development.
  */
-type PayloadOverride = Omit< // Note: correlation_id/correlationId are also special-cased — extracted and promoted to the envelope, not spread into payload; see JSDoc above
+type PayloadOverride = Omit<
   Record<string, unknown>,
   'event_id' | 'event_type' | 'source' | 'timestamp'
 >;
@@ -243,10 +243,7 @@ export class IntelligenceEventAdapter {
       }
     }
 
-    // Warn in development when caller-supplied keys would overwrite pre-constructed payload fields.
-    // This is developer guidance only and does not block execution.
-    // Dev-only: overrides are intentional by design; warning is a development convenience only.
-    // In production the overwrite still happens silently — callers owning override intent is supported.
+    // Dev-only: warn when caller-supplied keys overwrite pre-constructed payload fields (overrides are supported by design).
     if (process.env.NODE_ENV !== 'production') {
       const preConstructedKeys = ['source_path', 'content', 'language', 'operation_type', 'project_id', 'user_id'] as const;
       for (const key of preConstructedKeys) {
@@ -397,7 +394,26 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
     const instance = getIntelligenceEvents();
     if (!instance) {
       // Return dummy implementations
-      if (prop === 'start' || prop === 'stop') {
+      if (prop === 'start') {
+        /**
+         * Proxy stub for start() when Kafka is not initialized.
+         *
+         * Throws asynchronously (consistent with the eventConsumer proxy's start stub)
+         * so callers awaiting start() receive a rejected promise rather than a silent
+         * undefined return. Kafka is required infrastructure — a missing KAFKA_BROKERS
+         * env var is a misconfiguration error, not a graceful-degradation scenario.
+         *
+         * @throws {Error} Always rejects — Kafka was not configured or failed to
+         *   initialize. Set KAFKA_BROKERS in .env and restart the server.
+         */
+        return async (..._args: unknown[]): Promise<never> => {
+          throw new Error(
+            '[IntelligenceEventAdapter] start() called but Kafka is not available — ' +
+              'KAFKA_BROKERS is not configured. Set KAFKA_BROKERS in .env to restore intelligence event streaming.'
+          );
+        };
+      }
+      if (prop === 'stop') {
         return async () => {
           console.error('❌ IntelligenceEventAdapter not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
         };
