@@ -235,6 +235,16 @@ export class IntelligenceEventAdapter {
     const correlationId = String(rawCorrelationId);
     const correlationKey = correlationId.toLowerCase();
 
+    // Guard against duplicate correlation IDs early — before the reservedKeys loop and
+    // envelope construction — so we avoid wasteful UUID allocations and object builds for
+    // requests that will be rejected anyway.
+    if (this.pending.has(correlationKey)) {
+      throw new Error(
+        `Duplicate correlation_id: a request with this ID is already in-flight ("${correlationKey}"). ` +
+          'Ensure each concurrent request uses a unique correlation ID.'
+      );
+    }
+
     // Exclude correlation_id / correlationId from the inner payload spread so they
     // are not duplicated inside envelope.payload (they belong on the outer envelope only).
     const { correlation_id: _cid, correlationId: _cidCamel, ...payloadRest } = payload;
@@ -351,22 +361,11 @@ export class IntelligenceEventAdapter {
       },
     };
 
-    // Guard against duplicate correlation IDs: if a request with the same key is already
-    // in-flight, reject the new request immediately rather than silently overwriting the
-    // existing entry. Overwriting would orphan the first caller's resolve/reject callbacks
-    // and leave its timeout handle running — a memory and timer leak.
-    if (this.pending.has(correlationKey)) {
-      throw new Error(
-        `Duplicate correlation_id: a request with this ID is already in-flight ("${correlationKey}"). ` +
-          'Ensure each concurrent request uses a unique correlation ID.'
-      );
-    }
-
     // Promise with timeout tracking
     const promise = new Promise<any>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(correlationKey);
-        reject(new Error(`Intelligence request timed out after ${timeoutMs}ms (correlationKey=${correlationKey}, requestType=${requestType})`));
+        reject(new Error(`Intelligence request timed out after ${timeoutMs}ms (correlationId=${correlationId}, requestType=${requestType})`));
       }, timeoutMs);
       this.pending.set(correlationKey, { resolve, reject, timeout });
     });
