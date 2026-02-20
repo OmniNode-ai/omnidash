@@ -199,6 +199,14 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * with the '24h' window, which fans out all six sub-queries in parallel via
    * `Promise.all`.
    *
+   * NOTE: Route handlers MUST use `ensureFreshForWindow(window)` rather than
+   * the inherited `ensureFresh()` / `getSnapshot()` path. The base-class
+   * cache is a single 24h snapshot; per-window snapshots are managed by the
+   * separate `ensureFreshForWindow` Maps. Calling both paths concurrently for
+   * '24h' is safe (they share the same `_queryForWindow('24h')` call) but the
+   * two caches are disjoint — only `ensureFreshForWindow` applies the cooldown
+   * and in-flight coalescing guards.
+   *
    * @param db - An active Drizzle database instance obtained from
    *   `tryGetIntelligenceDb`.
    * @returns A fully-populated `EnrichmentPayload` scoped to the last 24 hours.
