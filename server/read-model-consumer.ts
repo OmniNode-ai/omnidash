@@ -840,7 +840,14 @@ export class ReadModelConsumer {
       // Instead we use a typeof guard so that any shape mismatch is visible
       // as a NaN/undefined at runtime rather than a silent zero.
       const rawRowCount = (result as unknown as Record<string, unknown>).rowCount;
-      insertedRowCount = typeof rawRowCount === 'number' ? rawRowCount : 0;
+      if (typeof rawRowCount === 'number') {
+        insertedRowCount = rawRowCount;
+      } else {
+        console.warn(
+          '[ReadModelConsumer] enrichment INSERT: rowCount not found in result shape — WebSocket invalidation suppressed. Shape may have changed.'
+        );
+        insertedRowCount = 0;
+      }
     } catch (err) {
       // If the table doesn't exist yet (migration not run), degrade gracefully
       // and advance the watermark so the consumer is not stuck retrying.

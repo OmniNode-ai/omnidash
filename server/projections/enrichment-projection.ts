@@ -88,7 +88,7 @@ function windowToInterval(window: string): string {
  * it must be added to the other, or the route will accept windows that the
  * projection rejects (or vice-versa).
  */
-const ACCEPTED_WINDOWS = new Set(['24h', '7d', '30d']);
+export const ACCEPTED_WINDOWS = new Set(['24h', '7d', '30d']);
 
 export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPayload> {
   readonly viewId = 'enrichment';
@@ -216,6 +216,8 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    */
   override reset(): void {
     super.reset();
+    // Clearing Maps means next call per window will dispatch immediately
+    // regardless of any prior cooldown — correct after reset.
     this.ensureFreshForWindowLastDispatched.clear();
     this.ensureFreshForWindowLastSnapshot.clear();
     this.ensureFreshForWindowInFlight.clear();
@@ -320,6 +322,10 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     // so that if _queryForWindow() throws synchronously (edge case), we don't
     // stamp lastDispatched without a corresponding in-flight entry — which
     // would cause 500ms of repeated throws before the cooldown expires.
+    // NOTE: No async yield between this and the in-flight set() above — both
+    // are synchronous, so no concurrent call can interleave. Timestamp is
+    // stamped after promise construction to avoid 500ms lockout if
+    // _queryForWindow throws synchronously.
     this.ensureFreshForWindowLastDispatched.set(window, Date.now());
     this.ensureFreshForWindowInFlight.set(window, promise);
     return promise;

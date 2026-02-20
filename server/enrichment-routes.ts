@@ -11,10 +11,9 @@
 
 import { Router } from 'express';
 import { enrichmentProjection } from './projection-bootstrap';
+import { ACCEPTED_WINDOWS } from './projections/enrichment-projection';
 
 const router = Router();
-
-const VALID_WINDOWS = ['24h', '7d', '30d'] as const;
 
 /**
  * Extract and validate the `window` query parameter.
@@ -37,7 +36,7 @@ function getWindow(query: Record<string, unknown>): string | null {
   //   - 'bad'    → null   (400 Bad Request)
   //   - '24h'    → '24h'  (valid)
   const windowParam = typeof query.window === 'string' ? query.window : '24h';
-  if (!(VALID_WINDOWS as readonly string[]).includes(windowParam)) {
+  if (!ACCEPTED_WINDOWS.has(windowParam)) {
     return null;
   }
   return windowParam;
