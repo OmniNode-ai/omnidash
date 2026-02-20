@@ -1218,7 +1218,7 @@ export class ReadModelConsumer {
       bucketTime,
       granularity,
       modelName,
-      repoName: repoName || undefined,
+      repoName,
       patternId: (data.pattern_id as string) || (data.patternId as string) || undefined,
       patternName: (data.pattern_name as string) || (data.patternName as string) || undefined,
       sessionId: (data.session_id as string) || (data.sessionId as string) || undefined,

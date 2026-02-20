@@ -479,14 +479,7 @@ export const OMNICLAUDE_INJECTION_SUFFIXES = [
   SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
 ] as const;
 
-/**
- * Extended OmniClaude topic suffixes used by `buildSubscriptionTopics()` for
- * WebSocket subscription building. Contains omniclaude-namespace suffixes
- * (routing, sessions, manifests, notifications) as well as cross-namespace
- * canonical topic names — notably `TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED`,
- * which is a full absolute topic name from the omniintelligence namespace rather
- * than an omniclaude suffix. See OMN-2371 for context.
- */
+/** Extended OmniClaude topic suffixes used by `buildSubscriptionTopics()` for WebSocket subscription building. */
 export const OMNICLAUDE_EXTENDED_SUFFIXES = [
   SUFFIX_OMNICLAUDE_ROUTING_DECISION,
   SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
@@ -495,12 +488,6 @@ export const OMNICLAUDE_EXTENDED_SUFFIXES = [
   SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED,
   SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED,
   SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED,
-  // OMN-2371 (GAP-5): replaced deprecated SUFFIX_OMNICLAUDE_LLM_COST_REPORTED (zero producers)
-  // with the canonical topic emitted by NodeLlmInferenceEffect in omnibase_infra.
-  // NOTE: This is a full absolute topic name from the omniintelligence namespace, not a suffix.
-  // It is intentionally placed here for cross-namespace subscription by the OmniClaude consumer;
-  // see OMN-2371 for context on why a non-omniclaude topic belongs in this suffix array.
-  TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
 ] as const;
 
 /** OmniIntelligence pipeline topic suffixes */
@@ -514,6 +501,8 @@ export const INTELLIGENCE_PIPELINE_SUFFIXES = [
   SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
   SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
+  // OMN-2371 (GAP-5): canonical LLM call topic emitted by NodeLlmInferenceEffect in omnibase_infra
+  TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
 ] as const;
 
 /** Intelligence pattern lifecycle topic suffixes */
