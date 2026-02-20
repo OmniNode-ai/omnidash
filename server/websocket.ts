@@ -28,6 +28,7 @@ import { baselinesEventEmitter } from './baselines-events';
 import { llmRoutingEventEmitter } from './llm-routing-events';
 import { delegationEventEmitter } from './delegation-events';
 import { effectivenessEventEmitter } from './effectiveness-events';
+import { enrichmentEventEmitter } from './enrichment-events';
 import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
@@ -274,6 +275,8 @@ const VALID_TOPICS = [
   'baselines',
   // Delegation metrics invalidation events (OMN-2284)
   'delegation',
+  // Context enrichment invalidation events (OMN-2280 / OMN-2373)
+  'enrichment',
 ] as const;
 
 type ValidTopic = (typeof VALID_TOPICS)[number];
@@ -550,6 +553,19 @@ export function setupWebSocket(httpServer: HTTPServer) {
     broadcast('EFFECTIVENESS_UPDATE', { timestamp: Date.now() }, 'effectiveness');
   };
   effectivenessEventEmitter.on('effectiveness-update', effectivenessUpdateHandler);
+
+  // Context enrichment invalidation listener (OMN-2373)
+  // Tells clients to re-fetch enrichment data when a new enrichment event is projected.
+  // Uses enrichmentEventEmitter so ReadModelConsumer can trigger it after projecting.
+  // Invalidation-only broadcast: clients re-query the /api/enrichment/* endpoints on receipt.
+  const enrichmentInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast(
+      'ENRICHMENT_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'enrichment'
+    );
+  };
+  enrichmentEventEmitter.on('enrichment-invalidate', enrichmentInvalidateHandler);
 
   // Node Registry event listeners
   registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {
@@ -1141,6 +1157,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Remove effectiveness event listener (OMN-2328)
     effectivenessEventEmitter.removeListener('effectiveness-update', effectivenessUpdateHandler);
+
+    // Remove enrichment event listener (OMN-2373)
+    enrichmentEventEmitter.removeListener('enrichment-invalidate', enrichmentInvalidateHandler);
 
     // Remove event bus data source listeners
     console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);
