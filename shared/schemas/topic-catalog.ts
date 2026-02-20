@@ -70,22 +70,11 @@ export type TopicCatalogResponse = z.infer<typeof TopicCatalogResponseSchema>;
 /**
  * Delta event emitted when the topic catalog changes after initial bootstrap.
  *
- * - `topics_added`:    New topics that should be added to active subscriptions.
- * - `topics_removed`:  Topics that should be unsubscribed.
- * - `catalog_version`: Monotonically increasing sequence number for this delta event.
- *                      Valid values: integer ≥ 1 (monotone sequence) or -1 (unknown
- *                      sentinel, triggers a re-query).  Absent / undefined is treated
- *                      the same as unknown.  Invalid values (0, negatives other than
- *                      -1) are rejected by schema validation.
+ * - `topics_added`:   New topics that should be added to active subscriptions.
+ * - `topics_removed`: Topics that should be unsubscribed.
  */
 export const TopicCatalogChangedSchema = z.object({
   topics_added: z.array(z.string()).default([]),
   topics_removed: z.array(z.string()).default([]),
-  catalog_version: z
-    .union([
-      z.literal(-1), // explicit 'unknown' sentinel
-      z.number().int().min(1), // valid monotone sequence number
-    ])
-    .optional(),
 });
 export type TopicCatalogChanged = z.infer<typeof TopicCatalogChangedSchema>;

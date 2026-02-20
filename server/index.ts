@@ -203,8 +203,12 @@ app.use((req, res, next) => {
   // Start read-model consumer (OMN-2061)
   // Projects Kafka events into omnidash_analytics for durable persistence.
   // Runs as a separate consumer group from EventConsumer.
-  // Fire-and-forget: do NOT await — retry loop can block for minutes and
-  // must not delay server.listen().
+  //
+  // Fire-and-forget intentionally: do NOT await this call.
+  // With MAX_RETRY_ATTEMPTS=10 and exponential backoff up to 30 s, a Kafka
+  // outage would delay server.listen() by over 5 minutes, causing the process
+  // to appear unresponsive to health checks and load balancers. The read-model
+  // consumer is non-critical for HTTP serving — the server must be up first.
   readModelConsumer
     .start()
     .then(() => {
@@ -212,20 +216,38 @@ app.use((req, res, next) => {
       if (stats.isRunning) {
         log('✅ Read-model consumer started - projecting events to omnidash_analytics');
       } else {
-        const hasBrokers = !!process.env.KAFKA_BROKERS;
-        const hasDb = !!process.env.OMNIDASH_ANALYTICS_DB_URL;
-        if (!hasBrokers || !hasDb) {
+        const hasEnvVars =
+          !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS) &&
+          !!process.env.OMNIDASH_ANALYTICS_DB_URL;
+        if (hasEnvVars) {
+          log(
+            '⚠️  Read-model consumer failed to connect after max retries (Kafka connectivity issue)'
+          );
+          log('   Check that KAFKA_BROKERS is reachable and the broker is healthy');
+        } else {
           log(
             '⚠️  Read-model consumer skipped (missing KAFKA_BROKERS or OMNIDASH_ANALYTICS_DB_URL)'
           );
-        } else {
-          log('⚠️  Read-model consumer failed to connect after max retries');
         }
         log('   Read-model tables will not receive new projections');
       }
     })
     .catch((error) => {
-      console.error('❌ Failed to start read-model consumer:', error);
+      const hasEnvVars =
+        !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS) &&
+        !!process.env.OMNIDASH_ANALYTICS_DB_URL;
+      if (hasEnvVars) {
+        console.error(
+          '❌ Read-model consumer failed after retries (Kafka connectivity issue):',
+          error
+        );
+        console.error('   Check that KAFKA_BROKERS is reachable and the broker is healthy');
+      } else {
+        console.error(
+          '❌ Failed to start read-model consumer (missing KAFKA_BROKERS or OMNIDASH_ANALYTICS_DB_URL):',
+          error
+        );
+      }
       console.error('   Read-model tables will not receive new projections');
       console.error('   Application will continue with limited functionality');
     });

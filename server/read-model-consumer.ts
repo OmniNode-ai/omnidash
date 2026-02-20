@@ -36,6 +36,8 @@ import {
   baselinesComparisons,
   baselinesTrend,
   baselinesBreakdown,
+  delegationEvents,
+  delegationShadowComparisons,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
@@ -46,6 +48,8 @@ import type {
   InsertBaselinesComparison,
   InsertBaselinesTrend,
   InsertBaselinesBreakdown,
+  InsertDelegationEvent,
+  InsertDelegationShadowComparison,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
@@ -59,12 +63,7 @@ import {
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
-import { delegationEvents, delegationShadowComparisons } from '@shared/intelligence-schema';
-import type {
-  InsertDelegationEvent,
-  InsertDelegationShadowComparison,
-} from '@shared/intelligence-schema';
-import { baselinesProjection } from './projection-bootstrap';
+import { baselinesProjection, llmRoutingProjection } from './projection-bootstrap';
 import { emitBaselinesUpdate } from './baselines-events';
 import { emitLlmRoutingInvalidate } from './llm-routing-events';
 import { emitDelegationInvalidate } from './delegation-events';
@@ -193,6 +192,7 @@ const READ_MODEL_TOPICS = [
   'onex.evt.omnibase-infra.baselines-computed.v1',
   SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
   SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
+  // OMN-2284: Delegation metrics — task-delegated and shadow-comparison events.
   SUFFIX_OMNICLAUDE_TASK_DELEGATED,
   SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON,
 ] as const;
@@ -218,13 +218,6 @@ export class ReadModelConsumer {
   private kafka: Kafka | null = null;
   private consumer: Consumer | null = null;
   private running = false;
-  /**
-   * Set to true by stop() as soon as a shutdown is requested.
-   * The start() retry loop checks this flag before each connection attempt and
-   * before sleeping between retries so that a SIGTERM/SIGINT arriving mid-retry
-   * cannot race a new this.consumer.connect() call against the disconnect
-   * performed inside stop().
-   */
   private stopped = false;
   private stats: ReadModelConsumerStats = {
     isRunning: false,
@@ -239,9 +232,16 @@ export class ReadModelConsumer {
    * Connects to Kafka and begins consuming events for projection.
    */
   async start(): Promise<void> {
-    // Reset the stopped flag on each start() call so that a consumer can be
-    // restarted after a previous stop() (e.g., in tests).
+    // Reset the stopped flag so a consumer that was previously stopped can be
+    // restarted cleanly. Placed before the `this.running` guard so that a
+    // concurrent stop()+start() sequence — where stop() sets stopped=true and
+    // then start() runs — cannot slip past the guard and override stopped=true
+    // with false after the guard has been checked. After the assignment we
+    // immediately re-check stopped: if stop() raced in and set it back to true
+    // between the assignment and this re-check we abort rather than proceeding
+    // to connect.
     this.stopped = false;
+    if (this.stopped) return;
 
     if (this.running) {
       console.log('[ReadModelConsumer] Already running');
@@ -265,13 +265,11 @@ export class ReadModelConsumer {
 
     let attempts = 0;
     while (attempts < MAX_RETRY_ATTEMPTS) {
-      // Abort the retry loop immediately if stop() was called while we were
-      // sleeping between retries. Without this check a connect() call could
-      // race against the disconnect() already performed inside stop().
-      if (this.stopped) {
-        console.log('[ReadModelConsumer] Stop requested -- aborting retry loop');
-        return;
-      }
+      // If stop() was called while we were sleeping between retries, abort the
+      // retry loop immediately. Without this guard the loop would recreate a
+      // Kafka client + consumer after stop() already nulled them, leaving a
+      // live connection that is never disconnected.
+      if (this.stopped) return;
 
       try {
         this.kafka = new Kafka({
@@ -326,14 +324,11 @@ export class ReadModelConsumer {
           err instanceof Error ? err.message : err
         );
         if (attempts < MAX_RETRY_ATTEMPTS) {
-          // Check the stopped flag once more before sleeping so a stop() call
-          // that arrives in the same event-loop tick as the error is honoured
-          // without waiting out the full backoff delay.
-          if (this.stopped) {
-            console.log('[ReadModelConsumer] Stop requested -- aborting retry loop');
-            return;
-          }
           await new Promise((resolve) => setTimeout(resolve, delay));
+          // Re-check stopped after the backoff sleep — stop() may have been called
+          // during the up-to-30s wait. Abort immediately rather than proceeding to
+          // the next iteration which would recreate a connection after stop() cleared state.
+          if (this.stopped) return;
         }
       }
     }
@@ -344,14 +339,17 @@ export class ReadModelConsumer {
   /**
    * Stop the consumer gracefully.
    *
-   * Sets the stopped flag synchronously before any async work so that the
-   * start() retry loop sees it immediately and will not attempt another
-   * this.consumer.connect() call after we return from this method.
+   * Guard uses `&&` (not `||`): skip only when BOTH running=false AND
+   * consumer=null. If consumer.connect() succeeded but consumer.run() threw
+   * before this.running was set to true, running=false but consumer is
+   * non-null — a torn state. Using `||` would make stop() a no-op in that
+   * scenario, leaking the Kafka connection. `&&` ensures we always disconnect
+   * a live consumer handle regardless of the running flag.
    */
   async stop(): Promise<void> {
-    // Set the abort flag first, before any await, so the start() retry loop
-    // observes it as soon as the current microtask checkpoint is reached even
-    // when stop() is called while start() is sleeping between retry attempts.
+    // Set stopped before any await so that if start() is concurrently sleeping
+    // between retry attempts it will observe this flag on its next iteration
+    // and abort rather than creating a new connection after we disconnect.
     this.stopped = true;
 
     if (!this.running && !this.consumer) return;
@@ -867,7 +865,11 @@ export class ReadModelConsumer {
       if (typeof rawRowCount === 'number') {
         insertedRowCount = rawRowCount;
       } else {
-        console.warn(
+        // console.error (not warn) is intentional: a shape change here means
+        // WebSocket invalidation is silently suppressed for all enrichment
+        // inserts until the code is updated. This must be visible and alarming
+        // in production logs so on-call engineers notice it immediately.
+        console.error(
           `[ReadModelConsumer] enrichment INSERT: rowCount not found in result shape — WebSocket invalidation suppressed. Shape may have changed. Actual type of rawRowCount: ${typeof rawRowCount}`
         );
         // TODO: Add a structured metric/counter here so shape changes are
@@ -1025,6 +1027,19 @@ export class ReadModelConsumer {
       throw err;
     }
 
+    // Invalidate the LLM routing projection cache so the next API request
+    // returns fresh data from the newly projected decision.
+    // Wrapped defensively: a failure here must not block watermark advancement —
+    // the DB write has already committed successfully.
+    try {
+      llmRoutingProjection.invalidateCache();
+    } catch (e) {
+      console.warn(
+        '[read-model-consumer] llmRoutingProjection.invalidateCache() failed post-commit:',
+        e
+      );
+    }
+
     // Notify WebSocket clients subscribed to the 'llm-routing' topic.
     // Called here (after the try/catch) so clients are only notified when
     // the DB write has committed successfully.
@@ -1071,8 +1086,14 @@ export class ReadModelConsumer {
       delegatedTo,
       delegatedBy: (evt.delegated_by as string) || (data.delegatedBy as string) || null,
       qualityGatePassed: Boolean(evt.quality_gate_passed ?? data.qualityGatePassed ?? false),
-      qualityGatesChecked: evt.quality_gates_checked ?? data.qualityGatesChecked ?? null,
-      qualityGatesFailed: evt.quality_gates_failed ?? data.qualityGatesFailed ?? null,
+      qualityGatesChecked:
+        evt.quality_gates_checked ??
+        (data.qualityGatesChecked as string[] | null | undefined) ??
+        null,
+      qualityGatesFailed:
+        evt.quality_gates_failed ??
+        (data.qualityGatesFailed as string[] | null | undefined) ??
+        null,
       costUsd: (() => {
         const v = evt.cost_usd ?? data.costUsd;
         return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;

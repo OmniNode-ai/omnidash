@@ -22,7 +22,6 @@ import type {
   ProjectionResponse,
   ProjectionEvent,
   ProjectionEventsResponse,
-  EventEnrichment,
 } from '@shared/projection-types';
 
 // ============================================================================
@@ -207,7 +206,6 @@ export class ProjectionService extends EventEmitter {
       payload: raw.payload ?? {},
       ...(eventTimeMissing && { eventTimeMissing: true }),
       error: raw.error,
-      enrichment: raw.enrichment,
     };
 
     this.routeToViews(projectionEvent);
@@ -323,5 +321,4 @@ export interface RawEventInput {
   severity?: ProjectionEvent['severity'];
   payload?: Record<string, unknown>;
   error?: { message: string; stack?: string };
-  enrichment?: EventEnrichment;
 }
