@@ -18,6 +18,7 @@ import { BaselinesProjection } from './projections/baselines-projection';
 import { ValidationProjection } from './projections/validation-projection';
 import { PatternsProjection } from './projections/patterns-projection';
 import { EnrichmentProjection } from './projections/enrichment-projection';
+import { EnforcementProjection } from './projections/enforcement-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
@@ -77,6 +78,8 @@ export const validationProjection = new ValidationProjection();
 export const patternsProjection = new PatternsProjection();
 /** Context enrichment projection (OMN-2373). Queries context_enrichment_events table. */
 export const enrichmentProjection = new EnrichmentProjection();
+/** Pattern enforcement projection (OMN-2374). Queries pattern_enforcement_events table. */
+export const enforcementProjection = new EnforcementProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
@@ -98,6 +101,9 @@ if (!projectionService.getView(patternsProjection.viewId)) {
 }
 if (!projectionService.getView(enrichmentProjection.viewId)) {
   projectionService.registerView(enrichmentProjection);
+}
+if (!projectionService.getView(enforcementProjection.viewId)) {
+  projectionService.registerView(enforcementProjection);
 }
 
 // ============================================================================
