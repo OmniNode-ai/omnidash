@@ -3,6 +3,15 @@
  *
  * REST API for controlling event playback from the dashboard.
  * Broadcasts playback lifecycle events to WebSocket clients via playbackEventEmitter.
+ *
+ * DEMO_MODE REQUIREMENT: All state-mutating routes (start, stop, pause, resume,
+ * speed, loop) require the `DEMO_MODE=true` environment variable to be set.
+ * Without it every POST endpoint returns HTTP 403. Read-only routes (status,
+ * recordings) remain accessible regardless of DEMO_MODE.
+ *
+ * Set DEMO_MODE=true in the server environment (e.g. .env) to enable demo
+ * playback. Never set this in production environments where live EventConsumer
+ * state must not be disrupted.
  */
 
 import path from 'path';
@@ -226,6 +235,13 @@ router.get('/status', (_req: Request, res: Response) => {
  *   - loop?: boolean (loop continuously, default false)
  */
 router.post('/start', async (req: Request, res: Response) => {
+  if (process.env.DEMO_MODE !== 'true') {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
   // NOTE: This guard MUST remain OUTSIDE the try/finally block.
   // If it were inside try, a second concurrent request hitting this check would
   // return a 409, but the finally block would still execute — resetting
@@ -308,17 +324,12 @@ router.post('/start', async (req: Request, res: Response) => {
     // This catches edge cases like symlinks or encoded characters.
     // Assumes case-sensitive filesystem (Linux production). On macOS with
     // case-insensitive APFS, case-variant paths could bypass this check.
-    // NOTE: This endpoint IS registered unconditionally and reachable in production
-    // builds; the demo-mode guard exists only at the UI layer. The case-sensitivity
-    // risk is still acceptable in practice because `recordingsDir` is resolved from
-    // the server module's own filesystem location (not from user-controlled input),
-    // so an attacker cannot choose an arbitrary target directory — only filenames
-    // within the pre-fixed recordings directory are user-supplied. Case-variant
-    // filename collisions within that narrow directory are not a realistic attack
-    // vector.
-    // TODO: Add DEMO_MODE env-var guard if demo playback needs to be restricted in production
-    // (e.g. `if (process.env.DEMO_MODE !== 'true') return res.status(403).json(...)`).
-    // The current guard exists only at the UI layer, which is a known limitation.
+    // NOTE: The case-sensitivity risk is acceptable in practice because
+    // `recordingsDir` is resolved from the server module's own filesystem
+    // location (not from user-controlled input), so an attacker cannot choose
+    // an arbitrary target directory — only filenames within the pre-fixed
+    // recordings directory are user-supplied. Case-variant filename collisions
+    // within that narrow directory are not a realistic attack vector.
     if (!resolvedPath.startsWith(recordingsDir + path.sep) && resolvedPath !== recordingsDir) {
       return res.status(403).json({
         success: false,
@@ -408,6 +419,13 @@ router.post('/start', async (req: Request, res: Response) => {
  * Pause current playback
  */
 router.post('/pause', (_req: Request, res: Response) => {
+  if (process.env.DEMO_MODE !== 'true') {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
   playback.pausePlayback();
   res.json({
     success: true,
@@ -421,6 +439,13 @@ router.post('/pause', (_req: Request, res: Response) => {
  * Resume paused playback
  */
 router.post('/resume', (_req: Request, res: Response) => {
+  if (process.env.DEMO_MODE !== 'true') {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
   playback.resumePlayback();
   res.json({
     success: true,
@@ -434,6 +459,13 @@ router.post('/resume', (_req: Request, res: Response) => {
  * Stop playback and restore live data from snapshot
  */
 router.post('/stop', (_req: Request, res: Response) => {
+  if (process.env.DEMO_MODE !== 'true') {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
   // Clean up event handler to prevent stale handler on next start
   if (currentEventHandler) {
     playback.off('event', currentEventHandler);
@@ -465,6 +497,13 @@ router.post('/stop', (_req: Request, res: Response) => {
  *   - speed: number (multiplier, e.g., 0.5, 1, 2, 5)
  */
 router.post('/speed', (req: Request, res: Response) => {
+  if (process.env.DEMO_MODE !== 'true') {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
   const { speed } = req.body;
 
   // Reject non-finite values (NaN, Infinity, -Infinity)
@@ -498,6 +537,13 @@ router.post('/speed', (req: Request, res: Response) => {
  *   - loop: boolean (enable/disable loop)
  */
 router.post('/loop', (req: Request, res: Response) => {
+  if (process.env.DEMO_MODE !== 'true') {
+    return res.status(403).json({
+      success: false,
+      error: 'Demo playback is not enabled. Set DEMO_MODE=true to enable.',
+    });
+  }
+
   const { loop } = req.body;
 
   if (typeof loop !== 'boolean') {
