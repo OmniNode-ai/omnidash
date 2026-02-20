@@ -7,6 +7,18 @@ import {
 } from '@shared/topics';
 
 /**
+ * Payload type for `IntelligenceEventAdapter.request()`.
+ *
+ * Envelope-level keys are excluded so callers get a compile-time error if they
+ * accidentally pass fields that belong to the outer envelope layer rather than
+ * the inner payload.
+ */
+type PayloadOverride = Omit<
+  Record<string, unknown>,
+  'event_id' | 'correlation_id' | 'event_type' | 'source' | 'timestamp'
+>;
+
+/**
  * Error class for intelligence request failures with optional error code.
  * Used when intelligence requests fail with structured error information.
  */
@@ -180,7 +192,7 @@ export class IntelligenceEventAdapter {
    */
   async request(
     requestType: string,
-    payload: Record<string, any>,
+    payload: PayloadOverride = {},
     timeoutMs: number = 5000
   ): Promise<any> {
     if (!this._started || !this.producer) throw new Error('IntelligenceEventAdapter not started');
