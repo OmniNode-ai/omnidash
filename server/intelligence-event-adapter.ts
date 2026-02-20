@@ -217,6 +217,17 @@ export class IntelligenceEventAdapter {
     // are not duplicated inside envelope.payload (they belong on the outer envelope only).
     const { correlation_id: _cid, correlationId: _cidCamel, ...payloadRest } = payload;
 
+    if (process.env.NODE_ENV !== 'production') {
+      const reservedKeys = ['event_id', 'event_type', 'source', 'timestamp'];
+      for (const key of reservedKeys) {
+        if (key in payloadRest) {
+          console.warn(
+            `[IntelligenceEventAdapter] payload contains reserved envelope key '${key}' — it will silently overwrite the envelope field. Pass it as a top-level argument instead.`
+          );
+        }
+      }
+    }
+
     // Format matches OmniClaude's _create_request_payload format
     // Handler expects: event_type, correlation_id, payload (with source_path, language, etc.)
     const envelope = {
@@ -355,7 +366,7 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
       }
       if (prop === 'request' || prop === 'requestPatternDiscovery') {
         return async () => {
-          throw new Error('❌ IntelligenceEventAdapter not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
+          throw new Error('IntelligenceEventAdapter not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
         };
       }
       if (prop === 'started') {

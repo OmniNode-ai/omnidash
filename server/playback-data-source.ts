@@ -69,6 +69,10 @@ export class PlaybackDataSource extends EventEmitter {
    * violates the contract described in the module JSDoc.
    */
   start(): void {
+    if (this.isActive) {
+      console.warn('[PlaybackDataSource] start() called while already active — possible contract violation (demo mode guard missing at call site)');
+      return;
+    }
     this.isActive = true;
     this.emit('connected');
     console.log('[PlaybackDataSource] Started');
