@@ -24,9 +24,9 @@ import {
  *
  * All other keys are spread directly into the inner payload object. Any key
  * matching a pre-constructed field (`source_path`, `content`, `language`,
- * `operation_type`, `project_id`, `user_id`) will silently overwrite the
- * default value. There is no warning when an override occurs — callers should
- * avoid passing these keys unintentionally.
+ * `operation_type`, `project_id`, `user_id`) will overwrite the default value.
+ * In non-production environments a `console.warn` is emitted when this occurs
+ * so unintentional overrides are surfaced during development.
  */
 type PayloadOverride = Omit< // Note: correlation_id/correlationId are also special-cased — extracted and promoted to the envelope, not spread into payload; see JSDoc above
   Record<string, unknown>,
@@ -190,7 +190,8 @@ export class IntelligenceEventAdapter {
    *   envelope; neither leaks into the inner payload.
    * - All other keys are spread into the inner payload. Fields matching
    *   `source_path`, `content`, `language`, `operation_type`, `project_id`,
-   *   or `user_id` will silently overwrite the default value with no warning.
+   *   or `user_id` will overwrite the default value; a `console.warn` is
+   *   emitted in non-production environments when this happens.
    *
    * @param requestType - The type identifier for the intelligence request (e.g. `'code_analysis'`).
    * @param payload - Additional fields merged into the envelope payload.
@@ -210,7 +211,7 @@ export class IntelligenceEventAdapter {
     // corrupting correlation tracking. Fall back to a fresh UUID instead.
     const isStringCompatible =
       typeof rawCorrelationId === 'string' || typeof rawCorrelationId === 'number';
-    if (!isStringCompatible && process.env.NODE_ENV !== 'production') {
+    if (!isStringCompatible) {
       console.warn(
         `[IntelligenceEventAdapter] correlation_id/correlationId is not a string or number (got ${typeof rawCorrelationId}) — ignoring and generating a new UUID.`
       );
@@ -230,6 +231,19 @@ export class IntelligenceEventAdapter {
           `[IntelligenceEventAdapter] payload contains reserved envelope key '${key}' — it has been removed to prevent overwriting the outer envelope field. Do not pass envelope-level keys in the payload argument.`
         );
         delete safePayloadRest[key];
+      }
+    }
+
+    // Warn in development when caller-supplied keys would overwrite pre-constructed payload fields.
+    // This is developer guidance only and does not block execution.
+    if (process.env.NODE_ENV !== 'production') {
+      const preConstructedKeys = ['source_path', 'content', 'language', 'operation_type', 'project_id', 'user_id'] as const;
+      for (const key of preConstructedKeys) {
+        if (key in safePayloadRest) {
+          console.warn(
+            `[IntelligenceEventAdapter] payload key '${key}' will overwrite the pre-constructed default value. Pass this key intentionally only if you mean to override the default.`
+          );
+        }
       }
     }
 

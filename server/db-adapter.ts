@@ -342,11 +342,14 @@ export class PostgresAdapter {
   /**
    * Execute raw SQL query
    *
-   * @param sqlQuery - SQL query string
-   * @param params - Query parameters
+   * Parameterized queries are NOT supported — the caller is responsible for
+   * constructing a complete, safe SQL string. Do not pass user-controlled input
+   * directly to this method.
+   *
+   * @param sqlQuery - Complete SQL query string (no parameter binding)
    * @returns Query results
    */
-  async executeRaw<T = any>(sqlQuery: string, _params?: any[]): Promise<T[]> {
+  async executeRaw<T = any>(sqlQuery: string): Promise<T[]> {
     const result = await this.db.execute(sql.raw(sqlQuery));
     return Array.isArray(result) ? (result as T[]) : [];
   }

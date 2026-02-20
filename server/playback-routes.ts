@@ -6,6 +6,7 @@
  */
 
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { Router, Request, Response } from 'express';
 import { getPlaybackService, playbackLogger } from './event-playback';
 import { getEventConsumer } from './event-consumer';
@@ -231,9 +232,14 @@ router.post('/start', async (req: Request, res: Response) => {
       });
     }
 
-    // Path traversal protection: always resolve relative to recordings directory
+    // Path traversal protection: always resolve relative to recordings directory.
+    // Anchored to this module's location (not process.cwd()) so the path is
+    // correct regardless of which directory the server process is started from.
     // SECURITY: Never trust user input for path construction
-    const recordingsDir = path.resolve('demo/recordings');
+    const recordingsDir = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '../demo/recordings'
+    );
 
     // Reject absolute paths and explicit path traversal attempts
     if (typeof file !== 'string' || file.includes('..') || path.isAbsolute(file)) {

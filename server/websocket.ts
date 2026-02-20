@@ -715,7 +715,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
     console.log('[WebSocket] EventBusDataSource listeners registered for real-time events');
   } else {
     console.warn(
-      '[WebSocket] EventBusDataSource not available - event-bus topic will not receive real-time events (degraded mode, not a fatal error)'
+      '[WebSocket] EventBusDataSource not available — Kafka may not be configured. Real-time event-bus subscription will not function.'
     );
   }
 

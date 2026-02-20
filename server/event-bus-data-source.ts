@@ -780,6 +780,11 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
         });
       }
       if (prop === 'injectEvent') {
+        /**
+         * Throws: If called before Kafka is initialized (Kafka not configured or
+         * connection failed). Callers must await the result or catch the rejection
+         * to avoid silent unhandled promise rejections.
+         */
         return async () => {
           throw new Error('[EventBusDataSource] injectEvent called before Kafka initialization — event cannot be delivered. Set KAFKA_BROKERS in .env to restore event storage.');
         };
