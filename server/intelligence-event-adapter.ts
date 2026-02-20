@@ -297,7 +297,7 @@ export class IntelligenceEventAdapter {
         this.pending.delete(correlationKey);
         entry.reject(sendError instanceof Error ? sendError : new Error(String(sendError)));
       }
-      throw sendError;
+      return;
     }
 
     return promise;
