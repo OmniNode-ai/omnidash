@@ -146,6 +146,13 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * request. Each call therefore executes a fresh set of DB queries via
    * `_queryForWindow`. If query volume becomes a concern, consider adding a
    * per-window TTL cache keyed on the window string.
+   *
+   * **Known limitation**: There is currently no per-window TTL cache. Every
+   * call to this method issues a full set of live DB queries regardless of how
+   * recently the same window was fetched. Under high request rates or slow DB
+   * responses this can create noticeable load. A future improvement should
+   * introduce a short-lived (e.g. 60 s) in-memory cache keyed on the window
+   * string, consistent with how the base-class 24 h snapshot is cached.
    */
   async ensureFreshForWindow(window: string): Promise<EnrichmentPayload> {
     const db = tryGetIntelligenceDb();
@@ -383,7 +390,7 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     // sql.raw() is safe: truncUnit is produced by windowToInterval(), never from user input
     const rows = await db.execute(sql`
       SELECT
-        DATE_TRUNC(${sql.raw(truncUnit)}, created_at) AT TIME ZONE 'UTC' AS bucket,
+        DATE_TRUNC(${sql.raw(`'${truncUnit}'`)}, created_at) AT TIME ZONE 'UTC' AS bucket,
         SUM(net_tokens_saved)::int                               AS net_tokens_saved,
         COUNT(*)::int                                            AS total_enrichments,
         ROUND(AVG(tokens_before)::numeric, 2)                   AS avg_tokens_before,
@@ -446,7 +453,7 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     // sql.raw() is safe: truncUnit is produced by windowToInterval(), never from user input
     const rows = await db.execute(sql`
       SELECT
-        DATE_TRUNC(${sql.raw(truncUnit)}, created_at) AT TIME ZONE 'UTC' AS bucket,
+        DATE_TRUNC(${sql.raw(`'${truncUnit}'`)}, created_at) AT TIME ZONE 'UTC' AS bucket,
         ROUND(AVG(similarity_score)::numeric, 4)                AS avg_similarity_score,
         ROUND(AVG(quality_score)::numeric, 4)                   AS avg_quality_score,
         COUNT(*)::int                                            AS search_count

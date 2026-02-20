@@ -16,6 +16,18 @@ const router = Router();
 
 const VALID_WINDOWS = ['24h', '7d', '30d'] as const;
 
+/**
+ * Extract and validate the `window` query parameter.
+ *
+ * If the `window` param is absent or not a string, it silently defaults to
+ * `'24h'`. If the value is present but not one of the accepted values
+ * (`'24h'`, `'7d'`, `'30d'`), `null` is returned so the caller can respond
+ * with HTTP 400.
+ *
+ * @param query - The Express `req.query` object cast to a plain record.
+ * @returns The validated window string, or `null` when the supplied value is
+ *   invalid. A missing param is treated as `'24h'`, not as an error.
+ */
 function getWindow(query: Record<string, unknown>): string | null {
   const windowParam = typeof query.window === 'string' ? query.window : '24h';
   if (!(VALID_WINDOWS as readonly string[]).includes(windowParam)) {
@@ -26,6 +38,8 @@ function getWindow(query: Record<string, unknown>): string | null {
 
 // ============================================================================
 // GET /api/enrichment/summary?window=24h
+// The `window` param is optional and defaults to '24h' when omitted.
+// Valid values: 24h | 7d | 30d. Any other value returns HTTP 400.
 // ============================================================================
 
 router.get('/summary', async (req, res) => {
