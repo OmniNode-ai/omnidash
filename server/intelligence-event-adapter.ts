@@ -9,9 +9,12 @@ import {
 /**
  * Payload type for `IntelligenceEventAdapter.request()`.
  *
- * Envelope-level keys are excluded so callers get a compile-time error if they
- * accidentally pass fields that belong to the outer envelope layer rather than
- * the inner payload.
+ * Note: `Omit` on an index signature (`Record<string, unknown>`) does NOT
+ * enforce exclusion at compile time — TypeScript will still allow passing the
+ * omitted keys (`event_id`, `event_type`, `source`, `timestamp`). This type
+ * serves as documentation only: callers should NOT pass these fields, as they
+ * belong to the outer envelope layer rather than the inner payload. There is
+ * no compile-time error if they are included.
  *
  * Note: `correlation_id` is intentionally NOT excluded from this type. It is a
  * supported convenience input — the `request()` method extracts it and promotes
@@ -182,9 +185,10 @@ export class IntelligenceEventAdapter {
    *
    * @param requestType - The type identifier for the intelligence request (e.g. `'code_analysis'`).
    * @param payload - Additional fields merged into the envelope payload.
-   *   WARNING: The following envelope-level keys must NOT be included, as
-   *   they belong to the outer envelope and passing them here places them
-   *   in the wrong layer:
+   *   By convention, the following envelope-level keys should NOT be included,
+   *   as they belong to the outer envelope and passing them here places them
+   *   in the wrong layer. Note: this is not enforced at compile time — see
+   *   the `PayloadOverride` type comment for details.
    *   - `event_id`
    *   - `event_type`
    *   - `source`
@@ -351,7 +355,7 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
       }
       if (prop === 'request' || prop === 'requestPatternDiscovery') {
         return async () => {
-          throw new Error('IntelligenceEventAdapter not available (Kafka not configured)');
+          throw new Error('❌ IntelligenceEventAdapter not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
         };
       }
       if (prop === 'started') {
