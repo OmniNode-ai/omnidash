@@ -211,6 +211,14 @@ export class ReadModelConsumer {
   private kafka: Kafka | null = null;
   private consumer: Consumer | null = null;
   private running = false;
+  /**
+   * Set to true by stop() as soon as a shutdown is requested.
+   * The start() retry loop checks this flag before each connection attempt and
+   * before sleeping between retries so that a SIGTERM/SIGINT arriving mid-retry
+   * cannot race a new this.consumer.connect() call against the disconnect
+   * performed inside stop().
+   */
+  private stopped = false;
   private stats: ReadModelConsumerStats = {
     isRunning: false,
     eventsProjected: 0,
@@ -229,6 +237,10 @@ export class ReadModelConsumer {
       return;
     }
 
+    // Reset the stopped flag on each start() call so that a consumer can be
+    // restarted after a previous stop() (e.g., in tests).
+    this.stopped = false;
+
     const brokers = (process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || '')
       .split(',')
       .filter(Boolean);
@@ -246,6 +258,14 @@ export class ReadModelConsumer {
 
     let attempts = 0;
     while (attempts < MAX_RETRY_ATTEMPTS) {
+      // Abort the retry loop immediately if stop() was called while we were
+      // sleeping between retries. Without this check a connect() call could
+      // race against the disconnect() already performed inside stop().
+      if (this.stopped) {
+        console.log('[ReadModelConsumer] Stop requested -- aborting retry loop');
+        return;
+      }
+
       try {
         this.kafka = new Kafka({
           clientId: CLIENT_ID,
@@ -299,6 +319,13 @@ export class ReadModelConsumer {
           err instanceof Error ? err.message : err
         );
         if (attempts < MAX_RETRY_ATTEMPTS) {
+          // Check the stopped flag once more before sleeping so a stop() call
+          // that arrives in the same event-loop tick as the error is honoured
+          // without waiting out the full backoff delay.
+          if (this.stopped) {
+            console.log('[ReadModelConsumer] Stop requested -- aborting retry loop');
+            return;
+          }
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
@@ -309,12 +336,23 @@ export class ReadModelConsumer {
 
   /**
    * Stop the consumer gracefully.
+   *
+   * Sets the stopped flag synchronously before any async work so that the
+   * start() retry loop sees it immediately and will not attempt another
+   * this.consumer.connect() call after we return from this method.
    */
   async stop(): Promise<void> {
-    if (!this.running || !this.consumer) return;
+    // Set the abort flag first, before any await, so the start() retry loop
+    // observes it as soon as the current microtask checkpoint is reached even
+    // when stop() is called while start() is sleeping between retry attempts.
+    this.stopped = true;
+
+    if (!this.running && !this.consumer) return;
 
     try {
-      await this.consumer.disconnect();
+      if (this.consumer) {
+        await this.consumer.disconnect();
+      }
       console.log('[ReadModelConsumer] Disconnected');
     } catch (err) {
       console.error('[ReadModelConsumer] Error during disconnect:', err);
