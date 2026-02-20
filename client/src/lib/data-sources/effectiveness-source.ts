@@ -4,7 +4,14 @@
  * Fetches effectiveness metrics from API with graceful fallback to mock data.
  * Follows the same API-first + mock-fallback pattern as ValidationSource.
  *
+ * OMN-2330: Remove automatic empty-data mock fallback. Tables are now populated
+ * by the InjectionEffectivenessConsumer (OMN-2303). The `fallbackToMock` flag
+ * now only governs network/HTTP errors. Use `mockOnEmpty: true` explicitly
+ * (e.g. in demo contexts) to restore the old behaviour of falling back when
+ * the API returns zero-row / empty responses.
+ *
  * @see OMN-1891 - Build Effectiveness Dashboard
+ * @see OMN-2330 - Remove mock fallback, serve real data
  */
 
 import type {
@@ -27,7 +34,18 @@ import {
 } from '@/lib/mock-data/effectiveness-mock';
 
 export interface EffectivenessFetchOptions {
+  /** Fall back to mock data on network/HTTP errors (default: true). */
   fallbackToMock?: boolean;
+  /**
+   * Also fall back to mock when the API returns empty results (default: false).
+   *
+   * Set to `true` only for explicit demo scenarios. Real-data mode should show
+   * genuine empty state so operators know the tables are actually empty rather
+   * than masked by canned data. This flag was previously implicit in
+   * `fallbackToMock`; it is now separated to prevent mock data from hiding real
+   * empty tables after OMN-2303 populated the database (OMN-2330).
+   */
+  mockOnEmpty?: boolean;
   /**
    * When true, skip the API call entirely and return canned demo data.
    * Used when global demo mode is active (OMN-2298).
@@ -52,13 +70,8 @@ class EffectivenessSource {
     this._mockEndpoints.add(endpoint);
   }
 
-  /** Returns true if the summary response has no meaningful data (empty tables). */
-  private isSummaryEmpty(data: EffectivenessSummary): boolean {
-    return data.total_sessions === 0;
-  }
-
   async summary(options: EffectivenessFetchOptions = {}): Promise<EffectivenessSummary> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('summary');
       return getMockSummary();
@@ -66,8 +79,8 @@ class EffectivenessSource {
     try {
       const response = await fetch(`${this.baseUrl}/summary`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      if (fallbackToMock && this.isSummaryEmpty(data)) {
+      const data: EffectivenessSummary = await response.json();
+      if (mockOnEmpty && data.total_sessions === 0) {
         this.markMock('summary');
         return getMockSummary();
       }
@@ -92,7 +105,7 @@ class EffectivenessSource {
     try {
       const response = await fetch(`${this.baseUrl}/throttle`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
+      const data: ThrottleStatus = await response.json();
       this.markReal('throttle');
       return data;
     } catch (error) {
@@ -106,7 +119,7 @@ class EffectivenessSource {
   }
 
   async latencyDetails(options: EffectivenessFetchOptions = {}): Promise<LatencyDetails> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('latency');
       return getMockLatencyDetails();
@@ -114,9 +127,8 @@ class EffectivenessSource {
     try {
       const response = await fetch(`${this.baseUrl}/latency`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      // Fall back to mock if response is valid but has no real data
-      if (fallbackToMock && (!data.breakdowns || data.breakdowns.length === 0)) {
+      const data: LatencyDetails = await response.json();
+      if (mockOnEmpty && (!data.breakdowns || data.breakdowns.length === 0)) {
         this.markMock('latency');
         return getMockLatencyDetails();
       }
@@ -133,7 +145,7 @@ class EffectivenessSource {
   }
 
   async utilizationDetails(options: EffectivenessFetchOptions = {}): Promise<UtilizationDetails> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('utilization');
       return getMockUtilizationDetails();
@@ -141,9 +153,8 @@ class EffectivenessSource {
     try {
       const response = await fetch(`${this.baseUrl}/utilization`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      // Fall back to mock if response is valid but has no real data
-      if (fallbackToMock && (!data.histogram || data.histogram.length === 0)) {
+      const data: UtilizationDetails = await response.json();
+      if (mockOnEmpty && (!data.histogram || data.histogram.length === 0)) {
         this.markMock('utilization');
         return getMockUtilizationDetails();
       }
@@ -160,7 +171,7 @@ class EffectivenessSource {
   }
 
   async abComparison(options: EffectivenessFetchOptions = {}): Promise<ABComparison> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('ab');
       return getMockABComparison();
@@ -168,9 +179,8 @@ class EffectivenessSource {
     try {
       const response = await fetch(`${this.baseUrl}/ab`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      // Fall back to mock if response is valid but has no real data
-      if (fallbackToMock && (!data.cohorts || data.cohorts.length === 0)) {
+      const data: ABComparison = await response.json();
+      if (mockOnEmpty && (!data.cohorts || data.cohorts.length === 0)) {
         this.markMock('ab');
         return getMockABComparison();
       }
@@ -198,7 +208,7 @@ class EffectivenessSource {
     try {
       const response = await fetch(`${this.baseUrl}/session/${encodeURIComponent(sessionId)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
+      const data: SessionDetail = await response.json();
       this.markReal('session');
       return data;
     } catch (error) {
@@ -215,7 +225,7 @@ class EffectivenessSource {
     days?: number,
     options: EffectivenessFetchOptions = {}
   ): Promise<EffectivenessTrendPoint[]> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('trend');
       return getMockEffectivenessTrend();
@@ -223,9 +233,8 @@ class EffectivenessSource {
     try {
       const response = await fetch(`${this.baseUrl}/trend?days=${days ?? 14}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      // Fall back to mock if response is valid but has no real data
-      if (fallbackToMock && (!Array.isArray(data) || data.length === 0)) {
+      const data: EffectivenessTrendPoint[] = await response.json();
+      if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
         this.markMock('trend');
         return getMockEffectivenessTrend();
       }

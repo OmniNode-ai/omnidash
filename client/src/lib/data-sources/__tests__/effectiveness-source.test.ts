@@ -122,13 +122,24 @@ describe('EffectivenessSource', () => {
       expect(result.injection_rate).toBe(0.82);
     });
 
-    it('falls back to mock when total_sessions is 0', async () => {
+    it('returns real empty data when total_sessions is 0 (no mockOnEmpty)', async () => {
+      // OMN-2330: empty tables should show genuine empty state, not mock data
       const emptyData = createValidSummary({ total_sessions: 0 });
       setupFetchMock(new Map([['/api/effectiveness/summary', createMockResponse(emptyData)]]));
 
       const result = await effectivenessSource.summary();
 
-      // Should return mock data (non-zero sessions)
+      // Should return the real empty data (not mock data), so total_sessions stays 0
+      expect(result.total_sessions).toBe(0);
+    });
+
+    it('falls back to mock when total_sessions is 0 and mockOnEmpty is true', async () => {
+      const emptyData = createValidSummary({ total_sessions: 0 });
+      setupFetchMock(new Map([['/api/effectiveness/summary', createMockResponse(emptyData)]]));
+
+      const result = await effectivenessSource.summary({ mockOnEmpty: true });
+
+      // With mockOnEmpty, should return mock data (non-zero sessions)
       expect(result.total_sessions).toBeGreaterThan(0);
     });
 
@@ -181,7 +192,8 @@ describe('EffectivenessSource', () => {
       expect(result.breakdowns[0].cohort).toBe('treatment');
     });
 
-    it('falls back to mock when breakdowns array is empty', async () => {
+    it('returns real empty data when breakdowns array is empty (no mockOnEmpty)', async () => {
+      // OMN-2330: empty tables should show genuine empty state, not mock data
       const emptyData: LatencyDetails = {
         breakdowns: [],
         trend: [],
@@ -191,11 +203,25 @@ describe('EffectivenessSource', () => {
 
       const result = await effectivenessSource.latencyDetails();
 
-      // Mock data has non-empty breakdowns
+      // Should return real empty data, not mock
+      expect(result.breakdowns).toHaveLength(0);
+    });
+
+    it('falls back to mock when breakdowns array is empty and mockOnEmpty is true', async () => {
+      const emptyData: LatencyDetails = {
+        breakdowns: [],
+        trend: [],
+        cache: { hit_rate: 0, total_hits: 0, total_misses: 0 },
+      };
+      setupFetchMock(new Map([['/api/effectiveness/latency', createMockResponse(emptyData)]]));
+
+      const result = await effectivenessSource.latencyDetails({ mockOnEmpty: true });
+
+      // With mockOnEmpty, mock data has non-empty breakdowns
       expect(result.breakdowns.length).toBeGreaterThan(0);
     });
 
-    it('does NOT fall back when breakdowns has data (regression: was checking data.percentiles)', async () => {
+    it('does NOT fall back when breakdowns has data', async () => {
       const realData = createValidLatency();
       setupFetchMock(new Map([['/api/effectiveness/latency', createMockResponse(realData)]]));
 
@@ -233,16 +259,28 @@ describe('EffectivenessSource', () => {
       expect(result.total_sessions).toBe(1247);
     });
 
-    it('falls back to mock when cohorts array is empty', async () => {
+    it('returns real empty data when cohorts array is empty (no mockOnEmpty)', async () => {
+      // OMN-2330: empty tables should show genuine empty state, not mock data
       const emptyData: ABComparison = { cohorts: [], total_sessions: 0 };
       setupFetchMock(new Map([['/api/effectiveness/ab', createMockResponse(emptyData)]]));
 
       const result = await effectivenessSource.abComparison();
 
+      // Should return real empty data, not mock
+      expect(result.cohorts).toHaveLength(0);
+      expect(result.total_sessions).toBe(0);
+    });
+
+    it('falls back to mock when cohorts array is empty and mockOnEmpty is true', async () => {
+      const emptyData: ABComparison = { cohorts: [], total_sessions: 0 };
+      setupFetchMock(new Map([['/api/effectiveness/ab', createMockResponse(emptyData)]]));
+
+      const result = await effectivenessSource.abComparison({ mockOnEmpty: true });
+
       expect(result.cohorts.length).toBeGreaterThan(0);
     });
 
-    it('does NOT fall back when cohorts has data (regression: was checking data.treatment/data.control)', async () => {
+    it('does NOT fall back when cohorts has data', async () => {
       const realData = createValidAB();
       setupFetchMock(new Map([['/api/effectiveness/ab', createMockResponse(realData)]]));
 
@@ -282,7 +320,8 @@ describe('EffectivenessSource', () => {
       expect(result.histogram).toHaveLength(1);
     });
 
-    it('falls back to mock when histogram is empty', async () => {
+    it('returns real empty data when histogram is empty (no mockOnEmpty)', async () => {
+      // OMN-2330: empty tables should show genuine empty state, not mock data
       const emptyData: UtilizationDetails = {
         histogram: [],
         by_method: [],
@@ -292,6 +331,21 @@ describe('EffectivenessSource', () => {
       setupFetchMock(new Map([['/api/effectiveness/utilization', createMockResponse(emptyData)]]));
 
       const result = await effectivenessSource.utilizationDetails();
+
+      // Should return real empty data, not mock
+      expect(result.histogram).toHaveLength(0);
+    });
+
+    it('falls back to mock when histogram is empty and mockOnEmpty is true', async () => {
+      const emptyData: UtilizationDetails = {
+        histogram: [],
+        by_method: [],
+        pattern_rates: [],
+        low_utilization_sessions: [],
+      };
+      setupFetchMock(new Map([['/api/effectiveness/utilization', createMockResponse(emptyData)]]));
+
+      const result = await effectivenessSource.utilizationDetails({ mockOnEmpty: true });
 
       expect(result.histogram.length).toBeGreaterThan(0);
     });
@@ -320,22 +374,36 @@ describe('EffectivenessSource', () => {
       expect(result[0].injection_rate).toBe(0.8);
     });
 
-    it('falls back to mock when array is empty', async () => {
+    it('returns real empty array when response is empty (no mockOnEmpty)', async () => {
+      // OMN-2330: empty trend should not be masked by mock data
       setupFetchMock(new Map([['/api/effectiveness/trend', createMockResponse([])]]));
 
       const result = await effectivenessSource.trend();
 
+      // Should return real empty array, not mock
+      expect(result).toHaveLength(0);
+    });
+
+    it('falls back to mock when array is empty and mockOnEmpty is true', async () => {
+      setupFetchMock(new Map([['/api/effectiveness/trend', createMockResponse([])]]));
+
+      const result = await effectivenessSource.trend(14, { mockOnEmpty: true });
+
       expect(result.length).toBeGreaterThan(0);
     });
 
-    it('falls back to mock when response is not an array', async () => {
+    it('returns empty array when response is not an array (no mockOnEmpty)', async () => {
+      // OMN-2330: non-array API response should surface as error or empty, not mock
       setupFetchMock(
         new Map([['/api/effectiveness/trend', createMockResponse({ notArray: true })]])
       );
 
       const result = await effectivenessSource.trend();
 
-      expect(result.length).toBeGreaterThan(0);
+      // Not an array — mockOnEmpty=false means we return the raw (non-array) value from API.
+      // The caller is responsible for handling this; the source does not silently inject mock data.
+      // The result will be the non-array object cast through the type, not mocked trend data.
+      expect(Array.isArray(result) ? result.length : 0).toBe(0);
     });
   });
 
@@ -360,7 +428,21 @@ describe('EffectivenessSource', () => {
       expect(effectivenessSource.isUsingMockData).toBe(false);
     });
 
-    it('reports true when any endpoint falls back to mock', async () => {
+    it('reports false when endpoints return empty real data (no mockOnEmpty)', async () => {
+      // OMN-2330: empty real data should NOT set the mock flag
+      const emptyLatency: LatencyDetails = {
+        breakdowns: [],
+        trend: [],
+        cache: { hit_rate: 0, total_hits: 0, total_misses: 0 },
+      };
+      setupFetchMock(new Map([['/api/effectiveness/latency', createMockResponse(emptyLatency)]]));
+
+      await effectivenessSource.latencyDetails();
+
+      expect(effectivenessSource.isUsingMockData).toBe(false);
+    });
+
+    it('reports true when any endpoint falls back to mock on network error', async () => {
       const summary = createValidSummary();
       setupFetchMock(
         new Map([
@@ -371,6 +453,19 @@ describe('EffectivenessSource', () => {
 
       await effectivenessSource.summary();
       await effectivenessSource.latencyDetails();
+
+      expect(effectivenessSource.isUsingMockData).toBe(true);
+    });
+
+    it('reports true when mockOnEmpty triggers fallback', async () => {
+      const emptyLatency: LatencyDetails = {
+        breakdowns: [],
+        trend: [],
+        cache: { hit_rate: 0, total_hits: 0, total_misses: 0 },
+      };
+      setupFetchMock(new Map([['/api/effectiveness/latency', createMockResponse(emptyLatency)]]));
+
+      await effectivenessSource.latencyDetails({ mockOnEmpty: true });
 
       expect(effectivenessSource.isUsingMockData).toBe(true);
     });
