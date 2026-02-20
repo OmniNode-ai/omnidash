@@ -724,6 +724,14 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * singleton was already successfully initialized. Call `getEventBusDataSource()`
  * first to trigger initialization. Returns false if initialization has not been
  * attempted or failed.
+ *
+ * @example
+ * ```typescript
+ * const instance = getEventBusDataSource(); // triggers initialization
+ * if (isEventBusDataSourceAvailable()) {
+ *   // instance is ready
+ * }
+ * ```
  */
 export function isEventBusDataSourceAvailable(): boolean {
   return eventBusDataSourceInstance !== null;

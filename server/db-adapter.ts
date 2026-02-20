@@ -67,6 +67,13 @@ export class PostgresAdapter {
   private get db() {
     return getIntelligenceDb();
   }
+  // Controls whether event-bus writes are attempted for mutation operations.
+  // When true (KAFKA_BROKERS is set), event-bus integration is active.
+  // When false, event-bus writes are skipped entirely — this does NOT affect
+  // direct PostgreSQL queries (query/insert/update/delete/upsert/count all
+  // operate against the DB regardless of this flag). Currently this field is
+  // set in the constructor but is not read by any CRUD method; it is retained
+  // as a hook for future event-bus write paths.
   private eventBusEnabled: boolean;
 
   constructor() {
