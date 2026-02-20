@@ -337,6 +337,9 @@ export class IntelligenceEventAdapter {
       timestamp: new Date().toISOString(),
       service: 'omnidash',
       payload: {
+        // Coercion strategy: `content` uses `!= null` because empty string is a valid value
+        // (e.g. a file with no extractable content). All other structured fields use `||`
+        // because empty string is not meaningful for them and should fall back to the default.
         source_path: safePayloadRest.sourcePath || safePayloadRest.source_path || '',
         content: safePayloadRest.content != null ? safePayloadRest.content : null,
         language: safePayloadRest.language || 'python',
