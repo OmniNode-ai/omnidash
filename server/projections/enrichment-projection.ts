@@ -483,6 +483,11 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
       -- Parameterized INTERVAL bindings are not used here because the Drizzle neon
       -- driver does not support interval parameters in all contexts; this allowlist
       -- approach is the intentional design (see PR #104).
+      -- TODO: Migrate sql.raw() INTERVAL interpolation to parameterized INTERVAL
+      -- bindings (e.g. using a typed cast like NOW() - $1::interval) once the Neon serverless
+      -- driver reliably supports typed interval parameters. Until then, all callers
+      -- must continue to guarantee the interval value is allowlist-validated before
+      -- reaching this point.
       WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
     `);
 

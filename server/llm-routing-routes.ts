@@ -1,17 +1,17 @@
 /**
- * LLM Routing Effectiveness API Routes (OMN-2279)
+ * LLM Routing Effectiveness API Routes (OMN-2279 / OMN-2372)
  *
  * REST endpoints for the LLM routing effectiveness dashboard:
  * summary, latency, by-version, disagreements, trend.
  *
- * Returns empty/placeholder responses so the client falls back to mock data.
- * When the upstream omniclaude service populates the read-model via the
- * `onex.evt.omniclaude.llm-routing-decision.v1` consumer projection,
- * replace with real queries following the same pattern as baselines-routes.ts.
+ * All routes are backed by LlmRoutingProjection (DB-backed, TTL-cached).
+ * Routes do NOT execute SQL directly — all queries are encapsulated in the
+ * projection following the OMN-2325 architectural rule.
  *
- * NOTE: Per OMN-2325 architectural rule, route files must not import DB
- * accessors directly. Use projectionService views for data access once
- * the llm-routing projection is wired (future ticket).
+ * Source table: llm_routing_decisions (migrations/0006_llm_routing_decisions.sql)
+ * Event consumed: onex.evt.omniclaude.llm-routing-decision.v1
+ *
+ * GOLDEN METRIC: agreement_rate > 60%. Alert if disagreement_rate > 40%.
  */
 
 import { Router, type Request, type Response } from 'express';
@@ -22,44 +22,67 @@ import type {
   LlmRoutingDisagreement,
   LlmRoutingTrendPoint,
 } from '@shared/llm-routing-types';
+import { llmRoutingProjection } from './projection-bootstrap';
+import { LlmRoutingTimeWindowSchema } from './llm-routing-schemas';
 
 const router = Router();
 
-const VALID_WINDOWS = ['24h', '7d', '30d'] as const;
-
-function validateWindow(req: Request, res: Response): string | null {
-  const timeWindow = typeof req.query.window === 'string' ? req.query.window : '7d';
-  if (!VALID_WINDOWS.includes(timeWindow as (typeof VALID_WINDOWS)[number])) {
+function validateWindow(req: Request, res: Response) {
+  const raw = typeof req.query.window === 'string' ? req.query.window : '7d';
+  const result = LlmRoutingTimeWindowSchema.safeParse(raw);
+  if (!result.success) {
     res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
     return null;
   }
-  return timeWindow;
+  return result.data;
+}
+
+/**
+ * Fetch the projection payload for the given window.
+ * Uses ensureFresh() for the default 7d window (avoids per-window cache overhead),
+ * and ensureFreshForWindow() for non-default windows.
+ */
+async function fetchPayload(window: '24h' | '7d' | '30d') {
+  if (window === '7d') {
+    return llmRoutingProjection.ensureFresh();
+  }
+  return llmRoutingProjection.ensureFreshForWindow(window);
+}
+
+/**
+ * Set X-Omnidash-Degraded: true on the response when the payload's actual
+ * window does not match the requested window (i.e. ensureFreshForWindow()
+ * fell back to the 7d cache because the DB was unavailable).
+ *
+ * The 7d path (ensureFresh()) never sets payload.degraded, so no header is
+ * needed there. For non-7d requests, payload.degraded is the canonical flag;
+ * the window mismatch is a belt-and-suspenders secondary check.
+ */
+function setDegradedHeader(
+  res: Response,
+  requestedWindow: '24h' | '7d' | '30d',
+  payload: Awaited<ReturnType<typeof fetchPayload>>
+): void {
+  if (
+    requestedWindow !== '7d' &&
+    (payload.degraded === true ||
+      (payload.window !== undefined && payload.window !== requestedWindow))
+  ) {
+    res.setHeader('X-Omnidash-Degraded', 'true');
+  }
 }
 
 // ============================================================================
 // GET /api/llm-routing/summary?window=7d
 // ============================================================================
 
-router.get('/summary', (req, res) => {
+router.get('/summary', async (req, res) => {
   try {
-    const _timeWindow = validateWindow(req, res);
-    if (_timeWindow === null) return;
-    // _timeWindow is validated above and will be passed to the DB query when the
-    // llm-routing projection is wired (see TODO below).
-    // TODO(OMN-2279-followup): Replace with projectionService.getView('llm-routing').getSnapshot()
-    // once the llm-routing projection is implemented. Use `_timeWindow` to scope the query.
-    return res.json({
-      total_decisions: 0,
-      agreement_rate: 0,
-      fallback_rate: 0,
-      avg_cost_usd: 0,
-      llm_p50_latency_ms: 0,
-      llm_p95_latency_ms: 0,
-      fuzzy_p50_latency_ms: 0,
-      fuzzy_p95_latency_ms: 0,
-      counts: { total: 0, agreed: 0, disagreed: 0, fallback: 0 },
-      agreement_rate_trend: [],
-    } satisfies LlmRoutingSummary);
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    const payload = await fetchPayload(timeWindow);
+    setDegradedHeader(res, timeWindow, payload);
+    return res.json(payload.summary satisfies LlmRoutingSummary);
   } catch (error) {
     console.error('[llm-routing] Error fetching summary:', error);
     return res.status(500).json({ error: 'Failed to fetch LLM routing summary' });
@@ -70,13 +93,13 @@ router.get('/summary', (req, res) => {
 // GET /api/llm-routing/latency?window=7d
 // ============================================================================
 
-router.get('/latency', (req, res) => {
+router.get('/latency', async (req, res) => {
   try {
-    const _timeWindow = validateWindow(req, res);
-    if (_timeWindow === null) return;
-    // _timeWindow is validated above and will be passed to the DB query when wired.
-    // TODO(OMN-2279-followup): Replace with projection view query scoped to `_timeWindow`.
-    return res.json([] satisfies LlmRoutingLatencyPoint[]);
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    const payload = await fetchPayload(timeWindow);
+    setDegradedHeader(res, timeWindow, payload);
+    return res.json(payload.latency satisfies LlmRoutingLatencyPoint[]);
   } catch (error) {
     console.error('[llm-routing] Error fetching latency:', error);
     return res.status(500).json({ error: 'Failed to fetch LLM routing latency' });
@@ -87,13 +110,13 @@ router.get('/latency', (req, res) => {
 // GET /api/llm-routing/by-version?window=7d
 // ============================================================================
 
-router.get('/by-version', (req, res) => {
+router.get('/by-version', async (req, res) => {
   try {
-    const _timeWindow = validateWindow(req, res);
-    if (_timeWindow === null) return;
-    // _timeWindow is validated above and will be passed to the DB query when wired.
-    // TODO(OMN-2279-followup): Replace with projection view query scoped to `_timeWindow`.
-    return res.json([] satisfies LlmRoutingByVersion[]);
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    const payload = await fetchPayload(timeWindow);
+    setDegradedHeader(res, timeWindow, payload);
+    return res.json(payload.byVersion satisfies LlmRoutingByVersion[]);
   } catch (error) {
     console.error('[llm-routing] Error fetching by-version:', error);
     return res.status(500).json({ error: 'Failed to fetch LLM routing by version' });
@@ -104,13 +127,13 @@ router.get('/by-version', (req, res) => {
 // GET /api/llm-routing/disagreements?window=7d
 // ============================================================================
 
-router.get('/disagreements', (req, res) => {
+router.get('/disagreements', async (req, res) => {
   try {
-    const _timeWindow = validateWindow(req, res);
-    if (_timeWindow === null) return;
-    // _timeWindow is validated above and will be passed to the DB query when wired.
-    // TODO(OMN-2279-followup): Replace with projection view query scoped to `_timeWindow`.
-    return res.json([] satisfies LlmRoutingDisagreement[]);
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    const payload = await fetchPayload(timeWindow);
+    setDegradedHeader(res, timeWindow, payload);
+    return res.json(payload.disagreements satisfies LlmRoutingDisagreement[]);
   } catch (error) {
     console.error('[llm-routing] Error fetching disagreements:', error);
     return res.status(500).json({ error: 'Failed to fetch LLM routing disagreements' });
@@ -121,13 +144,13 @@ router.get('/disagreements', (req, res) => {
 // GET /api/llm-routing/trend?window=7d
 // ============================================================================
 
-router.get('/trend', (req, res) => {
+router.get('/trend', async (req, res) => {
   try {
-    const _timeWindow = validateWindow(req, res);
-    if (_timeWindow === null) return;
-    // _timeWindow is validated above and will be passed to the DB query when wired.
-    // TODO(OMN-2279-followup): Replace with projection view query scoped to `_timeWindow`.
-    return res.json([] satisfies LlmRoutingTrendPoint[]);
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    const payload = await fetchPayload(timeWindow);
+    setDegradedHeader(res, timeWindow, payload);
+    return res.json(payload.trend satisfies LlmRoutingTrendPoint[]);
   } catch (error) {
     console.error('[llm-routing] Error fetching trend:', error);
     return res.status(500).json({ error: 'Failed to fetch LLM routing trend' });

@@ -171,3 +171,7 @@ export interface LlmRoutingTrendPoint {
 
 /** Valid time windows for LLM routing dashboard queries. */
 export type LlmRoutingTimeWindow = '24h' | '7d' | '30d';
+
+// NOTE: Zod runtime validation schemas (LlmRoutingTimeWindowSchema, etc.) live
+// in server/llm-routing-schemas.ts to avoid bundling the 'zod' runtime into
+// client-side JavaScript. Import from there in server-only code.

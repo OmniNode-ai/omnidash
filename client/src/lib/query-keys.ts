@@ -671,11 +671,11 @@ export const queryKeys = {
     /** Cost savings trend */
     costSavings: (window: string) => [...queryKeys.delegation.all, 'cost-savings', window] as const,
 
-    /** Quality gate pass/fail over time */
+    /** Quality gate pass rate trend */
     qualityGates: (window: string) =>
       [...queryKeys.delegation.all, 'quality-gates', window] as const,
 
-    /** Shadow divergence pairs table */
+    /** Shadow divergence table */
     shadowDivergence: (window: string) =>
       [...queryKeys.delegation.all, 'shadow-divergence', window] as const,
 

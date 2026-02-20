@@ -1069,41 +1069,68 @@ export const insertBaselinesBreakdownSchema = createInsertSchema(baselinesBreakd
 export type BaselinesBreakdownRow = typeof baselinesBreakdown.$inferSelect;
 export type InsertBaselinesBreakdown = typeof baselinesBreakdown.$inferInsert;
 
+export type InsertLlmCostAggregate = typeof llmCostAggregates.$inferInsert;
+
 // ============================================================================
-// Delegation Events Tables (OMN-2284)
+// Delegation Events (OMN-2284)
+//
+// Two tables track the delegation metrics dashboard:
+//   1. delegation_events — one row per task-delegated event
+//   2. delegation_shadow_comparisons — one row per shadow comparison event
+//
+// Both tables use correlation_id as the deduplication key (UNIQUE constraint)
+// so that ON CONFLICT DO NOTHING makes projections idempotent on Kafka replay.
 // ============================================================================
 
 /**
  * Delegation Events Table
- * Projected from onex.evt.omniclaude.task-delegated.v1
- * Tracks each task delegation event with quality gate outcomes and cost savings.
+ *
+ * Tracks all task delegation events emitted by the omniclaude delegation hook.
+ * Populated by ReadModelConsumer projecting onex.evt.omniclaude.task-delegated.v1.
+ *
+ * GOLDEN METRIC: quality_gate_pass_rate (quality_gate_passed / total) > 80%.
  */
 export const delegationEvents = pgTable(
   'delegation_events',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    correlationId: text('correlation_id').notNull(),
+    /** Unique correlation ID for this delegation — deduplication key. */
+    correlationId: text('correlation_id').unique().notNull(),
+    /** Parent session ID. */
     sessionId: text('session_id'),
-    timestamp: timestamp('timestamp', { withTimezone: true }).notNull(),
+    /** When this delegation occurred. */
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
+    /** Task type (e.g. "code-review", "refactor", "test-generation"). */
     taskType: text('task_type').notNull(),
+    /** Agent that received the delegated task. */
     delegatedTo: text('delegated_to').notNull(),
+    /** Agent that initiated the delegation. */
     delegatedBy: text('delegated_by'),
+    /** Whether this delegation passed all quality gates before being accepted. */
     qualityGatePassed: boolean('quality_gate_passed').notNull().default(false),
-    qualityGatesChecked: jsonb('quality_gates_checked'),
-    qualityGatesFailed: jsonb('quality_gates_failed'),
-    costUsd: numeric('cost_usd', { precision: 12, scale: 8 }),
-    costSavingsUsd: numeric('cost_savings_usd', { precision: 12, scale: 8 }),
+    /** Names of quality gates checked (stored as JSONB string array). */
+    qualityGatesChecked: jsonb('quality_gates_checked').$type<string[]>(),
+    /** Names of quality gates that failed (stored as JSONB string array). */
+    qualityGatesFailed: jsonb('quality_gates_failed').$type<string[]>(),
+    /** Estimated cost of the delegated task (USD, stored as numeric string). */
+    costUsd: numeric('cost_usd', { precision: 12, scale: 6 }),
+    /** Estimated cost savings vs. non-delegated execution (USD). */
+    costSavingsUsd: numeric('cost_savings_usd', { precision: 12, scale: 6 }),
+    /** Latency of the delegation handoff (ms). */
     delegationLatencyMs: integer('delegation_latency_ms'),
+    /** Repository context. */
     repo: text('repo'),
+    /** Whether this is a shadow delegation (not actually executed). */
     isShadow: boolean('is_shadow').notNull().default(false),
-    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+    /** When this row was projected from Kafka. */
+    projectedAt: timestamp('projected_at').defaultNow(),
   },
   (table) => [
     uniqueIndex('idx_delegation_events_correlation').on(table.correlationId),
-    index('idx_delegation_events_timestamp').on(table.timestamp),
     index('idx_delegation_events_task_type').on(table.taskType),
+    index('idx_delegation_events_projected_at').on(table.projectedAt),
     index('idx_delegation_events_delegated_to').on(table.delegatedTo),
-    index('idx_delegation_events_quality_gate').on(table.qualityGatePassed),
+    index('idx_delegation_events_timestamp').on(table.timestamp),
   ]
 );
 
@@ -1113,34 +1140,50 @@ export type InsertDelegationEvent = typeof delegationEvents.$inferInsert;
 
 /**
  * Delegation Shadow Comparisons Table
- * Projected from onex.evt.omniclaude.delegation-shadow-comparison.v1
- * Tracks shadow validation divergence between primary and shadow agents.
+ *
+ * Tracks shadow validation comparisons between primary and shadow agent outputs.
+ * Populated by ReadModelConsumer projecting
+ * onex.evt.omniclaude.delegation-shadow-comparison.v1.
  */
 export const delegationShadowComparisons = pgTable(
   'delegation_shadow_comparisons',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    correlationId: text('correlation_id').notNull(),
+    /** Unique correlation ID — deduplication key. */
+    correlationId: text('correlation_id').unique().notNull(),
+    /** Session ID. */
     sessionId: text('session_id'),
-    timestamp: timestamp('timestamp', { withTimezone: true }).notNull(),
+    /** When this comparison occurred. */
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
+    /** Task type. */
     taskType: text('task_type').notNull(),
+    /** Primary agent that handled the task. */
     primaryAgent: text('primary_agent').notNull(),
+    /** Shadow agent compared against the primary. */
     shadowAgent: text('shadow_agent').notNull(),
+    /** Whether the shadow agent's output diverged from the primary. */
     divergenceDetected: boolean('divergence_detected').notNull().default(false),
+    /** Divergence score (0–1, 0 = identical, 1 = completely different). */
     divergenceScore: numeric('divergence_score', { precision: 5, scale: 4 }),
+    /** Latency of the primary agent (ms). */
     primaryLatencyMs: integer('primary_latency_ms'),
+    /** Latency of the shadow agent (ms). */
     shadowLatencyMs: integer('shadow_latency_ms'),
-    primaryCostUsd: numeric('primary_cost_usd', { precision: 12, scale: 8 }),
-    shadowCostUsd: numeric('shadow_cost_usd', { precision: 12, scale: 8 }),
+    /** Cost of the primary execution (USD). */
+    primaryCostUsd: numeric('primary_cost_usd', { precision: 12, scale: 6 }),
+    /** Cost of the shadow execution (USD). */
+    shadowCostUsd: numeric('shadow_cost_usd', { precision: 12, scale: 6 }),
+    /** Human-readable description of the divergence (if detected). */
     divergenceReason: text('divergence_reason'),
-    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+    /** When this row was projected from Kafka. */
+    projectedAt: timestamp('projected_at').defaultNow(),
   },
   (table) => [
     uniqueIndex('idx_delegation_shadow_correlation').on(table.correlationId),
-    index('idx_delegation_shadow_timestamp').on(table.timestamp),
     index('idx_delegation_shadow_task_type').on(table.taskType),
-    index('idx_delegation_shadow_primary_agent').on(table.primaryAgent),
+    index('idx_delegation_shadow_projected_at').on(table.projectedAt),
     index('idx_delegation_shadow_divergence').on(table.divergenceDetected),
+    index('idx_delegation_shadow_timestamp').on(table.timestamp),
   ]
 );
 
@@ -1149,5 +1192,3 @@ export const insertDelegationShadowComparisonSchema = createInsertSchema(
 );
 export type DelegationShadowComparisonRow = typeof delegationShadowComparisons.$inferSelect;
 export type InsertDelegationShadowComparison = typeof delegationShadowComparisons.$inferInsert;
-
-export type InsertLlmCostAggregate = typeof llmCostAggregates.$inferInsert;
