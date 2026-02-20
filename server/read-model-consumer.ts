@@ -874,7 +874,12 @@ export class ReadModelConsumer {
     // emitting in that case would cause spurious WebSocket invalidation
     // broadcasts on every duplicate event. (OMN-2373)
     if (insertedRowCount > 0) {
-      emitEnrichmentInvalidate(correlationId);
+      // Wrapped defensively: a failure here must not block watermark advancement.
+      try {
+        emitEnrichmentInvalidate(correlationId);
+      } catch (e) {
+        console.warn('[ReadModelConsumer] emitEnrichmentInvalidate() failed post-commit:', e);
+      }
     }
 
     return true;

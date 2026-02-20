@@ -218,6 +218,14 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     super.reset();
     // Clearing Maps means next call per window will dispatch immediately
     // regardless of any prior cooldown — correct after reset.
+    //
+    // KNOWN LIMITATION: Any promises already in ensureFreshForWindowInFlight
+    // at the time of reset() cannot be cancelled. Their .then() callbacks will
+    // still fire after reset(), re-adding one snapshot entry to the cleared
+    // lastSnapshot Map. This is acceptable: the data is fresh (from the
+    // just-resolved query) and will be overwritten on the next dispatch.
+    // Callers must not rely on the snapshot Map being permanently empty after
+    // reset() when concurrent queries are in flight.
     this.ensureFreshForWindowLastDispatched.clear();
     this.ensureFreshForWindowLastSnapshot.clear();
     this.ensureFreshForWindowInFlight.clear();
@@ -474,6 +482,10 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * @returns An array of `EnrichmentByChannel` records, one per distinct
    *   channel, ordered by total descending. Returns an empty array when no
    *   rows match the interval.
+   *
+   * NOTE: No LIMIT clause — channel cardinality is bounded by the upstream
+   * enrichment pipeline's channel enum (typically < 20 distinct values).
+   * If the upstream ever emits free-form channel strings, add a LIMIT here.
    */
   private async _queryByChannel(db: Db, interval: string): Promise<EnrichmentByChannel[]> {
     const rows = await db.execute(sql`
