@@ -55,6 +55,7 @@ import {
   SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
   SUFFIX_OMNICLAUDE_TASK_DELEGATED,
   SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON,
+  TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -182,7 +183,11 @@ const READ_MODEL_TOPICS = [
   'agent-actions',
   'agent-transformation-events',
   'onex.evt.omniclaude.pattern-enforcement.v1',
-  'onex.evt.omniclaude.llm-cost-reported.v1',
+  // OMN-2371 (GAP-5): Canonical producer is NodeLlmInferenceEffect in omnibase_infra.
+  // The old topic 'onex.evt.omniclaude.llm-cost-reported.v1' had zero producers.
+  // Now subscribing to the canonical per-call topic; projectLlmCostEvent() handles
+  // ContractLlmCallMetrics payload and projects each call into llm_cost_aggregates.
+  TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
   'onex.evt.omnibase-infra.baselines-computed.v1',
   SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
   SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
@@ -402,7 +407,7 @@ export class ReadModelConsumer {
         case 'onex.evt.omniclaude.pattern-enforcement.v1':
           projected = await this.projectEnforcementEvent(parsed, fallbackId);
           break;
-        case 'onex.evt.omniclaude.llm-cost-reported.v1':
+        case TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED:
           projected = await this.projectLlmCostEvent(parsed);
           break;
         case 'onex.evt.omnibase-infra.baselines-computed.v1':
@@ -1119,17 +1124,28 @@ export class ReadModelConsumer {
   }
 
   /**
-   * Project a LLM cost reported event into the `llm_cost_aggregates` table.
+   * Project a LLM call completed event into the `llm_cost_aggregates` table.
    *
-   * The event is published by the omniclaude session-ended flow (OMN-2300 / OMN-2238)
-   * once per session and carries pre-aggregated token usage and cost data.
-   * Each event is inserted as a single row with granularity='hour' so the cost
-   * trend queries can bucket them into hourly or daily series via date_trunc().
+   * OMN-2371 (GAP-5): Previously consumed 'onex.evt.omniclaude.llm-cost-reported.v1'
+   * which had zero producers. Now consuming the canonical topic
+   * 'onex.evt.omniintelligence.llm-call-completed.v1' emitted by NodeLlmInferenceEffect
+   * in omnibase_infra per each LLM API call.
    *
-   * Deduplication: there is no natural unique key on llm_cost_aggregates
-   * (multiple events for the same model+session are valid). Deduplication is
-   * therefore skipped here — INSERT without ON CONFLICT. Idempotent replay is
-   * achieved at the Kafka level via consumer group offset tracking.
+   * Payload schema: ContractLlmCallMetrics (omnibase_spi/contracts/measurement)
+   *   - model_id: string — LLM model identifier
+   *   - prompt_tokens / completion_tokens / total_tokens: number
+   *   - estimated_cost_usd: number | null — the only cost field in this contract
+   *   - usage_normalized: { source: 'API'|'ESTIMATED'|'MISSING', ... } | null
+   *   - usage_is_estimated: boolean — top-level estimation flag
+   *   - timestamp_iso: ISO-8601 string — call timestamp
+   *   - reporting_source: string — provenance label (e.g. 'pipeline-agent', repo name)
+   *
+   * Each event maps to a single llm_cost_aggregates row with granularity='hour'.
+   * The cost trend queries bucket rows via date_trunc() on bucket_time.
+   *
+   * Deduplication: no natural unique key exists on llm_cost_aggregates
+   * (multiple calls for the same model+session are valid). INSERT without ON CONFLICT;
+   * idempotency is achieved via Kafka consumer group offset tracking.
    *
    * Returns true when written, false when the DB is unavailable.
    */
@@ -1137,22 +1153,39 @@ export class ReadModelConsumer {
     const db = tryGetIntelligenceDb();
     if (!db) return false;
 
-    // Resolve bucket_time: use the event timestamp if present, fall back to now.
+    // Resolve bucket_time from ContractLlmCallMetrics.timestamp_iso or fallbacks.
+    // ContractLlmCallMetrics uses 'timestamp_iso' as the primary timestamp field.
     const bucketTime = safeParseDate(
-      data.bucket_time ?? data.bucketTime ?? data.timestamp ?? data.created_at
+      data.timestamp_iso ?? data.bucket_time ?? data.bucketTime ?? data.timestamp ?? data.created_at
     );
 
-    // usage_source must be one of 'API' | 'ESTIMATED' | 'MISSING'.
-    // Default to 'API' when absent — the event payload from omniclaude
-    // carries API-reported usage by default.
-    const usageSourceRaw = (data.usage_source as string) || (data.usageSource as string) || 'API';
-    const usageSource = ['API', 'ESTIMATED', 'MISSING'].includes(usageSourceRaw)
-      ? usageSourceRaw
+    // usage_source: prefer the nested usage_normalized.source (ContractLlmCallMetrics schema),
+    // then fall back to top-level usage_source / usageSource (legacy schema compat).
+    // Must be one of 'API' | 'ESTIMATED' | 'MISSING'.
+    const usageNormalized = data.usage_normalized as Record<string, unknown> | null | undefined;
+    const usageSourceRaw =
+      (usageNormalized?.source as string) ||
+      (data.usage_source as string) ||
+      (data.usageSource as string) ||
+      (data.usage_is_estimated ? 'ESTIMATED' : 'API');
+    const usageSourceUpper = usageSourceRaw.toUpperCase();
+    const validUsageSources = ['API', 'ESTIMATED', 'MISSING'] as const;
+    const usageSource = validUsageSources.includes(
+      usageSourceUpper as (typeof validUsageSources)[number]
+    )
+      ? (usageSourceUpper as 'API' | 'ESTIMATED' | 'MISSING')
       : 'API';
+    if (
+      !validUsageSources.includes(usageSourceUpper as (typeof validUsageSources)[number]) &&
+      usageSourceRaw
+    ) {
+      console.warn(
+        `[ReadModelConsumer] LLM cost event has unrecognised usage_source "${usageSourceRaw}" — defaulting to "API"`
+      );
+    }
 
-    // granularity must be one of 'hour' | 'day'.
-    // Default to 'hour' for unrecognized values. Follow the exact same pattern
-    // as the usageSource allowlist validation above.
+    // granularity: always 'hour' for per-call events from ContractLlmCallMetrics.
+    // Pre-aggregated events may carry an explicit 'day' granularity — respect it.
     const granularityRaw = (data.granularity as string) || 'hour';
     const granularity = ['hour', 'day'].includes(granularityRaw) ? granularityRaw : 'hour';
 
@@ -1182,27 +1215,60 @@ export class ReadModelConsumer {
       totalTokens = rawTotalTokens;
     }
 
-    // Coerce cost fields to a finite number, defaulting to 0 for any
-    // non-numeric value (including false, '', NaN, Infinity). String(false)
-    // would be 'false' which fails PostgreSQL's numeric column constraint, so
-    // we must guard against that before passing to Drizzle's decimal type.
-    const rawTotalCost = data.total_cost_usd ?? data.totalCostUsd;
+    // Cost field mapping for ContractLlmCallMetrics:
+    // The contract only has estimated_cost_usd (no separate reported_cost_usd).
+    // When a payload has no explicit total_cost_usd / totalCostUsd, fall back to
+    // rawEstimatedCost so the cost-trend dashboard has a meaningful total value.
+    // Legacy pre-aggregated events may carry explicit total_cost_usd / reported_cost_usd.
+    //
+    // Coerce to finite number, defaulting to 0 for any non-numeric value (including
+    // false, '', NaN, Infinity). String(false) → 'false' fails PostgreSQL numeric columns.
+    const rawEstimatedCost = data.estimated_cost_usd ?? data.estimatedCostUsd;
+    const nEstimatedCost = Number(rawEstimatedCost);
+    const estimatedCostUsd = String(Number.isFinite(nEstimatedCost) ? nEstimatedCost : 0);
+
+    const rawTotalCost = data.total_cost_usd ?? data.totalCostUsd ?? rawEstimatedCost;
     const nTotalCost = Number(rawTotalCost);
     const totalCostUsd = String(Number.isFinite(nTotalCost) ? nTotalCost : 0);
 
     const rawReportedCost = data.reported_cost_usd ?? data.reportedCostUsd;
     const nReportedCost = Number(rawReportedCost);
+    // reported_cost_usd: use explicit field if present, else fall back to 0.
+    // ContractLlmCallMetrics does not carry reported_cost_usd separately.
     const reportedCostUsd = String(Number.isFinite(nReportedCost) ? nReportedCost : 0);
 
-    const rawEstimatedCost = data.estimated_cost_usd ?? data.estimatedCostUsd;
-    const nEstimatedCost = Number(rawEstimatedCost);
-    const estimatedCostUsd = String(Number.isFinite(nEstimatedCost) ? nEstimatedCost : 0);
+    // model_name: ContractLlmCallMetrics uses 'model_id'; also accept 'model_name' for
+    // legacy compatibility.
+    const modelName =
+      (data.model_id as string) ||
+      (data.model_name as string) ||
+      (data.modelName as string) ||
+      'unknown';
+
+    // repo_name: ContractLlmCallMetrics uses 'reporting_source' as the provenance label.
+    // Expected value space: short, slug-style identifiers such as 'omniclaude',
+    // 'omniclaude-node', or 'pipeline-agent' — the canonical name of the service or
+    // repository that emitted the event.  These identifiers contain no whitespace and
+    // are well under 64 characters, so we use those two properties as a heuristic to
+    // distinguish a valid repo name from a free-form description that a producer may
+    // occasionally put in reporting_source.  Limitation: a descriptive string that
+    // happens to be short and space-free (e.g. "adhoc") would also pass — but that is
+    // an acceptable false-positive because the field still provides a useful grouping
+    // key in the cost-aggregate table.  Explicit repo_name / repoName fields from
+    // legacy payloads always take precedence and bypass this heuristic entirely.
+    const reportingSource = (data.reporting_source as string) || (data.reportingSource as string);
+    const explicitRepo = (data.repo_name as string) || (data.repoName as string);
+    const repoName =
+      explicitRepo ||
+      (reportingSource && reportingSource.length < 64 && !/\s/.test(reportingSource)
+        ? reportingSource
+        : undefined);
 
     const row: InsertLlmCostAggregate = {
       bucketTime,
       granularity,
-      modelName: (data.model_name as string) || (data.modelName as string) || 'unknown',
-      repoName: (data.repo_name as string) || (data.repoName as string) || undefined,
+      modelName,
+      repoName,
       patternId: (data.pattern_id as string) || (data.patternId as string) || undefined,
       patternName: (data.pattern_name as string) || (data.patternName as string) || undefined,
       sessionId: (data.session_id as string) || (data.sessionId as string) || undefined,
@@ -1218,11 +1284,11 @@ export class ReadModelConsumer {
 
     // Validate that model_name is not 'unknown' when the event carries one.
     // Check the DERIVED row value rather than the raw event fields — the raw
-    // field check (data.model_name == null) misses the case where the event
-    // sends model_name: '' which is coerced to 'unknown' by the || fallback.
+    // field check (data.model_id == null) misses the case where the event
+    // sends model_id: '' which is coerced to 'unknown' by the || fallback.
     if (row.modelName === 'unknown') {
       console.warn(
-        '[ReadModelConsumer] LLM cost event missing model_name — inserting as "unknown"'
+        '[ReadModelConsumer] LLM cost event missing model_id/model_name — inserting as "unknown"'
       );
     }
 
