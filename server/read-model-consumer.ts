@@ -1130,9 +1130,21 @@ export class ReadModelConsumer {
       (data.usage_source as string) ||
       (data.usageSource as string) ||
       (data.usage_is_estimated ? 'ESTIMATED' : 'API');
-    const usageSource = ['API', 'ESTIMATED', 'MISSING'].includes(usageSourceRaw.toUpperCase())
-      ? usageSourceRaw.toUpperCase()
+    const usageSourceUpper = usageSourceRaw.toUpperCase();
+    const validUsageSources = ['API', 'ESTIMATED', 'MISSING'] as const;
+    const usageSource = validUsageSources.includes(
+      usageSourceUpper as (typeof validUsageSources)[number]
+    )
+      ? (usageSourceUpper as 'API' | 'ESTIMATED' | 'MISSING')
       : 'API';
+    if (
+      !validUsageSources.includes(usageSourceUpper as (typeof validUsageSources)[number]) &&
+      usageSourceRaw
+    ) {
+      console.warn(
+        `[ReadModelConsumer] LLM cost event has unrecognised usage_source "${usageSourceRaw}" — defaulting to "API"`
+      );
+    }
 
     // granularity: always 'hour' for per-call events from ContractLlmCallMetrics.
     // Pre-aggregated events may carry an explicit 'day' granularity — respect it.
@@ -1196,8 +1208,8 @@ export class ReadModelConsumer {
       'unknown';
 
     // repo_name: ContractLlmCallMetrics uses 'reporting_source' as the provenance label.
-    // Expected value space: short, slug-style identifiers such as 'omniarchon',
-    // 'omniclaude-node', or 'omninode_bridge' — the canonical name of the service or
+    // Expected value space: short, slug-style identifiers such as 'omniclaude',
+    // 'omniclaude-node', or 'pipeline-agent' — the canonical name of the service or
     // repository that emitted the event.  These identifiers contain no whitespace and
     // are well under 64 characters, so we use those two properties as a heuristic to
     // distinguish a valid repo name from a free-form description that a producer may
