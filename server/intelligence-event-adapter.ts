@@ -334,20 +334,20 @@ export class IntelligenceEventAdapter {
         // Allowing a second rejection would create an unhandled Promise rejection
         // and would replace the structured timeout error with a raw Kafka send error.
         //
-        // We return `promise` (already settled as rejected) so the caller sees exactly
-        // one rejection — the timeout — and there is no unhandled rejection surface.
+        // Execution falls through to the single `return promise` at the bottom of the
+        // function, so the caller sees exactly one rejection — the timeout — and there
+        // is no unhandled rejection surface.
         console.warn(
           `[IntelligenceEventAdapter] send error after timeout for correlationId "${correlationKey}" — ` +
           'the caller already received a timeout rejection; this send error is logged for diagnostics only.',
           sendError
         );
       }
-      // Return the already-rejected promise rather than re-throwing here.
+      // Fall through to the single `return promise` below.
       // The caller's `await request(...)` receives the rejection that
       // entry.reject() delivered above as a normally propagated rejected Promise.
       // Re-throwing would create a second, unrelated rejection; returning `promise`
       // keeps exactly one rejection surface and preserves the structured IntelligenceError type.
-      return promise;
     }
 
     return promise;
@@ -432,6 +432,13 @@ export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
  * `getIntelligenceEvents()` plus a null check — both are safe to call at any
  * point.
  *
+ * **Behavioral change from pre-lazy-init code**: Previously, `isIntelligenceEventsAvailable()`
+ * returned `true` optimistically before any initialization attempt. The current implementation
+ * triggers lazy initialization as a side effect on the first call. It returns `true` only after
+ * successful initialization completes, and `false` if initialization failed (e.g. KAFKA_BROKERS
+ * missing or the IntelligenceEventAdapter constructor threw). Callers that previously relied on
+ * the optimistic `true` return before initialization must treat `false` as "Kafka unavailable".
+ *
  * @performance Avoid calling in per-request hot paths. On the **first call**,
  * lazy initialization runs the `IntelligenceEventAdapter` constructor, which
  * reads environment variables and allocates a KafkaJS client object —
@@ -442,14 +449,6 @@ export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
  * Still, the semantic intent of this function is an initialization probe, not
  * a cheap boolean predicate; prefer calling it once at startup and caching
  * the result rather than checking it on every request.
- *
- * @remarks
- * **Behavioral change from pre-lazy-init code**: Previously, `isIntelligenceEventsAvailable()`
- * returned `true` optimistically before any initialization attempt. The current implementation
- * triggers lazy initialization as a side effect on the first call. It returns `true` only after
- * successful initialization completes, and `false` if initialization failed (e.g. KAFKA_BROKERS
- * missing or the IntelligenceEventAdapter constructor threw). Callers that previously relied on
- * the optimistic `true` return before initialization must treat `false` as "Kafka unavailable".
  */
 export function isIntelligenceEventsAvailable(): boolean {
   // Trigger lazy initialization if not yet done
@@ -493,9 +492,9 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
         };
       }
       if (prop === 'stop') {
-        return async () => {
-          console.error('❌ IntelligenceEventAdapter not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
-        };
+        // Intentionally silent — stop() during shutdown when Kafka was never configured
+        // is a benign no-op and should not emit misleading error-level log entries.
+        return async () => {};
       }
       if (prop === 'request' || prop === 'requestPatternDiscovery') {
         return async () => {

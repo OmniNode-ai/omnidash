@@ -250,9 +250,11 @@ router.post('/start', async (req: Request, res: Response) => {
     // Defensive fallback: if `import.meta.url` is somehow undefined (e.g. an
     // unexpected CJS wrapper, a test runner that evaluates the file outside ESM
     // context, or a future build change), fall back to `process.cwd()` so the
-    // server fails loudly on path-containment checks rather than crashing here.
-    // Note: the fallback path may be incorrect if process.cwd() is not the repo
-    // root — callers will receive a 403 rather than a 500, which is safer.
+    // server does not crash at this point.
+    // The fallback path intentionally disables demo playback — all requests will
+    // fail the containment check and return 403. This is by design: if
+    // import.meta.url is not available, the module path cannot be trusted, so
+    // serving any files would be unsafe.
     const moduleDir =
       typeof import.meta.url === 'string'
         ? path.dirname(fileURLToPath(import.meta.url))

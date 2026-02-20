@@ -4313,6 +4313,14 @@ export function getEventConsumer(): EventConsumer | null {
  * `getEventConsumer()` plus a null check — both are safe to call at any
  * point.
  *
+ * **Behavioral change from pre-lazy-init code**: Previously, `isEventConsumerAvailable()`
+ * returned `true` optimistically before any initialization attempt (the old code checked a
+ * simple boolean flag that started as `true`). The current implementation triggers lazy
+ * initialization as a side effect on the first call. It returns `true` only after successful
+ * initialization completes, and `false` if initialization failed (e.g. KAFKA_BROKERS missing
+ * or the EventConsumer constructor threw). Callers that previously relied on the optimistic
+ * `true` return before initialization must be updated to treat `false` as "Kafka unavailable".
+ *
  * @performance Avoid calling in per-request hot paths. On the **first call**,
  * lazy initialization runs the `EventConsumer` constructor, which reads
  * environment variables and allocates KafkaJS client and consumer objects —
@@ -4325,15 +4333,6 @@ export function getEventConsumer(): EventConsumer | null {
  * the result rather than checking it on every request.
  *
  * @returns true if EventConsumer singleton is initialized, false otherwise
- *
- * @remarks
- * **Behavioral change from pre-lazy-init code**: Previously, `isEventConsumerAvailable()`
- * returned `true` optimistically before any initialization attempt (the old code checked a
- * simple boolean flag that started as `true`). The current implementation triggers lazy
- * initialization as a side effect on the first call. It returns `true` only after successful
- * initialization completes, and `false` if initialization failed (e.g. KAFKA_BROKERS missing
- * or the EventConsumer constructor threw). Callers that previously relied on the optimistic
- * `true` return before initialization must be updated to treat `false` as "Kafka unavailable".
  */
 export function isEventConsumerAvailable(): boolean {
   // Trigger lazy initialization if not yet done
@@ -4372,9 +4371,9 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
         };
       }
       if (prop === 'stop') {
-        return async (..._args: unknown[]) => {
-          console.error('❌ EventConsumer not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
-        };
+        // Intentionally silent — stop() during shutdown when Kafka was never configured
+        // is a benign no-op and should not emit misleading error-level log entries.
+        return async (..._args: unknown[]) => {};
       }
       if (prop === 'getHealthStatus') {
         return () => ({

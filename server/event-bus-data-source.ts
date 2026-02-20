@@ -731,6 +731,13 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * `getEventBusDataSource()` plus a null check — both are safe to call at any
  * point.
  *
+ * **Behavioral change from pre-lazy-init code**: Previously, `isEventBusDataSourceAvailable()`
+ * returned `true` optimistically before any initialization attempt. The current implementation
+ * triggers lazy initialization as a side effect on the first call. It returns `true` only after
+ * successful initialization completes, and `false` if initialization failed (e.g. KAFKA_BROKERS
+ * missing or the EventBusDataSource constructor threw). Callers that previously relied on the
+ * optimistic `true` return before initialization must treat `false` as "Kafka unavailable".
+ *
  * @performance Avoid calling in per-request hot paths. On the **first call**,
  * lazy initialization runs the `EventBusDataSource` constructor, which reads
  * environment variables and allocates KafkaJS client objects — synchronous
@@ -741,14 +748,6 @@ export function getEventBusDataSource(): EventBusDataSource | null {
  * semantic intent of this function is an initialization probe, not a cheap
  * boolean predicate; prefer calling it once at startup and caching the result
  * rather than checking it on every request.
- *
- * @remarks
- * **Behavioral change from pre-lazy-init code**: Previously, `isEventBusDataSourceAvailable()`
- * returned `true` optimistically before any initialization attempt. The current implementation
- * triggers lazy initialization as a side effect on the first call. It returns `true` only after
- * successful initialization completes, and `false` if initialization failed (e.g. KAFKA_BROKERS
- * missing or the EventBusDataSource constructor threw). Callers that previously relied on the
- * optimistic `true` return before initialization must treat `false` as "Kafka unavailable".
  *
  * @example
  * ```typescript
@@ -823,13 +822,13 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
       }
       if (prop === 'queryEvents') {
         return async (..._args: unknown[]) => {
-          console.error('[EventBusDataSource] queryEvents called but Kafka is not available — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          console.warn('[EventBusDataSource] queryEvents called but Kafka is not available — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
           return [];
         };
       }
       if (prop === 'queryEventChains') {
         return async (..._args: unknown[]) => {
-          console.error('[EventBusDataSource] queryEventChains called but Kafka is not available — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          console.warn('[EventBusDataSource] queryEventChains called but Kafka is not available — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
           return [];
         };
       }
