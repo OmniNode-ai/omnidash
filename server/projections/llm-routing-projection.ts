@@ -391,7 +391,8 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
       SELECT
         date_trunc(${sql.raw(`'${unit}'`)}, created_at)::text                               AS bucket,
         COUNT(*)::int                                                                        AS total_decisions,
-        COUNT(*) FILTER (WHERE agreement = TRUE)::int                                       AS agreed,
+        COUNT(*) FILTER (WHERE agreement = TRUE AND used_fallback = FALSE)::int             AS agreed,
+        COUNT(*) FILTER (WHERE used_fallback = FALSE)::int                                  AS non_fallback,
         COUNT(*) FILTER (WHERE used_fallback = TRUE)::int                                   AS fallback_count,
         COALESCE(AVG(cost_usd) FILTER (WHERE cost_usd IS NOT NULL), 0)::float               AS avg_cost_usd
       FROM llm_routing_decisions
@@ -405,7 +406,7 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
       const total = Number(r.total_decisions ?? 0);
       const agreed = Number(r.agreed ?? 0);
       const fallbackCount = Number(r.fallback_count ?? 0);
-      const nonFallback = total - fallbackCount;
+      const nonFallback = Number(r.non_fallback ?? 0);
       return {
         date: String(r.bucket ?? ''),
         agreement_rate: nonFallback > 0 ? agreed / nonFallback : 0,
