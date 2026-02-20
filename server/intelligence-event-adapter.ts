@@ -30,7 +30,7 @@ import {
  */
 type PayloadOverride = Omit<
   Record<string, unknown>,
-  'event_id' | 'event_type' | 'source' | 'timestamp'
+  'event_id' | 'event_type' | 'source' | 'timestamp' | 'correlation_id'
 >;
 
 /**
