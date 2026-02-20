@@ -205,6 +205,22 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     return this._queryForWindow(db, '24h');
   }
 
+  /**
+   * Reset all cached state, including per-window cooldown Maps.
+   *
+   * Overrides the base-class `reset()` to also clear the per-window Maps
+   * maintained by `ensureFreshForWindow()`. Without this, a `reset()` call
+   * during testing or projection re-initialization would leave stale cooldown
+   * timestamps and snapshots in the Maps, causing the cooldown guard to serve
+   * outdated data or skip dispatching fresh queries.
+   */
+  override reset(): void {
+    super.reset();
+    this.ensureFreshForWindowLastDispatched.clear();
+    this.ensureFreshForWindowLastSnapshot.clear();
+    this.ensureFreshForWindowInFlight.clear();
+  }
+
   // --------------------------------------------------------------------------
   // Public API used by route handlers
   // --------------------------------------------------------------------------
@@ -290,11 +306,6 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     const db = tryGetIntelligenceDb();
     if (!db) return this.emptyPayload();
 
-    // Record the dispatch timestamp before awaiting so that concurrent calls
-    // arriving while the query is in flight hit the in-flight coalescer above
-    // rather than dispatching another query set.
-    this.ensureFreshForWindowLastDispatched.set(window, Date.now());
-
     const promise = this._queryForWindow(db, window)
       .then((payload) => {
         // Cache the resolved snapshot so the cooldown guard can serve it.
@@ -305,6 +316,11 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
         this.ensureFreshForWindowInFlight.delete(window);
       });
 
+    // Record the dispatch timestamp AFTER the promise is successfully created
+    // so that if _queryForWindow() throws synchronously (edge case), we don't
+    // stamp lastDispatched without a corresponding in-flight entry — which
+    // would cause 500ms of repeated throws before the cooldown expires.
+    this.ensureFreshForWindowLastDispatched.set(window, Date.now());
     this.ensureFreshForWindowInFlight.set(window, promise);
     return promise;
   }

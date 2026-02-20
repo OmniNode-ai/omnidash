@@ -29,6 +29,13 @@ const VALID_WINDOWS = ['24h', '7d', '30d'] as const;
  *   invalid. A missing param is treated as `'24h'`, not as an error.
  */
 function getWindow(query: Record<string, unknown>): string | null {
+  // Asymmetry by design: a missing `window` param coerces to the default '24h',
+  // whereas an empty string (?window=) or any other invalid value returns null
+  // (which causes the caller to respond with HTTP 400). This means:
+  //   - absent   → '24h'  (backward-compatible default)
+  //   - ''       → null   (400 Bad Request — treated as invalid, not absent)
+  //   - 'bad'    → null   (400 Bad Request)
+  //   - '24h'    → '24h'  (valid)
   const windowParam = typeof query.window === 'string' ? query.window : '24h';
   if (!(VALID_WINDOWS as readonly string[]).includes(windowParam)) {
     return null;
