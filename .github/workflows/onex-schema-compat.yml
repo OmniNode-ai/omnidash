@@ -110,6 +110,7 @@ jobs:
           # "No such file or directory" (i.e., contracts/ missing entirely) is the
           # only case that should be treated as an empty result rather than an error.
           YAML_LIST_FILE=$(mktemp)
+          trap 'rm -f "$YAML_LIST_FILE"' EXIT
           if [ -d "$GITHUB_WORKSPACE/contracts" ]; then
             find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -not -name "contract.yaml" -print0 \
               | sort -z \
@@ -118,7 +119,6 @@ jobs:
 
           if [ ! -s "$YAML_LIST_FILE" ]; then
             echo "No ONEX contract YAML files found in contracts/ — gate passes (nothing to validate)"
-            rm -f "$YAML_LIST_FILE"
             exit 0
           fi
 
@@ -137,4 +137,3 @@ jobs:
           # above must be updated accordingly.
           cd "$GITHUB_WORKSPACE/onex_change_control"
           xargs -r -0 poetry run validate-yaml < "$YAML_LIST_FILE"
-          rm -f "$YAML_LIST_FILE"
