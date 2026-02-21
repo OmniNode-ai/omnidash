@@ -26,7 +26,7 @@ import {
 import { buildApiUrl } from '@/lib/data-sources/api-base';
 
 export interface DelegationFetchOptions {
-  /** Fall back to mock data on network/HTTP errors (default: true). */
+  /** Fall back to mock data on network/HTTP errors (default: false). */
   fallbackToMock?: boolean;
   /** Also fall back to mock when the API returns empty results (default: false). */
   mockOnEmpty?: boolean;
@@ -87,7 +87,7 @@ class DelegationSource {
     window: DelegationTimeWindow = '7d',
     options: DelegationFetchOptions = {}
   ): Promise<DelegationSummary> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('summary');
       return getMockDelegationSummary(window);
@@ -120,7 +120,7 @@ class DelegationSource {
     window: DelegationTimeWindow = '7d',
     options: DelegationFetchOptions = {}
   ): Promise<DelegationByTaskType[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('by-task-type');
       return getMockDelegationByTaskType(window);
@@ -153,7 +153,7 @@ class DelegationSource {
     window: DelegationTimeWindow = '7d',
     options: DelegationFetchOptions = {}
   ): Promise<DelegationCostSavingsTrendPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('cost-savings');
       return getMockDelegationCostSavings(window);
@@ -186,7 +186,7 @@ class DelegationSource {
     window: DelegationTimeWindow = '7d',
     options: DelegationFetchOptions = {}
   ): Promise<DelegationQualityGatePoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('quality-gates');
       return getMockDelegationQualityGates(window);
@@ -219,7 +219,7 @@ class DelegationSource {
     window: DelegationTimeWindow = '7d',
     options: DelegationFetchOptions = {}
   ): Promise<DelegationShadowDivergence[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('shadow-divergence');
       return getMockDelegationShadowDivergence(window);
@@ -254,7 +254,7 @@ class DelegationSource {
     window: DelegationTimeWindow = '7d',
     options: DelegationFetchOptions = {}
   ): Promise<DelegationTrendPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('trend');
       return getMockDelegationTrend(window);

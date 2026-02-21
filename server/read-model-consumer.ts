@@ -293,13 +293,32 @@ export class ReadModelConsumer {
         await this.consumer.connect();
         console.log('[ReadModelConsumer] Connected to Kafka');
 
-        // Subscribe to all read-model topics.
-        // fromBeginning: false is intentional -- we only project events produced
-        // after this consumer first joins the group. Historical / pre-existing
-        // events must be backfilled separately (e.g., by re-reading from the
-        // source database or by temporarily resetting consumer group offsets).
+        // Subscribe to all read-model topics individually so that a single
+        // missing/uncreated topic (which returns invalid partition metadata from
+        // Redpanda) does not crash the entire consumer. fromBeginning: false is
+        // intentional -- we only project events produced after this consumer
+        // first joins the group.
+        const subscribedTopics: string[] = [];
+        const skippedTopics: string[] = [];
         for (const topic of READ_MODEL_TOPICS) {
-          await this.consumer.subscribe({ topic, fromBeginning: false });
+          try {
+            await this.consumer.subscribe({ topic, fromBeginning: false });
+            subscribedTopics.push(topic);
+          } catch (subscribeErr) {
+            skippedTopics.push(topic);
+            console.warn(
+              `[ReadModelConsumer] Skipping topic "${topic}" (not available on broker):`,
+              subscribeErr instanceof Error ? subscribeErr.message : subscribeErr
+            );
+          }
+        }
+        if (subscribedTopics.length === 0) {
+          throw new Error('No topics could be subscribed — all topics failed metadata check');
+        }
+        if (skippedTopics.length > 0) {
+          console.warn(
+            `[ReadModelConsumer] Skipped ${skippedTopics.length} topic(s): ${skippedTopics.join(', ')}`
+          );
         }
 
         // Process messages
@@ -312,7 +331,7 @@ export class ReadModelConsumer {
         this.running = true;
         this.stats.isRunning = true;
         console.log(
-          `[ReadModelConsumer] Running. Topics: ${READ_MODEL_TOPICS.join(', ')}. ` +
+          `[ReadModelConsumer] Running. Topics (${subscribedTopics.length}): ${subscribedTopics.join(', ')}. ` +
             `Group: ${CONSUMER_GROUP_ID}`
         );
         return;

@@ -726,7 +726,7 @@ export default function CostTrendDashboard() {
   // Data Fetching
   // ---------------------------------------------------------------------------
 
-  const fetchOpts = { mockOnEmpty: true, includeEstimated, demoMode: isDemoMode };
+  const fetchOpts = { includeEstimated, demoMode: isDemoMode };
 
   const { data: summary, isLoading: summaryLoading } = useQuery<CostSummary>({
     queryKey: [...queryKeys.costs.summary(timeWindow), includeEstimated],

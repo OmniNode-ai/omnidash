@@ -426,7 +426,7 @@ export default function LlmRoutingDashboard() {
     refetch: refetchSummary,
   } = useQuery({
     queryKey: queryKeys.llmRouting.summary(timeWindow),
-    queryFn: () => llmRoutingSource.summary(timeWindow, { mockOnEmpty: true }),
+    queryFn: () => llmRoutingSource.summary(timeWindow, {}),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -438,7 +438,7 @@ export default function LlmRoutingDashboard() {
     refetch: refetchLatency,
   } = useQuery({
     queryKey: queryKeys.llmRouting.latency(timeWindow),
-    queryFn: () => llmRoutingSource.latency(timeWindow, { mockOnEmpty: true }),
+    queryFn: () => llmRoutingSource.latency(timeWindow, {}),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -450,7 +450,7 @@ export default function LlmRoutingDashboard() {
     refetch: refetchVersion,
   } = useQuery({
     queryKey: queryKeys.llmRouting.byVersion(timeWindow),
-    queryFn: () => llmRoutingSource.byVersion(timeWindow, { mockOnEmpty: true }),
+    queryFn: () => llmRoutingSource.byVersion(timeWindow, {}),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -462,7 +462,7 @@ export default function LlmRoutingDashboard() {
     refetch: refetchDisagreements,
   } = useQuery({
     queryKey: queryKeys.llmRouting.disagreements(timeWindow),
-    queryFn: () => llmRoutingSource.disagreements(timeWindow, { mockOnEmpty: true }),
+    queryFn: () => llmRoutingSource.disagreements(timeWindow, {}),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -474,7 +474,7 @@ export default function LlmRoutingDashboard() {
     refetch: refetchTrend,
   } = useQuery({
     queryKey: queryKeys.llmRouting.trend(timeWindow),
-    queryFn: () => llmRoutingSource.trend(timeWindow, { mockOnEmpty: true }),
+    queryFn: () => llmRoutingSource.trend(timeWindow, {}),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });

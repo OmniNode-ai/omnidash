@@ -439,8 +439,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchSummary,
   } = useQuery({
     queryKey: queryKeys.enrichment.summary(timeWindow),
-    queryFn: () =>
-      enrichmentSource.summary(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enrichmentSource.summary(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -452,8 +451,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchChannel,
   } = useQuery({
     queryKey: queryKeys.enrichment.byChannel(timeWindow),
-    queryFn: () =>
-      enrichmentSource.byChannel(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enrichmentSource.byChannel(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -477,8 +475,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchToken,
   } = useQuery({
     queryKey: queryKeys.enrichment.tokenSavings(timeWindow),
-    queryFn: () =>
-      enrichmentSource.tokenSavings(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enrichmentSource.tokenSavings(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });

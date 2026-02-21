@@ -34,7 +34,7 @@ import {
 } from '@/lib/mock-data/effectiveness-mock';
 
 export interface EffectivenessFetchOptions {
-  /** Fall back to mock data on network/HTTP errors (default: true). */
+  /** Fall back to mock data on network/HTTP errors (default: false). */
   fallbackToMock?: boolean;
   /**
    * Also fall back to mock when the API returns empty results (default: false).
@@ -71,7 +71,7 @@ class EffectivenessSource {
   }
 
   async summary(options: EffectivenessFetchOptions = {}): Promise<EffectivenessSummary> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('summary');
       return getMockSummary();
@@ -97,7 +97,7 @@ class EffectivenessSource {
   }
 
   async throttleStatus(options: EffectivenessFetchOptions = {}): Promise<ThrottleStatus> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('throttle');
       return getMockThrottleStatus();
@@ -119,7 +119,7 @@ class EffectivenessSource {
   }
 
   async latencyDetails(options: EffectivenessFetchOptions = {}): Promise<LatencyDetails> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('latency');
       return getMockLatencyDetails();
@@ -145,7 +145,7 @@ class EffectivenessSource {
   }
 
   async utilizationDetails(options: EffectivenessFetchOptions = {}): Promise<UtilizationDetails> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('utilization');
       return getMockUtilizationDetails();
@@ -171,7 +171,7 @@ class EffectivenessSource {
   }
 
   async abComparison(options: EffectivenessFetchOptions = {}): Promise<ABComparison> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('ab');
       return getMockABComparison();
@@ -200,7 +200,7 @@ class EffectivenessSource {
     sessionId: string,
     options: EffectivenessFetchOptions = {}
   ): Promise<SessionDetail> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('session');
       return getMockSessionDetail(sessionId);
@@ -225,7 +225,7 @@ class EffectivenessSource {
     days?: number,
     options: EffectivenessFetchOptions = {}
   ): Promise<EffectivenessTrendPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('trend');
       return getMockEffectivenessTrend();

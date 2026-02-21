@@ -27,10 +27,10 @@ import {
 /**
  * Options controlling fetch behaviour for ExtractionSource methods.
  *
- * @property fallbackToMock - When `true` (default), any network error or
+ * @property fallbackToMock - When `true`, any network error or
  *   empty-table condition transparently returns demo data instead of throwing.
- *   Set to `false` in contexts where callers need to distinguish "no data yet"
- *   from a real API failure.
+ *   Defaults to `false`; set to `true` in demo contexts where callers want
+ *   graceful fallback instead of a thrown error.
  */
 export interface ExtractionFetchOptions {
   fallbackToMock?: boolean;
@@ -77,7 +77,7 @@ class ExtractionSource {
   async summary(
     options: ExtractionFetchOptions = {}
   ): Promise<ExtractionResult<ExtractionSummary>> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
     if (demoMode) {
       return { data: getMockExtractionSummary(), isMock: true };
     }
@@ -110,7 +110,7 @@ class ExtractionSource {
   async pipelineHealth(
     options: ExtractionFetchOptions = {}
   ): Promise<ExtractionResult<PipelineHealthResponse>> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
     if (demoMode) {
       return { data: getMockPipelineHealth(), isMock: true };
     }
@@ -144,7 +144,7 @@ class ExtractionSource {
     window: string = '24h',
     options: ExtractionFetchOptions = {}
   ): Promise<ExtractionResult<LatencyHeatmapResponse>> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
     if (demoMode) {
       return { data: getMockLatencyHeatmap(window), isMock: true };
     }
@@ -180,7 +180,7 @@ class ExtractionSource {
     window: string = '24h',
     options: ExtractionFetchOptions = {}
   ): Promise<ExtractionResult<PatternVolumeResponse>> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
     if (demoMode) {
       return { data: getMockPatternVolume(window), isMock: true };
     }
@@ -215,7 +215,7 @@ class ExtractionSource {
   async errorsSummary(
     options: ExtractionFetchOptions = {}
   ): Promise<ExtractionResult<ErrorRatesSummaryResponse>> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
     if (demoMode) {
       return { data: getMockErrorRatesSummary(), isMock: true };
     }

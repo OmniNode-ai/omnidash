@@ -383,7 +383,7 @@ export default function DelegationDashboard() {
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
-  const fetchOptions = { mockOnEmpty: true, demoMode: isDemoMode };
+  const fetchOptions = { demoMode: isDemoMode };
 
   const {
     data: summary,
