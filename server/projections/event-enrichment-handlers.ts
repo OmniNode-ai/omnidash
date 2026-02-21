@@ -79,7 +79,7 @@ function extractBashCommand(
  * Precedence (first match wins):
  * 1. `toolName` in payload → tool_event
  * 2. `type` or `topic` contains error/failed/failure → error_event
- * 3. `type` contains routing/route, OR `topic` contains routing, OR `selectedAgent` in payload → routing_event
+ * 3. `type` or `topic` contains routing, OR `selectedAgent` in payload → routing_event
  * 4. `type` or `topic` contains intent, OR `intent_category`/`intentCategory` in payload → intent_event
  * 5. `type` or `topic` contains heartbeat → node_heartbeat
  * 6. `type` or `topic` contains registration/lifecycle/node-registry → node_lifecycle
@@ -93,9 +93,9 @@ export function deriveEventCategory(
   const lType = type.toLowerCase();
   const lTopic = topic.toLowerCase();
 
-  // Tool event: presence of toolName field takes highest priority
+  // Tool event: presence of a non-empty toolName field takes highest priority
   const toolName = str(findField(payload, ['toolName', 'tool_name']));
-  if (toolName !== undefined) return 'tool_event';
+  if (toolName) return 'tool_event';
 
   // Error event
   if (
@@ -113,7 +113,9 @@ export function deriveEventCategory(
   if (
     lType.includes('routing') ||
     lTopic.includes('routing') ||
-    lType.includes('route') || // type-only: 'route' in type names like 'route-decision', 'reroute'
+    // type-only: 'routing' in type names like 'routing-decision', 'rerouting'.
+    // 'route' was intentionally removed — it is a prefix of 'router' and would
+    // false-positive on type strings like 'router-metrics' or 'router-error-log'.
     findField(payload, ['selectedAgent', 'selected_agent']) !== undefined
   ) {
     return 'routing_event';
@@ -155,7 +157,7 @@ const ToolExecutedHandler: EnrichmentHandler = {
   name: 'ToolExecutedHandler',
   category: 'tool_event',
   enrich(payload, type, _topic): EventEnrichment {
-    const toolName = str(findField(payload, ['toolName', 'tool_name'])) ?? 'Tool';
+    const toolName = str(findField(payload, ['toolName', 'tool_name'])) || 'Tool';
     const toolInput = findField(payload, ['toolInput', 'tool_input', 'input']);
     const artifacts: EventArtifact[] = [];
     let filePath: string | undefined;
@@ -282,8 +284,7 @@ const IntentHandler: EnrichmentHandler = {
   category: 'intent_event',
   enrich(payload, type, _topic): EventEnrichment {
     const intentType =
-      str(findField(payload, ['intent_category', 'intentCategory', 'intent', 'category'])) ??
-      'unknown';
+      str(findField(payload, ['intent_category', 'intentCategory', 'intent'])) ?? 'unknown';
     const confidence = num(findField(payload, ['confidence', 'score', 'probability']));
 
     // Confidence normalization heuristic — same rules as RoutingDecisionHandler:
@@ -377,32 +378,32 @@ const ErrorEventHandler: EnrichmentHandler = {
     const rawError = findField(payload, ['error', 'message', 'errorMessage', 'error_message']);
 
     // Step 1: find any direct string value for the error message.
-    // If rawError is an object (e.g. `error: { code: 500 }`), str() returns undefined
-    // and we fall back to the remaining top-level string fields that findField skipped.
-    // Step 1 fallback: top-level scan only — avoid wrapper descent pulling unrelated fields
-    const directStr =
-      str(rawError) ??
-      (typeof rawError === 'object' &&
-      rawError !== null &&
-      typeof payload === 'object' &&
-      payload !== null
+    // If rawError is an object (e.g. `error: { code: 500 }`), str() returns undefined.
+    // If rawError is an empty string, str() returns '' which is falsy.
+    // In both falsy cases we fall back to a top-level sibling scan so that a payload like
+    // { error: '', message: 'Connection refused' } can surface the sibling message.
+    // Fallback is top-level scan only — avoid wrapper descent pulling unrelated fields.
+    const directStr = str(rawError);
+    const fallbackStr =
+      !directStr && typeof payload === 'object' && payload !== null
         ? (['message', 'errorMessage', 'error_message'] as string[]).reduce<string | undefined>(
             (acc, key) => acc ?? str((payload as Record<string, unknown>)[key]),
             undefined
           )
-        : undefined);
+        : undefined;
+    const errorMsg = directStr || fallbackStr;
 
-    // Step 2: if no direct string was found, try extracting from a structured error object.
-    const errorMsg =
-      directStr !== undefined
-        ? directStr
+    // Step 2: if still no string, try extracting from a structured error object.
+    const resolvedMsg =
+      errorMsg !== undefined
+        ? errorMsg
         : typeof rawError === 'object' && rawError !== null
           ? str(
               (rawError as Record<string, unknown>).message ??
                 (rawError as Record<string, unknown>).error
             )
           : undefined;
-    const errorMessage = errorMsg || 'Unknown error';
+    const errorMessage = resolvedMsg || 'Unknown error';
 
     const summary = truncate(`${actionType}: ${errorMessage}`);
 

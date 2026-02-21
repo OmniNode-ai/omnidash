@@ -79,11 +79,11 @@ describe('deriveEventCategory', () => {
       expect(result).not.toBe('routing_event');
     });
 
-    it('returns "routing_event" when type is "route-decision" and topic has no routing keyword (lType.includes("route") branch)', () => {
-      // Exercises the lType.includes('route') branch exclusively — topic is 'agent-actions'
-      // which contains neither 'routing' nor 'route', and payload has no selectedAgent.
-      // The classifier must match via the type-only 'route' substring check.
-      const result = deriveEventCategory({}, 'route-decision', 'agent-actions');
+    it('returns "routing_event" when type is "routing-decision" and topic has no routing keyword', () => {
+      // 'routing-decision' contains 'routing' — matched by the lType.includes('routing') branch.
+      // topic is 'agent-actions' which contains neither 'routing' nor 'route', and payload has
+      // no selectedAgent. The classifier must match via the lType.includes('routing') check.
+      const result = deriveEventCategory({}, 'routing-decision', 'agent-actions');
       expect(result).toBe('routing_event');
     });
   });
@@ -591,6 +591,20 @@ describe('ErrorEventHandler enrichment output', () => {
     expect(result.summary).toContain('Unknown error');
     // The summary must NOT contain a bare ": " followed immediately by nothing
     expect(result.summary).not.toMatch(/: $/);
+  });
+
+  it('empty string error with sibling message field surfaces the sibling (MAJOR 2 fix)', () => {
+    // { error: '', message: 'Connection refused' }: str('') returns '' which is falsy,
+    // so the sibling scan is entered. 'message' is found at the top level and returned.
+    const result = pipeline.run(
+      { error: '', message: 'Connection refused' },
+      'task-failed',
+      'agent-actions'
+    );
+    expect(result.category).toBe('error_event');
+    expect(result.handler).toBe('ErrorEventHandler');
+    expect(result.error).toBe('Connection refused');
+    expect(result.summary).toContain('Connection refused');
   });
 
   it('object with neither .message nor .error string degrades to "Unknown error"', () => {
