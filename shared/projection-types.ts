@@ -59,7 +59,7 @@ export interface ProjectionEvent {
   payload: Record<string, unknown>;
   /** True when no timestamp could be extracted — eventTimeMs is the sentinel (0) */
   eventTimeMissing?: boolean;
-  /** Error details, if this is an error event */
+  /** Structured error object. Note: EventEnrichment.error is a separate string field — different shape. */
   error?: { message: string; stack?: string };
   /** Display-only enrichment metadata derived by enrichment handlers */
   enrichment?: EventEnrichment;

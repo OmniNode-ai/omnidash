@@ -484,5 +484,6 @@ export function getEnrichmentPipeline(): EventEnrichmentPipeline {
 
 /** @internal — for testing only. Do not call from production code. */
 export function resetEnrichmentPipelineForTesting(): void {
+  if (process.env.NODE_ENV === 'production') return;
   _enrichmentPipeline = undefined;
 }
