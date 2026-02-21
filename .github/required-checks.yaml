@@ -38,9 +38,10 @@ excluded_checks:
       because GitHub marks skipped path-filtered checks as "Expected — Waiting
       for status to be reported".
 
-  # Cross-reference: this name MUST exactly match the `name:` field of the
-  # `schema-compat` job in .github/workflows/onex-schema-compat.yml
-  # (currently: `name: ONEX Schema Compatibility Check`).
+  # Cross-reference: this name MUST exactly match the job-level `name:` field
+  # inside the `jobs.schema-compat` block in .github/workflows/onex-schema-compat.yml
+  # (currently: `name: ONEX Schema Compatibility Check`), NOT the top-level
+  # workflow `name:` field (which reads `name: ONEX Schema Compatibility`).
   # If that job name is renamed, update this entry and branch protection settings.
   - name: "ONEX Schema Compatibility Check"
     reason: >

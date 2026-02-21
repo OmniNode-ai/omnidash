@@ -102,7 +102,7 @@ jobs:
           # early-exit guard and the validator xargs both operate on exactly the
           # same set. This eliminates the structural drift risk that existed when
           # two independent find commands had to be kept in sync manually.
-          # If you add exclusions (e.g., -not -name "contract.yaml") or additional
+          # If you add exclusions (e.g., -not -path "$GITHUB_WORKSPACE/contracts/contract.yaml") or additional
           # glob patterns, change only the single find invocation below.
           #
           # The contracts/ directory is checked for existence before running find so
@@ -112,7 +112,7 @@ jobs:
           YAML_LIST_FILE=$(mktemp)
           trap 'rm -f "$YAML_LIST_FILE"' EXIT
           if [ -d "$GITHUB_WORKSPACE/contracts" ]; then
-            find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -not -name "contract.yaml" -print0 \
+            find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -not -path "$GITHUB_WORKSPACE/contracts/contract.yaml" -print0 \
               | sort -z \
               > "$YAML_LIST_FILE"
           fi
