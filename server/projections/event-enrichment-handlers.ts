@@ -164,10 +164,10 @@ const ToolExecutedHandler: EnrichmentHandler = {
 
     const lTool = toolName.toLowerCase();
 
-    // Guard against array inputs before casting to Record<string, unknown>.
-    // Arrays are not valid tool_input objects and would cause incorrect field
-    // lookups if cast directly (e.g. ti['file_path'] on an array is undefined
-    // but ti[0] etc. would silently pass). Treat them as absent.
+    // Guard against array or primitive tool_input values — only plain objects should be used for field lookup.
+    // Arrays would cause incorrect field lookups if cast directly (e.g. ti['file_path'] on an array
+    // is undefined but ti[0] etc. would silently pass). Primitives (strings, numbers, booleans, null)
+    // are likewise not valid tool_input objects. Treat all non-object values as absent.
     const inputs = Array.isArray(toolInput)
       ? undefined
       : (toolInput as Record<string, unknown> | undefined);

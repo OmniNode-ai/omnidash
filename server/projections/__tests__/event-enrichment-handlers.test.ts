@@ -265,7 +265,7 @@ describe('EventEnrichmentPipeline.run', () => {
     expect(result).toHaveProperty('artifacts');
   });
 
-  it('returns a fallback enrichment when processing fails internally', () => {
+  it('returns a valid enrichment for an unrecognized event type via DefaultHandler', () => {
     // Simulate a completely broken payload scenario by running with
     // extremely unusual but valid JS values
     const result = pipeline.run({}, 'action', 'topic');
