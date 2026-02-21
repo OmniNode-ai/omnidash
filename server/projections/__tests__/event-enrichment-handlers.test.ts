@@ -170,6 +170,19 @@ describe('deriveEventCategory', () => {
         'error_event'
       );
     });
+
+    it('topic-based failure detection wins over payload selectedAgent field', () => {
+      // payload has selectedAgent (routing indicator) but the topic contains "failure"
+      // (error indicator). error_event is checked before the selectedAgent payload branch,
+      // so topic-failure takes precedence.
+      expect(
+        deriveEventCategory(
+          { selectedAgent: 'polymorphic-agent' },
+          'agent.completed',
+          'agent.failure.v1'
+        )
+      ).toBe('error_event');
+    });
   });
 });
 
@@ -339,6 +352,17 @@ describe('confidence clamping in RoutingDecisionHandler', () => {
     expect(result.summary).not.toContain('NaN');
     // The agent name should still appear
     expect(result.summary).toContain('my-agent');
+  });
+
+  it('clamps a negative confidence of -0.5 to "0%" in the summary', () => {
+    // Implementation: Math.max(0, Math.round(-0.5 * 100)) = Math.max(0, -50) = 0
+    // confPct is 0 (not undefined), so the confidence part IS included as "(0%)"
+    const result = pipeline.run(
+      { selectedAgent: 'my-agent', confidence: -0.5 },
+      'routing-decision',
+      'routing-topic'
+    );
+    expect(result.summary).toContain('0%');
   });
 });
 

@@ -94,7 +94,7 @@ export function deriveEventCategory(
   const lTopic = topic.toLowerCase();
 
   // Tool event: presence of toolName field takes highest priority
-  const toolName = str(findField(payload, ['toolName', 'tool_name', 'tool']));
+  const toolName = str(findField(payload, ['toolName', 'tool_name']));
   if (toolName !== undefined) return 'tool_event';
 
   // Error event
@@ -140,7 +140,6 @@ export function deriveEventCategory(
     lType.includes('lifecycle') ||
     lTopic.includes('registration') ||
     lTopic.includes('lifecycle') ||
-    (lType.startsWith('node-') && (lType.includes('registry') || lType.includes('lifecycle'))) ||
     lTopic.includes('node-registry')
   ) {
     return 'node_lifecycle';
