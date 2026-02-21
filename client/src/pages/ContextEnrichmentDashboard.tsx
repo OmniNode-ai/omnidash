@@ -607,7 +607,8 @@ export default function ContextEnrichmentDashboard() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Failed to load enrichment data</AlertTitle>
           <AlertDescription>
-            <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
+            Unable to load enrichment data. Check that the API server is running.
+            <Button variant="outline" size="sm" className="mt-2 ml-2" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 mr-1" /> Retry
             </Button>
           </AlertDescription>

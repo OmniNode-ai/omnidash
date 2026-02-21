@@ -259,7 +259,13 @@ export default function EffectivenessSummary() {
 
       {/* Auto-Throttle Error */}
       {throttleError && (
-        <p className="text-sm text-destructive">Failed to load auto-throttle status.</p>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load auto-throttle status</AlertTitle>
+          <AlertDescription>
+            Auto-throttle status could not be retrieved. Throttle state may be unavailable.
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Auto-Throttle Warning Banner (R2) */}

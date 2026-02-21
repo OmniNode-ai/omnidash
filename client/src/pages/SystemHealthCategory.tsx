@@ -288,15 +288,6 @@ export default function SystemHealthCategory() {
         </div>
       </div>
 
-      {/* Hero Metric: Validation Pass Count */}
-      <HeroMetric
-        label="Pattern Validation (Confirmed / Total)"
-        value={heroValue}
-        subtitle={`${(passRate * 100).toFixed(1)}% pass rate across ${totalRuns} total runs`}
-        status={heroStatus}
-        isLoading={validationLoading}
-      />
-
       {/* Error Banner */}
       {validationError && (
         <Alert variant="destructive">
@@ -307,6 +298,15 @@ export default function SystemHealthCategory() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Hero Metric: Validation Pass Count */}
+      <HeroMetric
+        label="Pattern Validation (Confirmed / Total)"
+        value={heroValue}
+        subtitle={`${(passRate * 100).toFixed(1)}% pass rate across ${totalRuns} total runs`}
+        status={heroStatus}
+        isLoading={validationLoading}
+      />
 
       {/* Supporting Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">

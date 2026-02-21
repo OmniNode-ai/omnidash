@@ -236,7 +236,6 @@ class EffectivenessSource {
       const data: EffectivenessTrendPoint[] = await response.json();
       if (!Array.isArray(data)) {
         console.warn('[EffectivenessSource] /trend response is not an array, returning empty');
-        this.markReal('trend');
         return [];
       }
       if (mockOnEmpty && data.length === 0) {
