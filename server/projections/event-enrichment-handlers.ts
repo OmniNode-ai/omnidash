@@ -82,7 +82,11 @@ function extractBashCommand(
  * 3. `type` or `topic` contains routing, OR `selectedAgent` in payload → routing_event
  * 4. `type` or `topic` contains intent, OR `intent_category`/`intentCategory` in payload → intent_event
  * 5. `type` or `topic` contains heartbeat → node_heartbeat
- * 6. `type` or `topic` contains registration/lifecycle/node-registry → node_lifecycle
+ * 6. `type` or `topic` contains registration/lifecycle/node-registry, OR
+ *    `type` contains shutdown/startup/node-registry → node_lifecycle
+ *    (node_lifecycle matches both topic-based AND type-based patterns — the handler's
+ *    label derivation handles shutdown/startup/started/offline type substrings, so the
+ *    classifier must also reach node_lifecycle via those type-level keywords alone)
  * 7. Default → unknown
  */
 export function deriveEventCategory(
@@ -117,14 +121,16 @@ export function deriveEventCategory(
     // type-only: 'routing' in type names like 'routing-decision', 'rerouting'.
     // 'route' was intentionally removed — it is a prefix of 'router' and would
     // false-positive on type strings like 'router-metrics' or 'router-error-log'.
-    routingAgent !== undefined
+    // Truthy check: empty string selectedAgent should NOT classify as routing_event.
+    routingAgent
   ) {
     return 'routing_event';
   }
 
   // Intent event
   const intentCat = str(findField(payload, ['intent_category', 'intentCategory', 'intent']));
-  if (lType.includes('intent') || lTopic.includes('intent') || intentCat !== undefined) {
+  // Truthy check: empty string intent should NOT classify as intent_event.
+  if (lType.includes('intent') || lTopic.includes('intent') || intentCat) {
     return 'intent_event';
   }
 
@@ -137,6 +143,9 @@ export function deriveEventCategory(
   if (
     lType.includes('registration') ||
     lType.includes('lifecycle') ||
+    lType.includes('shutdown') ||
+    lType.includes('startup') ||
+    lType.includes('node-registry') ||
     lTopic.includes('registration') ||
     lTopic.includes('lifecycle') ||
     lTopic.includes('node-registry')

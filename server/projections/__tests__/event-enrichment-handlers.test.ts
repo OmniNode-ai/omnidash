@@ -15,6 +15,7 @@ import {
   resetEnrichmentPipelineForTesting,
   EventEnrichmentPipeline,
 } from '../event-enrichment-handlers';
+import type { EventCategory } from '../../../shared/projection-types';
 
 // ============================================================================
 // deriveEventCategory
@@ -306,6 +307,22 @@ describe('EventEnrichmentPipeline.run', () => {
     const result = pipeline.run({}, 'action', 'topic');
     expect(result.enrichmentVersion).toBe('v1');
     expect(typeof result.summary).toBe('string');
+  });
+
+  it('returns FallbackHandler enrichment when a handler throws internally', () => {
+    const pipeline = new EventEnrichmentPipeline();
+    // Force tool_event handler to throw to exercise the catch path
+
+    (pipeline as any).handlers.set('tool_event', {
+      category: 'tool_event' as EventCategory,
+      enrich: () => {
+        throw new Error('handler internal error');
+      },
+    });
+    const result = pipeline.run({ toolName: 'read' }, 'tool-used', 'tool-events');
+    expect(result.handler).toBe('FallbackHandler');
+    expect(result.category).toBe('unknown');
+    expect(result.summary).toContain('processing error');
   });
 });
 
