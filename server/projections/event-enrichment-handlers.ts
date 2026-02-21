@@ -164,13 +164,11 @@ const ToolExecutedHandler: EnrichmentHandler = {
 
     const lTool = toolName.toLowerCase();
 
-    // Guard against array or primitive tool_input values — only plain objects should be used for field lookup.
-    // Arrays would cause incorrect field lookups if cast directly (e.g. ti['file_path'] on an array
-    // is undefined but ti[0] etc. would silently pass). Primitives (strings, numbers, booleans, null)
-    // are likewise not valid tool_input objects. Treat all non-object values as absent.
-    const inputs = Array.isArray(toolInput)
-      ? undefined
-      : (toolInput as Record<string, unknown> | undefined);
+    // Guard against array or primitive tool_input values — only plain objects should be used for field lookup
+    const inputs =
+      toolInput !== null && typeof toolInput === 'object' && !Array.isArray(toolInput)
+        ? (toolInput as Record<string, unknown>)
+        : undefined;
 
     // Recognized tools: read, readfile, write, edit, multiedit, glob, bash.
     // All other tools (e.g. grep, webfetch, task, todowrite) fall through
@@ -385,7 +383,7 @@ const ErrorEventHandler: EnrichmentHandler = {
               (rawError as Record<string, unknown>).error
           )
         : str(rawError);
-    const errorMessage = errorMsg ?? 'Unknown error';
+    const errorMessage = errorMsg || 'Unknown error';
 
     const summary = truncate(`${actionType}: ${errorMessage}`);
 

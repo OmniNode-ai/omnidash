@@ -480,6 +480,35 @@ describe('ToolExecutedHandler enrichment', () => {
     // glob does not set filePath — it uses the pattern field only
     expect(result.filePath).toBeUndefined();
   });
+
+  it('edit: produces a file_edit artifact and populates filePath', () => {
+    const result = pipeline.run(
+      { toolName: 'edit', tool_input: { file_path: '/src/server/index.ts' } },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.toolName).toBe('edit');
+    expect(result.filePath).toBe('/src/server/index.ts');
+    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts[0].kind).toBe('file_edit');
+    expect(result.artifacts[0].value).toBe('/src/server/index.ts');
+    // display should be the basename
+    expect(result.artifacts[0].display).toBe('index.ts');
+  });
+
+  it('multiedit: produces a file_edit artifact and populates filePath', () => {
+    const result = pipeline.run(
+      { toolName: 'multiedit', tool_input: { file_path: '/src/shared/types.ts' } },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.toolName).toBe('multiedit');
+    expect(result.filePath).toBe('/src/shared/types.ts');
+    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts[0].kind).toBe('file_edit');
+    expect(result.artifacts[0].value).toBe('/src/shared/types.ts');
+    expect(result.artifacts[0].display).toBe('types.ts');
+  });
 });
 
 // ============================================================================
@@ -515,6 +544,28 @@ describe('ErrorEventHandler enrichment output', () => {
     expect(result.handler).toBe('ErrorEventHandler');
     expect(result.error).toBe('Something went wrong');
     expect(result.summary).toContain('Something went wrong');
+  });
+
+  it('empty string error field falls through to "Unknown error" (|| guard)', () => {
+    // error: '' is falsy — with || the fallback kicks in, so error/summary should read "Unknown error"
+    const result = pipeline.run({ error: '' }, 'task-failed', 'agent-actions');
+    expect(result.category).toBe('error_event');
+    expect(result.handler).toBe('ErrorEventHandler');
+    expect(result.error).toBe('Unknown error');
+    expect(result.summary).toContain('Unknown error');
+    // The summary must NOT contain a bare ": " followed immediately by nothing
+    expect(result.summary).not.toMatch(/: $/);
+  });
+
+  it('object with neither .message nor .error string degrades to "Unknown error"', () => {
+    // { message: { code: 42 } } → rawError is { code: 42 }; it has no .message (undefined)
+    // and no .error string; str() on both returns undefined → errorMsg is undefined →
+    // || fallback produces 'Unknown error'
+    const result = pipeline.run({ message: { code: 42 } }, 'task-failed', 'agent-actions');
+    expect(result.category).toBe('error_event');
+    expect(result.handler).toBe('ErrorEventHandler');
+    expect(result.error).toBe('Unknown error');
+    expect(result.summary).toContain('Unknown error');
   });
 });
 
