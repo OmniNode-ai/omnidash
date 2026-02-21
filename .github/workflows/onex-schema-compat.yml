@@ -15,6 +15,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: schema-compat-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   schema-compat:
     name: ONEX Schema Compatibility Check
@@ -43,6 +47,7 @@ jobs:
 
       - name: Verify onex_change_control checkout
         run: |
+          set -eo pipefail
           # Checks that the source file exists in the expected location.
           # Note: file existence alone does not confirm the console_scripts entrypoint
           # is resolvable. After `poetry install` (below), the `validate-yaml` entry
@@ -88,6 +93,7 @@ jobs:
 
       - name: Validate ONEX contract files
         run: |
+          set -eo pipefail
           # Find YAML/YML files in contracts/ (ticket contracts, day_close records).
           # Root contract.yaml is an ONEX Service Contract (different schema) — excluded.
           #
@@ -97,10 +103,17 @@ jobs:
           # two independent find commands had to be kept in sync manually.
           # If you add exclusions (e.g., -not -name "contract.yaml") or additional
           # glob patterns, change only the single find invocation below.
+          #
+          # The contracts/ directory is checked for existence before running find so
+          # that permission errors on subdirectories are not silently suppressed.
+          # "No such file or directory" (i.e., contracts/ missing entirely) is the
+          # only case that should be treated as an empty result rather than an error.
           YAML_LIST_FILE=$(mktemp)
-          find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -print0 2>/dev/null \
-            | sort -z \
-            > "$YAML_LIST_FILE"
+          if [ -d "$GITHUB_WORKSPACE/contracts" ]; then
+            find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -print0 \
+              | sort -z \
+              > "$YAML_LIST_FILE"
+          fi
 
           if [ ! -s "$YAML_LIST_FILE" ]; then
             echo "No ONEX contract YAML files found in contracts/ — gate passes (nothing to validate)"
