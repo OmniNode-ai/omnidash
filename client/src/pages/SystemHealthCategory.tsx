@@ -20,6 +20,7 @@ import { HeroMetric } from '@/components/HeroMetric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'wouter';
 import {
   ShieldCheck,
@@ -29,6 +30,7 @@ import {
   AlertTriangle,
   Server,
   Layers,
+  AlertCircle,
 } from 'lucide-react';
 import { DataSourceHealthPanel } from '@/components/DataSourceHealthPanel';
 import {
@@ -217,7 +219,11 @@ export default function SystemHealthCategory() {
   // ---------------------------------------------------------------------------
   // Validation Summary
   // ---------------------------------------------------------------------------
-  const { data: validationSummary, isLoading: validationLoading } = useQuery<ValidationSummary>({
+  const {
+    data: validationSummary,
+    isLoading: validationLoading,
+    isError: validationError,
+  } = useQuery<ValidationSummary>({
     queryKey: queryKeys.validation.summary(),
     queryFn: () => validationSource.summary(),
     refetchInterval: 30_000,
@@ -281,6 +287,17 @@ export default function SystemHealthCategory() {
           </div>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {validationError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Failed to load validation data</AlertTitle>
+          <AlertDescription>
+            Validation summary could not be retrieved. Validation metrics may be unavailable.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Hero Metric: Validation Pass Count */}
       <HeroMetric

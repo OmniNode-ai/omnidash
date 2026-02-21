@@ -19,13 +19,23 @@ import { HeroMetric } from '@/components/HeroMetric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'wouter';
 import type {
   EffectivenessSummary as SummaryType,
   ABComparison,
   EffectivenessTrendPoint,
 } from '@shared/effectiveness-types';
-import { Target, Zap, Gauge, Users, ArrowRight, Activity, FlaskConical } from 'lucide-react';
+import {
+  Target,
+  Zap,
+  Gauge,
+  Users,
+  ArrowRight,
+  Activity,
+  FlaskConical,
+  AlertTriangle,
+} from 'lucide-react';
 import {
   ComposedChart,
   Line,
@@ -178,19 +188,31 @@ export default function SuccessCategory() {
   // Data Fetching
   // ---------------------------------------------------------------------------
 
-  const { data: summary, isLoading: summaryLoading } = useQuery<SummaryType>({
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+  } = useQuery<SummaryType>({
     queryKey: queryKeys.effectiveness.summary(),
     queryFn: () => effectivenessSource.summary(),
     refetchInterval: 15_000,
   });
 
-  const { data: abData, isLoading: abLoading } = useQuery<ABComparison>({
+  const {
+    data: abData,
+    isLoading: abLoading,
+    isError: abError,
+  } = useQuery<ABComparison>({
     queryKey: queryKeys.effectiveness.ab(),
     queryFn: () => effectivenessSource.abComparison(),
     refetchInterval: 15_000,
   });
 
-  const { data: trend, isLoading: trendLoading } = useQuery<EffectivenessTrendPoint[]>({
+  const {
+    data: trend,
+    isLoading: trendLoading,
+    isError: trendError,
+  } = useQuery<EffectivenessTrendPoint[]>({
     queryKey: [...queryKeys.effectiveness.trend(), 14],
     queryFn: () => effectivenessSource.trend(14),
     refetchInterval: 15_000,
@@ -252,6 +274,17 @@ export default function SuccessCategory() {
 
   return (
     <div className="space-y-6">
+      {/* Error Banner */}
+      {summaryError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load effectiveness data</AlertTitle>
+          <AlertDescription>
+            Effectiveness summary could not be retrieved. Other sections may also be affected.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -358,6 +391,10 @@ export default function SuccessCategory() {
           <CardContent>
             {abLoading ? (
               <Skeleton className="h-[240px] w-full rounded-lg" />
+            ) : abError ? (
+              <p className="text-sm text-destructive py-8 text-center">
+                Failed to load A/B comparison data.
+              </p>
             ) : (
               <CohortComparisonChart data={abData} />
             )}
@@ -374,6 +411,10 @@ export default function SuccessCategory() {
           <CardContent>
             {trendLoading ? (
               <Skeleton className="h-[240px] w-full rounded-lg" />
+            ) : trendError ? (
+              <p className="text-sm text-destructive py-8 text-center">
+                Failed to load effectiveness trend data.
+              </p>
             ) : (
               <EffectivenessTrendChart data={trend} />
             )}

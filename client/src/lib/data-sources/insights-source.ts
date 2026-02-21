@@ -37,7 +37,7 @@ class InsightsSource {
   }
 
   async summary(options: InsightsFetchOptions = {}): Promise<InsightsSummary> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('summary');
       return getMockInsightsSummary();
@@ -67,7 +67,7 @@ class InsightsSource {
   }
 
   async trend(options: InsightsFetchOptions = {}): Promise<InsightsTrendPoint[]> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('trend');
       return getMockInsightsTrend();

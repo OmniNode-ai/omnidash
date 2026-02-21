@@ -43,7 +43,7 @@ export interface PatlearnDetailResponse {
 export interface PatlearnFetchOptions {
   /**
    * If true, fallback to mock data on error instead of throwing.
-   * Default: true (graceful degradation enabled)
+   * Default: false (errors are thrown; set to true for demo/graceful degradation)
    */
   fallbackToMock?: boolean;
   /**
@@ -134,7 +134,7 @@ class PatternLearningSource {
     params: PatlearnListParams = {},
     options: PatlearnFetchOptions = {}
   ): Promise<PatlearnArtifact[]> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
     if (demoMode) {
       this._isUsingMockData = true;
       let mockPatterns = getMockPatterns();
@@ -218,7 +218,7 @@ class PatternLearningSource {
     window: '24h' | '7d' | '30d' = '24h',
     options: PatlearnFetchOptions = {}
   ): Promise<PatlearnSummary | null> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
     if (demoMode) {
       this._isUsingMockData = true;
       return getMockSummary(window);
