@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 OmniNode.ai Inc.
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
 # SPDX-License-Identifier: MIT
 ---
 name: Omni* Ecosystem Standards Compliance
@@ -98,13 +98,7 @@ jobs:
           ERRORS=0
 
           for script in dev build check test; do
-            if python3 -c "
-          import json, sys
-          with open('package.json') as f:
-              p = json.load(f)
-          if '$script' not in p.get('scripts', {}):
-              sys.exit(1)
-          "; then
+            if jq -e ".scripts[\"$script\"]" package.json > /dev/null 2>&1; then
               echo "OK: npm script '$script' present"
             else
               echo "ERROR: Missing required npm script: '$script'"
@@ -274,7 +268,7 @@ jobs:
             "typescript-compliance=${{ needs.typescript-compliance.result }}"; do
             NAME="${check%%=*}"
             RESULT="${check##*=}"
-            if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
+            if [ "$RESULT" != "success" ]; then
               echo "::error::$NAME failed (result: $RESULT)"
               FAILED=true
             else
