@@ -156,7 +156,7 @@ const ToolExecutedHandler: EnrichmentHandler = {
   name: 'ToolExecutedHandler',
   category: 'tool_event',
   enrich(payload, type, _topic): EventEnrichment {
-    const toolName = str(findField(payload, ['toolName', 'tool_name', 'tool'])) ?? 'Tool';
+    const toolName = str(findField(payload, ['toolName', 'tool_name'])) ?? 'Tool';
     const toolInput = findField(payload, ['toolInput', 'tool_input', 'input']);
     const artifacts: EventArtifact[] = [];
     let filePath: string | undefined;
