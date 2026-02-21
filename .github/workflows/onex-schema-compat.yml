@@ -18,12 +18,17 @@ jobs:
     name: ONEX Schema Compatibility Check
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Checkout onex_change_control
+        # No token needed — OmniNode-ai/onex_change_control is a public repo.
+        # Consistent with check-handshake.yml which uses the same pattern for
+        # OmniNode-ai/omnibase_core without a token.
         uses: actions/checkout@v4
         with:
           repository: OmniNode-ai/onex_change_control
@@ -57,6 +62,8 @@ jobs:
         with:
           path: onex_change_control/.venv
           key: venv-${{ runner.os }}-3.12-${{ hashFiles('onex_change_control/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-3.12-
 
       - name: Install onex-change-control
         working-directory: onex_change_control
