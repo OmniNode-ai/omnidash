@@ -57,7 +57,7 @@ jobs:
           fi
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
 
@@ -75,7 +75,7 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Cache Poetry dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: onex_change_control/.venv
           key: venv-${{ runner.os }}-3.12-${{ hashFiles('onex_change_control/poetry.lock') }}
@@ -90,28 +90,32 @@ jobs:
         run: |
           # Find YAML/YML files in contracts/ (ticket contracts, day_close records).
           # Root contract.yaml is an ONEX Service Contract (different schema) — excluded.
-          YAML_FILES=$(find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) 2>/dev/null | sort || true)
+          #
+          # The file list is captured once into a NUL-delimited temp file so the
+          # early-exit guard and the validator xargs both operate on exactly the
+          # same set. This eliminates the structural drift risk that existed when
+          # two independent find commands had to be kept in sync manually.
+          # If you add exclusions (e.g., -not -name "contract.yaml") or additional
+          # glob patterns, change only the single find invocation below.
+          YAML_LIST_FILE=$(mktemp)
+          find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -print0 2>/dev/null \
+            | sort -z \
+            > "$YAML_LIST_FILE"
 
-          if [ -z "$YAML_FILES" ]; then
+          if [ ! -s "$YAML_LIST_FILE" ]; then
             echo "No ONEX contract YAML files found in contracts/ — gate passes (nothing to validate)"
+            rm -f "$YAML_LIST_FILE"
             exit 0
           fi
 
           echo "Found ONEX contract files to validate:"
-          echo "$YAML_FILES"
+          # Display the NUL-delimited list in human-readable form.
+          tr '\0' '\n' < "$YAML_LIST_FILE"
           echo ""
 
           # Run the validator from the onex_change_control virtualenv.
           # validate-yaml exits 0 on all-valid, 1 on any invalid file.
-          # Use -print0 / xargs -0 so filenames with spaces are passed safely.
-          #
-          # DUPLICATION NOTICE: The find pattern below (\( -name "*.yaml" -o -name "*.yml" \))
-          # intentionally mirrors the pattern used in the YAML_FILES check above.
-          # Both finds MUST use identical include/exclude filters. If you add exclusions
-          # (e.g., -not -name "contract.yaml") or additional glob patterns to one find,
-          # apply the same change to the other. Divergence causes the early-exit guard
-          # (empty-file check) and the actual validation set to differ silently.
-          cd onex_change_control
-          find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -print0 2>/dev/null \
-            | sort -z \
-            | xargs -r -0 poetry run validate-yaml
+          # Use xargs -0 so filenames with spaces are passed safely.
+          cd "$GITHUB_WORKSPACE/onex_change_control"
+          xargs -r -0 poetry run validate-yaml < "$YAML_LIST_FILE"
+          rm -f "$YAML_LIST_FILE"

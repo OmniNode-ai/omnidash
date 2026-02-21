@@ -47,3 +47,10 @@ excluded_checks:
       Path-filtered workflow (only runs when contracts/** or the workflow itself
       changes). Requiring it would deadlock all other PRs that don't touch
       contract files.
+    design_note: >
+      Accepted trade-off: PRs that modify contracts/** but are not caught by
+      branch protection can still bypass this gate if the check is excluded.
+      The compensating control is CODEOWNERS review approval — contracts/** is
+      owned by a code-owner group whose approval is required on every PR that
+      touches those paths (see .github/CODEOWNERS). This gap is documented and
+      accepted; it is tracked in OMN-2455.
