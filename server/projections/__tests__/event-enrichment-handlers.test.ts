@@ -747,7 +747,7 @@ describe('NodeLifecycleHandler enrichment output', () => {
   });
 
   it('eventLabel is "Node Shutdown" when type contains "offline"', () => {
-    const result = pipeline.run({ nodeId: 'worker-4' }, 'node-offline', 'node-registry.events');
+    const result = pipeline.run({ nodeId: 'worker-4' }, 'node-offline', 'infra.events.v1');
     expect(result.category).toBe('node_lifecycle');
     expect(result.handler).toBe('NodeLifecycleHandler');
     expect(result.summary).toContain('Node Shutdown');
@@ -767,11 +767,7 @@ describe('NodeLifecycleHandler enrichment output', () => {
   });
 
   it('eventLabel is "Node Startup" when type contains "started"', () => {
-    const result = pipeline.run(
-      { nodeId: 'inference-node-1' },
-      'node-started',
-      'node-registry.events'
-    );
+    const result = pipeline.run({ nodeId: 'inference-node-1' }, 'node-started', 'infra.events.v1');
     expect(result.category).toBe('node_lifecycle');
     expect(result.handler).toBe('NodeLifecycleHandler');
     expect(result.summary).toContain('Node Startup');

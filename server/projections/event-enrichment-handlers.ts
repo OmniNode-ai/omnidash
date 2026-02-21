@@ -145,6 +145,8 @@ export function deriveEventCategory(
     lType.includes('lifecycle') ||
     lType.includes('shutdown') ||
     lType.includes('startup') ||
+    lType.includes('offline') ||
+    lType.includes('started') ||
     lType.includes('node-registry') ||
     lTopic.includes('registration') ||
     lTopic.includes('lifecycle') ||
@@ -518,6 +520,6 @@ export function getEnrichmentPipeline(): EventEnrichmentPipeline {
 
 /** @internal — for testing only. Do not call from production code. */
 export function resetEnrichmentPipelineForTesting(): void {
-  if (process.env.NODE_ENV === 'production' || !process.env.NODE_ENV) return;
+  if (process.env.NODE_ENV === 'production') return;
   _enrichmentPipeline = undefined;
 }
