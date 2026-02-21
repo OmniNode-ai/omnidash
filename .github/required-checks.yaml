@@ -37,3 +37,9 @@ excluded_checks:
       or check-handshake.yml changes). Requiring it would deadlock all other PRs
       because GitHub marks skipped path-filtered checks as "Expected — Waiting
       for status to be reported".
+
+  - name: "ONEX Schema Compatibility Check"
+    reason: >
+      Path-filtered workflow (only runs when contracts/** or the workflow itself
+      changes). Requiring it would deadlock all other PRs that don't touch
+      contract files.

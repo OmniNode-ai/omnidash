@@ -1,0 +1,84 @@
+name: ONEX Schema Compatibility
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/onex-schema-compat.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/onex-schema-compat.yml'
+  workflow_dispatch:
+
+jobs:
+  schema-compat:
+    name: ONEX Schema Compatibility Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Checkout onex_change_control
+        uses: actions/checkout@v4
+        with:
+          repository: OmniNode-ai/onex_change_control
+          # Pinned to onex_change_control main as of 2026-02-21.
+          # Update by running:
+          #   gh api repos/OmniNode-ai/onex_change_control/commits/main --jq '.sha'
+          ref: a7b46c202c9f9b06678e34889cab345e568ab123
+          path: onex_change_control
+
+      - name: Verify onex_change_control checkout
+        run: |
+          if [ ! -f onex_change_control/src/onex_change_control/scripts/validate_yaml.py ]; then
+            echo "::error::Failed to checkout onex_change_control or validate_yaml.py not found."
+            exit 1
+          fi
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.8.0
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: onex_change_control/.venv
+          key: venv-${{ runner.os }}-3.12-${{ hashFiles('onex_change_control/poetry.lock') }}
+
+      - name: Install onex-change-control
+        working-directory: onex_change_control
+        run: poetry install --no-interaction --only main
+
+      - name: Validate ONEX contract files
+        run: |
+          # Find YAML/YML files in contracts/ (ticket contracts, day_close records).
+          # Root contract.yaml is an ONEX Service Contract (different schema) — excluded.
+          YAML_FILES=$(find contracts/ -name "*.yaml" -o -name "*.yml" 2>/dev/null | sort || true)
+
+          if [ -z "$YAML_FILES" ]; then
+            echo "No ONEX contract YAML files found in contracts/ — gate passes (nothing to validate)"
+            exit 0
+          fi
+
+          echo "Found ONEX contract files to validate:"
+          echo "$YAML_FILES"
+          echo ""
+
+          # Run the validator from the onex_change_control virtualenv.
+          # validate-yaml exits 0 on all-valid, 1 on any invalid file.
+          cd onex_change_control
+          # shellcheck disable=SC2046
+          poetry run validate-yaml $(find "$GITHUB_WORKSPACE/contracts" -name "*.yaml" -o -name "*.yml" 2>/dev/null | sort)
