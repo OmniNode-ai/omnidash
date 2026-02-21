@@ -98,12 +98,23 @@ jobs:
           # Find YAML/YML files in contracts/ (ticket contracts, day_close records).
           # Root contract.yaml is an ONEX Service Contract (different schema) — excluded.
           #
+          # DELIBERATE CHOICE: -path vs -name for the exclusion
+          #   -not -name "contract.yaml"  would exclude ANY file named contract.yaml in
+          #     ANY subdirectory of contracts/, which is too broad. A future file at
+          #     contracts/subdir/contract.yaml would be wrongly skipped.
+          #   -not -path "$GITHUB_WORKSPACE/contracts/contract.yaml"  limits exclusion to
+          #     exactly the root-level file, so contracts/subdir/contract.yaml files ARE
+          #     still validated.
+          # The -path form is therefore intentionally more precise. If the root exclusion
+          # location ever changes (e.g., the file moves or is renamed), update the -path
+          # argument in the find invocation below to match.
+          #
           # The file list is captured once into a NUL-delimited temp file so the
           # early-exit guard and the validator xargs both operate on exactly the
           # same set. This eliminates the structural drift risk that existed when
           # two independent find commands had to be kept in sync manually.
-          # If you add exclusions (e.g., -not -path "$GITHUB_WORKSPACE/contracts/contract.yaml") or additional
-          # glob patterns, change only the single find invocation below.
+          # If you add further exclusions or additional glob patterns, change only
+          # the single find invocation below.
           #
           # The contracts/ directory is checked for existence before running find so
           # that permission errors on subdirectories are not silently suppressed.

@@ -52,6 +52,7 @@ excluded_checks:
       Accepted trade-off: PRs that modify contracts/** but are not caught by
       branch protection can still bypass this gate if the check is excluded.
       NOTE: CODEOWNERS enforcement is not yet in place for this repo — no
-      .github/CODEOWNERS file exists. The gap is accepted and tracked in
-      OMN-2485 ("Add .github/CODEOWNERS to enforce review on contracts/**
-      schema changes").
+      .github/CODEOWNERS file exists. Until OMN-2485 is resolved, this gap
+      is a known, accepted risk — it is a deliberate tracked decision rather
+      than an oversight. See OMN-2485 ("Add .github/CODEOWNERS to enforce
+      review on contracts/** schema changes") for resolution status.
