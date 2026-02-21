@@ -46,6 +46,7 @@ import CostTrendDashboard from '@/pages/CostTrendDashboard';
 import PatternEnforcement from '@/pages/PatternEnforcement';
 import ContextEnrichmentDashboard from '@/pages/ContextEnrichmentDashboard';
 import LlmRoutingDashboard from '@/pages/LlmRoutingDashboard';
+import WhyThisHappened from '@/pages/WhyThisHappened';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -128,6 +129,9 @@ function Router() {
 
       {/* LLM Routing Effectiveness dashboard (OMN-2279) */}
       <Route path="/llm-routing" component={LlmRoutingDashboard} />
+
+      {/* Why This Happened — decision provenance panel (OMN-2350 epic) */}
+      <Route path="/why" component={WhyThisHappened} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />
