@@ -159,13 +159,20 @@ const ToolExecutedHandler: EnrichmentHandler = {
 
     const lTool = toolName.toLowerCase();
 
+    // Guard against array inputs before casting to Record<string, unknown>.
+    // Arrays are not valid tool_input objects and would cause incorrect field
+    // lookups if cast directly (e.g. ti['file_path'] on an array is undefined
+    // but ti[0] etc. would silently pass). Treat them as absent.
+    const inputs = Array.isArray(toolInput)
+      ? undefined
+      : (toolInput as Record<string, unknown> | undefined);
+
     // Recognized tools: read, readfile, write, edit, multiedit, glob, bash.
     // All other tools (e.g. grep, webfetch, task, todowrite) fall through
     // without populating filePath/bashCommand and produce a generic summary.
     if (lTool === 'read' || lTool === 'readfile') {
       filePath = str(
-        (toolInput as Record<string, unknown> | undefined)?.['file_path'] ??
-          findField(payload, ['file_path', 'filePath', 'path'])
+        inputs?.['file_path'] ?? findField(payload, ['file_path', 'filePath', 'path'])
       );
       if (filePath) {
         const short = filePath.split('/').pop() ?? filePath;
@@ -173,8 +180,7 @@ const ToolExecutedHandler: EnrichmentHandler = {
       }
     } else if (lTool === 'write') {
       filePath = str(
-        (toolInput as Record<string, unknown> | undefined)?.['file_path'] ??
-          findField(payload, ['file_path', 'filePath', 'path'])
+        inputs?.['file_path'] ?? findField(payload, ['file_path', 'filePath', 'path'])
       );
       if (filePath) {
         const short = filePath.split('/').pop() ?? filePath;
@@ -182,23 +188,19 @@ const ToolExecutedHandler: EnrichmentHandler = {
       }
     } else if (lTool === 'edit' || lTool === 'multiedit') {
       filePath = str(
-        (toolInput as Record<string, unknown> | undefined)?.['file_path'] ??
-          findField(payload, ['file_path', 'filePath', 'path'])
+        inputs?.['file_path'] ?? findField(payload, ['file_path', 'filePath', 'path'])
       );
       if (filePath) {
         const short = filePath.split('/').pop() ?? filePath;
         artifacts.push({ kind: 'file_edit', value: filePath, display: short });
       }
     } else if (lTool === 'glob') {
-      const pattern = str(
-        (toolInput as Record<string, unknown> | undefined)?.['pattern'] ??
-          findField(payload, ['pattern', 'glob'])
-      );
+      const pattern = str(inputs?.['pattern'] ?? findField(payload, ['pattern', 'glob']));
       if (pattern) {
         artifacts.push({ kind: 'glob_pattern', value: pattern });
       }
     } else if (lTool === 'bash') {
-      bashCommand = extractBashCommand(toolInput, payload);
+      bashCommand = extractBashCommand(inputs, payload);
       if (bashCommand) {
         artifacts.push({
           kind: 'bash_command',

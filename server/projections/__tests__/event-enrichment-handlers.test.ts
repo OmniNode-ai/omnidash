@@ -333,3 +333,132 @@ describe('confidence clamping in RoutingDecisionHandler', () => {
     expect(result.summary).toContain('my-agent');
   });
 });
+
+// ============================================================================
+// ToolExecutedHandler enrichment
+// ============================================================================
+
+describe('ToolExecutedHandler enrichment', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  it('file_read: enriches toolName, filePath and produces a file_read artifact', () => {
+    const result = pipeline.run(
+      { toolName: 'read', tool_input: { file_path: '/tmp/test.ts' } },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.toolName).toBe('read');
+    expect(result.filePath).toBe('/tmp/test.ts');
+    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts[0].kind).toBe('file_read');
+    // display value should be the basename of the path
+    expect(result.artifacts[0].display).toBe('test.ts');
+  });
+
+  it('file_read: summary contains the tool name and basename', () => {
+    const result = pipeline.run(
+      { toolName: 'read', tool_input: { file_path: '/src/server/index.ts' } },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.summary).toContain('read');
+    expect(result.summary).toContain('index.ts');
+  });
+
+  it('bash: enriches toolName, bashCommand and produces a bash_command artifact', () => {
+    const result = pipeline.run(
+      { toolName: 'bash', tool_input: { command: 'ls -la /tmp' } },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.toolName).toBe('bash');
+    expect(result.bashCommand).toBe('ls -la /tmp');
+    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts[0].kind).toBe('bash_command');
+  });
+
+  it('bash: artifact display is a truncated form of the command', () => {
+    const longCommand = 'find /Volumes/PRO-G40/Code -name "*.ts" -not -path "*/node_modules/*"';
+    const result = pipeline.run(
+      { toolName: 'bash', tool_input: { command: longCommand } },
+      'agent-action',
+      'agent-actions'
+    );
+    // truncate(s, 40) uses a hardcoded slice of 57 chars + '...' = 60 max output length.
+    // The max parameter only controls the threshold check, not the slice offset.
+    // So display length is at most 60, and it is shorter than the 69-char original.
+    expect(result.artifacts[0].display).not.toBe(longCommand);
+    expect((result.artifacts[0].display ?? '').length).toBeLessThanOrEqual(60);
+  });
+
+  it('unrecognized tool: still returns a valid enrichment with a toolName', () => {
+    const result = pipeline.run(
+      { toolName: 'WebFetch', tool_input: { url: 'https://example.com' } },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.enrichmentVersion).toBe('v1');
+    expect(result.handler).toBe('ToolExecutedHandler');
+    expect(result.category).toBe('tool_event');
+    expect(result.toolName).toBe('WebFetch');
+    // unrecognized tools produce no artifacts and no filePath/bashCommand
+    expect(result.artifacts).toHaveLength(0);
+    expect(result.filePath).toBeUndefined();
+    expect(result.bashCommand).toBeUndefined();
+  });
+
+  it('array tool_input: does not crash and still returns a valid enrichment', () => {
+    // Guard against array inputs (Issue 3 — Array.isArray guard)
+    const result = pipeline.run(
+      { toolName: 'read', tool_input: ['/tmp/test.ts', '/tmp/other.ts'] },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.enrichmentVersion).toBe('v1');
+    expect(result.toolName).toBe('read');
+    // Array input should be ignored — filePath falls back to payload-level lookup
+    // which also won't find it, so filePath is undefined and no artifact is pushed
+    expect(result.filePath).toBeUndefined();
+    expect(result.artifacts).toHaveLength(0);
+  });
+});
+
+// ============================================================================
+// Confidence clamping in IntentHandler
+// ============================================================================
+
+describe('confidence clamping in IntentHandler', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  it('renders 0.95 as "95%" in the summary', () => {
+    const result = pipeline.run(
+      { intent_category: 'code_generation', confidence: 0.95 },
+      'intent.classify',
+      'intent-topic'
+    );
+    expect(result.summary).toContain('95%');
+    expect(result.summary).not.toContain('9500%');
+  });
+
+  it('renders 95 (integer percentage) as "95%" in the summary — not 9500%', () => {
+    const result = pipeline.run(
+      { intent_category: 'code_generation', confidence: 95 },
+      'intent.classify',
+      'intent-topic'
+    );
+    expect(result.summary).toContain('95%');
+    expect(result.summary).not.toContain('9500%');
+  });
+
+  it('omits the percentage part when confidence is NaN (num() guard)', () => {
+    const result = pipeline.run(
+      { intent_category: 'code_generation', confidence: NaN },
+      'intent.classify',
+      'intent-topic'
+    );
+    // Summary should NOT contain "(NaN%)" — confidence part is omitted entirely
+    expect(result.summary).not.toContain('NaN');
+    // The intent category should still appear
+    expect(result.summary).toContain('code_generation');
+  });
+});
