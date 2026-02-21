@@ -24,7 +24,7 @@ import {
 import { buildApiUrl } from '@/lib/data-sources/api-base';
 
 export interface LlmRoutingFetchOptions {
-  /** Fall back to mock data on network/HTTP errors (default: true). */
+  /** Fall back to mock data on network/HTTP errors (default: false). */
   fallbackToMock?: boolean;
   /** Also fall back to mock when the API returns empty results (default: false). */
   mockOnEmpty?: boolean;
@@ -78,7 +78,7 @@ class LlmRoutingSource {
     window: LlmRoutingTimeWindow = '7d',
     options: LlmRoutingFetchOptions = {}
   ): Promise<LlmRoutingSummary> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/summary${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -107,7 +107,7 @@ class LlmRoutingSource {
     window: LlmRoutingTimeWindow = '7d',
     options: LlmRoutingFetchOptions = {}
   ): Promise<LlmRoutingLatencyPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/latency${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -136,7 +136,7 @@ class LlmRoutingSource {
     window: LlmRoutingTimeWindow = '7d',
     options: LlmRoutingFetchOptions = {}
   ): Promise<LlmRoutingByVersion[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/by-version${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -165,7 +165,7 @@ class LlmRoutingSource {
     window: LlmRoutingTimeWindow = '7d',
     options: LlmRoutingFetchOptions = {}
   ): Promise<LlmRoutingDisagreement[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/disagreements${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -194,7 +194,7 @@ class LlmRoutingSource {
     window: LlmRoutingTimeWindow = '7d',
     options: LlmRoutingFetchOptions = {}
   ): Promise<LlmRoutingTrendPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/trend${this.buildWindowParam(window)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);

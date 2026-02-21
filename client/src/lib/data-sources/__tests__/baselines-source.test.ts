@@ -167,7 +167,7 @@ describe('BaselinesSource', () => {
         ])
       );
 
-      const result = await baselinesSource.summary();
+      const result = await baselinesSource.summary({ fallbackToMock: true });
 
       expect(result.total_comparisons).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -224,7 +224,7 @@ describe('BaselinesSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/baselines/comparisons', new Error('Connection refused')]]));
 
-      const result = await baselinesSource.comparisons();
+      const result = await baselinesSource.comparisons({ fallbackToMock: true });
 
       expect(result.length).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -309,7 +309,7 @@ describe('BaselinesSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/baselines/breakdown', new Error('Network error')]]));
 
-      const result = await baselinesSource.breakdown();
+      const result = await baselinesSource.breakdown({ fallbackToMock: true });
 
       expect(result.length).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -349,7 +349,7 @@ describe('BaselinesSource', () => {
       );
 
       await baselinesSource.summary();
-      await baselinesSource.comparisons();
+      await baselinesSource.comparisons({ fallbackToMock: true });
 
       expect(baselinesSource.isUsingMockData).toBe(true);
     });
@@ -357,7 +357,7 @@ describe('BaselinesSource', () => {
     it('clears mock flag when endpoint recovers', async () => {
       // First call: API fails
       setupFetchMock(new Map([['/api/baselines/comparisons', new Error('Network error')]]));
-      await baselinesSource.comparisons();
+      await baselinesSource.comparisons({ fallbackToMock: true });
       expect(baselinesSource.isUsingMockData).toBe(true);
 
       // Second call: API recovers

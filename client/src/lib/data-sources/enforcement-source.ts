@@ -23,7 +23,7 @@ import {
 import { buildApiUrl } from './api-base';
 
 export interface EnforcementFetchOptions {
-  /** Fall back to mock data on network/HTTP errors (default: true). */
+  /** Fall back to mock data on network/HTTP errors (default: false). */
   fallbackToMock?: boolean;
   /** Also fall back to mock when the API returns empty results (default: false). */
   mockOnEmpty?: boolean;
@@ -76,7 +76,7 @@ class EnforcementSource {
     window: EnforcementTimeWindow = '7d',
     options: EnforcementFetchOptions = {}
   ): Promise<EnforcementSummary> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('summary');
       return getMockEnforcementSummary(window);
@@ -106,7 +106,7 @@ class EnforcementSource {
     window: EnforcementTimeWindow = '7d',
     options: EnforcementFetchOptions = {}
   ): Promise<EnforcementByLanguage[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('by-language');
       return getMockEnforcementByLanguage(window);
@@ -136,7 +136,7 @@ class EnforcementSource {
     window: EnforcementTimeWindow = '7d',
     options: EnforcementFetchOptions = {}
   ): Promise<EnforcementByDomain[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('by-domain');
       return getMockEnforcementByDomain(window);
@@ -166,7 +166,7 @@ class EnforcementSource {
     window: EnforcementTimeWindow = '7d',
     options: EnforcementFetchOptions = {}
   ): Promise<ViolatedPattern[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('violated-patterns');
       return getMockViolatedPatterns(window);
@@ -198,7 +198,7 @@ class EnforcementSource {
     window: EnforcementTimeWindow = '7d',
     options: EnforcementFetchOptions = {}
   ): Promise<EnforcementTrendPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('trend');
       return getMockEnforcementTrend(window);

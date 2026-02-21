@@ -12,7 +12,7 @@
  * Falls back to mock data when the projection has no nodes.
  */
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { DashboardRenderer } from '@/lib/widgets';
 import type { OnWidgetRowClick } from '@/lib/widgets/DashboardRenderer';
 import {
@@ -105,88 +105,33 @@ export default function NodeRegistry() {
   // ------ Node selection state ------
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  // Stable mock data — generated once and reused across re-renders to prevent
-  // flickering when TanStack Query refetches return new object references.
-  const stableMockRef = useRef<DashboardData | null>(null);
-
   // Transform real projection payload → DashboardData (only runs when data changes)
   const projectionDashboardData: DashboardData | null = useMemo(() => {
     if (!data || data.nodes.length === 0) return null;
     return transformNodeRegistryPayload(data);
   }, [data]);
 
-  // Determine if we have real data from the projection.
-  // Derived from projectionDashboardData (not the raw payload) so the badge
-  // is always consistent with the actual data source being rendered.
   const hasProjectionData = projectionDashboardData !== null;
 
-  // Final dashboard data: use projection data if available, else stable mock
-  const dashboardData: DashboardData = (() => {
-    if (projectionDashboardData) return projectionDashboardData;
+  const emptyDashboardData: DashboardData = {
+    totalNodes: 0,
+    activeNodes: 0,
+    pendingNodes: 0,
+    failedNodes: 0,
+    nodeStatuses: [],
+    nodeTypeDistribution: [],
+    registeredNodes: [],
+    registrationEvents: [],
+  };
 
-    // Reuse previously generated mock data to avoid regenerating on every poll cycle
-    if (stableMockRef.current) return stableMockRef.current;
-
-    const mockData = generateNodeRegistryMockData();
-    const mockDashboard: DashboardData = {
-      totalNodes: (mockData.registeredNodes as RegisteredNode[]).length,
-      activeNodes: (mockData.registeredNodes as RegisteredNode[]).filter(
-        (n) => n.state === 'active'
-      ).length,
-      pendingNodes: (mockData.registeredNodes as RegisteredNode[]).filter((n) =>
-        ['pending_registration', 'awaiting_ack', 'ack_received', 'accepted'].includes(n.state)
-      ).length,
-      failedNodes: (mockData.registeredNodes as RegisteredNode[]).filter((n) =>
-        ['rejected', 'liveness_expired', 'ack_timed_out'].includes(n.state)
-      ).length,
-      nodeStatuses: (mockData.registeredNodes as RegisteredNode[]).map((n) => ({
-        node_id: n.node_id,
-        status:
-          n.state === 'active'
-            ? ('healthy' as const)
-            : ['rejected', 'liveness_expired', 'ack_timed_out'].includes(n.state)
-              ? ('error' as const)
-              : ('warning' as const),
-      })),
-      nodeTypeDistribution: Object.entries(
-        (mockData.registeredNodes as RegisteredNode[]).reduce(
-          (acc, n) => {
-            acc[n.node_type] = (acc[n.node_type] || 0) + 1;
-            return acc;
-          },
-          {} as Record<string, number>
-        )
-      ).map(([name, value]) => ({ name, value })),
-      registeredNodes: mockData.registeredNodes,
-      registrationEvents: mockData.registrationEvents as RegistrationEvent[],
-    };
-    stableMockRef.current = mockDashboard;
-    return mockDashboard;
-  })();
+  const dashboardData: DashboardData = projectionDashboardData ?? emptyDashboardData;
 
   // ------ Resolve selected node (kept fresh as snapshot updates) ------
 
-  // Build a NodeState array from whichever data source is active.
-  // Live projection data has NodeState objects directly; mock data uses RegisteredNode
-  // (snake_case) which we convert to the canonical NodeState shape.
   const nodeStates: NodeState[] = useMemo(() => {
-    if (data && data.nodes.length > 0) {
-      return data.nodes;
-    }
-    // Fall back: convert mock RegisteredNode[] to NodeState[]
-    const registered = dashboardData.registeredNodes;
-    if (!Array.isArray(registered)) return [];
-    return (registered as RegisteredNode[]).map((n) => ({
-      nodeId: n.node_id,
-      nodeType: n.node_type,
-      state: n.state,
-      version: n.version,
-      uptimeSeconds: n.uptime_seconds,
-      lastSeen: n.last_seen,
-      memoryUsageMb: n.memory_usage_mb,
-      cpuUsagePercent: n.cpu_usage_percent,
-    }));
-  }, [data, dashboardData.registeredNodes]);
+    if (data && data.nodes.length > 0) return data.nodes;
+    return [];
+  }, [data]);
 
   // Resolve to the latest version of the selected node whenever the snapshot changes
   const selectedNodeState: NodeState | null = useMemo(() => {

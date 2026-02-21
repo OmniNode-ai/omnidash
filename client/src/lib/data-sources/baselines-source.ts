@@ -20,7 +20,7 @@ import {
 import { buildApiUrl } from './api-base';
 
 export interface BaselinesFetchOptions {
-  /** Fall back to mock data on network/HTTP errors (default: true). */
+  /** Fall back to mock data on network/HTTP errors (default: false). */
   fallbackToMock?: boolean;
   /** Also fall back to mock when the API returns empty results (default: false). */
   mockOnEmpty?: boolean;
@@ -44,7 +44,7 @@ class BaselinesSource {
   }
 
   async summary(options: BaselinesFetchOptions = {}): Promise<BaselinesSummary> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/summary`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -72,7 +72,7 @@ class BaselinesSource {
   }
 
   async comparisons(options: BaselinesFetchOptions = {}): Promise<PatternComparison[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/comparisons`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -94,7 +94,7 @@ class BaselinesSource {
   }
 
   async trend(days?: number, options: BaselinesFetchOptions = {}): Promise<ROITrendPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/trend?days=${days ?? 14}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -116,7 +116,7 @@ class BaselinesSource {
   }
 
   async breakdown(options: BaselinesFetchOptions = {}): Promise<RecommendationBreakdown[]> {
-    const { fallbackToMock = true, mockOnEmpty = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false } = options;
     try {
       const response = await fetch(`${this.baseUrl}/breakdown`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);

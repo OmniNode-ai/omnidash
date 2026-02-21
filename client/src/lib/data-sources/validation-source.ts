@@ -54,7 +54,7 @@ export interface RunsListResponse {
 }
 
 export interface ValidationFetchOptions {
-  /** If true, fallback to mock data on error. Default: true */
+  /** If true, fallback to mock data on error. Default: false */
   fallbackToMock?: boolean;
   /**
    * When true, skip the API call entirely and return canned demo data.
@@ -82,7 +82,7 @@ class ValidationSource {
    * Get summary stats across all validation runs.
    */
   async summary(options: ValidationFetchOptions = {}): Promise<ValidationSummary> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
 
     if (demoMode) {
       this._isUsingMockData = true;
@@ -116,7 +116,7 @@ class ValidationSource {
     params: { status?: string; limit?: number; offset?: number } = {},
     options: ValidationFetchOptions = {}
   ): Promise<RunsListResponse> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
 
     if (demoMode) {
       this._isUsingMockData = true;
@@ -205,7 +205,7 @@ class ValidationSource {
     runId: string,
     options: ValidationFetchOptions = {}
   ): Promise<ValidationRun | null> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
 
     if (demoMode) {
       this._isUsingMockData = true;
@@ -244,7 +244,7 @@ class ValidationSource {
    * start returning live data automatically with no client-side changes needed.
    */
   async getLifecycleSummary(options: ValidationFetchOptions = {}): Promise<LifecycleSummary> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
 
     if (demoMode) {
       this._isUsingMockData = true;
@@ -280,7 +280,7 @@ class ValidationSource {
    * Get violation trends for a specific repo.
    */
   async getRepoTrends(repoId: string, options: ValidationFetchOptions = {}): Promise<RepoTrends> {
-    const { fallbackToMock = true, demoMode = false } = options;
+    const { fallbackToMock = false, demoMode = false } = options;
 
     if (demoMode) {
       this._isUsingMockData = true;

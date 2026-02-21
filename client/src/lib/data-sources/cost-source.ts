@@ -27,7 +27,7 @@ import {
 import { buildApiUrl } from './api-base';
 
 export interface CostFetchOptions {
-  /** Fall back to mock data on network/HTTP errors (default: true). */
+  /** Fall back to mock data on network/HTTP errors (default: false). */
   fallbackToMock?: boolean;
   /** Also fall back to mock when the API returns empty results (default: false). */
   mockOnEmpty?: boolean;
@@ -83,7 +83,7 @@ class CostSource {
     options: CostFetchOptions = {}
   ): Promise<CostSummary> {
     const {
-      fallbackToMock = true,
+      fallbackToMock = false,
       mockOnEmpty = false,
       includeEstimated,
       demoMode = false,
@@ -120,7 +120,7 @@ class CostSource {
     options: CostFetchOptions = {}
   ): Promise<CostTrendPoint[]> {
     const {
-      fallbackToMock = true,
+      fallbackToMock = false,
       mockOnEmpty = false,
       includeEstimated,
       demoMode = false,
@@ -154,7 +154,7 @@ class CostSource {
   /** Fetch aggregate cost breakdown grouped by LLM model. */
   async byModel(options: CostFetchOptions = {}): Promise<CostByModel[]> {
     const {
-      fallbackToMock = true,
+      fallbackToMock = false,
       mockOnEmpty = false,
       includeEstimated,
       demoMode = false,
@@ -188,7 +188,7 @@ class CostSource {
   /** Fetch aggregate cost breakdown grouped by repository. */
   async byRepo(options: CostFetchOptions = {}): Promise<CostByRepo[]> {
     const {
-      fallbackToMock = true,
+      fallbackToMock = false,
       mockOnEmpty = false,
       includeEstimated,
       demoMode = false,
@@ -222,7 +222,7 @@ class CostSource {
   /** Fetch per-pattern cost and injection frequency data. */
   async byPattern(options: CostFetchOptions = {}): Promise<CostByPattern[]> {
     const {
-      fallbackToMock = true,
+      fallbackToMock = false,
       mockOnEmpty = false,
       includeEstimated,
       demoMode = false,
@@ -259,7 +259,7 @@ class CostSource {
     options: CostFetchOptions = {}
   ): Promise<TokenUsagePoint[]> {
     const {
-      fallbackToMock = true,
+      fallbackToMock = false,
       mockOnEmpty = false,
       includeEstimated,
       demoMode = false,
@@ -292,7 +292,7 @@ class CostSource {
 
   /** Fetch configured budget threshold alerts and their current status. */
   async alerts(options: CostFetchOptions = {}): Promise<BudgetAlert[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('alerts');
       return getMockBudgetAlerts();

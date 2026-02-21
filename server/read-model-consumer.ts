@@ -293,13 +293,34 @@ export class ReadModelConsumer {
         await this.consumer.connect();
         console.log('[ReadModelConsumer] Connected to Kafka');
 
-        // Subscribe to all read-model topics.
-        // fromBeginning: false is intentional -- we only project events produced
-        // after this consumer first joins the group. Historical / pre-existing
-        // events must be backfilled separately (e.g., by re-reading from the
-        // source database or by temporarily resetting consumer group offsets).
+        // Subscribe to all read-model topics individually so that a single
+        // missing/uncreated topic (which returns invalid partition metadata from
+        // Redpanda) does not crash the entire consumer. fromBeginning: false is
+        // intentional -- we only project events produced after this consumer
+        // first joins the group.
+        const subscribedTopics: string[] = [];
+        const skippedTopics: string[] = [];
         for (const topic of READ_MODEL_TOPICS) {
-          await this.consumer.subscribe({ topic, fromBeginning: false });
+          try {
+            await this.consumer.subscribe({ topic, fromBeginning: false });
+            subscribedTopics.push(topic);
+          } catch (subscribeErr) {
+            skippedTopics.push(topic);
+            console.warn(
+              `[ReadModelConsumer] Skipping topic "${topic}" (not available on broker):`,
+              subscribeErr instanceof Error ? subscribeErr.message : subscribeErr
+            );
+          }
+        }
+        if (subscribedTopics.length === 0) {
+          throw new Error(
+            `No topics could be subscribed — all topics failed metadata check: ${skippedTopics.join(', ')}`
+          );
+        }
+        if (skippedTopics.length > 0) {
+          console.warn(
+            `[ReadModelConsumer] Skipped ${skippedTopics.length} topic(s): ${skippedTopics.join(', ')}`
+          );
         }
 
         // Process messages
@@ -312,7 +333,7 @@ export class ReadModelConsumer {
         this.running = true;
         this.stats.isRunning = true;
         console.log(
-          `[ReadModelConsumer] Running. Topics: ${READ_MODEL_TOPICS.join(', ')}. ` +
+          `[ReadModelConsumer] Running. Topics (${subscribedTopics.length}): ${subscribedTopics.join(', ')}. ` +
             `Group: ${CONSUMER_GROUP_ID}`
         );
         return;
@@ -323,6 +344,22 @@ export class ReadModelConsumer {
           `[ReadModelConsumer] Connection attempt ${attempts}/${MAX_RETRY_ATTEMPTS} failed:`,
           err instanceof Error ? err.message : err
         );
+        // Disconnect the existing consumer on every failed iteration — regardless
+        // of whether retries remain. If connect() succeeded but subscribe() or
+        // run() failed, the consumer handle is live and must be closed to avoid
+        // leaking the Kafka connection. Guard with try/catch: if the consumer
+        // was never connected (e.g. connect() itself threw), disconnect() may
+        // throw too and we should not let that mask the original error.
+        if (this.consumer) {
+          try {
+            await this.consumer.disconnect();
+          } catch {
+            // Ignore — consumer may not have been connected yet.
+          }
+          // Null both so the next loop iteration creates fresh instances
+          this.consumer = null;
+          this.kafka = null;
+        }
         if (attempts < MAX_RETRY_ATTEMPTS) {
           await new Promise((resolve) => setTimeout(resolve, delay));
           // Re-check stopped after the backoff sleep — stop() may have been called

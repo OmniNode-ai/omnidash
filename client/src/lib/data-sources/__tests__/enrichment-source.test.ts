@@ -60,7 +60,7 @@ describe('EnrichmentSource', () => {
     it('returns true when summary() falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/enrichment/summary', new Error('Connection refused')]]));
 
-      await enrichmentSource.summary('7d');
+      await enrichmentSource.summary('7d', { fallbackToMock: true });
 
       expect(enrichmentSource.isUsingMockData).toBe(true);
     });
@@ -83,7 +83,7 @@ describe('EnrichmentSource', () => {
     it('clears mock endpoint tracking so isUsingMockData resets to false', async () => {
       // Force mock state by failing the fetch
       setupFetchMock(new Map([['/api/enrichment/summary', new Error('Network error')]]));
-      await enrichmentSource.summary('7d');
+      await enrichmentSource.summary('7d', { fallbackToMock: true });
       expect(enrichmentSource.isUsingMockData).toBe(true);
 
       // Clear should reset the flag
@@ -118,7 +118,7 @@ describe('EnrichmentSource', () => {
         ])
       );
 
-      const result = await enrichmentSource.summary('7d');
+      const result = await enrichmentSource.summary('7d', { fallbackToMock: true });
 
       // Mock data always has non-zero enrichments
       expect(result.total_enrichments).toBeGreaterThan(0);

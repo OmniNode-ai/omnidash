@@ -102,7 +102,7 @@ describe('LlmRoutingSource', () => {
     it('returns true when summary() falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/llm-routing/summary', new Error('Connection refused')]]));
 
-      await llmRoutingSource.summary('7d');
+      await llmRoutingSource.summary('7d', { fallbackToMock: true });
 
       expect(llmRoutingSource.isUsingMockData).toBe(true);
     });
@@ -126,7 +126,7 @@ describe('LlmRoutingSource', () => {
         ])
       );
 
-      await llmRoutingSource.latency('7d');
+      await llmRoutingSource.latency('7d', { fallbackToMock: true });
 
       expect(llmRoutingSource.isUsingMockData).toBe(true);
     });
@@ -134,7 +134,7 @@ describe('LlmRoutingSource', () => {
     it('returns true when byVersion() falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/llm-routing/by-version', new Error('Network timeout')]]));
 
-      await llmRoutingSource.byVersion('7d');
+      await llmRoutingSource.byVersion('7d', { fallbackToMock: true });
 
       expect(llmRoutingSource.isUsingMockData).toBe(true);
     });
@@ -156,7 +156,7 @@ describe('LlmRoutingSource', () => {
       await llmRoutingSource.summary('7d');
       await llmRoutingSource.latency('7d');
       await llmRoutingSource.byVersion('7d');
-      await llmRoutingSource.disagreements('7d');
+      await llmRoutingSource.disagreements('7d', { fallbackToMock: true });
 
       // Disagreements is not a primary signal, so the flag stays false.
       expect(llmRoutingSource.isUsingMockData).toBe(false);
@@ -171,7 +171,7 @@ describe('LlmRoutingSource', () => {
     it('clears mock endpoint tracking so isUsingMockData resets to false', async () => {
       // Force mock state via a network failure.
       setupFetchMock(new Map([['/api/llm-routing/summary', new Error('Network error')]]));
-      await llmRoutingSource.summary('7d');
+      await llmRoutingSource.summary('7d', { fallbackToMock: true });
       expect(llmRoutingSource.isUsingMockData).toBe(true);
 
       llmRoutingSource.clearMockState();
@@ -205,7 +205,7 @@ describe('LlmRoutingSource', () => {
         ])
       );
 
-      const result = await llmRoutingSource.summary('7d');
+      const result = await llmRoutingSource.summary('7d', { fallbackToMock: true });
 
       // Mock summary always has non-zero decisions.
       expect(result.total_decisions).toBeGreaterThan(0);
@@ -270,7 +270,7 @@ describe('LlmRoutingSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/llm-routing/latency', new Error('Connection refused')]]));
 
-      const result = await llmRoutingSource.latency('7d');
+      const result = await llmRoutingSource.latency('7d', { fallbackToMock: true });
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
@@ -330,7 +330,7 @@ describe('LlmRoutingSource', () => {
         ])
       );
 
-      const result = await llmRoutingSource.byVersion('7d');
+      const result = await llmRoutingSource.byVersion('7d', { fallbackToMock: true });
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
@@ -386,7 +386,7 @@ describe('LlmRoutingSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/llm-routing/disagreements', new Error('Network error')]]));
 
-      const result = await llmRoutingSource.disagreements('7d');
+      const result = await llmRoutingSource.disagreements('7d', { fallbackToMock: true });
 
       expect(Array.isArray(result)).toBe(true);
       // isUsingMockData remains false because disagreements is not a primary signal.
@@ -428,7 +428,7 @@ describe('LlmRoutingSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/llm-routing/trend', new Error('Network error')]]));
 
-      const result = await llmRoutingSource.trend('7d');
+      const result = await llmRoutingSource.trend('7d', { fallbackToMock: true });
 
       expect(Array.isArray(result)).toBe(true);
     });

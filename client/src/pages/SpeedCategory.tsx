@@ -22,7 +22,17 @@ import { Badge } from '@/components/ui/badge';
 import { PipelineHealthPanel } from '@/components/extraction/PipelineHealthPanel';
 import { LatencyHeatmap } from '@/components/extraction/LatencyHeatmap';
 import { Link } from 'wouter';
-import { Zap, Clock, Activity, Gauge, ArrowRight, Database, Timer } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Zap,
+  Clock,
+  Activity,
+  Gauge,
+  ArrowRight,
+  Database,
+  Timer,
+  AlertTriangle,
+} from 'lucide-react';
 import type { LatencyDetails } from '@shared/effectiveness-types';
 import {
   BarChart,
@@ -99,7 +109,11 @@ export default function SpeedCategory() {
   // Data Fetching
   // ---------------------------------------------------------------------------
 
-  const { data: extractionResult, isLoading: extractionLoading } = useQuery({
+  const {
+    data: extractionResult,
+    isLoading: extractionLoading,
+    isError: extractionError,
+  } = useQuery({
     queryKey: queryKeys.extraction.summary(),
     queryFn: () => extractionSource.summary(),
     refetchInterval: 30_000,
@@ -107,7 +121,11 @@ export default function SpeedCategory() {
 
   const extractionSummary = extractionResult?.data;
 
-  const { data: latencyResult, isLoading: latencyLoading } = useQuery({
+  const {
+    data: latencyResult,
+    isLoading: latencyLoading,
+    isError: latencyError,
+  } = useQuery({
     queryKey: queryKeys.effectiveness.latency(),
     queryFn: async () => {
       const data = await effectivenessSource.latencyDetails();
@@ -233,6 +251,18 @@ export default function SpeedCategory() {
         </div>
       </div>
 
+      {/* Error Banner */}
+      {extractionError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load speed data</AlertTitle>
+          <AlertDescription>
+            Extraction summary could not be retrieved. Latency and pipeline metrics may also be
+            affected.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Hero Metric: Cache Hit Rate */}
       <HeroMetric
         label="Cache Hit Rate"
@@ -301,7 +331,13 @@ export default function SpeedCategory() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <LatencyPercentilesChart data={latencyResult?.data} />
+            {latencyError ? (
+              <p className="text-sm text-destructive py-8 text-center">
+                Failed to load latency data.
+              </p>
+            ) : (
+              <LatencyPercentilesChart data={latencyResult?.data} />
+            )}
           </CardContent>
         </Card>
         <PipelineHealthPanel onMockStateChange={onPipelineHealthMock} />

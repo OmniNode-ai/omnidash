@@ -17,14 +17,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { delegationSource } from '@/lib/data-sources/delegation-source';
-import {
-  getMockDelegationSummary,
-  getMockDelegationByTaskType,
-  getMockDelegationCostSavings,
-  getMockDelegationQualityGates,
-  getMockDelegationShadowDivergence,
-  getMockDelegationTrend,
-} from '@/lib/mock-data/delegation-mock';
 import { MetricCard } from '@/components/MetricCard';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -383,7 +375,7 @@ export default function DelegationDashboard() {
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
-  const fetchOptions = { mockOnEmpty: true, demoMode: isDemoMode };
+  const fetchOptions = { demoMode: isDemoMode };
 
   const {
     data: summary,
@@ -393,7 +385,6 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.summary(timeWindow), isDemoMode],
     queryFn: () => delegationSource.summary(timeWindow, fetchOptions),
-    placeholderData: getMockDelegationSummary(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -406,7 +397,6 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.byTaskType(timeWindow), isDemoMode],
     queryFn: () => delegationSource.byTaskType(timeWindow, fetchOptions),
-    placeholderData: getMockDelegationByTaskType(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -419,7 +409,6 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.costSavings(timeWindow), isDemoMode],
     queryFn: () => delegationSource.costSavings(timeWindow, fetchOptions),
-    placeholderData: getMockDelegationCostSavings(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -432,7 +421,6 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.qualityGates(timeWindow), isDemoMode],
     queryFn: () => delegationSource.qualityGates(timeWindow, fetchOptions),
-    placeholderData: getMockDelegationQualityGates(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -445,7 +433,6 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.shadowDivergence(timeWindow), isDemoMode],
     queryFn: () => delegationSource.shadowDivergence(timeWindow, fetchOptions),
-    placeholderData: getMockDelegationShadowDivergence(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -458,7 +445,6 @@ export default function DelegationDashboard() {
   } = useQuery({
     queryKey: [...queryKeys.delegation.trend(timeWindow), isDemoMode],
     queryFn: () => delegationSource.trend(timeWindow, fetchOptions),
-    placeholderData: getMockDelegationTrend(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -556,6 +542,7 @@ export default function DelegationDashboard() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Failed to load delegation data</AlertTitle>
           <AlertDescription>
+            Delegation data could not be retrieved.
             <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 mr-1" /> Retry
             </Button>

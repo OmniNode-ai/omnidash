@@ -25,7 +25,7 @@ import {
 import { buildApiUrl } from '@/lib/data-sources/api-base';
 
 export interface EnrichmentFetchOptions {
-  /** Fall back to mock data on network/HTTP errors (default: true). */
+  /** Fall back to mock data on network/HTTP errors (default: false). */
   fallbackToMock?: boolean;
   /** Also fall back to mock when the API returns empty results (default: false). */
   mockOnEmpty?: boolean;
@@ -91,7 +91,7 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<EnrichmentSummary> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('summary');
       return getMockEnrichmentSummary(window);
@@ -121,7 +121,7 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<EnrichmentByChannel[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('by-channel');
       return getMockEnrichmentByChannel(window);
@@ -151,7 +151,7 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<LatencyDistributionPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('latency-distribution');
       return getMockLatencyDistribution(window);
@@ -183,7 +183,7 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<TokenSavingsTrendPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('token-savings');
       return getMockTokenSavingsTrend(window);
@@ -213,7 +213,7 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<SimilarityQualityPoint[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('similarity-quality');
       return getMockSimilarityQuality(window);
@@ -245,7 +245,7 @@ class EnrichmentSource {
     window: EnrichmentTimeWindow = '7d',
     options: EnrichmentFetchOptions = {}
   ): Promise<InflationAlert[]> {
-    const { fallbackToMock = true, mockOnEmpty = false, demoMode = false } = options;
+    const { fallbackToMock = false, mockOnEmpty = false, demoMode = false } = options;
     if (demoMode) {
       this.markMock('inflation-alerts');
       return getMockInflationAlerts(window);

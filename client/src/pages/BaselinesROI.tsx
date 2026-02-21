@@ -19,6 +19,7 @@ import { HeroMetric } from '@/components/HeroMetric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type {
   BaselinesSummary,
   PatternComparison,
@@ -37,6 +38,7 @@ import {
   Timer,
   GitPullRequest,
   BarChart3,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   ComposedChart,
@@ -286,25 +288,41 @@ export default function BaselinesROI() {
   // Data Fetching
   // ---------------------------------------------------------------------------
 
-  const { data: summary, isLoading: summaryLoading } = useQuery<BaselinesSummary>({
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+  } = useQuery<BaselinesSummary>({
     queryKey: queryKeys.baselines.summary(),
     queryFn: () => baselinesSource.summary(),
     refetchInterval: 15_000,
   });
 
-  const { data: comparisons, isLoading: comparisonsLoading } = useQuery<PatternComparison[]>({
+  const {
+    data: comparisons,
+    isLoading: comparisonsLoading,
+    isError: comparisonsError,
+  } = useQuery<PatternComparison[]>({
     queryKey: queryKeys.baselines.comparisons(),
     queryFn: () => baselinesSource.comparisons(),
     refetchInterval: 15_000,
   });
 
-  const { data: trend, isLoading: trendLoading } = useQuery<ROITrendPoint[]>({
+  const {
+    data: trend,
+    isLoading: trendLoading,
+    isError: trendError,
+  } = useQuery<ROITrendPoint[]>({
     queryKey: queryKeys.baselines.trend(14),
     queryFn: () => baselinesSource.trend(14),
     refetchInterval: 15_000,
   });
 
-  const { data: breakdown, isLoading: breakdownLoading } = useQuery<RecommendationBreakdown[]>({
+  const {
+    data: breakdown,
+    isLoading: breakdownLoading,
+    isError: breakdownError,
+  } = useQuery<RecommendationBreakdown[]>({
     queryKey: queryKeys.baselines.breakdown(),
     queryFn: () => baselinesSource.breakdown(),
     refetchInterval: 15_000,
@@ -389,6 +407,17 @@ export default function BaselinesROI() {
         </div>
       </div>
 
+      {/* Error Banner */}
+      {summaryError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load baselines data</AlertTitle>
+          <AlertDescription>
+            Baseline summary could not be retrieved. Other sections may also be affected.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Hero Metric: Cost Savings */}
       <HeroMetric
         label="Average Cost Savings"
@@ -453,7 +482,11 @@ export default function BaselinesROI() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {trendLoading ? (
+            {trendError ? (
+              <p className="text-sm text-destructive py-8 text-center">
+                Failed to load trend data.
+              </p>
+            ) : trendLoading ? (
               <Skeleton className="h-[280px] w-full rounded-lg" />
             ) : (
               <ROITrendChart data={trend} />
@@ -469,7 +502,11 @@ export default function BaselinesROI() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {breakdownLoading ? (
+            {breakdownError ? (
+              <p className="text-sm text-destructive py-8 text-center">
+                Failed to load breakdown data.
+              </p>
+            ) : breakdownLoading ? (
               <Skeleton className="h-[280px] w-full rounded-lg" />
             ) : (
               <BreakdownChart data={breakdown} />
@@ -515,7 +552,11 @@ export default function BaselinesROI() {
             </span>
           )}
         </h3>
-        {comparisonsLoading ? (
+        {comparisonsError ? (
+          <p className="text-sm text-destructive py-4 text-center">
+            Failed to load pattern comparisons.
+          </p>
+        ) : comparisonsLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-[260px] w-full rounded-lg" />

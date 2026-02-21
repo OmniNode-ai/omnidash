@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { SignificanceBadge } from '@/components/SignificanceBadge';
 import { chiSquaredTest, welchTTest } from '@/lib/statistics';
 import type { SignificanceResult } from '@/lib/statistics';
@@ -33,6 +34,7 @@ import {
   TrendingUp,
   Clock,
   ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   BarChart,
@@ -279,7 +281,7 @@ export default function EffectivenessAB() {
   // Data fetching
   // ---------------------------------------------------------------------------
 
-  const { data, isLoading, refetch } = useQuery<ABComparison>({
+  const { data, isLoading, isError, refetch } = useQuery<ABComparison>({
     queryKey: queryKeys.effectiveness.ab(),
     queryFn: () => effectivenessSource.abComparison({ demoMode: isDemoMode }),
     refetchInterval: 15_000,
@@ -343,6 +345,17 @@ export default function EffectivenessAB() {
     <div className="space-y-6">
       {/* Demo mode banner */}
       <DemoBanner />
+
+      {/* Error Banner */}
+      {isError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load A/B comparison data</AlertTitle>
+          <AlertDescription>
+            A/B comparison data could not be retrieved. Please try refreshing.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
