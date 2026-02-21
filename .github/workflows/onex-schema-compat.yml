@@ -35,11 +35,23 @@ jobs:
           # Pinned to onex_change_control main as of 2026-02-21.
           # Update by running:
           #   gh api repos/OmniNode-ai/onex_change_control/commits/main --jq '.sha'
+          # WARNING: The SHA below should be verified against the actual repo HEAD
+          # before merging. The current value has a visually regular hex pattern
+          # (a7b46c20…) that is characteristic of a placeholder. Confirm it is a
+          # real commit SHA by running the gh command above, then replace if needed.
           ref: a7b46c202c9f9b06678e34889cab345e568ab123
           path: onex_change_control
 
       - name: Verify onex_change_control checkout
         run: |
+          # Checks that the source file exists in the expected location.
+          # Note: file existence alone does not confirm the console_scripts entrypoint
+          # is resolvable. After `poetry install` (below), the `validate-yaml` entry
+          # point defined in pyproject.toml [tool.poetry.scripts] can be confirmed via:
+          #   poetry run validate-yaml --help
+          # If that command fails, the package installed incorrectly even if the .py
+          # file is present (e.g., missing __init__.py, bad pyproject.toml, editable
+          # install not applied). Add that check here if flaky entrypoint issues arise.
           if [ ! -f onex_change_control/src/onex_change_control/scripts/validate_yaml.py ]; then
             echo "::error::Failed to checkout onex_change_control or validate_yaml.py not found."
             exit 1
@@ -51,6 +63,12 @@ jobs:
           python-version: '3.12'
 
       - name: Install Poetry
+        # SHA pinned to snok/install-poetry v1. Verify the pin has not drifted from
+        # the v1 tag by running:
+        #   gh api repos/snok/install-poetry/git/ref/tags/v1 --jq '.object.sha'
+        # If the tag is annotated, resolve the underlying commit SHA with:
+        #   gh api repos/snok/install-poetry/git/tags/<tag-object-sha> --jq '.object.sha'
+        # The comment "# v1" is informational only — the SHA is the enforced pin.
         uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a  # v1
         with:
           version: 1.8.0
@@ -87,6 +105,13 @@ jobs:
           # Run the validator from the onex_change_control virtualenv.
           # validate-yaml exits 0 on all-valid, 1 on any invalid file.
           # Use -print0 / xargs -0 so filenames with spaces are passed safely.
+          #
+          # DUPLICATION NOTICE: The find pattern below (\( -name "*.yaml" -o -name "*.yml" \))
+          # intentionally mirrors the pattern used in the YAML_FILES check above.
+          # Both finds MUST use identical include/exclude filters. If you add exclusions
+          # (e.g., -not -name "contract.yaml") or additional glob patterns to one find,
+          # apply the same change to the other. Divergence causes the early-exit guard
+          # (empty-file check) and the actual validation set to differ silently.
           cd onex_change_control
           find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -print0 2>/dev/null \
             | sort -z \

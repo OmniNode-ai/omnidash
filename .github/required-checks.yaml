@@ -5,7 +5,7 @@
 # branch protection settings (Settings -> Branches -> main).
 #
 # Added: OMN-2187
-# Last verified: 2026-02-14 (PR #64 — gate job added, branch protection applied)
+# Last verified: 2026-02-21 (PR #64 — gate job added, branch protection applied)
 
 required_checks:
   # -- test.yml (primary CI pipeline) ----------------------------------------
@@ -38,6 +38,10 @@ excluded_checks:
       because GitHub marks skipped path-filtered checks as "Expected — Waiting
       for status to be reported".
 
+  # Cross-reference: this name MUST exactly match the `name:` field of the
+  # `schema-compat` job in .github/workflows/onex-schema-compat.yml
+  # (currently: `name: ONEX Schema Compatibility Check`).
+  # If that job name is renamed, update this entry and branch protection settings.
   - name: "ONEX Schema Compatibility Check"
     reason: >
       Path-filtered workflow (only runs when contracts/** or the workflow itself
