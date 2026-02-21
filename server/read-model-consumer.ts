@@ -356,6 +356,7 @@ export class ReadModelConsumer {
           } catch {
             // Ignore — consumer may not have been connected yet.
           }
+          // Null both so the next loop iteration creates fresh instances
           this.consumer = null;
           this.kafka = null;
         }

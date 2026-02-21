@@ -542,6 +542,7 @@ export default function DelegationDashboard() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Failed to load delegation data</AlertTitle>
           <AlertDescription>
+            Delegation data could not be retrieved.
             <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 mr-1" /> Retry
             </Button>
