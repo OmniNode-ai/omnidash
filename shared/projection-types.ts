@@ -140,6 +140,13 @@ export interface EventArtifact {
 /**
  * Enrichment metadata attached to an event by enrichment handlers.
  * All fields are derived solely for display — invariant: no domain logic.
+ *
+ * Note: the optional fields below form a flat bag where each field is only
+ * meaningful for a specific category value (e.g. `toolName`/`filePath`/
+ * `bashCommand` are tool_event fields; `selectedAgent`/`confidence` are
+ * routing_event fields; etc.). A future refactor should replace this flat
+ * bag with a discriminated union keyed on `category` so that TypeScript can
+ * narrow the available fields per category without runtime guards.
  */
 export interface EventEnrichment {
   enrichmentVersion: 'v1';

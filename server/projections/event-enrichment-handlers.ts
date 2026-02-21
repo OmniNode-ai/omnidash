@@ -69,7 +69,7 @@ function extractBashCommand(
     const cmd = str(ti['command']) ?? str(ti['cmd']) ?? str(ti['args']);
     if (cmd) return cmd;
   }
-  return str(findField(payload, ['command', 'cmd', 'bash_command'])) ?? undefined;
+  return str(findField(payload, ['command', 'cmd', 'bash_command']));
 }
 
 // ============================================================================
@@ -95,8 +95,8 @@ export function deriveEventCategory(
   const lTopic = topic.toLowerCase();
 
   // Tool event: presence of toolName field takes highest priority
-  const toolName = findField(payload, ['toolName', 'tool_name', 'tool']);
-  if (toolName) return 'tool_event';
+  const toolName = str(findField(payload, ['toolName', 'tool_name', 'tool']));
+  if (toolName !== undefined) return 'tool_event';
 
   // Error event
   if (
@@ -129,7 +129,7 @@ export function deriveEventCategory(
   }
 
   // Node heartbeat
-  if (lType.includes('heartbeat') || lTopic.includes('heartbeat') || lType === 'node-heartbeat') {
+  if (lType.includes('heartbeat') || lTopic.includes('heartbeat')) {
     return 'node_heartbeat';
   }
 
@@ -164,6 +164,9 @@ const ToolExecutedHandler: EnrichmentHandler = {
 
     const lTool = toolName.toLowerCase();
 
+    // Recognized tools: read, readfile, write, edit, multiedit, glob, bash.
+    // All other tools (e.g. grep, webfetch, task, todowrite) fall through
+    // without populating filePath/bashCommand and produce a generic summary.
     if (lTool === 'read' || lTool === 'readfile') {
       filePath = str(
         (toolInput as Record<string, unknown> | undefined)?.['file_path'] ??
@@ -245,7 +248,14 @@ const RoutingDecisionHandler: EnrichmentHandler = {
       ) ?? 'unknown';
     const confidence = num(findField(payload, ['confidence', 'score', 'probability']));
 
-    const confPart = confidence !== undefined ? ` (${Math.round(confidence * 100)}%)` : '';
+    const confPct =
+      confidence !== undefined
+        ? Math.min(
+            100,
+            Math.max(0, confidence > 1 ? Math.round(confidence) : Math.round(confidence * 100))
+          )
+        : undefined;
+    const confPart = confPct !== undefined ? ` (${confPct}%)` : '';
     const summary = truncate(`Selected ${selectedAgent}${confPart}`);
 
     return {
@@ -270,7 +280,14 @@ const IntentHandler: EnrichmentHandler = {
       'unknown';
     const confidence = num(findField(payload, ['confidence', 'score', 'probability']));
 
-    const confPart = confidence !== undefined ? ` (${Math.round(confidence * 100)}%)` : '';
+    const confPct =
+      confidence !== undefined
+        ? Math.min(
+            100,
+            Math.max(0, confidence > 1 ? Math.round(confidence) : Math.round(confidence * 100))
+          )
+        : undefined;
+    const confPart = confPct !== undefined ? ` (${confPct}%)` : '';
     const summary = truncate(`${intentType}${confPart}`);
 
     return {
@@ -346,7 +363,7 @@ const ErrorEventHandler: EnrichmentHandler = {
   name: 'ErrorEventHandler',
   category: 'error_event',
   enrich(payload, type, _topic): EventEnrichment {
-    const actionType = str(findField(payload, ['actionType', 'action_type', 'type'])) ?? type;
+    const actionType = str(findField(payload, ['actionType', 'action_type'])) ?? type;
     const errorMessage =
       str(findField(payload, ['error', 'message', 'errorMessage', 'error_message'])) ??
       'Unknown error';
@@ -417,10 +434,35 @@ export class EventEnrichmentPipeline {
       const handler = this.handlers.get(category) ?? this.defaultHandler;
       return handler.enrich(payload, type, topic);
     } catch {
-      return this.defaultHandler.enrich(payload, type, topic);
+      // Do NOT delegate to defaultHandler.enrich here — it could also throw,
+      // breaking the "never throws" contract. Return a hardcoded minimal object.
+      return {
+        enrichmentVersion: 'v1',
+        handler: 'FallbackHandler',
+        category: 'unknown',
+        summary: 'Event processing error',
+        normalizedType: type,
+        artifacts: [],
+      };
     }
   }
 }
 
-/** Singleton consumed by projection-bootstrap.ts (OMN-2419). */
-export const enrichmentPipeline = new EventEnrichmentPipeline();
+// ============================================================================
+// Singleton (lazy-initialized)
+// ============================================================================
+
+/** Module-level singleton, created on first call to getEnrichmentPipeline(). */
+let _enrichmentPipeline: EventEnrichmentPipeline | undefined;
+
+/**
+ * Returns the shared EventEnrichmentPipeline singleton.
+ * Lazy-initialized on first call to avoid import-time side effects.
+ * Consumed by projection-bootstrap.ts (OMN-2419).
+ */
+export function getEnrichmentPipeline(): EventEnrichmentPipeline {
+  if (_enrichmentPipeline === undefined) {
+    _enrichmentPipeline = new EventEnrichmentPipeline();
+  }
+  return _enrichmentPipeline;
+}
