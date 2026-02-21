@@ -7,8 +7,8 @@ name: Omni* Ecosystem Standards Compliance
 # Part of OMN-2459 (M5 standards compliance gate), per-repo slice of OMN-2381.
 #
 # Jobs:
-#   structure-validation       - verify key omnidash monorepo directories exist
-#   ecosystem-validation       - verify CLAUDE.md, required npm scripts, TanStack Query
+#   structure-validation       - verify required root files exist (CLAUDE.md, package.json, etc.) and key directories
+#   ecosystem-validation       - verify npm scripts and TanStack Query dependency
 #   legacy-compatibility-check - check for forbidden packages and Python toolchain files
 #   typescript-compliance      - verify TypeScript strict mode and path alias config
 #
@@ -184,6 +184,16 @@ jobs:
 
           if [ -f "Pipfile.lock" ]; then
             echo "ERROR: Pipfile.lock found — omnidash is a Node.js project, not Python"
+            ERRORS=1
+          fi
+
+          if [ -f "uv.lock" ]; then
+            echo "ERROR: uv.lock found — omnidash is a Node.js project, not Python"
+            ERRORS=1
+          fi
+
+          if [ -f "requirements.txt" ]; then
+            echo "ERROR: requirements.txt found — omnidash is a Node.js project, not Python"
             ERRORS=1
           fi
 
