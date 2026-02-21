@@ -78,12 +78,12 @@ function extractBashCommand(
  *
  * Precedence (first match wins):
  * 1. `toolName` in payload → tool_event
- * 2. Either `type` OR `topic` substring matching for: error/failed/failure
- *    → error_event; routing/route → routing_event; intent → intent_event;
- *    heartbeat → node_heartbeat; registration/lifecycle/node-registry → node_lifecycle
- * 3. `selectedAgent` in payload → routing_event
- * 4. Intent-pattern fields (`intent_category` / `intentCategory`) → intent_event
- * 5. Default → unknown
+ * 2. `type` or `topic` contains error/failed/failure → error_event
+ * 3. `type` or `topic` contains routing/route, OR `selectedAgent` in payload → routing_event
+ * 4. `type` or `topic` contains intent, OR `intent_category`/`intentCategory` in payload → intent_event
+ * 5. `type` or `topic` contains heartbeat → node_heartbeat
+ * 6. `type` or `topic` contains registration/lifecycle/node-registry → node_lifecycle
+ * 7. Default → unknown
  */
 export function deriveEventCategory(
   payload: Record<string, unknown>,

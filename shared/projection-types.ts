@@ -170,6 +170,8 @@ export interface EventEnrichment {
   nodeId?: string;
   healthStatus?: string;
   selectedAgent?: string;
+  /** Raw confidence value from the producer — may be fractional (0–1) or percentage (0–100).
+   *  Use the `summary` field for authoritative display; do not render this directly as a percentage. */
   confidence?: number;
   intentType?: string;
   actionName?: string;

@@ -483,6 +483,60 @@ describe('ToolExecutedHandler enrichment', () => {
 });
 
 // ============================================================================
+// ErrorEventHandler enrichment output
+// ============================================================================
+
+describe('ErrorEventHandler enrichment output', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  it('produces category "error_event", handler "ErrorEventHandler", and summary containing the error message', () => {
+    const result = pipeline.run(
+      { type: 'task-failed', payload: { error: 'Something went wrong' } },
+      'task-failed',
+      'agent-actions'
+    );
+    expect(result.category).toBe('error_event');
+    expect(result.handler).toBe('ErrorEventHandler');
+    expect(result.summary).toContain('Something went wrong');
+  });
+});
+
+// ============================================================================
+// NodeHeartbeatHandler enrichment output
+// ============================================================================
+
+describe('NodeHeartbeatHandler enrichment output', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  it('produces category "node_heartbeat", handler "NodeHeartbeatHandler", correct nodeId, and a non-empty summary', () => {
+    const result = pipeline.run(
+      { nodeId: 'test-node-1', health: 'healthy' },
+      'node-heartbeat',
+      'node.heartbeat.v1'
+    );
+    expect(result.category).toBe('node_heartbeat');
+    expect(result.handler).toBe('NodeHeartbeatHandler');
+    expect(result.nodeId).toBe('test-node-1');
+    expect(result.summary.length).toBeGreaterThan(0);
+  });
+});
+
+// ============================================================================
+// NodeLifecycleHandler enrichment output
+// ============================================================================
+
+describe('NodeLifecycleHandler enrichment output', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  it('produces category "node_lifecycle", handler "NodeLifecycleHandler", and a non-empty summary', () => {
+    const result = pipeline.run({ nodeId: 'registry-node' }, 'updated', 'node-registry.updated.v1');
+    expect(result.category).toBe('node_lifecycle');
+    expect(result.handler).toBe('NodeLifecycleHandler');
+    expect(result.summary.length).toBeGreaterThan(0);
+  });
+});
+
+// ============================================================================
 // Confidence clamping in IntentHandler
 // ============================================================================
 
