@@ -78,7 +78,7 @@ function extractBashCommand(
  *
  * Precedence (first match wins):
  * 1. `toolName` in payload → tool_event
- * 2. Both `type` AND `topic` substrings are checked equally for: error/failed/failure
+ * 2. Either `type` OR `topic` substring matching for: error/failed/failure
  *    → error_event; routing/route → routing_event; intent → intent_event;
  *    heartbeat → node_heartbeat; registration/lifecycle/node-registry → node_lifecycle
  * 3. `selectedAgent` in payload → routing_event
@@ -377,9 +377,12 @@ const ErrorEventHandler: EnrichmentHandler = {
   category: 'error_event',
   enrich(payload, type, _topic): EventEnrichment {
     const actionType = str(findField(payload, ['actionType', 'action_type'])) ?? type;
-    const errorMessage =
-      str(findField(payload, ['error', 'message', 'errorMessage', 'error_message'])) ??
-      'Unknown error';
+    const rawError = findField(payload, ['error', 'message', 'errorMessage', 'error_message']);
+    const errorMsg =
+      typeof rawError === 'object' && rawError !== null && 'message' in rawError
+        ? str((rawError as Record<string, unknown>).message)
+        : str(rawError);
+    const errorMessage = errorMsg ?? 'Unknown error';
 
     const summary = truncate(`${actionType}: ${errorMessage}`);
 

@@ -451,6 +451,35 @@ describe('ToolExecutedHandler enrichment', () => {
     expect(result.filePath).toBeUndefined();
     expect(result.artifacts).toHaveLength(0);
   });
+
+  it('write: produces a file_write artifact and populates filePath', () => {
+    const result = pipeline.run(
+      { toolName: 'write', tool_input: { file_path: '/tmp/output.ts' } },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.toolName).toBe('write');
+    expect(result.filePath).toBe('/tmp/output.ts');
+    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts[0].kind).toBe('file_write');
+    expect(result.artifacts[0].value).toBe('/tmp/output.ts');
+    // display should be the basename
+    expect(result.artifacts[0].display).toBe('output.ts');
+  });
+
+  it('glob: produces a glob_pattern artifact with the pattern value', () => {
+    const result = pipeline.run(
+      { toolName: 'glob', tool_input: { pattern: '**/*.ts' } },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.toolName).toBe('glob');
+    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts[0].kind).toBe('glob_pattern');
+    expect(result.artifacts[0].value).toBe('**/*.ts');
+    // glob does not set filePath — it uses the pattern field only
+    expect(result.filePath).toBeUndefined();
+  });
 });
 
 // ============================================================================
